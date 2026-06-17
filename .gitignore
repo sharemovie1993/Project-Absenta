@@ -39,6 +39,7 @@ Thumbs.db
 **/*.json
 !package.json
 !tsconfig.json
+!tsconfig.*.json
 !composer.json
 !*.schema.json
 !absenta_backend/prisma/schema.prisma
