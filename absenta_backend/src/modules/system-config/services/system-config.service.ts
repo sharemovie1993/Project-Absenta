@@ -3,7 +3,6 @@ import { isSystemSuperAdmin } from '@/utils/rbac';
 import { Prisma } from '@prisma/client';
 import { cacheService } from '@/utils/cache.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
-import { LicenseService } from '@/infra/license/license.service';
 
 export interface SystemConfigPayload {
   tenant_id?: string | null;
@@ -155,23 +154,13 @@ export const systemConfigService = {
           company_logo_url: globalActive?.company_logo_url ?? null,
           company_signature_name: globalActive?.company_signature_name ?? null,
           company_signature_title: globalActive?.company_signature_title ?? null,
-          license: {
-            is_active: LicenseService.isLicenseValid(),
-            school_name: LicenseService.getSchoolName()
-          }
         };
         await cacheService.set(cacheKey, merged, CACHE_TTL.STATIC);
         return merged;
       }
     }
 
-    const finalConfig = globalActive ? {
-      ...globalActive,
-      license: {
-        is_active: LicenseService.isLicenseValid(),
-        school_name: LicenseService.getSchoolName()
-      }
-    } : null;
+    const finalConfig = globalActive || null;
     await cacheService.set(cacheKey, finalConfig, CACHE_TTL.STATIC);
     return finalConfig;
   },
