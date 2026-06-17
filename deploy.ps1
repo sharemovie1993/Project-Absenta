@@ -93,33 +93,26 @@ if (-not $Silent) {
     $confirmed = $false
     while (-not $confirmed) {
         Show-Header "2 / 5 - Konfigurasi Skenario & Port"
-        Write-Host "Pilih Skenario Deployment:" -ForegroundColor White
-        Write-Host " 1. SaaS / Cloud (Menggunakan domain api.absenta.id)"
-        Write-Host " 2. Lokal Sekolah (Menggunakan IP Lokal / Domain Sekolah)"
-        Write-Host ""
+        Write-Host "Konfigurasi Target Server:" -ForegroundColor White
         
-        $choice = Read-Host "Pilih [1/2]"
-        if ($choice -eq "2") {
-            $DeployMode = "local"
-            $ServerDomain = Read-Host "Masukkan IP Server atau Domain Sekolah (contoh: 192.168.1.10)"
-            $finalScheme = "http"
-            $finalDomain = $ServerDomain
-        } else {
-            $DeployMode = "saas"
-            $finalDomain = "api.absenta.id"
-            $finalScheme = "https"
-        }
+        # 1. Domain / Host
+        $inputDomain = Read-Host "1. Masukkan Domain atau IP Server [$finalDomain]"
+        if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
 
-        $BackendPort = Read-Host "Masukkan Port Backend [$BackendPort]"
-        if ([string]::IsNullOrWhiteSpace($BackendPort)) { $BackendPort = "3003" }
+        # 2. Protokol
+        $inputScheme = Read-Host "2. Gunakan Protokol (http/https) [$finalScheme]"
+        if (-not [string]::IsNullOrWhiteSpace($inputScheme)) { $finalScheme = $inputScheme }
+
+        # 3. Ports
+        $inputBPort = Read-Host "3. Port Backend [$BackendPort]"
+        if (-not [string]::IsNullOrWhiteSpace($inputBPort)) { $BackendPort = $inputBPort }
         
-        $FrontendPort = Read-Host "Masukkan Port Frontend [$FrontendPort]"
-        if ([string]::IsNullOrWhiteSpace($FrontendPort)) { $FrontendPort = "5175" }
+        $inputFPort = Read-Host "4. Port Frontend [$FrontendPort]"
+        if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
         Write-Host ""
         Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
-        Write-Host " - Mode Deployment : $(if($DeployMode -eq 'saas'){'SaaS'}else{'Lokal'})"
-        Write-Host " - Domain/IP      : $finalDomain"
+        Write-Host " - URL Akses      : $finalScheme://$finalDomain"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"
         Write-Host "-----------------------------" -ForegroundColor Yellow
@@ -129,10 +122,7 @@ if (-not $Silent) {
     }
 } else {
     # Logic for Silent mode parameters
-    if ($DeployMode -eq "local") {
-        $finalScheme = "http"
-        $finalDomain = $ServerDomain
-    }
+    if (-not [string]::IsNullOrWhiteSpace($ServerDomain)) { $finalDomain = $ServerDomain }
 }
 
 # Update .env files
@@ -166,7 +156,7 @@ foreach ($line in $frontendEnv) {
 }
 $newFrontendEnv | Set-Content "absenta_frontend/.env"
 
-Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk mode $DeployMode." -ForegroundColor Gray
+Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk target $finalScheme://$finalDomain." -ForegroundColor Gray
 
 # ----------------------------------------------------
 # LANGKAH 3: Instalasi Dependensi & Database
