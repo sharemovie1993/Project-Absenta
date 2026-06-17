@@ -140,7 +140,7 @@ const PaymentChart = () => {
               tickFormatter={(value) => `Rp ${value.toLocaleString('id-ID')}`}
             />
             <Tooltip 
-              formatter={(value: number | undefined) => [`Rp ${(value ?? 0).toLocaleString('id-ID')}`, 'Jumlah']}
+              formatter={(value: any) => [`Rp ${(Number(value) || 0).toLocaleString('id-ID')}`, 'Jumlah']}
               labelFormatter={(label) => `Bulan: ${label}`}
               contentStyle={{
                 backgroundColor: 'var(--background)',
