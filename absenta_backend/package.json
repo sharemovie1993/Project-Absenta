@@ -87,6 +87,7 @@
     "prisma": "^5.6.0",
     "puppeteer": "^24.33.1",
     "redis": "^5.9.0",
+    "redis-memory-server": "^0.16.1",
     "socket.io": "^4.8.1",
     "stream-json": "^1.9.1",
     "stripe": "^19.1.0",

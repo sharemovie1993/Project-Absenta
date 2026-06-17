@@ -1,7 +1,7 @@
 import './infra/env'; // MUST BE THE FIRST LINE
 import Fastify from 'fastify';
 import { prisma } from './utils/prisma';
-import { closeRedisConnections, getRedisConnection, verifyRedisConnection } from './infra/redis/redisClient';
+import { closeRedisConnections, getRedisConnection, stopRedisConnection, verifyRedisConnection } from './infra/redis/redisClient';
 import { initRealtime } from './infra/realtime';
 import { registerPlugins, registerMiddlewares } from './infra/bootstrap';
 import { registerRoutes } from './infra/router';
@@ -259,6 +259,7 @@ process.on('SIGINT', async () => {
   await closeMouPdfQueue();
   await prisma.$disconnect();
   await closeRedisConnections();
+  await stopRedisConnection();
   process.exit(0);
 });
 
@@ -269,6 +270,7 @@ process.on('SIGTERM', async () => {
   await closeMouPdfQueue();
   await prisma.$disconnect();
   await closeRedisConnections();
+  await stopRedisConnection();
   process.exit(0);
 });
 

@@ -95,6 +95,20 @@ if (-not $Silent) {
         Show-Header "2 / 5 - Konfigurasi Skenario & Port"
         Write-Host "Konfigurasi Target Server:" -ForegroundColor White
         
+        # 0. Redis Mode
+        Write-Host "Pilih Mode Redis:" -ForegroundColor Gray
+        Write-Host " 1. Built-in (Embedded) - Rekomendasi"
+        Write-Host " 2. Eksternal (Laragon/Single)"
+        $redisChoice = Read-Host "Pilih [1/2] (Default: 1)"
+        if ($redisChoice -eq "2") { 
+            $redisMode = "single" 
+            $redisUrl = Read-Host "Masukkan Redis URL [redis://localhost:6379]"
+            if ([string]::IsNullOrWhiteSpace($redisUrl)) { $redisUrl = "redis://localhost:6379" }
+        } else { 
+            $redisMode = "embedded"
+            $redisUrl = "redis://localhost:6379"
+        }
+
         # 1. Domain / Host
         $inputDomain = Read-Host "1. Masukkan Domain atau IP Server [$finalDomain]"
         if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
@@ -134,6 +148,8 @@ $newBackendEnv = @()
 
 foreach ($line in $backendEnv) {
     if ($line -match "^PORT=") { $newBackendEnv += "PORT=$BackendPort" }
+    elseif ($line -match "^REDIS_MODE=") { $newBackendEnv += "REDIS_MODE=$redisMode" }
+    elseif ($line -match "^REDIS_URL=") { $newBackendEnv += "REDIS_URL=$redisUrl" }
     elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=${finalScheme}://$finalDomain" }

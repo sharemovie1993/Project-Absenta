@@ -1,12 +1,18 @@
 import IORedis, { Cluster, Redis } from 'ioredis';
+import { RedisMemoryServer } from 'redis-memory-server';
 
-export type RedisMode = 'single' | 'sentinel' | 'cluster';
+export type RedisMode = 'single' | 'sentinel' | 'cluster' | 'embedded';
 export type RedisClient = Redis | Cluster;
+
+let redisMemoryServer: RedisMemoryServer | null = null;
+let sharedClient: RedisClient | null = null;
+let loggedMode = false;
 
 function getRedisMode(): RedisMode {
   const raw = String(process.env.REDIS_MODE || 'single').trim().toLowerCase();
   if (raw === 'sentinel') return 'sentinel';
   if (raw === 'cluster') return 'cluster';
+  if (raw === 'embedded') return 'embedded';
   return 'single';
 }
 
@@ -39,10 +45,28 @@ function parseHostPortList(list: string): Array<{ host: string; port: number }> 
     .filter((x) => Boolean(x.host));
 }
 
-function createClient(): RedisClient {
+async function createClient(): Promise<RedisClient> {
   const mode = getRedisMode();
   const password = getRedisPassword();
   
+  if (mode === 'embedded') {
+    if (!redisMemoryServer) {
+      console.log('[Redis] Starting Embedded Redis Server...');
+      redisMemoryServer = new RedisMemoryServer();
+      const host = await redisMemoryServer.getHost();
+      const port = await redisMemoryServer.getPort();
+      process.env.REDIS_URL = `redis://${host}:${port}`;
+      console.log(`[Redis] Embedded Redis started at ${host}:${port}`);
+    }
+    const url = process.env.REDIS_URL;
+    return new IORedis(url!, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: true,
+      connectTimeout: 5000,
+      retryStrategy: (times) => Math.min(times * 500, 10000),
+    });
+  }
+
   if (mode === 'sentinel') {
     const sentinels = parseHostPortList(String(process.env.REDIS_SENTINEL_HOSTS || '').trim());
     const name = String(process.env.REDIS_SENTINEL_NAME || '').trim();
@@ -97,46 +121,33 @@ function createClient(): RedisClient {
   });
 }
 
-let sharedClient: RedisClient | null = null;
-let loggedMode = false;
-
-export function getRedisConnection(): any {
+export async function getRedisConnection(): Promise<any> {
   if (sharedClient) return sharedClient;
   if (!loggedMode) {
     loggedMode = true;
     const mode = getRedisMode();
     console.log(`redis_mode_${mode}`);
   }
-  sharedClient = createClient();
+  sharedClient = await createClient();
   return sharedClient;
 }
 
-export function createRedisConnection(): any {
+export async function createRedisConnection(): Promise<any> {
   if (!loggedMode) {
     loggedMode = true;
     const mode = getRedisMode();
     console.log(`redis_mode_${mode}`);
   }
-  return createClient();
+  return await createClient();
 }
 
-export async function verifyRedisConnection(): Promise<boolean> {
-  try {
-    const redis = getRedisConnection();
-    await (redis as any).ping();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export async function closeRedisConnections(): Promise<void> {
-  try {
-    if (sharedClient) {
-      await (sharedClient as any).quit();
-    }
-  } catch {
-  } finally {
+export async function stopRedisConnection(): Promise<void> {
+  if (sharedClient) {
+    await sharedClient.quit();
     sharedClient = null;
+  }
+  if (redisMemoryServer) {
+    await redisMemoryServer.stop();
+    redisMemoryServer = null;
   }
 }
