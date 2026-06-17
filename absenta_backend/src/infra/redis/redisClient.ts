@@ -1,10 +1,8 @@
 import IORedis, { Cluster, Redis } from 'ioredis';
-import { RedisMemoryServer } from 'redis-memory-server';
 
 export type RedisMode = 'single' | 'sentinel' | 'cluster' | 'embedded';
 export type RedisClient = Redis | Cluster;
 
-let redisMemoryServer: RedisMemoryServer | null = null;
 let sharedClient: RedisClient | null = null;
 let loggedMode = false;
 
@@ -23,7 +21,7 @@ function getRedisPassword(): string {
 function getRedisUrl(): string {
   const envUrl = String(process.env.REDIS_URL || '').trim();
   const password = getRedisPassword();
-  const base = envUrl.length > 0 ? envUrl : 'redis://localhost:6379';
+  const base = envUrl.length > 0 ? envUrl : 'redis://127.0.0.1:6379';
   if (password.length === 0) return base;
   if (!base.startsWith('redis://')) return base;
   if (base.includes('@')) return base;
@@ -49,46 +47,13 @@ async function createClient(): Promise<RedisClient> {
   const mode = getRedisMode();
   const password = getRedisPassword();
   
+  // In embedded mode, we assume the 'absenta-redis' process in PM2 has started the server
   if (mode === 'embedded') {
-    // In cluster mode, only the first instance should start the server
-    // Others should just connect to it. We use a simple port lock or check.
-    const isPrimaryInstance = process.env.NODE_APP_INSTANCE === '0' || !process.env.NODE_APP_INSTANCE;
-    const redisPort = 6379;
-
-    if (isPrimaryInstance && !redisMemoryServer) {
-      console.log('[Redis] Primary Instance starting Embedded Redis Server...');
-      try {
-        // Ensure no previous server is hanging
-        redisMemoryServer = new RedisMemoryServer({
-          instance: {
-            port: redisPort,
-            ip: '127.0.0.1'
-          },
-        });
-        await redisMemoryServer.start();
-        console.log(`[Redis] Embedded Redis started on 127.0.0.1:${redisPort}`);
-      } catch (err: any) {
-        if (err.message?.includes('EADDRINUSE') || err.message?.includes('already in use')) {
-          console.log('[Redis] Port 6379 already in use, assuming another instance started it.');
-        } else {
-          console.error('[Redis] Failed to start embedded server:', err);
-        }
-      }
-    } else {
-      // Non-primary instances wait longer to ensure primary has finished starting the server
-      // and we add a retry logic for the connection
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-
-    return new IORedis(`redis://127.0.0.1:${redisPort}`, {
+    return new IORedis('redis://127.0.0.1:6379', {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
-      connectTimeout: 20000, // Increase timeout for slower startup
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 1000, 15000);
-        console.log(`[Redis] Retrying connection in ${delay}ms... (attempt ${times})`);
-        return delay;
-      },
+      connectTimeout: 10000,
+      retryStrategy: (times) => Math.min(times * 500, 10000),
     });
   }
 
@@ -146,10 +111,6 @@ async function createClient(): Promise<RedisClient> {
   });
 }
 
-/**
- * Initializes the shared Redis connection.
- * MUST be called and awaited before any other redis calls.
- */
 export async function initRedis(): Promise<RedisClient> {
   if (sharedClient) return sharedClient;
   if (!loggedMode) {
@@ -161,17 +122,11 @@ export async function initRedis(): Promise<RedisClient> {
   return sharedClient;
 }
 
-/**
- * Synchronously returns the shared Redis connection.
- * Note: initRedis() must have been called before this.
- */
 export function getRedisConnection(): any {
   return sharedClient;
 }
 
 export function createRedisConnection(): any {
-  // This is problematic as it's synchronous but needs async for embedded
-  // For now, we return the shared client as a fallback if not initialized
   return sharedClient;
 }
 
@@ -179,10 +134,6 @@ export async function stopRedisConnection(): Promise<void> {
   if (sharedClient) {
     await sharedClient.quit();
     sharedClient = null;
-  }
-  if (redisMemoryServer) {
-    await redisMemoryServer.stop();
-    redisMemoryServer = null;
   }
 }
 

@@ -48,6 +48,17 @@ console.log('\x1b[36m==================================================\x1b[0m\n
 module.exports = {
   apps: [
     {
+      name: 'absenta-redis',
+      script: 'scripts/start-embedded-redis.js',
+      cwd: path.join(__dirname, 'absenta_backend'),
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
       name: `absenta-backend:${backendPort}`,
       script: 'dist/main.js',
       cwd: path.join(__dirname, 'absenta_backend'),
