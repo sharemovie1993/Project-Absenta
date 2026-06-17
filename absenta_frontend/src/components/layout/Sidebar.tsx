@@ -678,11 +678,39 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         {/* System/Settings Section at the bottom - Always Expanded */}
         {(() => {
           const sistemNode = menuTree.find(n => n.name.trim().toUpperCase() === 'SISTEM');
-          if (!sistemNode || !sistemNode.children) return null;
-
-          const sistemChildren = mapToNavItems(sistemNode.children as BackendMenuItem[]);
+          
           return (
             <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800">
+              {/* License Information Badge */}
+              {isOpen && systemConfig?.license && (
+                <div className={cn(
+                  "mb-3 p-3 rounded-xl border transition-all duration-300",
+                  systemConfig.license.is_active 
+                    ? "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-500/5 dark:border-emerald-500/20" 
+                    : "bg-amber-50/50 border-amber-100 dark:bg-amber-500/5 dark:border-amber-500/20"
+                )}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className={cn(
+                      "p-1.5 rounded-lg",
+                      systemConfig.license.is_active 
+                        ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20" 
+                        : "bg-amber-100 text-amber-600 dark:bg-amber-500/20"
+                    )}>
+                      <Award className="w-3.5 h-3.5" />
+                    </div>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-wider",
+                      systemConfig.license.is_active ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                    )}>
+                      {systemConfig.license.is_active ? 'Licensed' : 'Pending Activation'}
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {systemConfig.license.school_name || 'Unregistered'}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2 px-3 py-2 mb-1">
                 <Shield className="w-4 h-4 text-slate-400" />
                 {isOpen && (
@@ -691,9 +719,11 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                   </span>
                 )}
               </div>
-              <ul className="space-y-1">
-                {renderNavItems(sistemChildren, 0)}
-              </ul>
+              {sistemNode?.children && (
+                <ul className="space-y-1">
+                  {renderNavItems(mapToNavItems(sistemNode.children as BackendMenuItem[]), 0)}
+                </ul>
+              )}
             </div>
           );
         })()}
