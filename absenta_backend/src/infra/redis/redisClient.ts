@@ -100,7 +100,7 @@ function createClient(): RedisClient {
 let sharedClient: RedisClient | null = null;
 let loggedMode = false;
 
-export function getRedisConnection(): RedisClient {
+export function getRedisConnection(): any {
   if (sharedClient) return sharedClient;
   if (!loggedMode) {
     loggedMode = true;
@@ -111,7 +111,7 @@ export function getRedisConnection(): RedisClient {
   return sharedClient;
 }
 
-export function createRedisConnection(): RedisClient {
+export function createRedisConnection(): any {
   if (!loggedMode) {
     loggedMode = true;
     const mode = getRedisMode();
