@@ -68,6 +68,10 @@ export interface SystemConfigPayload {
   parent_app_monthly_recap_enabled?: boolean;
   parent_app_daily_tracking_enabled?: boolean;
   parent_app_report_absence_enabled?: boolean;
+  license?: {
+    is_active: boolean;
+    school_name: string;
+  } | null;
 }
 
 export type SystemConfig = SystemConfigPayload;
