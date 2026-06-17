@@ -5,7 +5,7 @@
   "main": "src/main.ts",
   "scripts": {
     "dev": "node scripts/dev/pre-dev.js && ts-node-dev --respawn --ignore-watch logs --require tsconfig-paths/register src/main.ts",
-    "build": "node scripts/adhoc/prisma-generate-with-retry.js && tsc && tsc-alias",
+    "build": "node scripts/adhoc/prisma-generate-with-retry.js && tsc && npx tsc-alias -p tsconfig.json",
     "postbuild": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('src','modules','notification','templates');const dest=path.join('dist','modules','notification','templates');try{fs.mkdirSync(dest,{recursive:true});for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dest,f));}console.log('Copied templates to dist');}catch(e){console.error('Copy templates failed:',e.message);process.exitCode=0;}\"",
     "start": "node dist/main.js",
     "start:stress": "node --max-old-space-size=2048 dist/main.js",
