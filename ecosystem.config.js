@@ -65,10 +65,10 @@ module.exports = {
     },
     {
       name: `absenta-frontend:${frontendPort}`,
-      script: 'node_modules/vite/bin/vite.js',
-      args: `preview --port ${frontendPort} --host 0.0.0.0`,
+      script: 'node_modules/serve/bin/serve.js',
+      args: `-s dist -l ${frontendPort}`,
       cwd: path.join(__dirname, 'absenta_frontend'),
-      instances: 1, // Frontend is light, 1 instance is enough
+      instances: 1, 
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
