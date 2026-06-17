@@ -165,11 +165,17 @@ if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env
 # Frontend is flexible, just ensure VITE_API_BASE_URL is /api for auto-detection
 $frontendEnv = Get-Content "absenta_frontend/.env"
 $newFrontendEnv = @()
+$fPortFound = $false
 foreach ($line in $frontendEnv) {
     if ($line -match "^VITE_API_BASE_URL=") { $newFrontendEnv += "VITE_API_BASE_URL=/api" }
     elseif ($line -match "^VITE_SOCKET_URL=") { $newFrontendEnv += "VITE_SOCKET_URL=" }
+    elseif ($line -match "^PORT=") { 
+        $newFrontendEnv += "PORT=$FrontendPort"
+        $fPortFound = $true
+    }
     else { $newFrontendEnv += $line }
 }
+if (-not $fPortFound) { $newFrontendEnv += "PORT=$FrontendPort" }
 $newFrontendEnv | Set-Content "absenta_frontend/.env"
 
 Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk target ${finalScheme}://$finalDomain." -ForegroundColor Gray

@@ -34,8 +34,8 @@ const backendEnv = readEnv(path.join(__dirname, 'absenta_backend', '.env'));
 const frontendEnv = readEnv(path.join(__dirname, 'absenta_frontend', '.env'));
 
 // Dynamic Port Configuration (Fallbacks to defaults if not set)
-const backendPort = process.env.PORT || backendEnv.PORT || '3001';
-const frontendPort = process.env.FRONTEND_PORT || '5173';
+const backendPort = process.env.PORT || backendEnv.PORT || '3003';
+const frontendPort = process.env.FRONTEND_PORT || frontendEnv.PORT || '5175';
 
 // Print a beautiful summary in terminal when PM2 loads/executes this config file
 console.log('\x1b[36m==================================================\x1b[0m');
