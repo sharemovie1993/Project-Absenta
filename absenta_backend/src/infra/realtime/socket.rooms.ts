@@ -1,6 +1,6 @@
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SocketMonitor } from './socket.monitor';
-import { InfraMonitoringBroadcaster } from '@/modules/superadmin/infra-monitoring/services/infra-monitoring.broadcaster';
+import { InfraMonitoringBroadcaster } from '../../modules/superadmin/infra-monitoring/services/infra-monitoring.broadcaster';
 
 export type AttendanceFeedBuilder = (
   tenantId: string,
