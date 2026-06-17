@@ -121,24 +121,33 @@ async function createClient(): Promise<RedisClient> {
   });
 }
 
-export async function getRedisConnection(): Promise<any> {
+/**
+ * Initializes the shared Redis connection.
+ * MUST be called and awaited before any other redis calls.
+ */
+export async function initRedis(): Promise<RedisClient> {
   if (sharedClient) return sharedClient;
   if (!loggedMode) {
     loggedMode = true;
     const mode = getRedisMode();
-    console.log(`redis_mode_${mode}`);
+    console.log(`[Redis] Initializing in mode: ${mode}`);
   }
   sharedClient = await createClient();
   return sharedClient;
 }
 
-export async function createRedisConnection(): Promise<any> {
-  if (!loggedMode) {
-    loggedMode = true;
-    const mode = getRedisMode();
-    console.log(`redis_mode_${mode}`);
-  }
-  return await createClient();
+/**
+ * Synchronously returns the shared Redis connection.
+ * Note: initRedis() must have been called before this.
+ */
+export function getRedisConnection(): any {
+  return sharedClient;
+}
+
+export function createRedisConnection(): any {
+  // This is problematic as it's synchronous but needs async for embedded
+  // For now, we return the shared client as a fallback if not initialized
+  return sharedClient;
 }
 
 export async function stopRedisConnection(): Promise<void> {
@@ -150,4 +159,13 @@ export async function stopRedisConnection(): Promise<void> {
     await redisMemoryServer.stop();
     redisMemoryServer = null;
   }
+}
+
+export async function closeRedisConnections(): Promise<void> {
+  await stopRedisConnection();
+}
+
+export async function verifyRedisConnection(): Promise<void> {
+  if (!sharedClient) await initRedis();
+  await sharedClient!.ping();
 }

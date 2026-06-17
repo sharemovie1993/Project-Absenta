@@ -1,7 +1,7 @@
 import './infra/env'; // MUST BE THE FIRST LINE
 import Fastify from 'fastify';
 import { prisma } from './utils/prisma';
-import { closeRedisConnections, getRedisConnection, stopRedisConnection, verifyRedisConnection } from './infra/redis/redisClient';
+import { closeRedisConnections, getRedisConnection, initRedis, stopRedisConnection, verifyRedisConnection } from './infra/redis/redisClient';
 import { initRealtime } from './infra/realtime';
 import { registerPlugins, registerMiddlewares } from './infra/bootstrap';
 import { registerRoutes } from './infra/router';
@@ -73,7 +73,7 @@ async function start() {
     // Hulu ke Hilir: Luruskan kabel untuk background workers utama
     const startBackgroundServices = async () => {
       // Ensure Redis is ready before starting workers
-      await getRedisConnection();
+      await initRedis();
       
       await trackService('Invoice PDF Worker', 'worker', () => initInvoicePdfWorker());
       await trackService('MOU PDF Worker', 'worker', () => initMouPdfWorker());
@@ -168,8 +168,7 @@ async function start() {
 
     // ─── Infrastructure Services ───
     await trackService('Redis', 'infra', async () => {
-      const ok = await verifyRedisConnection();
-      if (!ok) throw new Error('Connection failed (memory fallback)');
+      await verifyRedisConnection();
     });
 
     if (isHybridMode) {
