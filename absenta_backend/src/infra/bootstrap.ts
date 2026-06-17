@@ -40,7 +40,7 @@ export async function registerPlugins(fastify: any) {
     getHostFromEnvUrl(process.env.API_URL),
     getHostFromEnvUrl(process.env.API_URL),
     process.env.ALLOWED_LAN_IP,
-  ].filter(Boolean));
+  ].filter((v): v is string => Boolean(v)));
 
   await fastify.register(require('@fastify/cors'), {
     origin: (origin: string | undefined, cb: any) => {
