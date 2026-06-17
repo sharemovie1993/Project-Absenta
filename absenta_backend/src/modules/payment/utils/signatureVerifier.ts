@@ -72,7 +72,7 @@ export class SignatureVerifier {
       }
 
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: '2025-10-29.clover' // Use latest stable API version
+        apiVersion: '2025-09-30.clover' // Use the version expected by installed types
       });
       
       // Stripe webhook signature verification

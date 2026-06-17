@@ -419,8 +419,8 @@ const Dashboard: React.FC = () => {
                   <div className="p-6">
                     <Table 
                         data={salesHistory}
-                        isLoading={salesLoading}
-                      emptyMessage="Anda belum memiliki riwayat transaksi belanja."
+                        loading={salesLoading}
+                        emptyMessage="Anda belum memiliki riwayat transaksi belanja."
                         columns={[
                           {
                             title: 'Tanggal',
