@@ -424,12 +424,13 @@ const Dashboard: React.FC = () => {
                         columns={[
                           {
                             title: 'Tanggal',
-                            key: 'tanggal',
+                            key: 'date',
                             render: (date: string) => format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: id }),
                           } as any,
                           {
                             title: 'ID Struk',
-                            key: 'receiptId',
+                            key: 'id',
+                            render: (id: string) => <StrukBadge id={id} />,
                           } as any,
                           {
                             title: 'Metode Pembayaran',
