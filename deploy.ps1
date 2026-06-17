@@ -4,6 +4,8 @@
 param (
     [string]$BackendPort = "3003",
     [string]$FrontendPort = "5175",
+    [string]$DeployMode = "", # "saas" or "local"
+    [string]$ServerDomain = "", # e.g. "api.absenta.id" or "192.168.1.10"
     [switch]$Silent = $false
 )
 
@@ -32,14 +34,14 @@ function Show-Header {
 # ----------------------------------------------------
 Show-Header
 Write-Host "Selamat datang di Wizard Deployment Project Absenta." -ForegroundColor White
-Write-Host "Wizard ini akan memandu Anda melakukan deployment backend dan frontend secara lokal." -ForegroundColor White
+Write-Host "Wizard ini akan memandu Anda melakukan deployment backend dan frontend secara otomatis." -ForegroundColor White
 Write-Host ""
 Write-Host "Proses ini mencakup:"
 Write-Host " 1. Pemeriksaan Prasyarat Sistem (Node.js, NPM, PM2)"
-Write-Host " 2. Konfigurasi Port & Lingkungan"
+Write-Host " 2. Konfigurasi Skenario (SaaS vs Lokal Sekolah)"
 Write-Host " 3. Instalasi Dependensi & Inisialisasi Database (Prisma)"
 Write-Host " 4. Kompilasi Kode (Backend & Frontend)"
-Write-Host " 5. Menjalankan Layanan (PM2 atau Terminal Baru)"
+Write-Host " 5. Menjalankan Layanan (PM2 Mode Cluster)"
 Write-Host ""
 
 if (-not $Silent) {
@@ -56,7 +58,6 @@ if (-not $Silent) {
 # ----------------------------------------------------
 Show-Header "1 / 5 - Pemeriksaan Prasyarat Sistem"
 $hasNode = $false
-$hasNpm = $false
 $hasPM2 = $false
 
 Write-Host "Memeriksa Node.js... " -NoNewline
@@ -66,20 +67,6 @@ try {
     $hasNode = $true
 } catch {
     Write-Host "BELUM TERPASANG" -ForegroundColor Yellow
-    if (-not $hasNode) {
-        Write-Host "Kesalahan: Node.js tidak terdeteksi!" -ForegroundColor Red
-        Read-Host "Tekan [ENTER] untuk keluar..."
-        Exit
-    }
-}
-
-Write-Host "Memeriksa NPM... " -NoNewline
-try {
-    $npmVer = npm -v
-    Write-Host "OK ($npmVer)" -ForegroundColor Green
-    $hasNpm = $true
-} catch {
-    Write-Host "GAGAL" -ForegroundColor Red
     Exit
 }
 
@@ -94,46 +81,58 @@ if ($pm2Path) {
 
 Write-Host ""
 Write-Host "Pemeriksaan prasyarat selesai!" -ForegroundColor Green
-if (-not $Silent) {
-    Read-Host "Tekan [ENTER] untuk melanjutkan ke konfigurasi port..."
-}
+if (-not $Silent) { Read-Host "Tekan [ENTER] untuk melanjutkan ke konfigurasi skenario..." }
 
 # ----------------------------------------------------
-# LANGKAH 2: Konfigurasi Port & Lingkungan
+# LANGKAH 2: Konfigurasi Skenario & Port
 # ----------------------------------------------------
+$finalDomain = "api.absenta.id"
+$finalScheme = "https"
+
 if (-not $Silent) {
-    $backendPortInput = "3003"
-    $frontendPortInput = "5175"
-
-    if (Test-Path "absenta_backend/.env") {
-        $content = Get-Content "absenta_backend/.env"
-        foreach ($line in $content) {
-            if ($line -match "^PORT=(\d+)") { $backendPortInput = $Matches[1] }
-        }
-    }
-
     $confirmed = $false
     while (-not $confirmed) {
-        Show-Header "2 / 5 - Konfigurasi Port & Lingkungan"
-        Write-Host "Silakan masukkan port di bawah ini." -ForegroundColor White
+        Show-Header "2 / 5 - Konfigurasi Skenario & Port"
+        Write-Host "Pilih Skenario Deployment:" -ForegroundColor White
+        Write-Host " 1. SaaS / Cloud (Menggunakan domain api.absenta.id)"
+        Write-Host " 2. Lokal Sekolah (Menggunakan IP Lokal / Domain Sekolah)"
+        Write-Host ""
         
-        $inBackend = Read-Host "1. Port Backend [$backendPortInput]"
-        if (-not [string]::IsNullOrWhiteSpace($inBackend)) { $backendPortInput = $inBackend }
+        $choice = Read-Host "Pilih [1/2]"
+        if ($choice -eq "2") {
+            $DeployMode = "local"
+            $ServerDomain = Read-Host "Masukkan IP Server atau Domain Sekolah (contoh: 192.168.1.10)"
+            $finalScheme = "http"
+            $finalDomain = $ServerDomain
+        } else {
+            $DeployMode = "saas"
+            $finalDomain = "api.absenta.id"
+            $finalScheme = "https"
+        }
 
-        $inFrontend = Read-Host "2. Port Frontend [$frontendPortInput]"
-        if (-not [string]::IsNullOrWhiteSpace($inFrontend)) { $frontendPortInput = $inFrontend }
+        $BackendPort = Read-Host "Masukkan Port Backend [$BackendPort]"
+        if ([string]::IsNullOrWhiteSpace($BackendPort)) { $BackendPort = "3003" }
+        
+        $FrontendPort = Read-Host "Masukkan Port Frontend [$FrontendPort]"
+        if ([string]::IsNullOrWhiteSpace($FrontendPort)) { $FrontendPort = "5175" }
 
         Write-Host ""
         Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
-        Write-Host " - Port Backend  : $backendPortInput"
-        Write-Host " - Port Frontend : $frontendPortInput"
+        Write-Host " - Mode Deployment : $(if($DeployMode -eq 'saas'){'SaaS'}else{'Lokal'})"
+        Write-Host " - Domain/IP      : $finalDomain"
+        Write-Host " - Port Backend   : $BackendPort"
+        Write-Host " - Port Frontend  : $FrontendPort"
         Write-Host "-----------------------------" -ForegroundColor Yellow
         Write-Host ""
         $confKey = Read-Host "Apakah sudah benar? [Y/n]"
         if ($confKey -eq 'n' -or $confKey -eq 'N') { } else { $confirmed = $true }
     }
-    $BackendPort = $backendPortInput
-    $FrontendPort = $frontendPortInput
+} else {
+    # Logic for Silent mode parameters
+    if ($DeployMode -eq "local") {
+        $finalScheme = "http"
+        $finalDomain = $ServerDomain
+    }
 }
 
 # Update .env files
@@ -142,60 +141,56 @@ Write-Host "Menulis konfigurasi ke file .env..." -ForegroundColor Cyan
 if (-not (Test-Path "absenta_backend/.env")) { Copy-Item "absenta_backend/.env.example" "absenta_backend/.env" }
 $backendEnv = Get-Content "absenta_backend/.env"
 $newBackendEnv = @()
-$portFound = $false
+
 foreach ($line in $backendEnv) {
-    if ($line -match "^PORT=") {
-        $newBackendEnv += "PORT=$BackendPort"
-        $portFound = $true
-    } elseif ($line -match "^API_URL=http://localhost:") {
-        $newBackendEnv += "API_URL=http://localhost:$BackendPort"
-    } elseif ($line -match "^APP_URL=http://localhost:") {
-        $newBackendEnv += "APP_URL=http://localhost:$BackendPort"
-    } elseif ($line -match "^PUBLIC_APP_URL=http://localhost:") {
-        $newBackendEnv += "PUBLIC_APP_URL=http://localhost:$BackendPort"
-    } elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=http://localhost:") {
-        $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=http://localhost:$BackendPort"
-    } else {
-        $newBackendEnv += $line
-    }
+    if ($line -match "^PORT=") { $newBackendEnv += "PORT=$BackendPort" }
+    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=$finalScheme://$finalDomain" }
+    elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=$finalScheme://$finalDomain" }
+    elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=$finalScheme://$finalDomain" }
+    elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=$finalScheme://$finalDomain" }
+    elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
+    elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
+    elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$finalDomain" }
+    else { $newBackendEnv += $line }
 }
-if (-not $portFound) { $newBackendEnv += "PORT=$BackendPort" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
-Write-Host "Info: Frontend dikonfigurasi dalam mode FLEXIBLE (Auto-Detect Domain)." -ForegroundColor Gray
+# Frontend is flexible, just ensure VITE_API_BASE_URL is /api for auto-detection
+$frontendEnv = Get-Content "absenta_frontend/.env"
+$newFrontendEnv = @()
+foreach ($line in $frontendEnv) {
+    if ($line -match "^VITE_API_BASE_URL=") { $newFrontendEnv += "VITE_API_BASE_URL=/api" }
+    elseif ($line -match "^VITE_SOCKET_URL=") { $newFrontendEnv += "VITE_SOCKET_URL=" }
+    else { $newFrontendEnv += $line }
+}
+$newFrontendEnv | Set-Content "absenta_frontend/.env"
+
+Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk mode $DeployMode." -ForegroundColor Gray
 
 # ----------------------------------------------------
 # LANGKAH 3: Instalasi Dependensi & Database
 # ----------------------------------------------------
 Show-Header "3 / 5 - Instalasi Dependensi & Database"
-
-Write-Host "1. Menginstal dependensi Backend..." -ForegroundColor Yellow
+Write-Host "Menginstal dependensi dan sinkronisasi database... (Mungkin memakan waktu)" -ForegroundColor Yellow
 Push-Location absenta_backend
-npm install
-if ($LASTEXITCODE -ne 0) { Write-Host "Gagal npm install backend"; Exit }
-
-Write-Host "2. Sinkronisasi Database Prisma..." -ForegroundColor Yellow
+npm install --quiet
 npx prisma generate
 Pop-Location
 
-Write-Host "3. Menginstal dependensi Frontend..." -ForegroundColor Yellow
 Push-Location absenta_frontend
-npm install
-if ($LASTEXITCODE -ne 0) { Write-Host "Gagal npm install frontend"; Exit }
+npm install --quiet
 Pop-Location
 
 # ----------------------------------------------------
 # LANGKAH 4: Kompilasi (Build)
 # ----------------------------------------------------
 Show-Header "4 / 5 - Kompilasi Kode (Build)"
-
-Write-Host "1. Membangun Backend (TSC)..." -ForegroundColor Yellow
+Write-Host "Membangun Backend & Frontend..." -ForegroundColor Yellow
 Push-Location absenta_backend
 npm run build
 Pop-Location
 
-Write-Host "2. Membangun Frontend (Vite)..." -ForegroundColor Yellow
 Push-Location absenta_frontend
 npm run build
 Pop-Location
@@ -205,22 +200,16 @@ Pop-Location
 # ----------------------------------------------------
 Show-Header "5 / 5 - Jalankan Layanan"
 if ($hasPM2) {
-    Write-Host "Menggunakan PM2 dengan Mode Cluster (Adaptive) untuk performa maksimal..." -ForegroundColor Yellow
+    Write-Host "Menjalankan PM2 Mode Cluster..." -ForegroundColor Yellow
     & pm2 delete ecosystem.config.js 2>&1 | Out-Null
     & pm2 start ecosystem.config.js --update-env
     & pm2 save
-    Write-Host "Layanan telah dijalankan dalam Mode Cluster." -ForegroundColor Green
-    Write-Host "Gunakan perintah 'pm2 status' untuk melihat semua instance yang berjalan." -ForegroundColor Gray
 } else {
-    Write-Host "PM2 tidak ditemukan, menjalankan via terminal baru..." -ForegroundColor Yellow
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd absenta_backend; npm start"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd absenta_frontend; npm run preview -- --port $FrontendPort --host 0.0.0.0"
 }
 
 Show-Header "Selesai!"
 Write-Host "Project Absenta berhasil di-deploy!" -ForegroundColor Green
-Write-Host "Backend : http://localhost:$BackendPort"
-Write-Host "Frontend: http://localhost:$FrontendPort"
-if (-not $Silent) {
-    Read-Host "Tekan [ENTER] untuk keluar..."
-}
+Write-Host "Akses URL: $finalScheme://$finalDomain"
+if (-not $Silent) { Read-Host "Tekan [ENTER] untuk keluar..." }
