@@ -64,11 +64,13 @@ export const initMouPdfWorker = (): void => {
     },
     { connection: getRedisConnection() as any, concurrency }
   );
-  worker.on('failed', (_job, err) => {
-    console.error('[mou-pdf.worker] failed:', err?.message || err);
+
+  worker.on('failed', (_job: any, err: any) => {
+    console.error(`[MouPdfWorker] Job ${_job?.id} failed with ${err.message}`);
   });
-  worker.on('error', (err) => {
-    console.error('[mou-pdf.worker] error:', err?.message || err);
+
+  worker.on('error', (err: any) => {
+    console.error('[MouPdfWorker] Connection error:', err);
   });
 };
 
