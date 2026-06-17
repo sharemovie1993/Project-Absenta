@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { await prisma.organizationalPosition.deleteMany({ where: { code: 'GURU_BIASA' } }); console.log('Cleaned up GURU_BIASA from database'); } main().catch(console.error).finally(() => prisma.$disconnect());

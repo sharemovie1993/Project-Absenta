@@ -1,0 +1,8 @@
+export const ATTENDANCE_POINTS = {
+  HADIR_TEPAT_WAKTU: 10,
+  HADIR_TERLAMBAT: 5,
+  SAKIT: 2,
+  IZIN: 2,
+  DISPEN: 2,
+  ALPA: 0,
+};

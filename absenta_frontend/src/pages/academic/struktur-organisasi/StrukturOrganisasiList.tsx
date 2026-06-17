@@ -1,0 +1,203 @@
+import React, { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { 
+  getStrukturTree, 
+  createStruktur,
+  updateStruktur,
+  deleteStruktur,
+  type StrukturOrganisasi 
+} from '@/api/academic/strukturOrganisasi.api';
+import { Loader } from '@/components/ui/Loader';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import { useAuth } from '@/hooks/useAuth';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { Button } from '@/components/ui/Button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { useToast } from '@/hooks/useToast';
+import { useConfirm } from '@/providers/ConfirmProvider';
+import { 
+  Plus, 
+  LayoutGrid
+} from 'lucide-react';
+import { StrukturForm } from './StrukturForm';
+import Modal from '@/components/ui/Modal';
+import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram';
+
+const TABS = [
+  { id: 'PIMPINAN', label: 'Pimpinan', codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'] },
+  { id: 'KAPROG', label: 'Kaprog', codes: ['KAPROG'] },
+  { id: 'KABENG', label: 'Kabeng', codes: ['KABENG'] },
+  { id: 'TOOLMAN', label: 'Toolman', codes: ['TOOLMAN'] },
+  { id: 'WALI_KELAS', label: 'Wali Kelas', codes: ['WALIKELAS'] },
+  { id: 'BP_BK', label: 'BP/BK', codes: ['BPBK'] },
+  { id: 'GERBANG', label: 'Gerbang', codes: ['GERBANG'] },
+  { id: 'PETUGAS_KELAS', label: 'Petugas Kelas', codes: ['PETUGAS_KELAS', 'PETUGAS_ABSENSI'] },
+  { id: 'KOPERASI', label: 'Koperasi', codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] }
+];
+
+const StrukturOrganisasiList: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const { confirm } = useConfirm();
+  const { user, can, isLoading: authLoading } = useAuth();
+
+  const isGlobalStrukturAdmin = can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
+  const canManageAcademic = can('academic.structures.view.tree') || can('academic.structures.view.list');
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<string>('PIMPINAN');
+
+  // Modal State
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<StrukturOrganisasi | null>(null);
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  // Queries
+  const { data: treeRes, isLoading: isTreeLoading } = useQuery({
+    queryKey: ['strukturTree'],
+    queryFn: getStrukturTree,
+    enabled: canManageAcademic
+  });
+
+  const rawMap = useMemo(() => treeRes?.data || {}, [treeRes]);
+  const allStrukturs = useMemo(() => Object.values(rawMap).flat() as StrukturOrganisasi[], [rawMap]);
+
+  const activeTabCodes = useMemo(() => {
+    const tab = TABS.find(t => t.id === activeTab);
+    return tab ? tab.codes : [];
+  }, [activeTab]);
+
+  const handleOpenCreate = () => {
+    setEditingItem(null);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    setIsSubmittingForm(true);
+    try {
+      if (editingItem) {
+        await updateStruktur(editingItem.id, values);
+        showSuccessToast('Jabatan berhasil diperbarui');
+      } else {
+        await createStruktur(values);
+        showSuccessToast('Jabatan baru berhasil dibuat');
+      }
+      setIsFormOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+    } catch (err: any) {
+      showErrorToast(err?.message || 'Gagal menyimpan jabatan');
+    } finally {
+      setIsSubmittingForm(false);
+    }
+  };
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Akademik' },
+    { label: 'Struktur Organisasi' }
+  ], []);
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  if (!canManageAcademic) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive">
+          <div className="flex items-center">
+            <div className="ml-2">
+              <h4 className="font-medium">Akses Ditolak</h4>
+              <AlertDescription className="text-sm">
+                Anda tidak memiliki izin untuk mengakses halaman Struktur Organisasi.
+              </AlertDescription>
+            </div>
+          </div>
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <AcademicPageLayout
+      title="Struktur Organisasi"
+      description="Pengelolaan jabatan, hirarki, dan penugasan personel staf kurikulum & siswa."
+      breadcrumbs={breadcrumbs}
+      hardeningModuleKey="strukturorganisasilist"
+    >
+      <div className="space-y-6">
+        {/* Navigation & Controls header */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full lg:w-auto overflow-x-auto">
+            <TabsList className="bg-slate-100/60 dark:bg-slate-800/80 p-1 flex h-auto gap-1 rounded-2xl w-max">
+              {TABS.map(tab => (
+                <TabsTrigger 
+                  key={tab.id} 
+                  value={tab.id} 
+                  className="font-bold text-xs px-4 py-2 rounded-xl transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
+          {isGlobalStrukturAdmin && (
+            <Button 
+              onClick={handleOpenCreate}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold text-sm h-10 px-5 flex items-center gap-2 group shrink-0"
+            >
+              <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <span>Tambah Jabatan</span>
+            </Button>
+          )}
+        </div>
+
+        {/* Main Content Area */}
+        {isTreeLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <Loader size="lg" />
+            <p className="text-sm text-slate-500 font-bold tracking-wide animate-pulse">Memuat Struktur Organisasi...</p>
+          </div>
+        ) : allStrukturs.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border shadow-sm">
+            <LayoutGrid className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-500 font-bold text-sm">Tidak ada data struktur organisasi.</p>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
+            <StrukturDiagram 
+              activeTab={activeTab}
+              activeCodes={activeTabCodes}
+              refreshKey={0}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* MODAL: CREATE / EDIT JABATAN */}
+      {isFormOpen && (
+        <Modal 
+          isOpen={isFormOpen} 
+          onClose={() => setIsFormOpen(false)} 
+          title={editingItem ? 'Edit Jabatan Struktur' : 'Tambah Jabatan Baru'}
+          size="lg"
+        >
+          <div className="pt-2">
+            <StrukturForm 
+              initialData={editingItem}
+              onSubmit={handleFormSubmit}
+              onCancel={() => setIsFormOpen(false)}
+              isLoading={isSubmittingForm}
+            />
+          </div>
+        </Modal>
+      )}
+    </AcademicPageLayout>
+  );
+};
+
+export default StrukturOrganisasiList;

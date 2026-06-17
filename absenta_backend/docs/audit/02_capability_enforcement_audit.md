@@ -1,0 +1,1142 @@
+## Audit - Capability Enforcement Layer
+
+Tanggal: 2026-03-15
+
+### Ringkasan
+- Total endpoint terdeteksi (static scan): 499
+- Endpoint dengan capability guard (requireCapability): 250
+- Endpoint role-based saja (authorize tanpa requireCapability): 31
+- Endpoint tanpa capability guard (tetap butuh auth karena AuthMiddleware global): 177
+- Capability tidak valid (format / tidak ada di Action Catalog): 16
+
+### 1) Endpoint Inventory
+- Format: METHOD PATH -> module (lokasi file)
+
+#### Module: academic
+- DELETE /api/academic/:id -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- GET /api/academic/:id -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- PUT /api/academic/:id -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- GET /api/academic/by-siswa/:siswaId -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- GET /api/academic/export -> academic (src/modules/academic/backup/routes/backup.routes.ts)
+- GET /api/academic/ -> academic (src/modules/academic/student-card-config/routes/student-card-config.routes.ts)
+- DELETE /api/academic/guru-mapel/:id -> academic (src/modules/academic/guru-mapel/routes/guru-mapel.routes.ts)
+- GET /api/academic/guru-mapel/ -> academic (src/modules/academic/guru-mapel/routes/guru-mapel.routes.ts)
+- POST /api/academic/guru-mapel/ -> academic (src/modules/academic/guru-mapel/routes/guru-mapel.routes.ts)
+- DELETE /api/academic/guru/:id -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- GET /api/academic/guru/:id -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- PUT /api/academic/guru/:id -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- GET /api/academic/guru/export -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- GET /api/academic/guru/ -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- GET /api/academic/guru/import/template -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- POST /api/academic/guru/import -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- POST /api/academic/guru/ -> academic (src/modules/academic/guru/routes/guru.routes.ts)
+- POST /api/academic/import -> academic (src/modules/academic/backup/routes/backup.routes.ts)
+- DELETE /api/academic/jenis-kegiatan-master/:id -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- GET /api/academic/jenis-kegiatan-master/:id -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- PUT /api/academic/jenis-kegiatan-master/:id -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- GET /api/academic/jenis-kegiatan-master/ -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- GET /api/academic/jenis-kegiatan-master/grouped -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- POST /api/academic/jenis-kegiatan-master/ -> academic (src/modules/academic/jenis-kegiatan-master/routes/jenis-kegiatan-master.routes.ts)
+- DELETE /api/academic/jurusan/:id -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- GET /api/academic/jurusan/:id -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- PUT /api/academic/jurusan/:id -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- GET /api/academic/jurusan/export -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- GET /api/academic/jurusan/ -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- GET /api/academic/jurusan/import/template -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- POST /api/academic/jurusan/import -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- POST /api/academic/jurusan/ -> academic (src/modules/academic/jurusan/routes/jurusan.routes.ts)
+- DELETE /api/academic/kelas/:id -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- GET /api/academic/kelas/:id -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- PUT /api/academic/kelas/:id -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- GET /api/academic/kelas/export -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- GET /api/academic/kelas/ -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- GET /api/academic/kelas/import/template -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- POST /api/academic/kelas/import -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- POST /api/academic/kelas/ -> academic (src/modules/academic/kelas/routes/kelas.routes.ts)
+- POST /api/academic/kenaikan-kelas/preview -> academic (src/modules/academic/kenaikan-kelas/routes/kenaikan-kelas.routes.ts)
+- POST /api/academic/kenaikan-kelas/run -> academic (src/modules/academic/kenaikan-kelas/routes/kenaikan-kelas.routes.ts)
+- DELETE /api/academic/mapel/:id -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- GET /api/academic/mapel/:id -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- PUT /api/academic/mapel/:id -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- GET /api/academic/mapel/export -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- GET /api/academic/mapel/ -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- GET /api/academic/mapel/import/template -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- POST /api/academic/mapel/import -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- POST /api/academic/mapel/ -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- GET /api/academic/mapel/tingkat/:tingkat -> academic (src/modules/academic/mapel/routes/mapel.routes.ts)
+- POST /api/academic/ -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- PUT /api/academic/ -> academic (src/modules/academic/student-card-config/routes/student-card-config.routes.ts)
+- PUT /api/academic/semester/:id/activate -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- DELETE /api/academic/semester/:id -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- GET /api/academic/semester/:id -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- PUT /api/academic/semester/:id -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- GET /api/academic/semester/active -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- GET /api/academic/semester/ -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- POST /api/academic/semester/ -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- GET /api/academic/semester/tahun-pelajaran/:tahunPelajaranId -> academic (src/modules/academic/semester/routes/semester.routes.ts)
+- GET /api/academic/siswa/:id/history -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/:id/rfid/generate -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/:id/send-access -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- DELETE /api/academic/siswa/:id -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- GET /api/academic/siswa/:id -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- PUT /api/academic/siswa/:id -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/akademik/check-status -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- GET /api/academic/siswa/akademik/stats -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/akademik/sync -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- DELETE /api/academic/siswa/all -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/bulk-status -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- GET /api/academic/siswa/ -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- GET /api/academic/siswa/import/template -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/import -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/ -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- POST /api/academic/siswa/rfid/generate-bulk -> academic (src/modules/academic/siswa/routes/siswa.routes.ts)
+- GET /api/academic/stats -> academic (src/modules/academic/routes/academic.routes.ts)
+- POST /api/academic/struktur-organisasi/:id/distribute -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- DELETE /api/academic/struktur-organisasi/:id/guru/:guruId -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- POST /api/academic/struktur-organisasi/:id/guru -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- GET /api/academic/struktur-organisasi/:id/permissions -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- PUT /api/academic/struktur-organisasi/:id/permissions -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- DELETE /api/academic/struktur-organisasi/:id/siswa/:siswaId -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- POST /api/academic/struktur-organisasi/:id/siswa -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- DELETE /api/academic/struktur-organisasi/:id -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- GET /api/academic/struktur-organisasi/:id -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- PUT /api/academic/struktur-organisasi/:id -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- GET /api/academic/struktur-organisasi/ -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- POST /api/academic/struktur-organisasi/ -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- GET /api/academic/struktur-organisasi/tree -> academic (src/modules/academic/struktur-organisasi/routes/struktur-organisasi.routes.ts)
+- PUT /api/academic/struktur/:id/nonaktif -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- POST /api/academic/struktur/assign -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- GET /api/academic/struktur -> academic (src/modules/academic/wali-kelas/routes/wali-kelas.routes.ts)
+- PUT /api/academic/tahun-pelajaran/:id/activate -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- DELETE /api/academic/tahun-pelajaran/:id -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- GET /api/academic/tahun-pelajaran/:id -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- PUT /api/academic/tahun-pelajaran/:id -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- GET /api/academic/tahun-pelajaran/active -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- GET /api/academic/tahun-pelajaran/ -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- POST /api/academic/tahun-pelajaran/ -> academic (src/modules/academic/tahun-pelajaran/routes/tahun-pelajaran.routes.ts)
+- POST /api/academic/transition/execute -> academic (src/modules/academic/transition/routes/transition.routes.ts)
+- POST /api/academic/transition/preview -> academic (src/modules/academic/transition/routes/transition.routes.ts)
+
+#### Module: analytics
+- GET /api/admin/analytics/cohort -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+- GET /api/admin/analytics/revenue-forecast -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+- GET /api/admin/analytics/revenue -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+
+#### Module: attendance
+- POST /api/attendance/gerbang/absence -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- POST /api/attendance/gerbang/bypass -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/embedding/health -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- POST /api/attendance/gerbang/face-enroll -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- DELETE /api/attendance/gerbang/face-templates/:id -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/face-templates -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- POST /api/attendance/gerbang/face-verify -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/health -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/history/:siswa_id -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/integration/status -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/not-present -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/prerequisites/:siswa_id -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/present -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/records -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/sessions/:id -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/sessions -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/stats -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/gerbang/status/:siswa_id -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- POST /api/attendance/gerbang/tap -> attendance (src/modules/attendance/gerbang/routes/gerbang.routes.ts)
+- GET /api/attendance/guru-monitoring/harian -> attendance (src/modules/attendance/guru-monitoring/routes/guru-monitoring.routes.ts)
+- GET /api/attendance/guru-monitoring/statistik/harian -> attendance (src/modules/attendance/guru-monitoring/routes/guru-monitoring.routes.ts)
+- DELETE /api/attendance/kejadian-khusus/:id -> attendance (src/modules/attendance/kejadian-khusus/routes/kejadian-khusus.routes.ts)
+- GET /api/attendance/kejadian-khusus/ -> attendance (src/modules/attendance/kejadian-khusus/routes/kejadian-khusus.routes.ts)
+- POST /api/attendance/kejadian-khusus/ -> attendance (src/modules/attendance/kejadian-khusus/routes/kejadian-khusus.routes.ts)
+- GET /api/attendance/notify/feed -> attendance (src/modules/attendance/notify/routes/notify.routes.ts)
+- POST /api/attendance/notify/session-created -> attendance (src/modules/attendance/notify/routes/notify.routes.ts)
+- DELETE /api/attendance/petugas/:id -> attendance (src/modules/attendance/petugas/routes/petugas.routes.ts)
+- GET /api/attendance/petugas/ -> attendance (src/modules/attendance/petugas/routes/petugas.routes.ts)
+- POST /api/attendance/petugas/ -> attendance (src/modules/attendance/petugas/routes/petugas.routes.ts)
+- GET /api/attendance/rekap/guru/harian -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/kelas/:id/bulanan -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/siswa/:id/bulanan -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/siswa/:id/harian -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/siswa/:id/tracking -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/siswa/me/bulanan -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/siswa/me/harian -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- GET /api/attendance/rekap/statistik/harian -> attendance (src/modules/attendance/rekap/routes/rekap.routes.ts)
+- PATCH /api/attendance/sesi-absensi/:id/absen-guru/:guru_id -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- GET /api/attendance/sesi-absensi/:id/absen-siswa -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- PATCH /api/attendance/sesi-absensi/:id/status -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- GET /api/attendance/sesi-absensi/:id/summary -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- POST /api/attendance/sesi-absensi/:id/tap-siswa -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- DELETE /api/attendance/sesi-absensi/:id -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- PUT /api/attendance/sesi-absensi/:id -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- GET /api/attendance/sesi-absensi/ -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- GET /api/attendance/sesi-absensi/petugas/check -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+- POST /api/attendance/sesi-absensi/ -> attendance (src/modules/attendance/sesi-absensi/routes/sesi-absensi.routes.ts)
+
+#### Module: auth
+- GET /api/auth/check-domain -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/check-email/:email -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/check-email -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/confirm-password-reset -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/dev/tenants -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/login -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/logout -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/me -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/refresh -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/register-tenant -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/register -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/request-password-reset -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/resend-verification -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/tenant-info -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/verify-email/:token -> auth (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/verify-email/confirm -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/verify-email -> auth (src/modules/auth/routes/auth.routes.ts)
+
+#### Module: backup
+- GET /api/admin/backups/:id/download -> backup (src/modules/backup/routes/backup.routes.ts)
+- POST /api/admin/backups/:id/restore -> backup (src/modules/backup/routes/backup.routes.ts)
+- GET /api/admin/backups -> backup (src/modules/backup/routes/backup.routes.ts)
+
+#### Module: billing
+- POST /api/billing/billings/:id/generate-invoice -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/:id/mark-overdue -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/:id/mark-paid -> billing (src/modules/billing/routes/billing.routes.ts)
+- DELETE /api/billing/billings/:id -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/billings/:id -> billing (src/modules/billing/routes/billing.routes.ts)
+- PUT /api/billing/billings/:id -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/check-overdue -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/generate-monthly -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/generate -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/billings/ -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/ -> billing (src/modules/billing/routes/billing.routes.ts)
+- POST /api/billing/billings/run-recurring -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/billings/stats -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/billings/subscription/:subscription_id -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/health/summary -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/metrics/financial -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/my-subscription/ -> billing (src/modules/billing/routes/my-subscription.routes.ts)
+- GET /api/billing/my-subscription/invoices -> billing (src/modules/billing/routes/my-subscription.routes.ts)
+- GET /api/billing/my-subscription/payments -> billing (src/modules/billing/routes/my-subscription.routes.ts)
+- PATCH /api/billing/notifications/:notificationId/read -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- PATCH /api/billing/notifications/mark-all-read -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/notifications -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- DELETE /api/billing/plans/:id -> billing (src/modules/billing/routes/plan.routes.ts)
+- GET /api/billing/plans/:id -> billing (src/modules/billing/routes/plan.routes.ts)
+- PUT /api/billing/plans/:id -> billing (src/modules/billing/routes/plan.routes.ts)
+- GET /api/billing/plans/analytics -> billing (src/modules/billing/routes/plan.routes.ts)
+- GET /api/billing/plans/ -> billing (src/modules/billing/routes/plan.routes.ts)
+- POST /api/billing/plans/ -> billing (src/modules/billing/routes/plan.routes.ts)
+- GET /api/billing/plans/public -> billing (src/modules/billing/routes/plan.routes.ts)
+- GET /api/billing/recent-activities -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/reports/export -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- POST /api/billing/reports/generate -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/payment-gateways -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/revenue-breakdown -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/revenue -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- POST /api/billing/reports/schedule -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/subscription-trends -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/revenue-chart -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- POST /api/billing/subscriptions/:id/cancel -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/:id/choose-plan -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/:id/history -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/:id/renew -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/:id/resume -> billing (src/modules/billing/routes/subscription.routes.ts)
+- DELETE /api/billing/subscriptions/:id -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/:id -> billing (src/modules/billing/routes/subscription.routes.ts)
+- PUT /api/billing/subscriptions/:id -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/active -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/analytics -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/check-expired -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/current -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/ -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/order -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/ -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/tenant/:tenant_id/history -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/billing/subscriptions/tenant/:tenant_id -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/upgrade-wizard -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/upgrade/cancel -> billing (src/modules/billing/routes/subscription.routes.ts)
+- GET /api/subscriptions/check -> billing (src/modules/billing/routes/subscription-check.routes.ts)
+
+#### Module: consent
+- POST /api/consent/log -> consent (src/modules/consent/routes/consent.routes.ts)
+- GET /api/consent/logs -> consent (src/modules/consent/routes/consent.routes.ts)
+
+#### Module: cooperative
+- DELETE /api/cooperative/announcements/:id -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- GET /api/cooperative/announcements/ -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- POST /api/cooperative/announcements/ -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- GET /api/cooperative/dashboard/stats -> cooperative (src/modules/cooperative/dashboard/dashboard.fastify.ts)
+- GET /api/cooperative/health -> cooperative (src/modules/cooperative/plugin.ts)
+- PUT /api/cooperative/loans/:id/status -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- GET /api/cooperative/loans/:id -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- GET /api/cooperative/loans/ -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- POST /api/cooperative/loans/pay-installment -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- POST /api/cooperative/loans/ -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- DELETE /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- PUT /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/members/ -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- POST /api/cooperative/members/ -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/ppob/ -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- POST /api/cooperative/ppob/ -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- POST /api/cooperative/ppob/transaction -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- GET /api/cooperative/reports/laba-rugi -> cooperative (src/modules/cooperative/laporan/report.fastify.ts)
+- GET /api/cooperative/reports/neraca -> cooperative (src/modules/cooperative/laporan/report.fastify.ts)
+- GET /api/cooperative/savings/:id -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- GET /api/cooperative/savings/ -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/savings/ -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/savings/transaction -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/tickets/:id/reply -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- PATCH /api/cooperative/tickets/:id/status -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- GET /api/cooperative/tickets/:id -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- GET /api/cooperative/tickets/ -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- POST /api/cooperative/tickets/ -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- POST /api/cooperative/toko/:id/adjust-stock -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- DELETE /api/cooperative/toko/:id -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- PUT /api/cooperative/toko/:id -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- POST /api/cooperative/toko/checkout -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- GET /api/cooperative/toko/ -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- POST /api/cooperative/toko/ -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- DELETE /api/cooperative/vouchers/:id -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+- GET /api/cooperative/vouchers/ -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+- POST /api/cooperative/vouchers/ -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+
+#### Module: dashboard
+- GET /api/dashboard/grafik/guru/:bulan -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/grafik/siswa/:bulan -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/guru/:guruId/capabilities -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/guru/attendance -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/kepsek/escalations -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/kesiswaan/violations -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/kurikulum/supervision -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/overview -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/payment-chart -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/recent-payments -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/recent-tenant-registrations -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/statistik/guru/:tanggal -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/statistik/kelas/:kelas_id/bulan/:bulan -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/statistik/kelas/:tanggal -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/stats -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+
+#### Module: document-center
+- GET /api/documents/public/:id/download -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/:id/signed-url -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/:id/versions -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- POST /api/documents/public/:id/versions -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- DELETE /api/documents/public/:id -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- PATCH /api/documents/public/:id -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/:token/download -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/activities -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/ -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- POST /api/documents/public/mou -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- POST /api/documents/public/ -> document-center (src/modules/document-center/routes/documents.routes.ts)
+
+#### Module: infra
+- ALL /auth/* -> infra (src/infra/router.ts)
+- GET /db-test -> infra (src/infra/router.ts)
+- OPTIONS /embedding -> infra (src/infra/router.ts)
+- POST /embedding -> infra (src/infra/router.ts)
+- GET /health -> infra (src/infra/router.ts)
+- GET /internal/events/metrics -> infra (src/infra/router.ts)
+- GET /roles -> infra (src/infra/router.ts)
+- POST /stress/attendance/session -> infra (src/infra/router.ts)
+
+#### Module: invoice
+- GET /api/invoice/:id/download -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id/preview -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id/public-link -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- PUT /api/invoice/:id/send -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- DELETE /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- PUT /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/admin/invalid-period -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/ -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- POST /api/invoice/ -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- DELETE /api/invoice/public-link/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/public/:token/download -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/invoice/public/:token/verify -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/invoice/public/:token -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/invoice/stats -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+
+#### Module: kesiswaan
+- DELETE /api/kesiswaan/jenis-pelanggaran/:id -> kesiswaan (src/modules/kesiswaan/routes/jenis-pelanggaran.routes.ts)
+- PUT /api/kesiswaan/jenis-pelanggaran/:id -> kesiswaan (src/modules/kesiswaan/routes/jenis-pelanggaran.routes.ts)
+- GET /api/kesiswaan/jenis-pelanggaran/ -> kesiswaan (src/modules/kesiswaan/routes/jenis-pelanggaran.routes.ts)
+- POST /api/kesiswaan/jenis-pelanggaran/ -> kesiswaan (src/modules/kesiswaan/routes/jenis-pelanggaran.routes.ts)
+- POST /api/kesiswaan/jenis-pelanggaran/seed -> kesiswaan (src/modules/kesiswaan/routes/jenis-pelanggaran.routes.ts)
+- DELETE /api/kesiswaan/pelanggaran/:id -> kesiswaan (src/modules/kesiswaan/routes/pelanggaran.routes.ts)
+- GET /api/kesiswaan/pelanggaran/:id -> kesiswaan (src/modules/kesiswaan/routes/pelanggaran.routes.ts)
+- PUT /api/kesiswaan/pelanggaran/:id -> kesiswaan (src/modules/kesiswaan/routes/pelanggaran.routes.ts)
+- GET /api/kesiswaan/pelanggaran/ -> kesiswaan (src/modules/kesiswaan/routes/pelanggaran.routes.ts)
+- POST /api/kesiswaan/pelanggaran/ -> kesiswaan (src/modules/kesiswaan/routes/pelanggaran.routes.ts)
+
+#### Module: kurikulum
+- DELETE /api/kurikulum/supervisi/:id -> kurikulum (src/modules/kurikulum/routes/supervisi.routes.ts)
+- GET /api/kurikulum/supervisi/:id -> kurikulum (src/modules/kurikulum/routes/supervisi.routes.ts)
+- PUT /api/kurikulum/supervisi/:id -> kurikulum (src/modules/kurikulum/routes/supervisi.routes.ts)
+- GET /api/kurikulum/supervisi/ -> kurikulum (src/modules/kurikulum/routes/supervisi.routes.ts)
+- POST /api/kurikulum/supervisi/ -> kurikulum (src/modules/kurikulum/routes/supervisi.routes.ts)
+
+#### Module: menu
+- GET /api/menu/:id/roles -> menu (src/modules/menu/routes/menu.routes.ts)
+- PUT /api/menu/:id/roles -> menu (src/modules/menu/routes/menu.routes.ts)
+- DELETE /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- PUT /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/audit -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/ -> menu (src/modules/menu/routes/menu.routes.ts)
+- POST /api/menu/ -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/tree -> menu (src/modules/menu/routes/menu.routes.ts)
+
+#### Module: notification
+- GET /api/v1/notifications/logs -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/my -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/preferences -> notification (src/modules/notification/routes/notification.routes.ts)
+- PUT /api/v1/notifications/preferences -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/push/subscribe -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/push/subscriptions -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/push/vapid-public-key -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/resend/:notificationId -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/stats -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/status -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/test/email -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/test/whatsapp -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/trial-email/case-study -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/trial-email/feature -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/trial-email/upgrade-reminder -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/trial-email/welcome -> notification (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/whatsapp/webhook -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/whatsapp/webhook -> notification (src/modules/notification/routes/notification.routes.ts)
+
+#### Module: observability
+- GET /api/system/observability/overview -> observability (src/modules/observability/routes/observability.routes.ts)
+
+#### Module: parent-app
+- GET /api/me -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/notifications/fcm/register -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/notifications/push/subscribe -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/notifications/push/vapid-public-key -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/siswa/:id/lapor-absen -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/notifikasi -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/rekap-bulanan -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/riwayat-kehadiran -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/tracking-harian -> parent-app (src/modules/parent-app/routes/parent-app.routes.ts)
+
+#### Module: payment
+- POST /api/:payment_id/cancel -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/:payment_id/retry -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/:payment_id/status -> payment (src/modules/payment/routes/payment.routes.ts)
+- DELETE /api/:payment_id -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/billing/:billingId/summary -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/create -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/gateways -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/health -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/invoice/:invoice_id/pay -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/list -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/payment/public/:token/pay -> payment (src/modules/payment/routes/public.routes.ts)
+- POST /api/payment/public/:token/pay -> payment (src/modules/payment/routes/public.routes.ts)
+- GET /api/payment/public/status -> payment (src/modules/payment/routes/public.routes.ts)
+- GET /api/payment/return -> payment (src/modules/payment/routes/public.routes.ts)
+- GET /api/stats -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/test/callback-target -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/comprehensive-new -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/comprehensive -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/health-new -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/health -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/idempotency-new -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/idempotency -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/report -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/signature-verification -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/signature -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/simulate/:gateway -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/webhook -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/tripay/channels -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/webhooks/payment/:gateway -> payment (src/modules/payment/routes/webhook.routes.ts)
+- GET /api/webhooks/payment/health -> payment (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/midtrans -> payment (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/stripe -> payment (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/test/:gateway -> payment (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/tripay -> payment (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/xendit -> payment (src/modules/payment/routes/webhook.routes.ts)
+
+#### Module: pdf
+- POST /api/pdf/invoice/:id -> pdf (src/modules/pdf/routes/pdf.routes.ts)
+
+#### Module: reporting
+- GET /api/reports/dashboard/stats -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/export -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- POST /api/reports/financial/generate -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/monthly/:year/:month -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/yearly/:year -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/owner/summary -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+
+#### Module: revenue
+- GET /api/admin/revenue/churn -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/exposure -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/overview -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/trend -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+
+#### Module: risk
+- GET /api/admin/risk/overview -> risk (src/modules/risk/routes/risk-admin.routes.ts)
+- GET /api/admin/risk/tenant/:id -> risk (src/modules/risk/routes/risk-admin.routes.ts)
+
+#### Module: sekolah
+- GET /api/sekolah/lookup-npsn/:npsn -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- GET /api/sekolah/me -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- POST /api/sekolah/ -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- PUT /api/sekolah/ -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+
+#### Module: superadmin
+- GET /api/admin/infra/cluster/autoscaler-events -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/nodes -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/queues -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/workers -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/diagnostic-load -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/health -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/jobs/:name/run -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/jobs/:name -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/jobs -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queue-forecast -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queue-pressure -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/queues/:name/pause -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/queues/:name/resume -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queues -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/worker-nodes -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/action -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/restart -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/start -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/stop -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/workers -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/superadmin/infra/socket/global -> superadmin (src/modules/superadmin/infra/routes/infra.routes.ts)
+- GET /api/superadmin/infra/socket/tenants -> superadmin (src/modules/superadmin/infra/routes/infra.routes.ts)
+- GET /api/superadmin/intelligence/attendance-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/summary -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/trends -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/email-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/overview -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/payment-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/top-risk -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/academic -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/activities -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/attendance -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/billing -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/export -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/logs -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/metrics -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/user-statistics -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- DELETE /api/superadmin/tenants/:tenantId/users/:userId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- PUT /api/superadmin/tenants/:tenantId/users/:userId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/users -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- POST /api/superadmin/tenants/:tenantId/users -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+
+#### Module: system-config
+- GET /api/system/config/ -> system-config (src/modules/system-config/routes/system-config.routes.ts)
+- POST /api/system/config/ -> system-config (src/modules/system-config/routes/system-config.routes.ts)
+- PUT /api/system/config/ -> system-config (src/modules/system-config/routes/system-config.routes.ts)
+
+#### Module: tenant
+- POST /api/tenants/:id/cancel-deletion -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- POST /api/tenants/:id/request-deletion -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- DELETE /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- PUT /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/tenants/ -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- POST /api/tenants/ -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+
+#### Module: upgrade-intelligence
+- GET /api/admin/analytics/upgrade/month/:month -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+- GET /api/admin/analytics/upgrade/overview -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+- GET /api/admin/analytics/upgrade/tenant/:tenantId/:month -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+
+#### Module: upload
+- POST /api/upload/ -> upload (src/modules/upload/routes/upload.routes.ts)
+
+#### Module: user
+- PUT /api/users/:id/reset-password -> user (src/modules/user/routes/user.routes.ts)
+- DELETE /api/users/:id -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/effective-capabilities/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/ -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/me/email -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/me/onboarding -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/permissions -> user (src/modules/user/routes/user.routes.ts)
+- POST /api/users/ -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/roles/:id/permissions -> user (src/modules/user/routes/user.routes.ts)
+- DELETE /api/users/roles/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/roles/:id -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/roles/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/roles/export -> user (src/modules/user/routes/user.routes.ts)
+- POST /api/users/roles/import -> user (src/modules/user/routes/user.routes.ts)
+- DELETE /api/users/roles/policies -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/roles -> user (src/modules/user/routes/user.routes.ts)
+- POST /api/users/roles -> user (src/modules/user/routes/user.routes.ts)
+
+### 2) Endpoint Capability Mapping
+- Format: METHOD PATH -> capability(s)
+
+- DELETE /api/academic/:id -> academic.homeroom.manage
+- GET /api/academic/:id -> academic.homeroom.manage
+- PUT /api/academic/:id -> academic.homeroom.manage
+- GET /api/academic/by-siswa/:siswaId -> academic.homeroom.manage
+- GET /api/academic/export -> academic.backups.create
+- GET /api/academic/ -> academic.student_card.view.config
+- DELETE /api/academic/guru-mapel/:id -> academic.teaching.manage
+- GET /api/academic/guru-mapel/ -> academic.teaching.view
+- POST /api/academic/guru-mapel/ -> academic.teaching.manage
+- DELETE /api/academic/guru/:id -> academic.teachers.delete
+- GET /api/academic/guru/:id -> academic.teachers.view.detail
+- PUT /api/academic/guru/:id -> academic.teachers.update
+- GET /api/academic/guru/export -> academic.teachers.view.list
+- GET /api/academic/guru/ -> academic.teachers.view.list
+- GET /api/academic/guru/import/template -> academic.teachers.create
+- POST /api/academic/guru/import -> academic.teachers.create
+- POST /api/academic/guru/ -> academic.teachers.create
+- POST /api/academic/import -> academic.backups.restore
+- DELETE /api/academic/jenis-kegiatan-master/:id -> academic.activities.types.manage
+- GET /api/academic/jenis-kegiatan-master/:id -> academic.activities.types.view
+- PUT /api/academic/jenis-kegiatan-master/:id -> academic.activities.types.manage
+- GET /api/academic/jenis-kegiatan-master/ -> academic.activities.types.view
+- GET /api/academic/jenis-kegiatan-master/grouped -> academic.activities.types.view
+- POST /api/academic/jenis-kegiatan-master/ -> academic.activities.types.manage
+- DELETE /api/academic/jurusan/:id -> academic.structures.delete
+- GET /api/academic/jurusan/:id -> academic.structures.view.detail
+- PUT /api/academic/jurusan/:id -> academic.structures.update
+- GET /api/academic/jurusan/export -> academic.structures.view.list
+- GET /api/academic/jurusan/ -> academic.structures.view.list
+- GET /api/academic/jurusan/import/template -> academic.structures.create
+- POST /api/academic/jurusan/import -> academic.structures.create
+- POST /api/academic/jurusan/ -> academic.structures.create
+- DELETE /api/academic/kelas/:id -> academic.structures.delete
+- GET /api/academic/kelas/:id -> academic.structures.view.detail
+- PUT /api/academic/kelas/:id -> academic.structures.update
+- GET /api/academic/kelas/export -> academic.structures.view.list
+- GET /api/academic/kelas/ -> academic.structures.view.list
+- GET /api/academic/kelas/import/template -> academic.structures.create
+- POST /api/academic/kelas/import -> academic.structures.create
+- POST /api/academic/kelas/ -> academic.structures.create
+- POST /api/academic/kenaikan-kelas/preview -> academic.promotions.manage
+- POST /api/academic/kenaikan-kelas/run -> academic.promotions.manage
+- DELETE /api/academic/mapel/:id -> academic.subjects.delete
+- GET /api/academic/mapel/:id -> academic.subjects.view.detail
+- PUT /api/academic/mapel/:id -> academic.subjects.update
+- GET /api/academic/mapel/export -> academic.subjects.view.list
+- GET /api/academic/mapel/ -> academic.subjects.view.list
+- GET /api/academic/mapel/import/template -> academic.subjects.create
+- POST /api/academic/mapel/import -> academic.subjects.create
+- POST /api/academic/mapel/ -> academic.subjects.create
+- GET /api/academic/mapel/tingkat/:tingkat -> academic.subjects.view.list
+- POST /api/academic/ -> academic.homeroom.manage
+- PUT /api/academic/ -> academic.student_card.update.config
+- PUT /api/academic/semester/:id/activate -> academic.semesters.update
+- DELETE /api/academic/semester/:id -> academic.semesters.delete
+- GET /api/academic/semester/:id -> academic.semesters.view.detail
+- PUT /api/academic/semester/:id -> academic.semesters.update
+- GET /api/academic/semester/active -> academic.semesters.view.list
+- GET /api/academic/semester/ -> academic.semesters.view.list
+- POST /api/academic/semester/ -> academic.semesters.create
+- GET /api/academic/semester/tahun-pelajaran/:tahunPelajaranId -> academic.semesters.view.list
+- GET /api/academic/siswa/:id/history -> academic.students.view.history
+- POST /api/academic/siswa/:id/rfid/generate -> academic.students.update
+- POST /api/academic/siswa/:id/send-access -> academic.students.send.access_token
+- DELETE /api/academic/siswa/:id -> academic.students.delete
+- GET /api/academic/siswa/:id -> academic.students.view.detail
+- PUT /api/academic/siswa/:id -> academic.students.update
+- POST /api/academic/siswa/akademik/check-status -> academic.students.view.detail
+- GET /api/academic/siswa/akademik/stats -> academic.students.view.list
+- POST /api/academic/siswa/akademik/sync -> academic.students.update
+- DELETE /api/academic/siswa/all -> academic.students.delete
+- POST /api/academic/siswa/bulk-status -> academic.students.update
+- GET /api/academic/siswa/ -> academic.students.view.list
+- GET /api/academic/siswa/import/template -> academic.students.create
+- POST /api/academic/siswa/import -> academic.students.create
+- POST /api/academic/siswa/ -> academic.students.create
+- POST /api/academic/siswa/rfid/generate-bulk -> academic.students.update
+- GET /api/academic/stats -> academic.teaching.rekap, dashboard.view.overview
+- POST /api/academic/struktur-organisasi/:id/distribute -> academic.structures.update
+- DELETE /api/academic/struktur-organisasi/:id/guru/:guruId -> academic.structures.revoke.teacher
+- POST /api/academic/struktur-organisasi/:id/guru -> academic.structures.assign.teacher
+- GET /api/academic/struktur-organisasi/:id/permissions -> academic.structures.update
+- PUT /api/academic/struktur-organisasi/:id/permissions -> academic.structures.update
+- DELETE /api/academic/struktur-organisasi/:id/siswa/:siswaId -> academic.structures.revoke.student
+- POST /api/academic/struktur-organisasi/:id/siswa -> academic.structures.assign.student
+- DELETE /api/academic/struktur-organisasi/:id -> academic.structures.delete
+- GET /api/academic/struktur-organisasi/:id -> academic.structures.view.detail
+- PUT /api/academic/struktur-organisasi/:id -> academic.structures.update
+- GET /api/academic/struktur-organisasi/ -> academic.structures.view.list
+- POST /api/academic/struktur-organisasi/ -> academic.structures.create
+- GET /api/academic/struktur-organisasi/tree -> academic.structures.view.tree
+- PUT /api/academic/struktur/:id/nonaktif -> academic.homeroom.manage
+- POST /api/academic/struktur/assign -> academic.homeroom.manage
+- GET /api/academic/struktur -> academic.homeroom.manage
+- PUT /api/academic/tahun-pelajaran/:id/activate -> academic.years.update
+- DELETE /api/academic/tahun-pelajaran/:id -> academic.years.delete
+- GET /api/academic/tahun-pelajaran/:id -> academic.years.view.detail
+- PUT /api/academic/tahun-pelajaran/:id -> academic.years.update
+- GET /api/academic/tahun-pelajaran/active -> academic.years.view.list
+- GET /api/academic/tahun-pelajaran/ -> academic.years.view.list
+- POST /api/academic/tahun-pelajaran/ -> academic.years.create
+- POST /api/academic/transition/execute -> academic.transitions.manage
+- POST /api/academic/transition/preview -> academic.transitions.manage
+- POST /api/attendance/gerbang/absence -> attendance.reports.view, attendance.sessions.create
+- POST /api/attendance/gerbang/bypass -> attendance.gate.bypass
+- GET /api/attendance/gerbang/embedding/health -> attendance.reports.view, attendance.sessions.create
+- POST /api/attendance/gerbang/face-enroll -> attendance.gate.face.enroll
+- DELETE /api/attendance/gerbang/face-templates/:id -> attendance.gate.face.enroll
+- GET /api/attendance/gerbang/face-templates -> attendance.gate.view.face_templates
+- POST /api/attendance/gerbang/face-verify -> attendance.gate.tap.entry
+- GET /api/attendance/gerbang/health -> attendance.reports.view, attendance.sessions.create
+- GET /api/attendance/gerbang/history/:siswa_id -> attendance.gate.view.logs, attendance.sessions.create, attendance.gate.tap.entry
+- GET /api/attendance/gerbang/integration/status -> attendance.reports.view, attendance.sessions.create, attendance.gate.tap.entry
+- GET /api/attendance/gerbang/not-present -> attendance.reports.view, attendance.sessions.create, attendance.gate.tap.entry
+- GET /api/attendance/gerbang/prerequisites/:siswa_id -> attendance.reports.view, attendance.sessions.create
+- GET /api/attendance/gerbang/present -> attendance.reports.view, attendance.sessions.create, attendance.gate.tap.entry
+- GET /api/attendance/gerbang/records -> attendance.gate.view.logs, attendance.sessions.create
+- GET /api/attendance/gerbang/sessions/:id -> attendance.gate.view.logs, attendance.sessions.create
+- GET /api/attendance/gerbang/sessions -> attendance.gate.view.logs, attendance.sessions.create, attendance.gate.tap.entry
+- GET /api/attendance/gerbang/stats -> attendance.reports.view, attendance.sessions.create, dashboard.view.overview
+- GET /api/attendance/gerbang/status/:siswa_id -> attendance.gate.view.logs, attendance.sessions.create
+- POST /api/attendance/gerbang/tap -> attendance.gate.tap.entry
+- GET /api/attendance/guru-monitoring/harian -> attendance.reports.view, academic.teachers.view.list
+- GET /api/attendance/guru-monitoring/statistik/harian -> attendance.reports.view
+- DELETE /api/attendance/kejadian-khusus/:id -> attendance.events.delete
+- GET /api/attendance/kejadian-khusus/ -> attendance.events.view.list
+- POST /api/attendance/kejadian-khusus/ -> attendance.events.create
+- GET /api/attendance/notify/feed -> attendance.reports.view
+- POST /api/attendance/notify/session-created -> attendance.notifications.send
+- DELETE /api/attendance/petugas/:id -> attendance.officers.manage
+- GET /api/attendance/petugas/ -> attendance.officers.view
+- POST /api/attendance/petugas/ -> attendance.officers.manage
+- GET /api/attendance/rekap/guru/harian -> academic.teaching.rekap
+- GET /api/attendance/rekap/kelas/:id/bulanan -> attendance.reports.view, academic.structures.view.list
+- GET /api/attendance/rekap/siswa/:id/bulanan -> attendance.reports.view
+- GET /api/attendance/rekap/siswa/:id/harian -> attendance.reports.view
+- GET /api/attendance/rekap/siswa/:id/tracking -> attendance.reports.view
+- GET /api/attendance/rekap/siswa/me/bulanan -> attendance.reports.view
+- GET /api/attendance/rekap/siswa/me/harian -> attendance.reports.view
+- GET /api/attendance/rekap/statistik/harian -> attendance.reports.view
+- PATCH /api/attendance/sesi-absensi/:id/absen-guru/:guru_id -> attendance.sessions.update.attendance
+- GET /api/attendance/sesi-absensi/:id/absen-siswa -> attendance.sessions.view.detail
+- PATCH /api/attendance/sesi-absensi/:id/status -> attendance.sessions.close
+- GET /api/attendance/sesi-absensi/:id/summary -> attendance.reports.view
+- POST /api/attendance/sesi-absensi/:id/tap-siswa -> attendance.sessions.update.attendance
+- DELETE /api/attendance/sesi-absensi/:id -> attendance.sessions.delete
+- PUT /api/attendance/sesi-absensi/:id -> attendance.sessions.update
+- GET /api/attendance/sesi-absensi/ -> attendance.sessions.view.list
+- GET /api/attendance/sesi-absensi/petugas/check -> attendance.sessions.update.attendance, attendance.reports.view
+- POST /api/attendance/sesi-absensi/ -> attendance.sessions.create
+- POST /api/billing/billings/:id/generate-invoice -> billing.invoices.generate
+- POST /api/billing/billings/:id/mark-overdue -> billing.invoices.pay
+- POST /api/billing/billings/:id/mark-paid -> billing.invoices.pay
+- DELETE /api/billing/billings/:id -> billing.invoices.cancel
+- PUT /api/billing/billings/:id -> billing.invoices.generate
+- POST /api/billing/billings/check-overdue -> billing.invoices.generate
+- POST /api/billing/billings/generate-monthly -> billing.invoices.generate
+- POST /api/billing/billings/generate -> billing.invoices.generate
+- GET /api/billing/billings/ -> billing.invoices.view.list
+- POST /api/billing/billings/ -> billing.invoices.generate
+- POST /api/billing/billings/run-recurring -> billing.invoices.generate
+- GET /api/billing/billings/stats -> billing.reports.view.summary
+- GET /api/billing/health/summary -> billing.monitoring.view.live_status
+- GET /api/billing/my-subscription/ -> billing.my_subscription.view
+- GET /api/billing/my-subscription/invoices -> billing.my_subscription.view
+- GET /api/billing/my-subscription/payments -> billing.my_subscription.view
+- DELETE /api/billing/plans/:id -> billing.plans.delete
+- GET /api/billing/plans/:id -> billing.plans.view.detail
+- PUT /api/billing/plans/:id -> billing.plans.update
+- GET /api/billing/plans/analytics -> billing.plans.view.list
+- GET /api/billing/plans/ -> billing.plans.view.list
+- POST /api/billing/plans/ -> billing.plans.create
+- POST /api/billing/subscriptions/:id/cancel -> billing.subscriptions.cancel
+- GET /api/billing/subscriptions/:id/history -> billing.subscriptions.view.detail
+- POST /api/billing/subscriptions/:id/resume -> billing.subscriptions.resume
+- DELETE /api/billing/subscriptions/:id -> billing.subscriptions.cancel
+- GET /api/billing/subscriptions/:id -> billing.subscriptions.view.detail
+- PUT /api/billing/subscriptions/:id -> billing.subscriptions.update
+- GET /api/billing/subscriptions/active -> billing.subscriptions.view.active
+- GET /api/billing/subscriptions/analytics -> billing.subscriptions.view.analytics
+- POST /api/billing/subscriptions/check-expired -> billing.subscriptions.check_expired
+- GET /api/billing/subscriptions/current -> billing.subscriptions.view.active
+- GET /api/billing/subscriptions/ -> billing.subscriptions.view.list
+- POST /api/billing/subscriptions/ -> billing.subscriptions.create
+- GET /api/billing/subscriptions/tenant/:tenant_id/history -> billing.subscriptions.view.detail
+- GET /api/billing/subscriptions/tenant/:tenant_id -> billing.subscriptions.view.list
+- GET /api/subscriptions/check -> billing.subscriptions.view.active
+- GET /api/dashboard/grafik/siswa/:bulan -> attendance.reports.view
+- GET /api/dashboard/guru/:guruId/capabilities -> academic.teachers.view.detail, academic.teachers.update
+- GET /api/dashboard/guru/attendance -> dashboard.view.teacher_attendance
+- GET /api/dashboard/kepsek/escalations -> dashboard.view.overview
+- GET /api/dashboard/kesiswaan/violations -> dashboard.view.violation_stats
+- GET /api/dashboard/kurikulum/supervision -> curriculum.supervision.view.schedule
+- GET /api/dashboard/overview -> dashboard.view.overview
+- GET /api/dashboard/statistik/guru/:tanggal -> academic.teaching.rekap, attendance.reports.view
+- GET /api/dashboard/statistik/kelas/:kelas_id/bulan/:bulan -> attendance.reports.view, academic.structures.view.list, academic.teaching.rekap
+- GET /api/dashboard/statistik/kelas/:tanggal -> attendance.reports.view, academic.structures.view.list, academic.teaching.rekap
+- POST /api/documents/public/:id/versions -> documents.upload
+- PATCH /api/documents/public/:id -> documents.upload
+- GET /api/documents/public/activities -> documents.view.list
+- POST /api/documents/public/mou -> documents.upload
+- POST /api/documents/public/ -> documents.upload
+- GET /api/invoice/admin/invalid-period -> billing.invoices.view.list
+- GET /api/invoice/ -> billing.invoices.view.list
+- GET /api/invoice/stats -> billing.invoices.view.list
+- DELETE /api/kesiswaan/jenis-pelanggaran/:id -> affairs.violation_types.delete
+- PUT /api/kesiswaan/jenis-pelanggaran/:id -> affairs.violation_types.update
+- GET /api/kesiswaan/jenis-pelanggaran/ -> affairs.violation_types.view.list
+- POST /api/kesiswaan/jenis-pelanggaran/ -> affairs.violation_types.create
+- POST /api/kesiswaan/jenis-pelanggaran/seed -> affairs.violation_types.create
+- DELETE /api/kesiswaan/pelanggaran/:id -> affairs.violations.delete
+- GET /api/kesiswaan/pelanggaran/:id -> affairs.violations.view.detail
+- PUT /api/kesiswaan/pelanggaran/:id -> affairs.violations.update
+- GET /api/kesiswaan/pelanggaran/ -> affairs.violations.view.list
+- POST /api/kesiswaan/pelanggaran/ -> affairs.violations.report
+- DELETE /api/kurikulum/supervisi/:id -> curriculum.supervision.delete.record
+- GET /api/kurikulum/supervisi/:id -> curriculum.supervision.view.report
+- PUT /api/kurikulum/supervisi/:id -> curriculum.supervision.update.record
+- GET /api/kurikulum/supervisi/ -> curriculum.supervision.view.schedule
+- POST /api/kurikulum/supervisi/ -> curriculum.supervision.create.record
+- GET /api/v1/notifications/logs -> notify.view.logs
+- GET /api/v1/notifications/preferences -> notify.view.preferences
+- PUT /api/v1/notifications/preferences -> notify.update.preferences
+- GET /api/v1/notifications/push/subscriptions -> notify.push.view.subscriptions
+- POST /api/v1/notifications/resend/:notificationId -> notify.resend
+- GET /api/v1/notifications/stats -> notify.view.stats
+- GET /api/v1/notifications/status -> notify.check.status
+- POST /api/v1/notifications/test/email -> notify.send.test_email
+- POST /api/v1/notifications/test/whatsapp -> notify.send.test_whatsapp
+- POST /api/v1/notifications/trial-email/case-study -> notify.send.test_email
+- POST /api/v1/notifications/trial-email/feature -> notify.send.test_email
+- POST /api/v1/notifications/trial-email/upgrade-reminder -> notify.send.test_email
+- POST /api/v1/notifications/trial-email/welcome -> notify.send.test_email
+- DELETE /api/:payment_id -> billing.invoices.cancel
+- POST /api/invoice/:invoice_id/pay -> billing.invoices.pay
+- GET /api/list -> billing.payments.view.history
+- GET /api/stats -> billing.monitoring.view
+- GET /api/superadmin/infra/socket/global -> superadmin.infra.view.socket_global
+- GET /api/superadmin/infra/socket/tenants -> superadmin.infra.view.socket_tenants
+- POST /api/system/config/ -> core.system.config.update
+- PUT /api/system/config/ -> core.system.config.update
+- PUT /api/users/:id/reset-password -> core.users.reset_password
+- DELETE /api/users/:id -> core.users.delete
+- PUT /api/users/:id -> core.users.update
+- GET /api/users/ -> core.users.view.list
+- PUT /api/users/me/email -> core.users.update.email
+- PUT /api/users/me/onboarding -> core.users.complete_onboarding
+- POST /api/users/ -> core.users.create
+- GET /api/users/roles/:id -> core.users.view.roles
+- GET /api/users/roles -> core.users.view.roles
+
+### 3) Endpoint Tanpa Capability Guard
+- Ditandai sebagai NO CAPABILITY GUARD (bukan endpoint publik).
+
+- GET /api/admin/analytics/cohort -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+- GET /api/admin/analytics/revenue-forecast -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+- GET /api/admin/analytics/revenue -> analytics (src/modules/analytics/routes/analytics-admin.routes.ts)
+- POST /api/auth/logout -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/me -> auth (src/modules/auth/routes/auth.routes.ts)
+- GET /api/billing/billings/:id -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/billings/subscription/:subscription_id -> billing (src/modules/billing/routes/billing.routes.ts)
+- GET /api/billing/metrics/financial -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- PATCH /api/billing/notifications/:notificationId/read -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- PATCH /api/billing/notifications/mark-all-read -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/notifications -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/recent-activities -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- GET /api/billing/reports/export -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- POST /api/billing/reports/generate -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/payment-gateways -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/revenue-breakdown -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/revenue -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- POST /api/billing/reports/schedule -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/reports/subscription-trends -> billing (src/modules/billing/routes/billing-reports.routes.ts)
+- GET /api/billing/revenue-chart -> billing (src/modules/billing/routes/billing-dashboard.routes.ts)
+- POST /api/billing/subscriptions/:id/choose-plan -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/:id/renew -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/order -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/upgrade-wizard -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/billing/subscriptions/upgrade/cancel -> billing (src/modules/billing/routes/subscription.routes.ts)
+- POST /api/consent/log -> consent (src/modules/consent/routes/consent.routes.ts)
+- GET /api/consent/logs -> consent (src/modules/consent/routes/consent.routes.ts)
+- DELETE /api/cooperative/announcements/:id -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- GET /api/cooperative/announcements/ -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- POST /api/cooperative/announcements/ -> cooperative (src/modules/cooperative/announcement/announcement.fastify.ts)
+- GET /api/cooperative/dashboard/stats -> cooperative (src/modules/cooperative/dashboard/dashboard.fastify.ts)
+- GET /api/cooperative/health -> cooperative (src/modules/cooperative/plugin.ts)
+- PUT /api/cooperative/loans/:id/status -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- GET /api/cooperative/loans/:id -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- GET /api/cooperative/loans/ -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- POST /api/cooperative/loans/pay-installment -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- POST /api/cooperative/loans/ -> cooperative (src/modules/cooperative/pinjaman/loan.fastify.ts)
+- DELETE /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- PUT /api/cooperative/members/:id -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/members/ -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- POST /api/cooperative/members/ -> cooperative (src/modules/cooperative/member/member.fastify.ts)
+- GET /api/cooperative/ppob/ -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- POST /api/cooperative/ppob/ -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- POST /api/cooperative/ppob/transaction -> cooperative (src/modules/cooperative/ppob/ppob.fastify.ts)
+- GET /api/cooperative/reports/laba-rugi -> cooperative (src/modules/cooperative/laporan/report.fastify.ts)
+- GET /api/cooperative/reports/neraca -> cooperative (src/modules/cooperative/laporan/report.fastify.ts)
+- GET /api/cooperative/savings/:id -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- GET /api/cooperative/savings/ -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/savings/ -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/savings/transaction -> cooperative (src/modules/cooperative/simpanan/saving.fastify.ts)
+- POST /api/cooperative/tickets/:id/reply -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- PATCH /api/cooperative/tickets/:id/status -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- GET /api/cooperative/tickets/:id -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- GET /api/cooperative/tickets/ -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- POST /api/cooperative/tickets/ -> cooperative (src/modules/cooperative/ticket/ticket.fastify.ts)
+- POST /api/cooperative/toko/:id/adjust-stock -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- DELETE /api/cooperative/toko/:id -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- PUT /api/cooperative/toko/:id -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- POST /api/cooperative/toko/checkout -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- GET /api/cooperative/toko/ -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- POST /api/cooperative/toko/ -> cooperative (src/modules/cooperative/toko/toko.fastify.ts)
+- DELETE /api/cooperative/vouchers/:id -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+- GET /api/cooperative/vouchers/ -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+- POST /api/cooperative/vouchers/ -> cooperative (src/modules/cooperative/voucher/voucher.fastify.ts)
+- GET /api/dashboard/grafik/guru/:bulan -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/payment-chart -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/recent-payments -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/recent-tenant-registrations -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/dashboard/stats -> dashboard (src/modules/dashboard/routes/dashboard.routes.ts)
+- GET /api/documents/public/:id/download -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/:id/signed-url -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/:id/versions -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/documents/public/ -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- ALL /auth/* -> infra (src/infra/router.ts)
+- GET /db-test -> infra (src/infra/router.ts)
+- GET /health -> infra (src/infra/router.ts)
+- GET /internal/events/metrics -> infra (src/infra/router.ts)
+- GET /roles -> infra (src/infra/router.ts)
+- POST /stress/attendance/session -> infra (src/infra/router.ts)
+- GET /api/invoice/:id/download -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id/preview -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id/public-link -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- PUT /api/invoice/:id/send -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- DELETE /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- PUT /api/invoice/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- POST /api/invoice/ -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- DELETE /api/invoice/public-link/:id -> invoice (src/modules/invoice/routes/invoice.routes.ts)
+- GET /api/invoice/public/:token/download -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/invoice/public/:token/verify -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/invoice/public/:token -> invoice (src/modules/invoice/routes/public.routes.ts)
+- GET /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/ -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/tree -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/v1/notifications/my -> notification (src/modules/notification/routes/notification.routes.ts)
+- POST /api/:payment_id/cancel -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/:payment_id/retry -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/:payment_id/status -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/billing/:billingId/summary -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/create -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/gateways -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/health -> payment (src/modules/payment/routes/payment.routes.ts)
+- GET /api/payment/public/:token/pay -> payment (src/modules/payment/routes/public.routes.ts)
+- POST /api/payment/public/:token/pay -> payment (src/modules/payment/routes/public.routes.ts)
+- GET /api/payment/public/status -> payment (src/modules/payment/routes/public.routes.ts)
+- GET /api/payment/return -> payment (src/modules/payment/routes/public.routes.ts)
+- POST /api/test/callback-target -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/comprehensive-new -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/comprehensive -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/health-new -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/health -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/idempotency-new -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/idempotency -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/test/report -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/signature-verification -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/signature -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/simulate/:gateway -> payment (src/modules/payment/routes/test.routes.ts)
+- POST /api/test/webhook -> payment (src/modules/payment/routes/test.routes.ts)
+- GET /api/tripay/channels -> payment (src/modules/payment/routes/payment.routes.ts)
+- POST /api/pdf/invoice/:id -> pdf (src/modules/pdf/routes/pdf.routes.ts)
+- GET /api/reports/dashboard/stats -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/export -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- POST /api/reports/financial/generate -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/monthly/:year/:month -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial/yearly/:year -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/reports/financial -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/admin/revenue/churn -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/exposure -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/overview -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/revenue/trend -> revenue (src/modules/revenue/routes/revenue-admin.routes.ts)
+- GET /api/admin/infra/cluster/autoscaler-events -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/nodes -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/queues -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/cluster/workers -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/diagnostic-load -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/health -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/jobs/:name/run -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/jobs/:name -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/jobs -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queue-forecast -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queue-pressure -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/queues/:name/pause -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/queues/:name/resume -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/queues -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/worker-nodes -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/action -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/restart -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/start -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- POST /api/admin/infra/workers/stop -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/admin/infra/workers -> superadmin (src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts)
+- GET /api/superadmin/intelligence/attendance-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/summary -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/trends -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/email-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/overview -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/payment-health -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/intelligence/top-risk -> superadmin (src/modules/superadmin/infra/routes/platformIntelligence.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/academic -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/activities -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/attendance -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/billing -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/export -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/logs -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/metrics -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/user-statistics -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- DELETE /api/superadmin/tenants/:tenantId/users/:userId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- PUT /api/superadmin/tenants/:tenantId/users/:userId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId/users -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- POST /api/superadmin/tenants/:tenantId/users -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- GET /api/superadmin/tenants/:tenantId -> superadmin (src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts)
+- POST /api/tenants/:id/cancel-deletion -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- POST /api/tenants/:id/request-deletion -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/admin/analytics/upgrade/month/:month -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+- GET /api/admin/analytics/upgrade/overview -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+- GET /api/admin/analytics/upgrade/tenant/:tenantId/:month -> upgrade-intelligence (src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts)
+- POST /api/upload/ -> upload (src/modules/upload/routes/upload.routes.ts)
+
+### 4) Endpoint dengan Role Based Authorization
+- Ditandai sebagai ROLE BASED AUTHORIZATION (authorize tanpa requireCapability).
+
+- GET /api/admin/backups/:id/download -> backup (src/modules/backup/routes/backup.routes.ts)
+- POST /api/admin/backups/:id/restore -> backup (src/modules/backup/routes/backup.routes.ts)
+- GET /api/admin/backups -> backup (src/modules/backup/routes/backup.routes.ts)
+- DELETE /api/documents/public/:id -> document-center (src/modules/document-center/routes/documents.routes.ts)
+- GET /api/menu/:id/roles -> menu (src/modules/menu/routes/menu.routes.ts)
+- PUT /api/menu/:id/roles -> menu (src/modules/menu/routes/menu.routes.ts)
+- DELETE /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- PUT /api/menu/:id -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/menu/audit -> menu (src/modules/menu/routes/menu.routes.ts)
+- POST /api/menu/ -> menu (src/modules/menu/routes/menu.routes.ts)
+- GET /api/system/observability/overview -> observability (src/modules/observability/routes/observability.routes.ts)
+- GET /api/reports/owner/summary -> reporting (src/modules/reporting/routes/reporting.routes.ts)
+- GET /api/admin/risk/overview -> risk (src/modules/risk/routes/risk-admin.routes.ts)
+- GET /api/admin/risk/tenant/:id -> risk (src/modules/risk/routes/risk-admin.routes.ts)
+- GET /api/sekolah/me -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- POST /api/sekolah/ -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- PUT /api/sekolah/ -> sekolah (src/modules/sekolah/routes/sekolah.routes.ts)
+- DELETE /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- PUT /api/tenants/:id -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/tenants/ -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- POST /api/tenants/ -> tenant (src/modules/tenant/routes/tenant.routes.ts)
+- GET /api/users/effective-capabilities/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/permissions -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/roles/:id/permissions -> user (src/modules/user/routes/user.routes.ts)
+- DELETE /api/users/roles/:id -> user (src/modules/user/routes/user.routes.ts)
+- PUT /api/users/roles/:id -> user (src/modules/user/routes/user.routes.ts)
+- GET /api/users/roles/export -> user (src/modules/user/routes/user.routes.ts)
+- POST /api/users/roles/import -> user (src/modules/user/routes/user.routes.ts)
+- DELETE /api/users/roles/policies -> user (src/modules/user/routes/user.routes.ts)
+- POST /api/users/roles -> user (src/modules/user/routes/user.routes.ts)
+
+### 5) Endpoint Tanpa Authorization
+- Hanya endpoint yang eksplisit skip auth (PUBLIC) dianggap publik resmi.
+
+- GET /api/auth/check-domain -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/check-email/:email -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/check-email -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/confirm-password-reset -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/dev/tenants -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/login -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/refresh -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/register-tenant -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/register -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/request-password-reset -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/resend-verification -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/tenant-info -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/verify-email/:token -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- POST /api/auth/verify-email/confirm -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/auth/verify-email -> PUBLIC (src/modules/auth/routes/auth.routes.ts)
+- GET /api/billing/plans/public -> PUBLIC (src/modules/billing/routes/plan.routes.ts)
+- GET /api/documents/public/:token/download -> PUBLIC (src/modules/document-center/routes/documents.routes.ts)
+- OPTIONS /embedding -> PUBLIC (src/infra/router.ts)
+- POST /embedding -> PUBLIC (src/infra/router.ts)
+- POST /api/v1/notifications/push/subscribe -> PUBLIC (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/push/vapid-public-key -> PUBLIC (src/modules/notification/routes/notification.routes.ts)
+- GET /api/v1/notifications/whatsapp/webhook -> PUBLIC (src/modules/notification/routes/notification.routes.ts)
+- POST /api/v1/notifications/whatsapp/webhook -> PUBLIC (src/modules/notification/routes/notification.routes.ts)
+- GET /api/me -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/notifications/fcm/register -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/notifications/push/subscribe -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/notifications/push/vapid-public-key -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/siswa/:id/lapor-absen -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/notifikasi -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/rekap-bulanan -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/riwayat-kehadiran -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- GET /api/siswa/:id/tracking-harian -> PUBLIC (src/modules/parent-app/routes/parent-app.routes.ts)
+- POST /api/webhooks/payment/:gateway -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- GET /api/webhooks/payment/health -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/midtrans -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/stripe -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/test/:gateway -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/tripay -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- POST /api/webhooks/payment/xendit -> PUBLIC (src/modules/payment/routes/webhook.routes.ts)
+- GET /api/sekolah/lookup-npsn/:npsn -> PUBLIC (src/modules/sekolah/routes/sekolah.routes.ts)
+- GET /api/system/config/ -> PUBLIC (src/modules/system-config/routes/system-config.routes.ts)
+
+### 6) Capability Consistency Check (vs Action Catalog)
+- INVALID CAPABILITY jika format salah atau tidak ditemukan pada Action Catalog.
+
+- academic.semesters.delete -> NOT_IN_ACTION_CATALOG (contoh: DELETE /api/academic/semester/:id)
+- academic.semesters.view.detail -> NOT_IN_ACTION_CATALOG (contoh: GET /api/academic/semester/:id)
+- academic.years.delete -> NOT_IN_ACTION_CATALOG (contoh: DELETE /api/academic/tahun-pelajaran/:id)
+- academic.years.view.detail -> NOT_IN_ACTION_CATALOG (contoh: GET /api/academic/tahun-pelajaran/:id)
+- affairs.violations.delete -> NOT_IN_ACTION_CATALOG (contoh: DELETE /api/kesiswaan/pelanggaran/:id)
+- affairs.violations.view.detail -> NOT_IN_ACTION_CATALOG (contoh: GET /api/kesiswaan/pelanggaran/:id)
+- attendance.events.create -> NOT_IN_ACTION_CATALOG (contoh: POST /api/attendance/kejadian-khusus/)
+- attendance.events.delete -> NOT_IN_ACTION_CATALOG (contoh: DELETE /api/attendance/kejadian-khusus/:id)
+- attendance.events.view.list -> NOT_IN_ACTION_CATALOG (contoh: GET /api/attendance/kejadian-khusus/)
+- attendance.sessions.update -> NOT_IN_ACTION_CATALOG (contoh: PUT /api/attendance/sesi-absensi/:id)
+- billing.monitoring.view -> NOT_IN_ACTION_CATALOG (contoh: GET /api/stats)
+- core.system.config.update -> NOT_IN_ACTION_CATALOG (contoh: POST /api/system/config/)
+- notify.resend -> NOT_IN_ACTION_CATALOG (contoh: POST /api/v1/notifications/resend/:notificationId)
+- notify.send.test_email -> NOT_IN_ACTION_CATALOG (contoh: POST /api/v1/notifications/test/email)
+- notify.send.test_whatsapp -> NOT_IN_ACTION_CATALOG (contoh: POST /api/v1/notifications/test/whatsapp)
+- superadmin.infra.view.socket_tenants -> NOT_IN_ACTION_CATALOG (contoh: GET /api/superadmin/infra/socket/tenants)
+
+### 7) Pola Enforcement per Module
+- Pola dilihat dari kombinasi requireCapability / authorize / skipAuth (static scan).
+
+- academic: capability_guarded=103, role_based=0, no_capability_guard=0, public=0
+- analytics: capability_guarded=0, role_based=0, no_capability_guard=3, public=0
+- attendance: capability_guarded=47, role_based=0, no_capability_guard=0, public=0
+- auth: capability_guarded=0, role_based=0, no_capability_guard=2, public=15
+- backup: capability_guarded=0, role_based=3, no_capability_guard=0, public=0
+- billing: capability_guarded=37, role_based=0, no_capability_guard=20, public=1
+- consent: capability_guarded=0, role_based=0, no_capability_guard=2, public=0
+- cooperative: capability_guarded=0, role_based=0, no_capability_guard=38, public=0
+- dashboard: capability_guarded=10, role_based=0, no_capability_guard=5, public=0
+- document-center: capability_guarded=5, role_based=1, no_capability_guard=4, public=1
+- infra: capability_guarded=0, role_based=0, no_capability_guard=6, public=2
+- invoice: capability_guarded=3, role_based=0, no_capability_guard=12, public=0
+- kesiswaan: capability_guarded=10, role_based=0, no_capability_guard=0, public=0
+- kurikulum: capability_guarded=5, role_based=0, no_capability_guard=0, public=0
+- menu: capability_guarded=0, role_based=6, no_capability_guard=3, public=0
+- notification: capability_guarded=13, role_based=0, no_capability_guard=1, public=4
+- observability: capability_guarded=0, role_based=1, no_capability_guard=0, public=0
+- parent-app: capability_guarded=0, role_based=0, no_capability_guard=0, public=9
+- payment: capability_guarded=4, role_based=0, no_capability_guard=24, public=7
+- pdf: capability_guarded=0, role_based=0, no_capability_guard=1, public=0
+- reporting: capability_guarded=0, role_based=1, no_capability_guard=6, public=0
+- revenue: capability_guarded=0, role_based=0, no_capability_guard=4, public=0
+- risk: capability_guarded=0, role_based=2, no_capability_guard=0, public=0
+- sekolah: capability_guarded=0, role_based=3, no_capability_guard=0, public=1
+- superadmin: capability_guarded=2, role_based=0, no_capability_guard=40, public=0
+- system-config: capability_guarded=2, role_based=0, no_capability_guard=0, public=1
+- tenant: capability_guarded=0, role_based=5, no_capability_guard=2, public=0
+- upgrade-intelligence: capability_guarded=0, role_based=0, no_capability_guard=3, public=0
+- upload: capability_guarded=0, role_based=0, no_capability_guard=1, public=0
+- user: capability_guarded=9, role_based=9, no_capability_guard=0, public=0
+

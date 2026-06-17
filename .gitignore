@@ -1,0 +1,50 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+absenta_backend/.env
+absenta_frontend/.env
+
+# Build outputs
+dist/
+build/
+absenta_backend/dist/
+absenta_frontend/dist/
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database (Local SQLite if any)
+*.db
+*.db-journal
+
+# Secrets & Credentials (PENTING)
+**/credentials/
+**/*.json
+!package.json
+!tsconfig.json
+!composer.json
+!*.schema.json
+!absenta_backend/prisma/schema.prisma
+
+# Sub-repository Git folders (PENTING)
+# Kita ingin menghapus .git di subfolder agar tidak terbaca sebagai submodule
+# Tapi kita tambahkan di sini sebagai jaga-jaga
+absenta_backend/.git
+absenta_frontend/.git

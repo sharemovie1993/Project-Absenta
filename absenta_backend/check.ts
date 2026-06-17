@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const positions = await prisma.organizationalPosition.findMany(); console.log('Positions:', positions.length); const caps = await prisma.organizationalCapability.findMany(); console.log('Caps:', caps.length); } main().finally(() => prisma.$disconnect());

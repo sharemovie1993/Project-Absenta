@@ -1,0 +1,340 @@
+import { smartReadSheet } from '@/utils/excel-import.utils';
+import * as XLSX from 'xlsx-js-style';
+import { JurusanService, CreateJurusanInput, UpdateJurusanInput } from '../services/jurusan.service';
+
+const jurusanService = new JurusanService();
+
+export const jurusanController = {
+  async getAllJurusan(request: any, reply: any) {
+    try {
+      const user = request.user!;
+
+      const page = parseInt(request.query.page as string) || 1;
+      const limit = parseInt(request.query.limit as string) || 10;
+      const search = request.query.search as string;
+
+      const result = await jurusanService.getAllJurusan(user.roleName, user.tenantId, {
+        page,
+        limit,
+        search,
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Jurusan retrieved successfully',
+        data: result.data,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      console.error('Error getting all jurusan:', error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async getJurusanById(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const { id } = request.params;
+
+      const jurusan = await jurusanService.getJurusanById(id, user.roleName, user.tenantId);
+
+      if (!jurusan) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Jurusan not found',
+          data: null,
+        });
+      }
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Jurusan retrieved successfully',
+        data: jurusan,
+      });
+    } catch (error) {
+      console.error('Error getting jurusan by ID:', error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async createJurusan(request: any, reply: any) {
+    try {
+      const user = request.user!;
+
+      const input: CreateJurusanInput = request.body;
+
+      if (!input.nama) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Missing required field: nama',
+          data: null,
+        });
+      }
+
+      if (input.nama.length < 2 || input.nama.length > 100) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Nama must be between 2 and 100 characters',
+          data: null,
+        });
+      }
+
+      if (input.kode && (input.kode.length < 2 || input.kode.length > 10)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Kode must be between 2 and 10 characters',
+          data: null,
+        });
+      }
+
+      const jurusan = await jurusanService.createJurusan(input, user.tenantId);
+
+      return reply.status(201).send({
+        success: true,
+        message: 'Jurusan created successfully',
+        data: jurusan,
+      });
+    } catch (error: any) {
+      console.error('Error creating jurusan:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async updateJurusan(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const { id } = request.params;
+      const input: UpdateJurusanInput = request.body;
+
+      if (input.nama && (input.nama.length < 2 || input.nama.length > 100)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Nama must be between 2 and 100 characters',
+          data: null,
+        });
+      }
+
+      if (input.kode && (input.kode.length < 2 || input.kode.length > 10)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Kode must be between 2 and 10 characters',
+          data: null,
+        });
+      }
+
+      const jurusan = await jurusanService.updateJurusan(id, input, user.roleName, user.tenantId);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Jurusan updated successfully',
+        data: jurusan,
+      });
+    } catch (error: any) {
+      console.error('Error updating jurusan:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async removeJurusan(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const { id } = request.params;
+
+      await jurusanService.removeJurusan(id, user.roleName, user.tenantId);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Jurusan deleted successfully',
+        data: null,
+      });
+    } catch (error: any) {
+      console.error('Error deleting jurusan:', error);
+      
+      const isKnownError = error.message.includes('not found') || 
+                          error.message.includes('Tidak dapat menghapus') ||
+                          error.message.includes('Cannot delete');
+
+      return reply.status(isKnownError ? 400 : 500).send({
+        success: false,
+        message: error.message || 'Internal server error',
+        data: null,
+      });
+    }
+  },
+
+  async getImportTemplate(_request: any, reply: any) {
+    try {
+      const headers = ['nama', 'kode', 'singkatan'];
+      const sample = [{ nama: 'Ilmu Pengetahuan Alam', kode: 'IPA_001', singkatan: 'IPA' }];
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(sample, { header: headers });
+
+      // Styles
+      const reqStyle = {
+        font: { bold: true, color: { rgb: "000000" } },
+        fill: { fgColor: { rgb: "FFD700" } },
+        alignment: { horizontal: "center" }
+      };
+
+      headers.forEach((_, i) => {
+        const cell = ws[XLSX.utils.encode_cell({ r: 0, c: i })];
+        if (cell) cell.s = reqStyle;
+      });
+
+      ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Jurusan');
+
+      // --- PETUNJUK ---
+      const instructions = [
+        ['PETUNJUK PENGISIAN IMPORT JURUSAN'],
+        [''],
+        ['1. SEMUA KOLOM WAJIB DIISI'],
+        ['2. nama: Nama lengkap jurusan (Contoh: Ilmu Pengetahuan Alam)'],
+        ['3. kode: Kode teknis/Dapodik (Contoh: 10293 atau IPA_001)'],
+        ['4. singkatan: Singkatan/Akronim untuk tampilan (Contoh: IPA)']
+      ];
+      const petunjukWs = XLSX.utils.aoa_to_sheet(instructions);
+      petunjukWs['A1'].s = { font: { bold: true, sz: 14, color: { rgb: "4F46E5" } } };
+      
+      XLSX.utils.book_append_sheet(wb, petunjukWs, 'Petunjuk');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', 'attachment; filename="import_jurusan_template.xlsx"');
+
+      return reply.send(buffer);
+    } catch (error) {
+      console.error('Error template:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to generate template' });
+    }
+  },
+
+  async importFromExcel(request: any, reply: any) {
+    try {
+      const parts = request.parts();
+      let fileBuffer;
+
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          fileBuffer = await part.toBuffer();
+          break; // Only process the first file
+        }
+      }
+
+      if (!fileBuffer) {
+        return reply.status(400).send({ success: false, message: 'No file uploaded' });
+      }
+
+      const wb = XLSX.read(fileBuffer, { type: 'buffer' });
+      const sheetName = wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
+      const data = smartReadSheet(sheet);
+
+      const result = await jurusanService.importFromExcel(data, request.dataScope);
+
+      return reply.send({
+        success: true,
+        message: 'Import completed',
+        data: result
+      });
+    } catch (error: any) {
+      console.error('Import error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Import failed' });
+    }
+  },
+
+  async exportToExcel(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const result = await jurusanService.getAllJurusan(user.roleName, user.tenantId, { page: 1, limit: 10000 }); // Get all data
+
+      const data = result.data.map((j, index) => ({
+        No: index + 1,
+        'Nama Jurusan': j.nama,
+        Kode: j.kode || '-',
+        Singkatan: j.singkatan || '-',
+        'Jumlah Kelas': j._count?.Kelas || 0
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(data);
+
+      // --- STYLING ---
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      
+      const headerStyle = {
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 12 },
+        fill: { fgColor: { rgb: "4F46E5" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } }
+        }
+      };
+
+      const cellStyle = {
+        alignment: { vertical: "center" },
+        border: {
+          top: { style: "thin", color: { rgb: "CCCCCC" } },
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } }
+        }
+      };
+
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell_address = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cell_address]) continue;
+          
+          if (R === 0) {
+            ws[cell_address].s = headerStyle;
+          } else {
+            ws[cell_address].s = cellStyle;
+            if (C === 0 || C === 2 || C === 3) { // No, Kode, Jumlah Kelas
+              ws[cell_address].s = { ...cellStyle, alignment: { horizontal: "center", vertical: "center" } };
+            }
+          }
+        }
+      }
+
+      ws['!cols'] = [
+        { wch: 5 },  // No
+        { wch: 40 }, // Nama
+        { wch: 15 }, // Kode
+        { wch: 15 }, // Singkatan
+        { wch: 15 }  // Jumlah Kelas
+      ];
+      ws['!rows'] = [{ hpt: 30 }];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Jurusan');
+
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', `attachment; filename="jurusan_export_${new Date().toISOString().split('T')[0]}.xlsx"`);
+
+      return reply.send(buffer);
+    } catch (error) {
+      console.error('Export error:', error);
+      return reply.status(500).send({ success: false, message: 'Export failed' });
+    }
+  }
+};

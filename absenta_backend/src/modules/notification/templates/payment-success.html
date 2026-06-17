@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembayaran Berhasil</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #28a745;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .success-icon::after {
+            content: "✓";
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+        }
+        h1 {
+            color: #28a745;
+            margin: 0;
+            font-size: 28px;
+        }
+        .payment-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #28a745;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+            text-align: right;
+        }
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .school-name {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .transaction-id {
+            font-family: 'Courier New', monospace;
+            background-color: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .detail-row {
+                flex-direction: column;
+                text-align: left;
+            }
+            .detail-value {
+                text-align: left;
+                margin-top: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="background: rgba(40, 167, 69, 0.1); width: 64px; height: 64px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 16px; border: 1px solid rgba(40, 167, 69, 0.2);">
+                <img src="{{logoUrl}}" alt="Logo" style="width: 44px; height: 44px; outline: none; border: none; text-decoration: none;" />
+            </div>
+            <div class="success-icon"></div>
+            <h1>Pembayaran Berhasil!</h1>
+            <p>Terima kasih, pembayaran Anda telah berhasil diproses.</p>
+        </div>
+
+        <p>Halo <strong>{{studentName}}</strong>,</p>
+        
+        <p>Kami dengan senang hati mengonfirmasi bahwa pembayaran Anda untuk <strong>{{billingDescription}}</strong> telah berhasil diproses.</p>
+
+        <div class="payment-details">
+            <h3 style="margin-top: 0; color: #333;">Detail Pembayaran</h3>
+            
+            <div class="detail-row">
+                <span class="detail-label">Jumlah Pembayaran:</span>
+                <span class="detail-value amount">Rp {{amount}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Metode Pembayaran:</span>
+                <span class="detail-value">{{paymentMethod}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">ID Transaksi:</span>
+                <span class="detail-value transaction-id">{{transactionId}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Tanggal Pembayaran:</span>
+                <span class="detail-value">{{paidAt}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value" style="color: #28a745; font-weight: bold;">LUNAS</span>
+            </div>
+        </div>
+
+        <p>Pembayaran ini telah dicatat dalam sistem kami. Jika Anda memerlukan bukti pembayaran resmi atau memiliki pertanyaan, silakan hubungi bagian administrasi sekolah.</p>
+
+        <div class="footer">
+            <p>Email ini dikirim secara otomatis oleh sistem.</p>
+            <p>Terima kasih atas kepercayaan Anda kepada <span class="school-name">{{schoolName}}</span></p>
+            <p style="font-size: 12px; color: #999;">
+                Jika Anda memiliki pertanyaan, silakan hubungi kami melalui:<br>
+                {{#if supportPhone}}WhatsApp/Telp: <strong>{{supportPhone}}</strong><br>{{/if}}
+                Email: <strong>{{supportEmail}}</strong><br>
+                Jangan membalas email ini karena dikirim secara otomatis.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

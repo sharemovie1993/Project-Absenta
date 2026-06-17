@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const caps = await prisma.organizationalCapability.count(); console.log('count:', caps); } main().finally(() => prisma.$disconnect());

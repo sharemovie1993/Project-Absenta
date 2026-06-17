@@ -1,0 +1,4 @@
+
+=== Kredensial untuk Tenant: SMK Negeri 1 Cimahi ===
+Admin Email: admin@smkn1cimahi.com
+Password default usually '123456' or 'password123' if seeded.

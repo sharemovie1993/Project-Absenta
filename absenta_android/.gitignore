@@ -1,0 +1,23 @@
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration file (SDK path, etc.)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio / IntelliJ IDEA files
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+
+# Device-specific files
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties

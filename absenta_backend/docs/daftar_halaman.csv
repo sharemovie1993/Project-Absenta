@@ -1,0 +1,63 @@
+Modul,No,Nama Halaman,Path URL,Lokasi File Halaman,Kategori Fitur
+Absensi,1,Operasional Presensi Realtime,/attendance/ops,pages/attendance/ops/AttendanceOpsPage.tsx,Operasional
+Absensi,2,Monitoring KBM (Realtime Dashboard),/attendance/monitoring,pages/attendance/monitoring/MonitoringKbmPage.tsx,Monitoring
+Absensi,3,Pengaturan Jadwal & Toleransi,/attendance/settings,pages/attendance/AttendanceSettingsPage.tsx,Konfigurasi
+Absensi,4,Manajemen Template Jadwal,/attendance/jadwal-template,pages/attendance/jadwal-template/JadwalTemplatePage.tsx,Konfigurasi
+Absensi,5,Tracking Aktivitas & Lokasi Siswa,/attendance/tracking-siswa,pages/attendance/TrackingSiswaPage.tsx,Intelligence
+Absensi,6,Manajemen Petugas (Gerbang/Kelas),/attendance/petugas,pages/attendance/PetugasPage.tsx,Konfigurasi
+Absensi,7,Manajemen Perangkat (Device Auth),/attendance/devices,pages/attendance/DeviceManagementPage.tsx,Hardware
+Absensi,8,Dashboard Utama Rekapitulasi,/attendance/rekap,pages/attendance/rekap/RekapPage.tsx,Reporting
+Absensi,9,Rekap Bulanan Per Siswa,/attendance/rekap/siswa-bulanan,pages/attendance/rekap/RekapBulananSiswaPage.tsx,Reporting
+Absensi,10,Rekap Bulanan Per Kelas,/attendance/rekap/kelas-bulanan,pages/attendance/rekap/RekapBulananKelasPage.tsx,Reporting
+Absensi,11,Rekap Harian Per Siswa,/attendance/rekap/siswa-harian,pages/attendance/rekap/RekapHarianSiswaPage.tsx,Reporting
+Absensi,12,Master Jenis Kegiatan (Absensi),/attendance/jenis-kegiatan,pages/attendance/JenisKegiatanMasterPage.tsx,Master Data
+Absensi,13,Monitoring Kehadiran Guru,/attendance/guru-monitoring,pages/attendance/GuruMonitoringPage.tsx,Monitoring
+Absensi,14,Rekam Wajah (AI Biometric Face Recognition),/attendance/rekam-wajah,pages/attendance/FaceTemplatePage.tsx,Intelligence/AI
+Absensi,15,Presensi Mandiri (Mobile Web),/attendance/my-attendance,pages/attendance/MyAttendancePage.tsx,User Portal
+Absensi,16,Riwayat Mengajar (Jurnal Guru),/attendance/riwayat-ajar,pages/attendance/RiwayatAjarPage.tsx,User Portal
+Akademik,1,Dashboard Akademik,/academic,pages/academic/AcademicPage.tsx,Dashboard
+Akademik,2,Manajemen Data Guru,/academic/guru,pages/academic/GuruPage.tsx,Master Data
+Akademik,3,Plotting Guru Mapel,/academic/guru-mapel,pages/academic/GuruMapelPage.tsx,Kurikulum
+Akademik,4,Manajemen Data Siswa,/academic/siswa,pages/academic/SiswaPage.tsx,Master Data
+Akademik,5,Manajemen Data Kelas,/academic/kelas,pages/academic/KelasPage.tsx,Master Data
+Akademik,6,Manajemen Mata Pelajaran,/academic/mapel,pages/academic/MapelPage.tsx,Master Data
+Akademik,7,Manajemen Tahun Pelajaran,/academic/tahun-pelajaran,pages/academic/TahunPelajaranPage.tsx,Master Data
+Akademik,8,Manajemen Semester,/academic/semester,pages/academic/SemesterPage.tsx,Master Data
+Akademik,9,Manajemen Jurusan/Program,/academic/jurusan,pages/academic/JurusanPage.tsx,Master Data
+Akademik,10,Registrasi Siswa Baru,/academic/registrasi-siswa,pages/academic/RegistrasiSiswaPage.tsx,Kesiswaan
+Akademik,11,Plotting Wali Kelas,/academic/wali-kelas,pages/academic/WaliKelasPage.tsx,Kurikulum
+Akademik,12,Transisi Akademik (Naik/Lulus),/academic/transition,pages/academic/transition/AcademicTransitionPage.tsx,Kesiswaan
+Akademik,13,Cetak Kartu Siswa (ID Cards),/academic/siswa-cards,pages/academic/StudentCardPage.tsx,Administrasi
+Akademik,14,Mutasi Siswa (Pindah/Keluar),/academic/mutation,pages/academic/mutation/StudentMutationPage.tsx,Kesiswaan
+Akademik,15,Struktur Organisasi (Tree),/academic/struktur-organisasi,pages/academic/struktur-organisasi/StrukturOrganisasiList.tsx,Kelembagaan
+Akademik,16,Backup & Restore Akademik,/academic/backup,pages/academic/BackupPage.tsx,Keamanan
+Koperasi,1,Dashboard Koperasi,/cooperative/dashboard,pages/cooperative/Dashboard.tsx,Dashboard
+Koperasi,2,Manajemen Anggota & Simpanan,/cooperative/members,pages/cooperative/Members.tsx,Simpan Pinjam
+Koperasi,3,Transaksi Simpanan,/cooperative/savings,pages/cooperative/Savings.tsx,Simpan Pinjam
+Koperasi,4,Pengajuan & Kelola Pinjaman,/cooperative/loans,pages/cooperative/Loans.tsx,Simpan Pinjam
+Koperasi,5,POS (Kasir Toko / Kantin),/cooperative/pos,pages/cooperative/POS.tsx,Retail/Commerce
+Koperasi,6,Layanan PPOB & Pembayaran,/cooperative/ppob,pages/cooperative/PPOB.tsx,Digital Service
+Koperasi,7,Laporan Keuangan & Akuntansi,/cooperative/reports,pages/cooperative/Accounting.tsx,Keuangan
+Sarpras,1,Dashboard Sarpras,/sarpras/dashboard,pages/sarpras/SarprasDashboard.tsx,Dashboard
+Sarpras,2,Inventaris Aset & Barang,/sarpras/inventory,pages/sarpras/SarprasInventoryPage.tsx,Manajemen Aset
+Sarpras,3,Manajemen Peminjaman Barang,/sarpras/loans,pages/sarpras/SarprasLoansPage.tsx,Operasional
+Sarpras,4,Pemeliharaan & Perbaikan,/sarpras/maintenance,pages/sarpras/SarprasMaintenancePage.tsx,Operasional
+Superadmin,1,Manajemen Tenant Global,/tenants,pages/tenants/TenantsPage.tsx,Tenant Ops
+Superadmin,2,Infrastructure Dashboard,/superadmin/infra,pages/superadmin/infra/InfrastructureDashboard.tsx,Infra Ops
+Superadmin,3,Control Center & Jobs,/superadmin/infra/jobs,pages/superadmin/infra/InfraControlCenterPage.tsx,Infra Ops
+Superadmin,4,Platform Intelligence,/superadmin/intelligence,pages/superadmin/PlatformIntelligencePage.tsx,BI & Analytics
+Superadmin,5,Revenue Intelligence,/superadmin/intelligence/revenue,pages/superadmin/intelligence/RevenueIntelligencePage.tsx,BI & Analytics
+Superadmin,6,Revenue Global Dashboard,/superadmin/revenue,pages/superadmin/revenue/RevenueDashboardPage.tsx,Finance
+Superadmin,7,Master Plans & Pricing,/billing/plans,pages/billing/PlansPage.tsx,Billing Global
+Superadmin,8,Master Subscriptions,/billing/subscriptions,pages/billing/SubscriptionsPage.tsx,Billing Global
+Superadmin,9,Manajemen Menu Dinamis,/management/menus,pages/management/MenuManagementPage.tsx,System
+Superadmin,10,Manajemen Role & Capability,/management/roles,pages/management/RoleManagementPage.tsx,System
+Superadmin,11,Audit Menu & Akses,/management/menu-audit,pages/management/MenuAuditPage.tsx,System
+Superadmin,12,Sistem Backup Global,/superadmin/backups,pages/superadmin/BackupsPage.tsx,Security
+Kurikulum,1,Supervisi Akademik (Observasi),/kurikulum/supervisi,pages/kurikulum/SupervisiPage.tsx,Monitoring
+Kurikulum,2,Struktur Kurikulum (Beban Jam),/kurikulum/struktur,pages/kurikulum/StrukturKurikulumPage.tsx,Konfigurasi
+Kurikulum,3,Plotting Kurikulum (Master),/kurikulum/plotting,pages/kurikulum/MasterStrukturPage.tsx,Konfigurasi
+Kurikulum,4,Manajemen Jadwal Pelajaran,/kurikulum/jadwal,pages/kurikulum/JadwalPelajaranPage.tsx,Operasional
+Kesiswaan,1,Pencatatan Pelanggaran Siswa,/kesiswaan/pelanggaran,pages/kesiswaan/PelanggaranPage.tsx,Kedisiplinan
+Kesiswaan,2,Master Jenis Pelanggaran (Poin),/kesiswaan/jenis-pelanggaran,pages/kesiswaan/JenisPelanggaranPage.tsx,Konfigurasi
+Kesiswaan,3,Monitoring Kedisiplinan Siswa,/kesiswaan/monitoring,pages/kesiswaan/MonitoringKesiswaanPage.tsx,Monitoring

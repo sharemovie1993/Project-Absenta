@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pengingat Trial Akan Berakhir</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1F2937; }
+    .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #F9FAFB; }
+    .header { background: #2563EB; color: #fff; padding: 16px 24px; border-radius: 8px 8px 0 0; }
+    .content { background: #fff; padding: 24px; border: 1px solid #E5E7EB; border-top: none; }
+    .cta { display: inline-block; background: #16A34A; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 6px; margin-top: 16px; }
+    .footer { color: #6B7280; font-size: 12px; margin-top: 24px; }
+  </style>
+  </head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Pengingat Trial Akan Berakhir</h2>
+    </div>
+    <div class="content">
+      <p>Halo Admin {{tenantName}},</p>
+      <p>Langganan trial untuk paket <strong>{{planName}}</strong> akan berakhir pada <strong>{{endDate}}</strong>.</p>
+      <p>Sisa waktu: <strong>{{daysLeft}} hari</strong>.</p>
+      <p>Untuk menghindari gangguan layanan, silakan lakukan aktivasi paket sebelum masa trial berakhir.</p>
+      {{#if ctaUrl}}
+      <p>
+        <a class="cta" href="{{ctaUrl}}" target="_blank" rel="noopener">Aktifkan Paket Sekarang</a>
+      </p>
+      {{/if}}
+      <p class="footer">Email ini dikirim otomatis oleh sistem. &copy; 2024 Sistem Absensi Multitenant</p>
+    </div>
+  </div>
+</body>
+</html>
+

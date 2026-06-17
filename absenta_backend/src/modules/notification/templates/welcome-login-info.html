@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Informasi Login Akun</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1F2937; line-height: 1.6; margin: 0; padding: 0; background-color: #F3F4F6; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    .header { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #fff; padding: 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    .content { padding: 32px; }
+    .welcome-text { margin-bottom: 24px; font-size: 16px; }
+    .card { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
+    .card-label { font-size: 12px; text-transform: uppercase; color: #6B7280; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.05em; }
+    .card-value { font-size: 16px; color: #111827; font-weight: 500; margin-bottom: 16px; font-family: monospace; }
+    .card-value:last-child { margin-bottom: 0; }
+    .btn { display: inline-block; background: #2563EB; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; text-align: center; width: 100%; box-sizing: border-box; transition: background-color 0.2s; }
+    .btn:hover { background: #1D4ED8; }
+    .footer { background: #F9FAFB; padding: 24px; text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; }
+    .footer p { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="background: rgba(255, 255, 255, 0.1); width: 64px; height: 64px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.2);">
+        <img src="{{logoUrl}}" alt="Logo" style="width: 44px; height: 44px; outline: none; border: none; text-decoration: none;" />
+      </div>
+      <h1>Selamat Bergabung!</h1>
+    </div>
+    <div class="content">
+      <p class="welcome-text">Halo <strong>{{adminName}}</strong>,</p>
+      <p class="welcome-text">Selamat! Akun sekolah <strong>{{schoolName}}</strong> telah berhasil diverifikasi. Kini Anda dapat mengakses dashboard untuk mulai mengelola administrasi sekolah.</p>
+      
+      <div class="card">
+        <div class="card-label">URL Login</div>
+        <div class="card-value"><a href="{{loginUrl}}" style="color: #2563EB; text-decoration: none;">{{loginUrl}}</a></div>
+        
+        <div class="card-label">Email / Username</div>
+        <div class="card-value">{{email}}</div>
+
+        <div class="card-label">Password</div>
+        <div class="card-value">{{password}}</div>
+      </div>
+
+      <a href="{{loginUrl}}" class="btn">Masuk ke Dashboard</a>
+      
+      <p style="margin-top: 24px; font-size: 14px; color: #6B7280;">
+        Demi keamanan, harap segera ganti password Anda setelah berhasil login pertama kali.
+      </p>
+    </div>
+    <div class="footer">
+      <p>Email ini dikirim otomatis oleh Sistem Absensi Sekolah.</p>
+      <p>&copy; {{year}} Absenta. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

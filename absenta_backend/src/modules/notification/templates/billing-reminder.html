@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengingat Pembayaran</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .reminder-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #ffc107;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .reminder-icon::after {
+            content: "⏰";
+            font-size: 40px;
+        }
+        h1 {
+            color: #ffc107;
+            margin: 0;
+            font-size: 28px;
+        }
+        .billing-details {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 5px 0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .detail-value {
+            color: #333;
+            text-align: right;
+        }
+        .amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .due-date {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #ffeaa7;
+            text-align: center;
+        }
+        .overdue {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .pay-button {
+            background-color: #28a745;
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+        .contact-button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .school-name {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .payment-methods {
+            background-color: #e7f3ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+            border-left: 4px solid #007bff;
+        }
+        .method-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .method-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .urgent {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .detail-row {
+                flex-direction: column;
+                text-align: left;
+            }
+            .detail-value {
+                text-align: left;
+                margin-top: 5px;
+            }
+            .action-buttons {
+                flex-direction: column;
+            }
+            .pay-button, .contact-button {
+                display: block;
+                margin: 10px 0;
+            }
+            .method-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div style="background: rgba(255, 193, 7, 0.1); width: 64px; height: 64px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto 16px; border: 1px solid rgba(255, 193, 7, 0.2);">
+                <img src="{{logoUrl}}" alt="Logo" style="width: 44px; height: 44px; outline: none; border: none; text-decoration: none;" />
+            </div>
+            <div class="reminder-icon"></div>
+            <h1>Pengingat Pembayaran Langganan</h1>
+            <p>Pengingat pembayaran untuk Admin Tenant.</p>
+        </div>
+
+        <p>Halo <strong>{{adminName}}</strong>,</p>
+        <p>Berikut pengingat pembayaran untuk langganan <strong>{{planName}}</strong>.</p>
+
+        <div class="billing-details">
+            <h3 style="margin-top: 0; color: #333;">Detail Tagihan</h3>
+            
+            <div class="detail-row">
+                <span class="detail-label">Jumlah Tagihan:</span>
+                <span class="detail-value amount">{{amountIdr}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Deskripsi:</span>
+                <span class="detail-value">{{planName}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Tanggal Tagihan:</span>
+                <span class="detail-value">{{billingDateStr}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Jatuh Tempo:</span>
+                <span class="detail-value">{{dueDateStr}}</span>
+            </div>
+            
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value" style="color: #dc3545; font-weight: bold;">BELUM LUNAS</span>
+            </div>
+        </div>
+
+        {{#if (eq status 'UNPAID')}}
+        <div class="due-date">
+            <h4 style="margin-top: 0;">📅 Jatuh Tempo: {{daysUntilDue}} hari lagi</h4>
+            <p style="margin-bottom: 0;">Harap lakukan pembayaran sebelum tanggal jatuh tempo agar layanan tetap aktif tanpa gangguan.</p>
+        </div>
+        {{/if}}
+
+        {{#if (eq status 'OVERDUE')}}
+        <div class="due-date overdue">
+            <h4 style="margin-top: 0;">⚠️ Pengingat Pembayaran – Dalam Masa Tenggang</h4>
+            <p style="margin-bottom: 0;">Tagihan telah melewati tanggal jatuh tempo. Layanan masih dapat digunakan dalam masa tenggang. Jika pembayaran belum dilakukan hingga masa tenggang berakhir, akses layanan dapat dibatasi sementara.</p>
+        </div>
+        {{/if}}
+
+        <div class="payment-methods">
+            <h4 style="margin-top: 0; color: #0056b3;">Metode Pembayaran Tersedia:</h4>
+            <div class="method-list">
+                <div class="method-item">
+                    <strong>QRIS</strong><br>
+                    <small>Scan & Pay</small>
+                </div>
+                <div class="method-item">
+                    <strong>Virtual Account</strong><br>
+                    <small>Transfer Bank</small>
+                </div>
+                <div class="method-item">
+                    <strong>E-Wallet</strong><br>
+                    <small>OVO, GoPay, DANA</small>
+                </div>
+                <div class="method-item">
+                    <strong>Credit Card</strong><br>
+                    <small>Visa, Mastercard</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="{{invoiceUrl}}" class="pay-button">
+                BAYAR SEKARANG
+            </a>
+            {{#if supportWhatsappUrl}}
+            <a href="{{supportWhatsappUrl}}" class="contact-button" style="background-color: #25D366;">Hubungi WhatsApp</a>
+            {{else}}
+            <a href="mailto:{{supportEmail}}" class="contact-button">Hubungi Admin</a>
+            {{/if}}
+        </div>
+
+        <p>Jika Anda sudah melakukan pembayaran, mohon abaikan email ini. Sistem kami akan memperbarui status pembayaran secara otomatis.</p>
+
+        {{#if (eq status 'OVERDUE')}}
+        <div style="background-color: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #f5c6cb;">
+            <h4 style="margin-top: 0;">Penting:</h4>
+            <p style="margin-bottom: 0;">Tagihan yang terlambat dapat dikenakan kebijakan sesuai ketentuan layanan. Silakan hubungi administrasi untuk informasi lebih lanjut.</p>
+        </div>
+        {{/if}}
+
+        <div class="footer">
+            <p>Email ini dikirim secara otomatis oleh sistem.</p>
+            <p>Terima kasih atas perhatian Anda.</p>
+            <p style="font-size: 12px; color: #999;">
+                Jika Anda memerlukan bantuan, silakan hubungi tim support kami.<br>
+                Jangan membalas email ini karena dikirim secara otomatis.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

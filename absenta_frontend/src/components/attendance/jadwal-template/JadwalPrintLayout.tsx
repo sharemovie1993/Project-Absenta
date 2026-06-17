@@ -1,0 +1,218 @@
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { type JadwalTemplate } from '../../../api/attendance/jadwalTemplate.api';
+
+interface JadwalPrintLayoutProps {
+  jadwal: JadwalTemplate[];
+  guruName?: string;
+  subjectName?: string;
+  isPrinting: boolean;
+}
+
+const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+const DAY_ABBR: Record<string, string> = {
+  'SENIN': 'Se',
+  'SELASA': 'Se',
+  'RABU': 'Ra',
+  'KAMIS': 'Ka',
+  'JUMAT': 'Ju',
+  'SABTU': 'Sa',
+};
+
+const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1);
+
+const SLOT_TIME: Record<number, string> = {
+  1: "07:00 - 07:45",
+  2: "07:45 - 08:30",
+  3: "08:30 - 09:15",
+  4: "09:35 - 10:20",
+  5: "10:20 - 11:05",
+  6: "11:05 - 11:50",
+  7: "12:30 - 13:15",
+  8: "13:15 - 14:00",
+  9: "14:00 - 14:45",
+  10: "14:45 - 15:30",
+};
+
+export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
+  jadwal,
+  guruName,
+  subjectName,
+  isPrinting
+}) => {
+  if (!isPrinting) return null;
+
+  const getSlotData = (day: string, slotIndex: number) => {
+    const slotRange = SLOT_TIME[slotIndex].split(' - ');
+    const slotStart = slotRange[0];
+    const slotEnd = slotRange[1];
+
+    return jadwal.find(j => {
+      if (j.hari !== day) return false;
+      const jamMulai = j.jam_mulai.split(':').slice(0, 2).join(':');
+      return jamMulai >= slotStart && jamMulai < slotEnd;
+    });
+  };
+
+  const derivedSubject = subjectName || Array.from(new Set(jadwal.map(j => j.Mapel?.nama_mapel).filter(Boolean)))[0] || '-';
+  const derivedGuru = guruName || Array.from(new Set(jadwal.map(j => j.Guru?.User?.full_name).filter(Boolean)))[0] || '-';
+
+  const content = (
+    <div className="absenta-print-container">
+      <style>
+        {`
+          /* Sembunyikan kontainer di layar biasa */
+          .absenta-print-container {
+            display: none;
+          }
+
+          @media print {
+            /* Pengaturan Kertas */
+            @page {
+              size: landscape;
+              margin: 10mm;
+            }
+
+            /* Sembunyikan elemen utama aplikasi (di luar Portal) */
+            body > *:not(.absenta-print-container) {
+              display: none !important;
+            }
+
+            /* Tampilkan kontainer print */
+            .absenta-print-container {
+              display: block !important;
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              background: white !important;
+              color: black !important;
+            }
+
+            body {
+              background: white !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            .asc-table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+              border: 2px solid #000;
+              background: white !important;
+            }
+            .asc-table th, .asc-table td {
+              border: 1px solid #000;
+              padding: 2px;
+              height: 60px;
+              position: relative;
+              background: white !important;
+            }
+            .asc-table th {
+              height: 35px;
+              font-weight: bold;
+            }
+            .slot-num {
+              font-size: 12px;
+              font-weight: bold;
+            }
+            .slot-time {
+              font-size: 8px;
+              font-weight: normal;
+            }
+            .day-col {
+              width: 50px;
+              font-size: 20px;
+              font-weight: bold;
+              text-align: center;
+            }
+            .cell-initials {
+              position: absolute;
+              top: 1px;
+              left: 1px;
+              font-size: 7px;
+              font-weight: bold;
+            }
+            .cell-class {
+              font-size: 14px;
+              font-weight: bold;
+              text-align: center;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              height: 100%;
+            }
+            .header-text {
+              font-size: 28px;
+              font-weight: normal;
+              text-align: center;
+              margin-bottom: 15px;
+              font-family: sans-serif;
+            }
+            .footer {
+              display: flex;
+              justify-content: space-between;
+              font-size: 9px;
+              margin-top: 10px;
+              font-family: sans-serif;
+            }
+          }
+        `}
+      </style>
+
+      <div className="p-4 bg-white">
+        <h1 className="header-text">
+          Teacher {derivedGuru} ( {derivedSubject} )
+        </h1>
+
+        <table className="asc-table">
+          <thead>
+            <tr>
+              <th style={{ width: '60px' }}></th>
+              {SLOTS.map(slot => (
+                <th key={slot}>
+                  <div className="slot-num">{slot}</div>
+                  <div className="slot-time">{SLOT_TIME[slot]}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {DAYS.filter(d => d !== 'SABTU' || jadwal.some(j => j.hari === 'SABTU')).map(day => (
+              <tr key={day}>
+                <td className="day-col">{DAY_ABBR[day]}</td>
+                {SLOTS.map(slot => {
+                  const item = getSlotData(day, slot);
+                  const teacherInitials = item?.Guru?.User?.full_name 
+                    ? item.Guru.User.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    : '';
+                  
+                  return (
+                    <td key={slot}>
+                      {item && (
+                        <>
+                          <div className="cell-initials">{teacherInitials}</div>
+                          <div className="cell-class">{item.Kelas?.nama_kelas}</div>
+                        </>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="footer">
+          <div>Menghasilkan jadwal: {format(new Date(), 'dd/MM/yyyy', { locale: id })}</div>
+          <div>aSc Timetables</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(content, document.body);
+};

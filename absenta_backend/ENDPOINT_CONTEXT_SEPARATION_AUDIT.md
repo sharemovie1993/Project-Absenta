@@ -1,0 +1,141 @@
+# ENDPOINT CONTEXT SEPARATION AUDIT
+Generated on: 2026-03-16T13:32:50.808Z
+
+## Summary
+- Total endpoints scanned (requireCapability): 168
+- PLATFORM domain endpoints: 119
+- PLATFORM LEAK findings: 7
+
+## PLATFORM Domain Endpoints
+- DELETE /api/billing/billings/:id | billing.invoices.cancel | src/modules/billing/routes/billing.routes.ts
+- DELETE /api/billing/plans/:id | billing.plans.delete | src/modules/billing/routes/plan.routes.ts
+- DELETE /api/billing/subscriptions/:id | billing.subscriptions.cancel | src/modules/billing/routes/subscription.routes.ts
+- DELETE /api/payments/:payment_id | billing.payments.delete | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/payments/:payment_id | billing.payments.view.history | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/payments/:payment_id | billing.payments.view.history | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/payments/:payment_id | billing.payments.view.history | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/payments/:payment_id | billing.view.monitoring | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/payments/:payment_id | billing.view.monitoring | src/modules/payment/routes/payment.routes.ts
+- DELETE /api/superadmin/tenants/:tenantId/users/:userId | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- DELETE /api/tenants/:id | core.tenants.delete | src/modules/tenant/routes/tenant.routes.ts
+- GET /api/admin/analytics/cohort | superadmin.analytics.view | src/modules/analytics/routes/analytics-admin.routes.ts
+- GET /api/admin/analytics/revenue | superadmin.analytics.view | src/modules/analytics/routes/analytics-admin.routes.ts
+- GET /api/admin/analytics/revenue-forecast | superadmin.analytics.view | src/modules/analytics/routes/analytics-admin.routes.ts
+- GET /api/admin/analytics/upgrade/month/:month | superadmin.upgrade.intelligence.view | src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts
+- GET /api/admin/analytics/upgrade/overview | superadmin.upgrade.intelligence.view | src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts
+- GET /api/admin/analytics/upgrade/tenant/:tenantId/:month | superadmin.upgrade.intelligence.view | src/modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes.ts
+- GET /api/admin/infra/cluster/autoscaler-events | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/cluster/nodes | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/cluster/queues | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/cluster/workers | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/health | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/jobs | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/jobs/:name | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/queue-forecast | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/queue-pressure | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/queues | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/worker-nodes | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/infra/workers | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- GET /api/admin/revenue/churn | superadmin.revenue.view.overview | src/modules/revenue/routes/revenue-admin.routes.ts
+- GET /api/admin/revenue/exposure | superadmin.revenue.view.overview | src/modules/revenue/routes/revenue-admin.routes.ts
+- GET /api/admin/revenue/overview | superadmin.revenue.view.overview | src/modules/revenue/routes/revenue-admin.routes.ts
+- GET /api/admin/revenue/trend | superadmin.revenue.view.overview | src/modules/revenue/routes/revenue-admin.routes.ts
+- GET /api/admin/risk/overview | superadmin.risk.view | src/modules/risk/routes/risk-admin.routes.ts
+- GET /api/admin/risk/tenant/:id | superadmin.risk.view | src/modules/risk/routes/risk-admin.routes.ts
+- GET /api/billing/billings | billing.invoices.view.list | src/modules/billing/routes/billing.routes.ts
+- GET /api/billing/billings/:id | billing.billings.view.detail | src/modules/billing/routes/billing.routes.ts
+- GET /api/billing/billings/stats | billing.reports.view.summary | src/modules/billing/routes/billing.routes.ts
+- GET /api/billing/billings/subscription/:subscription_id | billing.billings.view.list | src/modules/billing/routes/billing.routes.ts
+- GET /api/billing/plans | billing.plans.view.list | src/modules/billing/routes/plan.routes.ts
+- GET /api/billing/plans/:id | billing.plans.view.detail | src/modules/billing/routes/plan.routes.ts
+- GET /api/billing/plans/analytics | billing.plans.view.list | src/modules/billing/routes/plan.routes.ts
+- GET /api/billing/subscriptions | billing.subscriptions.view.list | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/:id | billing.subscriptions.view.detail | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/:id/history | billing.subscriptions.view.detail | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/active | billing.subscriptions.view.active | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/analytics | billing.subscriptions.view.analytics | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/current | billing.subscriptions.view.active | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/tenant/:tenant_id | billing.subscriptions.view.list | src/modules/billing/routes/subscription.routes.ts
+- GET /api/billing/subscriptions/tenant/:tenant_id/history | billing.subscriptions.view.detail | src/modules/billing/routes/subscription.routes.ts
+- GET /api/subscriptions/check | billing.subscriptions.view.active | src/modules/billing/routes/subscription-check.routes.ts
+- GET /api/superadmin/infra/socket/global | superadmin.infra.view.socket.global | src/modules/superadmin/infra/routes/infra.routes.ts
+- GET /api/superadmin/infra/socket/tenants | superadmin.infra.view.socket.tenants | src/modules/superadmin/infra/routes/infra.routes.ts
+- GET /api/superadmin/intelligence/attendance-health | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/summary | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/attendance-tenant/:tenantId/trends | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/email-health | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/overview | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/payment-health | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/intelligence/top-risk | superadmin.platform.intelligence.view | src/modules/superadmin/infra/routes/platformIntelligence.routes.ts
+- GET /api/superadmin/tenants/:tenantId | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/academic | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/activities | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/attendance | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/billing | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/export | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/logs | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/metrics | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/user-statistics | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/superadmin/tenants/:tenantId/users | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- GET /api/system/observability/overview | superadmin.infra.monitoring.view | src/modules/observability/routes/observability.routes.ts
+- GET /api/tenants | core.tenants.view.list | src/modules/tenant/routes/tenant.routes.ts
+- GET /api/tenants/:id | core.tenants.view.detail | src/modules/tenant/routes/tenant.routes.ts
+- POST /api/admin/infra/diagnostic-load | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/jobs/:name/run | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/queues/:name/pause | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/queues/:name/resume | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/workers/action | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/workers/restart | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/workers/start | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/admin/infra/workers/stop | superadmin.infra.monitoring.view | src/modules/superadmin/infra-monitoring/routes/infra-monitoring.routes.ts
+- POST /api/billing/billings | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/:id/generate-invoice | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/:id/mark-overdue | billing.invoices.pay | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/:id/mark-paid | billing.invoices.pay | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/check-overdue | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/generate | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/generate-monthly | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/billings/run-recurring | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- POST /api/billing/plans | billing.plans.create | src/modules/billing/routes/plan.routes.ts
+- POST /api/billing/subscriptions | billing.subscriptions.create | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/cancel | billing.subscriptions.cancel | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/cancel/undo | billing.subscriptions.cancel | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/choose-plan | billing.subscriptions.choose.plan | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/downgrade | billing.subscriptions.update | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/downgrade/cancel | billing.subscriptions.update | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/renew | billing.subscriptions.renew | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/:id/resume | billing.subscriptions.resume | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/check-expired | billing.subscriptions.check.expired | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/order | billing.subscriptions.order | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/upgrade-wizard | billing.subscriptions.upgrade.wizard | src/modules/billing/routes/subscription.routes.ts
+- POST /api/billing/subscriptions/upgrade/cancel | billing.subscriptions.upgrade.cancel | src/modules/billing/routes/subscription.routes.ts
+- POST /api/payments/create | billing.payments.create | src/modules/payment/routes/payment.routes.ts
+- POST /api/payments/create | billing.payments.view.status | src/modules/payment/routes/payment.routes.ts
+- POST /api/payments/create | billing.payments.cancel | src/modules/payment/routes/payment.routes.ts
+- POST /api/payments/create | billing.payments.view.history | src/modules/payment/routes/payment.routes.ts
+- POST /api/payments/create | billing.payments.retry | src/modules/payment/routes/payment.routes.ts
+- POST /api/pdf/invoice/:id | billing.invoices.view.detail | src/modules/pdf/routes/pdf.routes.ts
+- POST /api/superadmin/tenants/:tenantId/users | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- POST /api/system/config | core.system.config.update | src/modules/system-config/routes/system-config.routes.ts
+- POST /api/tenants | core.tenants.create | src/modules/tenant/routes/tenant.routes.ts
+- POST /api/tenants/:id/cancel-deletion | core.tenants.cancel.deletion | src/modules/tenant/routes/tenant.routes.ts
+- POST /api/tenants/:id/request-deletion | core.tenants.request.deletion | src/modules/tenant/routes/tenant.routes.ts
+- PUT /api/billing/billings/:id | billing.invoices.generate | src/modules/billing/routes/billing.routes.ts
+- PUT /api/billing/plans/:id | billing.plans.update | src/modules/billing/routes/plan.routes.ts
+- PUT /api/billing/subscriptions/:id | billing.subscriptions.update | src/modules/billing/routes/subscription.routes.ts
+- PUT /api/superadmin/tenants/:tenantId/users/:userId | superadmin.tenants.manage | src/modules/superadmin/tenant-detail/routes/tenant-detail.routes.ts
+- PUT /api/system/config | core.system.config.update | src/modules/system-config/routes/system-config.routes.ts
+- PUT /api/tenants/:id | core.tenants.update | src/modules/tenant/routes/tenant.routes.ts
+
+## PLATFORM LEAK Findings
+- GET /api/tenants | core.tenants.view.list | PLATFORM LEAK: Missing tenant endpoint
+- GET /api/tenants/:id | core.tenants.view.detail | PLATFORM LEAK: Missing tenant endpoint
+- POST /api/tenants | core.tenants.create | PLATFORM LEAK: Missing tenant endpoint
+- PUT /api/tenants/:id | core.tenants.update | PLATFORM LEAK: Missing tenant endpoint
+- DELETE /api/tenants/:id | core.tenants.delete | PLATFORM LEAK: Missing tenant endpoint
+- POST /api/tenants/:id/request-deletion | core.tenants.request.deletion | PLATFORM LEAK: Missing tenant endpoint
+- POST /api/tenants/:id/cancel-deletion | core.tenants.cancel.deletion | PLATFORM LEAK: Missing tenant endpoint
+
+## Recommended Tenant Replacement Endpoints
+- GET /api/me/tenant (capability: core.sekolah.view.profile)
+- GET /api/sekolah/me (capability: core.sekolah.view.profile)

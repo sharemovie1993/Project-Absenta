@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitur Unggulan</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1F2937; }
+    .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #F9FAFB; }
+    .header { background: #0EA5E9; color: #fff; padding: 16px 24px; border-radius: 8px 8px 0 0; }
+    .content { background: #fff; padding: 24px; border: 1px solid #E5E7EB; border-top: none; }
+    .cta { display: inline-block; background: #16A34A; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 6px; margin-top: 16px; }
+    .feature { margin: 12px 0; }
+    .footer { color: #6B7280; font-size: 12px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Fitur Unggulan: Absensi RFID & Laporan Real-time</h2>
+    </div>
+    <div class="content">
+      <p>Halo Admin {{tenantName}}, berikut manfaat yang bisa Anda dapatkan:</p>
+      <div class="feature">
+        <strong>Absensi RFID</strong> — Tap cepat, akurat, dan aman
+      </div>
+      <div class="feature">
+        <strong>Laporan Real-time</strong> — Pantau hadir, telat, dan ketidakhadiran secara langsung
+      </div>
+      {{#if ctaUrl}}
+      <p>
+        <a class="cta" href="{{ctaUrl}}" target="_blank" rel="noopener">Coba fitur sekarang</a>
+      </p>
+      {{/if}}
+      <p class="footer">Email ini dikirim otomatis oleh sistem. &copy; 2024 Sistem Absensi Multitenant</p>
+    </div>
+  </div>
+</body>
+</html>

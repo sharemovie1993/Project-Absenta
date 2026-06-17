@@ -1,0 +1,384 @@
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import useConfirm from '../../../hooks/useConfirm';
+import { useToast } from '../../../hooks/useToast';
+import { useAuth } from '../../../hooks/useAuth';
+import { 
+  Edit, 
+  Trash2, 
+  Eye, 
+  Plus, 
+  Search, 
+  RefreshCw, 
+  Download, 
+  Upload,
+  AlertCircle 
+} from 'lucide-react';
+import { 
+  Button, 
+  Input, 
+  Modal, 
+  Badge, 
+  Loader,
+  Checkbox,
+  Skeleton
+} from '../../ui';
+
+// Lazy load Table to improve mobile performance (TBT)
+const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
+import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { getJurusanList, deleteJurusan } from '../../../api/academic/jurusan.api';
+import type { Jurusan } from '../../../types/academic';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+
+interface JurusanListProps {
+  onEdit?: (jurusan: Jurusan) => void;
+  onView?: (jurusan: Jurusan) => void;
+  onAdd?: () => void;
+  onImport?: () => void;
+  onExport?: () => void;
+  isExporting?: boolean;
+  refreshTrigger?: number;
+}
+
+const JurusanList: React.FC<JurusanListProps> = React.memo(({ 
+  onEdit, 
+  onView,
+  onAdd, 
+  onImport, 
+  onExport, 
+  isExporting = false,
+  refreshTrigger = 0 
+}) => {
+  const isMobile = useIsMobile();
+  const confirm = useConfirm();
+  const [jurusans, setJurusans] = useState<Jurusan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [pageInput, setPageInput] = useState('1');
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  
+  const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  const { showToast } = useToast();
+  const { can } = useAuth();
+  
+  // Check if user can perform CRUD operations
+  const canManage = useMemo(() => {
+    return can('academic.structures.update') || can('academic.structures.delete');
+  }, [can]);
+
+  const allVisibleSelected = useMemo(() => {
+    if (jurusans.length === 0) return false;
+    return jurusans.every(j => selectedIds.has(j.id));
+  }, [jurusans, selectedIds]);
+
+  // Fetch jurusans
+  const fetchJurusans = useCallback(async (page = 1, search = '') => {
+    try {
+      setLoading(true);
+      const response = await getJurusanList(page, itemsPerPage, search);
+      
+      if (response.success) {
+        setJurusans(response.data);
+        setTotalPages(response.pagination.totalPages);
+        setTotalItems(response.pagination.total);
+        setCurrentPage(response.pagination.page);
+      } else {
+        showToast('Gagal memuat data jurusan', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching jurusans:', error);
+      showToast('Terjadi kesalahan saat memuat data jurusan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast, itemsPerPage]);
+
+  useEffect(() => {
+    fetchJurusans(1, debouncedSearchTerm);
+  }, [debouncedSearchTerm, fetchJurusans]);
+
+  useEffect(() => {
+    setPageInput(String(currentPage));
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchJurusans(currentPage, debouncedSearchTerm);
+    }
+  }, [refreshTrigger, fetchJurusans, currentPage, debouncedSearchTerm]);
+
+  const handlePageChange = useCallback((page: number) => {
+    fetchJurusans(page, debouncedSearchTerm);
+  }, [fetchJurusans, debouncedSearchTerm]);
+
+  const handleDelete = useCallback(async (jurusan: Jurusan) => {
+    try {
+      const ok = await confirm({
+        title: 'Konfirmasi Hapus Jurusan',
+        description: `Apakah Anda yakin ingin menghapus jurusan ${jurusan.nama}? Tindakan ini tidak dapat dibatalkan.`,
+        confirmText: 'Ya, Hapus',
+        cancelText: 'Batal',
+        style: 'danger',
+      });
+
+      if (!ok) return;
+
+      setDeleting(true);
+      const response = await deleteJurusan(jurusan.id);
+      
+      if (response.success) {
+        showToast(response.message || 'Jurusan berhasil dihapus', 'success');
+        fetchJurusans(currentPage, debouncedSearchTerm);
+      } else {
+        showToast(response.message || 'Gagal menghapus jurusan', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting jurusan:', error);
+      showToast(error.response?.data?.message || 'Terjadi kesalahan saat menghapus jurusan', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }, [showToast, fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
+
+  const columns = useMemo(() => [
+    { 
+      key: 'nama', 
+      label: 'Nama Jurusan',
+      sortable: true,
+      render: (value: string) => (
+        <div className="font-bold text-slate-800 dark:text-slate-200">{value}</div>
+      )
+    },
+    { 
+      key: 'kode', 
+      label: 'Kode',
+      sortable: true,
+      render: (value: string) => (
+        <Badge variant="success" className="font-mono text-[10px]">
+          {value}
+        </Badge>
+      )
+    },
+    { 
+      key: 'keterangan', 
+      label: 'Keterangan',
+      render: (value: string | null) => value || '-'
+    },
+    { 
+      key: 'actions', 
+      label: 'Aksi', 
+      render: (_: any, jurusan: Jurusan) => (
+        <div className="flex items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onEdit?.(jurusan)}
+            aria-label="Edit Jurusan"
+            className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            <Eye className="w-4 h-4" />
+          </Button>
+          {canManage && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={() => onEdit?.(jurusan)}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={() => handleDelete(jurusan)}
+                disabled={deleting}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      )
+    },
+  ], [canManage, onEdit, deleting, handleDelete]);
+
+  const handlePageJump = useCallback(() => {
+    let p = parseInt(pageInput, 10) || 1;
+    if (p < 1) p = 1;
+    if (p > totalPages) p = totalPages;
+    handlePageChange(p);
+  }, [pageInput, totalPages, handlePageChange]);
+
+  const paginationText = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage + 1;
+    const end = Math.min(currentPage * itemsPerPage, totalItems);
+    return `Menampilkan ${start}-${end} dari ${totalItems} data`;
+  }, [currentPage, totalItems, itemsPerPage]);
+
+  return (
+    <div className="flex flex-col">
+      {/* Toolbar Baris Kedua - Filter & Search */}
+      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+        <div className="flex-1 relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <Input
+            placeholder="Cari jurusan..."
+            aria-label="Cari Jurusan"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 shadow-sm pl-9"
+          />
+        </div>
+      </div>
+      
+      <div className="bg-transparent overflow-hidden">
+        {isMobile ? (
+          <MobileAcademicList
+            title="Daftar Jurusan"
+            data={jurusans}
+            loading={loading}
+            totalItems={totalItems}
+            onRefresh={() => fetchJurusans(currentPage, debouncedSearchTerm)}
+            onAdd={onAdd}
+            canManage={canManage}
+            pagination={{
+              currentPage,
+              totalPages,
+              onPageChange: handlePageChange
+            }}
+            renderCard={useCallback((jurusan: Jurusan) => (
+              <div 
+                key={jurusan.id}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                onClick={() => onEdit?.(jurusan)}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{jurusan.nama}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="success" className="font-mono text-[9px] px-1.5 py-0.5">
+                        {jurusan.kode}
+                      </Badge>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight">
+                        ID: {jurusan.id.substring(0, 8)}
+                      </span>
+                    </div>
+                  </div>
+                  <Badge variant="info" className="text-[9px] px-2 py-0.5 rounded-full">
+                    Jurusan
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit?.(jurusan);
+                    }}
+                    className="h-10 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
+                  >
+                    Detail & Edit
+                  </Button>
+                </div>
+              </div>
+            ), [onEdit])}
+          />
+        ) : (
+          <div className="hidden md:block">
+            <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+              <Table
+              columns={columns}
+              data={jurusans}
+              loading={loading}
+              emptyMessage="Tidak ada data jurusan ditemukan"
+              className="border-none"
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              toolbarLeft={
+                <div className="flex flex-wrap items-center gap-2">
+                  {canManage && onAdd && (
+                      <Button 
+                        onClick={onAdd}
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        className="rounded-xl"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" />
+                        Tambah Jurusan
+                      </Button>
+                  )}
+      
+                  {canManage && onImport && (
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={onImport}
+                        className="rounded-xl"
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                        Import
+                      </Button>
+                  )}
+                  
+                  <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={onExport}
+                      disabled={isExporting}
+                      className="rounded-xl"
+                    >
+                      {isExporting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5 mr-1.5" />
+                          Export
+                        </>
+                      )}
+                    </Button>
+        
+                  <Button
+                      variant="toolbarOutline"
+                      size="toolbarIcon"
+                      onClick={() => fetchJurusans(currentPage, debouncedSearchTerm)}
+                      aria-label="Refresh Data"
+                      className="rounded-xl"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                </div>
+              }
+              />
+            </Suspense>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
+export default JurusanList;

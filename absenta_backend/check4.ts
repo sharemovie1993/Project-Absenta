@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const missing = await prisma.permission.findMany({ where: { id: { in: ['attendance.sessions.create', 'attendance.sessions.close', 'attendance.recap.view.daily', 'attendance.recap.view.monthly'] } } }); console.log(missing); } main().finally(() => prisma.$disconnect());

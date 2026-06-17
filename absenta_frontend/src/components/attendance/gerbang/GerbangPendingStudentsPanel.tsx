@@ -1,0 +1,255 @@
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Button from '../../ui/Button';
+import Loader from '../../ui/Loader';
+import { default as ConfirmDialog } from '../../ui/ConfirmDialog';
+import { 
+  User, 
+  Clock, 
+  Stethoscope, 
+  FileText, 
+  AlertCircle, 
+  Zap,
+  CheckCircle2
+} from 'lucide-react';
+
+interface StudentRow {
+  id: string;
+  nama_siswa: string;
+  nis?: string;
+  Siswa?: {
+    nama_siswa?: string;
+    nis?: string;
+  };
+}
+
+export function GerbangPendingStudentsPanel({
+  students,
+  loading,
+  isPetugas,
+  confirmEnabled = true,
+  viewMode = 'grid',
+  onMarkSakit,
+  onMarkIzin,
+  onMarkAlpa,
+  onMarkDispen,
+  onMarkHadir,
+}: {
+  students: Array<StudentRow>;
+  loading: boolean;
+  isPetugas: boolean;
+  confirmEnabled?: boolean;
+  viewMode?: 'grid' | 'list';
+  onMarkSakit: (siswaId: string) => void;
+  onMarkIzin: (siswaId: string) => void;
+  onMarkAlpa: (siswaId: string) => void;
+  onMarkDispen: (siswaId: string) => void;
+  onMarkHadir: (siswaId: string) => void;
+}) {
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [confirmTarget, setConfirmTarget] = React.useState<{ id: string; nama: string; action: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' | 'HADIR' } | null>(null);
+
+  const openConfirm = async (row: any, action: 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' | 'HADIR') => {
+    if (!confirmEnabled) {
+      try {
+        const id = String(row.id);
+        if (action === 'SAKIT') await onMarkSakit(id);
+        else if (action === 'IZIN') await onMarkIzin(id);
+        else if (action === 'DISPEN') await onMarkDispen(id);
+        else if (action === 'HADIR') await onMarkHadir(id);
+        else await onMarkAlpa(id);
+      } catch (e) {
+        console.error('OpenConfirm direct action failed', e);
+      }
+      return;
+    }
+    setConfirmTarget({ id: String(row.id), nama: String(row.nama_siswa || row.Siswa?.nama_siswa || 'Siswa'), action });
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmTarget) return;
+    const { id, action } = confirmTarget;
+    if (action === 'SAKIT') await onMarkSakit(id);
+    else if (action === 'IZIN') await onMarkIzin(id);
+    else if (action === 'DISPEN') await onMarkDispen(id);
+    else if (action === 'HADIR') await onMarkHadir(id);
+    else await onMarkAlpa(id);
+    setConfirmOpen(false);
+    setConfirmTarget(null);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white/40 dark:bg-gray-800/20 rounded-xl border border-gray-100 dark:border-gray-800 border-dashed">
+        <Loader className="animate-spin text-indigo-600 mb-4" size="lg" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Menyinkronkan Daftar...</p>
+      </div>
+    );
+  }
+
+  const renderGrid = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <AnimatePresence mode="popLayout">
+        {students.map((row: any, idx: number) => {
+          const nama = row.nama_siswa || row.Siswa?.nama_siswa || 'Siswa';
+          const initials = nama.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+          
+          return (
+            <motion.div 
+              key={row.id || idx} 
+              layout
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, x: -20 }}
+              transition={{ duration: 0.3, delay: idx * 0.02 }}
+              className="group relative bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-100 dark:border-gray-800 shadow-xl shadow-black/[0.02] hover:shadow-2xl hover:shadow-indigo-600/5 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-800 flex items-center justify-center border border-gray-100 dark:border-gray-700 text-sm font-black text-gray-400 group-hover:scale-110 transition-transform">
+                    {initials}
+                 </div>
+                 <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-gray-900 dark:text-white truncate text-base leading-tight">
+                      {nama}
+                    </h4>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                      NIS: {row.nis || row.Siswa?.nis || '-'}
+                    </p>
+                 </div>
+              </div>
+
+              <div className="mt-6 flex items-center gap-2">
+                 <div className="flex-1 grid grid-cols-2 gap-2">
+                     <Button 
+                       size="sm" 
+                       className="col-span-2 rounded-xl h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] uppercase tracking-widest gap-2"
+                       onClick={() => openConfirm(row, 'HADIR')}
+                       disabled={!isPetugas}
+                       aria-label={`Tandai ${nama} Hadir`}
+                     >
+                       <CheckCircle2 className="w-3.5 h-3.5" /> Hadir
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="rounded-xl h-10 border-amber-100 dark:border-amber-900/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       onClick={() => openConfirm(row, 'SAKIT')}
+                       disabled={!isPetugas}
+                       aria-label={`Tandai ${nama} Sakit`}
+                     >
+                       <Stethoscope className="w-3.5 h-3.5" /> Sakit
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="rounded-xl h-10 border-blue-100 dark:border-blue-900/40 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       onClick={() => openConfirm(row, 'IZIN')}
+                       disabled={!isPetugas}
+                       aria-label={`Tandai ${nama} Izin`}
+                     >
+                       <FileText className="w-3.5 h-3.5" /> Izin
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="rounded-xl h-10 border-indigo-100 dark:border-indigo-900/40 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       onClick={() => openConfirm(row, 'DISPEN')}
+                       disabled={!isPetugas}
+                       aria-label={`Tandai ${nama} Dispen`}
+                     >
+                       <Zap className="w-3.5 h-3.5" /> Dispen
+                     </Button>
+                     <Button 
+                       size="sm" 
+                       variant="outline" 
+                       className="rounded-xl h-10 border-red-100 dark:border-red-900/40 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-black text-[10px] uppercase tracking-widest gap-2 pl-3"
+                       onClick={() => openConfirm(row, 'ALPA')}
+                       disabled={!isPetugas}
+                       aria-label={`Tandai ${nama} Alpa`}
+                     >
+                       <AlertCircle className="w-3.5 h-3.5" /> Alpa
+                     </Button>
+                 </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+
+  const renderList = () => (
+    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+       <div className="overflow-x-auto">
+          <table className="w-full text-left">
+             <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                <tr>
+                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Nama Siswa</th>
+                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">NIS</th>
+                   <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Tindakan Kehadiran</th>
+                </tr>
+             </thead>
+             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                <AnimatePresence mode="popLayout">
+                  {students.map((row: any, idx: number) => {
+                    const nama = row.nama_siswa || row.Siswa?.nama_siswa || 'Siswa';
+                    return (
+                      <motion.tr 
+                        key={row.id || idx}
+                        layout
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 50 }}
+                        className="hover:bg-gray-50/30 dark:hover:bg-gray-800/10 transition-colors"
+                      >
+                         <td className="px-6 py-4">
+                            <span className="font-bold text-gray-900 dark:text-white text-sm">{nama}</span>
+                         </td>
+                         <td className="px-6 py-4">
+                            <span className="text-xs font-black text-gray-400 uppercase tracking-tighter">{row.nis || row.Siswa?.nis || '-'}</span>
+                         </td>
+                         <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                               <Button size="sm" className="h-8 min-w-[70px] rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] uppercase tracking-wider" onClick={() => openConfirm(row, 'HADIR')} disabled={!isPetugas} aria-label={`Tandai ${nama} Hadir`}>Hadir</Button>
+                               <Button size="sm" variant="outline" className="h-8 min-w-[70px] rounded-lg border-amber-100 text-amber-600 font-black text-[9px] uppercase tracking-wider" onClick={() => openConfirm(row, 'SAKIT')} disabled={!isPetugas} aria-label={`Tandai ${nama} Sakit`}>Sakit</Button>
+                               <Button size="sm" variant="outline" className="h-8 min-w-[70px] rounded-lg border-blue-100 text-blue-600 font-black text-[9px] uppercase tracking-wider" onClick={() => openConfirm(row, 'IZIN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Izin`}>Izin</Button>
+                               <Button size="sm" variant="outline" className="h-8 min-w-[70px] rounded-lg border-indigo-100 text-indigo-600 font-black text-[9px] uppercase tracking-wider" onClick={() => openConfirm(row, 'DISPEN')} disabled={!isPetugas} aria-label={`Tandai ${nama} Dispen`}>Dispen</Button>
+                               <Button size="sm" variant="outline" className="h-8 min-w-[70px] rounded-lg border-red-100 text-red-600 font-black text-[9px] uppercase tracking-wider" onClick={() => openConfirm(row, 'ALPA')} disabled={!isPetugas} aria-label={`Tandai ${nama} Alpa`}>Alpa</Button>
+                            </div>
+                         </td>
+                      </motion.tr>
+                    );
+                  })}
+                </AnimatePresence>
+             </tbody>
+          </table>
+       </div>
+    </div>
+  );
+
+  return (
+    <>
+      {viewMode === 'grid' ? renderGrid() : renderList()}
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Konfirmasi Kehadiran"
+        description={confirmTarget ? (
+          <div className="space-y-4 py-2">
+             <p className="text-sm font-medium text-gray-600">Catat <span className="font-black text-gray-900">{confirmTarget.nama}</span> dengan keterangan <span className={`font-black uppercase ${confirmTarget.action === 'ALPA' ? 'text-red-600' : (confirmTarget.action === 'HADIR' ? 'text-emerald-600' : 'text-indigo-600')}`}>{confirmTarget.action}</span>?</p>
+             <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-indigo-600" />
+                <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">Data harian siswa ini akan segera diperbarui secara permanen.</p>
+             </div>
+          </div>
+        ) : ''}
+        confirmText="Konfirmasi"
+        cancelText="Batal"
+        onConfirm={handleConfirm}
+        onCancel={() => { setConfirmOpen(false); setConfirmTarget(null); }}
+        style={confirmTarget?.action === 'ALPA' ? 'danger' : (confirmTarget?.action === 'HADIR' ? 'success' : 'info')}
+      />
+    </>
+  );
+}

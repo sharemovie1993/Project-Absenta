@@ -1,0 +1,233 @@
+Instruksi 08 – Subscription Flow Audit (Registration → Upgrade → Invoice → Payment → Downgrade)
+
+Tujuan audit ini adalah memetakan seluruh flow subscription pada platform Absenta untuk memastikan proses:
+
+* registrasi tenant
+* upgrade plan
+* pembuatan invoice
+* pembayaran
+* aktivasi subscription
+* downgrade plan
+
+tidak terhalang oleh middleware atau guard layer.
+
+Audit ini tidak melakukan perubahan kode.
+
+---
+
+# STEP 1 – Registration Flow
+
+Audit alur registrasi tenant dari awal sampai tenant berhasil dibuat.
+
+Cari endpoint yang digunakan untuk:
+
+tenant registration
+
+Contoh kemungkinan:
+
+POST /api/auth/register
+POST /api/tenants/register
+POST /api/public/register
+
+Laporkan:
+
+* endpoint yang digunakan
+* service yang membuat tenant
+* table yang terlibat (Tenant, Subscription, User)
+
+Output yang diharapkan:
+
+Registration Flow Diagram
+
+Contoh:
+
+User Register
+→ create tenant
+→ create admin user
+→ create default subscription (FREE / TRIAL)
+
+---
+
+# STEP 2 – Default Subscription Creation
+
+Periksa bagaimana subscription awal dibuat setelah tenant registrasi.
+
+Audit:
+
+* apakah tenant otomatis memiliki plan default
+* apakah plan tersebut TRIAL atau FREE
+
+Periksa tabel:
+
+Subscription
+Plan
+Tenant
+
+Laporkan:
+
+* plan default setelah registrasi
+* apakah subscription langsung aktif
+* apakah ada expiry date
+
+---
+
+# STEP 3 – Upgrade Plan Flow
+
+Audit flow ketika tenant melakukan upgrade plan.
+
+Cari endpoint seperti:
+
+POST /api/billing/upgrade
+POST /api/subscriptions/upgrade
+
+Laporkan alur lengkap:
+
+Tenant Admin
+→ pilih plan
+→ generate invoice
+→ redirect ke payment gateway
+
+Sertakan service yang dipakai.
+
+---
+
+# STEP 4 – Invoice Creation
+
+Audit proses pembuatan invoice.
+
+Periksa:
+
+* service invoice
+* table Invoice
+* relasi ke Subscription
+
+Laporkan:
+
+* kapan invoice dibuat
+* status invoice awal (PENDING / UNPAID)
+
+---
+
+# STEP 5 – Payment Flow
+
+Audit integrasi payment gateway.
+
+Periksa service seperti:
+
+Tripay
+Midtrans
+Xendit
+
+Laporkan:
+
+Flow pembayaran:
+
+Invoice
+→ payment gateway request
+→ callback webhook
+→ update invoice status
+
+---
+
+# STEP 6 – Subscription Activation
+
+Audit bagaimana subscription berubah menjadi aktif.
+
+Cari logic seperti:
+
+if invoice.status == PAID
+activate subscription
+
+Laporkan:
+
+* service yang mengupdate subscription
+* apakah menggunakan event
+* apakah ada worker
+
+---
+
+# STEP 7 – Middleware Guard Audit
+
+Audit middleware berikut:
+
+tenant middleware
+subscription middleware
+feature middleware
+rbac middleware
+
+Periksa apakah middleware tersebut memblokir:
+
+upgrade plan
+payment callback
+invoice access
+
+Laporkan endpoint yang dilindungi middleware ini.
+
+---
+
+# STEP 8 – Downgrade Flow
+
+Audit flow downgrade plan.
+
+Cari endpoint seperti:
+
+POST /api/subscriptions/downgrade
+
+Laporkan:
+
+* apakah downgrade langsung berlaku
+  atau
+* berlaku pada renewal berikutnya
+
+---
+
+# STEP 9 – Expired Subscription Behaviour
+
+Audit behaviour ketika subscription expired.
+
+Periksa:
+
+* apakah tenant masih bisa login
+* apakah feature dibatasi
+* apakah invoice renewal dibuat otomatis
+
+---
+
+# STEP 10 – End-to-End Flow Map
+
+Hasil audit harus menghasilkan diagram flow berikut:
+
+Registration
+→ Tenant Created
+→ Default Subscription
+→ Upgrade Plan
+→ Invoice Generated
+→ Payment Gateway
+→ Payment Callback
+→ Invoice Paid
+→ Subscription Activated
+
+Sertakan juga flow:
+
+Downgrade
+Renewal
+Expired
+
+---
+
+# Output Audit
+
+Laporan audit harus berisi:
+
+1. Endpoint flow registration
+2. Endpoint upgrade plan
+3. Invoice creation flow
+4. Payment gateway flow
+5. Subscription activation logic
+6. Middleware yang terlibat
+7. Downgrade flow
+8. Renewal flow
+9. Expired subscription behaviour
+10. End-to-end subscription architecture diagram
+
+Audit ini tidak melakukan perubahan kode.

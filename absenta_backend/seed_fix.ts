@@ -1,0 +1,1 @@
+import { strukturOrganisasiService } from './src/modules/academic/struktur-organisasi/services/struktur-organisasi.service'; async function main() { await strukturOrganisasiService.seedAllCapabilities(); console.log('Done!'); } main().catch(console.error);

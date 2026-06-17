@@ -1,0 +1,117 @@
+module.exports = {
+  apps: [
+    {
+      name: 'absenta-backend',
+      script: 'dist/main.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-billing-worker',
+      script: 'dist/workers/billing.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-notification-worker',
+      script: 'dist/workers/notification.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-attendance-worker',
+      script: 'dist/workers/attendance.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-analytics-worker',
+      script: 'dist/workers/analytics.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-maintenance-worker',
+      script: 'dist/workers/maintenance.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-infra-worker',
+      script: 'dist/workers/infra.worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+    {
+      name: 'absenta-email-worker',
+      script: 'dist/worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        WORKER_ROLE: 'email'
+      }
+    },
+    {
+      name: 'absenta-recurring-worker',
+      script: 'dist/worker.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        WORKER_ROLE: 'recurring'
+      }
+    },
+    {
+      name: 'absenta-worker-agent',
+      script: 'dist/infra/workerAgent.js',
+      cwd: './',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    },
+   {
+      name: 'absenta-frontend',
+      script: 'npx',
+      args: 'serve -s dist -l 8080',
+      cwd: '../frontend/absenta_frontend',
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production'
+      }
+    }
+  ]
+};

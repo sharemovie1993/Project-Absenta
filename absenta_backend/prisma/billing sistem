@@ -1,0 +1,276 @@
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+  TRIAL
+  PENDING_PAYMENT
+}
+
+enum BillingStatus {
+  UNPAID
+  PAID
+  OVERDUE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentGateway {
+  MIDTRANS
+  STRIPE
+  XENDIT
+  TRIPAY
+  MANUAL
+}
+ 
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  QRIS
+  BANK_TRANSFER
+  CREDIT_CARD
+  DEBIT_CARD
+  E_WALLET
+  CASH
+}
+
+enum ChargeType {
+  RECURRING
+  UPGRADE
+  ONE_TIME_FEE
+}
+
+model Tenant {
+  id                  String                @id @default(uuid())
+  name                String
+  absensi_mode        AbsensiMode           @default(SIMPLE)
+  domain              String?               @unique
+  logo_url            String?
+  status              String                @default("ACTIVE")
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  AbsenGerbangSiswa   AbsenGerbangSiswa[]
+  AbsenGuru           AbsenGuru[]
+  AbsenSiswa          AbsenSiswa[]
+  activityLogs        ActivityLog[]
+  billing             Billing[]
+  config              Config[]
+  financialReports    FinancialReport[]
+  guru                Guru[]
+  GuruMapel           GuruMapel[]
+  invoices            Invoice[]
+  JenisKegiatanMaster JenisKegiatanMaster[]
+  jurusan             Jurusan[]
+  kelas               Kelas[]
+  KelasMapel          KelasMapel[]
+  logTaps             LogTap[]
+  mapel               Mapel[]
+  notificationLogs    NotificationLog[]
+  notificationPreferences NotificationPreference[]
+  OrangTua            OrangTua[]
+  payments            Payment[]
+  rekapBulanan        RekapAbsensiBulanan[]
+  sekolah             Sekolah[]
+  Semester            Semester[]
+  sesiAbsensi         SesiAbsensi[]
+  SesiGerbang         SesiGerbang[]
+  siswa               Siswa[]
+  PetugasAbsensi      PetugasAbsensi[]
+  subscriptions       Subscription[]        @relation("TenantSubscriptions")
+  TahunPelajaran      TahunPelajaran[]
+  users               User[]
+  WaliKelas           WaliKelas[]
+  SiswaKelasHistory   SiswaKelasHistory[]
+  Branding            Branding[]
+  SystemConfig        SystemConfig[]
+}
+
+model Plan {
+  id            String  @id @default(uuid())
+  name          String
+  price_monthly Int
+  // Kapasitas dan fitur
+  max_user      Int?
+  features      String?
+  features_json Json?
+
+  // Deskripsi dan visibilitas
+  description String?
+  is_public   Boolean @default(true)
+
+  // Siklus penagihan dan harga alternatif
+  billing_period BillingPeriod @default(MONTH)
+  price_yearly   Int?
+  trial_days     Int           @default(0)
+
+  // Metadata dan penghapusan lunak
+  metadata   Json?
+  deleted_at DateTime?
+
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
+  currency            String         @default("IDR")
+  is_active           Boolean        @default(true)
+  subscriptions       Subscription[]
+  features_structured PlanFeature[]
+
+  // Indexes untuk performa query
+  @@index([is_active])
+  @@index([price_monthly])
+  @@index([name])
+}
+
+model Subscription {
+  id                String             @id @default(uuid())
+  tenant_id         String
+  plan_id           String
+  start_date        DateTime
+  end_date          DateTime
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  auto_renew        Boolean            @default(true)
+  next_billing_date DateTime?
+  cancel_date       DateTime?
+  canceled_by       String?
+  payment_method    String?
+  renewal_count     Int                @default(0)
+  notes             String?
+  status            SubscriptionStatus @default(ACTIVE)
+  Billing           Billing[]
+  Plan              Plan               @relation(fields: [plan_id], references: [id])
+  Tenant            Tenant             @relation("TenantSubscriptions", fields: [tenant_id], references: [id])
+  History           SubscriptionHistory[]
+
+  @@index([tenant_id])
+}
+
+// Enum untuk periodisasi penagihan
+enum BillingPeriod {
+  MONTH
+  YEAR
+}
+
+// Tabel fitur terstruktur untuk skalabilitas
+model PlanFeature {
+  id         String   @id @default(uuid())
+  plan_id    String
+  key        String
+  value      String?
+  created_at DateTime @default(now())
+  Plan       Plan     @relation(fields: [plan_id], references: [id])
+
+  @@index([plan_id])
+  @@index([key])
+}
+
+model Billing {
+  id                String        @id @default(uuid())
+  tenant_id         String
+  subscription_id   String
+  amount            Int
+  charge_type       ChargeType    @default(RECURRING)
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  payment_method    String?
+  payment_reference String?
+  billing_date      DateTime
+  Subscription      Subscription  @relation(fields: [subscription_id], references: [id])
+  Tenant            Tenant        @relation(fields: [tenant_id], references: [id])
+  Invoice           Invoice?
+  Payment           Payment[]
+  @@index([tenant_id])
+}
+
+model Invoice {
+  id               String        @id @default(uuid())
+  tenant_id        String
+  billing_id       String        @unique
+  invoice_number   String        @unique
+  title            String?
+  description      String?
+  amount           Int
+  tax_amount       Int           @default(0)
+  total_amount     Int
+  currency         String        @default("IDR")
+  status           InvoiceStatus @default(DRAFT)
+  issue_date       DateTime      @default(now())
+  due_date         DateTime
+  sent_at          DateTime?
+  viewed_at        DateTime?
+  paid_at          DateTime?
+  invoice_items    Json?
+  notes            String?
+  terms_conditions String?
+  pdf_path         String?
+  email_sent       Boolean       @default(false)
+  whatsapp_sent    Boolean       @default(false)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+  Billing          Billing       @relation(fields: [billing_id], references: [id])
+  Tenant           Tenant        @relation(fields: [tenant_id], references: [id])
+  payments         Payment[]     @relation("InvoicePayments")
+
+  @@index([tenant_id])
+  @@index([billing_id])
+  @@index([status])
+}
+
+model Payment {
+  id                     String         @id @default(uuid())
+  tenant_id              String
+  billing_id             String
+  gateway                PaymentGateway
+  payment_method         PaymentMethod
+  amount                 Int
+  currency               String         @default("IDR")
+  status                 PaymentStatus  @default(PENDING)
+  gateway_transaction_id String?        @unique
+  gateway_payment_url    String?
+  gateway_qr_string      String?
+  gateway_response       Json?
+  webhook_received_at    DateTime?
+  webhook_verified       Boolean        @default(false)
+  webhook_signature      String?
+  paid_at                DateTime?
+  expired_at             DateTime?
+  failure_reason         String?
+  created_at             DateTime       @default(now())
+  updated_at             DateTime       @updatedAt
+  invoice_id             String?
+  Billing                Billing        @relation(fields: [billing_id], references: [id])
+  Invoice                Invoice?       @relation("InvoicePayments", fields: [invoice_id], references: [id])
+  Tenant                 Tenant         @relation(fields: [tenant_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([billing_id])
+  @@index([status])
+  @@index([invoice_id])
+}
+
+// Audit trail perubahan plan pada subscription
+model SubscriptionHistory {
+  id              String        @id @default(uuid())
+  subscription_id String
+  old_plan_id     String?
+  new_plan_id     String?
+  changed_at      DateTime      @default(now())
+  changed_by      String?
+  reason          String?
+  Subscription    Subscription  @relation(fields: [subscription_id], references: [id])
+
+  @@index([subscription_id])
+}

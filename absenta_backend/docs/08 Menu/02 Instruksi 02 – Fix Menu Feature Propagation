@@ -1,0 +1,202 @@
+Instruksi 02 – Fix Menu Feature Propagation
+
+Tujuan perubahan ini adalah memperbaiki anomali pada sidebar runtime di mana child menu dapat muncul sebagai root ketika parent tersaring oleh feature filter.
+
+Masalah yang ditemukan pada audit:
+
+Parent menu memiliki `required_features`, tetapi child leaf tidak memiliki `required_features`.
+Ketika feature tenant tidak memenuhi parent, parent tersaring tetapi child tetap lolos filter dan muncul sebagai root.
+
+Ini tidak sesuai dengan desain canonical menu.
+
+Perbaikan yang dilakukan adalah menambahkan **feature inheritance** pada sidebar rendering engine.
+
+Perubahan ini tidak mengubah API contract.
+
+---
+
+# STEP 1 – Identifikasi Sidebar Rendering Service
+
+File utama:
+
+src/modules/menu/services/sidebar-rendering.service.ts
+
+Service ini digunakan oleh endpoint:
+
+GET /api/menu/sidebar
+
+Service tersebut memuat seluruh menu dari database dan melakukan filtering berdasarkan:
+
+* required_capability
+* required_features
+* requires_petugas_active
+* parent pruning
+
+---
+
+# STEP 2 – Tambahkan Feature Inheritance
+
+Sebelum melakukan filtering menu, tambahkan proses propagasi feature dari parent ke child.
+
+Aturan baru:
+
+Jika sebuah menu tidak memiliki `required_features`, maka menu tersebut harus mewarisi `required_features` dari parent.
+
+Contoh:
+
+Parent:
+
+Absensi
+required_features = ["ABSENSI"]
+
+Child:
+
+Scan
+required_features = null
+
+Setelah inheritance:
+
+Scan
+required_features = ["ABSENSI"]
+
+Implementasi dapat dilakukan saat membangun tree menu atau sebelum filtering visibility.
+
+Pseudo logic:
+
+for each menu:
+if menu.required_features is null AND menu.parent exists:
+menu.required_features = parent.required_features
+
+Inheritance harus berjalan rekursif untuk seluruh level tree.
+
+---
+
+# STEP 3 – Pastikan Tidak Mengubah Data Database
+
+Inheritance hanya berlaku pada **runtime object**.
+
+Jangan menulis kembali perubahan ke database.
+
+Tujuan:
+
+Menu table tetap menjadi canonical configuration.
+
+---
+
+# STEP 4 – Perbaiki Feature Filtering
+
+Setelah inheritance diterapkan, jalankan kembali feature filter normal.
+
+Aturan filter tetap:
+
+Menu hanya visible jika:
+
+tenantFeatures mengandung seluruh feature pada `required_features`.
+
+Jika tenant tidak memiliki feature tersebut, menu harus disembunyikan.
+
+Dengan inheritance, child menu tidak akan lolos ketika parent tersaring.
+
+---
+
+# STEP 5 – Verifikasi Parent Pruning
+
+Pastikan parent pruning tetap berjalan.
+
+Parent menu (required_capability = null) harus dihapus jika tidak memiliki child visible.
+
+Setelah feature inheritance diterapkan:
+
+* child tidak akan muncul sebagai root
+* struktur menu tetap konsisten
+
+---
+
+# STEP 6 – Tambahkan Unit Test
+
+Tambahkan unit test baru pada:
+
+sidebar-rendering.service.test.ts
+
+Test scenario:
+
+Case 1 – Parent feature filtering
+
+Menu structure:
+
+Absensi (features = ABSENSI)
+Scan (features = null)
+
+Tenant tanpa feature ABSENSI.
+
+Expected result:
+
+Absensi tidak muncul
+Scan tidak muncul
+
+---
+
+Case 2 – Tenant memiliki feature
+
+Tenant memiliki feature ABSENSI.
+
+Expected result:
+
+Absensi muncul
+Scan muncul sebagai child Absensi
+
+---
+
+Case 3 – Multi-level inheritance
+
+Parent features = ABSENSI
+Child features = null
+Grandchild features = null
+
+Expected result:
+
+grandchild tetap mewarisi feature ABSENSI.
+
+---
+
+# STEP 7 – Regression Test
+
+Pastikan perubahan ini tidak merusak:
+
+* capability filtering
+* petugasActive filtering
+* SUPERADMIN bypass capability
+
+SUPERADMIN tetap bypass capability tetapi tetap tunduk pada feature filter.
+
+---
+
+# STEP 8 – Verification
+
+Setelah perubahan selesai jalankan:
+
+npm run build
+npm run test:unit
+
+Kemudian lakukan test manual:
+
+Login sebagai SUPERADMIN
+Panggil endpoint:
+
+GET /api/menu/sidebar
+
+Pastikan:
+
+child menu tidak muncul sebagai root lagi.
+
+---
+
+# Expected Result
+
+Sidebar menu mengikuti struktur canonical.
+
+Child menu tidak dapat muncul sebagai root ketika parent tersaring.
+
+Feature filtering bekerja secara konsisten pada seluruh level tree.
+
+Perubahan ini menjadi fondasi sebelum refactor berikutnya yaitu **Menu Scope Separation (Platform vs Tenant)**.

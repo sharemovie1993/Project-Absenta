@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /invoice/public/
+Disallow: /payment/status/
+Disallow: /admin/
+Disallow: /dashboard/
+Allow: /

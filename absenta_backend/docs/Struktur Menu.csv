@@ -1,0 +1,63 @@
+AKADEMIK;;
+;Kelompok Master;
+;;/academic/tahun-pelajaran
+;;/academic/semester
+;;/academic/jurusan
+;;/academic/kelas
+;;/academic/mapel
+;;/academic/guru
+;;/academic/siswa
+;Kelompok Setup;
+;;/academic/registrasi-siswa
+;;/academic/wali-kelas
+;;/academic/guru-mapel
+;;/academic/transition
+;;/academic/siswa-cards
+;;/academic/mutation
+;;/academic/struktur-organisasi
+;;/academic/backup
+;KURIKULUM;
+;;/kurikulum/supervisi
+;;/kurikulum/struktur
+;;/kurikulum/jadwal
+;KESISWAAN;
+;;/kesiswaan/pelanggaran
+;;/kesiswaan/jenis-pelanggaran
+;;/kesiswaan/monitoring
+ABSENSI;;
+;Kelompok Setup;
+;;/attendance/settings
+;;/attendance/jadwal-template
+;;/attendance/petugas
+;;/attendance/devices
+;;/attendance/rekam-wajah
+;Kelompok Process;
+;;/attendance/ops
+;;/attendance/guru-monitoring
+;;/attendance/riwayat-ajar
+;;/attendance/monitoring
+;;/attendance/my-attendance
+;Kelompok Laporan;
+;;/attendance/rekap/siswa-harian
+;;/attendance/rekap/siswa-bulanan
+;;/attendance/rekap/kelas-bulanan
+;;/attendance/tracking-siswa
+HUBIN;;
+;;/hubin/mitra
+;;/hubin/penempatan
+;;/hubin/absensi
+;;/hubin/monitoring
+SARPRAS;;
+;;/sarpras/inventory
+;;/sarpras/loans
+;;/sarpras/maintenance
+KOPERASI;;
+;/cooperative/dashboard;
+;/cooperative/members;
+;/cooperative/savings;
+;/cooperative/pos;
+;/cooperative/ppob;
+;/cooperative/reports;
+SISTEM;;
+;/settings;
+;/service-center;

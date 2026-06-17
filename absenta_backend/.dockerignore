@@ -1,0 +1,53 @@
+# Node modules (akan diinstall ulang di container)
+node_modules
+
+# Git
+.git
+.gitignore
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build output lama
+dist
+build
+coverage
+
+# Temporary files
+tmp
+temp
+
+# IDE
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Upload / storage (jika ada)
+uploads
+storage
+
+# Docker compose files tidak perlu di build context
+docker-compose*.yml
+
+# Test files
+test
+tests
+__tests__
+
+# Documentation
+*.md
+
+# Local scripts
+scripts
+!scripts/adhoc/
+!scripts/adhoc/prisma-generate-with-retry.js

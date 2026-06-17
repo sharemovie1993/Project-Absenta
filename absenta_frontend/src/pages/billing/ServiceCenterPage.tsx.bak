@@ -1,0 +1,867 @@
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  FileText, 
+  Eye, 
+  Sparkles, 
+  ShieldCheck, 
+  Building2,
+  Wallet,
+  Package,
+  Star,
+  Receipt,
+  History,
+  Info,
+  ChevronRight,
+  ArrowRight,
+  ArrowRightCircle,
+  Clock,
+  LayoutGrid,
+  Search,
+  Check
+} from 'lucide-react';
+
+import { Card, Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent, Loader } from '../../components/ui';
+import { DashboardHero } from '../../components/dashboard/shared/DashboardHero';
+import { 
+  getMySubscription, 
+  getMyInvoices, 
+  getMyPayments,
+  getPublicInvoiceLink 
+} from '../../api/mySubscription.api';
+import { getPublicPlans } from '../../api/plans.api';
+import { getPublicModules } from '../../api/module.api';
+import * as LucideIcons from 'lucide-react';
+
+// Types
+import type { Invoice } from '../../types/invoice';
+
+const formatCurrency = (amount: number = 0, currency: string = 'IDR') => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: currency || 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount || 0);
+};
+
+const formatDate = (date?: string | Date | null) => {
+  if (!date) return '-';
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  } catch {
+    return '-';
+  }
+};
+
+const getServiceIcon = (code: string | undefined | null, moduleIcon?: string | null) => {
+  // Priority 1: Icon name from database Module
+  if (moduleIcon && (LucideIcons as any)[moduleIcon]) {
+     return (LucideIcons as any)[moduleIcon];
+  }
+
+  // Priority 2: Fallback logic based on code
+  const c = String(code || '').toUpperCase();
+  if (c.includes('ABSENSI')) return Building2;
+  if (c.includes('KOPERASI')) return Wallet;
+  if (c.includes('KANTIN')) return Wallet;
+  if (c.includes('RAPOR')) return FileText;
+  if (c.includes('INVENTORY') || c.includes('SARPRAS')) return Package;
+  if (c.includes('HUBIN')) return LayoutGrid;
+  return Package;
+};
+
+const getServiceTheme = (code: string | undefined | null) => {
+  const c = String(code || '').toUpperCase();
+  if (c.includes('ABSENSI')) return 'blue';
+  if (c.includes('KOPERASI')) return 'emerald';
+  if (c.includes('HUBIN')) return 'purple';
+  if (c.includes('SARPRAS') || c.includes('INVENTORY')) return 'amber';
+  return 'slate';
+};
+
+const getServiceThumbnail = (code: string | undefined | null) => {
+  const c = String(code || '').toUpperCase();
+  // Using the absolute paths of generated assets for the prototype
+  if (c.includes('ABSENSI')) return '/brain/5fea4f76-cc6f-4956-a4e1-9bea225937d9/absensi_thumbnail_1776738118192.png';
+  if (c.includes('KOPERASI')) return '/brain/5fea4f76-cc6f-4956-a4e1-9bea225937d9/koperasi_thumbnail_1776738137304.png';
+  if (c.includes('INVENTORY') || c.includes('SARPRAS')) return '/brain/5fea4f76-cc6f-4956-a4e1-9bea225937d9/inventory_thumbnail_1776738155242.png';
+  if (c.includes('HUBIN')) return '/brain/5fea4f76-cc6f-4956-a4e1-9bea225937d9/hubin_thumbnail_1776738170394.png';
+  return null;
+};
+
+export default function ServiceCenterPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'status';
+  const categoryFilter = searchParams.get('cat') || 'ALL';
+
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [configView, setConfigView] = useState<'GRID' | 'COMPARE'>('GRID');
+  
+  // Shopee-style variant state: [productBaseName]: { mode, size, period }
+  const [productStates, setProductStates] = useState<Record<string, { mode?: string, size?: string, period: 'MONTH' | 'YEAR' }>>({});
+
+  // 1. Subscription Query (Owned services)
+  const subQuery = useQuery({
+    queryKey: ['my-subscription'],
+    queryFn: async () => {
+      const res = await getMySubscription();
+      if (!res.success) throw new Error(res.message || 'Gagal memuat langganan');
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 2. Invoices Query
+  const invQuery = useQuery({
+    queryKey: ['my-invoices'],
+    queryFn: async () => {
+      const res = await getMyInvoices();
+      if (!res.success) throw new Error(res.message || 'Gagal memuat invoice');
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+
+  // 3. Payments Query
+  const payQuery = useQuery({
+    queryKey: ['my-payments'],
+    queryFn: async () => {
+      const res = await getMyPayments();
+      if (!res.success) throw new Error(res.message || 'Gagal memuat riwayat pembayaran');
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+
+  // 4. Plans Query (Catalog)
+  const plansQuery = useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => {
+      const res = await getPublicPlans();
+      const plans = (res.data as any)?.plans || res.data || [];
+      return Array.isArray(plans) ? plans : [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // 5. Modules Query
+  const modulesQuery = useQuery({
+    queryKey: ['public-modules'],
+    queryFn: async () => {
+      const res = await getPublicModules();
+      return res.data || [];
+    },
+    staleTime: 1000 * 60 * 60, // Cache modules for 1 hour
+  });
+
+  const subscription = subQuery.data;
+  const invoices = invQuery.data || [];
+  const payments = payQuery.data || [];
+  const catalogPlans = plansQuery.data || [];
+  const allModules = modulesQuery.data || [];
+  
+  const isLoading = subQuery.isLoading || invQuery.isLoading;
+  const isError = subQuery.isError || invQuery.isError;
+
+  // Normalized Services List (Purchased)
+  const services = React.useMemo(() => {
+    if (!subscription) return [];
+    let items: any[] = [];
+    if (Array.isArray((subscription as any).subscriptions)) {
+       items = (subscription as any).subscriptions;
+    } else if ((subscription as any).id) {
+       items = [subscription];
+    }
+    return items;
+  }, [subscription]);
+
+  const selectedService = React.useMemo(() => {
+    if (selectedServiceId) {
+      return services.find((s: any) => s.id === selectedServiceId);
+    }
+    return services.length > 0 ? services[0] : null;
+  }, [services, selectedServiceId]);
+
+  // Derived Categories for Filter
+  const categories = React.useMemo(() => {
+    const set = new Set<string>();
+    catalogPlans.forEach((p: any) => {
+      const code = p.service_code || 'LAINNYA';
+      set.add(code.toUpperCase());
+    });
+    return Array.from(set).sort();
+  }, [catalogPlans]);
+
+  const filteredPlans = React.useMemo(() => {
+    if (!catalogPlans || !Array.isArray(catalogPlans)) return [];
+    if (categoryFilter === 'ALL') return catalogPlans;
+    
+    return catalogPlans.filter((p: any) => {
+      // Priority 1: Match by module_id if available
+      if (p.module_id && p.module_id.toUpperCase() === categoryFilter.toUpperCase()) return true;
+
+      // Priority 2: Fallback to service_code pattern matching (compatibility)
+      const sCode = String(p.service_code || '').toUpperCase();
+      const pCode = String(p.code || '').toUpperCase();
+      const filter = String(categoryFilter).toUpperCase();
+
+      if (filter === 'ABSENSI') return sCode.includes('ABSENSI') || pCode.includes('ABSENSI');
+      if (filter === 'KOPERASI') return sCode.includes('KOPERASI') || sCode.includes('KANTIN') || pCode.includes('KOPERASI');
+      if (filter === 'RAPOR') return sCode.includes('RAPOR') || sCode.includes('ERAPOR') || pCode.includes('RAPOR');
+      if (filter === 'INVENTORY') return sCode.includes('INVENTORY') || sCode.includes('SARPRAS') || pCode.includes('INVENTORY');
+      
+      return sCode === filter;
+    });
+  }, [catalogPlans, categoryFilter]);
+
+  // Transform discrete plans into Shopee-style Product Groups
+  const groupedProducts = React.useMemo(() => {
+    const products: Record<string, any> = {};
+
+    filteredPlans.forEach((p: any) => {
+        const baseName = p.module?.name || p.name.split(/[(-]/)[0]?.trim() || 'Layanan';
+        const mode = p.absensi_mode || 'STANDARD';
+        
+        // Use the explicit database field size_label
+        const size = p.size_label || 'Standard';
+        const groupKey = `${baseName}-${mode}`;
+        
+        if (!products[groupKey]) {
+            products[groupKey] = {
+                id: groupKey,
+                baseName,
+                mode,
+                module: p.module?.name || baseName,
+                icon: p.module?.icon || 'Package',
+                service_code: p.service_code,
+                variants: [],
+                sizes: new Set<string>(),
+                periods: new Set<string>()
+            };
+        }
+
+        products[groupKey].sizes.add(size);
+        products[groupKey].periods.add(p.billing_period);
+        products[groupKey].variants.push({
+            ...p,
+            size,
+            period: p.billing_period
+        });
+    });
+
+    return Object.values(products).map(p => ({
+        ...p,
+        modes: [], // Not used currently in this structure
+        sizes: Array.from(p.sizes).sort((a, b) => {
+            const vA = p.variants.find((v: any) => v.size === a);
+            const vB = p.variants.find((v: any) => v.size === b);
+            return (vA?.max_user || 0) - (vB?.max_user || 0);
+        }),
+        periods: Array.from(p.periods)
+    }));
+}, [filteredPlans]);
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', value);
+    setSearchParams(params);
+  };
+
+  const setCategory = (cat: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('cat', cat);
+    setSearchParams(params);
+  };
+
+  const activeSub = selectedService || subscription;
+  const isHealthy = activeSub?.status === 'ACTIVE' || activeSub?.status === 'TRIAL';
+  
+  // Stats calculation - GLOBAL URGENCY (Kadaluarsa Terdekat)
+  const safeStats = React.useMemo(() => {
+    const activeItems = services.filter((s: any) => s.status === 'ACTIVE' || s.status === 'TRIAL');
+    const activeCount = activeItems.length;
+    const pendingInvoices = invoices.filter((i: any) => i.status !== 'PAID').length;
+    
+    let minDaysRemaining = Infinity;
+    activeItems.forEach((s: any) => {
+      if (s.end_date) {
+        try {
+          const end = new Date(s.end_date).getTime();
+          const now = Date.now();
+          if (!isNaN(end)) {
+            const diff = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+            if (diff < minDaysRemaining) minDaysRemaining = diff;
+          }
+        } catch {}
+      }
+    });
+
+    const displayDays = minDaysRemaining === Infinity ? '-' : `${minDaysRemaining} Hari`;
+
+    return [
+      { label: 'Layanan Aktif', value: activeCount },
+      { label: 'Tagihan Pending', value: pendingInvoices },
+      { label: 'Kadaluarsa Terdekat', value: displayDays }
+    ];
+  }, [services, invoices]);
+
+  if (isLoading && !subscription) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader size="lg" />
+      </div>
+    );
+  }
+
+  if (isError && !subscription) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-50 dark:bg-slate-950">
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-full text-red-600 mb-4">
+          <AlertCircle size={48} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Terjadi Kesalahan</h2>
+        <p className="text-slate-500 mb-6 max-w-md">{(subQuery.error as any)?.message || 'Gagal memuat data layanan.'}</p>
+        <Button onClick={() => subQuery.refetch()} className="rounded-2xl bg-blue-600 px-8 py-3">Coba Lagi</Button>
+      </div>
+    );
+  }
+
+  async function handleViewInvoice(invoiceId: string) {
+    try {
+      setActionLoading(invoiceId);
+      const res = await getPublicInvoiceLink(invoiceId);
+      if (res.success && res.data?.token) {
+        navigate(`/payment/public/${res.data.token}`);
+      } else if (res.success && res.data?.url) {
+        window.open(res.data.url, '_blank');
+      } else {
+        toast.error('Gagal membuka invoice.');
+      }
+    } catch {
+      toast.error('Gagal membuka invoice.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      
+      <DashboardHero
+        title="Pusat Layanan Sekolah"
+        subtitle="Kelola langganan modul otomasi administrasi sekolah Anda secara terpadu."
+        badge={{
+          label: isHealthy ? "Sistem Operasional" : "Perbaikan Diperlukan",
+          icon: isHealthy ? ShieldCheck : AlertCircle,
+          color: isHealthy ? "emerald" : "amber"
+        }}
+        gradient="from-slate-800 to-indigo-950"
+        stats={safeStats}
+      >
+        <div className="mt-6 flex flex-wrap gap-3">
+           {currentTab !== 'catalog' && (
+             <Button 
+                onClick={() => handleTabChange('catalog')}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white border-none shadow-md px-6 h-10 font-bold text-sm"
+             >
+                <Sparkles size={16} className="mr-2" />
+                Tambah Layanan
+             </Button>
+           )}
+           <Button 
+              variant="outline"
+              onClick={() => handleTabChange('billing')}
+              className="rounded-lg bg-white/5 hover:bg-white/10 text-white border-white/20 backdrop-blur-sm px-6 h-10 font-bold text-sm"
+           >
+              <History size={16} className="mr-2" />
+              Riwayat Tagihan
+           </Button>
+        </div>
+      </DashboardHero>
+
+      <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="bg-slate-100 dark:bg-slate-900/50 p-1 rounded-xl h-auto flex gap-1 border border-slate-200 dark:border-slate-800 w-full md:w-fit mb-8 overflow-x-auto no-scrollbar">
+          <TabsTrigger value="status" className="rounded-lg px-6 py-2.5 font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 text-sm">Modul Terpasang</TabsTrigger>
+          <TabsTrigger value="catalog" className="rounded-lg px-6 py-2.5 font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 text-sm">Katalog Layanan</TabsTrigger>
+          <TabsTrigger value="billing" className="rounded-lg px-6 py-2.5 font-bold data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 text-sm">Administrasi & Tagihan</TabsTrigger>
+        </TabsList>
+
+        <div className="mt-0">
+          {currentTab === 'status' && (
+             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-1 space-y-3">
+                   <h3 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider px-1 items-center flex gap-2">
+                     <LayoutGrid size={14} /> Daftar Layanan
+                   </h3>
+                   <div className="space-y-2">
+                      {services.length === 0 ? (
+                        <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/10">
+                           <p className="text-slate-400 text-[11px] font-bold">Belum ada layanan aktif.</p>
+                           <Button variant="ghost" onClick={() => handleTabChange('catalog')} className="mt-1 text-blue-600 text-[11px] font-bold p-0 h-auto">Belanja Layanan</Button>
+                        </div>
+                      ) : (
+                        services.map((svc: any, sIdx: number) => {
+                          const planName = svc.Plan?.name || svc.plan_name || 'Layanan';
+                          const IconComp = getServiceIcon(svc.Plan?.service_code || svc.plan_snapshot?.service_code);
+                          const isSelected = selectedService?.id === svc.id;
+                          return (
+                            <Card 
+                              key={svc.id || `svc-${sIdx}`}
+                              onClick={() => setSelectedServiceId(svc.id)}
+                              className={`p-3.5 rounded-xl cursor-pointer transition-all duration-200 border ${isSelected ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-900/20' : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
+                            >
+                               <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-lg ${svc.status === 'ACTIVE' || svc.status === 'TRIAL' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                     <IconComp size={16} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <h4 className="text-[12.8px] font-bold text-slate-900 dark:text-white leading-tight truncate">{planName}</h4>
+                                     <div className="flex items-center gap-2 mt-0.5">
+                                        <Badge variant={svc.status === 'ACTIVE' ? 'success' : (svc.status === 'TRIAL' ? 'info' : 'warning')} className="text-[7px] px-1 py-0 uppercase">{svc.status}</Badge>
+                                        <span className="text-[9px] text-slate-400 font-medium">Exp: {formatDate(svc.end_date)}</span>
+                                     </div>
+                                  </div>
+                                  <ChevronRight size={14} className={isSelected ? 'text-blue-500' : 'text-slate-300'} />
+                               </div>
+                            </Card>
+                          );
+                        })
+                      )}
+                   </div>
+                </div>
+
+                <div className="lg:col-span-3">
+                   <AnimatePresence mode="wait">
+                   {selectedService ? (
+                     <motion.div key={selectedService.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
+                       <Card className="p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl shadow-sm relative overflow-hidden">
+                          <div className="space-y-8 relative z-10">
+                             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                                <div>
+                                   <div className="flex items-center gap-2 mb-3">
+                                      <Badge variant="outline" className="text-blue-600 border-blue-100 dark:border-blue-900/30 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-md">Layanan Aktif</Badge>
+                                      {selectedService.status === 'TRIAL' && <Badge variant="warning" className="text-[9px] font-bold uppercase px-2 py-1 flex gap-1 items-center"><Clock size={10} /> Mode Trial</Badge>}
+                                   </div>
+                                   <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{selectedService.Plan?.name || selectedService.plan_name}</h2>
+                                   <div className="flex items-center gap-3 mt-3 text-slate-500">
+                                      <div className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase">{selectedService.status || 'ACTIVE'}</div>
+                                      <span className="text-[10px] font-medium opacity-60">ID: {selectedService.id.substring(0, 8)}...</span>
+                                   </div>
+                                </div>
+                                <div className="flex gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-800 text-[12.8px]">
+                                   <div><div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Terdaftar</div><div className="font-bold text-slate-900 dark:text-white">{formatDate(selectedService.start_date)}</div></div>
+                                   <div className="border-l border-slate-200 dark:border-slate-700 pl-4"><div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Masa Aktif</div><div className="font-bold text-blue-600">{formatDate(selectedService.end_date)}</div></div>
+                                </div>
+                             </div>
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="p-6 bg-slate-900 dark:bg-black rounded-lg text-white flex flex-col justify-between border border-white/5 relative group overflow-hidden">
+                                   <div className="relative z-10">
+                                      <div className="text-[10px] font-bold opacity-60 uppercase mb-2 tracking-wider flex items-center gap-2"><Star size={12} className="text-amber-500 fill-amber-500" /> Paket Berlangganan</div>
+                                      <div className="text-2xl font-bold">{formatCurrency(selectedService.Plan?.price_monthly || (selectedService as any).plan_snapshot?.price_monthly)}</div>
+                                      <div className="text-[9px] opacity-40 mt-1 uppercase font-bold">Investasi per Bulan</div>
+                                   </div>
+                                   <Button 
+                                      onClick={() => navigate(`/checkout?plan_id=${selectedService.plan_id}`)} 
+                                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md text-xs h-10 mt-8 w-full shadow-lg shadow-blue-600/20"
+                                   >
+                                      Perbaharui Layanan
+                                   </Button>
+                                </div>
+                                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-lg border border-slate-200/50 dark:border-slate-800">
+                                   <div className="text-[10px] font-bold text-slate-400 uppercase mb-4 tracking-wider flex items-center gap-2"><LayoutGrid size={14} /> Cakupan Fitur Utama</div>
+                                   <div className="space-y-3">
+                                      {((selectedService.Plan?.features_json || (selectedService as any).plan_snapshot?.features_json) as string[] || []).slice(0, 4).map((f, i) => (
+                                        <div key={i} className="flex items-center gap-3 text-[12.8px] font-medium text-slate-600 dark:text-slate-300">
+                                           <Check size={12} className="text-blue-500 flex-shrink-0" />
+                                           <span className="truncate">{f}</span>
+                                        </div>
+                                      ))}
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+                       </Card>
+                     </motion.div>
+                   ) : (
+                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center p-16 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center bg-slate-50/30 dark:bg-slate-900/10">
+                        <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-300 mb-4 shadow-sm"><Info size={32} /></div>
+                        <h4 className="font-bold text-slate-900 dark:text-white mb-1 uppercase tracking-wider text-[11px]">Navigasi Layanan</h4>
+                        <p className="text-slate-400 text-xs max-w-xs leading-normal">Pilih salah satu layanan aktif Anda dari daftar di samping untuk detail operasional.</p>
+                     </motion.div>
+                   )}
+                   </AnimatePresence>
+                </div>
+             </motion.div>
+          )}
+
+          {currentTab === 'catalog' && (
+             <div className="space-y-10 pb-20">
+                 {/* Module Explorer Header */}
+                  <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                    <div className="relative z-10">
+                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                          <div className="max-w-xl">
+                             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 tracking-tight">Katalog Solusi Sekolah</h3>
+                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium opacity-80">Pilih modul otomasi yang tepat untuk efisiensi operasional sekolah Anda.</p>
+                          </div>
+                          
+                          <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 self-start shadow-inner">
+                             <button 
+                               onClick={() => setConfigView('GRID')}
+                               className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${configView === 'GRID' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                             >
+                               Belanja
+                             </button>
+                             <button 
+                               onClick={() => setConfigView('COMPARE')}
+                               className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${configView === 'COMPARE' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400'}`}
+                             >
+                               Bandingkan
+                             </button>
+                          </div>
+                       </div>
+                       
+                       <div className="flex flex-wrap items-center gap-2">
+                          <Button 
+                             variant={categoryFilter === 'ALL' ? 'primary' : 'outline'}
+                             onClick={() => setCategory('ALL')}
+                             className={`rounded-lg px-4 h-9 font-bold text-[12.8px] transition-all flex items-center gap-2 ${categoryFilter === 'ALL' ? 'bg-blue-600 text-white shadow-md' : 'bg-transparent text-slate-500 border-slate-200 dark:border-slate-800'}`}
+                          >
+                             <LayoutGrid size={14} />
+                             Semua
+                          </Button>
+
+                          {allModules.map((m: any) => {
+                            const Icon = (LucideIcons as any)[m.icon] || Package;
+                            const isActive = categoryFilter === m.id;
+                            return (
+                              <Button 
+                                 key={m.id}
+                                 variant={isActive ? 'primary' : 'outline'}
+                                 onClick={() => setCategory(m.id)}
+                                 className={`rounded-lg px-4 h-9 font-bold text-[12.8px] transition-all flex items-center gap-2 ${isActive ? 'bg-blue-600 text-white shadow-md' : 'bg-transparent text-slate-500 border-slate-200 dark:border-slate-800'}`}
+                              >
+                                 <Icon size={14} />
+                                 {m.name}
+                              </Button>
+                            );
+                          })}
+                       </div>
+                    </div>
+                  </div>
+
+                 {/* Product Catalog Area */}
+                 <div className="relative">
+                    <AnimatePresence mode="wait">
+                    {configView === 'COMPARE' ? (
+                      <motion.div
+                        key="compare"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -30 }}
+                        className="bg-white dark:bg-slate-900/50 backdrop-blur-3xl rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-2xl"
+                      >
+                          <table className="w-full text-sm text-left border-collapse min-w-[800px]">
+                            <thead>
+                               <tr className="border-b border-slate-100 dark:border-slate-800">
+                                  <th className="p-10 text-xs font-black uppercase tracking-widest text-slate-400 w-1/4">Komponen Fitur</th>
+                                  {groupedProducts.slice(0, 3).map(p => {
+                                    const state = productStates[p.id] || { size: p.sizes[0], period: 'MONTH' };
+                                    const variant = p.variants.find((v: any) => v.size === state.size && v.period === state.period) || p.variants[0];
+                                    return (
+                                      <th key={p.id} className="p-10">
+                                         <div className="text-[10px] font-black text-blue-600 uppercase mb-2 tracking-tighter">{p.module}</div>
+                                         <div className="text-xl font-black text-slate-900 dark:text-white leading-tight">{p.baseName}</div>
+                                         {variant && <div className="text-[10px] text-slate-400 font-bold mt-1">Edisi {variant.size}</div>}
+                                      </th>
+                                    );
+                                  })}
+                               </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50 font-medium">
+                               <tr>
+                                  <td className="p-8 pl-10 text-slate-500 font-bold">Kapasitas Maksimal</td>
+                                  {groupedProducts.slice(0, 3).map(p => {
+                                    const state = productStates[p.id] || { size: p.sizes[0], period: 'MONTH' };
+                                    const variant = p.variants.find((v: any) => v.size === state.size && v.period === state.period) || p.variants[0];
+                                    return (
+                                      <td key={p.id} className="p-8 text-slate-900 dark:text-white font-black">{variant?.max_user ? `${variant?.max_user} Siswa` : 'Unlimited'}</td>
+                                    );
+                                  })}
+                               </tr>
+                               <tr>
+                                  <td className="p-8 pl-10 text-slate-500 font-bold">Mode Pengoperasian</td>
+                                  {groupedProducts.slice(0, 3).map(p => (
+                                    <td key={p.id} className="p-8 text-slate-900 dark:text-white font-black">{p.mode.replace('_', ' ')}</td>
+                                  ))}
+                               </tr>
+                               <tr>
+                                  <td className="p-8 pl-10 text-slate-500 font-bold">Fitur Utama Terpilih</td>
+                                  {groupedProducts.slice(0, 3).map(p => {
+                                    const state = productStates[p.id] || { size: p.sizes[0], period: 'MONTH' };
+                                    const variant = p.variants.find((v: any) => v.size === state.size && v.period === state.period) || p.variants[0];
+                                    const features = Array.isArray(variant?.features_json) ? variant.features_json : [];
+                                    return (
+                                      <td key={p.id} className="p-8 text-slate-400 text-xs leading-relaxed space-y-2">
+                                         {features.length > 0 ? features.slice(0, 5).map((f: string, i: number) => (
+                                           <div key={i} className="flex items-center gap-2"><Check size={10} className="text-blue-500" /> {f}</div>
+                                         )) : (
+                                           <div className="flex items-center gap-2 italic opacity-50"><Info size={10} /> Spesifikasi standar</div>
+                                         )}
+                                      </td>
+                                    );
+                                  })}
+                               </tr>
+                               <tr>
+                                  <td className="p-8 pl-10 text-slate-500 font-bold">Investasi ({categoryFilter === 'YEAR' ? 'Tahunan' : 'Bulanan'})</td>
+                                  {groupedProducts.slice(0, 3).map(p => {
+                                    const state = productStates[p.id] || { size: p.sizes[0], period: 'MONTH' };
+                                    const variant = p.variants.find((v: any) => v.size === state.size && v.period === state.period) || p.variants[0];
+                                    return (
+                                      <td key={p.id} className="p-8">
+                                         <div className="text-lg font-black text-slate-900 dark:text-white">{formatCurrency(variant?.price_monthly)}</div>
+                                         <div className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter mt-1">{variant?.billing_period === 'YEAR' ? 'Per Bulan (Dibayar Tahunan)' : 'Per Bulan'}</div>
+                                      </td>
+                                    );
+                                  })}
+                               </tr>
+                            </tbody>
+                         </table>
+                         <div className="p-10 bg-slate-50 dark:bg-slate-900/50 text-center">
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest italic opacity-60">Fitur yang lebih detail sedang dalam pengembangan.</p>
+                         </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                         key="grid"
+                         initial={{ opacity: 0 }}
+                         animate={{ opacity: 1 }}
+                         exit={{ opacity: 0 }}
+                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+                      >
+                         {plansQuery.isLoading ? (
+                            Array.from({ length: 3 }).map((_, i) => (
+                              <Card key={i} className="p-4 rounded-xl bg-slate-100/50 dark:bg-slate-900 animate-pulse h-[280px]"><div /></Card>
+                            ))
+                         ) : groupedProducts.length === 0 ? (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                               <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-xl"><Search size={32} className="text-slate-400" /></div>
+                               <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Produk Tidak Ditemukan</h3>
+                               <p className="text-slate-500 max-w-sm text-sm font-medium">Maaf, saat ini belum ada penawaran untuk kategori ini.</p>
+                            </motion.div>
+                         ) : (
+                           groupedProducts.map((group) => {
+                             const state = productStates[group.id] || { size: group.sizes[0], period: 'MONTH' };
+                             const currentVariant = group.variants.find((v: any) => v.size === state.size && v.period === state.period) || group.variants[0];
+                             
+                             const availablePeriodsForThisSize = group.variants
+                               .filter((v: any) => (currentVariant ? v.size === currentVariant.size : v.size === state.size))
+                               .map((v: any) => v.period);
+                               
+                             const IconComp = getServiceIcon(group.service_code, group.icon);
+                             const isOwned = services.some((s: any) => (currentVariant && s.plan_id === currentVariant.id || s.service_code === group.service_code) && (s.status === 'ACTIVE' || s.status === 'TRIAL'));
+
+                                                           const setState = (patch: any) => setProductStates(prev => ({ ...prev, [group.id]: { ...state, ...patch } }));
+                              const thumbnail = getServiceThumbnail(group.service_code);
+                              const theme = getServiceTheme(group.service_code);
+
+                             return (
+                               <motion.div key={group.id} layout transition={{ duration: 0.4, type: 'spring' }}>
+                                 <Card className={`p-[1.15rem] rounded-xl border bg-white dark:bg-slate-900 transition-all duration-300 flex flex-col h-full shadow-sm relative overflow-hidden group ${isOwned ? 'border-blue-500/30' : 'border-slate-200 dark:border-slate-800 hover:border-blue-500/50'}`}>
+                                    <div className="flex items-start gap-3 mb-4 relative z-10">
+                                       <div className={`w-10 h-10 rounded-lg flex-shrink-0 ${isOwned ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-blue-600'} flex items-center justify-center`}>
+                                          <IconComp size={18} strokeWidth={2} />
+                                       </div>
+                                       <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                             <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">{group.module}</div>
+                                             {isOwned && <Badge variant="success" className="text-[8px] px-1.5 py-0">Milik Anda</Badge>}
+                                          </div>
+                                          <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight truncate">{group.baseName}</h3>
+                                          <p className="text-[10px] text-slate-500 font-medium truncate opacity-70">Opsi: {group.mode.replace('_', ' ')}</p>
+                                       </div>
+                                    </div>
+
+                                    <div className="flex-1 space-y-4 relative z-10">
+                                       <div>
+                                           <div className="flex flex-wrap gap-1.5">
+                                              {group.sizes.map((s: string) => {
+                                                const vSize = group.variants.find((v: any) => v.size === s);
+                                                return (
+                                                  <button 
+                                                    key={s}
+                                                    onClick={() => setState({ size: s })}
+                                                    className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase transition-all border ${state.size === s ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 border-transparent hover:border-slate-300'}`}
+                                                  >
+                                                     {s} {vSize?.max_user && <span className="opacity-60 font-medium lowercase">({vSize.max_user})</span>}
+                                                  </button>
+                                                );
+                                              })}
+                                           </div>
+                                        </div>
+
+                                       <div className="py-3 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800">
+                                          <div className="flex items-center justify-between gap-1">
+                                             <div className="flex-1 min-w-0">
+                                                 <div className="text-[12.8px] font-bold text-slate-900 dark:text-white flex items-baseline gap-1 flex-wrap">
+                                                    {currentVariant ? (
+                                                       <>
+                                                          {state.period === 'YEAR' && currentVariant.price_monthly && currentVariant.price_yearly && (
+                                                             <span className="text-[9px] text-slate-400 line-through">
+                                                                {formatCurrency(group.variants.find((v: any) => v.size === state.size && v.period === 'MONTH')?.price_monthly || currentVariant.price_monthly * 1.1)}
+                                                             </span>
+                                                          )}
+                                                          <motion.span 
+                                                            key={`${currentVariant.id}-${state.period}`} 
+                                                            className="flex items-baseline gap-0.5"
+                                                          >
+                                                            {formatCurrency(state.period === 'YEAR' ? Math.round(currentVariant.price_yearly / 12) : currentVariant.price_monthly)}
+                                                            <span className="text-[10px] text-slate-400 lowercase font-medium">/bln</span>
+                                                          </motion.span>
+                                                       </>
+                                                    ) : (
+                                                       <span className="text-[10px] font-bold text-red-500">N/A</span>
+                                                    )}
+                                                 </div>
+                                             </div>
+                                             
+                                              <div className="flex bg-white dark:bg-slate-700 p-0.5 rounded-md shadow-sm border border-slate-200 dark:border-slate-700">
+                                                 <button 
+                                                    onClick={() => setState({ period: 'MONTH' })}
+                                                    className={`px-2 py-1 rounded-sm text-[8px] font-bold transition-all ${state.period === 'MONTH' ? 'bg-slate-100 dark:bg-slate-600 text-slate-900 dark:text-white' : 'text-slate-400'}`}
+                                                 >
+                                                    Bln
+                                                 </button>
+                                                 <button 
+                                                    onClick={() => setState({ period: 'YEAR' })}
+                                                    className={`px-2 py-1 rounded-sm text-[8px] font-bold transition-all ${state.period === 'YEAR' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}
+                                                 >
+                                                    Thn
+                                                 </button>
+                                              </div>
+                                          </div>
+                                       </div>
+                                       
+                                        <div className="space-y-1.5">
+                                           {((currentVariant?.features_json || []) as string[]).slice(0, 3).map((f, i) => (
+                                              <div key={i} className="flex items-center gap-2 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                                 <Check size={10} className="text-blue-500" />
+                                                 <span className="truncate">{f}</span>
+                                              </div>
+                                           ))}
+                                        </div>
+
+                                       <Button 
+                                          onClick={() => {
+                                             if (!currentVariant) return;
+                                             if (isOwned) {
+                                                handleTabChange('status');
+                                                setSelectedServiceId(services.find((s: any) => (s.plan_id === currentVariant.id || s.service_code === group.service_code) && (s.status === 'ACTIVE' || s.status === 'TRIAL'))?.id);
+                                             } else {
+                                                navigate(`/checkout?plan_id=${currentVariant.id}`);
+                                             }
+                                          }} 
+                                          disabled={!currentVariant}
+                                          className={`rounded-lg w-full h-10 font-bold text-[12.8px] transition-all duration-300 ${!currentVariant ? 'bg-slate-100' : isOwned ? 'bg-slate-100 dark:bg-slate-800 text-blue-600' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'}`}
+                                       >
+                                          {isOwned ? "Konfigurasi" : "Berlangganan"}
+                                       </Button>
+                                    </div>
+                                 </Card>
+                               </motion.div>
+                             );
+                           })
+                         )}
+                      </motion.div>
+                    )}
+                    </AnimatePresence>
+                 </div>
+              </div>
+           )}
+
+          {currentTab === 'billing' && (
+            <div className="space-y-6 pb-20">
+               {/* 1. Unpaid Invoices / Actionable */}
+               <Card className="p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl">
+                  <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                     <div className="flex items-center gap-3"><div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Receipt size={18} /></div><h3 className="text-sm font-bold uppercase tracking-tight">Tagihan Pending</h3></div>
+                     {invoices.filter(i => i.status !== 'PAID').length > 0 && <Badge variant="warning" className="text-[10px] font-bold px-3 py-0.5">{invoices.filter(i => i.status !== 'PAID').length} Tertunggak</Badge>}
+                  </div>
+                  <div className="overflow-x-auto">
+                     <table className="w-full text-[12.8px] text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                           <tr><th className="px-6 py-3">Invoice</th><th className="px-6 py-3">Status</th><th className="px-6 py-3 text-right">Total</th><th className="px-6 py-3 text-right">Tindakan</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                           {invoices.filter(i => i.status !== 'PAID').length === 0 ? (
+                             <tr><td colSpan={4} className="p-12 text-center text-slate-400 font-medium italic text-xs">Tidak ada tagihan tertunggak saat ini.</td></tr>
+                           ) : (
+                             invoices.filter(i => i.status !== 'PAID').map((inv) => (
+                               <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                 <td className="px-6 py-4"><div className="font-bold text-slate-900 dark:text-white tracking-tight">#{inv.invoice_number}</div><div className="text-[10px] text-slate-400 font-medium">{formatDate(inv.created_at)}</div></td>
+                                 <td className="px-6 py-4"><Badge variant="warning" className="uppercase text-[9px] font-bold">{inv.status}</Badge></td>
+                                 <td className="px-6 py-4 text-right font-bold text-slate-900 dark:text-white">{formatCurrency(inv.total_amount, inv.currency)}</td>
+                                 <td className="px-6 py-4 text-right">
+                                   <div className="flex items-center justify-end gap-2">
+                                     <Button size="sm" variant="outline" onClick={() => handleViewInvoice(inv.id)} className="h-8 px-3 rounded-md text-xs">Detail</Button>
+                                     <Button size="sm" onClick={() => handleViewInvoice(inv.id)} className="rounded-md bg-blue-600 text-white font-bold h-8 px-4 text-xs shadow-md shadow-blue-600/10 hover:bg-blue-700">Bayar</Button>
+                                   </div>
+                                 </td>
+                               </tr>
+                             ))
+                           )}
+                        </tbody>
+                     </table>
+                  </div>
+               </Card>
+
+               {/* 2. Payment History */}
+               <Card className="p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl">
+                  <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                     <div className="flex items-center gap-3"><div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg"><CheckCircle size={18} /></div><h3 className="text-sm font-bold uppercase tracking-tight">Riwayat Pembayaran</h3></div>
+                  </div>
+                  <div className="overflow-x-auto">
+                     <table className="w-full text-[12.8px] text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                           <tr><th className="px-6 py-3">Tanggal</th><th className="px-6 py-3">Metode</th><th className="px-6 py-3 text-right">Nominal</th><th className="px-6 py-3 text-right">Status</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                           {payments.length === 0 ? (
+                             <tr><td colSpan={4} className="p-12 text-center text-slate-400 font-medium text-xs">Belum ada riwayat transaksi.</td></tr>
+                           ) : (
+                             payments.map((pay: any) => (
+                               <tr key={pay.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                 <td className="px-6 py-4 text-slate-900 dark:text-white font-bold">{formatDate(pay.created_at)}</td>
+                                 <td className="px-6 py-4 text-slate-500 font-bold text-[10px] uppercase">{pay.payment_method || 'DIGITAL PAY'}</td>
+                                 <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(pay.amount, pay.currency)}</td>
+                                 <td className="px-6 py-4 text-right"><Badge variant="success" className="uppercase text-[9px] font-bold">SUKSES</Badge></td>
+                               </tr>
+                             ))
+                           )}
+                        </tbody>
+                     </table>
+                  </div>
+               </Card>
+            </div>
+          )}
+        </div>
+      </Tabs>
+    </div>
+  );
+}
+
+

@@ -1,0 +1,41 @@
+import { sekolahController } from '../controllers/sekolah.controller';
+import { requireCapability } from '@/middlewares/requireCapability';
+
+export async function sekolahRoutes(fastify: any) {
+  // Authentication and tenant middleware are registered at plugin level in main.ts
+
+  fastify.get('/lookup-npsn/:npsn', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['npsn'],
+        properties: {
+          npsn: { type: 'string', pattern: '^\\d{8}$' },
+        },
+      },
+    },
+    config: {
+      skipAuth: true,
+      rateLimit: {
+        max: 30,
+        timeWindow: '1 minute',
+      },
+    },
+    handler: sekolahController.lookupNpsn.bind(sekolahController),
+  });
+
+  fastify.get('/me', {
+    preHandler: [requireCapability('core.sekolah.view.profile')],
+    handler: sekolahController.getCurrent.bind(sekolahController),
+  });
+
+  fastify.post('/', {
+    preHandler: [requireCapability('core.sekolah.update.profile')],
+    handler: sekolahController.create.bind(sekolahController),
+  });
+
+  fastify.put('/', {
+    preHandler: [requireCapability('core.sekolah.update.profile')],
+    handler: sekolahController.update.bind(sekolahController),
+  });
+}

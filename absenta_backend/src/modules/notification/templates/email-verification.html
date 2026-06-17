@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verifikasi Akun Administrator</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1F2937; line-height: 1.6; margin: 0; padding: 0; background-color: #F3F4F6; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    .header { background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #fff; padding: 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    .content { padding: 32px; }
+    .text { margin-bottom: 24px; font-size: 16px; }
+    .btn { display: inline-block; background: #2563EB; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; text-align: center; width: 100%; box-sizing: border-box; transition: background-color 0.2s; }
+    .btn:hover { background: #1D4ED8; }
+    .link-box { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 12px; margin-top: 24px; word-break: break-all; font-family: monospace; font-size: 12px; color: #374151; }
+    .footer { background: #F9FAFB; padding: 24px; text-align: center; font-size: 12px; color: #6B7280; border-top: 1px solid #E5E7EB; }
+    .footer p { margin: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div style="background: rgba(255, 255, 255, 0.1); width: 64px; height: 64px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(255, 255, 255, 0.2);">
+        <img src="{{logoUrl}}" alt="Logo" style="width: 44px; height: 44px; outline: none; border: none; text-decoration: none;" />
+      </div>
+      <h1>Verifikasi Email</h1>
+    </div>
+    <div class="content">
+      <p class="text">Yth. Bapak/Ibu <strong>{{fullName}}</strong>,</p>
+      <p class="text">Terima kasih telah melakukan pendaftaran layanan <strong>{{appLabel}}</strong>. Untuk mengaktifkan akun <strong>Administrator Sekolah</strong>, silakan lakukan verifikasi email Anda dengan menekan tombol di bawah ini:</p>
+      
+      <a href="{{verifyUrl}}" class="btn">Verifikasi Email Saya</a>
+      
+      <p style="margin-top: 24px; font-size: 14px; color: #4B5563;">Apabila tombol di atas tidak dapat diklik, silakan salin dan tempel tautan berikut ke peramban Anda:</p>
+      <div class="link-box">
+        {{verifyUrl}}
+      </div>
+
+      <p style="margin-top: 24px; font-size: 13px; color: #6B7280;">Jika Anda tidak merasa melakukan pendaftaran ini, mohon abaikan pesan ini.</p>
+    </div>
+    <div class="footer">
+      <p>Hormat kami,</p>
+      <p><strong>Tim {{appName}}</strong></p>
+      {{#if companyLegalName}}<p style="margin-top: 8px; color: #9CA3AF;">{{companyLegalName}}</p>{{/if}}
+      <p style="margin-top: 16px; border-top: 1px solid #E5E7EB; padding-top: 16px;">&copy; {{year}} {{appName}}. All rights reserved.</p>
+    </div>
+  </div>
+</body>
+</html>

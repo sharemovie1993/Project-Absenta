@@ -1,0 +1,345 @@
+import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { 
+  SectionCard, 
+  Button, 
+  Input, 
+  Badge, 
+  Loader, 
+  Alert, 
+  AlertDescription,
+  Table
+} from '../../../components/ui';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
+import { getRekapBulananSiswa } from '../../../api/attendanceGerbang.api';
+import { siswaApi, kelasApi } from '../../../api/academic.api';
+import { formatDate } from '../../../utils/layoutUtils';
+import { useAuth } from '../../../hooks/useAuth';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+
+import { 
+  Search, 
+  RefreshCw, 
+  Calendar, 
+  User, 
+  FileText, 
+  Filter, 
+  Printer, 
+  Eye, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  AlertCircle 
+} from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
+
+const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
+
+export default function RekapBulananSiswaPage() {
+  const { subscription } = useAuthStore();
+  const { can, isLoading, user } = useAuth();
+  const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
+  const [tahunPelajaranId, setTahunPelajaranId] = useState('');
+  const [bulan, setBulan] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [siswaId, setSiswaId] = useState('');
+  const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<{ summary?: Record<string, number>; detail?: Record<string, string | number>[]; nama_siswa?: string; statistik?: Record<string, number> } | null>(null);
+  const [kelasNama, setKelasNama] = useState<string>('');
+  
+  const canView = useMemo(() => can('attendance.reports.view'), [can]);
+  const monthDate = useMemo(() => {
+    const [y, m] = bulan.split('-');
+    return new Date(parseInt(y), parseInt(m) - 1, 15);
+  }, [bulan]);
+  
+  const isSiswa = user?.role?.name === 'SISWA';
+
+  const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
+                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json || 
+                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json || [];
+  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadDropdowns = async () => {
+      const opsi = await dropdownApi.getTahunPelajaranForDropdown();
+      if (!isMounted) return;
+      setTahunOptions(opsi);
+      const active = await dropdownApi.getActiveTahunPelajaran();
+      if (!isMounted) return;
+      if (active?.id) setTahunPelajaranId(active.id);
+      
+      if (isSiswa && user?.id) {
+        try {
+          const res = await siswaApi.getAll({ limit: 1000 });
+          if (!isMounted) return;
+          const mySiswa = res.data?.find((s: any) => s.user_id === user.id);
+          if (mySiswa) {
+            setSiswaOptions([{ label: mySiswa.nama_siswa, value: mySiswa.id }]);
+            setSiswaId(mySiswa.id);
+          }
+        } catch (e) {
+          console.error("Failed to auto-select siswa", e);
+        }
+      } else {
+        const siswa = await dropdownApi.getSiswaForDropdown();
+        if (!isMounted) return;
+        setSiswaOptions(siswa);
+      }
+    };
+    loadDropdowns();
+    return () => { isMounted = false; };
+  }, [isSiswa, user?.id]);
+
+  useEffect(() => {
+    if (isSiswa && siswaId && bulan && tahunPelajaranId) {
+       fetchData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siswaId, isSiswa]);
+
+  const fetchData = useCallback(async () => {
+    if (isLocked) return;
+    if (!siswaId || !bulan) return;
+    setLoading(true);
+    try {
+      const res = await getRekapBulananSiswa(siswaId, { bulan, tahun_pelajaran_id: tahunPelajaranId || undefined });
+      setData(res.data);
+      try {
+        const siswaRes = await siswaApi.getById(siswaId);
+        const kid = (siswaRes.data as { kelas_id?: string })?.kelas_id;
+        if (kid) {
+          const kelasRes = await kelasApi.getById(kid);
+          setKelasNama((kelasRes.data as { nama_kelas?: string })?.nama_kelas || '');
+        }
+      } catch (e) {
+        console.error("Gagal memuat info kelas siswa", e);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [isLocked, siswaId, bulan, tahunPelajaranId]);
+
+  const openPrintView = useCallback((autoPrint: boolean) => {
+    const url = `/print/rekap-bulanan-siswa?siswa_id=${siswaId}&bulan=${bulan}&tahun_pelajaran_id=${tahunPelajaranId || ''}&autoPrint=${autoPrint}`;
+    window.open(url, '_blank', 'width=900,height=800');
+  }, [siswaId, bulan, tahunPelajaranId]);
+
+  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
+  if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
+
+  const statCards = useMemo(() => {
+    if (!data) return [];
+    return [
+      { label: 'Hadir', value: data.summary?.H || data.statistik?.HADIR || 0, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-100 dark:border-emerald-900/50' },
+      { label: 'Izin', value: data.summary?.I || data.statistik?.IZIN || 0, icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-100 dark:border-blue-900/50' },
+      { label: 'Sakit', value: data.summary?.S || data.statistik?.SAKIT || 0, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-100 dark:border-amber-900/50' },
+      { label: 'Alpha', value: data.summary?.A || data.statistik?.ALPA || 0, icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/30', border: 'border-rose-100 dark:border-rose-900/50' },
+      { label: 'Total', value: (data.summary?.H || data.statistik?.HADIR || 0) + (data.summary?.I || data.statistik?.IZIN || 0) + (data.summary?.S || data.statistik?.SAKIT || 0) + (data.summary?.A || data.statistik?.ALPA || 0), icon: Calendar, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-100 dark:bg-slate-800/50', border: 'border-slate-200 dark:border-slate-700/50' }
+    ];
+  }, [data]);
+
+  const columns = useMemo(() => [
+    { label: 'Tanggal', key: 'tanggal', sortable: true, render: (v: string) => <div className="font-bold text-[11px] text-slate-700 dark:text-slate-300 uppercase tracking-widest">{formatDate(v, { dateStyle: 'medium' })}</div> },
+    { 
+      label: 'Status', 
+      key: 'status',
+      sortable: true,
+      render: (v: string) => {
+        const variants: Record<string, any> = {
+          H: 'success', I: 'info', S: 'warning', A: 'destructive'
+        };
+        const labels: Record<string, string> = {
+          H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpha'
+        };
+        return <Badge variant={variants[v] || 'default'} className="text-[9px] uppercase tracking-widest px-2 py-0.5 font-black">{labels[v] || v || '-'}</Badge>;
+      }
+    },
+    { 
+      label: 'Waktu Masuk', 
+      key: 'jam_masuk',
+      sortable: true,
+      render: (v: string) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v || '-'}</span>
+    },
+    { 
+      label: 'Keterangan', 
+      key: 'keterangan',
+      sortable: true,
+      render: (v: string) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v || '-'}</span>
+    }
+  ], []);
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState('tanggal');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = useCallback((key: string) => {
+    if (sortBy === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(key);
+      setSortOrder('asc');
+    }
+  }, [sortBy, sortOrder]);
+
+  const sortedData = useMemo(() => {
+    if (!data?.detail || !Array.isArray(data.detail)) return [];
+    return [...data.detail].sort((a: Record<string, string | number>, b: Record<string, string | number>) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      if (aVal === bVal) return 0;
+      if (aVal == null) return sortOrder === 'asc' ? 1 : -1;
+      if (bVal == null) return sortOrder === 'asc' ? -1 : 1;
+      if (sortOrder === 'asc') {
+        return aVal < bVal ? -1 : 1;
+      } else {
+        return aVal > bVal ? -1 : 1;
+      }
+    });
+  }, [data, sortBy, sortOrder]);
+
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * limit;
+    return sortedData.slice(start, start + limit);
+  }, [sortedData, page, limit]);
+
+  const totalPages = Math.ceil(sortedData.length / limit);
+
+  const pageContent = (
+    <div className="space-y-6">
+      <SectionCard title="Filter Laporan Bulanan" icon={Filter} fullWidth>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Siswa</label>
+            <SearchableSelect value={siswaId} onValueChange={setSiswaId} options={siswaOptions} placeholder="Pilih Siswa" disabled={isSiswa} triggerClassName="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bulan Laporan</label>
+            <Input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tahun Pelajaran</label>
+            <SearchableSelect value={tahunPelajaranId} onValueChange={setTahunPelajaranId} options={tahunOptions} placeholder="Pilih Tahun..." triggerClassName="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" />
+          </div>
+        </div>
+        <div className="mt-8 flex justify-end">
+          <Button onClick={fetchData} disabled={loading || !siswaId || !bulan} className="h-12 px-10 rounded-xl font-black text-[11px] uppercase tracking-widest gap-2 bg-slate-900 dark:bg-blue-600 text-white shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
+            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            Tampilkan Rekapitulasi
+          </Button>
+        </div>
+      </SectionCard>
+
+      {data && (
+        <div className="space-y-6">
+          <SectionCard title="Ringkasan Statistik Bulanan" icon={FileText} fullWidth>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+              <div className="flex items-center gap-5">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                  <User size={32} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">{data.nama_siswa}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5">{kelasNama || 'Kelas N/A'}</Badge>
+                    <div className="w-1 h-1 rounded-full bg-slate-300 mx-1" />
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                      Periode: {formatDate(monthDate, { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {statCards?.map((stat, i) => (
+                <div key={i} className={`p-5 rounded-2xl border ${stat.border} ${stat.bg} transition-all hover:scale-[1.03]`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2 rounded-lg bg-white dark:bg-slate-900 ${stat.color} shadow-sm`}>
+                      <stat.icon size={16} />
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{stat.label}</div>
+                  <div className={`text-3xl font-black tracking-tight ${stat.color}`}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Rincian Kehadiran" icon={Calendar} fullWidth noPadding>
+            <div className="bg-white dark:bg-slate-950 overflow-hidden rounded-b-[2rem]">
+              <Table
+                columns={columns}
+                data={paginatedData}
+                loading={loading}
+                emptyMessage="Tidak ada rincian data untuk bulan ini."
+                compact={true}
+                className="border-none"
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                pagination={{
+                  currentPage: page,
+                  itemsPerPage: limit,
+                  totalItems: sortedData.length,
+                  totalPages,
+                  onPageChange: setPage,
+                  onLimitChange: setLimit
+                }}
+                toolbarRight={
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openPrintView(false)} className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4">
+                      <Eye className="w-3.5 h-3.5 mr-2" /> Preview
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => openPrintView(true)} className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4">
+                      <Printer className="w-3.5 h-3.5 mr-2" /> Cetak
+                    </Button>
+                  </div>
+                }
+              />
+            </div>
+          </SectionCard>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <AcademicPageLayout
+      hardeningModuleKey="rekapbulanansiswapage"
+      title="Rekap Bulanan Siswa"
+      description="Visualisasikan kehadiran siswa dalam format kalender bulanan yang interaktif"
+      breadcrumbs={[
+        { label: 'Presensi', path: '/attendance' },
+        { label: 'Rekap', path: '/attendance/rekap' },
+        { label: 'Bulanan Siswa', path: '/attendance/rekap/siswa-bulanan' }
+      ]}
+      instruction={{
+        title: "Panduan Rekap Bulanan",
+        description: "Gunakan halaman ini untuk memantau rekap presensi siswa per bulan.",
+        items: [
+          { text: "Pilih bulan, tahun ajaran, dan nama siswa." },
+          { text: "Statistik kehadiran (Hadir, Izin, Sakit, Alpha) akan terakumulasi otomatis." },
+          { text: "Anda dapat mencetak laporan menggunakan tombol Cetak." }
+        ]
+      }}
+    >
+      <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+        <PremiumFeatureGate
+          isLocked={isLocked}
+          moduleName="ABSENSI"
+          featureName="Rekap Presensi Bulanan"
+          description="Visualisasikan kehadiran siswa dalam format kalender bulanan yang interaktif dan mudah dianalisis."
+        >
+          {pageContent}
+        </PremiumFeatureGate>
+      </Suspense>
+    </AcademicPageLayout>
+  );
+}

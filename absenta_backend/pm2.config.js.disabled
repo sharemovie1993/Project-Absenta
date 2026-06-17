@@ -1,0 +1,17 @@
+module.exports = {
+  apps: [
+    {
+      name: 'absenta-backend',
+      script: 'node_modules/ts-node/dist/bin.js',
+      args: '-r tsconfig-paths/register src/main.ts',
+      env: {
+        NODE_ENV: 'development',
+        PORT: 3001
+      },
+      exec_mode: 'fork',
+      interpreter: 'node',
+      watch: false,
+      autorestart: true
+    }
+  ]
+};

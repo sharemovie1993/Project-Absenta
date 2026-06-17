@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selamat Datang</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #1F2937; }
+    .container { max-width: 640px; margin: 0 auto; padding: 24px; background: #F9FAFB; }
+    .header { background: #2563EB; color: #fff; padding: 16px 24px; border-radius: 8px 8px 0 0; }
+    .content { background: #fff; padding: 24px; border: 1px solid #E5E7EB; border-top: none; }
+    .cta { display: inline-block; background: #16A34A; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 6px; margin-top: 16px; }
+    .steps { margin: 16px 0; padding-left: 18px; }
+    .footer { color: #6B7280; font-size: 12px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Selamat Datang, {{tenantName}}</h2>
+    </div>
+    <div class="content">
+      <p>Terima kasih telah mendaftar. Berikut 3 langkah utama untuk memulai:</p>
+      <ol class="steps">
+        <li>Lengkapi profil sekolah</li>
+        <li>Tambahkan data akademik</li>
+        <li>Atur absensi</li>
+      </ol>
+      {{#if setupLink}}
+      <p>
+        <a class="cta" href="{{setupLink}}" target="_blank" rel="noopener">Setup sekolah</a>
+      </p>
+      {{/if}}
+      <p class="footer">Email ini dikirim otomatis oleh sistem. &copy; 2024 Sistem Absensi Multitenant</p>
+    </div>
+  </div>
+</body>
+</html>

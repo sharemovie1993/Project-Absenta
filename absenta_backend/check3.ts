@@ -1,0 +1,1 @@
+import { PrismaClient } from '@prisma/client'; const prisma = new PrismaClient(); async function main() { const caps = await prisma.organizationalCapability.findMany({ where: { position: { tenant_id: 'aa8847c6-c265-4086-b786-99116a6b9d75' } } }); console.log('caps for cimahi:', caps.length); } main().finally(() => prisma.$disconnect());
