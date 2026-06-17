@@ -9,16 +9,29 @@ export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Absenta';
 export const DEFAULT_SUPPORT_EMAIL = 'support@' + MAIN_DOMAIN;
 
 // API & Realtime URLs
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+/**
+ * Resolves the API Base URL dynamically.
+ * Priority: 
+ * 1. Environment variable VITE_API_BASE_URL (if it's a full URL)
+ * 2. Current window origin + /api (Project Yatim style flexible)
+ */
+const resolveApiBaseUrl = (): string => {
+  const envBase = import.meta.env.VITE_API_BASE_URL;
+  
+  // If env is provided and is a full URL, use it
+  if (envBase && envBase.startsWith('http')) return envBase;
+  
+  // Otherwise, use current origin + /api (Flexible Mode)
+  return `${window.location.origin}/api`;
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 /**
  * Resolves the absolute API URL if needed (e.g. for uploads or external links)
  */
 export const getAbsoluteApiUrl = (path: string = ''): string => {
-  const base = API_BASE_URL.startsWith('/') 
-    ? window.location.origin + API_BASE_URL 
-    : API_BASE_URL;
-  return base.replace(/\/+$/, '') + (path ? '/' + path.replace(/^\/+/, '') : '');
+  return API_BASE_URL.replace(/\/+$/, '') + (path ? '/' + path.replace(/^\/+/, '') : '');
 };
 
 /**
@@ -26,13 +39,16 @@ export const getAbsoluteApiUrl = (path: string = ''): string => {
  */
 export const getSocketUrl = (): string => {
   const envSocket = import.meta.env.VITE_SOCKET_URL;
-  if (envSocket) return envSocket;
+  
+  // If env is provided and is a full WSS/WS URL, use it
+  if (envSocket && (envSocket.startsWith('wss:') || envSocket.startsWith('ws:'))) {
+    return envSocket;
+  }
 
-  // Dynamic resolution: same host as current page
+  // Dynamic resolution: same host as current page (Project Yatim style)
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host; // includes port
   
-  // If in dev and api is proxied, socket should also point to the same host
   return `${protocol}//${host}`;
 };
 

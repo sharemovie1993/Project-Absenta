@@ -44,7 +44,12 @@ Thumbs.db
 !absenta_backend/prisma/schema.prisma
 
 # Sub-repository Git folders (PENTING)
-# Kita ingin menghapus .git di subfolder agar tidak terbaca sebagai submodule
-# Tapi kita tambahkan di sini sebagai jaga-jaga
 absenta_backend/.git
 absenta_frontend/.git
+
+# Unrelated Folders
+supabase_infra/
+supabase_temp/
+artifacts/
+docs/Data Sekolah atau Pasar/
+

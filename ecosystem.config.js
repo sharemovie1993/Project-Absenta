@@ -51,27 +51,30 @@ module.exports = {
       name: `absenta-backend:${backendPort}`,
       script: 'dist/main.js',
       cwd: path.join(__dirname, 'absenta_backend'),
+      instances: 'max', // Adaptive: Uses all CPU cores
+      exec_mode: 'cluster', // Cluster mode for high performance
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
+        EMBEDDED_WORKERS: 'true', // Each instance can run workers (safe due to distributed locks)
+        AUTOSCALER_MAX_WORKERS: '10',
         ...backendEnv
       },
       watch: false,
-      instances: 1,
-      exec_mode: 'fork'
+      max_memory_restart: '1G'
     },
     {
       name: `absenta-frontend:${frontendPort}`,
       script: 'node_modules/vite/bin/vite.js',
       args: `preview --port ${frontendPort} --host 0.0.0.0`,
       cwd: path.join(__dirname, 'absenta_frontend'),
+      instances: 1, // Frontend is light, 1 instance is enough
+      exec_mode: 'fork',
       env: {
         NODE_ENV: 'production',
         ...frontendEnv
       },
-      watch: false,
-      instances: 1,
-      exec_mode: 'fork'
+      watch: false
     }
   ]
 };
