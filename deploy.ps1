@@ -110,26 +110,75 @@ if (-not $Silent) {
         }
 
         # 1. Domain / Host
-        $inputDomain = Read-Host "1. Masukkan Domain atau IP Server [$finalDomain]"
+        $inputDomain = Read-Host "1. Masukkan Domain Tunggal (misal: sekolah.absenta.id) [$finalDomain]"
         if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
 
         # 2. Protokol
         $inputScheme = Read-Host "2. Gunakan Protokol (http/https) [$finalScheme]"
         if (-not [string]::IsNullOrWhiteSpace($inputScheme)) { $finalScheme = $inputScheme }
+        
+        # 3. LAN IP (Optional for Split DNS Helper)
+        $lanIp = Read-Host "3. Masukkan IP LAN Server (untuk akses lokal tanpa DNS) [127.0.0.1]"
+        if ([string]::IsNullOrWhiteSpace($lanIp)) { $lanIp = "127.0.0.1" }
 
-        # 3. Ports
-        $inputBPort = Read-Host "3. Port Backend [$BackendPort]"
+        # 4. Ports
+        $inputBPort = Read-Host "4. Port Backend [$BackendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputBPort)) { $BackendPort = $inputBPort }
         
-        $inputFPort = Read-Host "4. Port Frontend [$FrontendPort]"
+        $inputFPort = Read-Host "5. Port Frontend [$FrontendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
-        Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
-        Write-Host " - Mode Redis     : $redisMode"
-        Write-Host " - URL Akses      : ${finalScheme}://$finalDomain"
+        # 6. License Key
+        $inputLic = Read-Host "6. Masukkan Kunci Lisensi (Kosongkan jika ingin registrasi baru)"
+        if (-not [string]::IsNullOrWhiteSpace($inputLic)) { 
+            $licenseKey = $inputLic.Trim() 
+        } else { 
+            $licenseKey = "" 
+            $requestNew = Read-Host "Belum punya lisensi? Ingin registrasi sekarang? [y/N]"
+            if ($requestNew -eq 'y' -or $requestNew -eq 'Y') {
+                $schoolName = Read-Host "Masukkan Nama Sekolah / Instansi"
+                if ([string]::IsNullOrWhiteSpace($schoolName)) {
+                    Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
+                } else {
+                    Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
+                    try {
+                        $machineId = "server-$([guid]::NewGuid().ToString().Substring(0,8))" # Fallback machine ID for script
+                        $body = @{
+                            school_name = $schoolName
+                            product_id = "platform-absenta"
+                            device_limit = 9999
+                            plan_id = "absenta_on_premise"
+                            payment_method = "manual"
+                        } | ConvertTo-Json
+                        
+                        $resp = Invoke-RestMethod -Method Post -Uri "https://api.absenta.id/api/license/request" -Body $body -ContentType "application/json"
+                        if ($resp.success) {
+                            $licenseKey = $resp.data.license_key
+                            Write-Host "----------------------------------------------------------" -ForegroundColor Green
+                            Write-Host " REGISTRASI BERHASIL!" -ForegroundColor Green -Bold
+                            Write-Host " Kunci Lisensi Anda: $licenseKey" -ForegroundColor Yellow
+                            Write-Host " Status: Menunggu Persetujuan Admin (Pending Approval)"
+                            Write-Host "----------------------------------------------------------" -ForegroundColor Green
+                            Write-Host "Silakan teruskan proses deploy ini, lalu hubungi owner untuk aktivasi."
+                            Read-Host "Tekan [ENTER] untuk melanjutkan..."
+                        }
+                    } catch {
+                        Write-Host "Gagal melakukan registrasi otomatis: $($_.Exception.Message)" -ForegroundColor Red
+                        Read-Host "Tekan [ENTER] untuk lanjut deploy tanpa lisensi..."
+                    }
+                }
+            }
+        }
+
+        Write-Host "--- RINGKASAN KONFIGURASI SPLIT DNS ---" -ForegroundColor Yellow
+        Write-Host " - Domain Utama   : $finalDomain"
+        Write-Host " - Protokol       : $finalScheme"
+        Write-Host " - IP LAN         : $lanIp"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"
-        Write-Host "-----------------------------" -ForegroundColor Yellow
+        Write-Host " - License Key    : $(if($licenseKey){$licenseKey}else{'Tidak Ada'})"
+        Write-Host "---------------------------------------" -ForegroundColor Yellow
+        Write-Host " Catatan: Pastikan DNS Lokal & Cloudflare/VPS Anda mengarah ke domain ini." -ForegroundColor Gray
         Write-Host ""
         $confKey = Read-Host "Apakah sudah benar? [Y/n]"
         if ($confKey -eq 'n' -or $confKey -eq 'N') { } else { $confirmed = $true }
@@ -157,8 +206,13 @@ foreach ($line in $backendEnv) {
     elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
     elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
     elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$finalDomain" }
+    elseif ($line -match "^FRONTEND_URL=") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
+    elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
+    elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
     else { $newBackendEnv += $line }
 }
+# Pastikan LICENSE_KEY tertulis jika tidak ada di example
+if ($newBackendEnv -notmatch "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
@@ -166,8 +220,14 @@ if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env
 $frontendEnv = Get-Content "absenta_frontend/.env"
 $newFrontendEnv = @()
 $fPortFound = $false
+$proxyTargetFound = $false
+
 foreach ($line in $frontendEnv) {
     if ($line -match "^VITE_API_BASE_URL=") { $newFrontendEnv += "VITE_API_BASE_URL=/api" }
+    elseif ($line -match "^VITE_PROXY_TARGET=") { 
+        $newFrontendEnv += "VITE_PROXY_TARGET=http://localhost:$BackendPort"
+        $proxyTargetFound = $true
+    }
     elseif ($line -match "^VITE_SOCKET_URL=") { $newFrontendEnv += "VITE_SOCKET_URL=" }
     elseif ($line -match "^PORT=") { 
         $newFrontendEnv += "PORT=$FrontendPort"
@@ -176,6 +236,7 @@ foreach ($line in $frontendEnv) {
     else { $newFrontendEnv += $line }
 }
 if (-not $fPortFound) { $newFrontendEnv += "PORT=$FrontendPort" }
+if (-not $proxyTargetFound) { $newFrontendEnv += "VITE_PROXY_TARGET=http://localhost:$BackendPort" }
 $newFrontendEnv | Set-Content "absenta_frontend/.env"
 
 Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk target ${finalScheme}://$finalDomain." -ForegroundColor Gray

@@ -39,6 +39,7 @@ export async function registerPlugins(fastify: any) {
     getHostFromEnvUrl(getSmartApiBaseUrl()),
     getHostFromEnvUrl(process.env.API_URL),
     getHostFromEnvUrl(process.env.API_URL),
+    process.env.ALLOWED_LAN_IP,
   ].filter(Boolean));
 
   await fastify.register(require('@fastify/cors'), {
@@ -54,18 +55,18 @@ export async function registerPlugins(fastify: any) {
         } else if ([...allowedBaseDomains].some((d) => host === d || host.endsWith(`.${d}`))) {
           ok = true;
           reason = 'env_base_domain';
-        } else if (process.env.NODE_ENV !== 'production' && (
+        } else if ((process.env.NODE_ENV !== 'production' || (process.env.DEV_ALLOW_LOCALHOST_LOGIN || '').toLowerCase() === 'true') && (
           host === 'localhost' ||
           host.endsWith('.localhost') ||
           host === '127.0.0.1' ||
           host === '10.10.10.250' ||
-          // Allow private/LAN IP ranges for dev testing
+          // Allow private/LAN IP ranges for dev testing or flexible local deployment
           /^192\.168\.\d+\.\d+$/.test(host) ||
           /^10\.\d+\.\d+\.\d+$/.test(host) ||
           /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host)
         )) {
           ok = true;
-          reason = 'dev_localhost_or_lan';
+          reason = 'dev_or_flexible_local';
         }
       } catch (err) {
         reason = 'origin_parse_error';

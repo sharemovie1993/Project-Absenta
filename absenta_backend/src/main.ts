@@ -26,6 +26,7 @@ import { validateEnv } from './config/env';
 validateEnv();
 
 import { appendLog } from './utils/logger';
+import { LicenseService } from './infra/license/license.service';
 
 const pretty =
   (process.env.NODE_ENV || '').toLowerCase() !== 'production' &&
@@ -66,6 +67,9 @@ async function start() {
     console.warn('\n⚠️  WARNING: CORS_DEBUG is enabled in PRODUCTION environment!');
     console.warn('⚠️  This may cause log noise and performance impact. Disable it unless debugging.\n');
   }
+
+  // 0. VERIFIKASI LISENSI (PROTEKSI DUPLIKASI)
+  await trackService('License Engine', 'security', () => LicenseService.syncLicense());
 
   try {
     const isHybridMode = (process.env.EMBEDDED_WORKERS === 'true') || (isDev && !isWorkerOnly);
