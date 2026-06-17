@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserX, UserCheck, Award, ShoppingCart, Eye, Printer, Check, Copy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import api from '../../lib/axiosInstance';
 import { SectionCard, Table, Button, Modal } from '../../components/ui';
 import toast from 'react-hot-toast';
@@ -466,11 +468,11 @@ const Dashboard: React.FC = () => {
                                 size="sm" 
                                 variant="outline" 
                                 className="h-7 text-[10px] gap-1"
-                                onClick={() => handlePrintReceipt(record)}
-                              >
-                                <Printer size={13} />
-                                Cetak
-                              </Button>
+                                 onClick={() => printReceipt(record)}
+                               >
+                                 <Printer size={13} />
+                                 Cetak
+                               </Button>
                             ),
                           } as any
                         ]}
