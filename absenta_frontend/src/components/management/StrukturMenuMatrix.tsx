@@ -172,7 +172,7 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
       const promises = Array.from(changedStructures).map(async (structureId) => {
         const perms = Array.from(structurePermissions[structureId] || new Set());
         try {
-          const res = await updateStrukturPermissions(structureId, perms);
+          const res = await updateStrukturPermissions(structureId, perms as string[]);
           if (res.success) successCount++;
           else failCount++;
         } catch (e) {

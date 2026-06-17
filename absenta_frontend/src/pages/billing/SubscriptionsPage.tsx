@@ -153,7 +153,7 @@ export default function SubscriptionsPage() {
         const res = await getAllSubscriptions({ include_inactive: true, page: currentPage, limit: itemsPerPage });
         const subs = (res?.data?.subscriptions || (res as unknown as { data?: FilteredSubscriptionItem[] }).data || []) as FilteredSubscriptionItem[];
         list = subs;
-        const pag = res?.data?.pagination as Record<string, number> | undefined;
+        const pag = res?.data?.pagination as unknown as Record<string, number> | undefined;
         if (pag) {
           setServerTotalItems(pag['totalItems'] ?? pag['total_count'] ?? subs.length);
           setServerTotalPages(pag['totalPages'] ?? pag['total_pages'] ?? 1);

@@ -40,6 +40,7 @@ Thumbs.db
 !package.json
 !tsconfig.json
 !tsconfig.*.json
+!hardeningAuditReport.json
 !composer.json
 !*.schema.json
 !absenta_backend/prisma/schema.prisma

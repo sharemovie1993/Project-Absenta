@@ -420,77 +420,60 @@ const Dashboard: React.FC = () => {
                       keyField="id"
                       isLoading={salesLoading}
                       emptyMessage="Anda belum memiliki riwayat transaksi belanja."
-                      columns={[
-                        {
-                          header: 'Tanggal',
-                          accessor: (row: any) => new Date(row.date).toLocaleString('id-ID', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }),
-                        },
-                        {
-                          header: 'ID Struk',
-                          accessor: (row: any) => <StrukBadge id={row.id} />,
-                        },
-                        {
-                          header: 'Metode Pembayaran',
-                          accessor: (row: any) => (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                              row.paymentMethod === 'SAVING' 
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30' 
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
-                            }`}>
-                              {row.paymentMethod === 'SAVING' ? 'Tabungan' : 'Tunai'}
-                            </span>
-                          ),
-                        },
-                        {
-                          header: 'Diskon',
-                          accessor: (row: any) => row.discount > 0 ? (
-                            <span className="text-red-650 dark:text-red-400 font-bold">
-                              -Rp {Number(row.discount).toLocaleString('id-ID')}
-                            </span>
-                          ) : '-',
-                        },
-                        {
-                          header: 'Total Belanja',
-                          accessor: (row: any) => (
-                            <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                              Rp {Number(row.total).toLocaleString('id-ID')}
-                            </span>
-                          ),
-                        },
-                        {
-                          header: 'Aksi',
-                          accessor: (row: any) => (
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs"
-                                onClick={() => {
-                                  setSelectedSale(row);
-                                  setShowReceiptModal(true);
-                                }}
+                        columns={[
+                          {
+                            title: 'Tanggal',
+                            key: 'tanggal',
+                            render: (date: string) => format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: id }),
+                          } as any,
+                          {
+                            title: 'ID Struk',
+                            key: 'receiptId',
+                          } as any,
+                          {
+                            title: 'Metode Pembayaran',
+                            key: 'paymentMethod',
+                            render: (m: string) => (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                                {m}
+                              </span>
+                            ),
+                          } as any,
+                          {
+                            title: 'Items',
+                            key: 'items',
+                            render: (items: any[]) => `${items.length} Item`,
+                          } as any,
+                          {
+                            title: 'Diskon',
+                            key: 'discount',
+                            render: (val: number) => val > 0 ? `Rp ${val.toLocaleString('id-ID')}` : '-',
+                          } as any,
+                          {
+                            title: 'Total Belanja',
+                            key: 'total',
+                            render: (val: number) => (
+                              <span className="font-bold text-blue-600 dark:text-blue-400">
+                                Rp {val.toLocaleString('id-ID')}
+                              </span>
+                            ),
+                          } as any,
+                          {
+                            title: 'Aksi',
+                            key: 'action',
+                            render: (_: any, record: any) => (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="h-7 text-[10px] gap-1"
+                                onClick={() => handlePrintReceipt(record)}
                               >
-                                Detail
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs shadow-sm hover:shadow-blue-500/10"
-                                icon={<Printer size={13} />}
-                                onClick={() => printReceipt(row)}
-                              >
+                                <Printer size={13} />
                                 Cetak
                               </Button>
-                            </div>
-                          ),
-                        }
-                      ]}
+                            ),
+                          } as any
+                        ]}
                     />
                   </div>
                 </SectionCard>
@@ -640,10 +623,10 @@ const Dashboard: React.FC = () => {
               </Button>
               <Button
                 variant="primary"
-                className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all text-xs shadow-sm"
-                icon={<Printer size={16} />}
+                className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all text-xs shadow-sm w-full flex items-center justify-center gap-2"
                 onClick={() => printReceipt(selectedSale)}
               >
+                <Printer size={16} />
                 Cetak Struk
               </Button>
             </div>

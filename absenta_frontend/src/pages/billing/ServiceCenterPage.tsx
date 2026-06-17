@@ -544,7 +544,7 @@ export default function ServiceCenterPage() {
                                   variant="outline"
                                   onClick={() => {
                                     const p = selectedService.Plan || (selectedService.plan_snapshot as unknown as SubscriptionPlan) || {};
-                                    const baseName = (p.name || 'Layanan')
+                                    const baseName = ((p as any).name || 'Layanan')
                                         .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
                                         .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
                                         .replace(/-/g, '')

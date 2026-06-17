@@ -137,7 +137,7 @@ export const InvoicePaperRenderer: React.FC<InvoicePaperRendererProps> = ({
                     src={logoSrc}
                     alt="Company Logo"
                     className={pdfCompact ? 'h-8 object-contain' : 'h-10 object-contain filter grayscale hover:grayscale-0 transition-all duration-300'}
-                    crossOrigin={logoCrossOrigin}
+                    crossOrigin={logoCrossOrigin as any}
                     referrerPolicy="no-referrer"
                  />
                </div>
