@@ -16,20 +16,20 @@ export type MouPdfJobData = {
   pihak_kedua_alamat?: string | null | undefined;
 };
 
-let queue: Queue<MouPdfJobData> | null = null;
-let queueEvents: QueueEvents | null = null;
-let worker: Worker<MouPdfJobData> | null = null;
+let queue: any = null;
+let queueEvents: any = null;
+let worker: any = null;
 
 export const getMouPdfQueue = (): Queue<MouPdfJobData> => {
-  if (queue) return queue;
-  queue = new Queue<MouPdfJobData>(MOU_PDF_QUEUE_NAME, { connection: getRedisConnection() });
-  return queue;
+  if (queue) return queue as Queue<MouPdfJobData>;
+  queue = new Queue<MouPdfJobData>(MOU_PDF_QUEUE_NAME, { connection: getRedisConnection() as any });
+  return queue as Queue<MouPdfJobData>;
 };
 
 export const getMouPdfQueueEvents = (): QueueEvents => {
-  if (queueEvents) return queueEvents;
-  queueEvents = new QueueEvents(MOU_PDF_QUEUE_NAME, { connection: getRedisConnection() });
-  return queueEvents;
+  if (queueEvents) return queueEvents as QueueEvents;
+  queueEvents = new QueueEvents(MOU_PDF_QUEUE_NAME, { connection: getRedisConnection() as any });
+  return queueEvents as QueueEvents;
 };
 
 export const initMouPdfWorker = (): void => {
@@ -62,7 +62,7 @@ export const initMouPdfWorker = (): void => {
         pihak_kedua_alamat: job.data.pihak_kedua_alamat,
       });
     },
-    { connection: getRedisConnection(), concurrency }
+    { connection: getRedisConnection() as any, concurrency }
   );
   worker.on('failed', (_job, err) => {
     console.error('[mou-pdf.worker] failed:', err?.message || err);

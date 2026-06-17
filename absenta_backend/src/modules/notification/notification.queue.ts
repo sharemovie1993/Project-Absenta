@@ -33,12 +33,12 @@ export type NotificationJobData = {
   tenantId?: string;
 };
 
-let queue: Queue<NotificationJobData> | null = null;
+let queue: any = null;
 
 export const getNotificationQueue = (): Queue<NotificationJobData> => {
-  if (queue) return queue;
+  if (queue) return queue as Queue<NotificationJobData>;
   queue = new Queue<NotificationJobData>(NOTIFICATION_QUEUE_NAME, {
-    connection: getRedisConnection(),
+    connection: getRedisConnection() as any,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },

@@ -15,11 +15,11 @@ export const initEmailWorker = () => {
 
   console.log('📧 Email Worker Initializing...');
 
-  const connection = getRedisConnection();
+  const connection: any = getRedisConnection();
   
   // Register heartbeat & registry for monitoring
   try {
-    startWorkerRegistryAndHeartbeat(connection, 'email', 10000, {
+    startWorkerRegistryAndHeartbeat(connection as any, 'email', 10000, {
       concurrency: 2,
       version: process.env.WORKER_VERSION || process.env.APP_VERSION,
     });

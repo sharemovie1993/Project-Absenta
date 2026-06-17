@@ -9,12 +9,12 @@ export type RestoreJobData = {
   initiatedBy: string;
 };
 
-let queue: Queue<RestoreJobData> | null = null;
+let queue: any = null;
 
 export const getRestoreQueue = (): Queue<RestoreJobData> => {
-  if (queue) return queue;
+  if (queue) return queue as Queue<RestoreJobData>;
   queue = new Queue<RestoreJobData>(RESTORE_QUEUE_NAME, {
-    connection: getRedisConnection(),
+    connection: getRedisConnection() as any,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
@@ -22,5 +22,5 @@ export const getRestoreQueue = (): Queue<RestoreJobData> => {
       removeOnFail: false,
     },
   });
-  return queue;
+  return queue as Queue<RestoreJobData>;
 };

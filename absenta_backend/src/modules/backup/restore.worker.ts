@@ -60,7 +60,7 @@ export const startRestoreWorker = () => {
       }
     },
     {
-      connection: getRedisConnection(),
+      connection: getRedisConnection() as any,
       concurrency: 1,
       lockDuration: 600000, // 10 minutes default lock
     }

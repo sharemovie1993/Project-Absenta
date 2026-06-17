@@ -408,7 +408,7 @@ export const initNotificationWorker = () => {
   
   // Register heartbeat & registry for monitoring
   try {
-    startWorkerRegistryAndHeartbeat(getRedisConnection(), 'notification', 10000, {
+    startWorkerRegistryAndHeartbeat(getRedisConnection() as any, 'notification', 10000, {
       concurrency: 5,
       version: process.env.WORKER_VERSION || process.env.APP_VERSION,
     });
@@ -455,7 +455,7 @@ export const initNotificationWorker = () => {
       }
     },
     {
-      connection: getRedisConnection(),
+      connection: getRedisConnection() as any,
       concurrency: 5, // Process 5 notifications in parallel
       limiter: {
         max: 50, // Max 50 jobs

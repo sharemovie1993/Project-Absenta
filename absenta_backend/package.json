@@ -94,6 +94,9 @@
     "xlsx": "^0.18.5",
     "xlsx-js-style": "^1.2.0"
   },
+  "overrides": {
+    "ioredis": "^5.9.2"
+  },
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
