@@ -50,19 +50,37 @@ async function createClient(): Promise<RedisClient> {
   const password = getRedisPassword();
   
   if (mode === 'embedded') {
-    if (!redisMemoryServer) {
-      console.log('[Redis] Starting Embedded Redis Server...');
-      redisMemoryServer = new RedisMemoryServer();
-      const host = await redisMemoryServer.getHost();
-      const port = await redisMemoryServer.getPort();
-      process.env.REDIS_URL = `redis://${host}:${port}`;
-      console.log(`[Redis] Embedded Redis started at ${host}:${port}`);
+    // In cluster mode, only the first instance should start the server
+    // Others should just connect to it. We use a simple port lock or check.
+    const isPrimaryInstance = process.env.NODE_APP_INSTANCE === '0' || !process.env.NODE_APP_INSTANCE;
+    const redisPort = 6379;
+
+    if (isPrimaryInstance && !redisMemoryServer) {
+      console.log('[Redis] Primary Instance starting Embedded Redis Server...');
+      try {
+        redisMemoryServer = new RedisMemoryServer({
+          instance: {
+            port: redisPort,
+          },
+        });
+        await redisMemoryServer.start();
+        console.log(`[Redis] Embedded Redis started on port ${redisPort}`);
+      } catch (err: any) {
+        if (err.message?.includes('EADDRINUSE')) {
+          console.log('[Redis] Port 6379 already in use, assuming another instance started it.');
+        } else {
+          console.error('[Redis] Failed to start embedded server:', err);
+        }
+      }
+    } else {
+      // Non-primary instances wait a bit to ensure primary has started the server
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    const url = process.env.REDIS_URL;
-    return new IORedis(url!, {
+
+    return new IORedis(`redis://localhost:${redisPort}`, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
-      connectTimeout: 5000,
+      connectTimeout: 10000,
       retryStrategy: (times) => Math.min(times * 500, 10000),
     });
   }
