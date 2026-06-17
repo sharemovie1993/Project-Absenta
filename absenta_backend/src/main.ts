@@ -237,9 +237,9 @@ async function start() {
       await initInvoicePdfDomainConsumer();
     });
 
-    // Start the server
-    const port = parseInt(process.env['PORT'] || '3000');
-    const host = process.env['HOST'] || '0.0.0.0';
+    // ─── Start Fastify Server ───
+    const host = process.env.HOST || '0.0.0.0'; // Listen on all interfaces
+    const port = parseInt(process.env.PORT || '3003');
     
     await fastify.listen({ port, host });
     registerService('Fastify HTTP Server', 'server', 'online');
