@@ -417,10 +417,9 @@ const Dashboard: React.FC = () => {
               {memberStatus === 'member' && (
                 <SectionCard title="Riwayat Belanja Saya" fullWidth noPadding>
                   <div className="p-6">
-                    <Table
-                      data={salesHistory}
-                      keyField="id"
-                      isLoading={salesLoading}
+                    <Table 
+                        data={salesHistory}
+                        isLoading={salesLoading}
                       emptyMessage="Anda belum memiliki riwayat transaksi belanja."
                         columns={[
                           {
