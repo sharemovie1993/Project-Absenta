@@ -124,8 +124,8 @@ if (-not $Silent) {
         $inputFPort = Read-Host "4. Port Frontend [$FrontendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
-        Write-Host ""
         Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
+        Write-Host " - Mode Redis     : $redisMode"
         Write-Host " - URL Akses      : ${finalScheme}://$finalDomain"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"

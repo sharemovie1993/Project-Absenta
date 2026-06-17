@@ -70,7 +70,11 @@ async function start() {
   try {
     const isHybridMode = (process.env.EMBEDDED_WORKERS === 'true') || (isDev && !isWorkerOnly);
 
+    // Hulu ke Hilir: Luruskan kabel untuk background workers utama
     const startBackgroundServices = async () => {
+      // Ensure Redis is ready before starting workers
+      await getRedisConnection();
+      
       await trackService('Invoice PDF Worker', 'worker', () => initInvoicePdfWorker());
       await trackService('MOU PDF Worker', 'worker', () => initMouPdfWorker());
       await trackService('Notification Worker', 'worker', () => initNotificationWorker());
@@ -78,12 +82,6 @@ async function start() {
       await trackService('Academic Tenant Consumer', 'consumer', () => initAcademicTenantCreatedConsumer());
       await trackService('Kesiswaan Tenant Consumer', 'consumer', () => initKesiswaanTenantCreatedConsumer());
       await trackService('Attendance Worker', 'worker', () => startAttendanceWorker());
-      
-      // Hulu ke Hilir: Luruskan kabel untuk background workers utama
-      await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
-      await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
-      await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
-      await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
     };
 
     if (isWorkerOnly) {
@@ -196,6 +194,12 @@ async function start() {
     await trackService('Schedulers', 'scheduler', async () => {
       await initSchedulers(fastify);
     });
+
+    // Background workers and dynamic modules
+    await trackService('Billing Worker', 'worker', async () => { await import('./workers/billing.worker'); });
+    await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
+    await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
+    await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
 
     const tenantDetailProvider = new TenantDetailService();
     await trackService('Realtime (Socket.IO)', 'infra', async () => {
