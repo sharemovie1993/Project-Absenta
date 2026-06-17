@@ -5,7 +5,7 @@ import { applyBrandingFromConfig, type SystemConfig } from '@/services/systemCon
 type ThemePreference = 'light' | 'dark-default';
 const THEME_STORAGE_KEY = 'absenta_theme_preference';
 const LEGACY_THEME_STORAGE_KEY = 'theme';
-interface ThemeContextType {
+export interface ThemeContextType {
   theme: ThemePreference;
   toggle: () => void;
   setTheme: (t: ThemePreference) => void;

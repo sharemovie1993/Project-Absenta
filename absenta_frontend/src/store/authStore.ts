@@ -8,7 +8,7 @@ import { queryClient } from '../lib/queryClient';
 import type { Subscription } from '../types/subscription';
 
 // Interface untuk User berdasarkan AUTH_MODULE_API.md
-interface User {
+export interface User {
   id: string;
   email: string;
   full_name: string;
