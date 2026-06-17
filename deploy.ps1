@@ -206,8 +206,14 @@ Write-Host "1. Membangun Backend (TSC)..." -ForegroundColor Cyan
 Push-Location absenta_backend
 npm run build
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "GAGAL: Kompilasi Backend bermasalah!" -ForegroundColor Red
-    $buildFailed = $true
+    Write-Host ""
+    Write-Host "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" -ForegroundColor Red
+    Write-Host " GAGAL: Kompilasi Backend bermasalah!" -ForegroundColor Red -Bold
+    Write-Host " Proses deployment dihentikan seketika untuk keamanan." -ForegroundColor Yellow
+    Write-Host "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" -ForegroundColor Red
+    Pop-Location
+    if (-not $Silent) { Read-Host "Tekan [ENTER] untuk keluar..." }
+    Exit 1
 }
 Pop-Location
 
@@ -215,22 +221,16 @@ Write-Host "2. Membangun Frontend (Vite)..." -ForegroundColor Cyan
 Push-Location absenta_frontend
 npm run build
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "GAGAL: Kompilasi Frontend bermasalah!" -ForegroundColor Red
-    $buildFailed = $true
-}
-Pop-Location
-
-if ($buildFailed) {
     Write-Host ""
     Write-Host "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" -ForegroundColor Red
-    Write-Host " PERINGATAN: Proses Kompilasi (Build) GAGAL!" -ForegroundColor Red -Bold
-    Write-Host " Layanan TIDAK akan dijalankan/diperbarui untuk mencegah sistem crash." -ForegroundColor Yellow
-    Write-Host " Silakan periksa log error di atas, perbaiki kodenya, dan jalankan ulang." -ForegroundColor Yellow
+    Write-Host " GAGAL: Kompilasi Frontend bermasalah!" -ForegroundColor Red -Bold
+    Write-Host " Proses deployment dihentikan seketika untuk keamanan." -ForegroundColor Yellow
     Write-Host "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" -ForegroundColor Red
-    Write-Host ""
+    Pop-Location
     if (-not $Silent) { Read-Host "Tekan [ENTER] untuk keluar..." }
     Exit 1
 }
+Pop-Location
 
 # ----------------------------------------------------
 # LANGKAH 5: Jalankan Layanan
