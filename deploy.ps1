@@ -112,7 +112,7 @@ if (-not $Silent) {
 
         Write-Host ""
         Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
-        Write-Host " - URL Akses      : $finalScheme://$finalDomain"
+        Write-Host " - URL Akses      : ${finalScheme}://$finalDomain"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"
         Write-Host "-----------------------------" -ForegroundColor Yellow
@@ -134,10 +134,10 @@ $newBackendEnv = @()
 
 foreach ($line in $backendEnv) {
     if ($line -match "^PORT=") { $newBackendEnv += "PORT=$BackendPort" }
-    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=$finalScheme://$finalDomain" }
-    elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=$finalScheme://$finalDomain" }
-    elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=$finalScheme://$finalDomain" }
-    elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=$finalScheme://$finalDomain" }
+    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain" }
+    elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=${finalScheme}://$finalDomain" }
+    elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=${finalScheme}://$finalDomain" }
+    elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
     elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
     elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$finalDomain" }
@@ -156,7 +156,7 @@ foreach ($line in $frontendEnv) {
 }
 $newFrontendEnv | Set-Content "absenta_frontend/.env"
 
-Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk target $finalScheme://$finalDomain." -ForegroundColor Gray
+Write-Host "Info: Konfigurasi .env berhasil diperbarui untuk target ${finalScheme}://$finalDomain." -ForegroundColor Gray
 
 # ----------------------------------------------------
 # LANGKAH 3: Instalasi Dependensi & Database
@@ -201,5 +201,5 @@ if ($hasPM2) {
 
 Show-Header "Selesai!"
 Write-Host "Project Absenta berhasil di-deploy!" -ForegroundColor Green
-Write-Host "Akses URL: $finalScheme://$finalDomain"
+Write-Host "Akses URL: ${finalScheme}://$finalDomain"
 if (-not $Silent) { Read-Host "Tekan [ENTER] untuk keluar..." }
