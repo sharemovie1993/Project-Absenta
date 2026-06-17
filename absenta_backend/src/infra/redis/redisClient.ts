@@ -58,30 +58,37 @@ async function createClient(): Promise<RedisClient> {
     if (isPrimaryInstance && !redisMemoryServer) {
       console.log('[Redis] Primary Instance starting Embedded Redis Server...');
       try {
+        // Ensure no previous server is hanging
         redisMemoryServer = new RedisMemoryServer({
           instance: {
             port: redisPort,
+            ip: '127.0.0.1'
           },
         });
         await redisMemoryServer.start();
-        console.log(`[Redis] Embedded Redis started on port ${redisPort}`);
+        console.log(`[Redis] Embedded Redis started on 127.0.0.1:${redisPort}`);
       } catch (err: any) {
-        if (err.message?.includes('EADDRINUSE')) {
+        if (err.message?.includes('EADDRINUSE') || err.message?.includes('already in use')) {
           console.log('[Redis] Port 6379 already in use, assuming another instance started it.');
         } else {
           console.error('[Redis] Failed to start embedded server:', err);
         }
       }
     } else {
-      // Non-primary instances wait a bit to ensure primary has started the server
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Non-primary instances wait longer to ensure primary has finished starting the server
+      // and we add a retry logic for the connection
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    return new IORedis(`redis://localhost:${redisPort}`, {
+    return new IORedis(`redis://127.0.0.1:${redisPort}`, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
-      connectTimeout: 10000,
-      retryStrategy: (times) => Math.min(times * 500, 10000),
+      connectTimeout: 20000, // Increase timeout for slower startup
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 1000, 15000);
+        console.log(`[Redis] Retrying connection in ${delay}ms... (attempt ${times})`);
+        return delay;
+      },
     });
   }
 
