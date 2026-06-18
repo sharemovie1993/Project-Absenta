@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck, Box } from 'lucide-react';
 import { Button, Badge, Loader } from '../ui';
 import { formatCurrency, getServiceIcon } from '@/lib/billingUtils';
 
@@ -15,6 +15,7 @@ export interface OrderPayload {
   features_json?: string[];
   price_monthly: number;
   price_yearly: number;
+  group?: any;
 }
 
 interface OrderReviewSidebarProps {
@@ -78,7 +79,49 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
-              {/* Item Card */}
+              {/* Marketplace Step 1: Pilih Varian Edisi */}
+              {activeOrder.group && (
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                    <Box size={14} /> 1. Pilih Edisi Layanan
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {activeOrder.group.variants.map((v: any) => {
+                      const isSelected = activeOrder.id === v.id;
+                      return (
+                        <button
+                          key={v.id}
+                          onClick={() => setActiveOrder(prev => prev ? {
+                            ...prev,
+                            id: v.id,
+                            size: v.size_label || 'Standard',
+                            features_json: v.features_json || [],
+                            price_monthly: v.price_monthly || 0,
+                            price_yearly: v.price_yearly || 0
+                          } : null)}
+                          className={`p-4 rounded-xl border-2 text-left transition-all flex justify-between items-center ${
+                            isSelected 
+                              ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20" 
+                              : "border-slate-100 dark:border-slate-800 hover:border-slate-200"
+                          }`}
+                        >
+                          <div>
+                            <div className={`text-xs font-black uppercase ${isSelected ? "text-blue-600" : "text-slate-500"}`}>
+                              Edisi {v.size_label}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              Kapasitas {v.max_user?.toLocaleString() || 'Unlimited'} Pengguna
+                            </div>
+                          </div>
+                          {isSelected && <Check size={16} className="text-blue-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Item Card (Preview Image) */}
               <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-6 border border-slate-100 dark:border-slate-800 relative overflow-hidden group">
                 <div className="relative z-10 flex gap-5">
                   <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm text-blue-600">
@@ -96,10 +139,10 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                 </div>
               </div>
 
-              {/* Billing Cycle Selection */}
+              {/* Marketplace Step 2: Billing Cycle Selection */}
               <div className="space-y-4">
                 <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                  <Clock size={14} /> Pilih Siklus Tagihan
+                  <Clock size={14} /> 2. Pilih Siklus Tagihan
                 </h4>
                 <div className="grid grid-cols-2 gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200/50 dark:border-slate-800 shadow-inner">
                   <button 

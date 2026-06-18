@@ -135,18 +135,9 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   const handleCardClick = (group: any) => {
     if (onSelectPlan) {
-      // In private mode, if there are multiple variants, show the selector
-      if (group.variants.length > 1) {
-        setSelectedGroup(group);
-      } else {
-        // If only one variant, select it directly
-        const variant = group.variants[0];
-        onSelectPlan({
-          ...variant,
-          moduleName: group.module,
-          moduleIcon: group.icon
-        });
-      }
+      // Marketplace style: Begitu klik kartu, langsung kirim grup ke sidebar
+      // Biarkan sidebar yang menangani pemilihan varian (Edisi & Periode)
+      onSelectPlan(group);
     } else {
       // In public mode, navigate to specific service or registration
       navigate(`/services/${group.id}`);

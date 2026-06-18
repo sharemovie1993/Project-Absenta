@@ -38,7 +38,20 @@ import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
 // Types
 import type { Invoice } from '../../types/invoice';
-import type { OrderPayload } from '@/components/billing/OrderReviewSidebar';
+interface OrderPayload {
+  id: string;
+  service_code?: string;
+  moduleIcon?: string;
+  moduleName?: string;
+  name?: string;
+  size?: string;
+  period: 'MONTH' | 'YEAR';
+  features_json?: string[];
+  price_monthly: number;
+  price_yearly: number;
+  // Metadata untuk Shopee style
+  group?: any;
+}
 import type { SubscriptionService } from '@/components/billing/AutoRenewModal';
 
 // Static scan hints to satisfy audit engine
@@ -609,18 +622,21 @@ export default function ServiceCenterPage() {
                   mode="private"
                   ownedFeatures={user?.features || []}
                   ownedServices={services}
-                  onSelectPlan={(plan) => {
+                  onSelectPlan={(group) => {
+                    // Marketplace Style: Ambil varian default (biasanya terkecil)
+                    const defaultVariant = group.variants[0];
                     setActiveOrder({
-                      id: plan.id,
-                      service_code: plan.service_code,
-                      moduleIcon: plan.moduleIcon,
-                      moduleName: plan.moduleName,
-                      name: plan.name,
-                      size: plan.size,
+                      id: defaultVariant.id,
+                      service_code: group.service_code,
+                      moduleIcon: group.icon,
+                      moduleName: group.module,
+                      name: group.baseName,
+                      size: defaultVariant.size_label || 'Standard',
                       period: 'MONTH',
-                      features_json: plan.features_json || [],
-                      price_monthly: plan.price_monthly || 0,
-                      price_yearly: plan.price_yearly || 0
+                      features_json: defaultVariant.features_json || [],
+                      price_monthly: defaultVariant.price_monthly || 0,
+                      price_yearly: defaultVariant.price_yearly || 0,
+                      group: group // Simpan group untuk pemilihan varian di sidebar
                     });
                     setShowOrderPanel(true);
                   }}
