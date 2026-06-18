@@ -183,6 +183,15 @@ async function runDryRunInBackground(): Promise<void> {
   }
 }
 
+async function hasFileChanged(cwd: string, fileName: string): Promise<boolean> {
+  try {
+    const diff = await execCmd(`git diff HEAD origin/$(git rev-parse --abbrev-ref HEAD) --name-only -- ${fileName}`, cwd);
+    return diff.trim().length > 0;
+  } catch {
+    return true; // Asumsikan berubah jika gagal cek
+  }
+}
+
 // ---------------------------------------------------------------------------
 // PRODUKSI — jalankan perintah shell nyata
 // ---------------------------------------------------------------------------
@@ -193,26 +202,59 @@ async function runUpdateInBackground(): Promise<void> {
     writeProgress({ status: 'running', step: 'pulling_backend', message: 'Menarik kode backend terbaru dari GitHub...' });
     const backendBranch = await getCurrentBranch(BACKEND_ROOT);
     await execCmd('git fetch origin', BACKEND_ROOT);
+
+    // Cek apakah package-lock berubah SEBELUM reset --hard
+    const backendDepsChanged = await hasFileChanged(BACKEND_ROOT, 'package-lock.json');
+    const prismaSchemaChanged = await hasFileChanged(BACKEND_ROOT, 'prisma/schema.prisma');
+
     await execCmd(`git reset --hard origin/${backendBranch}`, BACKEND_ROOT);
 
     // Step 2 — Pull frontend
     writeProgress({ status: 'running', step: 'pulling_frontend', message: 'Menarik kode frontend terbaru dari GitHub...' });
     const frontendBranch = await getCurrentBranch(FRONTEND_ROOT);
     await execCmd('git fetch origin', FRONTEND_ROOT);
+    
+    const frontendDepsChanged = await hasFileChanged(FRONTEND_ROOT, 'package-lock.json');
+    
     await execCmd(`git reset --hard origin/${frontendBranch}`, FRONTEND_ROOT);
 
-    // Step 3 — Install backend deps
-    writeProgress({ status: 'running', step: 'installing_backend', message: 'Memperbarui dependensi backend (npm ci)...' });
-    await execCmd('npm ci --omit=dev --no-audit', BACKEND_ROOT);
+    // Step 3 — Install backend deps (Hanya jika berubah)
+    if (backendDepsChanged) {
+      writeProgress({ status: 'running', step: 'installing_backend', message: 'Memperbarui dependensi backend (npm ci)...' });
+      try {
+        await execCmd('npm ci --omit=dev --no-audit', BACKEND_ROOT);
+      } catch (err: any) {
+        // Jika EPERM di Windows, coba npm install biasa (kadangkala lebih forgiving)
+        if (err.stderr?.includes('EPERM')) {
+          writeProgress({ status: 'running', step: 'installing_backend', message: 'npm ci gagal (file locked), mencoba npm install...' });
+          await execCmd('npm install --omit=dev --no-audit', BACKEND_ROOT);
+        } else {
+          throw err;
+        }
+      }
+    } else {
+      writeProgress({ status: 'running', step: 'installing_backend', message: 'Dependensi backend tidak berubah, melewati instalasi.' });
+      await sleep(500);
+    }
 
-    // Step 4 — Install frontend deps
-    writeProgress({ status: 'running', step: 'installing_frontend', message: 'Memperbarui dependensi frontend (npm ci)...' });
-    await execCmd('npm ci --no-audit', FRONTEND_ROOT);
+    // Step 4 — Install frontend deps (Hanya jika berubah)
+    if (frontendDepsChanged) {
+      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Memperbarui dependensi frontend (npm ci)...' });
+      await execCmd('npm ci --no-audit', FRONTEND_ROOT);
+    } else {
+      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Dependensi frontend tidak berubah, melewati instalasi.' });
+      await sleep(500);
+    }
 
     // Step 5 — Prisma migrate
-    writeProgress({ status: 'running', step: 'migrating', message: 'Menjalankan migrasi database (prisma migrate deploy)...' });
-    await execCmd('npx prisma generate', BACKEND_ROOT);
-    await execCmd('npx prisma migrate deploy', BACKEND_ROOT);
+    if (prismaSchemaChanged) {
+      writeProgress({ status: 'running', step: 'migrating', message: 'Menjalankan migrasi database (prisma migrate deploy)...' });
+      await execCmd('npx prisma generate', BACKEND_ROOT);
+      await execCmd('npx prisma migrate deploy', BACKEND_ROOT);
+    } else {
+      writeProgress({ status: 'running', step: 'migrating', message: 'Skema database tidak berubah, melewati migrasi.' });
+      await execCmd('npx prisma generate', BACKEND_ROOT); // Tetap generate untuk jaga-jaga
+    }
 
     // Step 6 — Build frontend
     writeProgress({ status: 'running', step: 'building_frontend', message: 'Mengompilasi aset frontend (vite build)...' });
