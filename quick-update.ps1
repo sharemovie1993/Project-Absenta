@@ -18,24 +18,25 @@ Write-Host "[1/4] Menarik kode terbaru dari GitHub..." -ForegroundColor Yellow
 git fetch origin main
 git reset --hard origin/main
 
-# 2. Cek & Install Dependensi Backend
+# 2. Matikan PM2 Sementara (Penting untuk Windows agar file tidak terkunci)
+Write-Host "[2/5] Menghentikan layanan PM2 sementara..." -ForegroundColor Yellow
+pm2 stop ecosystem.config.js || Write-Host "PM2 sudah berhenti." -ForegroundColor Gray
+
+# 3. Cek & Install Dependensi Backend
 cd "$appRoot\absenta_backend"
-Write-Host "[2/4] Memeriksa dependensi backend..." -ForegroundColor Yellow
-# Gunakan npm install agar lebih aman terhadap file locked di Windows
+Write-Host "[3/5] Memeriksa dependensi backend..." -ForegroundColor Yellow
 npm install --omit=dev --no-audit
 
-# 3. Build Backend & Frontend
-Write-Host "[3/4] Melakukan kompilasi (Build)..." -ForegroundColor Yellow
+# 4. Build Backend & Frontend
+Write-Host "[4/5] Melakukan kompilasi (Build)..." -ForegroundColor Yellow
 npm run build
-
 cd "$appRoot\absenta_frontend"
-npm install --no-audit
 npm run build
 
-# 4. Restart Layanan via PM2
+# 5. Jalankan Kembali via PM2
 cd $appRoot
-Write-Host "[4/4] Memuat ulang layanan PM2..." -ForegroundColor Yellow
-pm2 reload ecosystem.config.js --update-env
+Write-Host "[5/5] Menyalakan kembali layanan PM2..." -ForegroundColor Yellow
+pm2 start ecosystem.config.js --update-env
 
 Write-Host "=== UPDATE BERHASIL SELESAI! ===" -ForegroundColor Green
 Read-Host "Tekan [ENTER] untuk menutup..."
