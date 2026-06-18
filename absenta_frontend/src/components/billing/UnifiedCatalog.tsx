@@ -27,7 +27,7 @@ interface UnifiedCatalogProps {
   mode: 'public' | 'private';
   ownedFeatures?: string[];
   ownedServices?: any[];
-  onSelectPlan?: (planId: string) => void;
+  onSelectPlan?: (plan: any) => void;
 }
 
 export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({ 
@@ -39,6 +39,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [configView, setConfigView] = useState<'GRID' | 'COMPARE'>('GRID');
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
 
   // 1. Plans Query
   const plansQuery = useQuery({
@@ -134,8 +135,18 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   const handleCardClick = (group: any) => {
     if (onSelectPlan) {
-      // In private mode, we usually open the detail panel or checkout
-      onSelectPlan(group.id);
+      // In private mode, if there are multiple variants, show the selector
+      if (group.variants.length > 1) {
+        setSelectedGroup(group);
+      } else {
+        // If only one variant, select it directly
+        const variant = group.variants[0];
+        onSelectPlan({
+          ...variant,
+          moduleName: group.module,
+          moduleIcon: group.icon
+        });
+      }
     } else {
       // In public mode, navigate to specific service or registration
       navigate(`/services/${group.id}`);
@@ -376,6 +387,82 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Variant Selector Modal for Private Mode */}
+      <AnimatePresence>
+        {selectedGroup && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedGroup(null)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white dark:bg-slate-950 rounded-[2.5rem] shadow-2xl z-[111] overflow-hidden border border-slate-200 dark:border-slate-800"
+            >
+              <div className="p-10">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-600/20">
+                      {React.createElement((LucideIcons as any)[selectedGroup.icon] || Package, { size: 24 })}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{selectedGroup.baseName}</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedGroup.module}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedGroup(null)}
+                    className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors"
+                  >
+                    <LucideIcons.X size={20} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedGroup.variants.map((v: any) => (
+                    <button
+                      key={v.id}
+                      onClick={() => {
+                        onSelectPlan?.({
+                          ...v,
+                          moduleName: selectedGroup.module,
+                          moduleIcon: selectedGroup.icon
+                        });
+                        setSelectedGroup(null);
+                      }}
+                      className="group p-6 rounded-[2rem] border-2 border-slate-100 dark:border-slate-800 hover:border-blue-600 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/50 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <Badge variant="outline" className="text-[10px] font-black uppercase py-0.5 px-3 bg-white dark:bg-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors">Edisi {v.size}</Badge>
+                        <div className="text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight size={16} />
+                        </div>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1">{v.name.replace(/-/g, ' ')}</h4>
+                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">
+                        {formatCurrency(v.price_monthly)}
+                        <span className="text-[10px] text-slate-400 font-bold ml-1 uppercase">/bln</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Kapasitas hingga {v.max_user?.toLocaleString() || 'Unlimited'} Pengguna</p>
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center gap-3">
+                  <Info size={16} className="text-amber-600 flex-shrink-0" />
+                  <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400 leading-relaxed">Pilih salah satu variasi paket di atas untuk melanjutkan ke proses aktivasi layanan.</p>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

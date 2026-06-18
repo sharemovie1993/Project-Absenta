@@ -609,14 +609,18 @@ export default function ServiceCenterPage() {
                   mode="private"
                   ownedFeatures={user?.features || []}
                   ownedServices={services}
-                  onSelectPlan={(groupId) => {
+                  onSelectPlan={(plan) => {
                     setActiveOrder({
-                      id: groupId,
+                      id: plan.id,
+                      service_code: plan.service_code,
+                      moduleIcon: plan.moduleIcon,
+                      moduleName: plan.moduleName,
+                      name: plan.name,
+                      size: plan.size,
                       period: 'MONTH',
-                      name: groupId,
-                      price_monthly: 0,
-                      price_yearly: 0,
-                      features_json: []
+                      features_json: plan.features_json || [],
+                      price_monthly: plan.price_monthly || 0,
+                      price_yearly: plan.price_yearly || 0
                     });
                     setShowOrderPanel(true);
                   }}
