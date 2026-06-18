@@ -88,48 +88,48 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     const products: Record<string, any> = {};
 
     filteredPlans.forEach((p: any) => {
+        // Aggressive base name extraction (Marketplace Style)
+        // Menghapus semua embel-embel edisi dan periode dari nama produk
         const baseName = p.name
-            .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
-            .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
-            .replace(/-/g, '')
+            .replace(/\((.*?)\)/g, '') // Hapus apapun di dalam kurung
+            .replace(/\b(Micro|Small|Medium|Large|Enterprise|Pro|Basic|Ultra|Lite)\b/gi, '')
+            .replace(/\b(Bulanan|Tahunan|Monthly|Yearly|Daily|Mingguan)\b/gi, '')
+            .replace(/-/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
             
         const moduleName = p.module?.name || 'Layanan';
         const planMode = p.absensi_mode || 'STANDARD';
-        const size = p.size_label || 'Standard';
-        const groupKey = `${baseName}-${planMode}`;
+        // Gunakan module_id atau baseName sebagai kunci grup utama
+        const groupKey = p.module_id || `${baseName}-${planMode}`;
         
         if (!products[groupKey]) {
             products[groupKey] = {
                 id: groupKey,
-                baseName,
-                mode: planMode,
-                module: p.module?.name || moduleName,
+                baseName: baseName || p.name,
+                module: moduleName,
+                module_id: p.module_id,
                 icon: p.module?.icon || 'Package',
                 service_code: p.service_code,
-                module_id: p.module_id,
+                mode: planMode,
                 variants: [],
                 sizes: new Set<string>(),
-                periods: new Set<string>()
             };
         }
 
+        const size = p.size_label || 'Standard';
         products[groupKey].sizes.add(size);
-        products[groupKey].variants.push({ ...p, size });
+        products[groupKey].variants.push(p);
     });
 
     return Object.values(products).map(p => ({
         ...p,
-        sizes: Array.from(p.sizes).sort((a, b) => {
-            const vA = p.variants.find((v: any) => v.size === a);
-            const vB = p.variants.find((v: any) => v.size === b);
-            return (vA?.max_user || 0) - (vB?.max_user || 0);
-        })
+        sizes: Array.from(p.sizes)
     })).sort((a, b) => {
-        const maxPriceA = Math.max(...a.variants.map((v: any) => v.price_monthly || 0));
-        const maxPriceB = Math.max(...b.variants.map((v: any) => v.price_monthly || 0));
-        return maxPriceB - maxPriceA;
+        // Urutkan berdasarkan harga terendah (Shopee Style)
+        const minPriceA = Math.min(...a.variants.map((v: any) => v.price_monthly || 0));
+        const minPriceB = Math.min(...b.variants.map((v: any) => v.price_monthly || 0));
+        return minPriceA - minPriceB;
     });
   }, [filteredPlans]);
 
