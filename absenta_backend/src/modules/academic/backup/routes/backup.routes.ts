@@ -1,5 +1,4 @@
 
-import { FastifyInstance } from 'fastify';
 import { backupController } from '../controllers/backup.controller';
 import { requireCapability } from '../../../../middlewares/requireCapability';
 import { determineDataScope } from '../../../../middlewares/dataScope';
