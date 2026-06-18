@@ -239,8 +239,25 @@ async function runUpdateInBackground(): Promise<void> {
 
     // Step 4 — Install frontend deps (Hanya jika berubah)
     if (frontendDepsChanged) {
-      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Memperbarui dependensi frontend (npm ci)...' });
-      await execCmd('npm ci --no-audit', FRONTEND_ROOT);
+      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm ci)...' });
+      
+      // Matikan frontend sementara jika dijalankan via pm2 agar file .node (misal lightningcss) tidak terlock (EPERM di Windows)
+      try {
+        await execCmd('npx pm2 stop /absenta-frontend/', BACKEND_ROOT);
+      } catch (e) {
+        // Abaikan error jika pm2 tidak ada atau proses tidak ditemukan
+      }
+
+      try {
+        await execCmd('npm ci --no-audit', FRONTEND_ROOT);
+      } catch (err: any) {
+        if (err.stderr?.includes('EPERM') || err.message?.includes('EPERM')) {
+          writeProgress({ status: 'running', step: 'installing_frontend', message: 'npm ci gagal (file locked), mencoba npm install...' });
+          await execCmd('npm install --no-audit', FRONTEND_ROOT);
+        } else {
+          throw err;
+        }
+      }
     } else {
       writeProgress({ status: 'running', step: 'installing_frontend', message: 'Dependensi frontend tidak berubah, melewati instalasi.' });
       await sleep(500);
@@ -275,12 +292,13 @@ async function runUpdateInBackground(): Promise<void> {
 
     writeProgress({ status: 'success', step: 'done', message: 'Aplikasi berhasil diperbarui! Memuat ulang layanan...' });
 
-    // Tunda 2 detik baru reload agar response sempat dibaca frontend
+    // Tunda 2 detik baru restart agar response sempat dibaca frontend
     setTimeout(() => {
-      exec('pm2 reload ecosystem.config.js --update-env', { cwd: BACKEND_ROOT }, (err) => {
+      // Menggunakan restart alih-alih reload, agar proses frontend yang distop bisa jalan kembali
+      exec('npx pm2 restart ../ecosystem.config.js --update-env', { cwd: BACKEND_ROOT }, (err) => {
         if (err) {
-          console.warn('[Updater] pm2 reload failed, trying restart all:', err.message);
-          exec('pm2 restart all', () => {});
+          console.warn('[Updater] pm2 restart ecosystem failed, trying restart all:', err.message);
+          exec('npx pm2 restart all', { cwd: BACKEND_ROOT }, () => {});
         }
       });
     }, 2000);
