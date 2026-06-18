@@ -90,13 +90,16 @@ export function UserMenu() {
               Profile
             </button>
             
-            <button
-              onClick={() => { setIsOpen(false); navigate('/settings'); }}
-              className="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <Settings className="w-4 h-4 mr-3" />
-              Settings
-            </button>
+            {/* RBAC Protected Settings Menu */}
+            {(user?.capabilities?.some(cap => cap.startsWith('core.system.')) || user?.role?.name === 'SUPERADMIN') && (
+              <button
+                onClick={() => { setIsOpen(false); navigate('/settings'); }}
+                className="flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <Settings className="w-4 h-4 mr-3" />
+                Settings
+              </button>
+            )}
 
             <div className="border-t border-slate-200 dark:border-slate-800 my-1"></div>
 
