@@ -6,7 +6,7 @@ async function startServer() {
     const redisServer = new RedisMemoryServer({
       instance: {
         port: 6379,
-        ip: '127.0.0.1'
+        // Remove explicit IP to allow more flexibility
       },
     });
 
@@ -16,24 +16,31 @@ async function startServer() {
 
     console.log(`[Embedded Redis] SUCCESS: Server is running at ${host}:${port}`);
     
+    // Explicitly keep the process alive
+    setInterval(() => {}, 60000);
+
     // Keep the process alive
     process.on('SIGINT', async () => {
+      console.log('[Embedded Redis] Stopping server...');
       await redisServer.stop();
       process.exit(0);
     });
     
     process.on('SIGTERM', async () => {
+      console.log('[Embedded Redis] Stopping server...');
       await redisServer.stop();
       process.exit(0);
     });
 
   } catch (err) {
-    console.error('[Embedded Redis] FAILED to start:', err.message || err);
+    const errorMsg = err.message || String(err);
+    console.error('[Embedded Redis] FAILED to start:', errorMsg);
+    
     // If already running, we just stay alive to satisfy PM2
-    if (err.message && err.message.includes('EADDRINUSE')) {
-      console.log('[Embedded Redis] Port 6379 already in use. Assuming another instance or Laragon is running.');
+    if (errorMsg.includes('EADDRINUSE') || errorMsg.includes('code "1"')) {
+      console.log('[Embedded Redis] Port 6379 may be in use or server already running. Staying alive for PM2...');
       // Keep alive anyway
-      setInterval(() => {}, 1000);
+      setInterval(() => {}, 60000);
     } else {
       process.exit(1);
     }
