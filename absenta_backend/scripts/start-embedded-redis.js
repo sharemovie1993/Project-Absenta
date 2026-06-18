@@ -28,9 +28,9 @@ async function startServer() {
     });
 
   } catch (err) {
-    console.error('[Embedded Redis] FAILED to start:', err);
+    console.error('[Embedded Redis] FAILED to start:', err.message || err);
     // If already running, we just stay alive to satisfy PM2
-    if (err.message.includes('EADDRINUSE')) {
+    if (err.message && err.message.includes('EADDRINUSE')) {
       console.log('[Embedded Redis] Port 6379 already in use. Assuming another instance or Laragon is running.');
       // Keep alive anyway
       setInterval(() => {}, 1000);
