@@ -260,8 +260,17 @@ async function runUpdateInBackground(): Promise<void> {
     writeProgress({ status: 'running', step: 'building_frontend', message: 'Mengompilasi aset frontend (vite build)...' });
     await execCmd('npm run build', FRONTEND_ROOT);
 
-    // Step 7 — Build backend
-    writeProgress({ status: 'running', step: 'restarting', message: 'Build backend & memuat ulang layanan (PM2 reload)...' });
+    // Step 7 — Build backend (dengan trik renaming untuk Windows)
+    writeProgress({ status: 'running', step: 'restarting', message: 'Membangun ulang backend (Build)...' });
+    
+    // Trik Renaming untuk Windows agar file tidak terkunci
+    try {
+      await execCmd('if exist dist_old rmdir /s /q dist_old', BACKEND_ROOT);
+      await execCmd('if exist dist rename dist dist_old', BACKEND_ROOT);
+    } catch (e) {
+      console.warn('[Updater] Gagal melakukan renaming folder dist, mencoba build langsung...');
+    }
+
     await execCmd('npm run build', BACKEND_ROOT);
 
     writeProgress({ status: 'success', step: 'done', message: 'Aplikasi berhasil diperbarui! Memuat ulang layanan...' });
