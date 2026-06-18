@@ -623,8 +623,22 @@ export default function ServiceCenterPage() {
                   ownedFeatures={user?.features || []}
                   ownedServices={services}
                   onSelectPlan={(group) => {
-                    // Marketplace Style: Ambil varian default (biasanya terkecil)
-                    const defaultVariant = group.variants[0];
+                    const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+                    const variants: any[] = group.variants || [];
+
+                    // Pilih default: varian MONTH dengan ukuran terkecil
+                    const monthlyVariants = variants.filter((v: any) =>
+                      v.billing_period === 'MONTH' || !v.billing_period
+                    );
+                    const sortedMonthly = [...monthlyVariants].sort((a: any, b: any) => {
+                      const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === (a.size_label || '').toLowerCase());
+                      const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === (b.size_label || '').toLowerCase());
+                      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                    });
+
+                    // Fallback ke variants[0] jika tidak ada varian MONTH
+                    const defaultVariant = sortedMonthly[0] || variants[0];
+
                     setActiveOrder({
                       id: defaultVariant.id,
                       service_code: group.service_code,
@@ -632,17 +646,18 @@ export default function ServiceCenterPage() {
                       moduleName: group.module,
                       name: group.baseName,
                       size: defaultVariant.size_label || 'Standard',
-                      period: 'MONTH',
+                      period: 'MONTH',  // Selalu mulai dari Bulanan
                       features_json: defaultVariant.features_json || [],
                       price_monthly: defaultVariant.price_monthly || 0,
                       price_yearly: defaultVariant.price_yearly || 0,
-                      group: group // Simpan group untuk pemilihan varian di sidebar
+                      group: group // Simpan seluruh group untuk lookup di sidebar
                     });
                     setShowOrderPanel(true);
                   }}
                 />
               </div>
             )}
+
 
             {currentTab === 'billing' && (
               <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>

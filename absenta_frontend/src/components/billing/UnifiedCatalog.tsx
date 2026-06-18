@@ -84,25 +84,29 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     });
   }, [catalogPlans, categoryFilter]);
 
+  // Urutan ukuran dari kecil ke besar (Shopee-style)
+  const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+
   const groupedProducts = useMemo(() => {
     const products: Record<string, any> = {};
 
     filteredPlans.forEach((p: any) => {
-        // Aggressive base name extraction (Marketplace Style)
-        // Menghapus semua embel-embel edisi dan periode dari nama produk
+        // Ekstrak nama dasar produk (tanpa ukuran dan periode)
         const baseName = p.name
-            .replace(/\((.*?)\)/g, '') // Hapus apapun di dalam kurung
+            .replace(/\((.*?)\)/g, '')
             .replace(/\b(Micro|Small|Medium|Large|Enterprise|Pro|Basic|Ultra|Lite)\b/gi, '')
             .replace(/\b(Bulanan|Tahunan|Monthly|Yearly|Daily|Mingguan)\b/gi, '')
             .replace(/-/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
-            
+
         const moduleName = p.module?.name || 'Layanan';
+        // Kunci grup: module_id + absensi_mode agar SIMPLE & MULTI_SESI terpisah
         const planMode = p.absensi_mode || 'STANDARD';
-        // Gunakan module_id atau baseName sebagai kunci grup utama
-        const groupKey = p.module_id || `${baseName}-${planMode}`;
-        
+        const groupKey = p.module_id
+            ? `${p.module_id}-${planMode}`
+            : `${baseName}-${planMode}`;
+
         if (!products[groupKey]) {
             products[groupKey] = {
                 id: groupKey,
@@ -112,24 +116,32 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
                 icon: p.module?.icon || 'Package',
                 service_code: p.service_code,
                 mode: planMode,
-                variants: [],
-                sizes: new Set<string>(),
+                variants: [],         // Semua plan (MONTH + YEAR) disimpan untuk lookup
+                uniqueSizes: new Set<string>(), // Hanya size_label unik (tanpa duplikat periode)
             };
         }
 
         const size = p.size_label || 'Standard';
-        products[groupKey].sizes.add(size);
+        // uniqueSizes hanya berisi nama ukuran (Micro, Small, dst.) — bukan per-periode
+        products[groupKey].uniqueSizes.add(size);
         products[groupKey].variants.push(p);
     });
 
     return Object.values(products).map(p => ({
         ...p,
-        sizes: Array.from(p.sizes)
+        // sizes: array unik ukuran, diurutkan dari kecil ke besar
+        sizes: Array.from(p.uniqueSizes as Set<string>).sort((a: string, b: string) => {
+            const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === a.toLowerCase());
+            const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === b.toLowerCase());
+            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        }),
     })).sort((a, b) => {
-        // Urutkan berdasarkan harga terendah (Shopee Style)
-        const minPriceA = Math.min(...a.variants.map((v: any) => v.price_monthly || 0));
-        const minPriceB = Math.min(...b.variants.map((v: any) => v.price_monthly || 0));
-        return minPriceA - minPriceB;
+        // Harga terendah dari varian BULANAN saja (bukan tahunan)
+        const monthlyOnly = (variants: any[]) =>
+            variants.filter((v: any) => v.billing_period === 'MONTH' || !v.billing_period);
+        const minA = Math.min(...(monthlyOnly(a.variants).map((v: any) => v.price_monthly || 0)));
+        const minB = Math.min(...(monthlyOnly(b.variants).map((v: any) => v.price_monthly || 0)));
+        return minA - minB;
     });
   }, [filteredPlans]);
 
@@ -251,7 +263,9 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
                 groupedProducts.map((group) => {
                   const thumbnail = getServiceThumbnail(group.service_code, group.module, group.mode);
                   const theme = getServiceTheme(group.service_code);
-                  const lowestPrice = Math.min(...group.variants.map((v: any) => v.price_monthly));
+                  // Harga terendah dari varian BULANAN saja
+                  const monthlyVariants = group.variants.filter((v: any) => v.billing_period === 'MONTH' || !v.billing_period);
+                  const lowestPrice = Math.min(...(monthlyVariants.length > 0 ? monthlyVariants : group.variants).map((v: any) => v.price_monthly || 0));
                   const IconComp = getServiceIcon(group.service_code, group.icon);
                   
                   // Check Ownership & Status (only for private mode)
@@ -345,7 +359,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
                               )}
                               <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-3 line-clamp-2 min-h-[3.5rem] tracking-tight group-hover:text-blue-600 transition-colors uppercase">{group.baseName}</h3>
                               <div className="flex flex-wrap gap-2">
-                                 <Badge variant="outline" className="text-[11px] font-black py-0.5 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30 uppercase tracking-widest">{group.sizes.length} Variasi</Badge>
+                                 <Badge variant="outline" className="text-[11px] font-black py-0.5 px-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30 uppercase tracking-widest">{group.sizes.length} Edisi</Badge>
                               </div>
                            </div>
 
