@@ -4,7 +4,7 @@ import { backupController } from '../controllers/backup.controller';
 import { requireCapability } from '../../../../middlewares/requireCapability';
 import { determineDataScope } from '../../../../middlewares/dataScope';
 
-export async function backupRoutes(fastify: FastifyInstance<any, any, any, any, any, any, any, any>) {
+export async function backupRoutes(fastify: FastifyInstance) {
   fastify.get('/export', {
     preHandler: [
       requireCapability('academic.backups.create'),
