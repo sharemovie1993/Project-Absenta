@@ -162,6 +162,7 @@ const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
 const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggaranPage'));
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
+const BpbkWorkspacePage = lazy(() => import('./pages/kesiswaan/bk/BpbkWorkspacePage'));
 const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
@@ -499,6 +500,13 @@ function App() {
                     <Route path="/kesiswaan/jenis-pelanggaran" element={
                       <ProtectedRoute requiredCapability="affairs.violation.types.view.list">
                         <JenisPelanggaranPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/bk" element={
+                      <ProtectedRoute requiredCapability="affairs.violations.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkWorkspacePage />
+                        </Suspense>
                       </ProtectedRoute>
                     } />
 

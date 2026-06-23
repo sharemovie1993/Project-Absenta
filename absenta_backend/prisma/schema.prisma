@@ -86,6 +86,15 @@ model Tenant {
   SiswaPkl      SiswaPkl[]
   IzinKeluarSiswa IzinKeluarSiswa[]
 
+  // BK & Prestasi
+  JenisPrestasi       JenisPrestasi[]
+  PrestasiSiswa       PrestasiSiswa[]
+  KonselingSiswa      KonselingSiswa[]
+  PemanggilanOrangTua PemanggilanOrangTua[]
+  HomeVisit           HomeVisit[]
+  AsesmenSiswa        AsesmenSiswa[]
+  RujukanKasus        RujukanKasus[]
+
   // Sarpras
   SarprasCategory    SarprasCategory[]
   SarprasLocation    SarprasLocation[]
@@ -382,6 +391,7 @@ model User {
   Member              Member?
   SiswaDocument       SiswaDocument[]
   SarprasLoan         SarprasLoan[] @relation("Peminjam")
+  KonselingSiswa      KonselingSiswa[]
   SarprasLoanApproved SarprasLoan[] @relation("Approver")
   createdTickets      SupportTicket[] @relation("TicketCreator")
   assignedTickets     SupportTicket[] @relation("TicketAssignee")
@@ -820,6 +830,7 @@ model Kelas {
   OrganizationalAssignments OrganizationalAssignment[]
   PelanggaranSiswa          PelanggaranSiswa[]
   AttendanceDevice          AttendanceDevice?
+  PrestasiSiswa             PrestasiSiswa[]
 
 
   @@index([tenant_id])
@@ -989,6 +1000,12 @@ model Siswa {
   SiswaAkademik      SiswaAkademik[]
   PelanggaranSiswa   PelanggaranSiswa[]
   SiswaDocument      SiswaDocument[]
+  PrestasiSiswa       PrestasiSiswa[]
+  KonselingSiswa      KonselingSiswa[]
+  PemanggilanOrangTua PemanggilanOrangTua[]
+  HomeVisit           HomeVisit[]
+  AsesmenSiswa        AsesmenSiswa[]
+  RujukanKasus        RujukanKasus[]
 
   Member   Member?
   SiswaPkl SiswaPkl[]
@@ -1016,6 +1033,10 @@ model SiswaDocument {
   Siswa      Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
   Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   UploadedBy User?    @relation(fields: [uploaded_by_user_id], references: [id])
+
+  PemanggilanOrangTua PemanggilanOrangTua[]
+  HomeVisit           HomeVisit[]
+  AsesmenSiswa        AsesmenSiswa[]
 
   @@index([siswa_id])
   @@index([tenant_id])
@@ -1080,6 +1101,7 @@ model SiswaAkademik {
   PelanggaranSiswa PelanggaranSiswa[]
   SiswaPkl         SiswaPkl[]
   IzinKeluarSiswa  IzinKeluarSiswa[]
+  PrestasiSiswa    PrestasiSiswa[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
 }
@@ -3282,4 +3304,150 @@ model SupportKnowledgeBase {
   tags       String[]
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+}
+
+// Kategori/Jenis Prestasi yang tersedia
+model JenisPrestasi {
+  id             String           @id @default(uuid())
+  tenant_id      String
+  kategori       String           // Akademik, Non-Akademik, Sikap/Karakter
+  nama_prestasi  String
+  poin           Int              // Poin penghargaan (contoh: +10, +25)
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
+  
+  Tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  PrestasiSiswa  PrestasiSiswa[]
+
+  @@index([tenant_id])
+}
+
+// Catatan Prestasi yang diraih Siswa
+model PrestasiSiswa {
+  id                String         @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  siswa_akademik_id String?
+  kelas_id          String?
+  tanggal           DateTime       @db.Date
+  jenis_prestasi_id String?
+  nama_prestasi     String         // Menyimpan nama prestasi (atau override)
+  poin              Int            @default(0)
+  keterangan        String?
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  Tenant            Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa             Siswa          @relation(fields: [siswa_id], references: [id])
+  SiswaAkademik     SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id])
+  Kelas             Kelas?         @relation(fields: [kelas_id], references: [id])
+  Jenis             JenisPrestasi? @relation(fields: [jenis_prestasi_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+// Catatan Sesi Konseling (Individu / Kelompok)
+model KonselingSiswa {
+  id                String         @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  tanggal           DateTime       @db.Date
+  tipe              String         // INDIVIDU, KELOMPOK
+  kelompok_id       String?        // Pengenal jika konseling kelompok dilakukan bersamaan
+  masalah           String         @db.Text
+  solusi            String?        @db.Text
+  status            String         @default("PROSES") // PROSES, SELESAI
+  petugas_id        String         // User ID guru BK yang menangani
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @updatedAt
+
+  Tenant            Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa             Siswa          @relation(fields: [siswa_id], references: [id])
+  Petugas           User           @relation(fields: [petugas_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+// Catatan Pemanggilan Orang Tua
+model PemanggilanOrangTua {
+  id                  String       @id @default(uuid())
+  tenant_id           String
+  siswa_id            String
+  tanggal_pemanggilan DateTime     @db.Date
+  tanggal_pertemuan   DateTime?    @db.Date
+  alasan              String       @db.Text
+  keterangan_pertemuan String?     @db.Text
+  status              String       @default("BARU") // BARU, DIKIRIM, HADIR, TIDAK_HADIR
+  surat_dokumen_id    String?      // Relasi opsional ke file scan surat panggilan fisik
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+
+  Tenant              Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa               Siswa        @relation(fields: [siswa_id], references: [id])
+  Dokumen             SiswaDocument? @relation(fields: [surat_dokumen_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+// Catatan Kunjungan Rumah (Home Visit)
+model HomeVisit {
+  id               String          @id @default(uuid())
+  tenant_id        String
+  siswa_id         String
+  tanggal          DateTime        @db.Date
+  alasan           String          @db.Text
+  hasil            String?         @db.Text
+  foto_dokumen_id  String?         // Relasi opsional ke file scan/foto laporan kunjungan rumah
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
+  Dokumen          SiswaDocument?  @relation(fields: [foto_dokumen_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+// Asesmen Kognitif/Psikososial/Angket BK
+model AsesmenSiswa {
+  id               String          @id @default(uuid())
+  tenant_id        String
+  siswa_id         String
+  tanggal          DateTime        @db.Date
+  nama_asesmen     String          // Contoh: "Sosiometri", "Kuesioner Gaya Belajar", "Tes Depresi Beck"
+  hasil_skor       String?
+  keterangan       String?         @db.Text
+  dokumen_id       String?         // Relasi ke SiswaDocument (file hasil tes)
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
+  Dokumen          SiswaDocument?  @relation(fields: [dokumen_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+// Rujukan Kasus ke Pihak Eksternal
+model RujukanKasus {
+  id               String          @id @default(uuid())
+  tenant_id        String
+  siswa_id         String
+  tanggal          DateTime        @db.Date
+  rujukan_ke       String          // Contoh: "Psikolog Klinis", "Rumah Sakit", "Dinas Pendidikan", "Kepala Sekolah"
+  alasan           String          @db.Text
+  status           String          @default("DIUSULKAN") // DIUSULKAN, SELESAI
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([siswa_id])
 }

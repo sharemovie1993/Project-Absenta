@@ -1,0 +1,351 @@
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { bkApi, type HomeVisit } from '../../../../api/kesiswaan/bk.api';
+import { uploadSiswaDocument } from '../../../../api/academic/siswa.api';
+import { Card } from '../../../../components/ui/Card';
+import { Table } from '../../../../components/ui/Table';
+import type { Column } from '../../../../components/ui/Table';
+import { Button } from '../../../../components/ui/Button';
+import { Input } from '../../../../components/ui/Input';
+import { Loader } from '../../../../components/ui/Loader';
+import { Label } from '../../../../components/ui/Label';
+import { useToast } from '../../../../hooks/useToast';
+import useConfirm from '../../../../hooks/useConfirm';
+import { Plus, Edit2, Trash2, Home, Paperclip } from 'lucide-react';
+
+const Modal = lazy(() => import('../../../ui/Modal').then(m => ({ default: m.Modal })));
+const SmartStudentPicker = lazy(() => import('../../../common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
+
+export const HomeVisitSection: React.FC = () => {
+  const [data, setData] = useState<HomeVisit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [limit] = useState(10);
+
+  const { success, error } = useToast();
+  const confirm = useConfirm();
+
+  // Form states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    siswa_id: '',
+    tanggal: new Date().toISOString().split('T')[0],
+    alasan: '',
+    hasil: '',
+    file: null as File | null
+  });
+
+  const [saving, setSaving] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await bkApi.getHomeVisits({
+        page,
+        limit
+      });
+      setData(res.data?.list || []);
+      setTotalPages(res.data?.pagination?.totalPages || 1);
+    } catch (err) {
+      console.error('Error fetching home visits:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const resetForm = () => {
+    setFormData({
+      siswa_id: '',
+      tanggal: new Date().toISOString().split('T')[0],
+      alasan: '',
+      hasil: '',
+      file: null
+    });
+    setSelectedSiswa(null);
+    setSelectedId(null);
+  };
+
+  const handleEdit = (item: HomeVisit) => {
+    setSelectedId(item.id);
+    setSelectedSiswa(item.Siswa || null);
+    setFormData({
+      siswa_id: item.siswa_id,
+      tanggal: new Date(item.tanggal).toISOString().split('T')[0],
+      alasan: item.alasan,
+      hasil: item.hasil || '',
+      file: null
+    });
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: 'Hapus Log Home Visit',
+      description: 'Apakah Anda yakin ingin menghapus catatan kunjungan rumah ini?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+    if (!ok) return;
+
+    try {
+      const res = await bkApi.deleteHomeVisit(id);
+      if (res.success) {
+        success('Log kunjungan rumah berhasil dihapus');
+        fetchData();
+      } else {
+        error(res.message || 'Gagal menghapus');
+      }
+    } catch (err: any) {
+      error(err.message || 'Koneksi bermasalah');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.siswa_id) {
+      error('Harap pilih siswa terlebih dahulu');
+      return;
+    }
+    if (!formData.alasan.trim()) {
+      error('Harap isi alasan kunjungan');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      let docId = undefined;
+
+      // 1. Upload scan file if chosen
+      if (formData.file) {
+        const uploadRes = (await uploadSiswaDocument(
+          formData.siswa_id,
+          formData.file,
+          `Foto/Laporan Home Visit - ${selectedSiswa?.nama_siswa || 'Siswa'}`,
+          'LAPORAN_BK'
+        )) as any;
+        docId = uploadRes.data?.id;
+      }
+
+      const payload = {
+        siswa_id: formData.siswa_id,
+        tanggal: new Date(formData.tanggal),
+        alasan: formData.alasan,
+        hasil: formData.hasil || undefined,
+        foto_dokumen_id: docId
+      };
+
+      if (selectedId) {
+        await bkApi.updateHomeVisit(selectedId, payload);
+        success('Log kunjungan rumah berhasil diperbarui');
+      } else {
+        await bkApi.createHomeVisit(payload);
+        success('Kunjungan rumah baru berhasil dicatat');
+      }
+
+      setModalOpen(false);
+      resetForm();
+      fetchData();
+    } catch (err: any) {
+      error(err.message || 'Gagal menyimpan kunjungan rumah');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const columns: Column[] = [
+    {
+      key: 'tanggal',
+      label: 'Tanggal Kunjungan',
+      render: (value: string) => (
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+          {new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+        </span>
+      )
+    },
+    {
+      key: 'siswa',
+      label: 'Profil Siswa',
+      render: (_, item: any) => (
+        <div>
+          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
+          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
+        </div>
+      )
+    },
+    {
+      key: 'alasan',
+      label: 'Alasan Kunjungan',
+      render: (value: string) => (
+        <p className="text-xs font-medium text-slate-600 line-clamp-1 max-w-xs">{value}</p>
+      )
+    },
+    {
+      key: 'hasil',
+      label: 'Hasil / Kesepakatan',
+      render: (value: string) => (
+        <p className="text-xs font-medium text-slate-500 line-clamp-1 max-w-xs">{value || '-'}</p>
+      )
+    },
+    {
+      key: 'attachments',
+      label: 'Lampiran',
+      render: (_, item: any) => {
+        if (!item.Dokumen) return <span className="text-slate-400 text-[10px] font-bold uppercase">-</span>;
+        return (
+          <span className="flex items-center text-[10px] font-bold text-blue-600">
+            <Paperclip className="w-3 h-3 mr-1" />
+            {item.Dokumen.file_original_name}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'actions',
+      label: 'Aksi',
+      render: (_, item: any) => (
+        <div className="flex gap-1 justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleEdit(item)}
+            className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+          >
+            <Edit2 size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleDelete(item.id)}
+            className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+          >
+            <Trash2 size={13} />
+          </Button>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Dokumentasi Kunjungan Rumah (Home Visit)</h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Catatan kunjungan rumah langsung ke kediaman wali murid untuk observasi lingkungan belajar</p>
+        </div>
+        <Button
+          variant="toolbarPrimary"
+          size="toolbar"
+          onClick={() => { resetForm(); setModalOpen(true); }}
+        >
+          <Plus className="w-3.5 h-3.5 mr-1" />
+          Catat Home Visit
+        </Button>
+      </div>
+
+      {/* Table */}
+      {loading && data.length === 0 ? (
+        <div className="py-20 flex flex-col items-center justify-center">
+          <Loader className="mb-4" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Kunjungan...</p>
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          data={data}
+          pagination={{
+            page,
+            limit,
+            total: totalPages * limit,
+            totalPages,
+            onPageChange: setPage
+          }}
+        />
+      )}
+
+      {/* Form Modal */}
+      <Suspense fallback={null}>
+        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={selectedId ? 'Perbarui Log Home Visit' : 'Catat Home Visit Baru'} size="lg">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
+              {selectedId ? (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
+                  <div className="font-bold text-xs">{selectedSiswa?.nama_siswa}</div>
+                  <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{selectedSiswa?.nis}</div>
+                </div>
+              ) : (
+                <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-xl" />}>
+                  <SmartStudentPicker
+                    onSelect={(s) => {
+                      setSelectedSiswa(s);
+                      setFormData(prev => ({ ...prev, siswa_id: s.id }));
+                    }}
+                    mode="siswa"
+                    placeholder="Cari siswa..."
+                  />
+                </Suspense>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Kunjungan</Label>
+              <Input
+                type="date"
+                value={formData.tanggal}
+                onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
+                className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Alasan / Latar Belakang Kunjungan</Label>
+              <textarea
+                value={formData.alasan}
+                onChange={(e) => setFormData(prev => ({ ...prev, alasan: e.target.value }))}
+                placeholder="Tulis latar belakang dilaksanakannya home visit (contoh: Siswa sering terlambat, bermasalah di kelas, dll)..."
+                className="w-full min-h-[80px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hasil Kunjungan & Kesepakatan Bersama</Label>
+              <textarea
+                value={formData.hasil}
+                onChange={(e) => setFormData(prev => ({ ...prev, hasil: e.target.value }))}
+                placeholder="Tulis kondisi lingkungan rumah, tanggapan orang tua, serta komitmen kesepakatan bersama..."
+                className="w-full min-h-[100px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Unggah Foto Kunjungan / Laporan Scan Home Visit (Opsional)</Label>
+              <Input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setFormData(prev => ({ ...prev, file: e.target.files?.[0] || null }))}
+                className="text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setModalOpen(false)}>
+                Batal
+              </Button>
+              <Button type="submit" variant="toolbarPrimary" size="toolbar" className="px-6" disabled={saving}>
+                {saving ? 'Menyimpan...' : 'Simpan Catatan'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      </Suspense>
+    </Card>
+  );
+};

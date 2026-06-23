@@ -256,6 +256,7 @@ async function main() {
             { label: 'Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list' },
             { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.view.list' },
             { label: 'Monitoring Kesiswaan', icon: 'Activity', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.violation.stats' },
+            { label: 'Bimbingan Konseling (BK)', icon: 'HeartHandshake', path: '/kesiswaan/bk', required_capability: 'affairs.violations.view.list' },
           ]
         }
       ]

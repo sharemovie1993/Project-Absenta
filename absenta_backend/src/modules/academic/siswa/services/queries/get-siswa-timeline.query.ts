@@ -18,22 +18,57 @@ export async function getSiswaTimelineQuery(params: {
     throw new Error('Siswa tidak ditemukan');
   }
 
-  // 2. Fetch violations
-  const violations = await prisma.pelanggaranSiswa.findMany({
-    where: { siswa_id: siswaId, tenant_id: tenantId },
-    orderBy: { tanggal: 'asc' }
-  });
+  // 2. Fetch all timeline sources in parallel
+  const [
+    violations,
+    documents,
+    achievements,
+    counselings,
+    summons,
+    homeVisits,
+    assessments,
+    referrals
+  ] = await Promise.all([
+    prisma.pelanggaranSiswa.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      orderBy: { tanggal: 'asc' }
+    }),
+    prisma.siswaDocument.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      include: { UploadedBy: { select: { full_name: true } } },
+      orderBy: { created_at: 'asc' }
+    }),
+    prisma.prestasiSiswa.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      orderBy: { tanggal: 'asc' }
+    }),
+    prisma.konselingSiswa.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      include: { Petugas: { select: { full_name: true } } },
+      orderBy: { tanggal: 'asc' }
+    }),
+    prisma.pemanggilanOrangTua.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      include: { Dokumen: true },
+      orderBy: { tanggal_pemanggilan: 'asc' }
+    }),
+    prisma.homeVisit.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      include: { Dokumen: true },
+      orderBy: { tanggal: 'asc' }
+    }),
+    prisma.asesmenSiswa.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      include: { Dokumen: true },
+      orderBy: { tanggal: 'asc' }
+    }),
+    prisma.rujukanKasus.findMany({
+      where: { siswa_id: siswaId, tenant_id: tenantId },
+      orderBy: { tanggal: 'asc' }
+    })
+  ]);
 
-  // 3. Fetch documents
-  const documents = await prisma.siswaDocument.findMany({
-    where: { siswa_id: siswaId, tenant_id: tenantId },
-    include: {
-      UploadedBy: { select: { full_name: true } }
-    },
-    orderBy: { created_at: 'asc' }
-  });
-
-  // 4. Combine into timeline items
+  // 3. Combine into timeline items
   const items: any[] = [];
 
   // Add registration entry
@@ -58,7 +93,87 @@ export async function getSiswaTimelineQuery(params: {
       keterangan: v.keterangan || 'Tidak ada keterangan tambahan.',
       poin: v.poin,
       status: v.status,
-      user_name: 'Guru/Kesiswaan' // generic or we can trace later
+      user_name: 'Guru/Kesiswaan'
+    });
+  });
+
+  // Add achievements
+  achievements.forEach((a) => {
+    items.push({
+      id: a.id,
+      tanggal: a.tanggal,
+      tipe: 'PRESTASI',
+      judul: `Prestasi: ${a.nama_prestasi}`,
+      keterangan: a.keterangan || 'Tidak ada keterangan tambahan.',
+      poin: a.poin,
+      user_name: 'Guru/BK'
+    });
+  });
+
+  // Add counselings
+  counselings.forEach((c) => {
+    items.push({
+      id: c.id,
+      tanggal: c.tanggal,
+      tipe: 'KONSELING',
+      judul: `Konseling ${c.tipe}`,
+      keterangan: `Masalah: ${c.masalah}\nSolusi: ${c.solusi || '-'}`,
+      status: c.status,
+      user_name: c.Petugas?.full_name || 'Guru BK'
+    });
+  });
+
+  // Add summons
+  summons.forEach((s) => {
+    items.push({
+      id: s.id,
+      tanggal: s.tanggal_pemanggilan,
+      tipe: 'PEMANGGILAN',
+      judul: 'Pemanggilan Orang Tua',
+      keterangan: `Alasan: ${s.alasan}\nStatus: ${s.status}`,
+      file_name: s.Dokumen?.file_original_name,
+      file_url: s.Dokumen ? `/academic/siswa/${siswaId}/documents/${s.Dokumen.id}/download` : undefined,
+      user_name: 'Guru BK'
+    });
+  });
+
+  // Add home visits
+  homeVisits.forEach((h) => {
+    items.push({
+      id: h.id,
+      tanggal: h.tanggal,
+      tipe: 'HOME_VISIT',
+      judul: 'Home Visit',
+      keterangan: `Alasan: ${h.alasan}\nHasil: ${h.hasil || '-'}`,
+      file_name: h.Dokumen?.file_original_name,
+      file_url: h.Dokumen ? `/academic/siswa/${siswaId}/documents/${h.Dokumen.id}/download` : undefined,
+      user_name: 'Guru BK'
+    });
+  });
+
+  // Add assessments
+  assessments.forEach((a) => {
+    items.push({
+      id: a.id,
+      tanggal: a.tanggal,
+      tipe: 'ASESMEN',
+      judul: `Asesmen: ${a.nama_asesmen}`,
+      keterangan: `Skor/Hasil: ${a.hasil_skor || '-'}\nKeterangan: ${a.keterangan || '-'}`,
+      file_name: a.Dokumen?.file_original_name,
+      file_url: a.Dokumen ? `/academic/siswa/${siswaId}/documents/${a.Dokumen.id}/download` : undefined,
+      user_name: 'Guru BK'
+    });
+  });
+
+  // Add referrals
+  referrals.forEach((r) => {
+    items.push({
+      id: r.id,
+      tanggal: r.tanggal,
+      tipe: 'RUJUKAN',
+      judul: `Rujukan Kasus ke ${r.rujukan_ke}`,
+      keterangan: `Alasan: ${r.alasan}\nStatus: ${r.status}`,
+      user_name: 'Guru BK'
     });
   });
 
@@ -90,7 +205,7 @@ export async function getSiswaTimelineQuery(params: {
     });
   }
 
-  // Sort chronologically (oldest first or newest first? Let's sort oldest first so it reads like a history book, or newest first for dashboard. Let's do newest first for dashboard, but let the frontend handle sorting. We will sort desc by tanggal here).
+  // Sort chronologically (newest first)
   items.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   return items;

@@ -319,6 +319,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { jenisPelanggaranRoutes } = await import('../modules/kesiswaan/routes/jenis-pelanggaran.routes');
       await fastify.register(jenisPelanggaranRoutes, { prefix: '/kesiswaan/jenis-pelanggaran' });
 
+      const { bkRoutes } = await import('../modules/kesiswaan/routes/bk.routes');
+      await fastify.register(bkRoutes, { prefix: '/kesiswaan/bk' });
+
       // Kurikulum Module
       const { supervisiRoutes } = await import('../modules/kurikulum/routes/supervisi.routes');
       await fastify.register(supervisiRoutes, { prefix: '/kurikulum/supervisi' });

@@ -127,6 +127,8 @@ export async function getAllSiswaQuery(
           },
         },
       },
+      PelanggaranSiswa: { select: { poin: true } },
+      PrestasiSiswa: { select: { poin: true } }
     },
     orderBy: {
       created_at: 'desc',
@@ -141,6 +143,8 @@ export async function getAllSiswaQuery(
     ...s,
     OrangTua: (s.OrangTuaSiswa || []).map((ots: any) => ots.OrangTua),
     OrangTuaSiswa: undefined,
+    poin_pelanggaran: (s.PelanggaranSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
+    poin_prestasi: (s.PrestasiSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
   }));
 
   return {
