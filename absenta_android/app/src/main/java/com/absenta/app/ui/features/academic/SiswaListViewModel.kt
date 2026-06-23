@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 data class WaliKelasInfo(
     val id: String,
@@ -81,6 +83,9 @@ class SiswaListViewModel(application: Application) : AndroidViewModel(applicatio
     private val _canView = MutableStateFlow(false)
     val canView: StateFlow<Boolean> = _canView.asStateFlow()
 
+    private val _canManage = MutableStateFlow(false)
+    val canManage: StateFlow<Boolean> = _canManage.asStateFlow()
+
     private val _canSendAccess = MutableStateFlow(false)
     val canSendAccess: StateFlow<Boolean> = _canSendAccess.asStateFlow()
 
@@ -109,6 +114,7 @@ class SiswaListViewModel(application: Application) : AndroidViewModel(applicatio
             _canView.value = caps.contains("academic.students.view.list")
             _canCreate.value = caps.contains("academic.students.create")
             _canEdit.value = caps.contains("academic.students.update")
+            _canManage.value = caps.contains("academic.students.manage")
             _canSendAccess.value = caps.contains("academic.students.send.access_token")
 
             // Isolated scope check (Wali Kelas)
@@ -350,6 +356,215 @@ class SiswaListViewModel(application: Application) : AndroidViewModel(applicatio
             } catch (e: Exception) {
                 onError("Koneksi bermasalah: ${e.localizedMessage}")
             }
+        }
+    }
+
+    // Student Exit & Timeline Flow State
+    private val _timeline = MutableStateFlow<List<SiswaTimelineItem>>(emptyList())
+    val timeline: StateFlow<List<SiswaTimelineItem>> = _timeline.asStateFlow()
+
+    private val _isLoadingTimeline = MutableStateFlow(false)
+    val isLoadingTimeline: StateFlow<Boolean> = _isLoadingTimeline.asStateFlow()
+
+    private val _timelineError = MutableStateFlow<String?>(null)
+    val timelineError: StateFlow<String?> = _timelineError.asStateFlow()
+
+    fun fetchSiswaTimeline(siswaId: String) {
+        viewModelScope.launch {
+            _isLoadingTimeline.value = true
+            _timelineError.value = null
+            try {
+                val response = academicService.getSiswaTimeline(siswaId)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    _timeline.value = response.body()?.data ?: emptyList()
+                } else {
+                    _timelineError.value = "Gagal memuat linimasa siswa"
+                }
+            } catch (e: Exception) {
+                Log.e("AbsentaDebug", "Error fetching timeline", e)
+                _timelineError.value = "Koneksi bermasalah: ${e.localizedMessage}"
+            } finally {
+                _isLoadingTimeline.value = false
+            }
+        }
+    }
+
+    fun uploadSiswaDocument(
+        siswaId: String,
+        file: okhttp3.MultipartBody.Part,
+        judul: okhttp3.RequestBody,
+        kategori: okhttp3.RequestBody,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = academicService.uploadSiswaDocument(siswaId, file, judul, kategori)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    onSuccess()
+                    fetchSiswaTimeline(siswaId)
+                } else {
+                    onError(response.body()?.message ?: "Gagal mengunggah dokumen")
+                }
+            } catch (e: Exception) {
+                onError("Koneksi bermasalah: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun deleteSiswaDocument(
+        siswaId: String,
+        docId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = academicService.deleteSiswaDocument(siswaId, docId)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    onSuccess()
+                    fetchSiswaTimeline(siswaId)
+                } else {
+                    onError(response.body()?.message ?: "Gagal menghapus dokumen")
+                }
+            } catch (e: Exception) {
+                onError("Koneksi bermasalah: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun completeSiswaExit(
+        siswaId: String,
+        file: okhttp3.MultipartBody.Part,
+        status: okhttp3.RequestBody,
+        alasan: okhttp3.RequestBody?,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = academicService.completeSiswaExit(siswaId, file, status, alasan)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    onSuccess()
+                    fetchSiswaTimeline(siswaId)
+                    // Reload main list & stats to show status change (AKTIF -> KELUAR/MUTASI/DO/etc)
+                    fetchSiswaList(_currentPage.value)
+                    launch { fetchAcademicStats() }
+                } else {
+                    onError(response.body()?.message ?: "Gagal menyelesaikan proses keluar")
+                }
+            } catch (e: Exception) {
+                onError("Koneksi bermasalah: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun downloadDocument(
+        siswaId: String,
+        docId: String,
+        fileName: String,
+        onSuccess: (java.io.File) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val response = academicService.downloadSiswaDocument(siswaId, docId)
+                if (response.isSuccessful && response.body() != null) {
+                    val file = saveResponseBodyToTempFile(response.body()!!, fileName)
+                    if (file != null) {
+                        onSuccess(file)
+                    } else {
+                        onError("Gagal menyimpan dokumen")
+                    }
+                } else {
+                    onError("Gagal mengunduh dokumen")
+                }
+            } catch (e: Exception) {
+                onError("Koneksi bermasalah: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun downloadExitBundle(
+        siswaId: String,
+        fileName: String,
+        onSuccess: (java.io.File) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val response = academicService.downloadSiswaExitBundle(siswaId)
+                if (response.isSuccessful && response.body() != null) {
+                    val file = saveResponseBodyToTempFile(response.body()!!, fileName)
+                    if (file != null) {
+                        onSuccess(file)
+                    } else {
+                        onError("Gagal menyimpan paket berkas")
+                    }
+                } else {
+                    onError("Gagal mengunduh paket berkas")
+                }
+            } catch (e: Exception) {
+                onError("Koneksi bermasalah: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    private fun saveResponseBodyToTempFile(body: okhttp3.ResponseBody, fileName: String): java.io.File? {
+        return try {
+            val destinationFile = java.io.File(
+                context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+                fileName
+            )
+            var inputStream: java.io.InputStream? = null
+            var outputStream: java.io.OutputStream? = null
+            try {
+                val fileReader = ByteArray(4096)
+                var fileSizeDownloaded: Long = 0
+                inputStream = body.byteStream()
+                outputStream = java.io.FileOutputStream(destinationFile)
+                while (true) {
+                    val read = inputStream.read(fileReader)
+                    if (read == -1) {
+                        break
+                    }
+                    outputStream.write(fileReader, 0, read)
+                    fileSizeDownloaded += read
+                }
+                outputStream.flush()
+                destinationFile
+            } catch (e: Exception) {
+                null
+            } finally {
+                inputStream?.close()
+                outputStream?.close()
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getMultipartFromUri(uri: android.net.Uri, partName: String): okhttp3.MultipartBody.Part? {
+        return try {
+            val contentResolver = context.contentResolver
+            val type = contentResolver.getType(uri) ?: "application/octet-stream"
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            var displayName = "file"
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1) {
+                        displayName = it.getString(nameIndex)
+                    }
+                }
+            }
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val bytes = inputStream.use { it.readBytes() }
+            val requestBody = bytes.toRequestBody(type.toMediaTypeOrNull())
+            okhttp3.MultipartBody.Part.createFormData(partName, displayName, requestBody)
+        } catch (e: Exception) {
+            Log.e("AbsentaDebug", "Error creating multipart from uri", e)
+            null
         }
     }
 }

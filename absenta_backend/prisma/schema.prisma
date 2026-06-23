@@ -63,6 +63,7 @@ model Tenant {
   PelanggaranSiswa        PelanggaranSiswa[]
   SupervisiGuru           SupervisiGuru[]
   JenisPelanggaran        JenisPelanggaran[]
+  SiswaDocument           SiswaDocument[]
   roles                   Role[]
   tenantRiskScore         TenantRiskScore?
   tenantRiskScoreLogs     TenantRiskScoreLog[]
@@ -379,6 +380,7 @@ model User {
   organizationalAssignments OrganizationalAssignment[]
 
   Member              Member?
+  SiswaDocument       SiswaDocument[]
   SarprasLoan         SarprasLoan[] @relation("Peminjam")
   SarprasLoanApproved SarprasLoan[] @relation("Approver")
   createdTickets      SupportTicket[] @relation("TicketCreator")
@@ -986,6 +988,7 @@ model Siswa {
   SiswaFaceTemplate  SiswaFaceTemplate[]
   SiswaAkademik      SiswaAkademik[]
   PelanggaranSiswa   PelanggaranSiswa[]
+  SiswaDocument      SiswaDocument[]
 
   Member   Member?
   SiswaPkl SiswaPkl[]
@@ -994,6 +997,28 @@ model Siswa {
   @@index([tenant_id])
   @@index([kelas_id])
   @@index([tenant_id, no_rfid])
+}
+
+model SiswaDocument {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  siswa_id            String
+  judul               String
+  kategori            String
+  file_original_name  String
+  file_storage_path   String
+  mime_type           String
+  size_bytes          Int
+  uploaded_by_user_id String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  Siswa      Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  UploadedBy User?    @relation(fields: [uploaded_by_user_id], references: [id])
+
+  @@index([siswa_id])
+  @@index([tenant_id])
 }
 
 model SesiAbsensi {

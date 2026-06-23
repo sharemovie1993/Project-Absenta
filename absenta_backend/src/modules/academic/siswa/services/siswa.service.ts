@@ -17,6 +17,12 @@ import { getAllSiswaQuery } from './queries/get-all-siswa.query';
 import { getImportReferenceDataQuery } from './queries/get-import-reference-data.query';
 import { getSiswaByIdQuery } from './queries/get-siswa-by-id.query';
 import { getSiswaHistoryQuery } from './queries/get-siswa-history.query';
+import { uploadSiswaDocumentCommand } from './commands/upload-siswa-document.command';
+import { deleteSiswaDocumentCommand } from './commands/delete-siswa-document.command';
+import { completeSiswaExitCommand } from './commands/complete-siswa-exit.command';
+import { getSiswaDocumentsQuery } from './queries/get-siswa-documents.query';
+import { getSiswaTimelineQuery } from './queries/get-siswa-timeline.query';
+import { getSiswaExitBundleQuery } from './queries/get-siswa-exit-bundle.query';
 
 export type { PaginationParams, SiswaResponse, PaginatedSiswaResponse, CreateSiswaInput, UpdateSiswaInput } from './siswa.types';
 
@@ -112,5 +118,56 @@ export class SiswaService {
 
   async getImportReferenceData(tenantId: string) {
     return getImportReferenceDataQuery(tenantId);
+  }
+
+  async uploadSiswaDocument(params: {
+    tenantId: string;
+    siswaId: string;
+    judul: string;
+    kategori: string;
+    actorUserId?: string;
+    file: any;
+  }) {
+    return uploadSiswaDocumentCommand(params);
+  }
+
+  async deleteSiswaDocument(params: {
+    tenantId: string;
+    siswaId: string;
+    documentId: string;
+  }) {
+    return deleteSiswaDocumentCommand(params);
+  }
+
+  async getSiswaDocuments(params: {
+    tenantId: string;
+    siswaId: string;
+  }) {
+    return getSiswaDocumentsQuery(params);
+  }
+
+  async getSiswaTimeline(params: {
+    tenantId: string;
+    siswaId: string;
+  }) {
+    return getSiswaTimelineQuery(params);
+  }
+
+  async completeSiswaExit(params: {
+    tenantId: string;
+    siswaId: string;
+    status: string;
+    alasan?: string;
+    actorUserId?: string;
+    file: any;
+  }) {
+    return completeSiswaExitCommand(params);
+  }
+
+  async getSiswaExitBundle(params: {
+    tenantId: string;
+    siswaId: string;
+  }) {
+    return getSiswaExitBundleQuery(params);
   }
 }

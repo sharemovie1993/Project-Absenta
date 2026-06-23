@@ -67,6 +67,7 @@
     "@types/redis": "^4.0.10",
     "@types/stripe": "^8.0.416",
     "@types/web-push": "^3.6.4",
+    "adm-zip": "^0.5.17",
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",

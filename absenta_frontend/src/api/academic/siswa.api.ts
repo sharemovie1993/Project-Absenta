@@ -154,3 +154,75 @@ export const deleteAllSiswa = async (): Promise<{ success: boolean; message: str
 export const exportSiswaToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/siswa/export');
 };
+
+export interface SiswaTimelineItem {
+  id: string;
+  tanggal: string;
+  tipe: 'STATUS_AKADEMIK' | 'PELANGGARAN' | 'DOKUMEN';
+  judul: string;
+  keterangan: string;
+  poin?: number;
+  status?: string;
+  file_name?: string;
+  file_url?: string;
+  kategori_dokumen?: string;
+  size_bytes?: number;
+  user_name: string;
+}
+
+export const getSiswaTimeline = async (id: string): Promise<SiswaTimelineItem[]> => {
+  const res = await requestWithFallback<{ success: boolean; data: SiswaTimelineItem[] }>('get', `/academic/siswa/${id}/timeline`);
+  return res.data || [];
+};
+
+export const uploadSiswaDocument = async (
+  id: string,
+  file: File,
+  judul: string,
+  kategori: string
+): Promise<{ success: boolean; message: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('judul', judul);
+  formData.append('kategori', kategori);
+
+  return requestWithFallback<{ success: boolean; message: string }>('post', `/academic/siswa/${id}/documents`, {
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const deleteSiswaDocument = async (id: string, docId: string): Promise<{ success: boolean; message: string }> => {
+  return requestWithFallback<{ success: boolean; message: string }>('delete', `/academic/siswa/${id}/documents/${docId}`);
+};
+
+export const completeSiswaExit = async (
+  id: string,
+  file: File,
+  status: string,
+  alasan?: string
+): Promise<{ success: boolean; message: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('status', status);
+  if (alasan) {
+    formData.append('alasan', alasan);
+  }
+
+  return requestWithFallback<{ success: boolean; message: string }>('post', `/academic/siswa/${id}/complete-exit`, {
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const downloadSiswaDocumentFile = async (id: string, docId: string): Promise<Blob> => {
+  return downloadBlob(`/academic/siswa/${id}/documents/${docId}/download`);
+};
+
+export const downloadSiswaExitBundle = async (id: string): Promise<Blob> => {
+  return downloadBlob(`/academic/siswa/${id}/exit-bundle`);
+};

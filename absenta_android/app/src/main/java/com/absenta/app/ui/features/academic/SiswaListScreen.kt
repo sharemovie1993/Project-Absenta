@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.absenta.app.data.api.*
 import com.absenta.app.ui.components.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -787,6 +789,7 @@ fun SiswaListScreen(
     activeSiswaForDetail?.let { siswa ->
         SiswaDetailDialog(
             siswa = siswa,
+            viewModel = viewModel,
             onDismiss = { activeSiswaForDetail = null }
         )
     }
@@ -796,6 +799,7 @@ fun SiswaListScreen(
 @Composable
 fun SiswaDetailDialog(
     siswa: SiswaDetail,
+    viewModel: SiswaListViewModel,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -847,184 +851,210 @@ fun SiswaDetailDialog(
             }
         },
         text = {
+            var selectedTab by remember { mutableStateOf(0) }
+            val tabs = listOf("Profil & Wali", "Linimasa & Keluar")
+
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Status Badge Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = Color(0xFF1E3C72),
+                    modifier = Modifier.padding(bottom = 4.dp)
                 ) {
-                    Text(
-                        text = "Status Siswa",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF64748B)
-                    )
-
-                    val statusColor = when (siswa.status.uppercase()) {
-                        "AKTIF" -> Color(0xFF10B981)
-                        "NON_AKTIF" -> Color(0xFFEF4444)
-                        "MUTASI" -> Color(0xFFF59E0B)
-                        "LULUS" -> Color(0xFF3B82F6)
-                        else -> Color(0xFF64748B)
-                    }
-
-                    Surface(
-                        color = statusColor.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = siswa.status,
-                            color = statusColor,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(title, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                         )
                     }
                 }
 
-                HorizontalDivider(color = Color(0xFFF1F5F9))
+                if (selectedTab == 0) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 420.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Status Badge Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Status Siswa",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF64748B)
+                            )
 
-                // Section 1: Identitas Diri
-                Text(
-                    text = "IDENTITAS DIRI",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = Color(0xFF475569)
-                )
+                            val statusColor = when (siswa.status.uppercase()) {
+                                "AKTIF" -> Color(0xFF10B981)
+                                "NON_AKTIF" -> Color(0xFFEF4444)
+                                "MUTASI" -> Color(0xFFF59E0B)
+                                "LULUS" -> Color(0xFF3B82F6)
+                                else -> Color(0xFF64748B)
+                            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailRow(label = "NIS / NISN", value = "${siswa.nis} / ${siswa.nisn ?: "-"}")
-                    DetailRow(
-                        label = "Jenis Kelamin",
-                        value = if (siswa.jenis_kelamin.uppercase() == "L") "Laki-laki" else "Perempuan"
-                    )
-                    DetailRow(
-                        label = "Tempat, Tanggal Lahir",
-                        value = "${siswa.tempat_lahir ?: "-"}, ${siswa.tanggal_lahir ?: "-"}"
-                    )
-                    DetailRow(label = "No. RFID", value = siswa.no_rfid ?: "Belum ada RFID")
-                    DetailRow(label = "Email Akun", value = siswa.User?.email ?: "Belum terdaftar email")
-                }
-
-                HorizontalDivider(color = Color(0xFFF1F5F9))
-
-                // Section 2: Kontak & Alamat
-                Text(
-                    text = "KONTAK & ALAMAT",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = Color(0xFF475569)
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailRow(label = "No. HP", value = siswa.no_hp ?: "-")
-                    DetailRow(label = "Alamat", value = siswa.alamat ?: "-")
-                }
-
-                HorizontalDivider(color = Color(0xFFF1F5F9))
-
-                // Section 3: Orang Tua / Wali
-                Text(
-                    text = "ORANG TUA / WALI",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    color = Color(0xFF475569)
-                )
-
-                if (siswa.OrangTua.isNullOrEmpty()) {
-                    Text(
-                        text = "Data orang tua belum diatur.",
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        siswa.OrangTua.forEach { ortu ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            Surface(
+                                color = statusColor.copy(alpha = 0.12f),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = ortu.nama,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
-                                            color = Color(0xFF1E293B)
-                                        )
-                                        Text(
-                                            text = ortu.hubungan ?: "Orang Tua/Wali",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF64748B)
-                                        )
-                                        Text(
-                                            text = ortu.no_hp ?: "No. HP -",
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF475569),
-                                            modifier = Modifier.padding(top = 2.dp)
-                                        )
-                                    }
+                                Text(
+                                    text = siswa.status,
+                                    color = statusColor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
 
-                                    if (!ortu.no_hp.isNullOrBlank()) {
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            // Call Button
-                                            IconButton(
-                                                onClick = {
-                                                    try {
-                                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${ortu.no_hp}"))
-                                                        context.startActivity(intent)
-                                                    } catch (e: Exception) {
-                                                        Toast.makeText(context, "Gagal melakukan panggilan", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Phone,
-                                                    contentDescription = "Panggil",
-                                                    tint = Color(0xFF3B82F6),
-                                                    modifier = Modifier.size(18.dp)
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        // Section 1: Identitas Diri
+                        Text(
+                            text = "IDENTITAS DIRI",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = Color(0xFF475569)
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            DetailRow(label = "NIS / NISN", value = "${siswa.nis} / ${siswa.nisn ?: "-"}")
+                            DetailRow(
+                                label = "Jenis Kelamin",
+                                value = if (siswa.jenis_kelamin.uppercase() == "L") "Laki-laki" else "Perempuan"
+                            )
+                            DetailRow(
+                                label = "Tempat, Tanggal Lahir",
+                                value = "${siswa.tempat_lahir ?: "-"}, ${siswa.tanggal_lahir ?: "-"}"
+                            )
+                            DetailRow(label = "No. RFID", value = siswa.no_rfid ?: "Belum ada RFID")
+                            DetailRow(label = "Email Akun", value = siswa.User?.email ?: "Belum terdaftar email")
+                        }
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        // Section 2: Kontak & Alamat
+                        Text(
+                            text = "KONTAK & ALAMAT",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = Color(0xFF475569)
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            DetailRow(label = "No. HP", value = siswa.no_hp ?: "-")
+                            DetailRow(label = "Alamat", value = siswa.alamat ?: "-")
+                        }
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        // Section 3: Orang Tua / Wali
+                        Text(
+                            text = "ORANG TUA / WALI",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = Color(0xFF475569)
+                        )
+
+                        if (siswa.OrangTua.isNullOrEmpty()) {
+                            Text(
+                                text = "Data orang tua belum diatur.",
+                                color = Color.Gray,
+                                fontSize = 12.sp,
+                                style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                            )
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                siswa.OrangTua.forEach { ortu ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = ortu.nama,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = Color(0xFF1E293B)
+                                                )
+                                                Text(
+                                                    text = ortu.hubungan ?: "Orang Tua/Wali",
+                                                    fontSize = 11.sp,
+                                                    color = Color(0xFF64748B)
+                                                )
+                                                Text(
+                                                    text = ortu.no_hp ?: "No. HP -",
+                                                    fontSize = 11.sp,
+                                                    color = Color(0xFF475569),
+                                                    modifier = Modifier.padding(top = 2.dp)
                                                 )
                                             }
 
-                                            // WA Button
-                                            IconButton(
-                                                onClick = {
-                                                    try {
-                                                        val formattedPhone = if (ortu.no_hp.startsWith("0")) {
-                                                            "62" + ortu.no_hp.substring(1)
-                                                        } else {
-                                                            ortu.no_hp
-                                                        }
-                                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$formattedPhone"))
-                                                        context.startActivity(intent)
-                                                    } catch (e: Exception) {
-                                                        Toast.makeText(context, "Gagal membuka WhatsApp", Toast.LENGTH_SHORT).show()
+                                            if (!ortu.no_hp.isNullOrBlank()) {
+                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    // Call Button
+                                                    IconButton(
+                                                        onClick = {
+                                                            try {
+                                                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${ortu.no_hp}"))
+                                                                context.startActivity(intent)
+                                                            } catch (e: Exception) {
+                                                                Toast.makeText(context, "Gagal melakukan panggilan", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        },
+                                                        modifier = Modifier.size(32.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Phone,
+                                                            contentDescription = "Panggil",
+                                                            tint = Color(0xFF3B82F6),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
                                                     }
-                                                },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.AutoMirrored.Filled.Send,
-                                                    contentDescription = "WhatsApp",
-                                                    tint = Color(0xFF10B981),
-                                                    modifier = Modifier.size(18.dp)
-                                                )
+
+                                                    // WA Button
+                                                    IconButton(
+                                                        onClick = {
+                                                            try {
+                                                                val formattedPhone = if (ortu.no_hp.startsWith("0")) {
+                                                                    "62" + ortu.no_hp.substring(1)
+                                                                } else {
+                                                                    ortu.no_hp
+                                                                }
+                                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://api.whatsapp.com/send?phone=$formattedPhone"))
+                                                                context.startActivity(intent)
+                                                            } catch (e: Exception) {
+                                                                Toast.makeText(context, "Gagal membuka WhatsApp", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        },
+                                                        modifier = Modifier.size(32.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.AutoMirrored.Filled.Send,
+                                                            contentDescription = "WhatsApp",
+                                                            tint = Color(0xFF10B981),
+                                                            modifier = Modifier.size(18.dp)
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -1032,6 +1062,12 @@ fun SiswaDetailDialog(
                             }
                         }
                     }
+                } else {
+                    // Tab 1: Linimasa & Berkas Keluar
+                    SiswaTimelineAndExitTab(
+                        siswa = siswa,
+                        viewModel = viewModel
+                    )
                 }
             }
         },
@@ -1758,3 +1794,681 @@ fun InfoLabelValue(
         )
     }
 }
+
+@Composable
+fun SiswaTimelineAndExitTab(
+    siswa: SiswaDetail,
+    viewModel: SiswaListViewModel
+) {
+    val context = LocalContext.current
+    val timeline by viewModel.timeline.collectAsState()
+    val isLoadingTimeline by viewModel.isLoadingTimeline.collectAsState()
+    val timelineError by viewModel.timelineError.collectAsState()
+    val canManage by viewModel.canManage.collectAsState()
+
+    // Trigger timeline loading
+    LaunchedEffect(siswa.id) {
+        viewModel.fetchSiswaTimeline(siswa.id)
+    }
+
+    // States for upload dialog
+    var showUploadDocDialog by remember { mutableStateOf(false) }
+    var uploadDocTitle by remember { mutableStateOf("") }
+    var uploadDocCategory by remember { mutableStateOf("SURAT_PERINGATAN") }
+    var selectedDocUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var selectedDocName by remember { mutableStateOf<String?>(null) }
+    var isUploadingDoc by remember { mutableStateOf(false) }
+
+    // States for complete exit dialog
+    var showExitDialog by remember { mutableStateOf(false) }
+    var exitStatus by remember { mutableStateOf("KELUAR") }
+    var exitReason by remember { mutableStateOf("") }
+    var selectedExitUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var selectedExitName by remember { mutableStateOf<String?>(null) }
+    var isCompletingExit by remember { mutableStateOf(false) }
+
+    val docFilePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            selectedDocUri = it
+            selectedDocName = getFileNameFromUri(context, it)
+        }
+    }
+
+    val exitFilePicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            selectedExitUri = it
+            selectedExitName = getFileNameFromUri(context, it)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 450.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Active Status indicator and Zip Download
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Status Terkini", fontSize = 11.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold)
+                        Text(
+                            text = siswa.status,
+                            fontSize = 14.sp,
+                            color = when (siswa.status.uppercase()) {
+                                "AKTIF" -> Color(0xFF10B981)
+                                "NON_AKTIF" -> Color(0xFFEF4444)
+                                "KELUAR", "MUTASI", "PINDAH", "DO" -> Color(0xFFEF4444)
+                                "LULUS" -> Color(0xFF3B82F6)
+                                else -> Color(0xFF64748B)
+                            },
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+
+                    // Zip download button
+                    Button(
+                        onClick = {
+                            val zipName = "Exit_Bundle_${siswa.nama_siswa.replace(" ", "_")}.zip"
+                            viewModel.downloadExitBundle(
+                                siswaId = siswa.id,
+                                fileName = zipName,
+                                onSuccess = { file ->
+                                    // Open ZIP or show success toast
+                                    (context as android.app.Activity).runOnUiThread {
+                                        Toast.makeText(context, "Unduh berhasil: ${file.name}", Toast.LENGTH_LONG).show()
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW)
+                                            val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                                                context,
+                                                "${context.packageName}.fileprovider",
+                                                file
+                                            )
+                                            intent.setDataAndType(fileUri, "application/zip")
+                                            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "File disimpan di folder Unduhan", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onError = { err ->
+                                    (context as android.app.Activity).runOnUiThread {
+                                        Toast.makeText(context, "Gagal mengunduh ZIP: $err", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Unduh Bundel (ZIP)", fontSize = 11.sp, color = Color.White)
+                    }
+                }
+
+                // Operator Actions Panel
+                if (canManage && siswa.status.uppercase() == "AKTIF") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Upload doc button
+                        OutlinedButton(
+                            onClick = {
+                                selectedDocUri = null
+                                selectedDocName = null
+                                uploadDocTitle = ""
+                                showUploadDocDialog = true
+                            },
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("Unggah Lampiran", fontSize = 10.sp)
+                        }
+
+                        // Complete Exit Button
+                        Button(
+                            onClick = {
+                                selectedExitUri = null
+                                selectedExitName = null
+                                exitReason = ""
+                                showExitDialog = true
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3C72)),
+                            modifier = Modifier.weight(1f).height(36.dp),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("Keluarkan Siswa", fontSize = 10.sp, color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Timeline Items
+        if (isLoadingTimeline) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF1E3C72))
+            }
+        } else if (timelineError != null) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(timelineError ?: "Gagal memuat linimasa", color = Color.Red, fontSize = 12.sp, textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { viewModel.fetchSiswaTimeline(siswa.id) }) {
+                    Text("Coba Lagi", color = Color(0xFF1E3C72))
+                }
+            }
+        } else if (timeline.isEmpty()) {
+            Text(
+                "Belum ada data linimasa untuk siswa ini.",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            )
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                timeline.forEachIndexed { index, item ->
+                    TimelineRowItem(
+                        item = item,
+                        siswaId = siswa.id,
+                        canManage = canManage,
+                        viewModel = viewModel,
+                        isLast = index == timeline.lastIndex
+                    )
+                }
+            }
+        }
+    }
+
+    // Modal Form Upload Dokumen
+    if (showUploadDocDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isUploadingDoc) showUploadDocDialog = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uri = selectedDocUri
+                        if (uploadDocTitle.isNotBlank() && uri != null) {
+                            isUploadingDoc = true
+                            val filePart = viewModel.getMultipartFromUri(uri, "file")
+                            if (filePart != null) {
+                                val judulPart = uploadDocTitle.trim().toRequestBody("text/plain".toMediaTypeOrNull())
+                                val kategoriPart = uploadDocCategory.toRequestBody("text/plain".toMediaTypeOrNull())
+                                viewModel.uploadSiswaDocument(
+                                    siswaId = siswa.id,
+                                    file = filePart,
+                                    judul = judulPart,
+                                    kategori = kategoriPart,
+                                    onSuccess = {
+                                        isUploadingDoc = false
+                                        showUploadDocDialog = false
+                                        Toast.makeText(context, "Dokumen berhasil diunggah", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { err ->
+                                        isUploadingDoc = false
+                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            } else {
+                                isUploadingDoc = false
+                                Toast.makeText(context, "Gagal memproses file", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Mohon lengkapi judul dan pilih file", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = !isUploadingDoc && uploadDocTitle.isNotBlank() && selectedDocUri != null,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3C72))
+                ) {
+                    if (isUploadingDoc) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                    } else {
+                        Text("Unggah", color = Color.White)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUploadDocDialog = false }, enabled = !isUploadingDoc) {
+                    Text("Batal", color = Color.Gray)
+                }
+            },
+            title = { Text("Unggah Lampiran Baru", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = uploadDocTitle,
+                        onValueChange = { uploadDocTitle = it },
+                        label = { Text("Judul Dokumen") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Kategori Dropdown / Selector
+                    var catExpanded by remember { mutableStateOf(false) }
+                    val categories = listOf(
+                        "SURAT_PERINGATAN" to "Surat Peringatan (SP)",
+                        "LAPORAN_BK" to "Laporan Konseling/BK",
+                        "SURAT_PERNYATAAN" to "Surat Pernyataan",
+                        "LAINNYA" to "Dokumen Lainnya"
+                    )
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { catExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val currentCatLabel = categories.find { it.first == uploadDocCategory }?.second ?: uploadDocCategory
+                                Text(currentCatLabel, color = Color.Black)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+
+                        DropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
+                            categories.forEach { (key, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        uploadDocCategory = key
+                                        catExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // File picker indicator/button
+                    Button(
+                        onClick = { docFilePicker.launch("application/pdf,image/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.UploadFile, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(selectedDocName ?: "Pilih Berkas (PDF/Gambar)", color = Color.White)
+                    }
+                }
+            }
+        )
+    }
+
+    // Modal Form Selesaikan Proses Keluar
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isCompletingExit) showExitDialog = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uri = selectedExitUri
+                        if (uri != null) {
+                            isCompletingExit = true
+                            val filePart = viewModel.getMultipartFromUri(uri, "file")
+                            if (filePart != null) {
+                                val statusPart = exitStatus.toRequestBody("text/plain".toMediaTypeOrNull())
+                                val alasanPart = exitReason.trim().takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaTypeOrNull())
+                                viewModel.completeSiswaExit(
+                                    siswaId = siswa.id,
+                                    file = filePart,
+                                    status = statusPart,
+                                    alasan = alasanPart,
+                                    onSuccess = {
+                                        isCompletingExit = false
+                                        showExitDialog = false
+                                        Toast.makeText(context, "Siswa berhasil dinyatakan Keluar resmi", Toast.LENGTH_LONG).show()
+                                    },
+                                    onError = { err ->
+                                        isCompletingExit = false
+                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            } else {
+                                isCompletingExit = false
+                                Toast.makeText(context, "Gagal memproses berkas Dapodik", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Mohon unggah bukti Dapodik terlebih dahulu", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    enabled = !isCompletingExit && selectedExitUri != null,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    if (isCompletingExit) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                    } else {
+                        Text("Keluarkan Siswa", color = Color.White)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }, enabled = !isCompletingExit) {
+                    Text("Batal", color = Color.Gray)
+                }
+            },
+            title = { Text("Finalisasi Siswa Keluar", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFFEF4444)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Peringatan: Tindakan ini akan menonaktifkan akun siswa, menghapus RFID, dan mengubah status siswa menjadi KELUAR/MUTASI/DO secara permanen di sistem.",
+                        color = Color.Red,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    // Exit Status Dropdown
+                    var statusExpanded by remember { mutableStateOf(false) }
+                    val statusList = listOf(
+                        "KELUAR" to "Keluar (Lainnya)",
+                        "MUTASI" to "Pindah / Mutasi",
+                        "DO" to "Dikeluarkan / Drop Out"
+                    )
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = { statusExpanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val currentLabel = statusList.find { it.first == exitStatus }?.second ?: exitStatus
+                                Text(currentLabel, color = Color.Black)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+
+                        DropdownMenu(expanded = statusExpanded, onDismissRequest = { statusExpanded = false }) {
+                            statusList.forEach { (key, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        exitStatus = key
+                                        statusExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = exitReason,
+                        onValueChange = { exitReason = it },
+                        label = { Text("Alasan Keluar (Catatan)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3
+                    )
+
+                    // Bukti Dapodik Picker
+                    Button(
+                        onClick = { exitFilePicker.launch("application/pdf,image/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444).copy(alpha = 0.8f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.UploadFile, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(selectedExitName ?: "Unggah Bukti Dapodik (PDF/Gambar)", color = Color.White)
+                    }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun TimelineRowItem(
+    item: SiswaTimelineItem,
+    siswaId: String,
+    canManage: Boolean,
+    viewModel: SiswaListViewModel,
+    isLast: Boolean
+) {
+    val context = LocalContext.current
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Left Column: Icon & line
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(24.dp)
+        ) {
+            val icon = when (item.tipe) {
+                "STATUS_AKADEMIK" -> Icons.Default.CheckCircle
+                "PELANGGARAN" -> Icons.Default.Warning
+                "DOKUMEN" -> Icons.Default.Description
+                else -> Icons.Default.Info
+            }
+            val iconColor = when (item.tipe) {
+                "STATUS_AKADEMIK" -> Color(0xFF10B981)
+                "PELANGGARAN" -> Color(0xFFF59E0B)
+                "DOKUMEN" -> Color(0xFF3B82F6)
+                else -> Color(0xFF64748B)
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(iconColor.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(14.dp))
+            }
+
+            if (!isLast) {
+                Spacer(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(60.dp)
+                        .background(Color(0xFFE2E8F0))
+                )
+            }
+        }
+
+        // Right Column: Details Card
+        Card(
+            modifier = Modifier.weight(1f).padding(bottom = 12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9))
+        ) {
+            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Header: Title and Date
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.judul,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = Color(0xFF1E293B),
+                        modifier = Modifier.weight(1f)
+                    )
+                    
+                    val formattedDate = item.tanggal.take(10) // YYYY-MM-DD
+                    Text(
+                        text = formattedDate,
+                        fontSize = 10.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+
+                // Description
+                Text(
+                    text = item.keterangan,
+                    fontSize = 11.sp,
+                    color = Color(0xFF475569)
+                )
+
+                // Extra info based on type
+                if (item.tipe == "PELANGGARAN" && item.poin != null) {
+                    Text(
+                        text = "+${item.poin} Poin Pelanggaran",
+                        color = Color(0xFFEF4444),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Attachment links
+                if (item.tipe == "DOKUMEN" && !item.file_url.isNullOrEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Clickable File name to trigger download
+                        TextButton(
+                            onClick = {
+                                val fileName = item.file_name ?: "dokumen_${item.id}.pdf"
+                                viewModel.downloadDocument(
+                                    siswaId = siswaId,
+                                    docId = item.id,
+                                    fileName = fileName,
+                                    onSuccess = { file ->
+                                        (context as android.app.Activity).runOnUiThread {
+                                            Toast.makeText(context, "Unduh berhasil: ${file.name}", Toast.LENGTH_LONG).show()
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW)
+                                                val mimeType = if (fileName.endsWith(".pdf", ignoreCase = true)) "application/pdf" else "image/*"
+                                                val fileUri = androidx.core.content.FileProvider.getUriForFile(
+                                                    context,
+                                                    "${context.packageName}.fileprovider",
+                                                    file
+                                                )
+                                                intent.setDataAndType(fileUri, mimeType)
+                                                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                context.startActivity(intent)
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "File disimpan di folder Unduhan", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                    onError = { err ->
+                                        (context as android.app.Activity).runOnUiThread {
+                                            Toast.makeText(context, "Gagal mengunduh berkas: $err", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            },
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.height(24.dp)
+                        ) {
+                            Icon(Icons.Default.Attachment, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(item.file_name ?: "Unduh Berkas", fontSize = 10.sp, textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline)
+                        }
+
+                        // Trash button to delete document (BK, Kesiswaan, Manage)
+                        if (canManage) {
+                            IconButton(
+                                onClick = { showDeleteConfirm = true },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color(0xFFEF4444), modifier = Modifier.size(14.dp))
+                            }
+                        }
+                    }
+                }
+
+                // Subtitle: uploaded by
+                Text(
+                    text = "Oleh: ${item.user_name}",
+                    fontSize = 9.sp,
+                    color = Color(0xFF94A3B8),
+                    style = androidx.compose.ui.text.TextStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                )
+            }
+        }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSiswaDocument(
+                            siswaId = siswaId,
+                            docId = item.id,
+                            onSuccess = {
+                                showDeleteConfirm = false
+                                Toast.makeText(context, "Dokumen berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            },
+                            onError = { err ->
+                                Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text("Hapus", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Batal", color = Color.Gray)
+                }
+            },
+            title = { Text("Hapus Lampiran", fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+            text = { Text("Apakah Anda yakin ingin menghapus lampiran '${item.judul}'? Tindakan ini tidak dapat dibatalkan.", fontSize = 12.sp) }
+        )
+    }
+}
+
+fun getFileNameFromUri(context: android.content.Context, uri: android.net.Uri): String {
+    var name = "file"
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    cursor?.use {
+        if (it.moveToFirst()) {
+            val idx = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (idx != -1) {
+                name = it.getString(idx)
+            }
+        }
+    }
+    return name
+}
+

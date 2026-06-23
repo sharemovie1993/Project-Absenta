@@ -385,6 +385,54 @@ interface AcademicService {
 
     @GET("academic/guru/me")
     suspend fun getGuruMe(): Response<SingleGuruResponse>
+
+    // --- Student Exit & Timeline Documents ---
+    @Multipart
+    @POST("academic/siswa/{id}/documents")
+    suspend fun uploadSiswaDocument(
+        @Path("id") id: String,
+        @Part file: okhttp3.MultipartBody.Part,
+        @Part("judul") judul: okhttp3.RequestBody,
+        @Part("kategori") kategori: okhttp3.RequestBody
+    ): Response<SingleSiswaDocumentResponse>
+
+    @GET("academic/siswa/{id}/documents")
+    suspend fun getSiswaDocuments(
+        @Path("id") id: String
+    ): Response<SiswaDocumentsResponse>
+
+    @DELETE("academic/siswa/{id}/documents/{docId}")
+    suspend fun deleteSiswaDocument(
+        @Path("id") id: String,
+        @Path("docId") docId: String
+    ): Response<GenericAcademicResponse>
+
+    @GET("academic/siswa/{id}/documents/{docId}/download")
+    @Streaming
+    suspend fun downloadSiswaDocument(
+        @Path("id") id: String,
+        @Path("docId") docId: String
+    ): Response<okhttp3.ResponseBody>
+
+    @GET("academic/siswa/{id}/exit-bundle")
+    @Streaming
+    suspend fun downloadSiswaExitBundle(
+        @Path("id") id: String
+    ): Response<okhttp3.ResponseBody>
+
+    @GET("academic/siswa/{id}/timeline")
+    suspend fun getSiswaTimeline(
+        @Path("id") id: String
+    ): Response<SiswaTimelineResponse>
+
+    @Multipart
+    @POST("academic/siswa/{id}/complete-exit")
+    suspend fun completeSiswaExit(
+        @Path("id") id: String,
+        @Part file: okhttp3.MultipartBody.Part,
+        @Part("status") status: okhttp3.RequestBody,
+        @Part("alasan") alasan: okhttp3.RequestBody? = null
+    ): Response<GenericAcademicResponse>
 }
 
 // Siswa Response
@@ -877,4 +925,51 @@ data class PermissionSimpleInfo(
     val id: String,
     val description: String? = null,
     val group: String? = null
+)
+
+// Student Exit & Document Responses
+data class SingleSiswaDocumentResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val data: SiswaDocumentDetail? = null
+)
+
+data class SiswaDocumentsResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val data: List<SiswaDocumentDetail>? = null
+)
+
+data class SiswaDocumentDetail(
+    val id: String,
+    val tenant_id: String,
+    val siswa_id: String,
+    val judul: String,
+    val kategori: String,
+    val file_original_name: String,
+    val file_storage_path: String,
+    val mime_type: String,
+    val size_bytes: Long,
+    val created_at: String,
+    val updated_at: String
+)
+
+data class SiswaTimelineResponse(
+    val success: Boolean,
+    val data: List<SiswaTimelineItem>? = null
+)
+
+data class SiswaTimelineItem(
+    val id: String,
+    val tanggal: String,
+    val tipe: String, // "STATUS_AKADEMIK" | "PELANGGARAN" | "DOKUMEN"
+    val judul: String,
+    val keterangan: String,
+    val poin: Int? = null,
+    val status: String? = null,
+    val file_name: String? = null,
+    val file_url: String? = null,
+    val kategori_dokumen: String? = null,
+    val size_bytes: Long? = null,
+    val user_name: String
 )

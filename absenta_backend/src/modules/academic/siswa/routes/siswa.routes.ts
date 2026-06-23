@@ -176,4 +176,74 @@ export default async function siswaRoutes(fastify: any) {
   }, async (request: any, reply: any) => {
     return siswaController.getAcademicRegistrationStats(request, reply);
   });
+
+  // POST /siswa/:id/documents - Upload document
+  fastify.post('/:id/documents', {
+    preHandler: [
+      requireCapability('affairs.violations.report'), // BK, Kesiswaan, Wali Kelas
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.uploadSiswaDocument(request, reply);
+  });
+
+  // GET /siswa/:id/documents - List documents
+  fastify.get('/:id/documents', {
+    preHandler: [
+      requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getSiswaDocuments(request, reply);
+  });
+
+  // GET /siswa/:id/documents/:docId/download - Download single document
+  fastify.get('/:id/documents/:docId/download', {
+    preHandler: [
+      requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.downloadSiswaDocument(request, reply);
+  });
+
+  // DELETE /siswa/:id/documents/:docId - Delete document
+  fastify.delete('/:id/documents/:docId', {
+    preHandler: [
+      requireCapability('affairs.violations.report'), // BK, Kesiswaan
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.deleteSiswaDocument(request, reply);
+  });
+
+  // GET /siswa/:id/timeline - Get student timeline
+  fastify.get('/:id/timeline', {
+    preHandler: [
+      requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getSiswaTimeline(request, reply);
+  });
+
+  // POST /siswa/:id/complete-exit - Complete exit (upload Dapodik proof)
+  fastify.post('/:id/complete-exit', {
+    preHandler: [
+      requireCapability('academic.students.manage'), // TU/Admin only
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.completeSiswaExit(request, reply);
+  });
+
+  // GET /siswa/:id/exit-bundle - Get exit bundle ZIP
+  fastify.get('/:id/exit-bundle', {
+    preHandler: [
+      requireCapability('academic.students.manage'), // TU/Admin only
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getSiswaExitBundle(request, reply);
+  });
 }
