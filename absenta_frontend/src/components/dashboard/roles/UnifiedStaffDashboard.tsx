@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { cn } from '../../../lib/utils';
 import { useAuthStore } from '../../../store/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +11,7 @@ import {
   Activity,
   Calendar,
   AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 
 // Components
@@ -21,6 +23,8 @@ import { Modal, Badge, Button } from '../../ui';
 // Widgets
 import { StaffScheduleWidget } from '../widgets/StaffScheduleWidget';
 import { StaffImpactWidget } from '../widgets/StaffImpactWidget';
+import { WaliKelasBkDashboardWidget } from '../widgets/WaliKelasBkDashboardWidget';
+import { WakasisBkDashboardWidget } from '../widgets/WakasisBkDashboardWidget';
 
 // ✅ Sidebar Panels
 import { WaliKelasSidebarPanel } from '../panels/WaliKelasSidebarPanel';
@@ -119,6 +123,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     caps.includes('dashboard.view.piket') || 
     caps.includes('attendance.piket.view') || 
     caps.includes('attendance.piket.manage') || 
+    caps.includes('kesiswaan.piket.view') || 
+    caps.includes('kesiswaan.piket.manage') || 
     hasRole('PIKET'), 
   [isStrictKesiswaan, caps, jabatanList, jabatan]); // eslint-disable-line
   const isKepsek    = useMemo(() => caps.includes('dashboard.view.kepsek') || hasRole('KEPALA SEKOLAH', 'KEPALA_SEKOLAH', 'KEPSEK'), [caps, jabatanList, jabatan]); // eslint-disable-line
@@ -233,6 +239,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const [sessionForJournal, setSessionForJournal] = useState<any>(null);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [processingSesiId, setProcessingSesiId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'personal' | 'walikelas' | 'wakasis'>('personal');
 
   // ── 6. Mutations ─────────────────────────────────────────────────────────────
   const createSessionMutation = useMutation({
@@ -519,7 +526,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             newCases={0}
             handledCases={0}
             criticalStudents={0}
-            onOpenData={() => navigate('/kesiswaan/bk')}
+            onOpenData={() => navigate('/bpbk')}
           />
         )
       });
@@ -673,16 +680,69 @@ export const UnifiedStaffDashboard: React.FC = () => {
             </div>
           </div>
 
-          <StaffScheduleWidget 
-            timelineItems={timelineItems} 
-            isLoading={timelineLoading}
-            processingId={processingSesiId}
-            onAction={handleStaffAction}
-            onOpenJournal={(_sesiId, data) => {
-              setSessionForJournal(data);
-              setJournalModalOpen(true);
-            }}
-          />
+          {/* Tab View Switcher (Jika Wali Kelas atau Kesiswaan) */}
+          {(isWaliKelas || isKesiswaan) && (
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl border border-slate-200/40 dark:border-slate-800/40">
+              <button
+                onClick={() => setActiveView('personal')}
+                className={cn(
+                  "flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                  activeView === 'personal'
+                    ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-white border border-slate-200/40 dark:border-slate-700/50"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                )}
+              >
+                🗓️ Jadwal Mengajar & Aktivitas
+              </button>
+              {isWaliKelas && (
+                <button
+                  onClick={() => setActiveView('walikelas')}
+                  className={cn(
+                    "flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                    activeView === 'walikelas'
+                      ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-white border border-slate-200/40 dark:border-slate-700/50"
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  🛡️ BK & Risiko Kelas
+                </button>
+              )}
+              {isKesiswaan && (
+                <button
+                  onClick={() => setActiveView('wakasis')}
+                  className={cn(
+                    "flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                    activeView === 'wakasis'
+                      ? "bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-white border border-slate-200/40 dark:border-slate-700/50"
+                      : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
+                >
+                  📊 Analitik Kesiswaan (Wakasis)
+                </button>
+              )}
+            </div>
+          )}
+
+          {activeView === 'personal' && (
+            <StaffScheduleWidget 
+              timelineItems={timelineItems} 
+              isLoading={timelineLoading}
+              processingId={processingSesiId}
+              onAction={handleStaffAction}
+              onOpenJournal={(_sesiId, data) => {
+                setSessionForJournal(data);
+                setJournalModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeView === 'walikelas' && isWaliKelas && (
+            <WaliKelasBkDashboardWidget />
+          )}
+
+          {activeView === 'wakasis' && isKesiswaan && (
+            <WakasisBkDashboardWidget />
+          )}
         </div>
 
         {/* ── Kolom Kanan: Panel Jabatan Struktural ── */}

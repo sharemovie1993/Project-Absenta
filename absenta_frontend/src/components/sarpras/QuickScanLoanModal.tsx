@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -15,6 +15,18 @@ interface QuickScanLoanModalProps {
   onClose: () => void;
 }
 
+interface ScannedUser {
+  id: string;
+  full_name: string;
+}
+
+interface ScannedAsset {
+  id: string;
+  nama: string;
+  kode: string;
+  serial_number?: string;
+}
+
 export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -24,20 +36,30 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
   const [assetStr, setAssetStr] = useState('');
 
   // Loaded Data
-  const [scannedUser, setScannedUser] = useState<any>(null);
-  const [scannedAsset, setScannedAsset] = useState<any>(null);
+  const [scannedUser, setScannedUser] = useState<ScannedUser | null>(null);
+  const [scannedAsset, setScannedAsset] = useState<ScannedAsset | null>(null);
 
   const userInputRef = useRef<HTMLInputElement>(null);
   const assetInputRef = useRef<HTMLInputElement>(null);
 
   const [useCamera, setUseCamera] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const zxingReaderRef = useRef<any>(null);
+  const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+
+  const resetScan = useCallback(() => {
+    setStep(1);
+    setUserStr('');
+    setAssetStr('');
+    setScannedUser(null);
+    setScannedAsset(null);
+    setUseCamera(false);
+  }, []);
 
   useEffect(() => {
     if (useCamera && videoRef.current) {
-      zxingReaderRef.current = new BrowserMultiFormatReader();
-      zxingReaderRef.current.decodeFromVideoDevice(undefined, videoRef.current, (result: any) => {
+      const reader = new BrowserMultiFormatReader();
+      zxingReaderRef.current = reader;
+      reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
         if (result && result.getText()) {
           const code = result.getText();
           if (step === 1) {
@@ -52,13 +74,13 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
       }).catch(console.error);
     } else {
       if (zxingReaderRef.current) {
-        zxingReaderRef.current.reset();
+        (zxingReaderRef.current as any).reset();
         zxingReaderRef.current = null;
       }
     }
     return () => {
       if (zxingReaderRef.current) {
-        zxingReaderRef.current.reset();
+        (zxingReaderRef.current as any).reset();
         zxingReaderRef.current = null;
       }
     }
@@ -69,24 +91,14 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
       resetScan();
       setTimeout(() => userInputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
-
-  const resetScan = () => {
-    setStep(1);
-    setUserStr('');
-    setAssetStr('');
-    setScannedUser(null);
-    setScannedUser(null);
-    setScannedAsset(null);
-    setUseCamera(false);
-  };
+  }, [isOpen, resetScan]);
 
   // Real API call checking User ID / NIS / NIP / RFID
   const lookupUserMutation = useMutation({
     mutationFn: async (id: string) => {
        const res = await sarprasApi.scanUser(id);
        if (!res?.data) throw new Error('Pengguna tidak ditemukan');
-       return res.data;
+       return res.data as ScannedUser;
     },
     onSuccess: (data) => {
        setScannedUser(data);
@@ -104,15 +116,16 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
        // Search via getAssets using the code as exact search
        const res = await sarprasApi.getAssets({ search: code, limit: 1 });
        if (res?.data?.list?.length > 0) {
-          const match = res.data.list.find((a:any) => a.kode === code || a.serial_number === code || a.id === code);
-          if (match) return match;
-          return res.data.list[0];
+          const match = res.data.list.find((a: { kode: string; serial_number?: string; id: string }) => a.kode === code || a.serial_number === code || a.id === code);
+          if (match) return match as ScannedAsset;
        }
-       throw new Error('Asset not found');
+       throw new Error('Aset tidak ditemukan');
     },
     onSuccess: (data) => {
        setScannedAsset(data);
-       submitLoanMutation.mutate({ asset_id: data.id, user_id: scannedUser.id });
+       if (scannedUser) {
+         submitLoanMutation.mutate({ asset_id: data.id, user_id: scannedUser.id });
+       }
     },
     onError: () => {
        showToast('Aset tidak ditemukan. Coba scan ulang', 'error');
@@ -142,24 +155,30 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
        setTimeout(() => resetScan(), 1000);
        setTimeout(() => userInputRef.current?.focus(), 1100);
     },
-    onError: (err: any) => {
-       showToast(err.message || 'Gagal meminjamkan barang', 'error');
+    onError: (err: unknown) => {
+       let errMsg = 'Gagal meminjamkan barang';
+       if (err instanceof Error) {
+         errMsg = err.message;
+       } else if (err && typeof err === 'object' && 'message' in err) {
+         errMsg = String((err as { message: unknown }).message);
+       }
+       showToast(errMsg, 'error');
        setAssetStr('');
        setTimeout(() => assetInputRef.current?.focus(), 100);
     }
   });
 
-  const handleUserParams = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleUserParams = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && userStr.trim()) {
        lookupUserMutation.mutate(userStr.trim());
     }
-  };
+  }, [userStr, lookupUserMutation]);
 
-  const handleAssetParams = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleAssetParams = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && assetStr.trim()) {
        lookupAssetMutation.mutate(assetStr.trim());
     }
-  };
+  }, [assetStr, lookupAssetMutation]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Peminjaman Kilat (Barcode Scanner)" size="md">

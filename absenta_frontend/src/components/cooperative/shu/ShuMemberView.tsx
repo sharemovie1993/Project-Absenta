@@ -18,7 +18,7 @@ interface ShuMemberViewProps {
   };
 }
 
-export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
+export const ShuMemberView = React.memo<ShuMemberViewProps>(({
   memberStatus,
   myHistory,
   loadingHistory,
@@ -89,7 +89,7 @@ export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total SHU Diterima</p>
                 <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-                  Rp {myHistory.reduce((sum, h) => sum + Number(h.totalShu), 0).toLocaleString('id-ID')}
+                  Rp {(myHistory || []).reduce((sum, h) => sum + Number(h.totalShu), 0).toLocaleString('id-ID')}
                 </h3>
               </div>
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl" />
@@ -102,8 +102,8 @@ export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Penerimaan Terakhir</p>
                 <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-                  {myHistory.length > 0 
-                    ? `Rp ${Number(myHistory[0].totalShu).toLocaleString('id-ID')} (${myHistory[0].Period.year})`
+                  {(myHistory || []).length > 0 
+                    ? `Rp ${Number(myHistory?.[0]?.totalShu || 0).toLocaleString('id-ID')} (${myHistory?.[0]?.Period?.year || ''})`
                     : 'Belum ada data'
                   }
                 </h3>
@@ -132,7 +132,7 @@ export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
               <div className="flex items-center justify-center min-h-[150px]">
                 <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
               </div>
-            ) : myHistory.length === 0 ? (
+            ) : (myHistory || []).length === 0 ? (
               <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs">
                 Belum ada data riwayat penerimaan SHU.
               </div>
@@ -154,7 +154,7 @@ export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
-                    {myHistory?.map((item, idx) => (
+                    {(myHistory || []).map((item, idx) => (
                       <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                         <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
                         <td className="p-4 font-bold text-slate-800 dark:text-slate-200">{item.Period.year}</td>
@@ -185,4 +185,6 @@ export const ShuMemberView: React.FC<ShuMemberViewProps> = ({
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
+
+ShuMemberView.displayName = 'ShuMemberView';

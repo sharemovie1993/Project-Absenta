@@ -78,7 +78,13 @@ export default function DashboardOverview() {
   const isAdminOrSuperadmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN' || isSystemSuperAdmin(roleName, user?.tenant_id);
   const canOverview = isAdminOrSuperadmin && caps.includes('dashboard.view.overview');
   
-  const isHubin = caps.includes('hubin.view.pkl') || caps.includes('dashboard.view.hubin');
+  const isHubin = 
+    caps.includes('hubin.view.pkl') || 
+    caps.includes('hubin.self.pkl') || 
+    caps.includes('hubin.pkl.view.list') || 
+    caps.includes('hubin.bkk.manage') || 
+    caps.includes('hubin.tracer.view') || 
+    caps.includes('dashboard.view.hubin');
   const isSarpras = caps.includes('sarpras.view_inventory') || caps.includes('dashboard.view.sarpras');
   const isTU = caps.includes('tu.manage_surat') || caps.includes('dashboard.view.tu');
   

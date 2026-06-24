@@ -11,11 +11,11 @@ interface ReceiptModalProps {
   selectedSale: SaleRecord | null;
   coopSettings: CoopSettingsData | null;
   memberInfo: MemberInfo | null;
-  user: any;
+  user: { full_name?: string } | null;
   printReceipt: (sale: SaleRecord) => void;
 }
 
-export const ReceiptModal: React.FC<ReceiptModalProps> = ({
+export const ReceiptModal = React.memo<ReceiptModalProps>(({
   isOpen,
   onClose,
   selectedSale,
@@ -34,7 +34,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       {selectedSale && (
         <div className="space-y-6">
           {/* Visual receipt layout */}
-          <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg max-w-sm mx-auto font-mono text-sm text-slate-800 dark:text-slate-200">
+          <div className="bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg max-w-sm mx-auto font-mono text-sm text-slate-800 dark:text-slate-200">
             <div className="text-center space-y-1">
               <h4 className="font-extrabold text-base text-slate-900 dark:text-slate-100 uppercase tracking-tight">
                 {coopSettings?.cooperative_name || 'KOPERASI SEKOLAH'}
@@ -78,7 +78,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
             {/* Items List */}
             <div className="space-y-3">
-              {selectedSale.items?.map((item: any, idx: number) => (
+              {(selectedSale.items || []).map((item: { product?: { name?: string }; quantity: number; price: string | number }, idx: number) => (
                 <div key={idx} className="flex justify-between text-xs">
                   <div className="flex-1 pr-4">
                     <p className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
@@ -88,7 +88,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                       {item.quantity} x Rp {Number(item.price).toLocaleString('id-ID')}
                     </p>
                   </div>
-                  <span className="font-extrabold text-slate-950 dark:text-slate-50 shrink-0">
+                  <span className="font-extrabold text-slate-955 dark:text-slate-50 shrink-0">
                     Rp {(Number(item.price) * item.quantity).toLocaleString('id-ID')}
                   </span>
                 </div>
@@ -131,9 +131,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
             {/* Points Earned Banner */}
             {selectedSale.total >= 10000 && (
-              <div className="mt-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-2 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/30">
+              <div className="mt-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-705 dark:text-emerald-400 text-xs px-3 py-2 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/30">
                 <span className="flex items-center gap-1 font-bold">
-                  <Award size={14} className="animate-pulse text-emerald-500" /> Poin Diperoleh:
+                  <Award size={14} className="animate-pulse text-emerald-505" /> Poin Diperoleh:
                 </span>
                 <span className="font-extrabold">+{Math.floor(selectedSale.total / 10000)} Poin</span>
               </div>
@@ -169,4 +169,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       )}
     </Modal>
   );
-};
+});
+
+ReceiptModal.displayName = 'ReceiptModal';

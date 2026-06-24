@@ -15,16 +15,16 @@ interface MapelInfoSectionProps {
   tingkatOptions: any[];
 }
 
-export const MapelInfoSection: React.FC<MapelInfoSectionProps> = ({
+export const MapelInfoSection = React.memo<MapelInfoSectionProps>(({
   register,
   control,
   errors,
   isViewMode,
   watch,
-  tingkatOptions
+  tingkatOptions = []
 }) => {
   if (isViewMode) {
-    const selectedTingkat = tingkatOptions.find(opt => opt.value === (watch('tingkat')?.toString() || '0'));
+    const selectedTingkat = tingkatOptions?.find(opt => opt.value === (watch('tingkat')?.toString() || '0'));
 
     return (
       <SectionCard title="Informasi Mata Pelajaran" icon={BookOpenCheck}>
@@ -92,9 +92,10 @@ export const MapelInfoSection: React.FC<MapelInfoSectionProps> = ({
           name="tingkat"
           render={({ field }) => (
             <SearchableSelect
+              id="tingkat"
               value={field.value?.toString() || '0'}
               onValueChange={(val) => field.onChange(val === '0' ? null : parseInt(val))}
-              options={tingkatOptions.map(opt => ({ value: opt.value, label: opt.label }))}
+              options={tingkatOptions?.map(opt => ({ value: opt.value, label: opt.label }))}
               placeholder="Pilih Tingkat"
               disabled={isViewMode}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl ${errors.tingkat ? 'border-red-500' : ''}`}
@@ -107,4 +108,7 @@ export const MapelInfoSection: React.FC<MapelInfoSectionProps> = ({
       </div>
     </SectionCard>
   );
-};
+});
+
+MapelInfoSection.displayName = 'MapelInfoSection';
+export default MapelInfoSection;

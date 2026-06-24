@@ -24,7 +24,7 @@ export const TopologyTree = React.memo<TopologyTreeProps>(({
         <div className="inline-block min-w-full p-20">
           <div className="relative flex flex-col items-center">
             <div className="flex gap-24 justify-center pt-0">
-              {data.children.map((child, idx) => (
+              {(data.children || []).map((child, idx) => (
                 <div key={child.id} className="relative flex flex-col items-center">
                   {/* Segmented Horizontal Line */}
                   {data.children!.length > 1 && (
@@ -331,3 +331,6 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
          prev.isVerticalLayout === next.isVerticalLayout &&
          prev.node === next.node;
 });
+
+TopologyTree.displayName = 'TopologyTree';
+TreeNode.displayName = 'TreeNode';

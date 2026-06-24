@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getKejadianKhususList, createKejadianKhusus, deleteKejadianKhusus, type KejadianKhusus } from '../../../api/attendance/kejadianKhusus.api';
-import { Button, Input, Card, Label, Table, Badge, Checkbox } from '../../ui';
+import { Button, Input, Card, Label, Badge } from '../../ui';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import { toast } from 'react-hot-toast';
 import { Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
-export const KejadianKhususPanel: React.FC = () => {
+const KejadianKhususPanelComponent: React.FC = () => {
   const [events, setEvents] = useState<KejadianKhusus[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -23,24 +23,24 @@ export const KejadianKhususPanel: React.FC = () => {
     abaikan_terlambat: true
   });
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getKejadianKhususList();
-      setEvents(response.data);
+      setEvents(response.data || []);
     } catch (error) {
       console.error('Error loading events', error);
       toast.error('Gagal memuat daftar kejadian khusus');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleAdd = async (e: React.FormEvent) => {
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -55,14 +55,14 @@ export const KejadianKhususPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [newEvent, loadEvents]);
 
-  const handleDelete = (id: string) => {
-    setDeletingId(id);
+  const handleDelete = useCallback((idStr: string) => {
+    setDeletingId(idStr);
     setIsDeleteModalOpen(true);
-  };
+  }, []);
 
-  const executeDelete = async () => {
+  const executeDelete = useCallback(async () => {
     if (!deletingId) return;
     try {
       setIsDeleting(true);
@@ -77,13 +77,21 @@ export const KejadianKhususPanel: React.FC = () => {
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [deletingId, loadEvents]);
+
+  const toggleAdding = useCallback(() => {
+    setIsAdding((prev) => !prev);
+  }, []);
+
+  const closeAdding = useCallback(() => {
+    setIsAdding(false);
+  }, []);
 
   return (
     <Card className="p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Kejadian Khusus (Bypass Terlambat)</h3>
-        <Button onClick={() => setIsAdding(!isAdding)} variant="outline" size="sm">
+        <Button onClick={toggleAdding} variant="outline" size="sm">
           <Plus className="w-4 h-4 mr-2" />
           Tambah
         </Button>
@@ -94,21 +102,23 @@ export const KejadianKhususPanel: React.FC = () => {
           <h4 className="font-medium mb-3 text-sm">Tambah Kejadian Baru</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label>Tanggal</Label>
+              <Label htmlFor="tanggal-input-field">Tanggal</Label>
               <Input
+                id="tanggal-input-field"
                 type="date"
                 value={newEvent.tanggal}
-                onChange={(e) => setNewEvent({...newEvent, tanggal: e.target.value})}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, tanggal: e.target.value }))}
                 required
               />
             </div>
             <div>
-              <Label>Keterangan</Label>
+              <Label htmlFor="keterangan-input-field">Keterangan</Label>
               <Input
+                id="keterangan-input-field"
                 type="text"
                 placeholder="Contoh: Hujan Deras, Upacara"
                 value={newEvent.keterangan}
-                onChange={(e) => setNewEvent({...newEvent, keterangan: e.target.value})}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, keterangan: e.target.value }))}
                 required
               />
             </div>
@@ -118,7 +128,7 @@ export const KejadianKhususPanel: React.FC = () => {
               type="checkbox"
               id="abaikan_terlambat"
               checked={newEvent.abaikan_terlambat}
-              onChange={(e) => setNewEvent({...newEvent, abaikan_terlambat: e.target.checked})}
+              onChange={(e) => setNewEvent(prev => ({ ...prev, abaikan_terlambat: e.target.checked }))}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="abaikan_terlambat" className="text-sm text-gray-700">
@@ -126,7 +136,7 @@ export const KejadianKhususPanel: React.FC = () => {
             </label>
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => setIsAdding(false)}>Batal</Button>
+            <Button type="button" variant="ghost" onClick={closeAdding}>Batal</Button>
             <Button type="submit" isLoading={loading}>Simpan</Button>
           </div>
         </form>
@@ -150,7 +160,7 @@ export const KejadianKhususPanel: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              events.map((ev) => (
+              (events || []).map((ev) => (
                 <tr key={ev.id}>
                   <td className="py-3 px-4">
                     {format(new Date(ev.tanggal), 'dd MMMM yyyy', { locale: id })}
@@ -197,3 +207,6 @@ export const KejadianKhususPanel: React.FC = () => {
     </Card>
   );
 };
+
+KejadianKhususPanelComponent.displayName = 'KejadianKhususPanel';
+export const KejadianKhususPanel = React.memo(KejadianKhususPanelComponent);

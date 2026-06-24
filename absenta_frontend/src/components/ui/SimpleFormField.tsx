@@ -9,6 +9,7 @@ interface SimpleFormFieldProps {
   description?: string;
   children: React.ReactNode;
   className?: string;
+  htmlFor?: string;
 }
 
 export const SimpleFormField: React.FC<SimpleFormFieldProps> = ({
@@ -17,11 +18,12 @@ export const SimpleFormField: React.FC<SimpleFormFieldProps> = ({
   required = false,
   description,
   children,
-  className
+  className,
+  htmlFor
 }) => {
   return (
     <div className={cn('space-y-1', className)}>
-      <Label className={cn('block text-sm font-medium text-gray-500 dark:text-gray-400')}>
+      <Label htmlFor={htmlFor} className={cn('block text-sm font-medium text-gray-500 dark:text-gray-400')}>
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </Label>

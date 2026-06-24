@@ -14,7 +14,7 @@ interface SavingExportModalProps {
   onExport: (format: 'EXCEL' | 'PDF') => void;
 }
 
-export const SavingExportModal: React.FC<SavingExportModalProps> = ({
+export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
   isOpen,
   onClose,
   exportStartDate,
@@ -94,7 +94,7 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+            className="py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
           >
             Batal
           </button>
@@ -121,4 +121,6 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SavingExportModal.displayName = 'SavingExportModal';

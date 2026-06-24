@@ -4,21 +4,23 @@ import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { Switch } from '../../../ui/Switch';
 import { Alert } from '../../../ui/Alert';
-import { Controller } from 'react-hook-form';
+import { Controller, Control, FieldErrors, UseFormRegister, UseFormWatch } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
+import { CreateTahunPelajaranSchema } from '../../../../schemas/academic/tahun-pelajaran.schema';
+import type { TahunPelajaran } from '../../../../types/academic';
 
 interface TahunPelajaranInfoSectionProps {
-  register: any;
-  control: any;
-  errors: any;
+  register: UseFormRegister<CreateTahunPelajaranSchema>;
+  control: Control<CreateTahunPelajaranSchema>;
+  errors: FieldErrors<CreateTahunPelajaranSchema>;
   isViewMode: boolean;
-  watch: any;
-  activeYear: any;
+  watch: UseFormWatch<CreateTahunPelajaranSchema>;
+  activeYear: TahunPelajaran | null;
   tahunPelajaranId?: string;
   isEditMode: boolean;
 }
 
-export const TahunPelajaranInfoSection: React.FC<TahunPelajaranInfoSectionProps> = ({
+export const TahunPelajaranInfoSection = React.memo<TahunPelajaranInfoSectionProps>(({
   register,
   control,
   errors,
@@ -128,4 +130,6 @@ export const TahunPelajaranInfoSection: React.FC<TahunPelajaranInfoSectionProps>
       </div>
     </SectionCard>
   );
-};
+});
+TahunPelajaranInfoSection.displayName = 'TahunPelajaranInfoSection';
+

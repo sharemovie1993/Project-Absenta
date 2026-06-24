@@ -25,7 +25,7 @@ interface HeldCartsModalProps {
   setVoucherCode: (code: string) => void;
 }
 
-export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
+export const HeldCartsModal = React.memo<HeldCartsModalProps>(({
   showHeldCartsModal,
   setShowHeldCartsModal,
   heldCarts,
@@ -54,13 +54,13 @@ export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-          {heldCarts.length === 0 ? (
+          {!heldCarts || heldCarts.length === 0 ? (
             <div className="text-center py-8 text-slate-500">Tidak ada antrean yang sedang ditahan.</div>
           ) : (
-            heldCarts.map((hc) => (
+            heldCarts?.map((hc) => (
               <div
                 key={hc.id}
-                className="p-4 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3"
+                className="p-4 bg-slate-50/50 dark:bg-slate-955/20 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3"
               >
                 <div className="flex justify-between items-start">
                   <div>
@@ -84,7 +84,7 @@ export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
                       variant="primary"
                       className="bg-blue-600 hover:bg-blue-700 py-1 px-2.5 text-xs rounded-lg text-white"
                       onClick={() => {
-                        if (cart.length > 0) {
+                        if (cart?.length > 0) {
                           const confirmResume = window.confirm(
                             'Keranjang aktif Anda tidak kosong. Apakah Anda ingin menimpa keranjang aktif dengan antrean ini?'
                           );
@@ -111,8 +111,8 @@ export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
                   </div>
                   <div className="flex justify-between flex-wrap gap-x-2">
                     <span className="text-slate-400">Item:</span>
-                    <span className="text-slate-700 dark:text-slate-300 font-medium truncate max-w-[250px]">
-                      {hc.cart.map((item) => `${item.name} (x${item.qty})`).join(', ')}
+                    <span className="text-slate-700 dark:text-slate-330 font-medium truncate max-w-[250px]">
+                      {hc.cart?.map((item) => `${item.name} (x${item.qty})`).join(', ')}
                     </span>
                   </div>
                   {hc.appliedVoucher && (
@@ -124,7 +124,7 @@ export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
                   <div className="flex justify-between font-bold text-slate-800 dark:text-slate-200 text-sm pt-1">
                     <span>Total:</span>
                     <span>
-                      Rp {hc.cart.reduce((sum, item) => sum + Number(item.price) * item.qty, 0).toLocaleString('id-ID')}
+                      Rp {hc.cart?.reduce((sum, item) => sum + Number(item.price) * item.qty, 0).toLocaleString('id-ID')}
                     </span>
                   </div>
                 </div>
@@ -135,4 +135,6 @@ export const HeldCartsModal: React.FC<HeldCartsModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+HeldCartsModal.displayName = 'HeldCartsModal';

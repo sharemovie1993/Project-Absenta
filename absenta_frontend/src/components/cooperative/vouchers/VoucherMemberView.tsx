@@ -6,7 +6,7 @@ import { Award, Copy, Check, Ticket, Sparkles, HelpCircle, ShoppingCart, Eye, Pr
 import toast from 'react-hot-toast';
 import type { Voucher, PointTransaction, SaleRecord, MemberInfo } from '../../../pages/cooperative/Vouchers';
 
-const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
+const StrukBadge = React.memo<{ id: string }>(({ id }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -25,16 +25,18 @@ const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
   return (
     <button
       onClick={handleCopy}
-      className="font-mono text-[11px] text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-1 shadow-sm font-semibold"
+      className="font-mono text-[11px] text-slate-655 dark:text-slate-400 bg-slate-50 dark:bg-slate-905 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-1 shadow-sm font-semibold"
     >
       <span>#{id.slice(0, 8)}</span>
-      {copied ? <Check size={11} className="text-emerald-500 animate-bounce" /> : <Copy size={11} className="opacity-40" />}
+      {copied ? <Check size={11} className="text-emerald-505 animate-bounce" /> : <Copy size={11} className="opacity-40" />}
     </button>
   );
-};
+});
+
+StrukBadge.displayName = 'StrukBadge';
 
 interface VoucherMemberViewProps {
-  user: any;
+  user: { full_name?: string } | null;
   vouchers: Voucher[];
   loading: boolean;
   mySavingsSum: number;
@@ -51,7 +53,7 @@ interface VoucherMemberViewProps {
   setShowReceiptModal: (show: boolean) => void;
 }
 
-export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
+export const VoucherMemberView = React.memo<VoucherMemberViewProps>(({
   user,
   vouchers,
   loading,
@@ -134,7 +136,7 @@ export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
 
   // Process sorted and paginated pointHistory
   const sortedPointHistory = useMemo(() => {
-    const sorted = [...pointHistory];
+    const sorted = [...(pointHistory || [])];
     sorted.sort((a, b) => {
       let valA = a[pointSortKey as keyof PointTransaction] ?? '';
       let valB = b[pointSortKey as keyof PointTransaction] ?? '';
@@ -160,7 +162,7 @@ export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
 
   // Process sorted and paginated salesHistory
   const sortedSalesHistory = useMemo(() => {
-    const sorted = [...salesHistory];
+    const sorted = [...(salesHistory || [])];
     sorted.sort((a, b) => {
       let valA = a[salesSortKey as keyof SaleRecord] ?? '';
       let valB = b[salesSortKey as keyof SaleRecord] ?? '';
@@ -186,7 +188,7 @@ export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
 
   // Filtered Vouchers
   const filteredVouchers = useMemo(() => {
-    return vouchers.filter(v => 
+    return (vouchers || []).filter(v => 
       v.code.toLowerCase().includes(searchVoucher.toLowerCase()) ||
       (v.description && v.description.toLowerCase().includes(searchVoucher.toLowerCase()))
     );
@@ -457,7 +459,7 @@ export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVouchers.map((v) => (
+            {(filteredVouchers || []).map((v) => (
               <div 
                 key={v.id} 
                 className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
@@ -627,4 +629,6 @@ export const VoucherMemberView: React.FC<VoucherMemberViewProps> = ({
       </div>
     </div>
   );
-};
+});
+
+VoucherMemberView.displayName = 'VoucherMemberView';

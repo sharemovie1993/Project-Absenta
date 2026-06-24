@@ -5,14 +5,24 @@ import { PrintSignature } from '../ui/PrintSignature';
 
 interface PiketPrintRecapProps {
   isPrintingRekap: boolean;
-  tenantInfo: any;
-  user: any;
+  tenantInfo?: {
+    kepala_sekolah?: string;
+    nip_kepala?: string;
+    name?: string;
+    kota?: string;
+    [key: string]: any;
+  } | null;
+  user?: {
+    full_name?: string;
+    name?: string;
+    [key: string]: any;
+  } | null;
   dailyPermits: IzinKeluarSiswa[];
   dateLabel?: string;
   signatureDate?: string;
 }
 
-export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = ({
+export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = React.memo(({
   isPrintingRekap,
   tenantInfo,
   user,
@@ -65,7 +75,7 @@ export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = ({
             </tr>
           </thead>
           <tbody>
-            {dailyPermits.map((p, idx) => (
+            {dailyPermits?.map((p, idx) => (
               <tr key={p.id} className="border-b border-gray-400">
                 <td className="py-2 px-3 border border-gray-400 text-center font-bold">{idx + 1}</td>
                 <td className="py-2 px-3 border border-gray-400 font-bold uppercase">{p.SiswaAkademik?.siswa.nama_siswa}</td>
@@ -86,7 +96,7 @@ export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = ({
                 </td>
               </tr>
             ))}
-            {dailyPermits.length === 0 && (
+            {(dailyPermits?.length || 0) === 0 && (
               <tr>
                 <td colSpan={9} className="py-6 text-center text-gray-400 font-bold uppercase italic">
                   Tidak ada data izin yang diterbitkan hari ini.
@@ -124,4 +134,4 @@ export const PiketPrintRecap: React.FC<PiketPrintRecapProps> = ({
       </div>
     </div>
   );
-};
+});

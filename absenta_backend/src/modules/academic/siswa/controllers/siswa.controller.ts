@@ -8,6 +8,7 @@ const siswaService = new SiswaService();
 import { kelasService } from '../../kelas/services/kelas.service';
 import { getPaginationParams } from '../../../../utils/pagination';
 import { RoleName } from '../../../../constants/enums';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export const siswaController = {
   async getAllSiswa(request: any, reply: any) {
@@ -1126,10 +1127,16 @@ export const siswaController = {
     try {
       const { id: siswaId } = request.params;
       const tenantId = request.tenantId;
+      const userId = request.user.id;
+      const capabilities = await authorizationService.resolveUserCapabilities(userId, { user: request.user });
 
       const timeline = await siswaService.getSiswaTimeline({
         tenantId,
-        siswaId
+        siswaId,
+        userContext: {
+          id: userId,
+          capabilities
+        }
       });
 
       return reply.status(200).send({

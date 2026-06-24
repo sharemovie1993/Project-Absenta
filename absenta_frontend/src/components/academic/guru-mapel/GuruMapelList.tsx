@@ -22,7 +22,7 @@ interface Props {
   onAdd?: () => void;
 }
 
-const GuruMapelList: React.FC<Props> = ({ refreshTrigger = 0, onAdd }) => {
+const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
   const { showToast } = useToast();
   const { user } = useAuthStore();
   const confirm = useConfirm();
@@ -226,7 +226,7 @@ const GuruMapelList: React.FC<Props> = ({ refreshTrigger = 0, onAdd }) => {
           <SearchableSelect
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
-            options={[{ label: 'Semua Guru', value: '' }, ...guruOptions.map(g => ({ label: g.nama_guru, value: g.id }))]}
+            options={[{ label: 'Semua Guru', value: '' }, ...(guruOptions || [])?.map(g => ({ label: g.nama_guru, value: g.id }))]}
             placeholder="Filter Guru"
             searchPlaceholder="Cari Guru..."
             onSearch={handleSearchGuru}
@@ -238,7 +238,7 @@ const GuruMapelList: React.FC<Props> = ({ refreshTrigger = 0, onAdd }) => {
           <SearchableSelect
             value={selectedMapelId}
             onValueChange={setSelectedMapelId}
-            options={[{ label: 'Semua Mapel', value: '' }, ...mapelOptions.map(m => ({ label: m.nama_mapel, value: m.id }))]}
+            options={[{ label: 'Semua Mapel', value: '' }, ...(mapelOptions || [])?.map(m => ({ label: m.nama_mapel, value: m.id }))]}
             placeholder="Filter Mapel"
             searchPlaceholder="Cari Mapel..."
             onSearch={handleSearchMapel}
@@ -294,7 +294,9 @@ const GuruMapelList: React.FC<Props> = ({ refreshTrigger = 0, onAdd }) => {
       </div>
     </div>
   );
-};
+});
+
+GuruMapelList.displayName = 'GuruMapelList';
 
 export default GuruMapelList;
 

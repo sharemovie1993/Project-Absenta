@@ -418,3 +418,58 @@ export const renderActivityImagesForPrint = (kegiatanStr: string | undefined, ch
     </div>
   );
 };
+
+export interface SchoolTenantInfo {
+  id: string;
+  nama_sekolah?: string;
+  logo_url?: string;
+  alamat?: string;
+  kontak?: string;
+}
+
+export interface GeolocationPositionWithMock extends GeolocationPosition {
+  mocked?: boolean;
+  coords: GeolocationCoordinates & {
+    isFromMockProvider?: boolean;
+  };
+}
+
+export interface UserAuthStore {
+  id: string;
+  email: string;
+  full_name: string;
+  siswa_id?: string;
+  tenant_id?: string;
+  role?: {
+    name: string;
+  };
+  position_codes?: string[];
+  capabilities?: string[];
+  Role?: {
+    rolePermissions?: Array<{ permission_id: string }>;
+  };
+}
+
+export interface ActivityItem {
+  time: string;
+  text: string;
+  image_url?: string;
+}
+
+export interface ApiErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+export interface CheckInPayload {
+  siswaPklId: string;
+  latitude: number;
+  longitude: number;
+  kegiatan?: string;
+  image_url?: string;
+}
+

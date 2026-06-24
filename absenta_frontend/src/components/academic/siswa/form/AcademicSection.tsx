@@ -3,20 +3,20 @@ import { School, CalendarRange, Clock, Settings2, ShieldCheck, AlertCircle } fro
 import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Input } from '../../../ui/Input';
-import { Textarea } from '../../../ui/Textarea';
-import { Switch } from '../../../ui/Switch';
-import { Controller } from 'react-hook-form';
+import { Controller, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
+import { DropdownOption } from '../../../../api/dropdown.api';
+import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 
 interface AcademicSectionProps {
-    control: any;
-    register: any;
-    errors: any;
+    control: Control<SiswaFormValues>;
+    register: UseFormRegister<SiswaFormValues>;
+    errors: FieldErrors<SiswaFormValues>;
     isViewMode: boolean;
-    watch: any;
-    kelasOptions: any[];
-    tahunPelajaranOptions: any[];
-    semesterOptions: any[];
+    watch: UseFormWatch<SiswaFormValues>;
+    kelasOptions: DropdownOption[];
+    tahunPelajaranOptions: DropdownOption[];
+    semesterOptions: DropdownOption[];
     loadingDropdowns: boolean;
 }
 
@@ -28,7 +28,7 @@ const STATUS_SISWA_OPTIONS = [
     { value: 'KELUAR', label: 'Keluar' }
 ];
 
-export const AcademicSection: React.FC<AcademicSectionProps> = ({
+export const AcademicSection: React.FC<AcademicSectionProps> = React.memo(({
     control,
     register,
     errors,
@@ -44,9 +44,9 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
     if (isViewMode) {
         return (
             <SectionCard title="Informasi Akademik" icon={School}>
-                <DetailRow icon={<School size={16} />} label="Kelas" value={kelasOptions.find(o => o.value === watch('kelas_id'))?.label} />
-                <DetailRow icon={<CalendarRange size={16} />} label="Tahun Pelajaran" value={tahunPelajaranOptions.find(o => o.value === watch('tahun_pelajaran_id'))?.label} />
-                <DetailRow icon={<Clock size={16} />} label="Semester" value={semesterOptions.find(o => o.value === watch('semester_id'))?.label} />
+                <DetailRow icon={<School size={16} />} label="Kelas" value={(kelasOptions || []).find(o => o.value === watch('kelas_id'))?.label} />
+                <DetailRow icon={<CalendarRange size={16} />} label="Tahun Pelajaran" value={(tahunPelajaranOptions || []).find(o => o.value === watch('tahun_pelajaran_id'))?.label} />
+                <DetailRow icon={<Clock size={16} />} label="Semester" value={(semesterOptions || []).find(o => o.value === watch('semester_id'))?.label} />
                 <DetailRow 
                     icon={<ShieldCheck size={16} />} 
                     label="Status Siswa" 
@@ -76,6 +76,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="kelas_id"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={kelasOptions}
@@ -101,6 +102,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="tahun_pelajaran_id"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={tahunPelajaranOptions}
@@ -126,6 +128,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="semester_id"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={semesterOptions}
@@ -151,6 +154,7 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="status"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={STATUS_SISWA_OPTIONS}
@@ -197,4 +201,6 @@ export const AcademicSection: React.FC<AcademicSectionProps> = ({
             )}
         </SectionCard>
     );
-};
+});
+
+AcademicSection.displayName = 'AcademicSection';

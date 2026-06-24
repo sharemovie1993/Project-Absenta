@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { Card } from '@/components/ui/Card';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import axiosInstance from '@/lib/axiosInstance';
 import { LogService } from '@/utils/LogService';
@@ -60,7 +61,7 @@ const MonitoringPage: React.FC = () => {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [selectedGateway, setSelectedGateway] = useState<string>('STRIPE');
 
-  const fetchHealthStatus = async () => {
+  const fetchHealthStatus = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await axiosInstance.get('/api/test/health');
@@ -70,9 +71,9 @@ const MonitoringPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const runComprehensiveTest = async () => {
+  const runComprehensiveTest = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await axiosInstance.post('/api/test/comprehensive', { gateway: selectedGateway });
@@ -82,9 +83,9 @@ const MonitoringPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedGateway]);
 
-  const testSignatureVerification = async () => {
+  const testSignatureVerification = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await axiosInstance.post('/api/test/signature', { gateway: selectedGateway });
@@ -94,9 +95,9 @@ const MonitoringPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedGateway]);
 
-  const testIdempotency = async () => {
+  const testIdempotency = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data } = await axiosInstance.post('/api/test/idempotency', { gateway: selectedGateway });
@@ -106,13 +107,13 @@ const MonitoringPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedGateway]);
 
   useEffect(() => {
     fetchHealthStatus();
     const interval = setInterval(fetchHealthStatus, 30000); // Segarkan setiap 30 detik
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchHealthStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -183,79 +184,89 @@ const MonitoringPage: React.FC = () => {
     <SuperAdminPageLayout
       title="Pemantauan Gateway Pembayaran (Payment Health)"
       description="Monitor kondisi server pangkalan data, antrean dekripsi webhook, latensi respon API payment gateway, serta simulasikan pengujian transaksi billing."
+      hardeningModuleKey="payment_monitoring"
       breadcrumbs={[
         { label: 'System Utilities' },
         { label: 'Pemantauan Gateway' }
       ]}
+      instruction={{
+        title: 'Panduan Pemantauan Gateway',
+        items: [
+          { text: 'Pantau kesehatan database, antrean webhook, dan status integrasi gateway pembayaran secara real-time.' },
+          { text: 'Gunakan tab Skenario Uji untuk menjalankan simulasi pengujian komprehensif pada gateway terpilih.' }
+        ]
+      }}
       stats={statsList}
       isLoading={isLoading && !healthStatus}
     >
-      <div className="space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-200/50 dark:border-slate-800 flex w-max max-w-full overflow-x-auto scrollbar-none">
-            <TabsTrigger value="overview" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
-              <Activity size={14} /> Kesehatan Sistem
-            </TabsTrigger>
-            <TabsTrigger value="testing" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
-              <Zap size={14} /> Skenario Uji
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
-              <BarChart3 size={14} /> Laporan Latensi
-            </TabsTrigger>
-          </TabsList>
+      <Card className="p-6">
+        <div className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-200/50 dark:border-slate-800 flex w-max max-w-full overflow-x-auto scrollbar-none">
+              <TabsTrigger value="overview" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
+                <Activity size={14} /> Kesehatan Sistem
+              </TabsTrigger>
+              <TabsTrigger value="testing" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
+                <Zap size={14} /> Skenario Uji
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="gap-2 rounded-xl text-xs font-bold px-4 py-2 uppercase tracking-wider">
+                <BarChart3 size={14} /> Laporan Latensi
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="overview" className="outline-none">
-            <InfraMonitoringPanel
-              activeSubTab="overview"
-              healthStatus={healthStatus}
-              testResults={testResults}
-              selectedGateway={selectedGateway}
-              setSelectedGateway={setSelectedGateway}
-              isLoading={isLoading}
-              onRefreshHealth={fetchHealthStatus}
-              onRunComprehensiveTest={runComprehensiveTest}
-              onTestSignatureVerification={testSignatureVerification}
-              onTestIdempotency={testIdempotency}
-              getStatusIcon={getStatusIcon}
-              getStatusColor={getStatusColor}
-            />
-          </TabsContent>
+            <TabsContent value="overview" className="outline-none">
+              <InfraMonitoringPanel
+                activeSubTab="overview"
+                healthStatus={healthStatus}
+                testResults={testResults}
+                selectedGateway={selectedGateway}
+                setSelectedGateway={setSelectedGateway}
+                isLoading={isLoading}
+                onRefreshHealth={fetchHealthStatus}
+                onRunComprehensiveTest={runComprehensiveTest}
+                onTestSignatureVerification={testSignatureVerification}
+                onTestIdempotency={testIdempotency}
+                getStatusIcon={getStatusIcon}
+                getStatusColor={getStatusColor}
+              />
+            </TabsContent>
 
-          <TabsContent value="testing" className="outline-none">
-            <InfraMonitoringPanel
-              activeSubTab="testing"
-              healthStatus={healthStatus}
-              testResults={testResults}
-              selectedGateway={selectedGateway}
-              setSelectedGateway={setSelectedGateway}
-              isLoading={isLoading}
-              onRefreshHealth={fetchHealthStatus}
-              onRunComprehensiveTest={runComprehensiveTest}
-              onTestSignatureVerification={testSignatureVerification}
-              onTestIdempotency={testIdempotency}
-              getStatusIcon={getStatusIcon}
-              getStatusColor={getStatusColor}
-            />
-          </TabsContent>
+            <TabsContent value="testing" className="outline-none">
+              <InfraMonitoringPanel
+                activeSubTab="testing"
+                healthStatus={healthStatus}
+                testResults={testResults}
+                selectedGateway={selectedGateway}
+                setSelectedGateway={setSelectedGateway}
+                isLoading={isLoading}
+                onRefreshHealth={fetchHealthStatus}
+                onRunComprehensiveTest={runComprehensiveTest}
+                onTestSignatureVerification={testSignatureVerification}
+                onTestIdempotency={testIdempotency}
+                getStatusIcon={getStatusIcon}
+                getStatusColor={getStatusColor}
+              />
+            </TabsContent>
 
-          <TabsContent value="reports" className="outline-none">
-            <InfraMonitoringPanel
-              activeSubTab="reports"
-              healthStatus={healthStatus}
-              testResults={testResults}
-              selectedGateway={selectedGateway}
-              setSelectedGateway={setSelectedGateway}
-              isLoading={isLoading}
-              onRefreshHealth={fetchHealthStatus}
-              onRunComprehensiveTest={runComprehensiveTest}
-              onTestSignatureVerification={testSignatureVerification}
-              onTestIdempotency={testIdempotency}
-              getStatusIcon={getStatusIcon}
-              getStatusColor={getStatusColor}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+            <TabsContent value="reports" className="outline-none">
+              <InfraMonitoringPanel
+                activeSubTab="reports"
+                healthStatus={healthStatus}
+                testResults={testResults}
+                selectedGateway={selectedGateway}
+                setSelectedGateway={setSelectedGateway}
+                isLoading={isLoading}
+                onRefreshHealth={fetchHealthStatus}
+                onRunComprehensiveTest={runComprehensiveTest}
+                onTestSignatureVerification={testSignatureVerification}
+                onTestIdempotency={testIdempotency}
+                getStatusIcon={getStatusIcon}
+                getStatusColor={getStatusColor}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </Card>
     </SuperAdminPageLayout>
   );
 };

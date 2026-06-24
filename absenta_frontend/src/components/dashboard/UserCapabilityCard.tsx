@@ -63,7 +63,16 @@ export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = ({ user, su
     // 4. Operasional Lainnya
     const opItems = [];
     if (caps.includes('sarpras.view_inventory') || caps.includes('dashboard.view.sarpras')) opItems.push({ label: 'Manajemen Sarpras', icon: Warehouse, path: '/sarpras/dashboard' });
-    if (caps.includes('hubin.view.pkl') || caps.includes('dashboard.view.hubin')) opItems.push({ label: 'Hubungan Industri', icon: Briefcase, path: '/hubin/mitra' });
+    if (
+      caps.includes('hubin.view.pkl') || 
+      caps.includes('hubin.self.pkl') || 
+      caps.includes('hubin.pkl.view.list') || 
+      caps.includes('hubin.bkk.manage') || 
+      caps.includes('hubin.tracer.view') || 
+      caps.includes('dashboard.view.hubin')
+    ) {
+      opItems.push({ label: 'Hubungan Industri', icon: Briefcase, path: '/hubin' });
+    }
     if (caps.includes('tu.manage_surat') || caps.includes('dashboard.view.tu')) opItems.push({ label: 'Tata Usaha', icon: FileText, path: '/profile' });
     if (opItems.length > 0) groups.push({ category: 'Operasional & Sarana', items: opItems });
 

@@ -20,7 +20,7 @@ interface MemberAddModalProps {
     pin: string;
   };
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onEntitySelect: (entity: any) => void;
+  onEntitySelect: (entity: unknown) => void;
   selectedEntityId: string;
   isEmailEditable: boolean;
   isPhoneEditable: boolean;
@@ -30,7 +30,7 @@ interface MemberAddModalProps {
   onExternalToggle: (val: boolean) => void;
 }
 
-export const MemberAddModal: React.FC<MemberAddModalProps> = ({
+export const MemberAddModal: React.FC<MemberAddModalProps> = React.memo(({
   isOpen,
   onClose,
   onSubmit,
@@ -93,10 +93,12 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = ({
 
         {!isExternal ? (
           <div className="space-y-1">
-            <label htmlFor="smart-student-picker-universal" className="block text-sm font-medium text-slate-700 dark:text-slate-350">
+            <label htmlFor="smart-student-picker-universal" className="block text-sm font-medium text-slate-700 dark:text-slate-355">
               Cari Anggota (Siswa atau Guru)
             </label>
             <SmartStudentPicker
+              ref={undefined}
+              id="smart-student-picker-universal"
               mode="universal"
               scope="global"
               placeholder="Cari nama, NIS, NIP, scan kartu/QR..."
@@ -210,4 +212,4 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = ({
       </form>
     </Modal>
   );
-};
+});

@@ -8,7 +8,7 @@ interface FontSizeInputProps {
     max?: number;
 }
 
-export const FontSizeInput: React.FC<FontSizeInputProps> = ({ 
+export const FontSizeInput: React.FC<FontSizeInputProps> = React.memo(({ 
     value, 
     onChange, 
     min = 4, 
@@ -23,6 +23,7 @@ export const FontSizeInput: React.FC<FontSizeInputProps> = ({
                     const val = parseFloat(e.target.value);
                     if (!isNaN(val)) onChange(val);
                 }}
+                aria-label="Ukuran Font"
                 className="w-full h-full px-2 text-xs font-bold border-none focus:ring-0 text-center bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <div className="flex flex-col border-l border-slate-200 dark:border-slate-800 h-full w-6 shrink-0 divide-y divide-slate-200 dark:divide-slate-800">
@@ -43,4 +44,6 @@ export const FontSizeInput: React.FC<FontSizeInputProps> = ({
             </div>
         </div>
     );
-};
+});
+
+FontSizeInput.displayName = 'FontSizeInput';

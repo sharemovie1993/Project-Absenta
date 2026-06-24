@@ -4,7 +4,7 @@ interface LiveDurationProps {
   jamKeluar: string;
 }
 
-export const LiveDuration: React.FC<LiveDurationProps> = ({ jamKeluar }) => {
+export const LiveDuration: React.FC<LiveDurationProps> = React.memo(({ jamKeluar }) => {
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
@@ -37,6 +37,6 @@ export const LiveDuration: React.FC<LiveDurationProps> = ({ jamKeluar }) => {
       {elapsed}
     </span>
   );
-};
+});
 
 export default LiveDuration;

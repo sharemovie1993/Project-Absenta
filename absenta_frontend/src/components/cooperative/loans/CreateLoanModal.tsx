@@ -33,7 +33,7 @@ interface CreateLoanModalProps {
   submitLoading: boolean;
 }
 
-export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
+export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   isOpen,
   onClose,
   onSubmit,
@@ -48,13 +48,13 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-955/80 backdrop-blur-sm animate-in fade-in duration-300"
       aria-labelledby="create-loan-title"
       role="dialog"
       aria-modal="true"
     >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex justify-between items-center">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex justify-between items-center">
           <div>
             <h3 id="create-loan-title" className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-100">
               Formulir Pengajuan Pinjaman
@@ -134,7 +134,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                   value={formData.duration}
                   onChange={(e) => onFormDataChange(prev => ({ ...prev, duration: e.target.value }))}
                   aria-label="Jangka Waktu"
-                  className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none font-bold"
+                  className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none font-bold"
                   required
                 >
                   <option value="3">3 Bulan</option>
@@ -177,7 +177,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex gap-3 justify-end">
+          <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex gap-3 justify-end">
             <Button
               type="button"
               variant="outline"
@@ -200,4 +200,6 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+CreateLoanModal.displayName = 'CreateLoanModal';

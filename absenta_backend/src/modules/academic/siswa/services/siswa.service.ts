@@ -149,6 +149,7 @@ export class SiswaService {
   async getSiswaTimeline(params: {
     tenantId: string;
     siswaId: string;
+    userContext?: { id: string; capabilities: string[] };
   }) {
     return getSiswaTimelineQuery(params);
   }

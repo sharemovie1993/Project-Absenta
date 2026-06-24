@@ -18,7 +18,7 @@ interface Props {
   onCancel?: () => void;
 }
 
-const GuruMapelForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
+export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
   const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -47,8 +47,8 @@ const GuruMapelForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
           getGuruList(1, 100, ''),
           getMapelList(1, 100, ''),
         ]);
-        setGuruOptions(gurus.data);
-        setMapelOptions(mapels.data);
+        setGuruOptions(gurus.data || []);
+        setMapelOptions(mapels.data || []);
       } catch (e: any) {
         setError(e?.message || 'Gagal memuat data');
       } finally {
@@ -118,6 +118,8 @@ const GuruMapelForm: React.FC<Props> = ({ onSuccess, onCancel }) => {
       </form>
     </div>
   );
-};
+});
+
+GuruMapelForm.displayName = 'GuruMapelForm';
 
 export default GuruMapelForm;

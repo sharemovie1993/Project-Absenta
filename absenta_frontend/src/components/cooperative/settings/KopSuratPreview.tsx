@@ -8,7 +8,7 @@ interface KopSuratPreviewProps {
   effectiveLogoUrl: string;
 }
 
-export const KopSuratPreview: React.FC<KopSuratPreviewProps> = ({
+export const KopSuratPreview = React.memo<KopSuratPreviewProps>(({
   cooperativeName,
   cooperativeLegalNo,
   effectiveLogoUrl
@@ -84,11 +84,13 @@ export const KopSuratPreview: React.FC<KopSuratPreviewProps> = ({
       </div>
 
       <div className="mt-4 p-3.5 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex items-center gap-3">
-        <CheckCircle size={18} className="text-emerald-500 shrink-0" />
+        <CheckCircle size={18} className="text-emerald-505 shrink-0" />
         <p className="text-[11px] leading-relaxed text-emerald-700 dark:text-emerald-400 font-medium">
           Pembaruan profil koperasi disimpan secara <strong>real-time</strong> di database. Ketika diubah, seluruh file Excel/PDF yang diunduh otomatis menggunakan data terbaru ini.
         </p>
       </div>
     </SectionCard>
   );
-};
+});
+
+KopSuratPreview.displayName = 'KopSuratPreview';

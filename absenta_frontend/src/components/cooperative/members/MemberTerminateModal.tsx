@@ -12,7 +12,7 @@ interface MemberTerminateModalProps {
   loading: boolean;
 }
 
-export const MemberTerminateModal: React.FC<MemberTerminateModalProps> = ({
+export const MemberTerminateModal: React.FC<MemberTerminateModalProps> = React.memo(({
   isOpen,
   onClose,
   member,
@@ -21,9 +21,9 @@ export const MemberTerminateModal: React.FC<MemberTerminateModalProps> = ({
 }) => {
   if (!member) return null;
 
-  const pokokAmount = (member.savings || [])?.find(s => s.type === 'POKOK')?.amount || 0;
-  const wajibAmount = (member.savings || [])?.find(s => s.type === 'WAJIB')?.amount || 0;
-  const sukarelaAmount = (member.savings || [])?.find(s => s.type === 'SUKARELA')?.amount || 0;
+  const pokokAmount = (member?.savings || [])?.find(s => s.type === 'POKOK')?.amount || 0;
+  const wajibAmount = (member?.savings || [])?.find(s => s.type === 'WAJIB')?.amount || 0;
+  const sukarelaAmount = (member?.savings || [])?.find(s => s.type === 'SUKARELA')?.amount || 0;
   const totalPayout = pokokAmount + wajibAmount + sukarelaAmount;
 
   return (
@@ -90,4 +90,4 @@ export const MemberTerminateModal: React.FC<MemberTerminateModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

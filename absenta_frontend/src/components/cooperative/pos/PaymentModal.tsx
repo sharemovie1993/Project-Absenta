@@ -34,7 +34,7 @@ interface PaymentModalProps {
   setLastSaleRecord: (record: SaleRecord | null) => void;
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({
+export const PaymentModal = React.memo<PaymentModalProps>(({
   showPaymentModal,
   setShowPaymentModal,
   processing,
@@ -108,13 +108,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             {/* Voucher Input */}
             <div className="mb-5">
-              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-350 mb-2">Voucher Belanja</label>
+              <label htmlFor="pos-voucher-input" className="block text-sm font-semibold text-slate-700 dark:text-slate-355 mb-2">Voucher Belanja</label>
               {appliedVoucher ? (
                 <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/50 rounded-xl">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-green-800 dark:text-green-300">Voucher Diterapkan</p>
                     <p className="text-sm font-bold text-green-900 dark:text-green-200 truncate">{appliedVoucher.code}</p>
-                    <p className="text-xs text-green-750 dark:text-green-400">Potongan: Rp {Number(appliedVoucher.discount).toLocaleString('id-ID')}</p>
+                    <p className="text-xs text-green-755 dark:text-green-400">Potongan: Rp {Number(appliedVoucher.discount).toLocaleString('id-ID')}</p>
                   </div>
                   <button
                     type="button"
@@ -129,12 +129,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    id="pos-voucher-input"
                     placeholder="Masukkan kode voucher..."
                     className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-950 text-sm font-mono uppercase text-slate-800 dark:text-slate-105"
                     value={voucherCode}
                     onChange={(e) => setVoucherCode(e.target.value)}
                     disabled={checkingVoucher}
-                    aria-label="Kode Voucher"
                   />
                   <button
                     type="button"
@@ -190,15 +190,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             {paymentMethod === 'CASH' ? (
               <div className="space-y-4 mb-5">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-350 mb-2">Uang Tunai Diterima</label>
+                  <label htmlFor="pos-cash-received-input" className="block text-sm font-semibold text-slate-700 dark:text-slate-355 mb-2">Uang Tunai Diterima</label>
                   <input
                     type="number"
+                    id="pos-cash-received-input"
                     min="0"
                     placeholder="Masukkan nominal uang..."
                     className="w-full p-3 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-lg font-bold text-slate-805 dark:text-slate-105"
                     value={cashReceived}
                     onChange={(e) => setCashReceived(e.target.value)}
-                    aria-label="Uang Tunai Diterima"
                   />
                 </div>
 
@@ -281,18 +281,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">PIN Transaksi Koperasi (6 Digit)</label>
+                      <label htmlFor="pos-pin-input" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">PIN Transaksi Koperasi (6 Digit)</label>
                       <input
                         type="password"
+                        id="pos-pin-input"
                         maxLength={6}
                         placeholder="••••••"
-                        className="w-full p-3 text-center tracking-[1.2em] font-black text-2xl border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+                        className="w-full p-3 text-center tracking-[1.2em] font-black text-2xl border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-955 text-slate-800 dark:text-slate-200"
                         value={pin}
                         onChange={(e) => {
                           const val = e.target.value.replace(/\D/g, '');
                           if (val.length <= 6) setPin(val);
                         }}
-                        aria-label="PIN Transaksi"
                       />
                     </div>
 
@@ -388,4 +388,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+PaymentModal.displayName = 'PaymentModal';

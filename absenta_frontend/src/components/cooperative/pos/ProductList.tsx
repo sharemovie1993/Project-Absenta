@@ -14,7 +14,7 @@ interface ProductListProps {
   addToCart: (product: Product) => void;
 }
 
-export const ProductList: React.FC<ProductListProps> = ({
+export const ProductList = React.memo<ProductListProps>(({
   search,
   setSearch,
   categories,
@@ -48,7 +48,7 @@ export const ProductList: React.FC<ProductListProps> = ({
         </div>
         
         {/* Category Filtering Pills */}
-        {categories.length > 0 && (
+        {(categories || []).length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 whitespace-nowrap">
             <button
               type="button"
@@ -61,7 +61,7 @@ export const ProductList: React.FC<ProductListProps> = ({
             >
               Semua Produk
             </button>
-            {categories.map((cat) => (
+            {categories?.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -82,7 +82,7 @@ export const ProductList: React.FC<ProductListProps> = ({
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="flex justify-center items-center h-full text-slate-500">Loading products...</div>
-        ) : filteredProducts.length === 0 ? (
+        ) : (filteredProducts || []).length === 0 ? (
           <div className="flex justify-center items-center h-full text-slate-400 text-center">
             <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-20" />
             <p>Tidak ada produk ditemukan.</p>
@@ -112,4 +112,6 @@ export const ProductList: React.FC<ProductListProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ProductList.displayName = 'ProductList';

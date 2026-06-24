@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+
+
+import React, { useState, useCallback } from 'react';
 import { Modal, ModalFooter } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { AlertTriangle, Upload } from 'lucide-react';
@@ -12,7 +14,13 @@ interface CompleteSiswaExitModalProps {
   onSuccess: () => void;
 }
 
-export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
+const STATUS_OPTIONS = [
+  { value: 'KELUAR', label: 'Keluar (Lainnya)' },
+  { value: 'MUTASI', label: 'Pindah / Mutasi' },
+  { value: 'DO', label: 'Dikeluarkan / Drop Out' }
+];
+
+export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = React.memo(({
   isOpen,
   onClose,
   siswaId,
@@ -24,19 +32,13 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const statusOptions = [
-    { value: 'KELUAR', label: 'Keluar (Lainnya)' },
-    { value: 'MUTASI', label: 'Pindah / Mutasi' },
-    { value: 'DO', label: 'Dikeluarkan / Drop Out' }
-  ];
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
     }
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
       showToast('Wajib mengunggah bukti pindaian Dapodik', 'error');
@@ -60,7 +62,7 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [siswaId, file, status, alasan, onSuccess, onClose, showToast]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Finalisasi Keluar Siswa" size="md">
@@ -73,13 +75,14 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Jenis Status Keluar</label>
+          <label htmlFor="exit-status" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Jenis Status Keluar</label>
           <select
+            id="exit-status"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="w-full h-10 px-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-xs focus:ring-red-500 focus:border-red-500 dark:text-white"
           >
-            {statusOptions.map((o) => (
+            {(STATUS_OPTIONS || []).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -88,8 +91,9 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Catatan / Alasan Keluar</label>
+          <label htmlFor="exit-alasan" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Catatan / Alasan Keluar</label>
           <textarea
+            id="exit-alasan"
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
             placeholder="Contoh: Pindah ke SMA Negeri 2 Bandung karena mengikuti dinas orang tua."
@@ -98,9 +102,10 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Unggah Bukti Dapodik (PDF/Gambar)</label>
+          <label htmlFor="exit-file" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Unggah Bukti Dapodik (PDF/Gambar)</label>
           <div className="relative border-2 border-dashed border-red-100 dark:border-red-900/30 rounded-xl p-6 flex flex-col items-center justify-center bg-red-50/10 dark:bg-red-950/5 hover:bg-red-50/20 transition-colors">
             <input
+              id="exit-file"
               type="file"
               onChange={handleFileChange}
               accept="application/pdf,image/*"
@@ -127,4 +132,8 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = ({
       </form>
     </Modal>
   );
-};
+});
+
+CompleteSiswaExitModal.displayName = 'CompleteSiswaExitModal';
+export default CompleteSiswaExitModal;
+

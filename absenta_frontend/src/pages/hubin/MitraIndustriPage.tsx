@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Navigation,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  History
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -28,6 +29,7 @@ import useConfirm from '../../hooks/useConfirm';
 
 // Lazy load heavy form component
 const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(module => ({ default: module.MitraFormModal })));
+const HubinMoUHistoryModal = lazy(() => import('../../components/hubin/HubinMoUHistoryModal').then(module => ({ default: module.HubinMoUHistoryModal })));
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -49,7 +51,7 @@ interface PenempatanItem {
   pembimbing_id?: string;
 }
 
-const MitraIndustriPage: React.FC = () => {
+export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -58,6 +60,7 @@ const MitraIndustriPage: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMitra, setEditingMitra] = useState<MitraIndustri | null>(null);
+  const [selectedMoUMitra, setSelectedMoUMitra] = useState<MitraIndustri | null>(null);
 
   // Gating Logic
   const sub = subscription as unknown as SubscriptionWithFeatures | null;
@@ -303,7 +306,7 @@ const MitraIndustriPage: React.FC = () => {
           <div className="flex items-center gap-1">
             {isHubin ? (
               <>
-                <Button
+                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
@@ -314,6 +317,15 @@ const MitraIndustriPage: React.FC = () => {
                   title="Edit"
                 >
                   <Edit size={16} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                  onClick={() => setSelectedMoUMitra(row)}
+                  title="Riwayat MoU"
+                >
+                  <History size={16} />
                 </Button>
                 <Button
                   size="sm"
@@ -413,6 +425,39 @@ const MitraIndustriPage: React.FC = () => {
     </div>
   ), [isLoading, isHubin, refetch]);
 
+  if (hideLayout) {
+    return (
+      <div className="space-y-6">
+        <SectionCard title={SectionCardTitle} icon={Building2} fullWidth noPadding>
+          <div className="bg-transparent overflow-hidden">
+            <Table
+              columns={columns}
+              data={rawList}
+              loading={isLoading}
+              emptyMessage="Tidak ada data mitra industri ditemukan"
+              compact={true}
+              pagination={paginationProps}
+              toolbarLeft={tableToolbarLeft}
+              toolbarRight={tableToolbarRight}
+            />
+          </div>
+        </SectionCard>
+
+        {/* Form Modal */}
+        <Suspense fallback={null}>
+          <MitraFormModal 
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSubmit={handleSubmit}
+            editingMitra={editingMitra}
+            isPending={createMutation.isPending || updateMutation.isPending}
+            isEditKontakOnly={isPembimbing && !isHubin}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <PremiumFeatureGate
       moduleName="HUBIN"
@@ -461,10 +506,17 @@ const MitraIndustriPage: React.FC = () => {
             isPending={createMutation.isPending || updateMutation.isPending}
             isEditKontakOnly={isPembimbing && !isHubin}
           />
+          <HubinMoUHistoryModal
+            isOpen={!!selectedMoUMitra}
+            onClose={() => setSelectedMoUMitra(null)}
+            mitraId={selectedMoUMitra?.id || null}
+            mitraNama={selectedMoUMitra?.nama || null}
+          />
         </Suspense>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
 };
 
+const MitraIndustriPage = () => <MitraIndustriSection />;
 export default MitraIndustriPage;

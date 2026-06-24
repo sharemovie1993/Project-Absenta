@@ -46,10 +46,19 @@ export interface SiswaPkl {
   jurnal_json?: any;
 }
 
+interface TenantData {
+  data?: {
+    name?: string;
+    kota?: string;
+    kepala_sekolah?: string;
+    nip_kepala?: string;
+  };
+}
+
 interface HubinPklPrintSuratProps {
   printData: SiswaPkl | null;
   printKolektifMitraId: string | null;
-  tenantData: any;
+  tenantData: TenantData | null;
   collectiveStudents: SiswaPkl[];
   representativeRow: SiswaPkl | null;
 }

@@ -11,6 +11,13 @@ interface PresensiLocationCardProps {
   location: { lat: number; lng: number } | null;
   onRefresh?: () => void;
 }
+const formatDistance = (meters: number | null) => {
+  if (meters === null) return 'No Mitra GPS';
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(1)} KM`;
+  }
+  return `${Math.round(meters)} M`;
+};
 
 export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = ({ 
   mitraName, 
@@ -18,14 +25,6 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = ({
   location,
   onRefresh
 }) => {
-  const formatDistance = (meters: number | null) => {
-    if (meters === null) return 'No Mitra GPS';
-    if (meters >= 1000) {
-      return `${(meters / 1000).toFixed(1)} KM`;
-    }
-    return `${Math.round(meters)} M`;
-  };
-
   return (
     <div className="w-full px-8 py-5 flex flex-col items-center space-y-1">
       <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-500 uppercase tracking-widest">
@@ -39,8 +38,16 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = ({
       
       <div className="flex items-center gap-6">
         <div 
+          role="button"
+          tabIndex={0}
           className={`flex items-center gap-2 px-3 py-1 rounded-full border cursor-pointer transition-all hover:scale-105 active:scale-95 ${distanceInfo.inRange ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-500' : 'bg-rose-500/10 border-rose-500/50 text-rose-600 dark:text-rose-500'}`}
           onClick={onRefresh}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onRefresh?.();
+            }
+          }}
           title="Klik untuk memperbarui GPS"
         >
           <span className="text-[8px] font-black uppercase tracking-widest">Jarak:</span>

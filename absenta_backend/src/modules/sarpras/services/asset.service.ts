@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { generateAssetCode } from '../utils/sarpras.utils';
+import { activityLogService } from '../../activity/services/activity-log.service';
 
 export class AssetService {
   // --- Category ---
@@ -15,7 +16,7 @@ export class AssetService {
 
   static async getCategories(tenantId: string) {
     return prisma.sarprasCategory.findMany({
-      where: { tenant_id: tenantId },
+      where: { tenant_id: tenantId, deleted_at: null },
       orderBy: { nama: 'asc' }
     });
   }
@@ -28,8 +29,9 @@ export class AssetService {
   }
 
   static async deleteCategory(tenantId: string, id: string) {
-    return prisma.sarprasCategory.delete({
-      where: { id, tenant_id: tenantId }
+    return prisma.sarprasCategory.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
     });
   }
 
@@ -44,7 +46,7 @@ export class AssetService {
   }
 
   static async getLocations(tenantId: string, scope?: any) {
-    const where: Prisma.SarprasLocationWhereInput = { tenant_id: tenantId };
+    const where: Prisma.SarprasLocationWhereInput = { tenant_id: tenantId, deleted_at: null };
     if (scope && !scope.tenant_wide && scope.unit_ids && scope.unit_ids.length > 0) {
       where.unit_id = { in: scope.unit_ids };
     } else if (scope && !scope.tenant_wide) {
@@ -65,8 +67,9 @@ export class AssetService {
   }
 
   static async deleteLocation(tenantId: string, id: string) {
-    return prisma.sarprasLocation.delete({
-      where: { id, tenant_id: tenantId }
+    return prisma.sarprasLocation.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
     });
   }
 
@@ -85,14 +88,14 @@ export class AssetService {
     price_purchase?: number;
     image_url?: string;
     deskripsi?: string;
-  }, scope?: any) {
+  }, scope?: any, userId?: string) {
     if (scope && !scope.tenant_wide && data.location_id) {
        if (!scope.unit_ids || !scope.unit_ids.includes(data.location_id)) {
            throw new Error("Anda tidak memiliki akses ke lokasi sarpras ini");
        }
-    }
+     }
 
-    return prisma.sarprasAsset.create({
+    const asset = await prisma.sarprasAsset.create({
       data: {
         tenant_id: tenantId,
         ...data,
@@ -100,10 +103,23 @@ export class AssetService {
         price_purchase: data.price_purchase ? new Prisma.Decimal(data.price_purchase) : undefined
       }
     });
+
+    if (userId) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_ASSET_CREATE',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAsset',
+        entity_id: asset.id,
+        metadata: { nama: asset.nama, kode: asset.kode }
+      });
+    }
+
+    return asset;
   }
 
-  static async updateAsset(tenantId: string, id: string, data: Partial<Prisma.SarprasAssetUncheckedCreateInput>, scope?: any) {
-    const existing = await prisma.sarprasAsset.findFirst({ where: { id, tenant_id: tenantId } });
+  static async updateAsset(tenantId: string, id: string, data: Partial<Prisma.SarprasAssetUncheckedCreateInput>, scope?: any, userId?: string) {
+    const existing = await prisma.sarprasAsset.findFirst({ where: { id, tenant_id: tenantId, deleted_at: null } });
     if (!existing) throw new Error("Aset tidak ditemukan");
     
     if (scope && !scope.tenant_wide) {
@@ -115,23 +131,52 @@ export class AssetService {
       }
     }
 
-    return prisma.sarprasAsset.update({
+    const asset = await prisma.sarprasAsset.update({
       where: { id, tenant_id: tenantId },
       data
     });
+
+    if (userId) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_ASSET_UPDATE',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAsset',
+        entity_id: asset.id,
+        metadata: { id, nama: asset.nama, changes: Object.keys(data) }
+      });
+    }
+
+    return asset;
   }
 
-  static async deleteAsset(tenantId: string, id: string, scope?: any) {
-    const existing = await prisma.sarprasAsset.findFirst({ where: { id, tenant_id: tenantId } });
+  static async deleteAsset(tenantId: string, id: string, scope?: any, userId?: string) {
+    const existing = await prisma.sarprasAsset.findFirst({ where: { id, tenant_id: tenantId, deleted_at: null } });
+    if (!existing) throw new Error("Aset tidak ditemukan");
+
     if (existing && scope && !scope.tenant_wide && existing.location_id) {
         if (!scope.unit_ids || !scope.unit_ids.includes(existing.location_id)) {
             throw new Error("Anda tidak memiliki akses ke aset ini");
         }
     }
 
-    return prisma.sarprasAsset.delete({
-      where: { id, tenant_id: tenantId }
+    const asset = await prisma.sarprasAsset.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
     });
+
+    if (userId) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_ASSET_DELETE',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAsset',
+        entity_id: id,
+        metadata: { nama: asset.nama, kode: asset.kode }
+      });
+    }
+
+    return asset;
   }
 
   static async getAssets(tenantId: string, query: {
@@ -149,13 +194,14 @@ export class AssetService {
 
     const where: Prisma.SarprasAssetWhereInput = {
       tenant_id: tenantId,
+      deleted_at: null
     };
 
     if (scope && !scope.tenant_wide) {
       if (scope.unit_ids && scope.unit_ids.length > 0) {
         // Enforce jurisdictional scope: get location IDs belonging to user units
         const allowedLocations = await prisma.sarprasLocation.findMany({
-          where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids } },
+          where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids }, deleted_at: null },
           select: { id: true }
         });
         const allowedIds = allowedLocations.map(l => l.id);
@@ -215,11 +261,11 @@ export class AssetService {
   }
 
   static async getAssetById(tenantId: string, id: string, scope?: any) {
-    const where: Prisma.SarprasAssetWhereInput = { id, tenant_id: tenantId };
+    const where: Prisma.SarprasAssetWhereInput = { id, tenant_id: tenantId, deleted_at: null };
 
     if (scope && !scope.tenant_wide) {
        const allowedLocations = await prisma.sarprasLocation.findMany({
-         where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids || [] } },
+         where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids || [] }, deleted_at: null },
          select: { id: true }
        });
        const allowedIds = allowedLocations.map(l => l.id);
@@ -248,7 +294,7 @@ export class AssetService {
     });
   }
 
-  static async upsertAssets(tenantId: string, assets: any[]) {
+  static async upsertAssets(tenantId: string, assets: any[], userId?: string) {
     const results = {
       created: 0,
       updated: 0,
@@ -269,7 +315,7 @@ export class AssetService {
         if (category_nama) {
           const cat = await prisma.sarprasCategory.upsert({
             where: { tenant_id_nama: { tenant_id: tenantId, nama: category_nama } },
-            update: {},
+            update: { deleted_at: null },
             create: { tenant_id: tenantId, nama: category_nama }
           });
           category_id = cat.id;
@@ -278,7 +324,7 @@ export class AssetService {
         if (location_nama) {
           const loc = await prisma.sarprasLocation.upsert({
             where: { tenant_id_nama: { tenant_id: tenantId, nama: location_nama } },
-            update: {},
+            update: { deleted_at: null },
             create: { tenant_id: tenantId, nama: location_nama }
           });
           location_id = loc.id;
@@ -300,8 +346,8 @@ export class AssetService {
         };
 
         if (kode) {
-          // Robust check for globally unique 'kode'
-          const existing = await prisma.sarprasAsset.findUnique({
+          // Find asset even if soft-deleted to restore or update
+          const existing = await prisma.sarprasAsset.findFirst({
             where: { kode }
           });
 
@@ -313,7 +359,7 @@ export class AssetService {
 
             await prisma.sarprasAsset.update({
               where: { id: existing.id },
-              data
+              data: { ...data, deleted_at: null }
             });
             results.updated++;
           } else {
@@ -334,15 +380,25 @@ export class AssetService {
       }
     }
 
+    if (userId && (results.created > 0 || results.updated > 0)) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_ASSET_IMPORT',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAsset',
+        metadata: { created: results.created, updated: results.updated, failed: results.failed }
+      });
+    }
+
     return results;
   }
 
   static async getStats(tenantId: string, scope?: any) {
-    const where: any = { tenant_id: tenantId };
+    const where: any = { tenant_id: tenantId, deleted_at: null };
 
     if (scope && !scope.tenant_wide) {
       const allowedLocations = await (prisma as any).sarprasLocation.findMany({
-        where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids || [] } },
+        where: { tenant_id: tenantId, unit_id: { in: scope.unit_ids || [] }, deleted_at: null },
         select: { id: true }
       });
       const allowedIds = allowedLocations.map((l: any) => l.id);
@@ -355,7 +411,7 @@ export class AssetService {
       (prisma as any).sarprasAsset.count({ 
         where: { 
           ...where, 
-          Loans: { some: { status: 'BORROWED' } } 
+          Loans: { some: { status: 'ACTIVE' } } 
         } 
       }),
       (prisma as any).sarprasAsset.count({ where: { ...where, kondisi: { in: ['RUSAK_RINGAN', 'RUSAK_BERAT'] } } })

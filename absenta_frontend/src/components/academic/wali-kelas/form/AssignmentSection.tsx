@@ -15,13 +15,13 @@ interface AssignmentSectionProps {
   isViewMode?: boolean;
 }
 
-export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
+export const AssignmentSection = React.memo<AssignmentSectionProps>(({
   selectedGuruId,
   setSelectedGuruId,
   selectedKelasId,
   setSelectedKelasId,
-  guruOptions,
-  kelasOptions,
+  guruOptions = [],
+  kelasOptions = [],
   assigning,
   isViewMode = false
 }) => {
@@ -29,13 +29,14 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
     <SectionCard title="Data Penugasan" icon={User} fullWidth>
       <div className="space-y-6">
         <div className="space-y-2 group">
-          <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+          <Label htmlFor="guru_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
             Pilih Guru <span className="text-rose-500">*</span>
           </Label>
           <SearchableSelect
+            id="guru_id"
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
-            options={guruOptions.map(g => ({ label: g.nama_guru, value: g.id }))}
+            options={guruOptions?.map(g => ({ label: g.nama_guru, value: g.id }))}
             placeholder="Cari guru yang tersedia..."
             searchPlaceholder="Cari Nama Guru..."
             disabled={assigning || isViewMode}
@@ -44,13 +45,14 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
         </div>
 
         <div className="space-y-2 group">
-          <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+          <Label htmlFor="kelas_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
             Pilih Kelas <span className="text-rose-500">*</span>
           </Label>
           <SearchableSelect
+            id="kelas_id"
             value={selectedKelasId}
             onValueChange={setSelectedKelasId}
-            options={kelasOptions.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
+            options={kelasOptions?.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
             placeholder="Cari kelas yang tersedia..."
             searchPlaceholder="Cari Nama Kelas..."
             disabled={assigning || isViewMode}
@@ -60,4 +62,6 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       </div>
     </SectionCard>
   );
-};
+});
+
+AssignmentSection.displayName = 'AssignmentSection';

@@ -1,7 +1,24 @@
 import { prisma } from '../../../utils/prisma';
 import crypto from 'crypto';
+import { activityLogService } from '../../activity/services/activity-log.service';
+import { studentResolverService } from '../../../services/student-resolver.service';
 
 export class HubinService {
+  private log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
+    try {
+      activityLogService.logEvent({
+        event_type: event,
+        tenant_id: tenantId,
+        user_id: userId,
+        entity,
+        entity_id: entityId,
+        metadata
+      });
+    } catch (err) {
+      console.error(`Failed to log HUBIN event ${event}:`, err);
+    }
+  }
+
   /**
    * --- 1. MANAJEMEN MITRA INDUSTRI ---
    */
@@ -47,13 +64,15 @@ export class HubinService {
     });
   }
 
-  async createMitra(tenantId: string, data: any) {
-    return await prisma.mitraIndustri.create({
+  async createMitra(tenantId: string, data: any, actorUserId?: string | null) {
+    const result = await prisma.mitraIndustri.create({
       data: {
         ...data,
         tenant_id: tenantId,
       },
     });
+    this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_CREATE', 'MitraIndustri', result.id, { nama: result.nama });
+    return result;
   }
 
   async updateMitra(tenantId: string, id: string, data: any, userId?: string, org?: any) {
@@ -107,16 +126,20 @@ export class HubinService {
       }
     }
 
-    return await prisma.mitraIndustri.update({
+    const result = await prisma.mitraIndustri.update({
       where: { id, tenant_id: tenantId },
       data,
     });
+    this.log(tenantId, userId || null, 'HUBIN_MITRA_UPDATE', 'MitraIndustri', id, { nama: result.nama });
+    return result;
   }
 
-  async deleteMitra(tenantId: string, id: string) {
-    return await prisma.mitraIndustri.delete({
+  async deleteMitra(tenantId: string, id: string, actorUserId?: string | null) {
+    const result = await prisma.mitraIndustri.delete({
       where: { id, tenant_id: tenantId },
     });
+    this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_DELETE', 'MitraIndustri', id, { nama: result.nama });
+    return result;
   }
 
   /**
@@ -212,15 +235,11 @@ export class HubinService {
   }
 
   async getPenempatanBySiswa(tenantId: string, userId: string) {
-    const student = await prisma.siswa.findFirst({
-      where: { tenant_id: tenantId, user_id: userId },
-      select: { id: true }
-    });
-
-    if (!student) return null;
+    const studentId = await studentResolverService.resolveSiswaId(tenantId, userId);
+    if (!studentId) return null;
 
     return await prisma.siswaPkl.findFirst({
-      where: { tenant_id: tenantId, siswa_id: student.id },
+      where: { tenant_id: tenantId, siswa_id: studentId },
       include: {
         Siswa: { 
           include: { 
@@ -233,11 +252,11 @@ export class HubinService {
     });
   }
 
-  async createPenempatan(tenantId: string, data: any) {
+  async createPenempatan(tenantId: string, data: any, actorUserId?: string | null) {
     // Ambil info akademik saat ini
     const siswa = await prisma.siswa.findUnique({
       where: { id: data.siswa_id },
-      select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true }
+      select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
     });
 
     let siswaAkademikId: string | undefined;
@@ -253,13 +272,15 @@ export class HubinService {
       siswaAkademikId = sa?.id;
     }
 
-    return await prisma.siswaPkl.create({
+    const result = await prisma.siswaPkl.create({
       data: {
         ...data,
         tenant_id: tenantId,
         siswa_akademik_id: siswaAkademikId,
       },
     });
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', result.id, { siswa_nama: siswa?.nama_siswa });
+    return result;
   }
 
   async updatePenempatan(tenantId: string, id: string, data: any) {
@@ -269,10 +290,13 @@ export class HubinService {
     });
   }
 
-  async deletePenempatan(tenantId: string, id: string) {
-    return await prisma.siswaPkl.delete({
-      where: { id, tenant_id: tenantId }
+  async deletePenempatan(tenantId: string, id: string, actorUserId?: string | null) {
+    const result = await prisma.siswaPkl.delete({
+      where: { id, tenant_id: tenantId },
+      include: { Siswa: { select: { nama_siswa: true } } }
     });
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_REMOVE', 'SiswaPkl', id, { siswa_nama: result.Siswa?.nama_siswa });
+    return result;
   }
 
   /**
@@ -688,6 +712,335 @@ export class HubinService {
     });
   }
 
+  // --- 5. MANAJEMEN RIWAYAT MoU (MoU History) ---
+  async getMoUHistory(tenantId: string, mitraId: string) {
+    return await prisma.hubinMoUHistory.findMany({
+      where: { tenant_id: tenantId, mitra_id: mitraId, deleted_at: null },
+      orderBy: { tanggal_mulai: 'desc' }
+    });
+  }
+
+  async createMoUHistory(tenantId: string, mitraId: string, data: any, actorUserId?: string | null) {
+    const history = await prisma.hubinMoUHistory.create({
+      data: {
+        ...data,
+        mitra_id: mitraId,
+        tenant_id: tenantId,
+        tanggal_mulai: data.tanggal_mulai ? new Date(data.tanggal_mulai) : new Date(),
+        tanggal_selesai: data.tanggal_selesai ? new Date(data.tanggal_selesai) : new Date()
+      }
+    });
+
+    await prisma.mitraIndustri.update({
+      where: { id: mitraId },
+      data: {
+        mou_nomor: data.mou_nomor,
+        mou_tanggal_mulai: data.tanggal_mulai ? new Date(data.tanggal_mulai) : null,
+        mou_tanggal_berakhir: data.tanggal_selesai ? new Date(data.tanggal_selesai) : null,
+        mou_status: 'AKTIF'
+      }
+    });
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_MOU_CREATE', 'HubinMoUHistory', history.id, { mou_nomor: history.mou_nomor });
+    return history;
+  }
+
+  async deleteMoUHistory(tenantId: string, id: string, actorUserId?: string | null) {
+    const result = await prisma.hubinMoUHistory.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_MOU_DELETE', 'HubinMoUHistory', id, { mou_nomor: result.mou_nomor });
+    return result;
+  }
+
+  // --- 6. BURSA KERJA KHUSUS (BKK) - LOWONGAN ---
+  async getLowongan(tenantId: string, params?: { search?: string; status?: string; page?: number; limit?: number }) {
+    const page = params?.page || 1;
+    const limit = params?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId, deleted_at: null };
+    if (params?.status) {
+      where.status = params.status;
+    }
+    if (params?.search) {
+      where.OR = [
+        { judul_posisi: { contains: params.search, mode: 'insensitive' } },
+        { perusahaan_nama: { contains: params.search, mode: 'insensitive' } },
+        { deskripsi: { contains: params.search, mode: 'insensitive' } }
+      ];
+    }
+
+    const [total, data] = await Promise.all([
+      prisma.hubinLowongan.count({ where }),
+      prisma.hubinLowongan.findMany({
+        where,
+        include: {
+          Mitra: { select: { nama: true, alamat: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit
+      })
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async createLowongan(tenantId: string, data: any, actorUserId?: string | null) {
+    const result = await prisma.hubinLowongan.create({
+      data: {
+        ...data,
+        tenant_id: tenantId,
+        tanggal_tutup: new Date(data.tanggal_tutup),
+        kuota: data.kuota ? parseInt(data.kuota) : 1
+      }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_LOWONGAN_CREATE', 'HubinLowongan', result.id, { posisi: result.judul_posisi });
+    return result;
+  }
+
+  async updateLowongan(tenantId: string, id: string, data: any, actorUserId?: string | null) {
+    const updateData = { ...data };
+    if (data.tanggal_tutup) updateData.tanggal_tutup = new Date(data.tanggal_tutup);
+    if (data.kuota) updateData.kuota = parseInt(data.kuota);
+    const result = await prisma.hubinLowongan.update({
+      where: { id, tenant_id: tenantId },
+      data: updateData
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_LOWONGAN_UPDATE', 'HubinLowongan', id, { posisi: result.judul_posisi });
+    return result;
+  }
+
+  async deleteLowongan(tenantId: string, id: string, actorUserId?: string | null) {
+    const result = await prisma.hubinLowongan.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_LOWONGAN_DELETE', 'HubinLowongan', id, { posisi: result.judul_posisi });
+    return result;
+  }
+
+  // --- 7. BURSA KERJA KHUSUS (BKK) - LAMARAN ---
+  async getLamaran(tenantId: string, params?: { lowonganId?: string; status?: string; siswaId?: string; page?: number; limit?: number }) {
+    const page = params?.page || 1;
+    const limit = params?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId, deleted_at: null };
+    if (params?.lowonganId) where.lowongan_id = params.lowonganId;
+    if (params?.status) where.status_seleksi = params.status;
+    if (params?.siswaId) where.siswa_id = params.siswaId;
+
+    const [total, data] = await Promise.all([
+      prisma.hubinLamaran.count({ where }),
+      prisma.hubinLamaran.findMany({
+        where,
+        include: {
+          Lowongan: { select: { judul_posisi: true, perusahaan_nama: true } },
+          Siswa: { select: { nama_siswa: true, nis: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit
+      })
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async createLamaran(tenantId: string, data: any, actorUserId?: string | null) {
+    const result = await prisma.hubinLamaran.create({
+      data: {
+        ...data,
+        tenant_id: tenantId
+      }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_CREATE', 'HubinLamaran', result.id, { lowongan_id: result.lowongan_id });
+    return result;
+  }
+
+  async updateLamaranStatus(tenantId: string, id: string, status: string, catatan?: string, actorUserId?: string | null) {
+    const result = await prisma.hubinLamaran.update({
+      where: { id, tenant_id: tenantId },
+      data: { status_seleksi: status, catatan }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_STATUS', 'HubinLamaran', id, { status_seleksi: status });
+    return result;
+  }
+
+  // --- 8. TRACER STUDY ALUMNI ---
+  async getTracerStudy(tenantId: string, params?: { search?: string; tahunLulus?: number; statusAlumni?: string; page?: number; limit?: number }) {
+    const page = params?.page || 1;
+    const limit = params?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId, deleted_at: null };
+    if (params?.tahunLulus) where.tahun_lulus = parseInt(params.tahunLulus as any);
+    if (params?.statusAlumni) where.status_alumni = params.statusAlumni;
+    if (params?.search) {
+      where.Siswa = {
+        nama_siswa: { contains: params.search, mode: 'insensitive' }
+      };
+    }
+
+    const [total, data] = await Promise.all([
+      prisma.hubinTracerStudy.count({ where }),
+      prisma.hubinTracerStudy.findMany({
+        where,
+        include: {
+          Siswa: { select: { nama_siswa: true, nis: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit
+      })
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async submitTracerStudy(tenantId: string, siswaId: string, data: any, actorUserId?: string | null) {
+    const result = await prisma.hubinTracerStudy.upsert({
+      where: { siswa_id: siswaId },
+      update: {
+        ...data,
+        deleted_at: null,
+        tahun_lulus: data.tahun_lulus ? parseInt(data.tahun_lulus) : undefined
+      },
+      create: {
+        ...data,
+        siswa_id: siswaId,
+        tenant_id: tenantId,
+        tahun_lulus: data.tahun_lulus ? parseInt(data.tahun_lulus) : new Date().getFullYear()
+      }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_TRACER_SUBMIT', 'HubinTracerStudy', result.id, { status_alumni: result.status_alumni });
+    return result;
+  }
+
+  async getTracerStats(tenantId: string) {
+    const groups = await prisma.hubinTracerStudy.groupBy({
+      by: ['status_alumni'],
+      where: { tenant_id: tenantId, deleted_at: null },
+      _count: { status_alumni: true }
+    });
+
+    const stats = {
+      BEKERJA: 0,
+      KULIAH: 0,
+      WIRAUSAHA: 0,
+      MENCARI_KERJA: 0
+    };
+
+    groups.forEach(g => {
+      const key = g.status_alumni as keyof typeof stats;
+      if (stats[key] !== undefined) {
+        stats[key] = g._count.status_alumni;
+      }
+    });
+
+    return stats;
+  }
+
+  // --- 9. TEFA ORDERS ---
+  async getTefaOrders(tenantId: string, params?: { search?: string; statusProyek?: string; page?: number; limit?: number }) {
+    const page = params?.page || 1;
+    const limit = params?.limit || 100;
+    const skip = (page - 1) * limit;
+
+    const where: any = { tenant_id: tenantId, deleted_at: null };
+    if (params?.statusProyek) where.status_proyek = params.statusProyek;
+    if (params?.search) {
+      where.nama_proyek = { contains: params.search, mode: 'insensitive' };
+    }
+
+    const [total, data] = await Promise.all([
+      prisma.hubinTefaOrder.count({ where }),
+      prisma.hubinTefaOrder.findMany({
+        where,
+        include: {
+          Mitra: { select: { nama: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit
+      })
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  async createTefaOrder(tenantId: string, data: any, actorUserId?: string | null) {
+    const result = await prisma.hubinTefaOrder.create({
+      data: {
+        ...data,
+        tenant_id: tenantId,
+        nilai_kontrak: data.nilai_kontrak ? parseFloat(data.nilai_kontrak) : null,
+        tanggal_mulai: data.tanggal_mulai ? new Date(data.tanggal_mulai) : null,
+        tanggal_target: data.tanggal_target ? new Date(data.tanggal_target) : null
+      }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_TEFA_CREATE', 'HubinTefaOrder', result.id, { nama_proyek: result.nama_proyek });
+    return result;
+  }
+
+  async updateTefaOrder(tenantId: string, id: string, data: any, actorUserId?: string | null) {
+    const updateData = { ...data };
+    if (data.nilai_kontrak) updateData.nilai_kontrak = parseFloat(data.nilai_kontrak);
+    if (data.tanggal_mulai) updateData.tanggal_mulai = new Date(data.tanggal_mulai);
+    if (data.tanggal_target) updateData.tanggal_target = new Date(data.tanggal_target);
+    
+    const result = await prisma.hubinTefaOrder.update({
+      where: { id, tenant_id: tenantId },
+      data: updateData
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_TEFA_UPDATE', 'HubinTefaOrder', id, { nama_proyek: result.nama_proyek });
+    return result;
+  }
+
+  async deleteTefaOrder(tenantId: string, id: string, actorUserId?: string | null) {
+    const result = await prisma.hubinTefaOrder.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_TEFA_DELETE', 'HubinTefaOrder', id, { nama_proyek: result.nama_proyek });
+    return result;
+  }
+
   /**
    * Helper: Calculate distance between two points in meters (Haversine formula)
    */
@@ -704,5 +1057,36 @@ export class HubinService {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
+  }
+
+  async getRecentActivity(tenantId: string, limit: number = 15) {
+    const logs = await prisma.activityLog.findMany({
+      where: {
+        tenant_id: tenantId,
+        action: { startsWith: 'HUBIN_' }
+      },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      include: {
+        User: { select: { full_name: true } }
+      }
+    });
+
+    return logs.map(log => ({
+      id: log.id,
+      action: log.action,
+      actor: log.User?.full_name || 'System / Anonim',
+      entity: log.entity,
+      entity_id: log.entity_id,
+      metadata: log.metadata ? JSON.parse(log.metadata) : null,
+      created_at: log.created_at
+    }));
+  }
+
+  async verifySiswaPklOwnership(tenantId: string, siswaPklId: string, siswaId: string): Promise<boolean> {
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { tenant_id: tenantId, id: siswaPklId, siswa_id: siswaId }
+    });
+    return !!pkl;
   }
 }

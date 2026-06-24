@@ -27,7 +27,7 @@ interface QuickTransactionPanelProps {
   isStudent: boolean;
 }
 
-export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTransactionPanelProps>((
+export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElement, QuickTransactionPanelProps>((
   {
     scannedStudent,
     scannedMemberSavings,
@@ -96,7 +96,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
                   NIS/NIP: {scannedStudent.nis || scannedStudent.nip || '-'}
                 </span>
                 <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-1.5 py-0.2 rounded">
-                  No. {scannedMemberSavings[0]?.member.memberNo || ''}
+                  No. {scannedMemberSavings?.[0]?.member.memberNo || ''}
                 </span>
               </div>
             </div>
@@ -114,7 +114,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
                 className={`py-2 px-3 rounded-xl font-extrabold text-xs transition-all duration-300 border flex items-center justify-center gap-1.5 ${
                   quickTxType === 'DEPOSIT'
                     ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-500/10'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <ArrowUpCircle size={14} /> Setor Tunai
@@ -125,7 +125,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
                 className={`py-2 px-3 rounded-xl font-extrabold text-xs transition-all duration-300 border flex items-center justify-center gap-1.5 ${
                   quickTxType === 'WITHDRAWAL'
                     ? 'bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/10'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 <ArrowDownCircle size={14} /> Tarik Tunai
@@ -140,7 +140,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
             </label>
             <div className="space-y-1.5">
               {(() => {
-                const visible = getVisibleSavingsForTx(scannedMemberSavings, quickTxType);
+                const visible = getVisibleSavingsForTx(scannedMemberSavings || [], quickTxType);
                 if (visible.length === 0) {
                   return (
                     <div className="p-3 text-center border border-dashed border-amber-200 dark:border-amber-900/50 bg-amber-500/5 rounded-xl text-xs font-semibold text-amber-600 dark:text-amber-400">
@@ -180,7 +180,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
                         {s.category?.name || s.type}
                       </span>
                     </div>
-                    <span className="text-xs font-extrabold text-slate-600 dark:text-slate-300">
+                    <span className="text-xs font-extrabold text-slate-600 dark:text-slate-350">
                       Rp {parseFloat(s.amount).toLocaleString('id-ID')}
                     </span>
                   </button>
@@ -247,7 +247,7 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
             <Button
               type="submit"
               isLoading={processingQuickTx}
-              disabled={getVisibleSavingsForTx(scannedMemberSavings, quickTxType).length === 0}
+              disabled={getVisibleSavingsForTx(scannedMemberSavings || [], quickTxType).length === 0}
               variant={quickTxType === 'DEPOSIT' ? 'success' : 'danger'}
               className="flex-[2] py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 font-bold"
             >
@@ -258,6 +258,6 @@ export const QuickTransactionPanel = React.forwardRef<HTMLInputElement, QuickTra
       )}
     </Card>
   );
-});
+}));
 
 QuickTransactionPanel.displayName = 'QuickTransactionPanel';

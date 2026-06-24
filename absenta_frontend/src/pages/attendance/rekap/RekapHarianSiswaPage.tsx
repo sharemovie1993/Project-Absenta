@@ -18,10 +18,30 @@ import { siswaApi } from '../../../api/academic.api';
 import { toLocalDate } from '../../../utils/attendance/time';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
-import { Search, RefreshCw, Calendar, User, Clock, FileText, Filter } from 'lucide-react';
+import { Search, RefreshCw, User, Clock, FileText, Filter } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
+
+interface RekapHarianRincianItem {
+  waktu?: string;
+  keterangan?: string;
+  status?: string;
+}
+
+interface RekapHarianResponse {
+  rincian?: RekapHarianRincianItem[];
+  nama_siswa?: string;
+  nis?: string;
+  tanggal?: string;
+  status?: string;
+}
+
+interface StudentResponseItem {
+  id: string;
+  nama_siswa: string;
+  user_id?: string;
+}
 
 export default function RekapHarianSiswaPage() {
   const { subscription } = useAuthStore();
@@ -32,15 +52,15 @@ export default function RekapHarianSiswaPage() {
   const [siswaId, setSiswaId] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<{ rincian?: Record<string, string | number>[]; nama_siswa?: string; nis?: string; tanggal?: string; status?: string } | null>(null);
+  const [data, setData] = useState<RekapHarianResponse | null>(null);
   
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
   const isSiswa = user?.role?.name === 'SISWA';
 
-  const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
+                      subscription?.Plan?.features_json || 
+                      subscription?.plan?.features_json || [];
+  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
   useEffect(() => {
     let isMounted = true;
@@ -56,7 +76,7 @@ export default function RekapHarianSiswaPage() {
         try {
           const resAll = await siswaApi.getAll({ limit: 1000 });
           if (!isMounted) return;
-          const myProfile = resAll.data?.find((s: any) => s.user_id === user.id);
+          const myProfile = (resAll.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
           if (myProfile) {
             setSiswaOptions([{ label: myProfile.nama_siswa, value: myProfile.id }]);
             setSiswaId(myProfile.id);
@@ -87,7 +107,7 @@ export default function RekapHarianSiswaPage() {
     setLoading(true);
     try {
       const res = await getRekapHarianSiswa(siswaId, { tanggal, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setData(res.data);
+      setData(res.data as RekapHarianResponse);
     } catch (e) {
       console.error(e);
     } finally {
@@ -116,11 +136,11 @@ export default function RekapHarianSiswaPage() {
       label: 'Waktu Transaksi', 
       key: 'waktu', 
       sortable: true,
-      render: (v: string) => (
+      render: (v: unknown) => (
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span className="font-bold text-slate-700 dark:text-slate-300">
-            {v ? formatDate(v, { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }) : '-'}
+            {v ? formatDate(String(v), { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }) : '-'}
           </span>
         </div>
       )
@@ -129,25 +149,29 @@ export default function RekapHarianSiswaPage() {
       label: 'Keterangan / Aktivitas', 
       key: 'keterangan',
       sortable: true,
-      render: (v: string, r: { status?: string }) => (
-        <span className="text-[11px] font-bold uppercase tracking-tight text-slate-500">
-          {v || r?.status || '-'}
-        </span>
-      )
+      render: (v: unknown, r: unknown) => {
+        const row = r as RekapHarianRincianItem;
+        return (
+          <span className="text-[11px] font-bold uppercase tracking-tight text-slate-500">
+            {v ? String(v) : (row?.status || '-')}
+          </span>
+        );
+      }
     },
     { 
       label: 'Status', 
       key: 'status',
       sortable: true,
-      render: (v: string) => {
-        const isHadir = v?.toUpperCase()?.includes('HADIR') || v?.toUpperCase()?.includes('MASUK');
-        const isPulang = v?.toUpperCase()?.includes('PULANG');
+      render: (v: unknown) => {
+        const statusStr = String(v || '');
+        const isHadir = statusStr.toUpperCase().includes('HADIR') || statusStr.toUpperCase().includes('MASUK');
+        const isPulang = statusStr.toUpperCase().includes('PULANG');
         return (
           <Badge 
             variant={isHadir ? 'success' : isPulang ? 'info' : 'outline'}
             className="text-[10px] font-black uppercase tracking-widest px-3"
           >
-            {v || '-'}
+            {statusStr || '-'}
           </Badge>
         );
       }
@@ -169,10 +193,10 @@ export default function RekapHarianSiswaPage() {
   }, [sortBy, sortOrder]);
 
   const sortedData = useMemo(() => {
-    if (!data?.rincian || !Array.isArray(data.rincian)) return [];
-    return [...data.rincian].sort((a: Record<string, string | number>, b: Record<string, string | number>) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
+    const list = data?.rincian || [];
+    return [...list].sort((a, b) => {
+      const aVal = a[sortBy as keyof RekapHarianRincianItem];
+      const bVal = b[sortBy as keyof RekapHarianRincianItem];
       if (aVal === bVal) return 0;
       if (aVal == null) return sortOrder === 'asc' ? 1 : -1;
       if (bVal == null) return sortOrder === 'asc' ? -1 : 1;
@@ -262,7 +286,7 @@ export default function RekapHarianSiswaPage() {
                     <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-slate-200 dark:border-slate-700">NIS: {data.nis || '-'}</Badge>
                     <div className="w-1 h-1 rounded-full bg-slate-300 mx-1" />
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                      {formatDate(data.tanggal, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                      {formatDate(String(data.tanggal), { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
                     </span>
                   </div>
                 </div>
@@ -325,7 +349,7 @@ export default function RekapHarianSiswaPage() {
         title: "Panduan Rekap Harian",
         description: "Gunakan halaman ini untuk memantau presensi siswa per hari secara spesifik.",
         items: [
-          { text: "Pilih tanggal dan nama siswa untuk melihat rekap." },
+          { text: "Pilih tanggal and nama siswa untuk melihat rekap." },
           { text: "Status presensi (Hadir, Izin, Sakit, Alpha) akan ditampilkan beserta jam masuk." }
         ]
       }}

@@ -2,14 +2,27 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
 import { EDITOR_SCALE } from './constants';
+import { Siswa } from '../../../types/academic';
 
-interface PrintableCardProps {
-    student: any;
-    config: StudentCardConfig;
-    sekolah?: any;
+interface SekolahData {
+    logo_url?: string;
+    data?: {
+        logo_url?: string;
+    };
 }
 
-export const PrintableCard: React.FC<PrintableCardProps> = ({ 
+interface PrintableCardProps {
+    student: Partial<Siswa> & { 
+        nama?: string; 
+        nama_siswa?: string;
+        kelas?: { nama?: string; nama_kelas?: string }; 
+        foto?: string;
+    };
+    config: StudentCardConfig;
+    sekolah?: SekolahData;
+}
+
+export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({ 
     student, 
     config, 
     sekolah 
@@ -170,4 +183,6 @@ export const PrintableCard: React.FC<PrintableCardProps> = ({
             />
         </div>
     );
-};
+});
+
+PrintableCard.displayName = 'PrintableCard';

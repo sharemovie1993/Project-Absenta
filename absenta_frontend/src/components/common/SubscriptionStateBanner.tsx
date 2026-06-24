@@ -169,7 +169,7 @@ export default function SubscriptionStateBanner() {
             <Button
               size="sm"
               variant="primary"
-              onClick={() => navigate('/billing/my-subscription')}
+              onClick={() => navigate('/service-center?tab=status')}
             >
               Upgrade Sekarang
             </Button>

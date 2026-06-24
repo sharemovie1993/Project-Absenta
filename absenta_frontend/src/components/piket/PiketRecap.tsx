@@ -13,7 +13,7 @@ interface PiketRecapProps {
   setPrintPaperSize: React.Dispatch<React.SetStateAction<string>>;
   setIsPrintingRekap: React.Dispatch<React.SetStateAction<boolean>>;
   setPrintedPermit: React.Dispatch<React.SetStateAction<(IzinKeluarSiswa & { qrCodeUrl?: string }) | null>>;
-  tenantInfo: any;
+  tenantInfo?: Record<string, any> | null;
 }
 
 // Timezone-safe local ISO date utility
@@ -22,7 +22,7 @@ const getLocalISODate = (date: Date) => {
   return new Date(date.getTime() - tzOffset).toISOString().split('T')[0];
 };
 
-export const PiketRecap: React.FC<PiketRecapProps> = ({
+export const PiketRecap: React.FC<PiketRecapProps> = React.memo(({
   onUpdatePrintData,
   printPaperSize,
   setPrintPaperSize,
@@ -98,7 +98,7 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
     fetchRecapData('range', startDate, endDate);
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       key: 'no',
       label: 'No',
@@ -161,10 +161,10 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
         </Badge>
       )
     }
-  ];
+  ], []);
 
   const mappedData = React.useMemo(() => {
-    return recapPermits.map((p, idx) => ({ ...p, no: idx + 1 }));
+    return (recapPermits || []).map((p, idx) => ({ ...p, no: idx + 1 }));
   }, [recapPermits]);
 
   return (
@@ -196,10 +196,10 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
                   setIsPrintingRekap(false);
                 }, 300);
               }}
-              disabled={recapPermits.length === 0 || loading}
+              disabled={(recapPermits?.length || 0) === 0 || loading}
               className="rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-indigo-950 font-black text-xs uppercase tracking-widest px-6 py-3 flex items-center gap-2 shadow-lg shadow-emerald-500/10 border-none transition-all duration-300 transform hover:scale-[1.02]"
             >
-              <Printer size={14} /> Cetak Rekap Laporan ({recapPermits.length} Data)
+              <Printer size={14} /> Cetak Rekap Laporan ({(recapPermits?.length || 0)} Data)
             </Button>
           </div>
         </div>
@@ -233,6 +233,8 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
               <div className="flex items-center gap-2 bg-indigo-950/60 border border-indigo-800/60 rounded-xl px-3 py-1.5">
                 <span className="text-[10px] text-indigo-400 font-bold uppercase">Mulai:</span>
                 <input
+                  id="start-date-input"
+                  aria-label="Tanggal Mulai"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
@@ -242,6 +244,8 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
               <div className="flex items-center gap-2 bg-indigo-950/60 border border-indigo-800/60 rounded-xl px-3 py-1.5">
                 <span className="text-[10px] text-indigo-400 font-bold uppercase">Sampai:</span>
                 <input
+                  id="end-date-input"
+                  aria-label="Tanggal Selesai"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
@@ -286,4 +290,4 @@ export const PiketRecap: React.FC<PiketRecapProps> = ({
       </Card>
     </div>
   );
-};
+});

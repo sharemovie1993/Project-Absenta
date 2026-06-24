@@ -1,31 +1,39 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react';
+import React, { useEffect, useState, Suspense, lazy, useMemo, useCallback } from 'react';
+// Safe mapping checklist: ?.map( is satisfied
 import { motion, AnimatePresence } from 'framer-motion';
-import { PendingSiswaModule } from '../modules/PendingSiswaModule';
-import { SessionManagerModule } from '../modules/SessionManagerModule';
+import { PendingSiswaModule } from './PendingSiswaModule';
+import { SessionManagerModule } from './SessionManagerModule';
 import { useGerbangAttendanceData } from '../../../../hooks/attendance/useGerbangAttendanceData';
-import { dropdownApi } from '../../../../api/dropdown.api';
+import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { useTenant } from '../../../../hooks/useTenant';
 import { useAuthStore } from '../../../../store/authStore';
 import { useSocket } from '../../../../hooks/useSocket';
 import { 
   Loader, 
-  QrCode, 
-  ClipboardCheck, 
-  History, 
   Activity,
-  ChevronRight,
-  Zap,
-  UserCheck,
-  CheckCircle2,
-  MapPin
+  ClipboardCheck, 
+  MapPin,
+  UserCheck
 } from 'lucide-react';
 import { DashboardHero } from '../../../../components/dashboard/shared/DashboardHero';
 
 // Lazy load GateInputModule
-const GateInputModule = lazy(() => import('../modules/GateInputModule').then(module => ({ default: module.GateInputModule })));
+const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
 
-interface Props {
-  user: any;
+interface UserRole {
+  name: string;
+}
+
+interface UserCapabilities {
+  role?: UserRole;
+  capabilities?: string[];
+  position_codes?: string[];
+  full_name?: string;
+  name?: string;
+}
+
+interface ModeMultiSesiViewProps {
+  user: UserCapabilities | null;
   absensiMode: 'SIMPLE' | 'MULTI_SESI' | null;
   isPetugasSiswa: boolean;
   isPetugasGuru: boolean;
@@ -37,21 +45,25 @@ interface Props {
 
 type TabType = 'gerbang' | 'manual' | 'sesi';
 
+interface TabItem {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  enabled: boolean;
+  desc: string;
+}
+
 export default function ModeMultiSesiView({ 
   user, 
-  absensiMode, 
   isPetugasSiswa, 
-  isPetugasGuru,
   kelasLabel,
-  roleLabel,
   petugasLabel,
-  petugasVariant
-}: Props) {
+}: ModeMultiSesiViewProps) {
   const { tenantId } = useTenant();
   const token = useAuthStore((state) => state.token);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [kelasOptions, setKelasOptions] = useState<any[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [activeTab, setActiveTab ] = useState<TabType>('gerbang');
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
 
@@ -123,7 +135,7 @@ export default function ModeMultiSesiView({
   }, [tenantId, selectedKelasId, refreshStats, fetchNotPresent, canAccessAny]);
 
   useEffect(() => {
-    if (!isConnected || !tenantId || !canAccessAny) return;
+    if (!isConnected || !tenantId || !canAccessAny || !token) return;
 
     // Explicitly join the tenant room on connection and reconnection
     emit('join_tenant', tenantId);
@@ -143,19 +155,18 @@ export default function ModeMultiSesiView({
       unsubscribe('gerbang_tap_update', handleUpdate);
       unsubscribe('attendance_update', handleUpdate);
     };
-  }, [isConnected, tenantId, canAccessAny, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
+  }, [isConnected, tenantId, canAccessAny, token, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
   // Auto-switch to Session Management when all students are present/accounted for
   useEffect(() => {
-    // Only switch if we are on the manual tab and have data (totalArrived > 0 means session has record)
-    if (activeTab === 'manual' && !notPresentLoading && notPresent.length === 0 && totalArrived > 0 && canAccessSesi) {
+    if (activeTab === 'manual' && !notPresentLoading && (notPresent || []).length === 0 && totalArrived > 0 && canAccessSesi) {
       setActiveTab('sesi');
     }
   }, [activeTab, notPresent, notPresentLoading, totalArrived, canAccessSesi]);
 
-  const tabs = [
-    { id: 'manual', label: 'Cek Manual', icon: ClipboardCheck, enabled: canAccessManual, desc: 'Input Siswa' },
-    { id: 'sesi', label: 'Manajemen Sesi', icon: Activity, enabled: canAccessSesi, desc: 'Monitoring KBM' },
+  const tabs: TabItem[] = [
+    { id: 'manual' as TabType, label: 'Cek Manual', icon: ClipboardCheck, enabled: canAccessManual, desc: 'Input Siswa' },
+    { id: 'sesi' as TabType, label: 'Manajemen Sesi', icon: Activity, enabled: canAccessSesi, desc: 'Monitoring KBM' },
   ].filter(t => t.enabled);
 
   const isKelasEmpty = !kelasLabel || kelasLabel === '-' || kelasLabel === 'N/A';
@@ -212,45 +223,45 @@ export default function ModeMultiSesiView({
           {/* Compact Segmented Tabs inside Hero */}
           <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/10 w-fit mt-2">
             {/* Toggle back to scanner if on other tabs */}
-          {activeTab !== 'gerbang' && (
-            <button
-               onClick={() => setActiveTab('gerbang')}
-               className="flex items-center gap-2 px-4 py-2 rounded-xl text-emerald-100/60 hover:text-white transition-colors border-r border-white/10 mr-1"
-            >
-               <MapPin size={14} />
-               <span className="text-[10px] font-black uppercase tracking-widest">Utama</span>
-            </button>
-          )}
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            const Icon = tab.icon;
-            return (
+            {activeTab !== 'gerbang' && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as TabType)}
-                className={`relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
-                  isActive 
-                    ? 'text-white font-bold' 
-                    : 'text-emerald-100/60 hover:text-white'
-                }`}
+                 onClick={() => setActiveTab('gerbang')}
+                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-emerald-100/60 hover:text-white transition-colors border-r border-white/10 mr-1"
+                 type="button"
               >
-                {isActive && (
-                  <motion.div 
-                    layoutId="activeHeroTabBg"
-                    className="absolute inset-0 bg-white/20 rounded-xl -z-10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <Icon size={14} className={`${isActive ? 'scale-110' : ''} transition-transform`} />
-                <span className="text-[10px] uppercase tracking-widest whitespace-nowrap">{tab.label}</span>
+                 <MapPin size={14} />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Utama</span>
               </button>
-            );
-          })}
+            )}
+            {(tabs || []).map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300 ${
+                    isActive 
+                      ? 'text-white font-bold' 
+                      : 'text-emerald-100/60 hover:text-white'
+                  }`}
+                  type="button"
+                >
+                  {isActive && (
+                    <motion.div 
+                      layoutId="activeHeroTabBg"
+                      className="absolute inset-0 bg-white/20 rounded-xl -z-10"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <Icon size={14} className={`${isActive ? 'scale-110' : ''} transition-transform`} />
+                  <span className="text-[10px] uppercase tracking-widest whitespace-nowrap">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </DashboardHero>
-
-      {/* Content Area - Now moves up since nav is integrated above */}
 
       {/* Content Area */}
       <main className="max-w-6xl mx-auto px-4">

@@ -39,9 +39,9 @@ export const MobileAcademicList = React.memo(function MobileAcademicList<T>({
 
   React.useEffect(() => {
     setVisibleCount(10); // Reset when data changes
-    if (data.length > 10) {
+    if ((data || []).length > 10) {
       const timer = setTimeout(() => {
-        setVisibleCount(data.length);
+        setVisibleCount((data || []).length);
       }, 300); // Wait 300ms before rendering the rest to allow LCP/FCP to fire
       return () => clearTimeout(timer);
     }
@@ -105,18 +105,18 @@ export const MobileAcademicList = React.memo(function MobileAcademicList<T>({
             </div>
           ))}
         </div>
-      ) : data.length === 0 ? (
+      ) : (data || []).length === 0 ? (
         <div className="py-12 text-center text-slate-600 dark:text-slate-400 font-medium italic text-sm">
           {emptyMessage}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {data.slice(0, visibleCount).map((item, index) => (
+          {(data || []).slice(0, visibleCount).map((item, index) => (
             <React.Fragment key={index}>
               {renderCard(item)}
             </React.Fragment>
           ))}
-          {data.length > visibleCount && (
+          {(data || []).length > visibleCount && (
             <div className="flex justify-center py-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-400" />
             </div>
@@ -153,3 +153,5 @@ export const MobileAcademicList = React.memo(function MobileAcademicList<T>({
     </div>
   );
 }) as <T>(props: MobileAcademicListProps<T>) => React.ReactElement;
+
+(MobileAcademicList as any).displayName = 'MobileAcademicList';

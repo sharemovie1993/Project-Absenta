@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -32,7 +33,7 @@ interface TahunPelajaranFormProps {
   mode?: 'create' | 'edit' | 'view';
 }
 
-export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = ({
+export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(({
   tahunPelajaranId,
   onSuccess,
   onCancel,
@@ -68,7 +69,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = ({
     const loadActiveYear = async () => {
       try {
         const ay = await getActiveTahunPelajaran();
-        setActiveYear(ay);
+        setActiveYear(ay || null);
       } catch {
         setActiveYear(null);
       }
@@ -100,7 +101,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = ({
     loadTahunPelajaranData();
   }, [tahunPelajaranId, mode, showToast, reset]);
 
-  const onFormSubmit = async (data: CreateTahunPelajaranSchema) => {
+  const onFormSubmit = useCallback(async (data: CreateTahunPelajaranSchema) => {
     if (isViewMode) return;
     
     let requiresSeparateActivation = false;
@@ -171,9 +172,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-
+  }, [isViewMode, activeYear, isEditMode, tahunPelajaranId, confirm, showToast, onSuccess]);
 
   if (loadingData) {
     return (
@@ -235,6 +234,8 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = ({
       </form>
     </>
   );
-};
+});
 
+TahunPelajaranForm.displayName = 'TahunPelajaranForm';
 export default TahunPelajaranForm;
+

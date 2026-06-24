@@ -48,7 +48,6 @@ const PlansPage = lazy(() => import('./pages/billing/PlansPage'));
 const SubscriptionsPage = lazy(() => import('./pages/billing/SubscriptionsPage'));
 const BillingDashboardPage = lazy(() => import('./pages/billing/BillingDashboardPage'));
 const BillingReportsPage = lazy(() => import('./pages/billing/BillingReportsPage'));
-const MySubscriptionPage = lazy(() => import('./pages/billing/MySubscriptionPage'));
 const ApprovalsPage = lazy(() => import('./pages/billing/ApprovalsPage'));
 const CheckoutPage = lazy(() => import('./pages/billing/CheckoutPage'));
 const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage'));
@@ -162,7 +161,8 @@ const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
 const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggaranPage'));
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
-const BpbkWorkspacePage = lazy(() => import('./pages/kesiswaan/bk/BpbkWorkspacePage'));
+const PrestasiPage = lazy(() => import('./pages/kesiswaan/PrestasiPage'));
+const BpbkWorkspacePage = lazy(() => import('./pages/bpbk/BpbkWorkspacePage'));
 const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
@@ -178,6 +178,7 @@ const NotFoundPage = lazy(() => import('./pages/error/NotFoundPage'));
 const ServerErrorPage = lazy(() => import('./pages/error/ServerErrorPage'));
 
 // Hubin Module
+const HubinWorkspacePage = lazy(() => import('./pages/hubin/HubinWorkspacePage'));
 const MitraIndustriPage = lazy(() => import('./pages/hubin/MitraIndustriPage'));
 const PenempatanPklPage = lazy(() => import('./pages/hubin/PenempatanPklPage'));
 const AbsensiPklPage = lazy(() => import('./pages/hubin/AbsensiPklPage'));
@@ -488,7 +489,7 @@ function App() {
 
                     {/* Kesiswaan Routes */}
                     <Route path="/kesiswaan/piket" element={
-                      <ProtectedRoute requiredCapability="attendance.piket.view">
+                      <ProtectedRoute requiredCapability="kesiswaan.piket.view">
                         <PiketPage />
                       </ProtectedRoute>
                     } />
@@ -502,8 +503,13 @@ function App() {
                         <JenisPelanggaranPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/kesiswaan/bk" element={
-                      <ProtectedRoute requiredCapability="affairs.violations.view.list">
+                    <Route path="/kesiswaan/prestasi" element={
+                      <ProtectedRoute requiredCapability="kesiswaan.prestasi.view">
+                        <PrestasiPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <BpbkWorkspacePage />
                         </Suspense>
@@ -511,24 +517,18 @@ function App() {
                     } />
 
                     {/* Hubin Module */}
-                    <Route path="/hubin/mitra" element={
-                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list']}>
-                        <MitraIndustriPage />
+                    <Route path="/hubin" element={
+                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <HubinWorkspacePage />
+                        </Suspense>
                       </ProtectedRoute>
                     } />
-                    <Route path="/hubin/penempatan" element={
-                      <ProtectedRoute requiredCapability="hubin.pkl.view.list">
-                        <PenempatanPklPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/hubin/absensi" element={
-                      <ProtectedRoute requiredCapability="hubin.view.pkl">
-                        <AbsensiPklPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/hubin/monitoring" element={
-                      <ProtectedRoute requiredCapability={['hubin.absensi.view.history', 'hubin.absensi.recap']}>
-                        <MonitoringPklPage />
+                    <Route path="/hubin/:tab" element={
+                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <HubinWorkspacePage />
+                        </Suspense>
                       </ProtectedRoute>
                     } />
 
@@ -696,15 +696,15 @@ function App() {
                     } />
                     <Route path="/billing/my-subscription" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
-                        <MySubscriptionPage />
+                        <Navigate to="/service-center?tab=status" replace />
                       </ProtectedRoute>
                     } />
                     <Route path="/billing" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
                         <RoleSwitch
                           superadmin={<Navigate to="/billing/dashboard" replace />}
-                          admin={<Navigate to="/billing/my-subscription" replace />}
-                          fallback={<Navigate to="/billing/my-subscription" replace />}
+                          admin={<Navigate to="/service-center?tab=status" replace />}
+                          fallback={<Navigate to="/service-center?tab=status" replace />}
                         />
                       </ProtectedRoute>
                     } />
@@ -728,7 +728,7 @@ function App() {
                     <Route path="/management/subscriptions" element={<Navigate to="/billing/subscriptions" replace />} />
                     <Route path="/billing/billings" element={
                       <ProtectedRoute requiredCapability="billing.invoices.view.list">
-                        <RoleSwitch superadmin={<BillingsPage />} fallback={<Navigate to="/billing/my-subscription" replace />} />
+                        <RoleSwitch superadmin={<BillingsPage />} fallback={<Navigate to="/service-center?tab=status" replace />} />
                       </ProtectedRoute>
                     } />
                     {/* Owner-only: Approvals */}
@@ -867,7 +867,6 @@ function App() {
                     } />
                     
                     {/* Backward Compatibility Redirects */}
-                    <Route path="/billing/my-subscription" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/services" element={<Navigate to="/service-center?tab=catalog" replace />} />
                     <Route path="/documents" element={
                       <ProtectedRoute

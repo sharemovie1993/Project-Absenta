@@ -5,11 +5,22 @@ import { Button } from '../../ui/Button';
 import { Alert } from '../../ui/Alert';
 import ImportResultStats from './ImportResultStats';
 
+interface ImportResult {
+  created?: number;
+  updated?: number;
+  skipped?: number;
+  data?: unknown;
+  errors?: Array<{
+    row: number;
+    message: string;
+  }>;
+}
+
 interface ExcelImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  onImport: (file: File, onProgress: (progress: number) => void) => Promise<any>;
+  onImport: (file: File, onProgress: (progress: number) => void) => Promise<{ success: boolean; data?: any; errors?: any[] } | any>;
   onDownloadTemplate: () => Promise<void>;
   onSuccess?: () => void;
   sampleDataHint?: string;
@@ -18,7 +29,7 @@ interface ExcelImportModalProps {
   children?: React.ReactNode;
 }
 
-export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
+export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
   isOpen,
   onClose,
   title,
@@ -33,7 +44,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const resetState = () => {
@@ -122,7 +133,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                      {result.errors.map((err: any, idx: number) => (
+                      {(result.errors || []).map((err, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
                           <td className="p-3 font-mono text-[10px] text-slate-500">#{err.row}</td>
                           <td className="p-3 text-[11px] font-medium text-rose-600 dark:text-rose-400 leading-relaxed">{err.message}</td>
@@ -227,4 +238,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({
       </div>
     </Modal>
   );
-};
+});
+
+ExcelImportModal.displayName = 'ExcelImportModal';
+

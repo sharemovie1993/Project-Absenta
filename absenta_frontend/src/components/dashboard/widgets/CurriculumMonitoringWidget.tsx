@@ -85,3 +85,4 @@ export const CurriculumMonitoringWidget: React.FC<CurriculumMonitoringWidgetProp
     </div>
   );
 };
+

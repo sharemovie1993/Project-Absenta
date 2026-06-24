@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -24,7 +24,7 @@ const TripayHealthPage: React.FC = () => {
     return 'degraded';
   }, [isTripaySupported, channels.length, error]);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     setLastCheck('');
@@ -40,10 +40,11 @@ const TripayHealthPage: React.FC = () => {
       const ch = Array.isArray(channelsRes?.data) ? channelsRes.data : [];
       setChannels(ch);
       const gw = Array.isArray(gwRes?.data?.gateways) ? gwRes.data.gateways : [];
-      setSupported(gw.map((x) => String(x)));
+      setSupported(gw?.map((x) => String(x)) || []);
       setLastCheck(new Date().toISOString());
-    } catch (e: any) {
-      const msg = typeof e?.message === 'string' ? e.message : 'Gagal memuat data Tripay';
+    } catch (e: unknown) {
+      const errObj = e as { message?: string };
+      const msg = typeof errObj?.message === 'string' ? errObj.message : 'Gagal memuat data Tripay';
       setError(msg);
       setChannels([]);
       setSupported([]);
@@ -51,14 +52,14 @@ const TripayHealthPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
-  // Stats list terstandar untuk layout
-  const statsList = useMemo(() => {
+  // Stats terstandar untuk layout
+  const healthStats = useMemo(() => {
     const statusLabel = status === 'healthy' ? 'Sehat (Online)' : status === 'degraded' ? 'Terganggu' : 'Kritis (Offline)';
     return [
       {
@@ -110,11 +111,19 @@ const TripayHealthPage: React.FC = () => {
     <SuperAdminPageLayout
       title="Kesehatan Sistem Tripay (Tripay Health)"
       description="Pantau latensi respon, validasi integritas saluran pembayaran merchant, serta daftarkan status integrasi API Tripay di Absenta.id."
+      hardeningModuleKey="tripay_health"
       breadcrumbs={[
         { label: 'System Utilities' },
         { label: 'Kesehatan Tripay' }
       ]}
-      stats={statsList}
+      instruction={{
+        title: 'Pemantauan Kesehatan Tripay',
+        items: [
+          { text: 'Halaman ini digunakan untuk memantau kesehatan integrasi dan konektivitas API Tripay.' },
+          { text: 'Gunakan tombol Pengecekan Ulang untuk melakukan tes latensi respon secara real-time.' }
+        ]
+      }}
+      stats={healthStats}
       isLoading={loading && channels.length === 0}
       toolbar={toolbarSlot}
     >
@@ -156,7 +165,7 @@ const TripayHealthPage: React.FC = () => {
             <div className="flex flex-wrap gap-2">
               {supported.length === 0 ? (
                 <div className="text-xs text-slate-400 font-medium">Tidak ada data gateway didukung.</div>
-              ) : supported.map((g) => {
+              ) : supported?.map((g) => {
                 const isTripay = g === 'TRIPAY';
                 return (
                   <Badge 
@@ -206,7 +215,7 @@ const TripayHealthPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {channels.map((ch, idx) => (
+            {channels?.map((ch, idx) => (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}

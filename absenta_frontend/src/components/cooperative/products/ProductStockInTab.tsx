@@ -37,7 +37,7 @@ interface ProductStockInTabProps {
   setActiveTab: (tab: 'catalog' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
 }
 
-export const ProductStockInTab: React.FC<ProductStockInTabProps> = ({
+export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   products,
   fetchProducts,
   setActiveTab
@@ -217,7 +217,7 @@ export const ProductStockInTab: React.FC<ProductStockInTabProps> = ({
               {/* Suggestions Panel */}
               {showProductSuggestions && productSuggestions.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden suggestions-container">
-                  {productSuggestions.map((p) => (
+                  {(productSuggestions || []).map((p) => (
                     <button
                       key={p.id}
                       onClick={() => handleAddStockInItem(p)}
@@ -254,7 +254,7 @@ export const ProductStockInTab: React.FC<ProductStockInTabProps> = ({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {selectedStockInItems.map((item) => (
+                  {(selectedStockInItems || []).map((item) => (
                     <tr key={item.product.id}>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <p className="text-sm font-semibold text-gray-800">{item.product.name}</p>
@@ -428,6 +428,8 @@ export const ProductStockInTab: React.FC<ProductStockInTabProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ProductStockInTab.displayName = 'ProductStockInTab';
 
 export default ProductStockInTab;

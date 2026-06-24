@@ -381,4 +381,6 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   );
 });
 
+JurusanList.displayName = 'JurusanList';
+
 export default JurusanList;

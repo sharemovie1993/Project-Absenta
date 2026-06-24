@@ -1,14 +1,15 @@
 import React from 'react';
 import { UserPlus } from 'lucide-react';
-import { Modal, Button, Input, SearchableSelect } from '../ui';
+import { Modal, Button, Input } from '../ui';
+import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 
 interface HubinPklPlottingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mitraOptions: any[];
-  guruOptions: any[];
+  mitraOptions: SearchableSelectOption[];
+  guruOptions: SearchableSelectOption[];
   selectedSiswaId: string;
   setSelectedSiswaId: (val: string) => void;
   selectedMitraId: string;
@@ -75,8 +76,9 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = ({
         </SimpleFormField>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SimpleFormField label="Mitra Industri" required>
+          <SimpleFormField htmlFor="plotting-mitra" label="Mitra Industri" required>
             <SearchableSelect
+              id="plotting-mitra"
               options={mitraOptions}
               placeholder="-- Pilih perusahaan --"
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -87,8 +89,9 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = ({
             />
           </SimpleFormField>
 
-          <SimpleFormField label="Guru Pembimbing">
+          <SimpleFormField htmlFor="plotting-pembimbing" label="Guru Pembimbing">
             <SearchableSelect
+              id="plotting-pembimbing"
               options={guruOptions}
               placeholder="-- Pilih pembimbing --"
               triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -101,15 +104,17 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SimpleFormField label="Tanggal Mulai PKL" required>
+          <SimpleFormField htmlFor="plotting-tanggal-mulai" label="Tanggal Mulai PKL" required>
             <Input
+              id="plotting-tanggal-mulai"
               type="date"
               name="tanggal_mulai"
               required
             />
           </SimpleFormField>
-          <SimpleFormField label="Tanggal Selesai PKL (Estimasi)">
+          <SimpleFormField htmlFor="plotting-tanggal-selesai" label="Tanggal Selesai PKL (Estimasi)">
             <Input
+              id="plotting-tanggal-selesai"
               type="date"
               name="tanggal_selesai"
             />

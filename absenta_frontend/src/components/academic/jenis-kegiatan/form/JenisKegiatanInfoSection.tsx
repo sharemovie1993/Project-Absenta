@@ -4,25 +4,26 @@ import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { Switch } from '../../../ui/Switch';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
-import { Controller } from 'react-hook-form';
+import { Controller, Control, FieldErrors, UseFormRegister, UseFormWatch } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
+import { JenisKegiatanFormValues } from '../../../../schemas/academic/jenis-kegiatan.schema';
 
 interface JenisKegiatanInfoSectionProps {
-  register: any;
-  control: any;
-  errors: any;
+  register: UseFormRegister<JenisKegiatanFormValues>;
+  control: Control<JenisKegiatanFormValues>;
+  errors: FieldErrors<JenisKegiatanFormValues>;
   isViewMode: boolean;
-  watch: any;
-  tipeOptions: any[];
+  watch: UseFormWatch<JenisKegiatanFormValues>;
+  tipeOptions: { value: string; label: string }[];
 }
 
-export const JenisKegiatanInfoSection: React.FC<JenisKegiatanInfoSectionProps> = ({
+export const JenisKegiatanInfoSection = React.memo<JenisKegiatanInfoSectionProps>(({
   register,
   control,
   errors,
   isViewMode,
   watch,
-  tipeOptions
+  tipeOptions = []
 }) => {
   const watchAktif = watch('aktif');
 
@@ -135,6 +136,7 @@ export const JenisKegiatanInfoSection: React.FC<JenisKegiatanInfoSectionProps> =
                     onCheckedChange={field.onChange}
                     disabled={isViewMode}
                     className="scale-110"
+                    id="aktif"
                   />
                 )}
               />
@@ -144,4 +146,6 @@ export const JenisKegiatanInfoSection: React.FC<JenisKegiatanInfoSectionProps> =
       </div>
     </SectionCard>
   );
-};
+});
+JenisKegiatanInfoSection.displayName = 'JenisKegiatanInfoSection';
+

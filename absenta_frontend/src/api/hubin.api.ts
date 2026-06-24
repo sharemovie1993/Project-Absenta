@@ -6,10 +6,101 @@ export interface MitraIndustri {
   bidang?: string;
   alamat?: string;
   kontak?: string;
-  mou_url?: string;
   latitude?: number;
   longitude?: number;
   radius?: number;
+  
+  // Detail PIC Industri
+  pic_nama?: string;
+  pic_jabatan?: string;
+  pic_telepon?: string;
+  pic_email?: string;
+
+  // MoU & Kuota
+  mou_nomor?: string;
+  mou_url?: string;
+  mou_tanggal_mulai?: string;
+  mou_tanggal_berakhir?: string;
+  mou_status?: string;
+  kuota_pkl?: number;
+  kompetensi_keahlian?: string;
+}
+
+export interface HubinMoUHistory {
+  id: string;
+  mitra_id: string;
+  mou_nomor: string;
+  mou_tipe: string;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  mou_url?: string;
+  keterangan?: string;
+}
+
+export interface HubinLowongan {
+  id: string;
+  mitra_id?: string;
+  perusahaan_nama: string;
+  judul_posisi: string;
+  deskripsi: string;
+  persyaratan: string;
+  kuota: number;
+  tanggal_tutup: string;
+  status: 'BUKA' | 'TUTUP';
+  Mitra?: {
+    nama: string;
+    alamat?: string;
+  };
+}
+
+export interface HubinLamaran {
+  id: string;
+  lowongan_id: string;
+  siswa_id: string;
+  status_seleksi: 'TERKIRIM' | 'PROSES' | 'INTERVIEW' | 'DITERIMA' | 'DITOLAK';
+  cv_url?: string;
+  catatan?: string;
+  created_at: string;
+  Lowongan?: {
+    judul_posisi: string;
+    perusahaan_nama: string;
+  };
+  Siswa?: {
+    nama_siswa: string;
+    nis: string;
+  };
+}
+
+export interface HubinTracerStudy {
+  id: string;
+  siswa_id: string;
+  tahun_lulus: number;
+  status_alumni: 'BEKERJA' | 'KULIAH' | 'WIRAUSAHA' | 'MENCARI_KERJA';
+  perusahaan_nama?: string;
+  posisi?: string;
+  gaji_estimasi?: string;
+  universitas_nama?: string;
+  program_studi?: string;
+  usaha_nama?: string;
+  usaha_bidang?: string;
+  Siswa?: {
+    nama_siswa: string;
+    nis: string;
+  };
+}
+
+export interface HubinTefaOrder {
+  id: string;
+  mitra_id?: string;
+  nama_proyek: string;
+  nilai_kontrak?: number;
+  status_proyek: 'PERENCANAAN' | 'BERJALAN' | 'SELESAI' | 'BATAL';
+  tanggal_mulai?: string;
+  tanggal_target?: string;
+  deskripsi?: string;
+  Mitra?: {
+    nama: string;
+  };
 }
 
 export interface SiswaPkl {
@@ -96,4 +187,39 @@ export const hubinApi = {
   getSettings: () => requestWithFallback<{ folderUrl: string; driveMode: string }>('get', '/hubin/settings'),
   updateSettings: (data: { folderUrl: string; driveMode: string }) => requestWithFallback<any>('put', '/hubin/settings', { data }),
   deletePhoto: (url: string) => requestWithFallback<any>('delete', '/hubin/upload', { data: { url } }),
+
+  // MoU History
+  getMoUHistory: (mitraId: string) => requestWithFallback<any>('get', `/hubin/mitra/${mitraId}/mou`),
+  createMoUHistory: (mitraId: string, data: any) => requestWithFallback<any>('post', `/hubin/mitra/${mitraId}/mou`, { data }),
+  deleteMoUHistory: (id: string) => requestWithFallback<any>('delete', `/hubin/mou/${id}`),
+
+  // BKK Lowongan
+  getLowongan: (params?: { search?: string; status?: string; page?: number; limit?: number }) => 
+    requestWithFallback<any>('get', '/hubin/bkk/lowongan', { params }),
+  createLowongan: (data: Partial<HubinLowongan>) => requestWithFallback<any>('post', '/hubin/bkk/lowongan', { data }),
+  updateLowongan: (id: string, data: Partial<HubinLowongan>) => requestWithFallback<any>('put', `/hubin/bkk/lowongan/${id}`, { data }),
+  deleteLowongan: (id: string) => requestWithFallback<any>('delete', `/hubin/bkk/lowongan/${id}`),
+
+  // BKK Lamaran
+  getLamaran: (params?: { lowonganId?: string; status?: string; siswaId?: string; page?: number; limit?: number }) => 
+    requestWithFallback<any>('get', '/hubin/bkk/lamaran', { params }),
+  createLamaran: (data: Partial<HubinLamaran>) => requestWithFallback<any>('post', '/hubin/bkk/lamaran', { data }),
+  updateLamaranStatus: (id: string, status: string, catatan?: string) => 
+    requestWithFallback<any>('put', `/hubin/bkk/lamaran/${id}/status`, { data: { status, catatan } }),
+
+  // Tracer Study
+  getTracerStudy: (params?: { search?: string; tahunLulus?: number; statusAlumni?: string; page?: number; limit?: number }) => 
+    requestWithFallback<any>('get', '/hubin/tracer', { params }),
+  submitTracerStudy: (data: Partial<HubinTracerStudy>) => requestWithFallback<any>('post', '/hubin/tracer', { data }),
+  getTracerStats: () => requestWithFallback<any>('get', '/hubin/tracer/stats'),
+
+  // TEFA
+  getTefaOrders: (params?: { search?: string; statusProyek?: string; page?: number; limit?: number }) => 
+    requestWithFallback<any>('get', '/hubin/tefa', { params }),
+  createTefaOrder: (data: Partial<HubinTefaOrder>) => requestWithFallback<any>('post', '/hubin/tefa', { data }),
+  updateTefaOrder: (id: string, data: Partial<HubinTefaOrder>) => requestWithFallback<any>('put', `/hubin/tefa/${id}`, { data }),
+  deleteTefaOrder: (id: string) => requestWithFallback<any>('delete', `/hubin/tefa/${id}`),
+
+  // Activity Feed
+  getRecentActivity: () => requestWithFallback<any>('get', '/hubin/activity/recent'),
 };

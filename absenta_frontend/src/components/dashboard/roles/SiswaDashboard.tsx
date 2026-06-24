@@ -202,7 +202,7 @@ export const SiswaDashboard: React.FC = () => {
       { label: 'Konseling', icon: MessageCircle, onClick: () => navigate('/kesiswaan/konseling'), color: 'blue' },
     ];
 
-    if (can('hubin.view.pkl') || caps.includes('hubin.view.pkl')) {
+    if (can('hubin.self.pkl') || caps.includes('hubin.self.pkl') || can('hubin.view.pkl') || caps.includes('hubin.view.pkl')) {
       actions.unshift({ label: 'Presensi & Jurnal PKL', icon: Briefcase, onClick: () => navigate('/hubin/absensi'), color: 'emerald' });
     }
 

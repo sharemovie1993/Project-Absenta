@@ -23,7 +23,7 @@ interface PiketSecurityProps {
   handleMarkReturned: (id: string, namaSiswa: string) => Promise<void>;
 }
 
-export const PiketSecurity: React.FC<PiketSecurityProps> = ({
+export const PiketSecurity: React.FC<PiketSecurityProps> = React.memo(({
   dailyPermits,
   verificationResult,
   setVerificationResult,
@@ -114,4 +114,4 @@ export const PiketSecurity: React.FC<PiketSecurityProps> = ({
       )}
     </Card>
   );
-};
+});

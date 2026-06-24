@@ -38,7 +38,7 @@ interface SavingsTableProps {
   onOpenExportModal: () => void;
 }
 
-export const SavingsTable: React.FC<SavingsTableProps> = ({
+export const SavingsTable = React.memo<SavingsTableProps>(({
   savings,
   loading,
   isStudent,
@@ -223,7 +223,7 @@ export const SavingsTable: React.FC<SavingsTableProps> = ({
 
   const filterTypeOptions = useMemo(() => {
     const list = [{ label: 'Semua Jenis', value: 'ALL' }];
-    categories.forEach(cat => {
+    categories?.forEach(cat => {
       list.push({ label: cat.name, value: cat.code });
     });
     return list;
@@ -259,7 +259,7 @@ export const SavingsTable: React.FC<SavingsTableProps> = ({
   }, [isStudent, typeFilter, setTypeFilter, filterTypeOptions, onOpenExportModal, setPage]);
 
   const filteredSavings = useMemo(() => {
-    return savings.filter((s) => {
+    return (savings || []).filter((s) => {
       const matchSearch =
         s.member.name.toLowerCase().includes(search.toLowerCase()) ||
         s.member.memberNo.toLowerCase().includes(search.toLowerCase());
@@ -345,4 +345,6 @@ export const SavingsTable: React.FC<SavingsTableProps> = ({
       }}
     />
   );
-};
+});
+
+SavingsTable.displayName = 'SavingsTable';

@@ -23,7 +23,7 @@ interface NonMember {
   address: string;
 }
 
-export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
+export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(({
   isOpen,
   onClose,
   onSuccess,
@@ -121,7 +121,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
   };
 
   const selectedMembersList = useMemo(() => {
-    return nonMembers.filter(m => selectedIds.has(m.id));
+    return (nonMembers || []).filter(m => selectedIds.has(m.id));
   }, [nonMembers, selectedIds]);
 
   const handleSubmitBulk = async () => {
@@ -138,14 +138,51 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
         onSuccess();
         setStep(4);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Bulk registration error:', err);
-      const errorMsg = err.response?.data?.message || 'Gagal mendaftarkan anggota secara massal.';
+      const errorObj = err as any;
+      const errorMsg = errorObj.response?.data?.message || 'Gagal mendaftarkan anggota secara massal.';
       toast.error(errorMsg);
     } finally {
       setSubmitLoading(false);
     }
   };
+
+  const columns = useMemo(() => [
+    {
+      key: '__select',
+      label: (
+        <Checkbox
+          checked={(nonMembers?.length || 0) > 0 && nonMembers.every(n => selectedIds.has(n.id))}
+          onCheckedChange={(checked) => {
+            const next = new Set<string>(selectedIds);
+            if (checked) {
+              nonMembers.forEach(n => next.add(n.id));
+            } else {
+              nonMembers.forEach(n => next.delete(n.id));
+            }
+            setSelectedIds(next);
+          }}
+          label=""
+        />
+      ),
+      className: 'w-12 text-center',
+      render: (_, row: NonMember) => (
+        <Checkbox
+          checked={selectedIds.has(row.id)}
+          onCheckedChange={(checked) => {
+            const next = new Set<string>(selectedIds);
+            if (checked) next.add(row.id); else next.delete(row.id);
+            setSelectedIds(next);
+          }}
+          label=""
+        />
+      )
+    },
+    { key: 'name', label: 'Nama Lengkap' },
+    { key: 'identityNo', label: memberType === 'STUDENT' ? 'NIS' : 'NIP' },
+    { key: 'className', label: 'Klasifikasi / Kelas' }
+  ], [nonMembers, selectedIds, memberType]);
 
   return (
     <Modal
@@ -231,7 +268,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
                   onValueChange={setKelasId}
                   options={[
                     { label: 'Semua Kelas', value: 'ALL' },
-                    ...kelasOptions.map(k => ({ label: k.nama_kelas, value: k.id }))
+                    ...(kelasOptions || []).map(k => ({ label: k.nama_kelas, value: k.id }))
                   ]}
                   placeholder="Pilih Kelas"
                   triggerClassName="w-full h-11 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -255,6 +292,8 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
+                  id="bulk-search-query"
+                  aria-label={`Cari nama, ${memberType === 'STUDENT' ? 'NIS' : 'NIP'} calon anggota`}
                   placeholder={`Cari nama, ${memberType === 'STUDENT' ? 'NIS' : 'NIP'} calon anggota...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -271,41 +310,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
             <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
               <Table
                 compact={true}
-                columns={[
-                  {
-                    key: '__select',
-                    label: (
-                      <Checkbox
-                        checked={nonMembers.length > 0 && nonMembers.every(n => selectedIds.has(n.id))}
-                        onCheckedChange={(checked) => {
-                          const next = new Set<string>(selectedIds);
-                          if (checked) {
-                            nonMembers.forEach(n => next.add(n.id));
-                          } else {
-                            nonMembers.forEach(n => next.delete(n.id));
-                          }
-                          setSelectedIds(next);
-                        }}
-                        label=""
-                      />
-                    ),
-                    className: 'w-12 text-center',
-                    render: (_, row: NonMember) => (
-                      <Checkbox
-                        checked={selectedIds.has(row.id)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set<string>(selectedIds);
-                          if (checked) next.add(row.id); else next.delete(row.id);
-                          setSelectedIds(next);
-                        }}
-                        label=""
-                      />
-                    )
-                  },
-                  { key: 'name', label: 'Nama Lengkap' },
-                  { key: 'identityNo', label: memberType === 'STUDENT' ? 'NIS' : 'NIP' },
-                  { key: 'className', label: 'Klasifikasi / Kelas' }
-                ]}
+                columns={columns}
                 data={nonMembers}
                 loading={loading}
                 emptyMessage="Tidak ada calon anggota ditemukan"
@@ -345,7 +350,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
 
             <div className="border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden max-h-56 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800 scrollbar-thin">
               <div className="bg-slate-50 dark:bg-slate-900 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Daftar Calon Anggota Terpilih</div>
-              {selectedMembersList.map((m) => (
+              {selectedMembersList?.map((m) => (
                 <div key={m.id} className="px-4 py-2.5 flex items-center justify-between text-xs hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-bold text-slate-800 dark:text-slate-200">{m.name}</span>
@@ -406,4 +411,4 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

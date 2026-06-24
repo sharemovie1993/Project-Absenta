@@ -41,7 +41,7 @@ interface KelasListProps {
   guruId?: string;
 }
 
-const KelasList: React.FC<KelasListProps> = ({ 
+const KelasList = React.memo<KelasListProps>(({ 
   onEdit, 
   onView, 
   onAdd,
@@ -446,7 +446,7 @@ const KelasList: React.FC<KelasListProps> = ({
             onValueChange={setFilterJurusan}
             options={[
               { label: "Semua Jurusan", value: "" },
-              ...jurusanList.map(j => ({ label: j.nama, value: j.id }))
+              ...(jurusanList || [])?.map(j => ({ label: j.nama, value: j.id }))
             ]}
             placeholder="Pilih Jurusan"
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -583,7 +583,7 @@ const KelasList: React.FC<KelasListProps> = ({
           </div>
           <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
             <div className="max-h-64 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
-              {bulkErrorDetails.map((e) => (
+              {bulkErrorDetails?.map((e) => (
                 <div key={e.id} className="p-4 flex flex-col gap-1 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.name}</span>
                   <span className="text-[10px] text-rose-500 font-medium">{e.message}</span>
@@ -598,6 +598,8 @@ const KelasList: React.FC<KelasListProps> = ({
       </Modal>
     </div>
   );
-};
+});
+
+KelasList.displayName = 'KelasList';
 
 export default KelasList;

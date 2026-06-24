@@ -50,7 +50,7 @@ interface ProductCatalogTabProps {
   fetchCategories: () => Promise<void>;
 }
 
-export const ProductCatalogTab: React.FC<ProductCatalogTabProps> = ({
+export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   products,
   categories,
   fetchProducts,
@@ -88,7 +88,7 @@ export const ProductCatalogTab: React.FC<ProductCatalogTabProps> = ({
   const categoryOptions = useMemo(() => {
     return [
       { value: 'ALL', label: 'Semua Kategori' },
-      ...categories.map(cat => ({
+      ...(categories || []).map(cat => ({
         value: cat.name,
         label: cat.name
       }))
@@ -396,7 +396,7 @@ export const ProductCatalogTab: React.FC<ProductCatalogTabProps> = ({
             editingProduct={editingProduct}
             onSubmit={handleProductSubmit}
             isLoading={productSubmitLoading}
-            existingCategories={categories.map(c => c.name)}
+            existingCategories={(categories || []).map(c => c.name)}
           />
         )}
         
@@ -427,6 +427,8 @@ export const ProductCatalogTab: React.FC<ProductCatalogTabProps> = ({
       />
     </div>
   );
-};
+});
+
+ProductCatalogTab.displayName = 'ProductCatalogTab';
 
 export default ProductCatalogTab;

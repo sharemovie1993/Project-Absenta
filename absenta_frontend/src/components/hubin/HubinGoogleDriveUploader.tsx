@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { Cloud, Lock, UploadCloud, CheckCircle, AlertCircle, RefreshCw, Trash2, ExternalLink } from 'lucide-react';
 import axiosInstance from '../../lib/axiosInstance';
 import { Button } from '../ui';
@@ -34,13 +34,21 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
   folderName
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMounted = useRef(true);
   const [status, setStatus] = useState<'idle' | 'auth' | 'uploading' | 'syncing' | 'success' | 'error'>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [fileName, setFileName] = useState('');
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  React.useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -52,6 +60,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
       setStatus('auth');
       setProgress(20);
       await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!isMounted.current) return;
 
       // Step 2: Uploading File to Absenta storage
       setStatus('uploading');
@@ -73,13 +82,14 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
       const res = await axiosInstance.post('/hubin/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
+          if (isMounted.current && progressEvent.total) {
             const pct = Math.round((progressEvent.loaded * 40) / progressEvent.total) + 50;
             setProgress(Math.min(90, pct));
           }
         }
       });
 
+      if (!isMounted.current) return;
       const uploadedUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
       if (!uploadedUrl) {
         throw new Error('Gagal mengunggah foto. Server tidak mengembalikan URL berkas.');
@@ -89,39 +99,48 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
       setStatus('syncing');
       setProgress(95);
       await new Promise((resolve) => setTimeout(resolve, 700));
+      if (!isMounted.current) return;
 
       // Done
       setProgress(100);
       setStatus('success');
       onChange(uploadedUrl);
-    } catch (err: any) {
-      console.error(err);
-      setErrorMsg(err.message || 'Terjadi kesalahan saat mengunggah.');
-      setStatus('error');
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error(error);
+      if (isMounted.current) {
+        setErrorMsg(error.message || 'Terjadi kesalahan saat mengunggah.');
+        setStatus('error');
+      }
     }
-  };
+  }, [customFileName, folderName, onChange]);
 
-  const handleReset = async () => {
+  const handleReset = useCallback(async () => {
     if (value) {
       setIsDeleting(true);
       const deleteToast = toast.loading('Menghapus file permanen dari Google Drive...');
       try {
         await hubinApi.deletePhoto(value);
         toast.success('File berhasil dihapus permanen.', { id: deleteToast });
-      } catch (err) {
-        console.error('Failed to delete file from Drive:', err);
+      } catch (err: unknown) {
+        const error = err as Error;
+        console.error('Failed to delete file from Drive:', error);
         toast.error('Gagal menghapus file dari Drive, tapi tautan dilepas.', { id: deleteToast });
       } finally {
-        setIsDeleting(false);
+        if (isMounted.current) {
+          setIsDeleting(false);
+        }
       }
     }
     
-    onChange('');
-    setFileName('');
-    setStatus('idle');
-    setProgress(0);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+    if (isMounted.current) {
+      onChange('');
+      setFileName('');
+      setStatus('idle');
+      setProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [value, onChange]);
 
   return (
     <div className={compact ? "space-y-1.5" : "space-y-2"}>

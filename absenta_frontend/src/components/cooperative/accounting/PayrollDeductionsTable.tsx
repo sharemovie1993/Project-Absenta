@@ -17,7 +17,7 @@ interface PayrollDeductionsTableProps {
     calculateItemTotal: (item: PayrollItem) => number;
 }
 
-export const PayrollDeductionsTable: React.FC<PayrollDeductionsTableProps> = ({
+export const PayrollDeductionsTable = React.memo<PayrollDeductionsTableProps>(({
     payrollData,
     savingCategories,
     visibleColumns,
@@ -60,8 +60,8 @@ export const PayrollDeductionsTable: React.FC<PayrollDeductionsTableProps> = ({
                             )}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-150 dark:divide-slate-850 font-medium text-slate-700 dark:text-slate-350">
-                        {payrollData.length === 0 ? (
+                    <tbody className="divide-y divide-slate-150 dark:divide-slate-850 font-medium text-slate-700 dark:text-slate-355">
+                        {!payrollData || payrollData.length === 0 ? (
                             <tr>
                                 <td colSpan={2 + (showSavings ? savingsColSpan : 0) + (hasLoans && showLoans ? 3 : 0) + 1} className="p-10 text-center text-slate-400 font-bold uppercase tracking-wider">
                                     Belum ada data rekap potongan untuk periode ini.
@@ -136,4 +136,6 @@ export const PayrollDeductionsTable: React.FC<PayrollDeductionsTableProps> = ({
             </div>
         </div>
     );
-};
+});
+
+PayrollDeductionsTable.displayName = 'PayrollDeductionsTable';

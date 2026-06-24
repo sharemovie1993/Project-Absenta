@@ -22,7 +22,7 @@ interface JournalTableProps {
     journals: JournalEntry[];
 }
 
-export const JournalTable: React.FC<JournalTableProps> = ({ journals }) => {
+export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
     return (
         <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -37,7 +37,7 @@ export const JournalTable: React.FC<JournalTableProps> = ({ journals }) => {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                    {journals.length === 0 ? (
+                    {!journals || journals.length === 0 ? (
                         <tr>
                             <td colSpan={6} className="p-8 text-center text-slate-450 font-bold uppercase tracking-wider">Belum ada jurnal entri.</td>
                         </tr>
@@ -48,19 +48,19 @@ export const JournalTable: React.FC<JournalTableProps> = ({ journals }) => {
                                     <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-955/20 transition-colors">
                                         {idx === 0 && (
                                             <>
-                                                <td className="p-4 font-semibold text-slate-600" rowSpan={journal.items.length}>
+                                                <td className="p-4 font-semibold text-slate-600" rowSpan={journal.items?.length || 1}>
                                                     {new Date(journal.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 </td>
-                                                <td className="p-4" rowSpan={journal.items.length}>
+                                                <td className="p-4" rowSpan={journal.items?.length || 1}>
                                                     <p className="font-bold text-slate-800 dark:text-slate-100">{journal.description}</p>
                                                 </td>
-                                                <td className="p-4 text-center font-mono text-slate-500 font-bold" rowSpan={journal.items.length}>
+                                                <td className="p-4 text-center font-mono text-slate-500 font-bold" rowSpan={journal.items?.length || 1}>
                                                     {journal.reference}
                                                 </td>
                                             </>
                                         )}
                                         <td className={`p-4 font-semibold text-slate-700 dark:text-slate-350 ${item.type === 'CREDIT' ? 'pl-8 text-indigo-650 dark:text-indigo-400' : ''}`}>
-                                            {item.account.code} - {item.account.name}
+                                            {item.account?.code} - {item.account?.name}
                                         </td>
                                         <td className="p-4 text-right font-black text-slate-800 dark:text-slate-200">
                                             {item.type === 'DEBIT' ? `Rp ${Math.round(Number(item.amount)).toLocaleString('id-ID')}` : '-'}
@@ -77,4 +77,6 @@ export const JournalTable: React.FC<JournalTableProps> = ({ journals }) => {
             </table>
         </div>
     );
-};
+});
+
+JournalTable.displayName = 'JournalTable';

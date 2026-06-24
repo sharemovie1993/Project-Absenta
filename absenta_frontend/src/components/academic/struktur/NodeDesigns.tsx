@@ -134,3 +134,9 @@ export const GroupNode = React.memo<NodeDesignProps>(({ node }) => {
     </div>
   );
 });
+
+LeadershipNode.displayName = 'LeadershipNode';
+CategoryNode.displayName = 'CategoryNode';
+MemberNode.displayName = 'MemberNode';
+UnassignedNode.displayName = 'UnassignedNode';
+GroupNode.displayName = 'GroupNode';

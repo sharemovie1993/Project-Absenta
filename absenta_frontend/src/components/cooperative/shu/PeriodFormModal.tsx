@@ -10,7 +10,7 @@ interface PeriodFormModalProps {
   onSuccess: () => void;
 }
 
-export const PeriodFormModal: React.FC<PeriodFormModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClose, onSuccess }) => {
   const [newPeriodData, setNewPeriodData] = useState({
     year: new Date().getFullYear() - 1,
     startDate: `${new Date().getFullYear() - 1}-01-01`,
@@ -89,7 +89,7 @@ export const PeriodFormModal: React.FC<PeriodFormModalProps> = ({ isOpen, onClos
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-205 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex justify-between items-center">
           <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-100">Buat Periode SHU Baru</h3>
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-855 dark:text-slate-100">Buat Periode SHU Baru</h3>
             <p className="text-[10px] text-slate-400">Inisialisasi tahun buku kalkulasi SHU</p>
           </div>
           <button 
@@ -151,7 +151,7 @@ export const PeriodFormModal: React.FC<PeriodFormModalProps> = ({ isOpen, onClos
                 type="button"
                 onClick={fetchLabaRugiData}
                 disabled={loadingLabaRugi}
-                className="text-[10px] text-indigo-650 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="text-[10px] text-indigo-655 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
                 {loadingLabaRugi ? (
                   <span className="w-2.5 h-2.5 border border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin"></span>
@@ -204,7 +204,7 @@ export const PeriodFormModal: React.FC<PeriodFormModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Action Buttons */}
-          <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex gap-3 justify-end">
+          <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex gap-3 justify-end">
             <Button
               type="button"
               variant="outline"
@@ -227,4 +227,6 @@ export const PeriodFormModal: React.FC<PeriodFormModalProps> = ({ isOpen, onClos
       </div>
     </div>
   );
-};
+});
+
+PeriodFormModal.displayName = 'PeriodFormModal';

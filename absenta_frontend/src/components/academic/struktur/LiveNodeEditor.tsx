@@ -4,9 +4,10 @@ import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
 import { Loader2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TopologyNodeData } from './types';
 
 interface LiveNodeEditorProps {
-  node: any;
+  node: TopologyNodeData | null | undefined;
   onSave: (val: { value: string; label: string }) => Promise<void>;
   onClose: () => void;
   anchorEl?: HTMLElement | null;
@@ -20,7 +21,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   
   const isSearchingRef = useRef(false);
-  const searchTimeout = useRef<any>(null);
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -100,14 +101,14 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [performSearch]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setQuery(val);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(() => performSearch(val), 300);
-  };
+  }, [performSearch]);
 
-  const handleSelect = async (val: string, label: string) => {
+  const handleSelect = useCallback(async (val: string, label: string) => {
     if (saving || !node) return; // Defensive check
     setSaving(true);
     try {
@@ -118,7 +119,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     } finally {
       setSaving(false);
     }
-  };
+  }, [saving, node, onSave]);
 
   if (!node) return null;
 
@@ -158,7 +159,7 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-1">
-            {options.map((opt) => (
+            {(options || []).map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => handleSelect(opt.value, opt.label)}
@@ -186,3 +187,5 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
     document.body
   );
 });
+
+LiveNodeEditor.displayName = 'LiveNodeEditor';

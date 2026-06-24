@@ -7,7 +7,7 @@ interface SiswaHistoryProps {
   siswaId: string;
 }
 
-export const SiswaHistory: React.FC<SiswaHistoryProps> = ({ siswaId }) => {
+export const SiswaHistory: React.FC<SiswaHistoryProps> = React.memo(({ siswaId }) => {
   const [history, setHistory] = useState<SiswaHistoryType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export const SiswaHistory: React.FC<SiswaHistoryProps> = ({ siswaId }) => {
         setLoading(true);
         const data = await getSiswaHistory(siswaId);
         // Sort history by year and semester descending
-        const sortedData = [...data].sort((a, b) => {
+        const sortedData = [...(data || [])].sort((a, b) => {
           const yearA = a.tahunPelajaran?.tahun || '';
           const yearB = b.tahunPelajaran?.tahun || '';
           if (yearA !== yearB) return yearB.localeCompare(yearA);
@@ -57,7 +57,7 @@ export const SiswaHistory: React.FC<SiswaHistoryProps> = ({ siswaId }) => {
     <div className="px-1">
 
       <Timeline className="px-2">
-        {history.map((item, index) => {
+        {(history || []).map((item, index) => {
           const isAktif = item.status === 'AKTIF';
           const isNaik = item.status === 'NAIK';
           const status = isAktif ? 'success' : (isNaik ? 'info' : 'warning');
@@ -90,5 +90,8 @@ export const SiswaHistory: React.FC<SiswaHistoryProps> = ({ siswaId }) => {
       </Timeline>
     </div>
   );
-};
+});
+
+SiswaHistory.displayName = 'SiswaHistory';
+
 

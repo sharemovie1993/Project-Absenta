@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   AlertTriangle, 
@@ -14,7 +14,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
-import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { kesiswaanApi, type Pelanggaran } from '../../api/kesiswaan.api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -32,18 +32,18 @@ const MonitoringKesiswaanPage: React.FC = () => {
   const stats = useMemo(() => {
     if (!violations?.data?.list) return { today: 0, severe: 0, totalPoints: 0, trending: 0 };
     const list = violations.data.list;
-    const today = list.filter((v: any) => new Date(v.tanggal).toDateString() === new Date().toDateString()).length;
-    const severe = list.filter((v: any) => v.poin >= 50).length;
-    const totalPoints = list.reduce((acc: number, curr: any) => acc + curr.poin, 0);
+    const today = list.filter((v: Pelanggaran) => new Date(v.tanggal).toDateString() === new Date().toDateString()).length;
+    const severe = list.filter((v: Pelanggaran) => v.poin >= 50).length;
+    const totalPoints = list.reduce((acc: number, curr: Pelanggaran) => acc + curr.poin, 0);
     
     return { today, severe, totalPoints, trending: list.length };
   }, [violations]);
 
-  const careList = useMemo(() => {
+  const careStudents = useMemo(() => {
     if (!violations?.data?.list) return [];
     const studentPoints: Record<string, { id: string; name: string; class: string; points: number }> = {};
     
-    violations.data.list.forEach((v: any) => {
+    violations.data.list.forEach((v: Pelanggaran) => {
       const id = v.siswa_id;
       if (!studentPoints[id]) {
         studentPoints[id] = { 
@@ -61,9 +61,13 @@ const MonitoringKesiswaanPage: React.FC = () => {
       .slice(0, 5);
   }, [violations]);
 
-  const recentList = useMemo(() => {
+  const recentViolations = useMemo(() => {
     return violations?.data?.list.slice(0, 5) || [];
   }, [violations]);
+
+  const handleNavigateToPelanggaran = useCallback(() => {
+    navigate('/kesiswaan/pelanggaran');
+  }, [navigate]);
 
   const academicStats = useMemo(() => [
     {
@@ -102,10 +106,25 @@ const MonitoringKesiswaanPage: React.FC = () => {
       description="Pantau statistik kedisiplinan, laporan pelanggaran, dan siswa yang memerlukan pembinaan segera."
       stats={academicStats}
       isLoadingStats={isLoading}
+      breadcrumbs={[
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Kesiswaan', path: '/kesiswaan' },
+        { label: 'Monitoring', path: '/kesiswaan/monitoring' }
+      ]}
+      instruction={{
+        title: "Panduan Monitoring Kesiswaan",
+        description: "Halaman ini digunakan untuk memantau data kedisiplinan dan pembinaan siswa secara real-time.",
+        items: [
+          { text: "Statistik di bagian atas menampilkan ringkasan data pelanggaran siswa." },
+          { text: "Gunakan 'Care Spotlight' untuk melihat siswa yang memerlukan perhatian atau pembinaan intensif segera." },
+          { text: "Catatan pelanggaran terkini menampilkan aktivitas real-time." }
+        ]
+      }}
+      hardeningModuleKey="kesiswaan_monitoring"
       toolbar={
         <div className="flex gap-3">
           <Button 
-            onClick={() => navigate('/kesiswaan/pelanggaran')}
+            onClick={handleNavigateToPelanggaran}
             variant="outline"
             className="rounded-xl h-12 px-6 font-black text-xs uppercase tracking-widest border-gray-100 shadow-sm"
           >
@@ -114,13 +133,12 @@ const MonitoringKesiswaanPage: React.FC = () => {
           <Button 
             variant="primary"
             className="rounded-xl h-12 px-8 font-black text-xs uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white shadow-xl shadow-indigo-600/20 border-none"
-            onClick={() => navigate('/kesiswaan/pelanggaran')}
+            onClick={handleNavigateToPelanggaran}
           >
             Input Catatan Baru
           </Button>
         </div>
       }
-      hardeningModuleKey="kesiswaan_monitoring"
     >
       {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mt-6">
@@ -141,8 +159,9 @@ const MonitoringKesiswaanPage: React.FC = () => {
               </div>
               
               <div className="space-y-3.5">
-                {isLoading ? [1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />) : 
-                 recentList.length > 0 ? recentList.map((v: any) => (
+                {/* EmptyState handler is implemented below */}
+                {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />) : 
+                 recentViolations.length > 0 ? recentViolations?.map((v: Pelanggaran) => (
                     <div key={v.id} className="p-4 rounded-xl border border-gray-100/50 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/50 hover:bg-indigo-50/10 dark:hover:bg-indigo-950/10 transition-all duration-300 group flex items-center justify-between">
                       <div className="flex items-center gap-4 min-w-0">
                         <div className={cn(
@@ -192,8 +211,8 @@ const MonitoringKesiswaanPage: React.FC = () => {
               </div>
               
               <div className="space-y-3.5">
-                {isLoading ? [1,2,3,4,5].map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-xl" />) : 
-                careList.map((s: any, idx: number) => (
+                {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-xl" />) : 
+                careStudents?.map((s: { id: string; name: string; class: string; points: number }, idx: number) => (
                   <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 p-2 -mx-2 rounded-xl transition-all">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-xs font-black border border-gray-100 dark:border-slate-800 group-hover:border-rose-500 transition-colors shrink-0">

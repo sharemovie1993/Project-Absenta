@@ -128,11 +128,11 @@ export default function PremiumFeatureGate({
       </motion.div>
 
       {/* Page Content (Fully Visible) */}
-      <div className="relative">
+      <div className={`relative ${isLocked ? 'blur-[3px] opacity-50 pointer-events-none select-none' : ''}`}>
         {children}
         
         {/* Subtle non-intrusive interaction blocker (Optional) */}
-        <div className="absolute inset-0 z-0 bg-transparent" />
+        {isLocked && <div className="absolute inset-0 z-10 bg-transparent" />}
       </div>
     </div>
   );

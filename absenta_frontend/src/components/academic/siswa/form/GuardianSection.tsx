@@ -5,13 +5,14 @@ import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Label } from '../../../ui/Label';
 import { Button } from '../../../ui/Button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../../ui/Accordion';
-import { Controller, useFieldArray } from 'react-hook-form';
+import { Controller, useFieldArray, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
 import { 
     PEKERJAAN_OPTIONS, 
     PENDIDIKAN_OPTIONS, 
     PENGHASILAN_OPTIONS, 
     HUBUNGAN_WALI_OPTIONS 
 } from '../../../../api/dropdown.api';
+import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 
 const HUBUNGAN_ORANG_TUA_OPTIONS = [
@@ -21,14 +22,14 @@ const HUBUNGAN_ORANG_TUA_OPTIONS = [
 ];
 
 interface GuardianSectionProps {
-    control: any;
-    register: any;
-    errors: any;
+    control: Control<SiswaFormValues>;
+    register: UseFormRegister<SiswaFormValues>;
+    errors: FieldErrors<SiswaFormValues>;
     isViewMode: boolean;
-    watch: any;
+    watch: UseFormWatch<SiswaFormValues>;
 }
 
-export const GuardianSection: React.FC<GuardianSectionProps> = ({
+export const GuardianSection: React.FC<GuardianSectionProps> = React.memo(({
     control,
     register,
     errors,
@@ -45,8 +46,8 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
         return (
             <div className="space-y-6">
                 <SectionCard title="Kontak Notifikasi Orang Tua" icon={Phone}>
-                    {orangTua.length > 0 ? (
-                        orangTua.map((row: any, index: number) => (
+                    {(orangTua || []).length > 0 ? (
+                        (orangTua || []).map((row: any, index: number) => (
                             <div key={row.id || index} className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 pb-4 mb-4 border-b border-slate-50 dark:border-slate-800 last:border-0 last:pb-0 last:mb-0">
                                 <DetailRow icon={<UserIcon size={16} />} label="Nama" value={row.nama} />
                                 <DetailRow icon={<Heart size={16} />} label="Hubungan" value={row.hubungan} />
@@ -64,23 +65,23 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <SectionCard title="Profil Ayah Kandung" icon={UserCheck}>
                         <DetailRow icon={<UserIcon size={16} />} label="Nama Ayah" value={watch('nama_ayah')} />
-                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={PEKERJAAN_OPTIONS.find(o => o.value === watch('pekerjaan_ayah'))?.label} />
-                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={PENDIDIKAN_OPTIONS.find(o => o.value === watch('pendidikan_ayah'))?.label} />
-                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={PENGHASILAN_OPTIONS.find(o => o.value === watch('penghasilan_ayah'))?.label} />
+                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_ayah'))?.label} />
+                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={(PENDIDIKAN_OPTIONS || []).find(o => o.value === watch('pendidikan_ayah'))?.label} />
+                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_ayah'))?.label} />
                     </SectionCard>
                     <SectionCard title="Profil Ibu Kandung" icon={UserCheck}>
                         <DetailRow icon={<UserIcon size={16} />} label="Nama Ibu" value={watch('nama_ibu')} />
-                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={PEKERJAAN_OPTIONS.find(o => o.value === watch('pekerjaan_ibu'))?.label} />
-                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={PENDIDIKAN_OPTIONS.find(o => o.value === watch('pendidikan_ibu'))?.label} />
-                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={PENGHASILAN_OPTIONS.find(o => o.value === watch('penghasilan_ibu'))?.label} />
+                        <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_ibu'))?.label} />
+                        <DetailRow icon={<BookOpen size={16} />} label="Pendidikan" value={(PENDIDIKAN_OPTIONS || []).find(o => o.value === watch('pendidikan_ibu'))?.label} />
+                        <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_ibu'))?.label} />
                     </SectionCard>
                 </div>
 
                 <SectionCard title="Profil Wali Siswa" icon={ShieldCheck}>
                     <DetailRow icon={<UserIcon size={16} />} label="Nama Wali" value={watch('nama_wali')} />
-                    <DetailRow icon={<Heart size={16} />} label="Hubungan" value={HUBUNGAN_WALI_OPTIONS.find(o => o.value === watch('hubungan_wali'))?.label} />
-                    <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={PEKERJAAN_OPTIONS.find(o => o.value === watch('pekerjaan_wali'))?.label} />
-                    <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={PENGHASILAN_OPTIONS.find(o => o.value === watch('penghasilan_wali'))?.label} />
+                    <DetailRow icon={<Heart size={16} />} label="Hubungan" value={(HUBUNGAN_WALI_OPTIONS || []).find(o => o.value === watch('hubungan_wali'))?.label} />
+                    <DetailRow icon={<Briefcase size={16} />} label="Pekerjaan" value={(PEKERJAAN_OPTIONS || []).find(o => o.value === watch('pekerjaan_wali'))?.label} />
+                    <DetailRow icon={<Banknote size={16} />} label="Penghasilan" value={(PENGHASILAN_OPTIONS || []).find(o => o.value === watch('penghasilan_wali'))?.label} />
                 </SectionCard>
             </div>
         );
@@ -95,7 +96,7 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Belum Ada Kontak. Klik tombol di bawah untuk menambah.</p>
                         </div>
                     )}
-                    {fields.map((field, index) => (
+                    {(fields || []).map((field, index) => (
                         <div
                             key={field.id}
                             className="p-6 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950/50 space-y-6 relative group/card"
@@ -114,8 +115,9 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap</Label>
+                                    <Label htmlFor={`orang_tua_${index}_nama`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Lengkap</Label>
                                     <Input
+                                        id={`orang_tua_${index}_nama`}
                                         {...register(`orang_tua.${index}.nama`)}
                                         placeholder="Entry Nama..."
                                         className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
@@ -125,12 +127,13 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                                     )}
                                 </div>
                                 <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan</Label>
+                                    <Label htmlFor={`orang_tua_${index}_hubungan`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan</Label>
                                     <Controller
                                         name={`orang_tua.${index}.hubungan`}
                                         control={control}
                                         render={({ field }) => (
                                             <SearchableSelect
+                                                id={`orang_tua_${index}_hubungan`}
                                                 value={field.value}
                                                 onValueChange={field.onChange}
                                                 options={HUBUNGAN_ORANG_TUA_OPTIONS}
@@ -141,16 +144,18 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                                     />
                                 </div>
                                 <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No HP (WhatsApp)</Label>
+                                    <Label htmlFor={`orang_tua_${index}_no_hp`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">No HP (WhatsApp)</Label>
                                     <Input
+                                        id={`orang_tua_${index}_no_hp`}
                                         {...register(`orang_tua.${index}.no_hp`)}
                                         placeholder="628xxx..."
                                         className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                                     />
                                 </div>
                                 <div className="space-y-2 group">
-                                    <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Email</Label>
+                                    <Label htmlFor={`orang_tua_${index}_email`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Email</Label>
                                     <Input
+                                        id={`orang_tua_${index}_email`}
                                         type="email"
                                         {...register(`orang_tua.${index}.email`)}
                                         placeholder="example@mail.com"
@@ -188,25 +193,25 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                     <AccordionContent className="px-6 pb-6 pt-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ayah</Label>
-                                <Input {...register('nama_ayah')} placeholder="Nama Ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Label htmlFor="nama_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ayah</Label>
+                                <Input id="nama_ayah" {...register('nama_ayah')} placeholder="Nama Ayah..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
+                                <Label htmlFor="pekerjaan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
                                 <Controller name="pekerjaan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pekerjaan_ayah" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
+                                <Label htmlFor="pendidikan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
                                 <Controller name="pendidikan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pendidikan_ayah" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
+                                <Label htmlFor="penghasilan_ayah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
                                 <Controller name="penghasilan_ayah" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="penghasilan_ayah" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                         </div>
@@ -225,25 +230,25 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                     <AccordionContent className="px-6 pb-6 pt-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ibu</Label>
-                                <Input {...register('nama_ibu')} placeholder="Nama Ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Label htmlFor="nama_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Ibu</Label>
+                                <Input id="nama_ibu" {...register('nama_ibu')} placeholder="Nama Ibu..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
+                                <Label htmlFor="pekerjaan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan</Label>
                                 <Controller name="pekerjaan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pekerjaan_ibu" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
+                                <Label htmlFor="pendidikan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pendidikan</Label>
                                 <Controller name="pendidikan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pendidikan_ibu" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
+                                <Label htmlFor="penghasilan_ibu" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan</Label>
                                 <Controller name="penghasilan_ibu" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="penghasilan_ibu" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                         </div>
@@ -262,25 +267,25 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
                     <AccordionContent className="px-6 pb-6 pt-2">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 dark:border-slate-800/50">
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Wali</Label>
-                                <Input {...register('nama_wali')} placeholder="Nama Wali..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                <Label htmlFor="nama_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Nama Wali</Label>
+                                <Input id="nama_wali" {...register('nama_wali')} placeholder="Nama Wali..." className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan Wali</Label>
+                                <Label htmlFor="hubungan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Hubungan Wali</Label>
                                 <Controller name="hubungan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="hubungan_wali" value={field.value} onValueChange={field.onChange} options={HUBUNGAN_WALI_OPTIONS} placeholder="Pilih Hubungan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Wali</Label>
+                                <Label htmlFor="pekerjaan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Pekerjaan Wali</Label>
                                 <Controller name="pekerjaan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="pekerjaan_wali" value={field.value} onValueChange={field.onChange} options={PEKERJAAN_OPTIONS} placeholder="Pilih Pekerjaan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                             <div className="space-y-2 group">
-                                <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Wali</Label>
+                                <Label htmlFor="penghasilan_wali" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">Penghasilan Wali</Label>
                                 <Controller name="penghasilan_wali" control={control} render={({ field }) => (
-                                    <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+                                    <SearchableSelect id="penghasilan_wali" value={field.value} onValueChange={field.onChange} options={PENGHASILAN_OPTIONS} placeholder="Pilih Penghasilan" triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
                                 )} />
                             </div>
                         </div>
@@ -289,4 +294,6 @@ export const GuardianSection: React.FC<GuardianSectionProps> = ({
             </Accordion>
         </div>
     );
-};
+});
+
+GuardianSection.displayName = 'GuardianSection';

@@ -11,7 +11,7 @@ interface SavingsHistoryPanelProps {
   handleExportAllSavingsPdf: () => void;
 }
 
-export const SavingsHistoryPanel: React.FC<SavingsHistoryPanelProps> = ({
+export const SavingsHistoryPanel = React.memo<SavingsHistoryPanelProps>(({
   selectedSaving,
   transactions,
   handleExportSingleSavingPdf,
@@ -54,13 +54,13 @@ export const SavingsHistoryPanel: React.FC<SavingsHistoryPanelProps> = ({
             </Button>
           </div>
         </div>
-        {transactions.length === 0 ? (
+        {transactions?.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400">
             <HelpCircle size={36} className="mb-2 opacity-50" />
             <p className="text-sm">Belum ada histori transaksi.</p>
           </div>
         ) : (
-          transactions.map((t) => {
+          transactions?.map((t) => {
             const isDeposit = t.type === 'DEPOSIT' || t.type === 'INTEREST';
             return (
               <div
@@ -100,4 +100,6 @@ export const SavingsHistoryPanel: React.FC<SavingsHistoryPanelProps> = ({
       </div>
     </Card>
   );
-};
+});
+
+SavingsHistoryPanel.displayName = 'SavingsHistoryPanel';

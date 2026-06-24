@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/Tabs';
 import RekapHarianSiswaPage from './RekapHarianSiswaPage';
 import RekapBulananSiswaPage from './RekapBulananSiswaPage';
@@ -6,15 +6,25 @@ import RekapBulananKelasPage from './RekapBulananKelasPage';
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
-import PageLayout from '../../../components/common/PageLayout';
-import { FileText, Calendar, Users, BarChart3 } from 'lucide-react';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+import { FileText, Calendar, BarChart3 } from 'lucide-react';
+import Card from '../../../components/ui/Card';
+
+const rekapBreadcrumbs = [
+  { label: 'Presensi', path: '/attendance/ops' },
+  { label: 'Rekapitulasi Kehadiran', active: true }
+];
 
 export default function RekapPage() {
   const { subscription } = useAuthStore();
   const [tab, setTab] = useState('HARIAN_SISWA');
+  const memoStats = useMemo(() => rekapStats, []);
+  const memoBreadcrumbs = useMemo(() => rekapBreadcrumbs, []);
+  const handleDummy = useCallback(() => {}, []);
 
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  
+  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
+
   const instructionData = {
     title: "Panduan Rekapitulasi",
     description: "Halaman ini menyajikan ringkasan data kehadiran siswa dalam berbagai format laporan.",
@@ -50,17 +60,21 @@ export default function RekapPage() {
   ];
 
   return (
-    <PageLayout
+    <AcademicPageLayout
       title="Rekapitulasi Kehadiran"
       description="Pusat pelaporan dan analisis kehadiran siswa terpadu."
-      stats={rekapStats}
+      stats={memoStats}
       instruction={instructionData}
+      breadcrumbs={memoBreadcrumbs}
+      hardeningModuleKey="rekappage"
     >
       <PremiumFeatureGate
+        isLocked={isLocked}
         moduleName="ABSENSI"
         featureName="Rekapitulasi Kehadiran"
         description="Lihat ringkasan kehadiran siswa secara harian, bulanan, maupun per kelas dengan data yang akurat dan transparan."
       >
+      <Card className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8">
         <div className="space-y-6">
           <Tabs value={tab} onValueChange={setTab} className="w-full">
             <div className="bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm inline-flex mb-2">
@@ -99,7 +113,8 @@ export default function RekapPage() {
             </div>
           </Tabs>
         </div>
-      </PremiumFeatureGate>
-    </PageLayout>
+      </Card>
+    </PremiumFeatureGate>
+  </AcademicPageLayout>
   );
 }

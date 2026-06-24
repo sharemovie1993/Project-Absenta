@@ -28,7 +28,7 @@ import type { StrukturOrganisasi } from '@/api/academic/strukturOrganisasi.api';
 
 interface StrukturCardGridProps {
   data: StrukturOrganisasi[];
-  user: any;
+  user: { id?: string; email?: string } | null | undefined;
   isGlobalStrukturAdmin: boolean;
   onOpenAssignment: (id: string) => void;
   onOpenEdit: (item: StrukturOrganisasi) => void;
@@ -99,7 +99,7 @@ const getContextualHint = (code: string) => {
   }
 };
 
-export const StrukturCardGrid: React.FC<StrukturCardGridProps> = ({
+export const StrukturCardGrid: React.FC<StrukturCardGridProps> = React.memo(({
   data,
   user,
   isGlobalStrukturAdmin,
@@ -109,12 +109,12 @@ export const StrukturCardGrid: React.FC<StrukturCardGridProps> = ({
 }) => {
   return (
     <div className="space-y-12 pb-20">
-      {CATEGORIES.map((cat, catIdx) => {
-        let items = data.filter(item => cat.codes.includes(item.kode));
+      {(CATEGORIES || []).map((cat, catIdx) => {
+        let items = (data || []).filter(item => cat.codes.includes(item.kode));
 
         if (!isGlobalStrukturAdmin && cat.id === 'pimpinan') {
-          items = items.filter(item => {
-            return item.organizationalAssigns?.some((m: any) => m.user_id === user?.id);
+          items = (items || []).filter(item => {
+            return (item.organizationalAssigns || []).some((m: any) => m.user_id === user?.id);
           });
         }
 
@@ -131,9 +131,9 @@ export const StrukturCardGrid: React.FC<StrukturCardGridProps> = ({
           >
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
               <AnimatePresence mode="popLayout">
-                {items.map((item, index) => {
+                {(items || []).map((item, index) => {
                   const IconComponent = getPositionIcon(item.kode);
-                  const canManageThis = isGlobalStrukturAdmin || item.organizationalAssigns?.some((m: any) => m.user_id === user?.id);
+                  const canManageThis = isGlobalStrukturAdmin || (item.organizationalAssigns || []).some((m: any) => m.user_id === user?.id);
                   
                   return (
                     <motion.div
@@ -226,7 +226,7 @@ export const StrukturCardGrid: React.FC<StrukturCardGridProps> = ({
                         <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                           <div className="flex items-center -space-x-3">
                             {item._count?.organizationalAssigns ? (
-                              Array.from({ length: Math.min(item._count.organizationalAssigns, 3) }).map((_, i) => (
+                              (Array.from({ length: Math.min(item._count.organizationalAssigns, 3) }) || []).map((_, i) => (
                                 <div key={i} className="w-9 h-9 rounded-full border-2 border-white dark:border-slate-900 bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400 shadow-sm overflow-hidden z-[1] transition-transform hover:translate-y-[-2px]">
                                   <Users size={14} className="text-slate-300" />
                                 </div>
@@ -258,4 +258,6 @@ export const StrukturCardGrid: React.FC<StrukturCardGridProps> = ({
       })}
     </div>
   );
-};
+});
+
+StrukturCardGrid.displayName = 'StrukturCardGrid';

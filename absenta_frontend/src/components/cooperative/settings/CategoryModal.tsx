@@ -38,7 +38,7 @@ const withdrawRuleOptions = [
   { label: 'Hanya Menjelang Hari Raya (SHR)', value: 'HOLIDAY' }
 ];
 
-export const CategoryModal: React.FC<CategoryModalProps> = ({
+export const CategoryModal = React.memo<CategoryModalProps>(({
   isOpen,
   onClose,
   editingCategory,
@@ -79,10 +79,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               {/* Category Code */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                <label htmlFor="cat-code" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                   Kode Jenis Simpanan <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="cat-code"
                   type="text"
                   name="code"
                   value={catFormData.code}
@@ -96,10 +97,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
               {/* Account Code */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                <label htmlFor="cat-account-code" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                   Kode Akun Jurnal (Chart of Account) <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="cat-account-code"
                   type="text"
                   name="accountCode"
                   value={catFormData.accountCode}
@@ -113,32 +115,34 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
             {/* Category Name */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+              <label htmlFor="cat-name-input" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                 Nama Simpanan <span className="text-red-500">*</span>
               </label>
               <input
+                id="cat-name-input"
                 type="text"
                 name="name"
                 value={catFormData.name}
                 onChange={onInputChange}
                 placeholder="Misal: Simpanan Hari Raya (SHR)"
-                className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-100"
+                className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-105"
                 required
               />
             </div>
 
             {/* Category Description */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+              <label htmlFor="cat-desc-input" className="text-[10px] font-black text-slate-505 uppercase tracking-wider">
                 Deskripsi / Aturan Simpanan
               </label>
               <textarea
+                id="cat-desc-input"
                 name="description"
                 value={catFormData.description}
                 onChange={onInputChange}
                 rows={2}
                 placeholder="Misal: Tabungan khusus persiapan Idul Fitri, dicairkan setahun sekali."
-                className="w-full p-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-100 resize-none"
+                className="w-full p-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-105 resize-none"
               />
             </div>
 
@@ -148,7 +152,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 Pilih Warna Badge Visual
               </label>
               <div className="flex flex-wrap gap-2.5">
-                {presetColors?.map(color => (
+                {(presetColors || []).map(color => (
                   <button
                     key={color}
                     type="button"
@@ -171,10 +175,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               {/* Default Amount */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                <label htmlFor="cat-default-amount" className="text-[10px] font-black text-slate-505 uppercase tracking-wider">
                   Nominal Setoran Default (Rp)
                 </label>
                 <input
+                  id="cat-default-amount"
                   type="number"
                   name="defaultAmount"
                   value={catFormData.defaultAmount}
@@ -186,10 +191,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
               {/* Order */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                <label htmlFor="cat-order" className="text-[10px] font-black text-slate-505 uppercase tracking-wider">
                   Urutan Tampilan
                 </label>
                 <input
+                  id="cat-order"
                   type="number"
                   name="order"
                   value={catFormData.order}
@@ -293,4 +299,6 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+CategoryModal.displayName = 'CategoryModal';

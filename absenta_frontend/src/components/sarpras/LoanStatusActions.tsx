@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, X, Play, RotateCcw, Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -16,6 +16,11 @@ interface LoanStatusActionsProps {
   };
 }
 
+interface ReturnDataPayload {
+  condition_on_return: string;
+  return_catatan: string;
+}
+
 const CONDITION_OPTIONS = [
   { value: 'BAIK', label: 'Baik (Normal)' },
   { value: 'RUSAK', label: 'Rusak' },
@@ -26,41 +31,50 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [returnData, setReturnData] = useState({
+  const [returnData, setReturnData] = useState<ReturnDataPayload>({
     condition_on_return: 'BAIK',
     return_catatan: ''
   });
 
   const mutation = useMutation({
-    mutationFn: ({ status, data }: { status: string; data?: any }) =>
+    mutationFn: ({ status, data }: { status: string; data?: ReturnDataPayload }) =>
       sarprasApi.updateLoanStatus(loan.id, { status, ...data }),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string }) => {
       showToast(res.message || 'Status berhasil diperbarui', 'success');
       queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       setReturnModalOpen(false);
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Gagal memperbarui status', 'error');
+    onError: (err: unknown) => {
+      let errMsg = 'Gagal memperbarui status';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resErr = err as { response?: { data?: { message?: string } } };
+        if (resErr.response?.data?.message) {
+          errMsg = resErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast(errMsg, 'error');
     }
   });
 
-  const handleAction = (status: string) => {
+  const handleAction = useCallback((status: string) => {
     if (status === 'RETURNED') {
       setReturnModalOpen(true);
       return;
     }
     mutation.mutate({ status });
-  };
+  }, [mutation]);
 
-  const handleReturn = () => {
+  const handleReturn = useCallback(() => {
     mutation.mutate({
       status: 'RETURNED',
       data: returnData
     });
-  };
+  }, [mutation, returnData]);
 
-  const renderActions = () => {
+  const renderedActions = useMemo(() => {
     const btnBase = 'text-xs font-medium rounded-lg px-3 py-1.5 transition-all duration-200';
 
     switch (loan.status) {
@@ -113,14 +127,14 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
       default:
         return null;
     }
-  };
+  }, [loan.status, mutation.isPending, handleAction]);
 
   return (
     <>
       {mutation.isPending ? (
         <Loader2 size={16} className="animate-spin text-slate-400" />
       ) : (
-        renderActions()
+        renderedActions
       )}
 
       {/* Return Confirmation Modal */}
@@ -137,8 +151,9 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
           </div>
 
           <div className="space-y-2">
-            <Label>Kondisi Barang Saat Dikembalikan</Label>
+            <Label htmlFor="return-condition">Kondisi Barang Saat Dikembalikan</Label>
             <SearchableSelect
+              id="return-condition"
               options={CONDITION_OPTIONS}
               value={returnData.condition_on_return}
               onValueChange={v => setReturnData({ ...returnData, condition_on_return: v })}

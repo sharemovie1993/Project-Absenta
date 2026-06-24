@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Loader } from '../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
@@ -15,7 +15,9 @@ import {
     ShieldCheck, 
     ArrowRightCircle,
     ChevronRight,
-    RefreshCw
+    RefreshCw,
+    X,
+    AlertTriangle
 } from 'lucide-react';
 import { getTahunPelajaranList, getActiveTahunPelajaran, activateTahunPelajaran } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList, createSemester, setActiveSemester } from '../../../api/academic/semester.api';
@@ -27,7 +29,7 @@ interface Props {
   onClose: () => void;
 }
 
-const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
+const SemesterTransitionWizard: React.FC<Props> = React.memo(({ onDone, onClose }) => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -85,7 +87,7 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
 
   useEffect(() => {
     if (mode === 'CROSS_YEAR') {
-      const candidates = tahunPelajaran.filter(tp => !tp.is_active);
+      const candidates = (tahunPelajaran || []).filter(tp => !tp.is_active);
       const defaultTarget = candidates[0] || null;
       setTargetYearId(defaultTarget?.id || '');
       setTargetYear(defaultTarget);
@@ -103,7 +105,7 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
     }
   }, [mode, targetYearId]);
 
-  const handleExecute = async () => {
+  const handleExecute = useCallback(async () => {
     try {
       setSubmitting(true);
       
@@ -131,7 +133,7 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [mode, targetYearId, targetYear, targetSemester, targetExists, showToast]);
 
   if (loading) {
     return (
@@ -173,7 +175,7 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
           {mode === 'CROSS_YEAR' ? (
             <div className="space-y-4 md:col-span-2">
                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-4 flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                   <p className="text-xs font-bold text-amber-700 dark:text-amber-400 tracking-tight">
                     Transisi lintas tahun membutuhkan pemilihan tahun pelajaran baru yang sudah terdaftar.
                   </p>
@@ -183,7 +185,7 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
                   <SearchableSelect
                     value={targetYearId}
                     onValueChange={setTargetYearId}
-                    options={tahunPelajaran.filter(tp => !tp.is_active).map(tp => ({ label: tp.tahun, value: tp.id }))}
+                    options={(tahunPelajaran || []).filter(tp => !tp.is_active).map(tp => ({ label: tp.tahun, value: tp.id }))}
                     placeholder="Pilih Tahun..."
                     triggerClassName="h-12 text-sm font-bold rounded-xl border-2 border-slate-100 dark:border-slate-800"
                   />
@@ -279,19 +281,8 @@ const SemesterTransitionWizard: React.FC<Props> = ({ onDone, onClose }) => {
       )}
     </div>
   );
-};
+});
 
-// Internal icon component for Cross Year Alert
-const AlertCircle = ({ className, size = 20 }: { className?: string, size?: number }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-  </svg>
-);
-
-const X = ({ className, size = 20 }: { className?: string, size?: number }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-
+SemesterTransitionWizard.displayName = 'SemesterTransitionWizard';
 export default SemesterTransitionWizard;
+

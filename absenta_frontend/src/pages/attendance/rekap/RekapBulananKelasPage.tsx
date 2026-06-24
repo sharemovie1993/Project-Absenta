@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+// Standardized using lazy( and Suspense
 import { 
   SectionCard, 
   Button, 
   Input, 
-  Badge, 
   Loader, 
   Alert, 
   AlertDescription,
@@ -11,7 +11,6 @@ import {
 } from '../../../components/ui';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapBulananKelas } from '../../../api/attendanceGerbang.api';
-import { siswaApi } from '../../../api/academic.api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/Tabs';
 import { toLocalMonth } from '../../../utils/attendance/time';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
@@ -19,29 +18,57 @@ import { useAuth } from '../../../hooks/useAuth';
 import { 
   Search, 
   RefreshCw, 
-  Calendar, 
   Users, 
   FileText, 
   Filter, 
   LayoutGrid, 
   List, 
-  BarChart3,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle
+  BarChart3
 } from 'lucide-react';
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+
+const stats = [
+  {
+    title: "Akumulasi",
+    value: "Bulanan",
+    icon: <Users size={14} />,
+    gradient: "from-blue-500 to-indigo-600",
+    subtitle: "Seluruh Siswa Kelas"
+  }
+];
+
+const instructionData = {
+  title: "Panduan Rekap Bulanan",
+  description: "Laporan kehadiran akumulatif seluruh siswa kelas dalam satu bulan.",
+  items: [
+    { text: "Pilih kelas dan bulan untuk melihat rekap bulanan kelas." },
+    { text: "Data kehadiran per kategori (Hadir, Sakit, Izin, Alpa) akan ditampilkan." }
+  ]
+};
+
+const breadcrumbs = [
+  { label: 'Presensi', path: '/attendance' },
+  { label: 'Rekap', path: '/attendance/rekap' },
+  { label: 'Bulanan Kelas', active: true }
+];
+
+interface RekapBulananKelasRow {
+  siswa_id: string;
+  nama_siswa: string;
+  nis?: string;
+  HADIR?: number;
+  IZIN?: number;
+  SAKIT?: number;
+  ALPA?: number;
+  TERLAMBAT?: number;
+}
 
 export function RekapBulananKelasContent({ 
-  hideHeader = false, 
-  initialTab, 
   initialKelasId 
 }: { 
-  hideHeader?: boolean;
-  initialTab?: string;
   initialKelasId?: string;
 }) {
   const { subscription } = useAuthStore();
@@ -52,16 +79,20 @@ export function RekapBulananKelasContent({
   const [kelasId, setKelasId] = useState(initialKelasId || '');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<any[] | null>(null);
-  const [tab, setTab] = useState(initialTab || 'TABLE');
+  const [rows, setRows] = useState<RekapBulananKelasRow[] | null>(null);
+  const [tab, setTab] = useState('TABLE');
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const canView = useMemo(
     () => can('attendance.reports.view') && can('academic.structures.view.list'),
     [can],
   );
 
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
   useEffect(() => {
     if (initialKelasId) setKelasId(initialKelasId);
@@ -79,64 +110,85 @@ export function RekapBulananKelasContent({
     loadDropdowns();
   }, []);
 
-  useEffect(() => {
-    if (kelasId && bulan) fetchData();
-  }, [kelasId, bulan, tahunPelajaranId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (isLocked) return;
     if (!kelasId || !bulan) return;
     setLoading(true);
     try {
       const res = await getRekapBulananKelas(kelasId, { bulan, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setRows(res.data || []);
+      setRows((res.data as RekapBulananKelasRow[]) || []);
+      setPage(1); // Reset to page 1 on fresh load
+    } catch (err) {
+      console.error(err);
+      setRows([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [kelasId, bulan, tahunPelajaranId, isLocked]);
 
-  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
-  if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
+  useEffect(() => {
+    if (kelasId && bulan) {
+      fetchData();
+    }
+  }, [kelasId, bulan, tahunPelajaranId, fetchData]);
 
-  const columns = [
+  const columns = useMemo(() => [
     { 
       label: 'Nama Siswa', 
       key: 'nama_siswa', 
-      render: (v: any) => <span className="font-bold text-slate-800 dark:text-slate-200">{v}</span>
+      render: (v: unknown) => <span className="font-bold text-slate-800 dark:text-slate-200">{String(v)}</span>
     },
     { 
       label: 'Hadir', 
       key: 'HADIR', 
-      render: (v: any) => (
+      render: (v: unknown) => (
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="font-bold text-emerald-600">{v || 0}</span>
+          <span className="font-bold text-emerald-600">{Number(v) || 0}</span>
         </div>
       )
     },
     { 
       label: 'Izin', 
       key: 'IZIN',
-      render: (v: any) => <span className="font-bold text-blue-600">{v || 0}</span>
+      render: (v: unknown) => <span className="font-bold text-blue-600">{Number(v) || 0}</span>
     },
     { 
       label: 'Sakit', 
       key: 'SAKIT',
-      render: (v: any) => <span className="font-bold text-amber-600">{v || 0}</span>
+      render: (v: unknown) => <span className="font-bold text-amber-600">{Number(v) || 0}</span>
     },
     { 
       label: 'Alpa', 
       key: 'ALPA',
-      render: (v: any) => <span className="font-bold text-rose-600">{v || 0}</span>
+      render: (v: unknown) => <span className="font-bold text-rose-600">{Number(v) || 0}</span>
     },
     { 
       label: 'Terlambat', 
       key: 'TERLAMBAT',
-      render: (v: any) => <span className="font-bold text-purple-600">{v || 0}</span>
+      render: (v: unknown) => <span className="font-bold text-purple-600">{Number(v) || 0}</span>
     }
-  ];
+  ], []);
 
-  const pageContent = (
+  // Caching rows pagination
+  const pagedRows = useMemo(() => {
+    const dataList = rows || [];
+    return dataList.slice((page - 1) * limit, page * limit);
+  }, [rows, page, limit]);
+
+  const handlePageChange = useCallback((p: number) => {
+    setPage(p);
+  }, []);
+
+  const handleLimitChange = useCallback((l: number) => {
+    setLimit(l);
+    setPage(1);
+  }, []);
+
+  if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
+  if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
+
+  return (
     <div className="space-y-6">
       <SectionCard title="Filter Laporan Kelas" icon={Filter} fullWidth>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
@@ -191,16 +243,24 @@ export function RekapBulananKelasContent({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-950 overflow-hidden">
+        <div className="bg-white dark:bg-slate-955 overflow-hidden">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsContent value="TABLE" className="mt-0 outline-none ring-0">
               <Table
                 columns={columns}
-                data={rows || []}
+                data={pagedRows}
                 loading={loading}
                 emptyMessage="Silakan pilih filter dan klik Generate Laporan."
                 compact={true}
                 className="border-none"
+                pagination={{
+                  currentPage: page,
+                  totalPages: Math.ceil((rows || []).length / limit),
+                  totalItems: (rows || []).length,
+                  itemsPerPage: limit,
+                  onPageChange: handlePageChange,
+                  onLimitChange: handleLimitChange,
+                }}
               />
             </TabsContent>
             <TabsContent value="PIVOT" className="mt-0 outline-none ring-0">
@@ -220,19 +280,30 @@ export function RekapBulananKelasContent({
       </SectionCard>
     </div>
   );
-
-  return (
-    <PremiumFeatureGate
-      isLocked={isLocked}
-      moduleName="ABSENSI"
-      featureName="Rekap Presensi Per Kelas"
-      description="Analisis kehadiran seluruh siswa dalam satu kelas secara kolektif dengan tampilan pivot yang mendetail."
-    >
-      {pageContent}
-    </PremiumFeatureGate>
-  );
 }
 
 export default function RekapBulananKelasPage() {
-  return <RekapBulananKelasContent />;
+  const memoStats = useMemo(() => stats, []);
+  const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
+
+  return (
+    <AcademicPageLayout
+      hardeningModuleKey="rekapbulanankelaspage"
+      title="Rekap Bulanan Kelas"
+      description="Laporan rekapitulasi kehadiran bulanan siswa per kelas."
+      stats={memoStats}
+      instruction={instructionData}
+      breadcrumbs={memoBreadcrumbs}
+    >
+      <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+        <PremiumFeatureGate
+          moduleName="ABSENSI"
+          featureName="Rekap Presensi Per Kelas"
+          description="Analisis kehadiran seluruh siswa dalam satu kelas secara kolektif dengan tampilan pivot yang mendetail."
+        >
+          <RekapBulananKelasContent />
+        </PremiumFeatureGate>
+      </Suspense>
+    </AcademicPageLayout>
+  );
 }

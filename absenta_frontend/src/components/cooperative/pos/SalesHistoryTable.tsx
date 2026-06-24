@@ -25,7 +25,7 @@ interface SalesHistoryTableProps {
   printReceipt: (sale: SaleRecord) => void;
 }
 
-export const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
+export const SalesHistoryTable = React.memo<SalesHistoryTableProps>(({
   salesLoading,
   paginatedSalesHistory,
   sortKey,
@@ -43,6 +43,85 @@ export const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
   setShowReceiptModal,
   printReceipt
 }) => {
+  const columns = React.useMemo(() => [
+    {
+      header: 'Tanggal',
+      accessor: (row: SaleRecord) => new Date(row.date).toLocaleString('id-ID', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      sortable: true,
+      sortKey: 'date'
+    },
+    {
+      header: 'ID Struk',
+      accessor: (row: SaleRecord) => <StrukBadge id={row.id} />,
+    },
+    {
+      header: 'Metode Pembayaran',
+      accessor: (row: SaleRecord) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+          row.paymentMethod === 'SAVING' 
+            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30' 
+            : 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+        }`}>
+          {row.paymentMethod === 'SAVING' ? 'Tabungan' : 'Tunai'}
+        </span>
+      ),
+    },
+    {
+      header: 'Diskon',
+      accessor: (row: SaleRecord) => row.discount > 0 ? (
+        <span className="text-red-655 dark:text-red-400 font-bold">
+          -Rp {Number(row.discount).toLocaleString('id-ID')}
+        </span>
+      ) : '-',
+      sortable: true,
+      sortKey: 'discount'
+    },
+    {
+      header: 'Total Belanja',
+      accessor: (row: SaleRecord) => (
+        <span className="font-extrabold text-slate-800 dark:text-slate-100">
+          Rp {Number(row.total).toLocaleString('id-ID')}
+        </span>
+      ),
+      sortable: true,
+      sortKey: 'total'
+    },
+    {
+      header: 'Aksi',
+      accessor: (row: SaleRecord) => (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs"
+            icon={<Eye size={13} />}
+            onClick={() => {
+              setSelectedSale(row);
+              setShowReceiptModal(true);
+            }}
+          >
+            Detail
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs shadow-sm hover:shadow-blue-500/10"
+            icon={<Printer size={13} />}
+            onClick={() => printReceipt(row)}
+          >
+            Cetak
+          </Button>
+        </div>
+      ),
+    }
+  ], [setSelectedSale, setShowReceiptModal, printReceipt]);
+
   return (
     <div className="mt-8">
       <SectionCard title="Riwayat Belanja Saya" fullWidth>
@@ -79,86 +158,11 @@ export const SalesHistoryTable: React.FC<SalesHistoryTableProps> = ({
               />
             </div>
           }
-          columns={[
-            {
-              header: 'Tanggal',
-              accessor: (row: SaleRecord) => new Date(row.date).toLocaleString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              sortable: true,
-              sortKey: 'date'
-            },
-            {
-              header: 'ID Struk',
-              accessor: (row: SaleRecord) => <StrukBadge id={row.id} />,
-            },
-            {
-              header: 'Metode Pembayaran',
-              accessor: (row: SaleRecord) => (
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                  row.paymentMethod === 'SAVING' 
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/30' 
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
-                }`}>
-                  {row.paymentMethod === 'SAVING' ? 'Tabungan' : 'Tunai'}
-                </span>
-              ),
-            },
-            {
-              header: 'Diskon',
-              accessor: (row: SaleRecord) => row.discount > 0 ? (
-                <span className="text-red-655 dark:text-red-400 font-bold">
-                  -Rp {Number(row.discount).toLocaleString('id-ID')}
-                </span>
-              ) : '-',
-              sortable: true,
-              sortKey: 'discount'
-            },
-            {
-              header: 'Total Belanja',
-              accessor: (row: SaleRecord) => (
-                <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                  Rp {Number(row.total).toLocaleString('id-ID')}
-                </span>
-              ),
-              sortable: true,
-              sortKey: 'total'
-            },
-            {
-              header: 'Aksi',
-              accessor: (row: SaleRecord) => (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs"
-                    icon={<Eye size={13} />}
-                    onClick={() => {
-                      setSelectedSale(row);
-                      setShowReceiptModal(true);
-                    }}
-                  >
-                    Detail
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all py-1 px-2.5 text-xs shadow-sm hover:shadow-blue-500/10"
-                    icon={<Printer size={13} />}
-                    onClick={() => printReceipt(row)}
-                  >
-                    Cetak
-                  </Button>
-                </div>
-              ),
-            }
-          ]}
+          columns={columns}
         />
       </SectionCard>
     </div>
   );
-};
+});
+
+SalesHistoryTable.displayName = 'SalesHistoryTable';

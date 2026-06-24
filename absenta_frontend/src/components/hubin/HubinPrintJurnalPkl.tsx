@@ -3,10 +3,32 @@ import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { PrintHeader } from '../ui/PrintHeader';
 
+interface PrintUser {
+  full_name?: string;
+}
+
+interface PrintStudentPkl {
+  Mitra?: { nama?: string };
+  Siswa?: {
+    nis?: string;
+    Jurusan?: { nama_jurusan?: string };
+  };
+  Pembimbing?: { nama_guru?: string };
+  tanggal_mulai?: string;
+  tanggal_selesai?: string;
+}
+
+interface AbsensiItem {
+  id: string;
+  tanggal: string;
+  status: string;
+  is_verified?: boolean;
+}
+
 interface HubinPrintJurnalPklProps {
-  user: any;
-  studentPkl: any;
-  rawAbsensiHistory: any[];
+  user: PrintUser | null;
+  studentPkl: PrintStudentPkl | null;
+  rawAbsensiHistory: AbsensiItem[];
   tenantInfo?: any;
   renderActivityTextForPrint: (abs: any) => React.ReactNode;
   renderActivityImagesForPrint: (kegiatanStr: string | undefined, checkInImageUrl?: string, checkOutImageUrl?: string) => React.ReactNode;
@@ -79,7 +101,7 @@ export const HubinPrintJurnalPkl: React.FC<HubinPrintJurnalPklProps> = ({
           </tr>
         </thead>
         <tbody>
-          {rawAbsensiHistory.map((a: any, idx: number) => (
+          {rawAbsensiHistory?.map((a: AbsensiItem, idx: number) => (
             <tr key={a.id} className="break-inside-avoid">
               <td className="border border-slate-400 px-1 py-1 text-center font-mono text-[9px]">{idx + 1}</td>
               <td className="border border-slate-400 px-1 py-1 text-center font-bold text-slate-900 text-[8px]">

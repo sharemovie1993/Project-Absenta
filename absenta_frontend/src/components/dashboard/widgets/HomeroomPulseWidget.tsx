@@ -94,3 +94,4 @@ export const HomeroomPulseWidget: React.FC<HomeroomPulseWidgetProps> = ({
     </div>
   );
 };
+

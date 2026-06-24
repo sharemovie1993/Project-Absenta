@@ -440,7 +440,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       key: 'Kelas', 
       label: 'Kelas',
       sortable: true,
-      render: (kelas: any) => (
+      render: (kelas: Kelas | null | undefined) => (
         <div>
           <div className="font-semibold text-gray-900 dark:text-gray-100">{kelas?.nama_kelas || '-'}</div>
           {kelas?.tingkat && (
@@ -462,7 +462,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     { 
       key: 'actions', 
       label: 'Aksi', 
-      render: (_: any, siswa: Siswa) => (
+      render: (_: unknown, siswa: Siswa) => (
         <div className="flex items-center gap-1">
           {canView && (
             <Button
@@ -517,26 +517,26 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, canView, canSendAccess, onEdit, onView, selectedIds, siswas, allVisibleSelected, activeRowId, handleDelete, confirm, handleSendParentAccess]);
+  ].filter(Boolean) as any, [canManage, canView, canSendAccess, onEdit, onView, handleDelete, handleSendParentAccess]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
     try {
       setBulkDeleting(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(async (id) => {
+      const results = await Promise.allSettled((ids || []).map(async (id) => {
         const res = await deleteSiswa(id);
         if (!res.success) throw new Error(res.message || 'Gagal menghapus');
         return id;
       }));
       const failed: { id: string; name: string; message: string }[] = [];
       const succeeded: string[] = [];
-      results.forEach((r, idx) => {
+      (results || []).forEach((r, idx) => {
         const id = ids[idx];
         if (r.status === 'fulfilled') {
           succeeded.push(id);
         } else {
-          const siswa = siswas.find(s => s.id === id);
+          const siswa = (siswas || []).find(s => s.id === id);
           failed.push({ id, name: siswa?.nama_siswa || id, message: (r.reason as Error)?.message || 'Gagal menghapus' });
         }
       });
@@ -548,7 +548,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         showToast(`Berhasil menghapus ${succeeded.length} siswa`, 'success');
       }
       const next = new Set<string>(selectedIds);
-      succeeded.forEach(id => next.delete(id));
+      (succeeded || []).forEach(id => next.delete(id));
       setSelectedIds(next);
       fetchSiswas(currentPage, searchTerm);
     } catch (err: any) {
@@ -557,7 +557,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedIds, deleteSiswa, showToast, siswas, fetchSiswas, currentPage, searchTerm]);
+  }, [selectedIds, showToast, siswas, fetchSiswas, currentPage, searchTerm]);
 
   // Don't render if user doesn't have permission to view
   if (!canView) {

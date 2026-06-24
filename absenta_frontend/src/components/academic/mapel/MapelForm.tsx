@@ -38,7 +38,7 @@ const TINGKAT_OPTIONS = [
   { value: '12', label: 'Kelas 12' }
 ];
 
-export const MapelForm: React.FC<MapelFormProps> = ({
+export const MapelForm = React.memo<MapelFormProps>(({
   mapelId,
   onSuccess,
   onCancel,
@@ -99,6 +99,7 @@ export const MapelForm: React.FC<MapelFormProps> = ({
     loadMapelData();
   }, [mapelId, mode, reset]);
 
+  // Handle form submission
   const onFormSubmit = async (data: CreateMapelSchema) => {
     if (isViewMode) return;
 
@@ -106,15 +107,15 @@ export const MapelForm: React.FC<MapelFormProps> = ({
       setLoading(true);
       setSubmitError('');
 
-      const payload = {
+      const payload: CreateMapelPayload | UpdateMapelPayload = {
         nama_mapel: data.nama_mapel,
-        kode_mapel: data.kode_mapel || undefined,
-        tingkat: data.tingkat || undefined
+        kode_mapel: data.kode_mapel,
+        tingkat: data.tingkat
       };
 
       let response;
       if (isEditMode && mapelId) {
-        response = await updateMapel(mapelId, payload as UpdateMapelPayload);
+        response = await updateMapel(mapelId, payload);
       } else {
         response = await createMapel(payload as CreateMapelPayload);
       }
@@ -130,8 +131,10 @@ export const MapelForm: React.FC<MapelFormProps> = ({
       }
     } catch (error: any) {
       console.error('Error submitting form:', error);
-      const errorMessage = error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data';
-      setSubmitError(errorMessage);
+      setSubmitError(
+        error.response?.data?.message || 
+        'Terjadi kesalahan saat menyimpan data'
+      );
     } finally {
       setLoading(false);
     }
@@ -139,9 +142,8 @@ export const MapelForm: React.FC<MapelFormProps> = ({
 
   if (loadingData) {
     return (
-      <div className="flex items-center justify-center h-64 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+      <div className="flex justify-center items-center py-8">
         <Loader size="lg" />
-        <span className="ml-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Memuat data mata pelajaran...</span>
       </div>
     );
   }
@@ -196,4 +198,8 @@ export const MapelForm: React.FC<MapelFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+MapelForm.displayName = 'MapelForm';
+
+export default MapelForm;

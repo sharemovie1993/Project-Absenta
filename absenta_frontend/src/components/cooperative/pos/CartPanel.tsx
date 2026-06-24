@@ -25,7 +25,7 @@ interface CartPanelProps {
   processing: boolean;
 }
 
-export const CartPanel: React.FC<CartPanelProps> = ({
+export const CartPanel = React.memo<CartPanelProps>(({
   cart,
   heldCarts,
   setShowHeldCartsModal,
@@ -53,17 +53,17 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           <ShoppingCart className="mr-2" size={20} /> Keranjang
         </h2>
         <div className="flex items-center gap-2">
-          {heldCarts.length > 0 && (
+          {(heldCarts || []).length > 0 && (
             <button
               type="button"
               onClick={() => setShowHeldCartsModal(true)}
               className="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-205 dark:border-amber-900/30 text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors shadow-sm"
             >
-              <span>⏸️</span> {heldCarts.length} Ditahan
+              <span>⏸️</span> {(heldCarts || []).length} Ditahan
             </button>
           )}
           <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-            {cart.reduce((sum, item) => sum + item.qty, 0)} Items
+            {cart?.reduce((sum, item) => sum + item.qty, 0) || 0} Items
           </span>
         </div>
       </div>
@@ -99,39 +99,38 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         ) : (
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="text" 
-                id="searchMember"
-                name="searchMember"
-                placeholder="Pilih Anggota Koperasi..." 
-                className="w-full pl-9 pr-12 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white dark:bg-slate-900"
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Search size={14} />
+              </div>
+              <input
+                type="text"
+                id="search-pos-member-input"
                 value={memberSearch}
                 onChange={(e) => {
                   setMemberSearch(e.target.value);
                   setShowMemberDropdown(true);
                 }}
                 onFocus={() => setShowMemberDropdown(true)}
-                aria-label="Cari Anggota Koperasi"
+                placeholder="Cari Anggota (Ketik nama/no...)"
+                className="pl-9 pr-3 py-1.5 w-full h-8 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold"
+                autoComplete="off"
               />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none select-none">
-                <kbd className="px-1.5 py-0.5 text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded shadow-sm">F4</kbd>
-              </div>
-              {showMemberDropdown && (
+
+              {showMemberDropdown && memberSearch.trim().length >= 2 && (
                 <>
                   <div 
-                    className="fixed inset-0 z-40 bg-transparent" 
-                    onClick={() => setShowMemberDropdown(false)} 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setShowMemberDropdown(false)}
                   />
-                  <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+                  <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg z-20">
                     {loadingMembers ? (
-                      <div className="p-3 text-sm text-slate-500 text-center">Mencari...</div>
-                    ) : members.length === 0 ? (
+                      <div className="p-3 text-xs text-slate-500 text-center font-bold">Mencari anggota...</div>
+                    ) : (members || []).length === 0 ? (
                       <div className="p-3 text-sm text-slate-500 text-center">
                         {memberSearch.trim().length >= 2 ? 'Anggota tidak ditemukan.' : 'Ketik min. 2 huruf...'}
                       </div>
                     ) : (
-                      members.map(m => (
+                      (members || []).map(m => (
                         <div 
                           key={m.id}
                           onClick={() => {
@@ -155,7 +154,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             <button
               type="button"
               onClick={handleOpenQuickRegister}
-              className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-105 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-semibold rounded-lg whitespace-nowrap transition-all flex items-center gap-1 shrink-0 shadow-sm hover:shadow-blue-500/10"
+              className="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-955/40 hover:bg-blue-105 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 text-xs font-semibold rounded-lg whitespace-nowrap transition-all flex items-center gap-1 shrink-0 shadow-sm hover:shadow-blue-500/10"
             >
               <span>+</span> Daftar Cepat
             </button>
@@ -164,13 +163,13 @@ export const CartPanel: React.FC<CartPanelProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {cart.length === 0 ? (
+        {!cart || cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400">
             <ShoppingCart size={48} className="mb-2 opacity-20" />
             <p>Keranjang kosong</p>
           </div>
         ) : (
-          cart?.map(item => (
+          (cart || []).map(item => (
             <div key={item.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className="flex-1 min-w-0 mr-2">
                 <h4 className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1">{item.name}</h4>
@@ -210,7 +209,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         )}
       </div>
 
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-955">
         <div className="flex justify-between items-center mb-4">
           <span className="text-slate-600 dark:text-slate-400">Total</span>
           <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -222,14 +221,14 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             variant="outline"
             className="flex-1 py-3 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700"
             onClick={handleHoldCart}
-            disabled={cart.length === 0}
+            disabled={!cart || cart.length === 0}
           >
             Tahan
           </Button>
           <Button 
             className="flex-[2] py-3 text-lg animate-pulse hover:animate-none flex items-center justify-center gap-2" 
             onClick={handleCheckout}
-            disabled={cart.length === 0 || processing}
+            disabled={!cart || cart.length === 0 || processing}
             isLoading={processing}
           >
             <span>Bayar Sekarang</span>
@@ -239,4 +238,6 @@ export const CartPanel: React.FC<CartPanelProps> = ({
       </div>
     </div>
   );
-};
+});
+
+CartPanel.displayName = 'CartPanel';

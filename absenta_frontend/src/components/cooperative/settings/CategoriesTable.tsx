@@ -13,7 +13,7 @@ interface CategoriesTableProps {
   canEditCategories: boolean;
 }
 
-export const CategoriesTable: React.FC<CategoriesTableProps> = ({
+export const CategoriesTable = React.memo<CategoriesTableProps>(({
   categories,
   loadingCategories,
   onToggleActive,
@@ -61,14 +61,14 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
-                {categories.length === 0 ? (
+                {(categories || []).length === 0 ? (
                   <tr>
                     <td colSpan={canEditCategories ? 8 : 7} className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider">
                       Belum ada kategori simpanan kustom
                     </td>
                   </tr>
                 ) : (
-                  categories?.map((cat, idx) => (
+                  (categories || []).map((cat, idx) => (
                     <tr key={cat.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                       <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
                       <td className="p-4">
@@ -195,4 +195,6 @@ export const CategoriesTable: React.FC<CategoriesTableProps> = ({
       )}
     </div>
   );
-};
+});
+
+CategoriesTable.displayName = 'CategoriesTable';

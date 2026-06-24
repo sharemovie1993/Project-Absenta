@@ -7,7 +7,7 @@ interface MemberStatsBannerProps {
   totalSavings: number;
 }
 
-export const MemberStatsBanner: React.FC<MemberStatsBannerProps> = ({
+export const MemberStatsBanner: React.FC<MemberStatsBannerProps> = React.memo(({
   total,
   active,
   totalSavings
@@ -63,4 +63,4 @@ export const MemberStatsBanner: React.FC<MemberStatsBannerProps> = ({
       </div>
     </div>
   );
-};
+});

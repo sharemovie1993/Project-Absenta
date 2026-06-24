@@ -3,10 +3,10 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { CheckCircle2, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface ImportResult {
-  created: number;
-  updated: number;
-  skipped: number;
-  errors: any[];
+  created?: number;
+  updated?: number;
+  skipped?: number;
+  errors?: unknown[];
 }
 
 interface ImportResultStatsProps {
@@ -14,7 +14,7 @@ interface ImportResultStatsProps {
   className?: string;
 }
 
-export const ImportResultStats: React.FC<ImportResultStatsProps> = ({ result, className = '' }) => {
+export const ImportResultStats: React.FC<ImportResultStatsProps> = React.memo(({ result, className = '' }) => {
   return (
     <div className={`grid grid-cols-4 gap-2 ${className}`}>
       <AnalyticsCard
@@ -55,6 +55,8 @@ export const ImportResultStats: React.FC<ImportResultStatsProps> = ({ result, cl
       />
     </div>
   );
-};
+});
 
+ImportResultStats.displayName = 'ImportResultStats';
 export default ImportResultStats;
+

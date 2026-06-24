@@ -21,7 +21,7 @@ interface MemberDetailModalProps {
   canDelete?: boolean;
 }
 
-export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
+export const MemberDetailModal: React.FC<MemberDetailModalProps> = React.memo(({
   isOpen,
   onClose,
   member,
@@ -37,9 +37,9 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 }) => {
   if (!member) return null;
 
-  const pokokAmount = parseFloat((member.savings || [])?.find((s) => s.type === 'POKOK')?.amount as any) || 0;
-  const wajibAmount = parseFloat((member.savings || [])?.find((s) => s.type === 'WAJIB')?.amount as any) || 0;
-  const sukarelaAmount = parseFloat((member.savings || [])?.find((s) => s.type === 'SUKARELA')?.amount as any) || 0;
+  const pokokAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'POKOK')?.amount as any) || 0;
+  const wajibAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'WAJIB')?.amount as any) || 0;
+  const sukarelaAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'SUKARELA')?.amount as any) || 0;
 
   return (
     <Modal
@@ -170,4 +170,4 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

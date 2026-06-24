@@ -15,7 +15,7 @@ interface WaliKelasFormProps {
   preset?: { guru_id?: string; kelas_id?: string };
 }
 
-export const WaliKelasForm: React.FC<WaliKelasFormProps> = ({
+export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
   onSuccess,
   onCancel,
   preset
@@ -37,10 +37,10 @@ export const WaliKelasForm: React.FC<WaliKelasFormProps> = ({
       ]);
 
       if (gurusRes.success) {
-        setGuruOptions((gurusRes.data || []).map((g: any) => ({ id: g.id, nama_guru: g.nama_guru })));
+        setGuruOptions(((gurusRes.data || []) as any[]).map((g: any) => ({ id: g.id, nama_guru: g.nama_guru })));
       }
       if (kelasRes.success) {
-        setKelasOptions((kelasRes.data || []).map((k: any) => ({ id: k.id, nama_kelas: k.nama_kelas, tingkat: k.tingkat })));
+        setKelasOptions(((kelasRes.data || []) as any[]).map((k: any) => ({ id: k.id, nama_kelas: k.nama_kelas, tingkat: k.tingkat })));
       }
     } catch (e: any) {
       showToast('Gagal memuat data dropdown', 'error');
@@ -122,6 +122,8 @@ export const WaliKelasForm: React.FC<WaliKelasFormProps> = ({
       </ModalFooter>
     </div>
   );
-};
+});
+
+WaliKelasForm.displayName = 'WaliKelasForm';
 
 export default WaliKelasForm;

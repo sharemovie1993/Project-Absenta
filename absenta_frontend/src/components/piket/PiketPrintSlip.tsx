@@ -4,12 +4,22 @@ import { PrintHeader } from '../ui/PrintHeader';
 
 interface PiketPrintSlipProps {
   printedPermit: (IzinKeluarSiswa & { qrCodeUrl?: string }) | null;
-  tenantInfo: any;
-  user: any;
+  tenantInfo?: {
+    kepala_sekolah?: string;
+    nip_kepala?: string;
+    name?: string;
+    kota?: string;
+    [key: string]: any;
+  } | null;
+  user?: {
+    full_name?: string;
+    name?: string;
+    [key: string]: any;
+  } | null;
   printPaperSize?: string;
 }
 
-export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = ({
+export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = React.memo(({
   printedPermit,
   tenantInfo,
   user,
@@ -261,4 +271,4 @@ export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+// Standardized using lazy( and Suspense
 import { 
   Cpu, 
   Wifi, 
@@ -26,10 +27,12 @@ import {
   SectionCard, 
   Modal, 
   Alert,
-  AlertDescription 
+  AlertDescription,
+  Label
 } from '../../components/ui';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useToast } from '../../hooks/useToast';
+import useConfirm from '../../hooks/useConfirm';
 import { getDevices, createDevice, updateDevice, deleteDevice, type AttendanceDevice } from '../../api/attendance/device.api';
 import { getKelasList } from '../../api/academic/kelas.api';
 import type { Kelas } from '../../types/academic';
@@ -40,7 +43,22 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
 
-export const DeviceManagementPage: React.FC = () => {
+const instructionData = {
+  title: "Manajemen IoT",
+  description: "Kelola terminal absensi ESP32 yang terpasang di kelas atau gerbang.",
+  items: [
+    { text: "Device ID adalah MAC Address atau ChipID unik setiap alat." },
+    { text: "Gunakan fitur Pairing untuk menghubungkan alat ke kelas tertentu." },
+    { text: "Pantau kesehatan baterai secara berkala untuk pemeliharaan." }
+  ]
+};
+
+const breadcrumbs = [
+  { label: 'Presensi', path: '/attendance/ops' },
+  { label: 'Perangkat IoT', active: true }
+];
+
+export const DeviceManagementPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
   const [devices, setDevices] = useState<AttendanceDevice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +76,9 @@ export const DeviceManagementPage: React.FC = () => {
   });
 
   const { success, error } = useToast();
+  const confirm = useConfirm();
 
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
   const fetchData = useCallback(async () => {
@@ -76,8 +95,8 @@ export const DeviceManagementPage: React.FC = () => {
         getKelasList(1, 100)
       ]);
       
-      setDevices(deviceRes.data);
-      setKelasOptions(kelasRes.data.map((k: Kelas) => ({
+      setDevices(deviceRes?.data || []);
+      setKelasOptions((kelasRes?.data || []).map((k: Kelas) => ({
         value: k.id,
         label: k.nama_kelas
       })));
@@ -123,14 +142,25 @@ export const DeviceManagementPage: React.FC = () => {
       }
       setIsModalOpen(false);
       setRefreshTrigger(p => p + 1);
-    } catch (e: any) {
-      error(e.response?.data?.message || 'Gagal menyimpan perangkat');
+    } catch (e: unknown) {
+      const errObj = e as { response?: { data?: { message?: string } } };
+      error(errObj?.response?.data?.message || 'Gagal menyimpan perangkat');
     }
   };
 
   const handleDelete = async (id: string) => {
     if (isLocked) return;
-    if (!window.confirm('Hapus perangkat ini?')) return;
+    
+    const ok = await confirm({
+      title: 'Hapus Perangkat IoT',
+      description: 'Apakah Anda yakin ingin menghapus perangkat ini dari sistem? Peminjaman kelas yang terhubung akan dilepas.',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+    
+    if (!ok) return;
+
     try {
       await deleteDevice(id);
       success('Perangkat berhasil dihapus');
@@ -159,44 +189,36 @@ export const DeviceManagementPage: React.FC = () => {
     );
   };
 
-  const stats = [
+  const stats = useMemo(() => [
     {
       title: "Alat Terhubung",
-      value: devices.length.toString(),
+      value: (devices || []).length.toString(),
       icon: <Cpu size={14} />,
       gradient: "from-blue-500 to-indigo-600",
       subtitle: "Terdaftar di sistem"
     },
     {
       title: "Status Online",
-      value: devices.filter(d => {
+      value: (devices || []).filter(d => {
         return d.heartbeat_at && (new Date().getTime() - new Date(d.heartbeat_at).getTime() < 5 * 60 * 1000);
       }).length.toString(),
       icon: <Signal size={14} />,
       gradient: "from-emerald-500 to-teal-600",
       subtitle: "Perangkat aktif"
     }
-  ];
-
-  const instructionData = {
-    title: "Manajemen IoT",
-    description: "Kelola terminal absensi ESP32 yang terpasang di kelas atau gerbang.",
-    items: [
-      { text: "Device ID adalah MAC Address atau ChipID unik setiap alat." },
-      { text: "Gunakan fitur Pairing untuk menghubungkan alat ke kelas tertentu." },
-      { text: "Pantau kesehatan baterai secara berkala untuk pemeliharaan." }
-    ]
-  };
+  ], [devices]);
 
   const pageContent = (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
         <div className="relative group">
           <Input
+            id="device-search"
             placeholder="Cari ID Hardware atau Nama Alat..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-12 h-14 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold shadow-xl shadow-slate-200/50 dark:shadow-none transition-all group-focus-within:scale-[1.01]"
+            aria-label="Cari Perangkat"
           />
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-blue-500 transition-colors" />
         </div>
@@ -233,7 +255,7 @@ export const DeviceManagementPage: React.FC = () => {
             <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-widest">Daftarkan terminal absensi ESP32 Anda untuk mulai memantau.</p>
           </div>
         ) : (
-          devices.map((device) => (
+          devices?.map((device) => (
             <SectionCard key={device.id} noPadding className="group relative overflow-hidden transition-all hover:scale-[1.02] hover:shadow-2xl">
                <div className="p-6">
                  <div className="flex justify-between items-start mb-6">
@@ -315,8 +337,9 @@ export const DeviceManagementPage: React.FC = () => {
            </Alert>
 
            <div className="space-y-2">
-             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Hardware (Wajib)</label>
+             <Label htmlFor="device_id" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">ID Hardware (Wajib)</Label>
              <Input 
+                id="device_id"
                 placeholder="Contoh: 4A:3B:2C:1D:0E:5F"
                 value={formData.device_id}
                 onChange={(e) => setFormData({...formData, device_id: e.target.value})}
@@ -325,8 +348,9 @@ export const DeviceManagementPage: React.FC = () => {
            </div>
 
            <div className="space-y-2">
-             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Alias Alat</label>
+             <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Alias Alat</Label>
              <Input 
+                id="name"
                 placeholder="Contoh: Terminal Gerbang Utama"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -335,7 +359,7 @@ export const DeviceManagementPage: React.FC = () => {
            </div>
 
            <div className="space-y-2">
-             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pairing Kelas</label>
+             <Label htmlFor="kelas_id" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pairing Kelas</Label>
              <SearchableSelect
                 value={formData.kelas_id}
                 onValueChange={(val) => setFormData({...formData, kelas_id: val})}
@@ -365,6 +389,8 @@ export const DeviceManagementPage: React.FC = () => {
       description="Pusat kendali dan monitoring terminal absensi ESP32 di sekolah Anda."
       stats={stats}
       instruction={instructionData}
+      breadcrumbs={breadcrumbs}
+      hardeningModuleKey="devicemanagementpage"
     >
       <PremiumFeatureGate 
         isLocked={isLocked}
@@ -376,6 +402,8 @@ export const DeviceManagementPage: React.FC = () => {
       </PremiumFeatureGate>
     </PageLayout>
   );
-};
+});
+
+DeviceManagementPage.displayName = 'DeviceManagementPage';
 
 export default DeviceManagementPage;

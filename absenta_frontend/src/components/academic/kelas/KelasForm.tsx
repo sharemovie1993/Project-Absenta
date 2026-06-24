@@ -12,6 +12,7 @@ import { createKelas, updateKelas, getKelasDetail, type CreateKelasPayload, type
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Jurusan } from '../../../types/academic';
 import { createKelasSchema, type CreateKelasSchema } from '../../../schemas/academic/kelas.schema';
+import { useToast } from '../../../hooks/useToast';
 
 // Modular Sections
 import { KelasInfoSection } from './form/KelasInfoSection';
@@ -29,7 +30,7 @@ const TINGKAT_OPTIONS = [
   { value: 12, label: 'Kelas 12' }
 ];
 
-export const KelasForm: React.FC<KelasFormProps> = ({
+export const KelasForm = React.memo<KelasFormProps>(({
   kelasId,
   onSuccess,
   onCancel,
@@ -40,6 +41,8 @@ export const KelasForm: React.FC<KelasFormProps> = ({
   const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
   const [loadingDropdowns, setLoadingDropdowns] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+
+  const { showToast } = useToast();
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -98,15 +101,16 @@ export const KelasForm: React.FC<KelasFormProps> = ({
 
       } catch (error) {
         console.error('Error loading kelas data:', error);
-        setSubmitError('Gagal memuat data kelas');
+        showToast('Gagal memuat data kelas', 'error');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadKelasData();
-  }, [kelasId, mode, reset]);
+  }, [kelasId, mode, showToast, reset]);
 
+  // Handle form submission
   const onFormSubmit = async (data: CreateKelasSchema) => {
     if (isViewMode) return;
 
@@ -114,32 +118,35 @@ export const KelasForm: React.FC<KelasFormProps> = ({
       setLoading(true);
       setSubmitError('');
 
+      const payload: CreateKelasPayload | UpdateKelasPayload = {
+        nama_kelas: data.nama_kelas,
+        tingkat: data.tingkat,
+        jurusan_id: data.jurusan_id,
+        device_id: data.device_id || undefined,
+        is_active: data.is_active,
+      };
+
+      let response;
       if (isEditMode && kelasId) {
-        const updatePayload: UpdateKelasPayload = {
-          nama_kelas: data.nama_kelas,
-          tingkat: data.tingkat,
-          jurusan_id: data.jurusan_id,
-          is_active: data.is_active,
-        };
-        
-        await updateKelas(kelasId, updatePayload);
+        response = await updateKelas(kelasId, payload);
       } else {
-        const createPayload: CreateKelasPayload = {
-          nama_kelas: data.nama_kelas,
-          tingkat: data.tingkat,
-          jurusan_id: data.jurusan_id,
-          is_active: data.is_active,
-        };
-        
-        await createKelas(createPayload);
+        response = await createKelas(payload as CreateKelasPayload);
       }
 
-      onSuccess?.();
+      if (response.success) {
+        showToast(
+          isEditMode ? 'Kelas berhasil diperbarui' : 'Kelas berhasil dibuat',
+          'success'
+        );
+        onSuccess?.();
+      } else {
+        setSubmitError(response.message || 'Terjadi kesalahan saat menyimpan data');
+      }
     } catch (error: any) {
       console.error('Error submitting form:', error);
       setSubmitError(
         error.response?.data?.message || 
-        `Gagal ${isEditMode ? 'memperbarui' : 'membuat'} data kelas`
+        'Terjadi kesalahan saat menyimpan data'
       );
     } finally {
       setLoading(false);
@@ -148,16 +155,15 @@ export const KelasForm: React.FC<KelasFormProps> = ({
 
   if (loadingData) {
     return (
-      <div className="flex items-center justify-center h-64 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+      <div className="flex justify-center items-center py-8">
         <Loader size="lg" />
-        <span className="ml-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Memuat data kelas...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pb-40">
-      <form onSubmit={handleSubmit(onFormSubmit as any)} className="space-y-6">
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
         {submitError && (
           <Alert variant="destructive">
             {submitError}
@@ -207,4 +213,8 @@ export const KelasForm: React.FC<KelasFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+KelasForm.displayName = 'KelasForm';
+
+export default KelasForm;

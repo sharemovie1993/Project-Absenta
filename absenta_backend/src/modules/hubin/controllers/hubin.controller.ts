@@ -1,5 +1,8 @@
 import { HubinService } from '../services/hubin.service';
 import { googleDriveService } from '../services/google-drive.service';
+import { studentResolverService } from '../../../services/student-resolver.service';
+import { authorizationService } from '../../auth/services/authorization.service';
+
 
 interface AuthenticatedRequest {
   user: {
@@ -22,6 +25,15 @@ export class HubinController {
     this.hubinService = new HubinService();
   }
 
+  private async hasHubinManageCaps(request: AuthenticatedRequest): Promise<boolean> {
+    const auth = await authorizationService.isUserAuthorized(
+      request.user.id,
+      ['hubin.logbook.manage', 'hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.absensi.verify', 'hubin.partners.manage'],
+      { user: request.user }
+    );
+    return auth.allowed;
+  }
+
   // --- MITRA ---
   async getMitra(request: AuthenticatedRequest, reply: any) {
     try {
@@ -39,7 +51,7 @@ export class HubinController {
 
   async createMitra(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.createMitra(request.tenantId!, request.body);
+      const data = await this.hubinService.createMitra(request.tenantId!, request.body, request.user.id);
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -63,7 +75,7 @@ export class HubinController {
 
   async deleteMitra(request: AuthenticatedRequest, reply: any) {
     try {
-      await this.hubinService.deleteMitra(request.tenantId!, request.params.id);
+      await this.hubinService.deleteMitra(request.tenantId!, request.params.id, request.user.id);
       return reply.status(200).send({ success: true, message: 'Mitra deleted' });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -101,7 +113,7 @@ export class HubinController {
 
   async createPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.createPenempatan(request.tenantId!, request.body);
+      const data = await this.hubinService.createPenempatan(request.tenantId!, request.body, request.user.id);
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -111,7 +123,7 @@ export class HubinController {
   async deletePenempatan(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
-      await this.hubinService.deletePenempatan(request.tenantId!, id);
+      await this.hubinService.deletePenempatan(request.tenantId!, id, request.user.id);
       return reply.status(200).send({ success: true, message: 'Penempatan berhasil dihapus' });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -122,6 +134,17 @@ export class HubinController {
   async getAbsensiSiswa(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId } = request.params;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda tidak memiliki akses ke data absensi ini' });
+        }
+      }
       const { page, limit } = request.query;
       const data = await this.hubinService.getAbsensiSiswa(request.tenantId!, siswaPklId, {
         page: page ? parseInt(page) : undefined,
@@ -136,6 +159,17 @@ export class HubinController {
   async checkIn(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId, ...data } = request.body;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melakukan presensi untuk penempatan Anda sendiri' });
+        }
+      }
       const result = await this.hubinService.checkIn(request.tenantId!, siswaPklId, data);
       return reply.status(200).send({ success: true, data: result });
     } catch (error: any) {
@@ -146,6 +180,17 @@ export class HubinController {
   async checkOut(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId, ...data } = request.body;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melakukan presensi untuk penempatan Anda sendiri' });
+        }
+      }
       const result = await this.hubinService.checkOut(request.tenantId!, siswaPklId, data);
       return reply.status(200).send({ success: true, data: result });
     } catch (error: any) {
@@ -156,6 +201,17 @@ export class HubinController {
   async updateLogbook(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId } = request.params;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat memperbarui jurnal untuk penempatan Anda sendiri' });
+        }
+      }
       const result = await this.hubinService.updateLogbook(request.tenantId!, siswaPklId, request.body);
       return reply.status(200).send({ success: true, data: result });
     } catch (error: any) {
@@ -209,7 +265,19 @@ export class HubinController {
 
   async submitJurnalPortofolio(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.submitJurnalPortofolio(request.tenantId!, request.params.id, request.body);
+      const { id } = request.params;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, id, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat mengirim jurnal untuk penempatan Anda sendiri' });
+        }
+      }
+      const data = await this.hubinService.submitJurnalPortofolio(request.tenantId!, id, request.body);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -313,6 +381,236 @@ export class HubinController {
         success: success,
         message: success ? 'File berhasil dihapus permanen dari Google Drive' : 'Gagal menghapus file dari Google Drive'
       });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // --- MOU HISTORY ---
+  async getMoUHistory(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.getMoUHistory(request.tenantId!, request.params.mitraId);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async createMoUHistory(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.createMoUHistory(request.tenantId!, request.params.mitraId, request.body, request.user.id);
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteMoUHistory(request: AuthenticatedRequest, reply: any) {
+    try {
+      await this.hubinService.deleteMoUHistory(request.tenantId!, request.params.id, request.user.id);
+      return reply.status(200).send({ success: true, message: 'MoU history deleted' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // --- BKK LOWONGAN ---
+  async getLowongan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { search, status, page, limit } = request.query;
+      const data = await this.hubinService.getLowongan(request.tenantId!, {
+        search,
+        status,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      return reply.status(200).send({ success: true, ...data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async createLowongan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.createLowongan(request.tenantId!, request.body, request.user.id);
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateLowongan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.updateLowongan(request.tenantId!, request.params.id, request.body, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteLowongan(request: AuthenticatedRequest, reply: any) {
+    try {
+      await this.hubinService.deleteLowongan(request.tenantId!, request.params.id, request.user.id);
+      return reply.status(200).send({ success: true, message: 'Lowongan deleted' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // --- BKK LAMARAN ---
+  async getLamaran(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { lowonganId, status, page, limit } = request.query;
+      let { siswaId } = request.query;
+
+      // Check if user has management capabilities
+      const auth = await authorizationService.isUserAuthorized(
+        request.user.id,
+        ['hubin.lamaran.manage', 'hubin.partners.manage'],
+        { user: request.user }
+      );
+      const isManager = auth.allowed;
+
+      if (!isManager) {
+        // Force filter to only their resolved student ID
+        const resolvedSiswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!resolvedSiswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        siswaId = resolvedSiswaId;
+      }
+
+      const data = await this.hubinService.getLamaran(request.tenantId!, {
+        lowonganId,
+        status,
+        siswaId,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      return reply.status(200).send({ success: true, ...data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async createLamaran(request: AuthenticatedRequest, reply: any) {
+    try {
+      let siswaId = request.body.siswa_id;
+      if (!siswaId) {
+        siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(404).send({ success: false, message: 'Profil siswa tidak ditemukan untuk akun ini' });
+        }
+      }
+      const data = await this.hubinService.createLamaran(request.tenantId!, {
+        ...request.body,
+        siswa_id: siswaId
+      }, request.user.id);
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateLamaranStatus(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { status, catatan } = request.body;
+      const data = await this.hubinService.updateLamaranStatus(request.tenantId!, request.params.id, status, catatan, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // --- TRACER STUDY ---
+  async getTracerStudy(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { search, tahunLulus, statusAlumni, page, limit } = request.query;
+      const data = await this.hubinService.getTracerStudy(request.tenantId!, {
+        search,
+        tahunLulus: tahunLulus ? parseInt(tahunLulus) : undefined,
+        statusAlumni,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      return reply.status(200).send({ success: true, ...data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async submitTracerStudy(request: AuthenticatedRequest, reply: any) {
+    try {
+      let siswaId = request.body.siswa_id;
+      if (!siswaId) {
+        siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(404).send({ success: false, message: 'Profil siswa tidak ditemukan untuk akun ini' });
+        }
+      }
+      const data = await this.hubinService.submitTracerStudy(request.tenantId!, siswaId, request.body, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getTracerStats(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.getTracerStats(request.tenantId!);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // --- TEFA ---
+  async getTefaOrders(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { search, statusProyek, page, limit } = request.query;
+      const data = await this.hubinService.getTefaOrders(request.tenantId!, {
+        search,
+        statusProyek,
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined
+      });
+      return reply.status(200).send({ success: true, ...data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async createTefaOrder(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.createTefaOrder(request.tenantId!, request.body, request.user.id);
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateTefaOrder(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.updateTefaOrder(request.tenantId!, request.params.id, request.body, request.user.id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteTefaOrder(request: AuthenticatedRequest, reply: any) {
+    try {
+      await this.hubinService.deleteTefaOrder(request.tenantId!, request.params.id, request.user.id);
+      return reply.status(200).send({ success: true, message: 'TEFA order deleted' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getRecentActivity(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.getRecentActivity(request.tenantId!);
+      return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }

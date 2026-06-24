@@ -17,17 +17,17 @@ import { TreeErrorBoundary } from './TreeErrorBoundary';
 import { TreeSkeleton } from './NodeSkeleton';
 import { GROUP_CONFIG } from './constants';
 import { transformDataToTree, transformManagementToTree } from './utils';
-import type { GroupedStruktur, StrukturDiagramProps } from './types';
+import type { GroupedStruktur, StrukturDiagramProps, TopologyNodeData } from './types';
 import { useConfirm } from '@/providers/ConfirmProvider';
 
-export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({ 
+export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({ 
   activeCodes = [], 
   activeTab, 
   onNodeClick, 
   refreshKey 
 }) => {
   const queryClient = useQueryClient();
-  const [editingNode, setEditingNode] = useState<{ node: any; element: HTMLElement | null } | null>(null);
+  const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
   const { error: showErrorToast, success: showSuccessToast } = useToast();
   const { confirm } = useConfirm();
 
@@ -48,7 +48,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
   const jurusans = useMemo(() => {
     const jurMap: Record<string, string> = {};
     if (jurRes?.data) {
-      jurRes.data.forEach(j => {
+      (jurRes.data || []).forEach(j => {
         jurMap[j.id] = j.singkatan || j.kode || j.nama;
       });
     }
@@ -57,7 +57,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
 
   // Mutations
   const assignMutation = useMutation({
-    mutationFn: async ({ node, val }: { node: any, val: any }) => {
+    mutationFn: async ({ node, val }: { node: TopologyNodeData, val: { value: string; label: string } }) => {
       const realId = node.data?.realStrukturId;
       const roleCode = node.data?.roleCode;
       const isSiswa = roleCode === 'PETUGAS_KELAS';
@@ -89,7 +89,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (node: any) => {
+    mutationFn: async (node: TopologyNodeData) => {
       const { realMemberId, realStrukturId, roleCode, type } = node.data || {};
       const isSiswa = roleCode === 'PETUGAS_KELAS' || type === 'SISWA';
       if (isSiswa) {
@@ -107,7 +107,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
     }
   });
 
-  const handleLiveSave = useCallback(async (node: any, val: { value: string; label: string }) => {
+  const handleLiveSave = useCallback(async (node: TopologyNodeData, val: { value: string; label: string }) => {
     assignMutation.mutate({ node, val });
   }, [assignMutation]);
 
@@ -135,8 +135,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
     map['G3_TOP'] = transformDataToTree(['BPBK', 'BKK', 'GERBANG'], data, jurusans);
     map['G3_BOTTOM'] = transformDataToTree(['PETUGAS_KELAS', 'PETUGAS_ABSENSI'], data, jurusans);
 
-    const handledCodes = GROUP_CONFIG.flatMap(g => g.codes);
-    const otherCodes = Object.keys(data).filter(kode => !handledCodes.includes(kode));
+    const handledCodes = (GROUP_CONFIG || []).flatMap(g => g.codes);
+    const otherCodes = Object.keys(data || {}).filter(kode => !handledCodes.includes(kode));
     if (otherCodes.length > 0) {
       map['other'] = transformDataToTree(otherCodes, data, jurusans);
     }
@@ -168,7 +168,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
   }, [data, jurusans, activeCodes, activeTab]);
 
 
-  const handleNodeAction = useCallback(async (node: any, actionType: string = 'EDIT', element: HTMLElement | null = null) => {
+  const handleNodeAction = useCallback(async (node: TopologyNodeData | null | undefined, actionType: string = 'EDIT', element: HTMLElement | null = null) => {
     if (!node) {
       setEditingNode(null);
       return;
@@ -194,7 +194,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
 
     // Handle "Add New Member" button (Magnetic Pill Button)
     if (node.actionType === 'MEMBER_ADD' || (typeof node.id === 'string' && node.id.startsWith('add-new-'))) {
-      const virtualNode = {
+      const virtualNode: TopologyNodeData = {
         id: `virtual-add-${Date.now()}`,
         type: 'MEMBER',
         label: 'Tambah Personel Baru',
@@ -346,4 +346,6 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = ({
       )}
     </div>
   );
-};
+});
+
+StrukturDiagram.displayName = 'StrukturDiagram';

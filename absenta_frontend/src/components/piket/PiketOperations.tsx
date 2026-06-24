@@ -22,7 +22,7 @@ interface PiketOperationsProps {
   setPrintPaperSize: React.Dispatch<React.SetStateAction<string>>;
 }
 
-export const PiketOperations: React.FC<PiketOperationsProps> = ({
+export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
   dailyPermits,
   fetchPermits,
   tenantInfo,
@@ -50,7 +50,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
 
   // Active out-students count local memo
   const activeOutStudentsCount = useMemo(() => {
-    return dailyPermits.filter(p => p.status === 'DISETUJUI').length;
+    return (dailyPermits || []).filter(p => p.status === 'DISETUJUI').length;
   }, [dailyPermits]);
 
   // Submit and Save Permit (Simpan & Cetak)
@@ -104,9 +104,10 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
           setPrintedPermit(null);
         }, 300);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      const errMsg = err.response?.data?.message || err.message || 'Gagal menyimpan izin keluar';
+      const errorObj = err as any;
+      const errMsg = errorObj.response?.data?.message || errorObj.message || 'Gagal menyimpan izin keluar';
       error(errMsg);
     } finally {
       setSavingPermit(false);
@@ -142,8 +143,9 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
             </p>
             
             <div className="pt-4 border-t border-gray-100 dark:border-slate-800/80">
-              <SimpleFormField label="Preset Ukuran Kertas Slip">
+              <SimpleFormField label="Preset Ukuran Kertas Slip" htmlFor="paper-size-select">
                 <select
+                  id="paper-size-select"
                   value={printPaperSize}
                   onChange={(e) => setPrintPaperSize(e.target.value)}
                   className="w-full h-10 px-3 rounded-xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-gray-700 dark:text-gray-300 focus:border-indigo-500 outline-none"
@@ -173,7 +175,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
             <Card className="bg-white/5 p-4 rounded-xl border border-white/10 shadow-none">
               <span className="text-[9px] font-black text-white/40 uppercase tracking-widest block">Total Izin Selesai</span>
               <span className="text-3xl font-black text-emerald-400 mt-1 block">
-                {dailyPermits.filter(p => p.status === 'KEMBALI').length} <span className="text-xs font-medium text-white/50">siswa</span>
+                {(dailyPermits || []).filter(p => p.status === 'KEMBALI').length} <span className="text-xs font-medium text-white/50">siswa</span>
               </span>
             </Card>
           </div>
@@ -217,8 +219,9 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
             {/* Checkout permit form */}
             <form onSubmit={handleCreatePermit} className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SimpleFormField label="Tipe Izin Keluar" required>
+                <SimpleFormField label="Tipe Izin Keluar" htmlFor="tipe-izin-select" required>
                   <select
+                    id="tipe-izin-select"
                     value={tipeIzin}
                     onChange={(e) => setTipeIzin(e.target.value)}
                     className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white dark:bg-slate-900 dark:border-slate-800 text-sm font-bold text-gray-700 dark:text-gray-300 focus:border-indigo-500 outline-none"
@@ -228,8 +231,9 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
                   </select>
                 </SimpleFormField>
                 
-                <SimpleFormField label="Alasan Cepat">
+                <SimpleFormField label="Alasan Cepat" htmlFor="alasan-cepat-select">
                   <select
+                    id="alasan-cepat-select"
                     onChange={(e) => {
                       if (e.target.value !== 'Lainnya (Ketik Manual)') {
                         setAlasan(e.target.value);
@@ -244,8 +248,9 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
                 </SimpleFormField>
               </div>
 
-              <SimpleFormField label="Detail Alasan / Catatan Piket" required>
+              <SimpleFormField label="Detail Alasan / Catatan Piket" htmlFor="detail-alasan-textarea" required>
                 <Textarea
+                  id="detail-alasan-textarea"
                   value={alasan}
                   onChange={(e) => setAlasan(e.target.value)}
                   placeholder="Masukkan alasan lengkap..."
@@ -291,4 +296,4 @@ export const PiketOperations: React.FC<PiketOperationsProps> = ({
     <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
-};
+});

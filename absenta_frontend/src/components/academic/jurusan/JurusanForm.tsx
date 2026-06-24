@@ -22,7 +22,7 @@ interface JurusanFormProps {
   mode?: 'create' | 'edit' | 'view';
 }
 
-export const JurusanForm: React.FC<JurusanFormProps> = ({
+export const JurusanForm = React.memo<JurusanFormProps>(({
   jurusanId,
   onSuccess,
   onCancel,
@@ -174,4 +174,8 @@ export const JurusanForm: React.FC<JurusanFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+JurusanForm.displayName = 'JurusanForm';
+
+export default JurusanForm;

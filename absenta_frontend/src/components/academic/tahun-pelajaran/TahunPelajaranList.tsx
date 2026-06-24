@@ -33,7 +33,7 @@ interface TahunPelajaranListProps {
   onAdd?: () => void;
 }
 
-const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({ 
+const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({ 
   onEdit, 
   onView, 
   onAdd
@@ -68,7 +68,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
 
   const allVisibleSelected = useMemo(() => {
     if (tahunPelajarans.length === 0) return false;
-    return tahunPelajarans.every(tp => selectedIds.has(tp.id));
+    return (tahunPelajarans || []).every(tp => selectedIds.has(tp.id));
   }, [tahunPelajarans, selectedIds]);
 
   // Mutations
@@ -80,7 +80,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.stats });
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.active });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       showToast(error.message || 'Gagal mengaktifkan tahun pelajaran', 'error');
     }
   });
@@ -96,7 +96,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
         showToast(res.message || 'Gagal menghapus tahun pelajaran', 'error');
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       showToast(error.message || 'Gagal menghapus tahun pelajaran', 'error');
     }
   });
@@ -112,7 +112,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
-      exportDataToExcel(tahunPelajarans, [
+      exportDataToExcel(tahunPelajarans || [], [
         { header: 'Tahun Pelajaran', accessor: (row) => row.tahun, width: 20 },
         { header: 'Status', accessor: (row) => row.is_active ? 'Aktif' : 'Tidak Aktif', width: 15 },
         { header: 'Jumlah Siswa', accessor: (row) => row._count?.Siswa || 0, width: 15 },
@@ -181,7 +181,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
     { 
       key: '_count', 
       label: 'Siswa',
-      render: (count: any) => (
+      render: (count: { SiswaAkademik?: number; Siswa?: number } | undefined) => (
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
           {count?.SiswaAkademik || count?.Siswa || 0}
         </span>
@@ -190,7 +190,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
     { 
       key: '_count', 
       label: 'Semester',
-      render: (count: any) => (
+      render: (count: { Semester?: number } | undefined) => (
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
           {count?.Semester || 0}
         </span>
@@ -199,7 +199,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
     { 
       key: 'actions', 
       label: 'Aksi', 
-      render: (_: any, tahunPelajaran: TahunPelajaran) => (
+      render: (_: unknown, tahunPelajaran: TahunPelajaran) => (
         <div className="flex items-center gap-1">
           <Tooltip content="Lihat Detail">
             <Button
@@ -288,7 +288,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
         </div>
       )
     }
-  ], [canManage, onEdit, onView]);
+  ], [canManage, onEdit, onView, confirm, handleActivate, handleDelete]);
 
 
   if (!canManage && !onView) {
@@ -374,15 +374,15 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
                </Button>
   
                <Button
-                 variant="toolbarOutline"
-                 size="toolbarIcon"
-                 onClick={handleRefresh}
-                 aria-label="Refresh Data"
-                 className="rounded-xl"
-                 disabled={loading}
-               >
-                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-               </Button>
+                  variant="toolbarOutline"
+                  size="toolbarIcon"
+                  onClick={handleRefresh}
+                  aria-label="Refresh Data"
+                  className="rounded-xl"
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
             </div>
           }
           toolbarRight={
@@ -410,7 +410,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = ({
       </div>
     </div>
   );
-};
+});
 
+TahunPelajaranList.displayName = 'TahunPelajaranList';
 export default TahunPelajaranList;
-

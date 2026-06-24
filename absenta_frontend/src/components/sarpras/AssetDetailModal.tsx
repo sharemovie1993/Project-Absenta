@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/Tabs';
@@ -7,7 +7,6 @@ import { Table } from '../ui/Table';
 import type { Column } from '../ui/Table';
 import { sarprasApi } from '../../api/sarpras.api';
 import { Package, Calendar, User, Wrench, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
-import { formatLocalTimeFromISO, toLocalDate } from '../../utils/attendance/time';
 
 interface AssetDetailModalProps {
   isOpen: boolean;
@@ -69,65 +68,80 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ isOpen, onCl
   const loans = loansData?.data?.list || [];
   const repairs = repairsData?.data?.list || [];
 
-  const loanColumns: Column[] = [
+  const loanColumns: Column[] = useMemo(() => [
     {
       key: 'tanggal',
       label: 'Tanggal',
-      render: (_, row) => new Date(row.created_at).toLocaleDateString()
+      render: (_, row: unknown) => {
+        const r = row as { created_at: string };
+        return new Date(r.created_at).toLocaleDateString();
+      }
     },
     {
       key: 'peminjam',
       label: 'Peminjam',
-      render: (_, row) => row.Peminjam?.full_name || '-'
+      render: (_, row: unknown) => {
+        const r = row as { Peminjam?: { full_name?: string } };
+        return r.Peminjam?.full_name || '-';
+      }
     },
     {
       key: 'status',
       label: 'Status',
-      render: (status: string) => (
-        <Badge className={getStatusBadgeColor(status)}>{status}</Badge>
+      render: (status: unknown) => (
+        <Badge className={getStatusBadgeColor(String(status))}>{String(status)}</Badge>
       )
     },
     {
       key: 'catatan',
       label: 'Catatan Rtn',
-      render: (_, row) => (
-        <span className="text-xs text-slate-500 max-w-[150px] truncate block" title={row.return_catatan}>
-          {row.return_catatan || '-'}
-        </span>
-      )
+      render: (_, row: unknown) => {
+        const r = row as { return_catatan?: string };
+        return (
+          <span className="text-xs text-slate-500 max-w-[150px] truncate block" title={r.return_catatan}>
+            {r.return_catatan || '-'}
+          </span>
+        );
+      }
     }
-  ];
+  ], []);
 
-  const repairColumns: Column[] = [
+  const repairColumns: Column[] = useMemo(() => [
     {
       key: 'tanggal',
       label: 'Dilaporkan',
-      render: (_, row) => new Date(row.tanggal_mulai).toLocaleDateString()
+      render: (_, row: unknown) => {
+        const r = row as { tanggal_mulai: string };
+        return new Date(r.tanggal_mulai).toLocaleDateString();
+      }
     },
     {
       key: 'teknisi',
       label: 'Penanggung Jawab',
-      render: (val) => val || '-'
+      render: (val: unknown) => (val as string) || '-'
     },
     {
       key: 'status',
       label: 'Status',
-      render: (status: string) => (
-        <Badge className={status === 'SELESAI' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
-          {status}
+      render: (status: unknown) => (
+        <Badge className={String(status) === 'SELESAI' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+          {String(status)}
         </Badge>
       )
     },
     {
       key: 'deskripsi',
       label: 'Keluhan / Solusi',
-      render: (val) => (
-        <span className="text-xs text-slate-500 max-w-[150px] truncate block" title={val}>
-          {val || '-'}
-        </span>
-      )
+      render: (val: unknown) => {
+        const strVal = val as string;
+        return (
+          <span className="text-xs text-slate-500 max-w-[150px] truncate block" title={strVal}>
+            {strVal || '-'}
+          </span>
+        );
+      }
     }
-  ];
+  ], []);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detail & Riwayat Aset" size="lg">

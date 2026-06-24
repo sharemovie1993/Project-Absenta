@@ -25,6 +25,7 @@ export interface Student {
 }
 
 interface SmartStudentPickerProps {
+  id?: string;
   onSelect: (student: Student) => void;
   placeholder?: string;
   scope?: 'teaching' | 'global' | 'piket';
@@ -40,6 +41,7 @@ interface SmartStudentPickerProps {
 }
 
 export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStudentPickerProps>(({
+  id,
   onSelect,
   placeholder,
   scope = 'teaching',
@@ -280,6 +282,7 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
         </div>
         
         <Input
+          id={id}
           ref={combinedRef}
           type="text"
           value={inputValue}

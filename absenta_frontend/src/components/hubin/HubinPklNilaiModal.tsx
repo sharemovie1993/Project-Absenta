@@ -4,10 +4,23 @@ import { Modal, Button, Input, Textarea } from '../ui';
 import { SimpleFormField } from '../ui/SimpleFormField';
 import { HubinPklHeaderInfo } from './HubinPklHeaderInfo';
 
+interface SelectedPklNilai {
+  id: string;
+  Siswa?: { nama_siswa: string };
+  Mitra?: { nama: string };
+  nilai_json?: {
+    soft_skills?: number;
+    technical_skills?: number;
+    discipline?: number;
+    catatan?: string;
+    nilai_akhir?: number;
+  };
+}
+
 interface HubinPklNilaiModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedPkl: any;
+  selectedPkl: SelectedPklNilai | null;
   handleNilaiSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isPending: boolean;
 }
@@ -41,8 +54,9 @@ export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
 
           <form onSubmit={handleNilaiSubmit} className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <SimpleFormField label="Soft Skills" required>
+              <SimpleFormField htmlFor="nilai-soft-skills" label="Soft Skills" required>
                 <Input
+                  id="nilai-soft-skills"
                   type="number"
                   name="soft_skills"
                   min="0"
@@ -52,8 +66,9 @@ export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
                   placeholder="0-100"
                 />
               </SimpleFormField>
-              <SimpleFormField label="Teknis" required>
+              <SimpleFormField htmlFor="nilai-technical-skills" label="Teknis" required>
                 <Input
+                  id="nilai-technical-skills"
                   type="number"
                   name="technical_skills"
                   min="0"
@@ -63,8 +78,9 @@ export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
                   placeholder="0-100"
                 />
               </SimpleFormField>
-              <SimpleFormField label="Kedisiplinan" required>
+              <SimpleFormField htmlFor="nilai-discipline" label="Kedisiplinan" required>
                 <Input
+                  id="nilai-discipline"
                   type="number"
                   name="discipline"
                   min="0"
@@ -76,8 +92,9 @@ export const HubinPklNilaiModal: React.FC<HubinPklNilaiModalProps> = ({
               </SimpleFormField>
             </div>
 
-            <SimpleFormField label="Catatan Akhir Evaluasi Instruktur">
+            <SimpleFormField htmlFor="nilai-catatan" label="Catatan Akhir Evaluasi Instruktur">
               <Textarea
+                id="nilai-catatan"
                 name="catatan"
                 rows={3}
                 defaultValue={selectedPkl.nilai_json?.catatan ?? ''}

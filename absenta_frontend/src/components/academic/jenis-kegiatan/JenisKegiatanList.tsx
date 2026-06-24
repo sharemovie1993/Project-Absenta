@@ -1,4 +1,6 @@
-import React from 'react';
+
+
+import React, { useMemo } from 'react';
 import { 
   Edit, 
   Trash2, 
@@ -30,7 +32,7 @@ interface JenisKegiatanListProps {
   canManage: boolean;
 }
 
-export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
+export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
   items,
   loading,
   search,
@@ -43,7 +45,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
   onView,
   canManage
 }) => {
-  const columns = [
+  const columns = useMemo(() => [
     { 
       label: 'Nama Kegiatan', 
       key: 'nama', 
@@ -59,7 +61,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
       label: 'Tipe', 
       key: 'tipe', 
       render: (v: string) => {
-        const variants: Record<string, any> = {
+        const variants: Record<string, 'default' | 'info' | 'success' | 'destructive' | 'outline' | 'secondary'> = {
           'KBM': 'default',
           'ESKUL': 'info',
           'PEMBIASAAN': 'success'
@@ -88,7 +90,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
     { 
       label: 'Aksi', 
       key: 'id', 
-      render: (_: any, item: JenisKegiatanMaster) => (
+      render: (_: unknown, item: JenisKegiatanMaster) => (
         <div className="flex items-center gap-1">
           <Button 
             size="sm" 
@@ -125,7 +127,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
         </div>
       ) 
     }
-  ];
+  ], [canManage, onEdit, onView, onDelete]);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
@@ -149,7 +151,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
       <div className="flex-1 overflow-hidden">
         <Table
           columns={columns}
-          data={items}
+          data={items || []}
           loading={loading}
           emptyMessage="Tidak ada data kategori kegiatan ditemukan."
           compact={true}
@@ -193,4 +195,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = ({
       </div>
     </div>
   );
-};
+});
+
+JenisKegiatanList.displayName = 'JenisKegiatanList';
+

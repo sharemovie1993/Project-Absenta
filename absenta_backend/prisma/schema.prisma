@@ -85,6 +85,11 @@ model Tenant {
   MitraIndustri MitraIndustri[]
   SiswaPkl      SiswaPkl[]
   IzinKeluarSiswa IzinKeluarSiswa[]
+  HubinMoUHistory HubinMoUHistory[]
+  HubinLowongan HubinLowongan[]
+  HubinLamaran HubinLamaran[]
+  HubinTracerStudy HubinTracerStudy[]
+  HubinTefaOrder HubinTefaOrder[]
 
   // BK & Prestasi
   JenisPrestasi       JenisPrestasi[]
@@ -94,6 +99,8 @@ model Tenant {
   HomeVisit           HomeVisit[]
   AsesmenSiswa        AsesmenSiswa[]
   RujukanKasus        RujukanKasus[]
+  KasusBK             KasusBK[]
+  EwsSnapshot         EwsSnapshot[]
 
   // Sarpras
   SarprasCategory    SarprasCategory[]
@@ -1006,9 +1013,13 @@ model Siswa {
   HomeVisit           HomeVisit[]
   AsesmenSiswa        AsesmenSiswa[]
   RujukanKasus        RujukanKasus[]
+  KasusBK             KasusBK[]
+  EwsSnapshot         EwsSnapshot[]
 
   Member   Member?
   SiswaPkl SiswaPkl[]
+  HubinLamaran HubinLamaran[]
+  HubinTracerStudy HubinTracerStudy?
 
   @@unique([tenant_id, nis])
   @@index([tenant_id])
@@ -2910,23 +2921,155 @@ enum PPOBStatus {
 
 // --- MODUL HUBIN (PKL) ---
 model MitraIndustri {
-  id         String   @id @default(uuid())
-  tenant_id  String
-  nama       String
-  bidang     String?
-  alamat     String?
-  kontak     String?
-  mou_url    String?
-  latitude   Float?
-  longitude  Float?
-  radius     Int?     @default(100)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  nama                  String
+  bidang                String?
+  alamat                String?
+  kontak                String?
+  latitude              Float?
+  longitude             Float?
+  radius                Int?              @default(100)
+  
+  // Detail PIC Industri
+  pic_nama              String?
+  pic_jabatan           String?
+  pic_telepon           String?
+  pic_email             String?
 
-  Tenant   Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SiswaPkl SiswaPkl[]
+  // MoU & Kuota
+  mou_nomor             String?
+  mou_url               String?
+  mou_tanggal_mulai     DateTime?
+  mou_tanggal_berakhir  DateTime?
+  mou_status            String            @default("AKTIF")
+  kuota_pkl             Int               @default(0)
+  kompetensi_keahlian   String?
+
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  Tenant                Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SiswaPkl              SiswaPkl[]
+  MoUHistory            HubinMoUHistory[]
+  Lowongan              HubinLowongan[]
+  TefaOrder             HubinTefaOrder[]
 
   @@index([tenant_id])
+}
+
+model HubinMoUHistory {
+  id              String        @id @default(uuid())
+  tenant_id       String
+  mitra_id        String
+  mou_nomor       String
+  mou_tipe        String        // MoU, MoA, PKS
+  tanggal_mulai   DateTime
+  tanggal_selesai DateTime
+  mou_url         String?
+  keterangan      String?       @db.Text
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  deleted_at      DateTime?
+
+  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra           MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([mitra_id])
+  @@index([tenant_id, deleted_at])
+}
+
+model HubinLowongan {
+  id              String         @id @default(uuid())
+  tenant_id       String
+  mitra_id        String?
+  perusahaan_nama String
+  judul_posisi    String
+  deskripsi       String         @db.Text
+  persyaratan     String         @db.Text
+  kuota           Int            @default(1)
+  tanggal_tutup   DateTime
+  status          String         @default("BUKA")
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+  deleted_at      DateTime?
+
+  Tenant          Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra           MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
+  Lamaran         HubinLamaran[]
+
+  @@index([tenant_id])
+  @@index([mitra_id])
+  @@index([tenant_id, deleted_at])
+}
+
+model HubinLamaran {
+  id              String        @id @default(uuid())
+  tenant_id       String
+  lowongan_id     String
+  siswa_id        String
+  status_seleksi  String        @default("TERKIRIM")
+  cv_url          String?
+  catatan         String?       @db.Text
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  deleted_at      DateTime?
+
+  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Lowongan        HubinLowongan @relation(fields: [lowongan_id], references: [id], onDelete: Cascade)
+  Siswa           Siswa         @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([lowongan_id])
+  @@index([siswa_id])
+  @@index([tenant_id, deleted_at])
+}
+
+model HubinTracerStudy {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  siswa_id         String   @unique
+  tahun_lulus      Int
+  status_alumni    String
+  perusahaan_nama  String?
+  posisi           String?
+  gaji_estimasi    String?
+  universitas_nama String?
+  program_studi    String?
+  usaha_nama       String?
+  usaha_bidang     String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  deleted_at       DateTime?
+
+  Tenant           Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa            Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, deleted_at])
+}
+
+model HubinTefaOrder {
+  id             String         @id @default(uuid())
+  tenant_id      String
+  mitra_id       String?
+  nama_proyek    String
+  nilai_kontrak  Float?
+  status_proyek  String         @default("PERENCANAAN")
+  tanggal_mulai  DateTime?
+  tanggal_target DateTime?
+  deskripsi      String?        @db.Text
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  deleted_at     DateTime?
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra          MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([mitra_id])
+  @@index([tenant_id, deleted_at])
 }
 
 model SiswaPkl {
@@ -3028,12 +3171,14 @@ model SarprasCategory {
   deskripsi  String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  deleted_at DateTime?
 
   Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Assets SarprasAsset[]
 
   @@unique([tenant_id, nama])
   @@index([tenant_id])
+  @@index([tenant_id, deleted_at])
 }
 
 model SarprasLocation {
@@ -3044,6 +3189,7 @@ model SarprasLocation {
   unit_id    String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  deleted_at DateTime?
 
   Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Assets SarprasAsset[]
@@ -3051,6 +3197,7 @@ model SarprasLocation {
 
   @@unique([tenant_id, nama])
   @@index([tenant_id])
+  @@index([tenant_id, deleted_at])
 }
 
 model SarprasAsset {
@@ -3072,6 +3219,7 @@ model SarprasAsset {
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+  deleted_at DateTime?
 
   Tenant   Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Category SarprasCategory?     @relation(fields: [category_id], references: [id], onDelete: SetNull)
@@ -3083,6 +3231,7 @@ model SarprasAsset {
   @@index([category_id])
   @@index([location_id])
   @@index([kode])
+  @@index([tenant_id, deleted_at])
 }
 
 model SarprasLoan {
@@ -3352,19 +3501,24 @@ model KonselingSiswa {
   id                String         @id @default(uuid())
   tenant_id         String
   siswa_id          String
+  kasus_bk_id       String?
   tanggal           DateTime       @db.Date
   tipe              String         // INDIVIDU, KELOMPOK
   kelompok_id       String?        // Pengenal jika konseling kelompok dilakukan bersamaan
   masalah           String         @db.Text
   solusi            String?        @db.Text
   status            String         @default("PROSES") // PROSES, SELESAI
+  visibility        String         @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
   petugas_id        String         // User ID guru BK yang menangani
+  deleted_at        DateTime?
+  deleted_by        String?
   created_at        DateTime       @default(now())
   updated_at        DateTime       @updatedAt
 
   Tenant            Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa             Siswa          @relation(fields: [siswa_id], references: [id])
   Petugas           User           @relation(fields: [petugas_id], references: [id])
+  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3375,18 +3529,24 @@ model PemanggilanOrangTua {
   id                  String       @id @default(uuid())
   tenant_id           String
   siswa_id            String
+  kasus_bk_id         String?
   tanggal_pemanggilan DateTime     @db.Date
   tanggal_pertemuan   DateTime?    @db.Date
   alasan              String       @db.Text
   keterangan_pertemuan String?     @db.Text
   status              String       @default("BARU") // BARU, DIKIRIM, HADIR, TIDAK_HADIR
+  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  ortu_notified     Boolean        @default(false)
   surat_dokumen_id    String?      // Relasi opsional ke file scan surat panggilan fisik
+  deleted_at          DateTime?
+  deleted_by          String?
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 
   Tenant              Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa               Siswa        @relation(fields: [siswa_id], references: [id])
   Dokumen             SiswaDocument? @relation(fields: [surat_dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3397,16 +3557,22 @@ model HomeVisit {
   id               String          @id @default(uuid())
   tenant_id        String
   siswa_id         String
+  kasus_bk_id       String?
   tanggal          DateTime        @db.Date
   alasan           String          @db.Text
   hasil            String?         @db.Text
+  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  ortu_notified     Boolean        @default(false)
   foto_dokumen_id  String?         // Relasi opsional ke file scan/foto laporan kunjungan rumah
+  deleted_at       DateTime?
+  deleted_by       String?
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
 
   Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
   Dokumen          SiswaDocument?  @relation(fields: [foto_dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3417,17 +3583,22 @@ model AsesmenSiswa {
   id               String          @id @default(uuid())
   tenant_id        String
   siswa_id         String
+  kasus_bk_id       String?
   tanggal          DateTime        @db.Date
   nama_asesmen     String          // Contoh: "Sosiometri", "Kuesioner Gaya Belajar", "Tes Depresi Beck"
   hasil_skor       String?
   keterangan       String?         @db.Text
+  visibility        String         @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
   dokumen_id       String?         // Relasi ke SiswaDocument (file hasil tes)
+  deleted_at       DateTime?
+  deleted_by       String?
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
 
   Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
   Dokumen          SiswaDocument?  @relation(fields: [dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3438,16 +3609,76 @@ model RujukanKasus {
   id               String          @id @default(uuid())
   tenant_id        String
   siswa_id         String
+  kasus_bk_id       String?
   tanggal          DateTime        @db.Date
   rujukan_ke       String          // Contoh: "Psikolog Klinis", "Rumah Sakit", "Dinas Pendidikan", "Kepala Sekolah"
   alasan           String          @db.Text
   status           String          @default("DIUSULKAN") // DIUSULKAN, SELESAI
+  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  deleted_at       DateTime?
+  deleted_by       String?
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
 
   Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
+  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
 }
+
+// Kasus Utama BK (Parent Entity)
+model KasusBK {
+  id                String                 @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  judul             String
+  kategori          String                 // KEDISIPLINAN, AKADEMIS, PRIBADI, SOSIAL
+  status            String                 @default("TERBUKA") // TERBUKA, PROSES, RUJUKAN, SELESAI
+  prioritas         String                 @default("SEDANG") // RENDAH, SEDANG, TINGGI
+  visibility        String                 @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
+  tanggal_kasus     DateTime               @db.Date
+  keterangan        String?                @db.Text
+  closed_at         DateTime?
+  closed_by         String?
+  catatan_selesai   String?                @db.Text
+  deleted_at        DateTime?
+  deleted_by        String?
+  reopen_count      Int                    @default(0)
+  created_at        DateTime               @default(now())
+  updated_at        DateTime               @updatedAt
+
+  Tenant            Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa             Siswa                  @relation(fields: [siswa_id], references: [id])
+
+  KonselingSiswa      KonselingSiswa[]
+  PemanggilanOrangTua PemanggilanOrangTua[]
+  HomeVisit           HomeVisit[]
+  AsesmenSiswa        AsesmenSiswa[]
+  RujukanKasus        RujukanKasus[]
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+}
+
+model EwsSnapshot {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  risk_score        Float
+  risk_level        String   // LOW, MEDIUM, HIGH
+  violations_score  Float
+  achievement_score Float
+  alpa_count        Int
+  active_cases      Int
+  snapshot_date     DateTime @default(now())
+
+  Tenant            Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa             Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([siswa_id])
+  @@index([snapshot_date])
+}
+

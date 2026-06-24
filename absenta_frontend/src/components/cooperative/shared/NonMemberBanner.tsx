@@ -6,7 +6,7 @@ interface NonMemberBannerProps {
   description?: string;
 }
 
-export const NonMemberBanner: React.FC<NonMemberBannerProps> = ({ 
+export const NonMemberBanner = React.memo<NonMemberBannerProps>(({ 
   title = "Anda Belum Terdaftar sebagai Anggota Koperasi",
   description = "Untuk mengakses fitur Simpanan, Pinjaman, dan Laporan Koperasi, silakan daftarkan diri Anda kepada Bendahara atau Ketua Koperasi sekolah."
 }) => {
@@ -40,4 +40,6 @@ export const NonMemberBanner: React.FC<NonMemberBannerProps> = ({
       </div>
     </div>
   );
-};
+});
+
+NonMemberBanner.displayName = 'NonMemberBanner';

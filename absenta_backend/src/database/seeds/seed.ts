@@ -256,7 +256,7 @@ async function main() {
             { label: 'Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list' },
             { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.view.list' },
             { label: 'Monitoring Kesiswaan', icon: 'Activity', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.violation.stats' },
-            { label: 'Bimbingan Konseling (BK)', icon: 'HeartHandshake', path: '/kesiswaan/bk', required_capability: 'affairs.violations.view.list' },
+            { label: 'Bimbingan Konseling (BK)', icon: 'HeartHandshake', path: '/kesiswaan/bk', required_capability: 'bk.cases.view.list' },
           ]
         }
       ]
@@ -301,7 +301,7 @@ async function main() {
       label: 'HUBIN', icon: 'Handshake', path: null, required_features: ['HUBIN'], order: 30, children: [
         { label: 'Mitra Industri', icon: 'Store', path: '/hubin/mitra', required_capability: 'hubin.partners.manage, hubin.pkl.view.list' },
         { label: 'Penempatan PKL', icon: 'UserPlus', path: '/hubin/penempatan', required_capability: 'hubin.pkl.view.list, hubin.guidance.manage' },
-        { label: 'Presensi & Jurnal PKL', icon: 'Briefcase', path: '/hubin/absensi', required_capability: 'hubin.view.pkl' },
+        { label: 'Presensi & Jurnal PKL', icon: 'Briefcase', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.pkl.view.list, hubin.absensi.view.history' },
         { label: 'Verifikasi Absensi', icon: 'CalendarCheck', path: '/hubin/absensi', required_capability: 'hubin.absensi.verify' },
         { label: 'Monitoring PKL', icon: 'Activity', path: '/hubin/monitoring', required_capability: 'hubin.absensi.recap, hubin.absensi.view.history' },
       ]

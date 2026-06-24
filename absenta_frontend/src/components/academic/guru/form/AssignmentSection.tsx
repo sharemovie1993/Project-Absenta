@@ -14,11 +14,11 @@ interface AssignmentSectionProps {
   isViewMode: boolean;
 }
 
-export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
+export const AssignmentSection = React.memo<AssignmentSectionProps>(({
   loadingMapel,
   loadingAssignments,
-  mapelList,
-  selectedMapelIds,
+  mapelList = [],
+  selectedMapelIds = [],
   setValue,
   isViewMode
 }) => {
@@ -32,8 +32,8 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {mapelList.map((mapel) => {
-              const isChecked = selectedMapelIds.includes(mapel.id);
+            {mapelList?.map((mapel) => {
+              const isChecked = selectedMapelIds?.includes(mapel.id);
               return (
                 <div key={mapel.id} className={`flex items-center p-3 rounded-xl border-2 transition-all duration-300 ${isChecked ? 'bg-indigo-50/50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-slate-50/50 border-slate-100 dark:bg-slate-950 dark:border-slate-800 hover:border-slate-200'}`}>
                   <Checkbox 
@@ -54,7 +54,7 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
             })}
           </div>
         )}
-        {mapelList.length === 0 && !loadingMapel && (
+        {(!mapelList || mapelList.length === 0) && !loadingMapel && (
           <div className="text-center py-12 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Data Tidak Tersedia</p>
           </div>
@@ -62,4 +62,6 @@ export const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       </div>
     </SectionCard>
   );
-};
+});
+
+AssignmentSection.displayName = 'AssignmentSection';

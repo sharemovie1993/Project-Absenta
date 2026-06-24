@@ -1,37 +1,39 @@
 import React from 'react';
-import { Calendar, Layers, Info as InfoIcon, Settings2, CheckCircle2 } from 'lucide-react';
+import { Calendar, Layers, CheckCircle2, Settings2 } from 'lucide-react';
 import { Label } from '../../../ui/Label';
 import { Switch } from '../../../ui/Switch';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
-import { Controller } from 'react-hook-form';
+import { Controller, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
+import { SemesterFormValues } from '../../../../schemas/academic/semester.schema';
+import type { TahunPelajaran } from '../../../../types/academic';
 
 interface SemesterInfoSectionProps {
-  control: any;
-  errors: any;
+  control: Control<SemesterFormValues>;
+  errors: FieldErrors<SemesterFormValues>;
   isViewMode: boolean;
-  watch: any;
-  tahunPelajaranList: any[];
+  watch: UseFormWatch<SemesterFormValues>;
+  tahunPelajaranList: TahunPelajaran[];
   loadingTahunPelajaran: boolean;
-  semesterOptions: any[];
+  semesterOptions: { value: string; label: string }[];
   handleActiveChange: (checked: boolean) => void;
 }
 
-export const SemesterInfoSection: React.FC<SemesterInfoSectionProps> = ({
+export const SemesterInfoSection = React.memo<SemesterInfoSectionProps>(({
   control,
   errors,
   isViewMode,
   watch,
-  tahunPelajaranList,
+  tahunPelajaranList = [],
   loadingTahunPelajaran,
-  semesterOptions,
+  semesterOptions = [],
   handleActiveChange
 }) => {
   const watchIsActive = watch('is_active');
 
   if (isViewMode) {
-    const selectedTp = tahunPelajaranList.find(t => t.id === watch('tahun_pelajaran_id'));
-    const selectedSemester = semesterOptions.find(s => s.value === watch('nama_semester'));
+    const selectedTp = (tahunPelajaranList || []).find(t => t.id === watch('tahun_pelajaran_id'));
+    const selectedSemester = (semesterOptions || []).find(s => s.value === watch('nama_semester'));
 
     return (
       <SectionCard title="Informasi Semester" icon={Layers}>
@@ -62,7 +64,7 @@ export const SemesterInfoSection: React.FC<SemesterInfoSectionProps> = ({
             <SearchableSelect
               value={field.value}
               onValueChange={field.onChange}
-              options={tahunPelajaranList.map(t => ({ value: t.id, label: `${t.tahun} ${t.is_active ? '(Aktif)' : ''}` }))}
+              options={(tahunPelajaranList || []).map(t => ({ value: t.id, label: `${t.tahun} ${t.is_active ? '(Aktif)' : ''}` }))}
               placeholder={loadingTahunPelajaran ? 'Memuat...' : 'Pilih Tahun Pelajaran'}
               disabled={isViewMode || loadingTahunPelajaran}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl ${errors.tahun_pelajaran_id ? 'border-red-500' : ''}`}
@@ -135,6 +137,7 @@ export const SemesterInfoSection: React.FC<SemesterInfoSectionProps> = ({
                     onCheckedChange={handleActiveChange}
                     disabled={isViewMode}
                     className="scale-110"
+                    id="is_active"
                   />
                 )}
               />
@@ -147,4 +150,6 @@ export const SemesterInfoSection: React.FC<SemesterInfoSectionProps> = ({
       </div>
     </SectionCard>
   );
-};
+});
+SemesterInfoSection.displayName = 'SemesterInfoSection';
+

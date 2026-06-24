@@ -37,7 +37,7 @@ const STATUS_OPTIONS = [
   { value: 'INACTIVE', label: 'Tidak Aktif' }
 ];
 
-export const GuruForm: React.FC<GuruFormProps> = ({
+export const GuruForm = React.memo<GuruFormProps>(({
   guruId,
   onSuccess,
   onCancel,
@@ -331,6 +331,8 @@ export const GuruForm: React.FC<GuruFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+GuruForm.displayName = 'GuruForm';
 
 export default GuruForm;

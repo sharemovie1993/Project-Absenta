@@ -6,7 +6,7 @@ interface PrintLoanAgreementProps {
   coopSettings?: CooperativeSettings | null;
 }
 
-export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({ loan, coopSettings }) => {
+export const PrintLoanAgreement = React.memo<PrintLoanAgreementProps>(({ loan, coopSettings }) => {
   const amountNumber = parseFloat(loan.amount);
   const durationMonths = loan.duration;
   const interestRateVal = parseFloat(loan.interestRate);
@@ -77,10 +77,10 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({ loan, co
         <div className="grid grid-cols-12 gap-2">
           <span className="col-span-1 font-bold">II.</span>
           <div className="col-span-11 space-y-1">
-            <p className="font-bold uppercase">{loan.member.name}</p>
+            <p className="font-bold uppercase">{loan.member?.name}</p>
             <div className="grid grid-cols-12 gap-1 font-medium text-slate-700">
               <span className="col-span-3">No. Anggota</span>
-              <span className="col-span-9">: {loan.member.memberNo}</span>
+              <span className="col-span-9">: {loan.member?.memberNo}</span>
               <span className="col-span-3">Jabatan/Status</span>
               <span className="col-span-9">: Anggota Koperasi</span>
             </div>
@@ -148,9 +148,9 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({ loan, co
           <p>PIHAK KEDUA<br/>Peminjam (Anggota)</p>
           <div>
             <div className="font-bold uppercase text-[11px] underline">
-              {loan.member.name}
+              {loan.member?.name}
             </div>
-            <div className="text-[10px] text-slate-500 font-medium">No. Anggota: {loan.member.memberNo}</div>
+            <div className="text-[10px] text-slate-500 font-medium">No. Anggota: {loan.member?.memberNo}</div>
           </div>
         </div>
 
@@ -166,7 +166,9 @@ export const PrintLoanAgreement: React.FC<PrintLoanAgreementProps> = ({ loan, co
       </div>
     </div>
   );
-};
+});
+
+PrintLoanAgreement.displayName = 'PrintLoanAgreement';
 
 // Helper function to convert numeric amount to Indonesian text words
 function convertAmountToWords(num: number): string {

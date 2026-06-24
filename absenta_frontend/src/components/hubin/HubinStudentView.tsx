@@ -21,26 +21,71 @@ import { HubinGoogleDriveUploader } from './HubinGoogleDriveUploader';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 
+interface ViewUser {
+  full_name?: string;
+  email?: string;
+}
+
+interface JurnalInfo {
+  status?: string;
+  catatan_revisi?: string;
+  file_url?: string;
+}
+
+interface StudentPklView {
+  id: string;
+  nilai_akhir?: string | number;
+  jurnal_json?: JurnalInfo;
+  Siswa?: {
+    Kelas?: {
+      nama?: string;
+    };
+  };
+}
+
+interface TodayAbsensi {
+  jam_masuk?: string;
+  jam_pulang?: string;
+}
+
+interface ViewMutation {
+  mutate: (variables: any) => void;
+  mutateAsync: (variables: any) => Promise<any>;
+  isPending: boolean;
+}
+
+interface TimelineItem {
+  id: string;
+  text: string;
+  time: string;
+}
+
+interface AbsensiRecord {
+  id: string;
+  tanggal: string;
+  status: string;
+}
+
 interface HubinStudentViewProps {
-  user: any;
-  studentPkl: any;
-  todayAbsensi: any;
+  user: ViewUser | null;
+  studentPkl: StudentPklView | null;
+  todayAbsensi: TodayAbsensi | null;
   location: { lat: number; lng: number; accuracy?: number } | null;
   isMockLocation?: boolean;
   kegiatan: string;
   setKegiatan: (val: string) => void;
   fotoUrl: string;
   setFotoUrl: (val: string) => void;
-  checkInMutation: any;
-  checkOutMutation: any;
+  checkInMutation: ViewMutation;
+  checkOutMutation: ViewMutation;
   onRefreshLocation: () => void;
-  rawAbsensiHistory: any[];
-  parsedTimeline: any[];
+  rawAbsensiHistory: AbsensiRecord[];
+  parsedTimeline: TimelineItem[];
   onDeleteActivity: (idx: number) => void;
   onOpenAddModal: () => void;
   jurnalUrl: string;
   setJurnalUrl: (val: string) => void;
-  submitJurnalMutation: any;
+  submitJurnalMutation: ViewMutation;
   stats: any[];
   generateCustomFileName: (suffix: string) => string;
   onPrint: () => void;
@@ -70,6 +115,14 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
   generateCustomFileName,
   onPrint,
 }) => {
+  const handlePrintClick = React.useCallback(() => {
+    onPrint();
+  }, [onPrint]);
+
+  const handleSubmitPortofolio = React.useCallback(() => {
+    submitJurnalMutation.mutate(jurnalUrl);
+  }, [jurnalUrl, submitJurnalMutation]);
+
   if (!studentPkl) {
     return (
       <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
@@ -121,7 +174,7 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
             {/* Quick Riwayat Link - Compact */}
             <div 
               className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-white border border-slate-100 dark:border-slate-700 shadow-sm flex items-center justify-between group cursor-pointer hover:bg-white dark:hover:bg-slate-750 transition-all"
-              onClick={() => onPrint()}
+              onClick={handlePrintClick}
             >
               <div className="flex items-center gap-3">
                 <HistoryIcon size={16} className="text-indigo-600 dark:text-indigo-400" />
@@ -145,7 +198,7 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
 
       <TabsContent value="jurnal" className="mt-0">
         <HubinStudentJurnalTab 
-          studentPkl={studentPkl}
+          studentPkl={studentPkl as any}
           jurnalUrl={jurnalUrl}
           setJurnalUrl={setJurnalUrl}
           submitJurnalMutation={submitJurnalMutation}
@@ -173,7 +226,7 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
               <div className="mt-6 flex justify-end">
                 <Button
                   variant="primary"
-                  onClick={() => submitJurnalMutation.mutate(jurnalUrl)}
+                  onClick={handleSubmitPortofolio}
                   isLoading={submitJurnalMutation.isPending}
                   disabled={!jurnalUrl || submitJurnalMutation.isPending}
                   className="px-8 font-black uppercase tracking-widest text-xs"

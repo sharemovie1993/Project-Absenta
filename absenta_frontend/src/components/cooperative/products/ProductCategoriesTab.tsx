@@ -34,7 +34,7 @@ interface ProductCategoriesTabProps {
   fetchProducts: () => Promise<void>;
 }
 
-export const ProductCategoriesTab: React.FC<ProductCategoriesTabProps> = ({
+export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
   categories,
   fetchCategories,
   fetchProducts
@@ -136,7 +136,7 @@ export const ProductCategoriesTab: React.FC<ProductCategoriesTabProps> = ({
 
   // Filtered categories list
   const filteredCategories = useMemo(() => {
-    const sorted = [...categories];
+    const sorted = [...(categories || [])];
     if (sortKey) {
       sorted.sort((a, b) => {
         const valA = String(a[sortKey as keyof ProductCategory] ?? '').toLowerCase();
@@ -300,6 +300,8 @@ export const ProductCategoriesTab: React.FC<ProductCategoriesTabProps> = ({
       />
     </div>
   );
-};
+});
+
+ProductCategoriesTab.displayName = 'ProductCategoriesTab';
 
 export default ProductCategoriesTab;

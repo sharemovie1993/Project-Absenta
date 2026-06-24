@@ -4,19 +4,20 @@ import { Input } from '../../../ui/Input';
 import { Textarea } from '../../../ui/Textarea';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Label } from '../../../ui/Label';
-import { Controller } from 'react-hook-form';
+import { Controller, UseFormRegister, Control, FieldErrors, UseFormWatch } from 'react-hook-form';
 import { JENIS_KELAMIN_OPTIONS, TRANSPORTASI_OPTIONS } from '../../../../api/dropdown.api';
+import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 
 interface PersonalSectionProps {
-    register: any;
-    control: any;
-    errors: any;
+    register: UseFormRegister<SiswaFormValues>;
+    control: Control<SiswaFormValues>;
+    errors: FieldErrors<SiswaFormValues>;
     isViewMode: boolean;
-    watch: any;
+    watch: UseFormWatch<SiswaFormValues>;
 }
 
-export const PersonalSection: React.FC<PersonalSectionProps> = ({
+export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
     register,
     control,
     errors,
@@ -32,8 +33,8 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                 <DetailRow icon={<Phone size={16} />} label="Nomor HP" value={watch('no_hp')} />
                 <DetailRow icon={<MapPin size={16} />} label="Tempat Lahir" value={watch('tempat_lahir')} />
                 <DetailRow icon={<Calendar size={16} />} label="Tanggal Lahir" value={watch('tanggal_lahir')} />
-                <DetailRow icon={<Users size={16} />} label="Jenis Kelamin" value={JENIS_KELAMIN_OPTIONS.find(o => o.value === watch('jenis_kelamin'))?.label} />
-                <DetailRow icon={<Bus size={16} />} label="Transportasi" value={TRANSPORTASI_OPTIONS.find(o => o.value === watch('transportasi'))?.label} />
+                <DetailRow icon={<Users size={16} />} label="Jenis Kelamin" value={(JENIS_KELAMIN_OPTIONS || []).find(o => o.value === watch('jenis_kelamin'))?.label} />
+                <DetailRow icon={<Bus size={16} />} label="Transportasi" value={(TRANSPORTASI_OPTIONS || []).find(o => o.value === watch('transportasi'))?.label} />
                 <DetailRow icon={<Radio size={16} />} label="No RFID" value={watch('no_rfid')} />
                 <DetailRow icon={<Home size={16} />} label="Alamat" value={watch('alamat')} />
             </SectionCard>
@@ -152,6 +153,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="jenis_kelamin"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={JENIS_KELAMIN_OPTIONS}
@@ -174,6 +176,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                         <SearchableSelect
+                            id="transportasi"
                             value={field.value}
                             onValueChange={field.onChange}
                             options={TRANSPORTASI_OPTIONS}
@@ -216,4 +219,6 @@ export const PersonalSection: React.FC<PersonalSectionProps> = ({
             </div>
         </SectionCard>
     );
-};
+});
+
+PersonalSection.displayName = 'PersonalSection';

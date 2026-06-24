@@ -8,7 +8,7 @@ interface MemberCardVisualProps {
   qrCodeUrl: string;
 }
 
-export const MemberCardVisual: React.FC<MemberCardVisualProps> = ({
+export const MemberCardVisual: React.FC<MemberCardVisualProps> = React.memo(({
   member,
   coopName,
   coopProfile,
@@ -101,4 +101,4 @@ export const MemberCardVisual: React.FC<MemberCardVisualProps> = ({
       </div>
     </div>
   );
-};
+});

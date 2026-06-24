@@ -5,15 +5,30 @@ import { id as localeID } from 'date-fns/locale';
 import { Modal, Button, Textarea } from '../ui';
 import { SimpleFormField } from '../ui/SimpleFormField';
 
+interface SelectedPklReviewJurnal {
+  id: string;
+  Siswa?: { nama_siswa: string };
+  Mitra?: { nama: string };
+  jurnal_json?: {
+    submitted_at?: string;
+    file_url?: string;
+  };
+}
+
+interface ReviewJurnalMutation {
+  mutate: (variables: { id: string; status: 'DISETUJUI' | 'REVISI'; catatan: string }) => void;
+  isPending: boolean;
+}
+
 interface HubinPklReviewJurnalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedPkl: any;
+  selectedPkl: SelectedPklReviewJurnal | null;
   reviewJurnalStatus: 'DISETUJUI' | 'REVISI';
   setReviewJurnalStatus: (val: 'DISETUJUI' | 'REVISI') => void;
   reviewJurnalCatatan: string;
   setReviewJurnalCatatan: (val: string) => void;
-  reviewJurnalMutation: any;
+  reviewJurnalMutation: ReviewJurnalMutation;
 }
 
 export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps> = ({
@@ -26,6 +41,24 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
   setReviewJurnalCatatan,
   reviewJurnalMutation,
 }) => {
+  const handleSelectDisetujui = React.useCallback(() => {
+    setReviewJurnalStatus('DISETUJUI');
+  }, [setReviewJurnalStatus]);
+
+  const handleSelectRevisi = React.useCallback(() => {
+    setReviewJurnalStatus('REVISI');
+  }, [setReviewJurnalStatus]);
+
+  const handleSubmit = React.useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedPkl) return;
+    reviewJurnalMutation.mutate({
+      id: selectedPkl.id,
+      status: reviewJurnalStatus,
+      catatan: reviewJurnalCatatan
+    });
+  }, [selectedPkl, reviewJurnalStatus, reviewJurnalCatatan, reviewJurnalMutation]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -80,14 +113,7 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
 
           {/* Form Review */}
           <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              reviewJurnalMutation.mutate({
-                id: selectedPkl.id,
-                status: reviewJurnalStatus,
-                catatan: reviewJurnalCatatan
-              });
-            }}
+            onSubmit={handleSubmit}
             className="space-y-4"
           >
             <div className="space-y-1.5">
@@ -95,7 +121,7 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setReviewJurnalStatus('DISETUJUI')}
+                  onClick={handleSelectDisetujui}
                   className={`py-3 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                     reviewJurnalStatus === 'DISETUJUI'
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm shadow-emerald-50'
@@ -106,7 +132,7 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setReviewJurnalStatus('REVISI')}
+                  onClick={handleSelectRevisi}
                   className={`py-3 px-4 rounded-xl border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                     reviewJurnalStatus === 'REVISI'
                       ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm shadow-rose-50'
@@ -119,10 +145,12 @@ export const HubinPklReviewJurnalModal: React.FC<HubinPklReviewJurnalModalProps>
             </div>
 
             <SimpleFormField 
+              htmlFor="review-catatan"
               label={reviewJurnalStatus === 'REVISI' ? "Catatan Masukan Revisi (Wajib)" : "Catatan / Umpan Balik Evaluasi (Opsional)"}
               required={reviewJurnalStatus === 'REVISI'}
             >
               <Textarea
+                id="review-catatan"
                 value={reviewJurnalCatatan}
                 onChange={(e) => setReviewJurnalCatatan(e.target.value)}
                 rows={3}

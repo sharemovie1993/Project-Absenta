@@ -7,7 +7,7 @@ interface SettingsGroupProps {
     defaultOpen?: boolean;
 }
 
-export const SettingsGroup: React.FC<SettingsGroupProps> = ({ 
+export const SettingsGroup: React.FC<SettingsGroupProps> = React.memo(({ 
     title, 
     children, 
     defaultOpen = false 
@@ -29,4 +29,6 @@ export const SettingsGroup: React.FC<SettingsGroupProps> = ({
             )}
         </div>
     );
-};
+});
+
+SettingsGroup.displayName = 'SettingsGroup';

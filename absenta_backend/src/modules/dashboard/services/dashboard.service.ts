@@ -1019,7 +1019,36 @@ export class DashboardService {
       pklWhere.pembimbing_id = guruId;
     }
 
-    const [totalMitra, totalSiswaPkl, pklAktif, pendingReports] = await Promise.all([
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    // Get all unique student IDs with status LULUS or in SiswaAkademik with status LULUS
+    const alumniStudents = await prisma.siswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { status: 'LULUS' },
+          { SiswaAkademik: { some: { status: 'LULUS' } } }
+        ]
+      },
+      select: { id: true }
+    });
+    const totalAlumni = alumniStudents.length;
+
+    const [
+      totalMitra,
+      totalSiswaPkl,
+      pklAktif,
+      pendingReports,
+      mouExpiringCount,
+      totalLowonganAktif,
+      totalAlumniTraced,
+      statusBekerjaCount,
+      statusWirausahaCount,
+      totalRecruitmentSuccess,
+      topMitraGroup,
+      tracedAlumni
+    ] = await Promise.all([
       prisma.mitraIndustri.count({ where: baseWhere }),
       prisma.siswaPkl.count({ where: pklWhere }),
       prisma.siswaPkl.count({ where: { ...pklWhere, status: 'AKTIF' } }),
@@ -1028,8 +1057,120 @@ export class DashboardService {
           SiswaPkl: pklWhere,
           is_verified: false
         }
+      }),
+      prisma.mitraIndustri.count({
+        where: {
+          ...baseWhere,
+          mou_tanggal_berakhir: {
+            gte: new Date(),
+            lte: thirtyDaysFromNow
+          }
+        }
+      }),
+      prisma.hubinLowongan.count({
+        where: {
+          ...baseWhere,
+          status: 'BUKA',
+          deleted_at: null
+        }
+      }),
+      prisma.hubinTracerStudy.count({
+        where: { ...baseWhere, deleted_at: null }
+      }),
+      prisma.hubinTracerStudy.count({
+        where: { ...baseWhere, status_alumni: 'BEKERJA', deleted_at: null }
+      }),
+      prisma.hubinTracerStudy.count({
+        where: { ...baseWhere, status_alumni: 'WIRAUSAHA', deleted_at: null }
+      }),
+      prisma.hubinLamaran.count({
+        where: { ...baseWhere, status_seleksi: 'DITERIMA', deleted_at: null }
+      }),
+      prisma.siswaPkl.groupBy({
+        by: ['mitra_id'],
+        where: { tenant_id: tenantId, status: 'AKTIF' },
+        _count: { siswa_id: true },
+        orderBy: { _count: { siswa_id: 'desc' } },
+        take: 5
+      }),
+      prisma.hubinTracerStudy.findMany({
+        where: {
+          tenant_id: tenantId,
+          status_alumni: { in: ['BEKERJA', 'WIRAUSAHA'] },
+          deleted_at: null
+        },
+        include: {
+          Siswa: {
+            include: {
+              Kelas: {
+                include: {
+                  Jurusan: true
+                }
+              }
+            }
+          }
+        }
       })
     ]);
+
+    // Tracer Coverage
+    const tracerCoverage = totalAlumni > 0 ? (totalAlumniTraced / totalAlumni) * 100 : 0;
+
+    // Employment Rate
+    const employmentRate = totalAlumniTraced > 0 ? ((statusBekerjaCount + statusWirausahaCount) / totalAlumniTraced) * 100 : 0;
+
+    // Top Mitra Detail
+    const topMitraIds = topMitraGroup.map(g => g.mitra_id);
+    const topMitrasDetail = await prisma.mitraIndustri.findMany({
+      where: { id: { in: topMitraIds } },
+      select: { id: true, nama: true }
+    });
+    const topMitra = topMitraGroup.map(g => {
+      const detail = topMitrasDetail.find(m => m.id === g.mitra_id);
+      return {
+        id: g.mitra_id,
+        nama: detail?.nama || 'Tidak Diketahui',
+        count: g._count.siswa_id
+      };
+    });
+
+    // Top Jurusan Terserap
+    const jurusanCounts: Record<string, { nama: string; count: number }> = {};
+    tracedAlumni.forEach(ta => {
+      const jurusan = ta.Siswa?.Kelas?.Jurusan;
+      if (jurusan) {
+        if (!jurusanCounts[jurusan.id]) {
+          jurusanCounts[jurusan.id] = {
+            nama: jurusan.nama,
+            count: 0
+          };
+        }
+        jurusanCounts[jurusan.id]!.count++;
+      }
+    });
+    const topJurusanTerserap = Object.values(jurusanCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const tracerGroups = await prisma.hubinTracerStudy.groupBy({
+      by: ['status_alumni'],
+      where: { ...baseWhere, deleted_at: null },
+      _count: { status_alumni: true }
+    });
+
+    const tracerStats = {
+      BEKERJA: 0,
+      KULIAH: 0,
+      WIRAUSAHA: 0,
+      MENCARI_KERJA: 0
+    };
+
+    tracerGroups.forEach(g => {
+      const key = g.status_alumni as keyof typeof tracerStats;
+      if (tracerStats[key] !== undefined) {
+        tracerStats[key] = g._count.status_alumni;
+      }
+    });
 
     const recentPkl = await prisma.siswaPkl.findMany({
       where: pklWhere,
@@ -1046,6 +1187,15 @@ export class DashboardService {
       totalSiswaPkl,
       pklAktif,
       pendingReports,
+      mouExpiringCount,
+      totalLowonganAktif,
+      totalAlumniTraced,
+      tracerStats,
+      tracerCoverage,
+      employmentRate,
+      topMitra,
+      topJurusanTerserap,
+      totalRecruitmentSuccess,
       recentPkl: recentPkl.map(p => ({
         id: p.id,
         siswa: p.Siswa.nama_siswa,
@@ -1062,7 +1212,7 @@ export class DashboardService {
   async getSarprasStats(tenantId: string) {
     const [totalAssets, totalLoaned, totalBroken] = await Promise.all([
       prisma.sarprasAsset.count({ where: { tenant_id: tenantId } }),
-      prisma.sarprasLoan.count({ where: { tenant_id: tenantId, status: 'DIPINJAM' } }),
+      prisma.sarprasLoan.count({ where: { tenant_id: tenantId, status: 'ACTIVE' } }),
       prisma.sarprasAsset.count({ where: { tenant_id: tenantId, kondisi: 'RUSAK' } })
     ]);
 
@@ -1303,7 +1453,7 @@ export class DashboardService {
 
     const [toolsBorrowed, totalAssets, damagedReports] = await Promise.all([
       prisma.sarprasLoan.count({
-        where: { ...where, status: 'DIPINJAM' }
+        where: { ...where, status: 'ACTIVE' }
       }),
       prisma.sarprasAsset.count({ where }),
       prisma.sarprasAsset.count({ where: { ...where, kondisi: 'RUSAK' } })

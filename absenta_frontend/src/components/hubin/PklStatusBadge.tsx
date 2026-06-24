@@ -9,7 +9,7 @@ interface PklStatusBadgeProps {
   className?: string;
 }
 
-export const PklStatusBadge: React.FC<PklStatusBadgeProps> = ({ status, className }) => {
+export const PklStatusBadge: React.FC<PklStatusBadgeProps> = React.memo(({ status, className }) => {
   const normalized = String(status || '').toUpperCase();
 
   switch (normalized) {
@@ -47,7 +47,7 @@ export const PklStatusBadge: React.FC<PklStatusBadgeProps> = ({ status, classNam
     case 'ALPHA':
     case 'ALPA':
       return (
-        <span className={cn("px-2 py-0.5 text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-400 rounded-full flex items-center gap-1 w-fit border border-rose-100/50 dark:border-rose-900/20 shadow-sm", className)}>
+        <span className={cn("px-2 py-0.5 text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/20 dark:text-rose-450 rounded-full flex items-center gap-1 w-fit border border-rose-100/50 dark:border-rose-900/20 shadow-sm", className)}>
           <XCircle size={11} className="shrink-0" />
           <span>ALPHA</span>
         </span>
@@ -81,6 +81,6 @@ export const PklStatusBadge: React.FC<PklStatusBadgeProps> = ({ status, classNam
         </span>
       );
   }
-};
+});
 
 export default PklStatusBadge;

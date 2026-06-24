@@ -45,7 +45,8 @@ const RULES = {
     'kesiswaan.',
     'kurikulum.',
     'cadangan.',
-    'payment.'
+    'payment.',
+    'bk.'
   ],
   SHARED: [
     'dashboard.',
@@ -87,6 +88,8 @@ const ORGANIZATIONAL_ALLOWLIST_NON_ORG_DOMAIN = new Set<string>([
   'attendance.officers.manage',
   'academic.teaching.view',
   'academic.years.view.list',
+  'bk.cases.view.list',
+  'bk.cases.view.detail',
   'academic.semesters.view.list',
   'hubin.pkl.view.list',
   'hubin.view.pkl',

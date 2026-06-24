@@ -1,21 +1,32 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { PendingSiswaModule } from '../modules/PendingSiswaModule';
+import { PendingSiswaModule } from './PendingSiswaModule';
 import { useGerbangAttendanceData } from '../../../../hooks/attendance/useGerbangAttendanceData';
 import { useTenant } from '../../../../hooks/useTenant';
-import { useAuth } from '../../../../hooks/useAuth';
 import { toLocalDate } from '../../../../utils/attendance/time';
 import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { useSocket } from '../../../../hooks/useSocket';
 import { Card } from '../../../../components/ui/Card';
-import { LogIn, LogOut, Users, Loader, Zap, Activity, UserCheck, MapPin } from 'lucide-react';
+import { LogIn, LogOut, Loader, UserCheck, MapPin } from 'lucide-react';
 import { DashboardHero } from '../../../../components/dashboard/shared/DashboardHero';
 
 // Lazy load GateInputModule to avoid loading ZXing library (400KB+) when not needed
-const GateInputModule = lazy(() => import('../modules/GateInputModule').then(module => ({ default: module.GateInputModule })));
+const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
 
-interface Props {
-  user: any;
+interface UserRole {
+  name: string;
+}
+
+interface UserCapabilities {
+  role?: UserRole;
+  capabilities?: string[];
+  position_codes?: string[];
+  full_name?: string;
+  name?: string;
+}
+
+interface ModeSimpleViewProps {
+  user: UserCapabilities | null;
   absensiMode: 'SIMPLE' | 'MULTI_SESI' | null;
   isPetugasSiswa: boolean;
   isPetugasGuru: boolean;
@@ -27,14 +38,9 @@ interface Props {
 
 export default function ModeSimpleView({ 
   user, 
-  absensiMode, 
   isPetugasSiswa, 
-  isPetugasGuru,
   kelasLabel,
-  roleLabel,
-  petugasLabel,
-  petugasVariant 
-}: Props) {
+}: ModeSimpleViewProps) {
   const isAdmin = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
   const caps = user?.capabilities || [];
   const positionCodes = user?.position_codes || [];
@@ -165,6 +171,7 @@ export default function ModeSimpleView({
                       ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transform scale-105'
                       : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                   }`}
+                  type="button"
                 >
                   <LogIn className="w-4 h-4" />
                   Absen Masuk
@@ -176,6 +183,7 @@ export default function ModeSimpleView({
                       ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20 transform scale-105'
                       : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                   }`}
+                  type="button"
                 >
                   <LogOut className="w-4 h-4" />
                   Absen Keluar

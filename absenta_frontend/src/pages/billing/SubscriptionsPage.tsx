@@ -433,11 +433,11 @@ export default function SubscriptionsPage() {
   const instruction = useMemo(() => ({
     title: 'Panduan Manajemen Langganan',
     description: 'Pantau dan kelola seluruh langganan aktif, masa trial, dan auto-renew untuk semua tenant platform Absenta.',
-    tips: [
-      'Gunakan filter Status untuk menyaring langganan berdasarkan kondisi saat ini (Aktif, Trial, Kedaluwarsa, dll).',
-      'Tombol "Riwayat" di tiap baris menampilkan jejak perubahan status dan paket untuk satu subscription.',
-      'Edit subscription hanya mengizinkan perubahan toggle Auto Renew; perubahan status mengikuti alur sistem.',
-      'Kolom Next Billing menunjukkan estimasi tanggal penagihan berikutnya berdasarkan data billing terbaru.',
+    items: [
+      { text: 'Gunakan filter Status untuk menyaring langganan berdasarkan kondisi saat ini (Aktif, Trial, Kedaluwarsa, dll).' },
+      { text: 'Tombol "Riwayat" di tiap baris menampilkan jejak perubahan status dan paket untuk satu subscription.' },
+      { text: 'Edit subscription hanya mengizinkan perubahan toggle Auto Renew; perubahan status mengikuti alur sistem.' },
+      { text: 'Kolom Next Billing menunjukkan estimasi tanggal penagihan berikutnya berdasarkan data billing terbaru.' }
     ],
   }), []);
 

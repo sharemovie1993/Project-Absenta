@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+
 import { useAuth } from '../../../hooks/useAuth';
 import { 
   getSiswaTimeline, 
@@ -20,7 +21,7 @@ interface SiswaTimelineAndExitTabProps {
   siswa: Siswa;
 }
 
-export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = ({ siswa }) => {
+export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = React.memo(({ siswa }) => {
   const { can, user } = useAuth();
   const { showToast } = useToast();
   
@@ -37,26 +38,26 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
   const canManage = can('academic.students.manage') || user?.role?.name === 'SUPERADMIN';
   const canUpload = can('academic.students.manage') || can('affairs.violations.report') || user?.role?.name === 'SUPERADMIN';
 
-  const fetchTimeline = async () => {
+  const fetchTimeline = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getSiswaTimeline(siswa.id);
-      setTimeline(data);
+      setTimeline(data || []);
     } catch (err: any) {
       setError(err.message || 'Gagal memuat linimasa');
     } finally {
       setLoading(false);
     }
-  };
+  }, [siswa.id]);
 
   useEffect(() => {
     if (siswa.id) {
       fetchTimeline();
     }
-  }, [siswa.id]);
+  }, [siswa.id, fetchTimeline]);
 
-  const handleDownloadZip = async () => {
+  const handleDownloadZip = useCallback(async () => {
     try {
       setDownloadingZip(true);
       const blob = await downloadSiswaExitBundle(siswa.id);
@@ -74,9 +75,9 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
     } finally {
       setDownloadingZip(false);
     }
-  };
+  }, [siswa.id, siswa.nama_siswa, showToast]);
 
-  const handleDownloadDoc = async (docId: string, fileName: string) => {
+  const handleDownloadDoc = useCallback(async (docId: string, fileName: string) => {
     try {
       setDownloadingDocId(docId);
       const blob = await downloadSiswaDocumentFile(siswa.id, docId);
@@ -94,9 +95,9 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
     } finally {
       setDownloadingDocId(null);
     }
-  };
+  }, [siswa.id, showToast]);
 
-  const handleDeleteDoc = async (docId: string, judul: string) => {
+  const handleDeleteDoc = useCallback(async (docId: string, judul: string) => {
     if (!window.confirm(`Apakah Anda yakin ingin menghapus lampiran '${judul}'?`)) return;
     try {
       setLoading(true);
@@ -112,7 +113,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
     } finally {
       setLoading(false);
     }
-  };
+  }, [siswa.id, showToast, fetchTimeline]);
 
   if (loading && timeline.length === 0) return (
     <div className="py-20 flex flex-col items-center justify-center">
@@ -184,7 +185,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
         </div>
       ) : (
         <Timeline className="px-2">
-          {timeline.map((item, index) => {
+          {(timeline || []).map((item, index) => {
             const isAkademik = item.tipe === 'STATUS_AKADEMIK';
             const isPelanggaran = item.tipe === 'PELANGGARAN';
             const isDokumen = item.tipe === 'DOKUMEN';
@@ -264,4 +265,7 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = (
       />
     </div>
   );
-};
+});
+
+SiswaTimelineAndExitTab.displayName = 'SiswaTimelineAndExitTab';
+

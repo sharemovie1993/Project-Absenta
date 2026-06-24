@@ -12,7 +12,7 @@ interface SavingTransactionModalProps {
   onSubmit: (amount: number, description: string) => Promise<void>;
 }
 
-export const SavingTransactionModal: React.FC<SavingTransactionModalProps> = ({
+export const SavingTransactionModal = React.memo<SavingTransactionModalProps>(({
   isOpen,
   onClose,
   saving,
@@ -146,4 +146,6 @@ export const SavingTransactionModal: React.FC<SavingTransactionModalProps> = ({
       </form>
     </Modal>
   );
-};
+});
+
+SavingTransactionModal.displayName = 'SavingTransactionModal';

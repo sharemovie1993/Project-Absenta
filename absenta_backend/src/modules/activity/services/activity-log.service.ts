@@ -17,7 +17,7 @@ export class ActivityLogService {
     }
 
     queueMicrotask(() => {
-      void prisma.activityLog.create({
+      prisma.activityLog.create({
         data: {
           tenant_id: params.tenant_id,
           user_id: params.user_id,
@@ -26,6 +26,8 @@ export class ActivityLogService {
           entity_id: params.entity_id ?? null,
           metadata: params.metadata ? JSON.stringify(params.metadata) : null,
         },
+      }).catch(err => {
+        console.error('[ActivityLogService] failed to save log:', err);
       });
     });
   }

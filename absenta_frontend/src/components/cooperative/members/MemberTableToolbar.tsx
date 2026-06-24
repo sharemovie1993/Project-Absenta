@@ -16,7 +16,7 @@ interface MemberTableToolbarLeftProps {
   filterKelasOptions: { label: string; value: string }[];
 }
 
-export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = ({
+export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = React.memo(({
   searchQuery,
   setSearchQuery,
   filterType,
@@ -77,7 +77,7 @@ export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = ({
       )}
     </div>
   );
-};
+});
 
 interface MemberTableToolbarRightProps {
   setIsImportModalOpen: (val: boolean) => void;
@@ -89,7 +89,7 @@ interface MemberTableToolbarRightProps {
   setIsModalOpen: (val: boolean) => void;
 }
 
-export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = ({
+export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = React.memo(({
   setIsImportModalOpen,
   handleExportPdf,
   handleDownloadBulkCardsPdf,
@@ -163,4 +163,4 @@ export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = (
       )}
     </div>
   );
-};
+});

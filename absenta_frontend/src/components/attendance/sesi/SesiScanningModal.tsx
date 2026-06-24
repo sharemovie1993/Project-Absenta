@@ -1,0 +1,113 @@
+import React from 'react';
+import { Users } from 'lucide-react';
+import { Modal, Alert, AlertDescription, Badge, ToastContainer, Label } from '../../ui';
+import Button from '../../ui/Button';
+import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
+import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
+import { type Toast } from '../../../hooks/useToast';
+
+interface SesiScanningModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  scannerInputRef: React.RefObject<HTMLInputElement>;
+  scannerInput: string;
+  setScannerInput: (val: string) => void;
+  scanLoading: boolean;
+  onSubmitScan: (overrideId?: string, isGuruFromUniversal?: boolean) => void;
+  inputModalSesiId: string;
+  sessionAttendanceRecords: SesiAttendanceRecord[];
+  currentSession?: SesiDetail;
+  kelasLabel: string;
+  toasts: Toast[];
+  removeToast: (id: string) => void;
+}
+
+const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
+  isOpen,
+  onClose,
+  scannerInputRef,
+  scannerInput,
+  setScannerInput,
+  scanLoading,
+  onSubmitScan,
+  inputModalSesiId,
+  sessionAttendanceRecords,
+  currentSession,
+  kelasLabel,
+  toasts,
+  removeToast,
+}) => {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Input Presensi Sesi (Universal)"
+      size="2xl"
+      className="max-h-[96vh]"
+      contentClassName="max-h-[88vh]"
+    >
+      <div className="space-y-6">
+        <Alert className="rounded-xl border-none bg-indigo-50/50 dark:bg-indigo-900/20">
+          <AlertDescription className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+            Silakan scan kartu/QR atau ketik Nama/ID/RFID. Sistem akan otomatis mengenali Guru atau
+            Siswa.
+          </AlertDescription>
+        </Alert>
+
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="session-scanner-input" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Cari Entitas Absen (Siswa / Guru)
+            </Label>
+            <div className="bg-white dark:bg-gray-900 p-1 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              <SmartStudentPicker
+                id="session-scanner-input"
+                ref={scannerInputRef}
+                value={scannerInput}
+                onChange={setScannerInput}
+                placeholder="Scan/Ketik Nama, NIS, NIP, atau RFID..."
+                disabled={scanLoading}
+                mode="universal"
+                onSelect={(item: Student) =>
+                  onSubmitScan(item.id, (item as unknown as { _type?: string })._type === 'guru')
+                }
+                scope="global"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => onSubmitScan()}
+              disabled={scanLoading || !scannerInput.trim()}
+              className="h-10 px-6 rounded-xl bg-indigo-600 font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-600/20"
+            >
+              {scanLoading ? 'Memproses...' : 'Submit Manual'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Users size={14} className="text-indigo-500" />
+              Daftar Hadir Sesi
+            </h4>
+            <Badge variant="outline" className="text-[9px] font-black uppercase">
+              {kelasLabel}
+            </Badge>
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            <SesiAttendanceList records={sessionAttendanceRecords} sesi={currentSession} />
+          </div>
+        </div>
+
+        <ToastContainer toasts={toasts} onRemove={removeToast} className="space-y-2 w-full" />
+      </div>
+    </Modal>
+  );
+};
+
+SesiScanningModalComponent.displayName = 'SesiScanningModal';
+export const SesiScanningModal = React.memo(SesiScanningModalComponent);

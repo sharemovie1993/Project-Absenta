@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { MapPin, History, Plus, Camera, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
@@ -9,11 +9,25 @@ import { getDriveThumbnailUrl } from '../../utils/hubinUtils';
 import { HubinPklHeaderInfo } from './HubinPklHeaderInfo';
 import { HubinGoogleDriveUploader } from './HubinGoogleDriveUploader';
 
+interface Kunjungan {
+  id?: string;
+  tanggal?: string;
+  catatan: string;
+  foto_url?: string;
+  latitude?: string | number;
+  longitude?: string | number;
+}
+
 interface HubinPklKunjunganModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedPkl: any;
-  selectedKunjunganList: any[];
+  selectedPkl: {
+    id: string;
+    Siswa?: { nama_siswa: string };
+    Mitra?: { nama: string };
+    Pembimbing?: { nama_guru: string };
+  } | null;
+  selectedKunjunganList: Kunjungan[];
   handleKunjunganSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isPending: boolean;
   isDetectingGps: boolean;
@@ -50,6 +64,27 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
     }
   }, [isOpen]);
 
+  const handleGpsDetect = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      toast.error("Browser Anda tidak mendukung deteksi GPS!");
+      return;
+    }
+    setIsDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setVisitLat(pos.coords.latitude.toString());
+        setVisitLng(pos.coords.longitude.toString());
+        setIsDetectingGps(false);
+        toast.success("Koordinat GPS berhasil dideteksi!");
+      },
+      (err) => {
+        setIsDetectingGps(false);
+        toast.error("Gagal mendeteksi lokasi: " + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [setIsDetectingGps, setVisitLat, setVisitLng]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -71,7 +106,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
             pembimbingName={selectedPkl.Pembimbing?.nama_guru}
             totalKunjungan={selectedKunjunganList.length}
           />
-
+ 
           {/* Grid 2 Columns: History & Form */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
@@ -81,7 +116,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                 <History size={16} />
                 <span className="text-xs font-bold uppercase tracking-wider">Riwayat Monitoring Kunjungan</span>
               </div>
-
+ 
               {selectedKunjunganList.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
                   <MapPin size={24} className="mx-auto mb-2 text-slate-300" />
@@ -90,18 +125,18 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
               ) : (
                 <div className="max-h-[350px] overflow-y-auto pr-2">
                   <Timeline>
-                    {selectedKunjunganList.map((k, index) => (
+                    {selectedKunjunganList?.map((k, index) => (
                       <TimelineItem 
                         key={k.id || index}
                         title={`KUNJUNGAN KE-${index + 1}`}
-                        time={format(new Date(k.tanggal), 'd MMMM yyyy, HH:mm', { locale: localeID })}
+                        time={k.tanggal ? format(new Date(k.tanggal), 'd MMMM yyyy, HH:mm', { locale: localeID }) : '-'}
                         status="warning"
                         content={(
                           <div className="space-y-2 mt-1">
                             <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-semibold">
                               {k.catatan}
                             </p>
-
+ 
                             {k.foto_url && (() => {
                               const thumbUrl = getDriveThumbnailUrl(k.foto_url);
                               return (
@@ -137,7 +172,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                                 </div>
                               );
                             })()}
-
+ 
                             {(k.latitude || k.longitude) && (
                               <div className="flex items-center gap-1 text-[9px] text-slate-450 font-bold bg-slate-50 dark:bg-slate-950/30 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
                                 <MapPin size={10} className="text-slate-400" />
@@ -152,17 +187,18 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                 </div>
               )}
             </div>
-
+ 
             {/* Form Input Kunjungan - 5 cols */}
             <div className="lg:col-span-5 bg-slate-50/50 dark:bg-slate-950/20 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3 h-fit">
               <div className="flex items-center gap-1 text-slate-500 dark:text-slate-450">
                 <Plus size={16} />
                 <span className="text-xs font-bold uppercase tracking-wider">Laporan Baru</span>
               </div>
-
+ 
               <form onSubmit={handleKunjunganSubmit} className="space-y-3">
-                <SimpleFormField label="Catatan Hasil Pemantauan" required>
+                <SimpleFormField htmlFor="kunjungan-catatan" label="Catatan Hasil Pemantauan" required>
                   <Textarea
+                    id="kunjungan-catatan"
                     name="catatan"
                     rows={3}
                     required
@@ -187,26 +223,7 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                   type="button"
                   variant="toolbarOutline"
                   disabled={isDetectingGps}
-                  onClick={() => {
-                    if (!("geolocation" in navigator)) {
-                      toast.error("Browser Anda tidak mendukung deteksi GPS!");
-                      return;
-                    }
-                    setIsDetectingGps(true);
-                    navigator.geolocation.getCurrentPosition(
-                      (pos) => {
-                        setVisitLat(pos.coords.latitude.toString());
-                        setVisitLng(pos.coords.longitude.toString());
-                        setIsDetectingGps(false);
-                        toast.success("Koordinat GPS berhasil dideteksi!");
-                      },
-                      (err) => {
-                        setIsDetectingGps(false);
-                        toast.error("Gagal mendeteksi lokasi: " + err.message);
-                      },
-                      { enableHighAccuracy: true, timeout: 10000 }
-                    );
-                  }}
+                  onClick={handleGpsDetect}
                   className="w-full text-xs py-2 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 font-bold shadow-sm"
                 >
                   <MapPin size={12} className={isDetectingGps ? "animate-bounce text-amber-500" : "text-amber-500"} />
@@ -275,8 +292,9 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
-                  <SimpleFormField label="Latitude (GPS)">
+                  <SimpleFormField htmlFor="kunjungan-latitude" label="Latitude (GPS)">
                     <Input
+                      id="kunjungan-latitude"
                       name="latitude"
                       type="number"
                       step="any"
@@ -286,8 +304,9 @@ export const HubinPklKunjunganModal: React.FC<HubinPklKunjunganModalProps> = ({
                       onChange={(e) => setVisitLat(e.target.value)}
                     />
                   </SimpleFormField>
-                  <SimpleFormField label="Longitude (GPS)">
+                  <SimpleFormField htmlFor="kunjungan-longitude" label="Longitude (GPS)">
                     <Input
+                      id="kunjungan-longitude"
                       name="longitude"
                       type="number"
                       step="any"

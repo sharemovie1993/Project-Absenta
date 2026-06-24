@@ -8,7 +8,9 @@ export enum ParentEventType {
   STUDENT_MULTI_SCAN = 'STUDENT_MULTI_SCAN',
   TOKEN_REVOKED = 'TOKEN_REVOKED',
   NO_ACTIVE_STUDENT = 'NO_ACTIVE_STUDENT',
-  SESSION_PRESENT = 'SESSION_PRESENT'
+  SESSION_PRESENT = 'SESSION_PRESENT',
+  BK_SUMMONS_ISSUED = 'BK_SUMMONS_ISSUED',
+  BK_CASE_ALERT = 'BK_CASE_ALERT'
 }
 
 export enum NotificationChannel {
@@ -74,5 +76,15 @@ export const PARENT_EVENT_MATRIX: Record<ParentEventType, ParentEventConfig> = {
     channels: [NotificationChannel.PWA],
     titleTemplate: 'Absensi Kelas',
     messageTemplate: '{nama_siswa} hadir di {mapel} pada {waktu}.'
+  },
+  [ParentEventType.BK_SUMMONS_ISSUED]: {
+    channels: [NotificationChannel.PWA, NotificationChannel.WA],
+    titleTemplate: 'Pemanggilan Orang Tua',
+    messageTemplate: 'Pemberitahuan resmi: Orang Tua/Wali dari {nama_siswa} dipanggil untuk hadir di sekolah pada {tanggal} terkait: {alasan}.'
+  },
+  [ParentEventType.BK_CASE_ALERT]: {
+    channels: [NotificationChannel.PWA],
+    titleTemplate: 'Catatan Perkembangan BK',
+    messageTemplate: 'Terdapat catatan perkembangan baru untuk siswa {nama_siswa} di sistem Bimbingan Konseling.'
   }
 };

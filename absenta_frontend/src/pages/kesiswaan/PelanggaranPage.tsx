@@ -50,6 +50,17 @@ interface StatusConfig {
   colorClass: string;
 }
 
+interface Student {
+  id: string;
+  nama_siswa?: string;
+  nis?: string;
+  Kelas?: {
+    nama_kelas: string;
+  };
+  foto_profile_url?: string;
+  no_rfid?: string;
+}
+
 export default function PelanggaranPage() {
   const [data, setData] = useState<Pelanggaran[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +83,7 @@ export default function PelanggaranPage() {
     status: 'BARU'
   });
   // Tipe eksplisit Siswa – pengganti tipe longgar sebelumnya
-  const [selectedSiswa, setSelectedSiswa] = useState<any>(null);
+  const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
   const [jenisPelanggaranList, setJenisPelanggaranList] = useState<JenisPelanggaran[]>([]);
   const { error, success } = useToast();
   const confirm = useConfirm();
@@ -175,7 +186,7 @@ export default function PelanggaranPage() {
       tanggal: new Date(item.tanggal).toISOString().split('T')[0],
       status: item.status
     });
-    setSelectedSiswa(item.Siswa ?? null);
+    setSelectedSiswa(item.Siswa ? { ...item.Siswa, id: item.siswa_id } : null);
     setSelectedId(item.id);
     setModalOpen(true);
   }, []);
@@ -375,7 +386,7 @@ export default function PelanggaranPage() {
         { label: 'Catatan Perkembangan', path: '/kesiswaan/pelanggaran' }
       ]}
       stats={pageStats}
-      hardeningModuleKey="kesiswaan_monitoring"
+      hardeningModuleKey="kesiswaan_pelanggaran"
       instruction={{
         title: "Panduan Catatan",
         description: "Kelola riwayat perkembangan dan kedisiplinan siswa.",

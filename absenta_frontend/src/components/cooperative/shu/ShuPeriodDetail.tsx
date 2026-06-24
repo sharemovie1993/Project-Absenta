@@ -18,7 +18,7 @@ interface ShuPeriodDetailProps {
   canApprove: boolean;
   canDistribute: boolean;
   canManageShu: boolean;
-  user: any;
+  user: { role?: { name?: string } } | null;
   handleSyncFinancials: () => Promise<void>;
   handleCalculateShu: () => Promise<void>;
   handleApproveShu: () => Promise<void>;
@@ -33,7 +33,7 @@ interface ShuPeriodDetailProps {
   };
 }
 
-export const ShuPeriodDetail: React.FC<ShuPeriodDetailProps> = ({
+export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
   selectedPeriodId,
   periodDetail,
   allocations,
@@ -57,13 +57,13 @@ export const ShuPeriodDetail: React.FC<ShuPeriodDetailProps> = ({
   adminInstruction
 }) => {
   const totalDistributedAllocations = useMemo(() => {
-    return allocations.reduce((sum, item) => sum + Number(item.totalShu), 0);
+    return (allocations || []).reduce((sum, item) => sum + Number(item.totalShu), 0);
   }, [allocations]);
 
   const filteredAllocations = useMemo(() => {
-    return allocations.filter(a => 
-      a.Member.name.toLowerCase().includes(searchMember.toLowerCase()) ||
-      a.Member.memberNo.toLowerCase().includes(searchMember.toLowerCase())
+    return (allocations || []).filter(a => 
+      a.Member?.name?.toLowerCase().includes(searchMember.toLowerCase()) ||
+      a.Member?.memberNo?.toLowerCase().includes(searchMember.toLowerCase())
     );
   }, [allocations, searchMember]);
 
@@ -248,7 +248,7 @@ export const ShuPeriodDetail: React.FC<ShuPeriodDetailProps> = ({
               <div className="flex items-center justify-center min-h-[200px]">
                 <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
               </div>
-            ) : filteredAllocations.length === 0 ? (
+            ) : (filteredAllocations || []).length === 0 ? (
               <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-150 dark:border-slate-800 rounded-2xl">
                 Tidak ada data alokasi anggota (Silakan lakukan kalkulasi terlebih dahulu)
               </div>
@@ -270,7 +270,7 @@ export const ShuPeriodDetail: React.FC<ShuPeriodDetailProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
-                    {filteredAllocations?.map((a, idx) => (
+                    {(filteredAllocations || []).map((a, idx) => (
                       <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                         <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
                         <td className="p-4">
@@ -306,4 +306,6 @@ export const ShuPeriodDetail: React.FC<ShuPeriodDetailProps> = ({
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
-};
+});
+
+ShuPeriodDetail.displayName = 'ShuPeriodDetail';

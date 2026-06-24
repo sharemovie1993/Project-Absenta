@@ -11,7 +11,7 @@ interface LoanStatsBannerProps {
   onPaymentInstructionsOpen: () => void;
 }
 
-export const LoanStatsBanner: React.FC<LoanStatsBannerProps> = ({
+export const LoanStatsBanner = React.memo<LoanStatsBannerProps>(({
   isStudent,
   studentMetrics,
   operatorMetrics,
@@ -69,10 +69,10 @@ export const LoanStatsBanner: React.FC<LoanStatsBannerProps> = ({
               <span className={cn(
                 "text-[9px] font-extrabold px-2 py-0.5 rounded-lg border inline-block",
                 studentMetrics.isOverdue 
-                  ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/20 dark:text-rose-450" 
+                  ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/20 dark:text-rose-455" 
                   : studentMetrics.isApproaching
-                  ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-450"
-                  : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-950/20 dark:text-slate-450"
+                  ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-455"
+                  : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-950/20 dark:text-slate-455"
               )}>
                 {studentMetrics.isOverdue ? '⚠️ Terlambat! ' : ''}
                 {studentMetrics.card3Sub}
@@ -98,4 +98,6 @@ export const LoanStatsBanner: React.FC<LoanStatsBannerProps> = ({
       </SectionCard>
     </div>
   );
-};
+});
+
+LoanStatsBanner.displayName = 'LoanStatsBanner';

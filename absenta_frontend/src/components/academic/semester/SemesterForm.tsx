@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
-  Button, 
-  Loader,
-  Alert,
-  ConfirmDialog,
-  ModalFooter
-} from '../../ui';
+   Button, 
+   Loader,
+   Alert,
+   ConfirmDialog,
+   ModalFooter
+ } from '../../ui';
 import { semesterSchema, type SemesterFormValues } from '../../../schemas/academic/semester.schema';
 import { Save, X, RefreshCw } from 'lucide-react';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
@@ -30,7 +30,7 @@ const SEMESTER_OPTIONS = [
   { value: 'Genap', label: 'Semester Genap' }
 ];
 
-const SemesterForm: React.FC<SemesterFormProps> = ({
+const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
   semesterId,
   onSuccess,
   onCancel,
@@ -73,7 +73,7 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
         setLoadingTahunPelajaran(true);
         const response = await getTahunPelajaranList(1, 100);
         if (response.success) {
-          setTahunPelajaranList(response.data);
+          setTahunPelajaranList(response.data || []);
         }
       } catch (error) {
         console.error('Error loading tahun pelajaran:', error);
@@ -112,14 +112,14 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
     loadSemesterData();
   }, [semesterId, mode, reset, showToast]);
 
-  const handleActiveChange = (checked: boolean) => {
+  const handleActiveChange = useCallback((checked: boolean) => {
     if (checked) {
       if (!watchedTahunPelajaranId) {
         showToast('Pilih Tahun Pelajaran terlebih dahulu', 'error');
         return;
       }
 
-      const selectedTp = tahunPelajaranList.find(t => t.id === watchedTahunPelajaranId);
+      const selectedTp = (tahunPelajaranList || []).find(t => t.id === watchedTahunPelajaranId);
       if (!selectedTp?.is_active) {
         showToast('Semester tidak dapat diaktifkan karena Tahun Pelajaran terpilih tidak aktif', 'error');
         return;
@@ -129,12 +129,12 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
     } else {
       setValue('is_active', false, { shouldDirty: true });
     }
-  };
+  }, [watchedTahunPelajaranId, tahunPelajaranList, setValue, showToast]);
 
-  const confirmActivation = () => {
+  const confirmActivation = useCallback(() => {
     setValue('is_active', true, { shouldDirty: true });
     setShowActivateConfirm(false);
-  };
+  }, [setValue]);
 
   const onSubmit = async (data: SemesterFormValues) => {
     try {
@@ -252,6 +252,8 @@ const SemesterForm: React.FC<SemesterFormProps> = ({
       />
     </div>
   );
-};
+});
 
+SemesterForm.displayName = 'SemesterForm';
 export default SemesterForm;
+

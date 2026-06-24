@@ -242,6 +242,33 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - affairs.violations.view.detail
 - affairs.violations.view.list
 
+## bk
+
+- bk.cases.view.list
+- bk.cases.view.detail
+- bk.cases.manage
+- bk.counseling.manage
+- bk.counseling.view.sensitive
+- bk.counseling.view.list
+- bk.counseling.view.detail
+- bk.summons.manage
+- bk.summons.view.list
+- bk.summons.view.detail
+- bk.homevisit.manage
+- bk.homevisit.view.list
+- bk.homevisit.view.detail
+- bk.assessment.manage
+- bk.assessment.view.list
+- bk.assessment.view.detail
+- bk.referrals.manage
+- bk.referrals.view.list
+- bk.referrals.view.detail
+- bk.reports.view
+- bk.audit.view
+- bk.recyclebin.view
+- bk.recyclebin.restore
+
+
 ## cooperative
 
 - cooperative.dashboard.view.overview
@@ -355,20 +382,38 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 ## hubin
 
 - hubin.partners.manage
+- hubin.mou.manage
+- hubin.mou.view.list
+- hubin.pkl.manage
 - hubin.pkl.view.list
-- hubin.absensi.checkin
 - hubin.absensi.verify
 - hubin.absensi.view.history
 - hubin.absensi.recap
 - hubin.logbook.manage
 - hubin.guidance.manage
-- hubin.view.pkl
+- hubin.tefa.manage
+- hubin.bkk.manage
+- hubin.lamaran.manage
+- hubin.tracer.view
+- hubin.self.pkl
+- hubin.self.logbook
+- hubin.self.tracer
+- hubin.self.bkk
 - dashboard.view.hubin
 
 ## kesiswaan
 
 - kesiswaan.manage.pelanggaran
 - kesiswaan.view.pelanggaran
+- kesiswaan.dashboard.view
+- kesiswaan.pelanggaran.view
+- kesiswaan.pelanggaran.manage
+- kesiswaan.prestasi.view
+- kesiswaan.prestasi.manage
+- kesiswaan.piket.view
+- kesiswaan.piket.manage
+- kesiswaan.kegiatan.view
+- kesiswaan.kegiatan.manage
 
 ## kurikulum
 

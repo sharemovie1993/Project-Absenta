@@ -13,6 +13,7 @@ interface State {
 }
 
 export class TreeErrorBoundary extends Component<Props, State> {
+  public static displayName = 'TreeErrorBoundary';
   public state: State = {
     hasError: false,
     error: null

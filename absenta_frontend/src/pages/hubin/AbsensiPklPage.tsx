@@ -40,60 +40,21 @@ import {
   renderActivityText, 
   renderActivityTextForPrint, 
   renderActivityImagesForPrint,
-  getDriveThumbnailUrl 
+  getDriveThumbnailUrl,
+  type SchoolTenantInfo,
+  type GeolocationPositionWithMock,
+  type UserAuthStore,
+  type ActivityItem,
+  type ApiErrorResponse,
+  type CheckInPayload
 } from '../../utils/hubinUtils';
-
-interface SchoolTenantInfo {
-  id: string;
-  nama_sekolah?: string;
-  logo_url?: string;
-  alamat?: string;
-  kontak?: string;
-}
 
 interface SiswaPklWithAbsensi extends SiswaPkl {
   AbsensiPkl?: AbsensiPkl[];
 }
 
-interface GeolocationPositionWithMock extends GeolocationPosition {
-  mocked?: boolean;
-  coords: GeolocationCoordinates & {
-    isFromMockProvider?: boolean;
-  };
-}
 
-interface UserAuthStore {
-  id: string;
-  email: string;
-  full_name: string;
-  siswa_id?: string;
-  tenant_id?: string;
-  role?: {
-    name: string;
-  };
-  position_codes?: string[];
-  capabilities?: string[];
-  Role?: {
-    rolePermissions?: Array<{ permission_id: string }>;
-  };
-}
-
-interface ActivityItem {
-  time: string;
-  text: string;
-  image_url?: string;
-}
-
-interface ApiErrorResponse {
-  response?: {
-    data?: {
-      message?: string;
-    };
-  };
-  message?: string;
-}
-
-const AbsensiPklPage: React.FC = () => {
+export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
   const { user, subscription } = useAuthStore();
   const queryClient = useQueryClient();
   
@@ -206,13 +167,6 @@ const AbsensiPklPage: React.FC = () => {
   const settingsData = useMemo(() => (gdriveSettings as { data?: { folderUrl: string; driveMode: string } })?.data || gdriveSettings || { folderUrl: '', driveMode: 'simulated' }, [gdriveSettings]);
 
   // -- Mutations --
-  interface CheckInPayload {
-    siswaPklId: string;
-    latitude: number;
-    longitude: number;
-    kegiatan?: string;
-    image_url?: string;
-  }
 
   const checkInMutation = useMutation({
     mutationFn: (data: CheckInPayload) => hubinApi.checkIn(data),
@@ -463,6 +417,172 @@ const AbsensiPklPage: React.FC = () => {
     ];
   }, [isStudent, studentPkl, rawAbsensiHistory, rawPenempatan]);
 
+  const content = (
+    <>
+      {/* Operational Divider */}
+      <div className="h-px bg-slate-200 dark:bg-slate-800 w-full mb-6 mt-2" />
+
+      {/* If embedded in tab and is student, show placement info at top */}
+      {hideLayout && isStudent && studentPkl && (
+        <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm mb-6">
+          <div className="flex-1 min-w-[150px]">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mitra PKL Anda</span>
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-indigo-600" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-250">{studentPkl.Mitra?.nama}</span>
+            </div>
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guru Pembimbing</span>
+            <div className="flex items-center gap-2">
+              <UserCheck size={16} className="text-emerald-600" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-250">{studentPkl.Pembimbing?.nama_guru || '-'}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="w-full max-w-7xl mx-auto print:hidden">
+        <SectionCard title={isStudent ? "Presensi & Jurnal Kegiatan" : "Monitoring Absensi PKL"} icon={ClipIcon} fullWidth noPadding>
+          <div className="p-6">
+            <Tabs defaultValue={isStudent ? "record" : "management"}>
+              {visibleTabsCount > 1 && (
+                <div className="flex justify-between items-center mb-6">
+                  <MenuTabs className="h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
+                    {isStudent ? (
+                      <>
+                        <TabsTrigger value="record" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
+                          <Clock size={12} className="mr-2" /> Presensi
+                        </TabsTrigger>
+                        <TabsTrigger value="jurnal" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
+                          <History size={12} className="mr-2" /> Riwayat
+                        </TabsTrigger>
+                        <TabsTrigger value="portofolio" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
+                          <ClipIcon size={12} className="mr-2" /> Portofolio
+                        </TabsTrigger>
+                      </>
+                    ) : (
+                      <>
+                        <TabsTrigger value="management" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
+                          <ShieldCheck size={12} className="mr-2" /> Monitoring
+                        </TabsTrigger>
+                        {isGlobalHubin && (
+                          <TabsTrigger value="settings" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
+                            <RefreshCw size={12} className="mr-2" /> Settings
+                          </TabsTrigger>
+                        )}
+                      </>
+                    )}
+                  </MenuTabs>
+                </div>
+              )}
+
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-4">
+                  <RefreshCw className="animate-spin text-indigo-500" size={32} />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Data PKL...</p>
+                </div>
+              ) : isStudent ? (
+                <>
+                  <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                    <HubinStudentView
+                      user={user} studentPkl={studentPkl} todayAbsensi={todayAbsensi} location={location}
+                      isMockLocation={isSpoofedLocation}
+                      kegiatan={kegiatan} setKegiatan={setKegiatan} fotoUrl={fotoUrl} setFotoUrl={setFotoUrl}
+                      checkInMutation={checkInMutation} checkOutMutation={checkOutMutation}
+                      onRefreshLocation={refreshLocation}
+                      rawAbsensiHistory={rawAbsensiHistory}
+                      parsedTimeline={parsedTimeline}
+                      onDeleteActivity={(idx) => {
+                        const updated = [...parsedTimeline].filter((_, i) => i !== idx).sort((a, b) => a.time.localeCompare(b.time));
+                        updateLogbookMutation.mutate({ keg: JSON.stringify(updated) });
+                      }}
+                      onOpenAddModal={handleOpenAddActivity}
+                      jurnalUrl={jurnalUrl} setJurnalUrl={setJurnalUrl}
+                      submitJurnalMutation={submitJurnalMutation}
+                      stats={stats} generateCustomFileName={generateCustomFileName}
+                      onPrint={handlePrint}
+                    />
+                  </Suspense>
+
+                  <Suspense fallback={null}>
+                    <HubinLogbookEditModal
+                      isOpen={isAddingActivity}
+                      onClose={() => setIsAddingActivity(false)}
+                      editingAbsensi={todayAbsensi || ({ tanggal: new Date().toISOString() } as AbsensiPkl)}
+                      editingActivities={[{ time: newActivityTime, text: newActivityText, image_url: newActivityPhotoUrl }]}
+                      setEditingActivities={(activities) => {
+                        if (activities.length > 0) {
+                          setNewActivityTime(activities[0].time);
+                          setNewActivityText(activities[0].text);
+                          setNewActivityPhotoUrl(activities[0].image_url || '');
+                        }
+                      }}
+                      isPending={updateLogbookMutation.isPending}
+                      onSave={(activities) => {
+                        const newEntry = activities[0];
+                        if (!newEntry.time || !newEntry.text.trim()) return toast.error('Harap isi jam dan deskripsi!');
+                        const updated = [...parsedTimeline, { ...newEntry, text: newEntry.text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
+                        handleSaveNewActivity(updated);
+                      }}
+                      userEmail={user?.email}
+                      studentClassName={currentStudentClassName}
+                      generateActivityFileName={generateActivityFileName}
+                    />
+                  </Suspense>
+                </>
+              ) : (
+                <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                  <HubinManagementView
+                    rawPenempatan={rawPenempatan} isLoading={isLoading} onVerify={verifyMutation.mutate}
+                    onQuickAddForId={(abs: AbsensiPkl, text: string) => {
+                      let parsed: ActivityItem[] = [];
+                      try { parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; } catch(e) {}
+                      const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
+                      updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
+                    }}
+                    onEditLogbook={setEditingAbsensi} quickAddTexts={quickAddTexts} setQuickAddTexts={setQuickAddTexts}
+                    settingsData={settingsData} updateSettingsMutation={updateSettingsMutation}
+                    renderActivityText={renderActivityText} getDriveThumbnailUrl={getDriveThumbnailUrl}
+                    isGlobalHubin={isGlobalHubin}
+                  />
+                </Suspense>
+              )}
+            </Tabs>
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* PRINT PORTAL */}
+      {isPrintingJurnal && typeof document !== 'undefined' && createPortal(
+        <Suspense fallback={null}>
+          <HubinPrintJurnalPkl
+            user={user} studentPkl={studentPkl} rawAbsensiHistory={rawAbsensiHistory} tenantInfo={tenantInfo}
+            renderActivityTextForPrint={renderActivityTextForPrint} renderActivityImagesForPrint={renderActivityImagesForPrint}
+          />
+        </Suspense>, document.body
+      )}
+
+      {/* EDIT MODAL */}
+      <Suspense fallback={null}>
+        <HubinLogbookEditModal
+          isOpen={!!editingAbsensi} onClose={() => setEditingAbsensi(null)}
+          editingAbsensi={editingAbsensi} editingActivities={editingActivities} setEditingActivities={setEditingActivities}
+          isPending={updateLogbookMutation.isPending} userEmail={user?.email} studentClassName={currentStudentClassName}
+          generateActivityFileName={generateActivityFileName}
+          onSave={(acts) => {
+            const valid = acts.filter(a => a.text.trim() !== '').sort((a, b) => a.time.localeCompare(b.time));
+            updateLogbookMutation.mutate({ keg: JSON.stringify(valid), absensiId: editingAbsensi?.id });
+          }}
+        />
+      </Suspense>
+    </>
+  );
+
+  if (hideLayout) {
+    return <div className="space-y-6">{content}</div>;
+  }
+
   return (
     <PremiumFeatureGate moduleName="HUBIN" featureName="Presensi & Absensi PKL">
       <AcademicPageLayout
@@ -556,171 +676,11 @@ const AbsensiPklPage: React.FC = () => {
           </div>
         ) : null}
       >
-        <style>{`
-          @media print {
-            body > * { display: none !important; }
-            body > #print-jurnal-area {
-              display: block !important;
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-          }
-          /* Memaksa header agar berdampingan rapat sesuai Gambar 2 */
-          .md\\:flex-row.md\\:justify-between {
-            justify-content: flex-start !important;
-            gap: 0 !important;
-          }
-          .md\\:flex-row {
-            align-items: center !important;
-          }
-          .md\\:flex-row h1 {
-            text-transform: uppercase;
-            white-space: nowrap;
-          }
-        `}</style>
-
-        {/* Operational Divider */}
-        <div className="h-px bg-slate-200 dark:bg-slate-800 w-full mb-6 mt-2" />
-
-        <div className="w-full max-w-7xl mx-auto print:hidden">
-          <SectionCard title={isStudent ? "Presensi & Jurnal Kegiatan" : "Monitoring Absensi PKL"} icon={ClipIcon} fullWidth noPadding>
-            <div className="p-6">
-              <Tabs defaultValue={isStudent ? "record" : "management"}>
-                {visibleTabsCount > 1 && (
-                  <div className="flex justify-between items-center mb-6">
-                    <MenuTabs className="h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
-                      {isStudent ? (
-                        <>
-                          <TabsTrigger value="record" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                            <Clock size={12} className="mr-2" /> Presensi
-                          </TabsTrigger>
-                          <TabsTrigger value="jurnal" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                            <History size={12} className="mr-2" /> Riwayat
-                          </TabsTrigger>
-                          <TabsTrigger value="portofolio" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                            <ClipIcon size={12} className="mr-2" /> Portofolio
-                          </TabsTrigger>
-                        </>
-                      ) : (
-                        <>
-                          <TabsTrigger value="management" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                            <ShieldCheck size={12} className="mr-2" /> Monitoring
-                          </TabsTrigger>
-                          {isGlobalHubin && (
-                            <TabsTrigger value="settings" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                              <RefreshCw size={12} className="mr-2" /> Settings
-                            </TabsTrigger>
-                          )}
-                        </>
-                      )}
-                    </MenuTabs>
-                  </div>
-                )}
-
-                {isLoading ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <RefreshCw className="animate-spin text-indigo-500" size={32} />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Data PKL...</p>
-                  </div>
-                ) : isStudent ? (
-                  <>
-                    <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-                      <HubinStudentView
-                        user={user} studentPkl={studentPkl} todayAbsensi={todayAbsensi} location={location}
-                        isMockLocation={isSpoofedLocation}
-                        kegiatan={kegiatan} setKegiatan={setKegiatan} fotoUrl={fotoUrl} setFotoUrl={setFotoUrl}
-                        checkInMutation={checkInMutation} checkOutMutation={checkOutMutation}
-                        onRefreshLocation={refreshLocation}
-                        rawAbsensiHistory={rawAbsensiHistory}
-                        parsedTimeline={parsedTimeline}
-                        onDeleteActivity={(idx) => {
-                          const updated = [...parsedTimeline].filter((_, i) => i !== idx).sort((a, b) => a.time.localeCompare(b.time));
-                          updateLogbookMutation.mutate({ keg: JSON.stringify(updated) });
-                        }}
-                        onOpenAddModal={handleOpenAddActivity}
-                        jurnalUrl={jurnalUrl} setJurnalUrl={setJurnalUrl}
-                        submitJurnalMutation={submitJurnalMutation}
-                        stats={stats} generateCustomFileName={generateCustomFileName}
-                        onPrint={handlePrint}
-                      />
-                    </Suspense>
-
-                    <Suspense fallback={null}>
-                      <HubinLogbookEditModal
-                        isOpen={isAddingActivity}
-                        onClose={() => setIsAddingActivity(false)}
-                        editingAbsensi={todayAbsensi || ({ tanggal: new Date().toISOString() } as AbsensiPkl)}
-                        editingActivities={[{ time: newActivityTime, text: newActivityText, image_url: newActivityPhotoUrl }]}
-                        setEditingActivities={(activities) => {
-                          if (activities.length > 0) {
-                            setNewActivityTime(activities[0].time);
-                            setNewActivityText(activities[0].text);
-                            setNewActivityPhotoUrl(activities[0].image_url || '');
-                          }
-                        }}
-                        isPending={updateLogbookMutation.isPending}
-                        onSave={(activities) => {
-                          const newEntry = activities[0];
-                          if (!newEntry.time || !newEntry.text.trim()) return toast.error('Harap isi jam dan deskripsi!');
-                          const updated = [...parsedTimeline, { ...newEntry, text: newEntry.text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
-                          handleSaveNewActivity(updated);
-                        }}
-                        userEmail={user?.email}
-                        studentClassName={currentStudentClassName}
-                        generateActivityFileName={generateActivityFileName}
-                      />
-                    </Suspense>
-                  </>
-                ) : (
-                  <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-                    <HubinManagementView
-                      rawPenempatan={rawPenempatan} isLoading={isLoading} onVerify={verifyMutation.mutate}
-                      onQuickAddForId={(abs: AbsensiPkl, text: string) => {
-                        let parsed: ActivityItem[] = [];
-                        try { parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; } catch(e) {}
-                        const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
-                        updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
-                      }}
-                      onEditLogbook={setEditingAbsensi} quickAddTexts={quickAddTexts} setQuickAddTexts={setQuickAddTexts}
-                      settingsData={settingsData} updateSettingsMutation={updateSettingsMutation}
-                      renderActivityText={renderActivityText} getDriveThumbnailUrl={getDriveThumbnailUrl}
-                      isGlobalHubin={isGlobalHubin}
-                    />
-                  </Suspense>
-                )}
-              </Tabs>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* PRINT PORTAL */}
-        {isPrintingJurnal && typeof document !== 'undefined' && createPortal(
-          <Suspense fallback={null}>
-            <HubinPrintJurnalPkl
-              user={user} studentPkl={studentPkl} rawAbsensiHistory={rawAbsensiHistory} tenantInfo={tenantInfo}
-              renderActivityTextForPrint={renderActivityTextForPrint} renderActivityImagesForPrint={renderActivityImagesForPrint}
-            />
-          </Suspense>, document.body
-        )}
-
-        {/* EDIT MODAL */}
-        <Suspense fallback={null}>
-          <HubinLogbookEditModal
-            isOpen={!!editingAbsensi} onClose={() => setEditingAbsensi(null)}
-            editingAbsensi={editingAbsensi} editingActivities={editingActivities} setEditingActivities={setEditingActivities}
-            isPending={updateLogbookMutation.isPending} userEmail={user?.email} studentClassName={currentStudentClassName}
-            generateActivityFileName={generateActivityFileName}
-            onSave={(acts) => {
-              const valid = acts.filter(a => a.text.trim() !== '').sort((a, b) => a.time.localeCompare(b.time));
-              updateLogbookMutation.mutate({ keg: JSON.stringify(valid), absensiId: editingAbsensi?.id });
-            }}
-          />
-        </Suspense>
+        {content}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );
 };
 
+const AbsensiPklPage = () => <AbsensiPklSection hideLayout={false} />;
 export default AbsensiPklPage;

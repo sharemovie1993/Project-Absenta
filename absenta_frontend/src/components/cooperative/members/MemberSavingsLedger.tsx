@@ -23,7 +23,7 @@ const formatIndonesianDateTime = (dateInput: Date | string | number | undefined 
   return `${day} ${month} ${year}, ${hours}:${minutes}`;
 };
 
-export const MemberSavingsLedger: React.FC<MemberSavingsLedgerProps> = ({ savings }) => {
+export const MemberSavingsLedger: React.FC<MemberSavingsLedgerProps> = React.memo(({ savings }) => {
   // Extract and flat all transactions with dynamic association to their parent saving types
   const ledgerTransactions: Transaction[] = React.useMemo(() => {
     if (!savings) return [];
@@ -56,8 +56,8 @@ export const MemberSavingsLedger: React.FC<MemberSavingsLedgerProps> = ({ saving
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {ledgerTransactions.length > 0 ? (
-              ledgerTransactions.map((t) => (
+            {(ledgerTransactions?.length || 0) > 0 ? (
+              ledgerTransactions?.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                   <td className="p-2 text-slate-500 font-medium">
                     {formatIndonesianDateTime(t.date)}
@@ -99,4 +99,4 @@ export const MemberSavingsLedger: React.FC<MemberSavingsLedgerProps> = ({ saving
       </div>
     </div>
   );
-};
+});

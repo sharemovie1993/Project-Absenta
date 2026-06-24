@@ -43,7 +43,8 @@ interface Insights {
 }
 
 // ─── Sparkline SVG ────────────────────────────────────────────────────────────
-const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = ({
+// ─── Sparkline SVG ────────────────────────────────────────────────────────────
+const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = React.memo(({
   data,
   color = '#6366f1',
 }) => {
@@ -59,7 +60,7 @@ const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = ({
     );
   }
 
-  const amounts = data.map(d => d.amount);
+  const amounts = data?.map(d => d.amount) || [];
   const min = Math.min(...amounts, 0);
   const max = Math.max(...amounts, 1);
   const range = max - min || 1;
@@ -67,10 +68,10 @@ const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = ({
   const toX = (i: number) => PAD + (i / Math.max(data.length - 1, 1)) * (W - PAD * 2);
   const toY = (v: number) => H - PAD - ((v - min) / range) * (H - PAD * 2);
 
-  const points = data.map((d, i) => `${toX(i)},${toY(d.amount)}`).join(' ');
+  const points = data?.map((d, i) => `${toX(i)},${toY(d.amount)}`).join(' ') || '';
   const areaPoints = [
     `${PAD},${H}`,
-    ...data.map((d, i) => `${toX(i)},${toY(d.amount)}`),
+    ...data?.map((d, i) => `${toX(i)},${toY(d.amount)}`),
     `${W - PAD},${H}`,
   ].join(' ');
 
@@ -108,10 +109,11 @@ const Sparkline: React.FC<{ data: MonthlyPoint[]; color?: string }> = ({
       </div>
     </div>
   );
-};
+});
+Sparkline.displayName = 'Sparkline';
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export const SavingInsightsPanel: React.FC = () => {
+export const SavingInsightsPanel: React.FC = React.memo(() => {
   const [insights, setInsights] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -173,7 +175,7 @@ export const SavingInsightsPanel: React.FC = () => {
   // Running balance reconstruction
   const totalBalance = accountStatuses?.reduce((s, a) => s + (a?.currentBalance ?? 0), 0) ?? 0;
   let runningBalance = totalBalance;
-  const balanceTrend: MonthlyPoint[] = [...(monthlyTrend ?? [])].reverse().map(m => {
+  const balanceTrend: MonthlyPoint[] = [...(monthlyTrend || [])].reverse().map(m => {
     const point = { label: m?.label ?? '', amount: runningBalance };
     runningBalance = Math.max(0, runningBalance - (m?.amount ?? 0));
     return point;
@@ -275,7 +277,7 @@ export const SavingInsightsPanel: React.FC = () => {
               <Sparkline data={balanceTrend} color={trendColor} />
 
               <div className="flex justify-between mt-1.5">
-                {balanceTrend.map((m, i) => (
+                {balanceTrend?.map((m, i) => (
                   <span key={i} className={`text-[9px] font-semibold ${
                     i === balanceTrend.length - 1
                       ? 'text-indigo-600 dark:text-indigo-400'
@@ -320,7 +322,7 @@ export const SavingInsightsPanel: React.FC = () => {
 
               {hasPeriodic ? (
                 <div className="space-y-2">
-                  {periodicStatuses.map(acc => {
+                  {periodicStatuses?.map(acc => {
                     const catColor = acc.categoryColor || '#6366f1';
                     return (
                       <div key={acc.savingId} className="flex items-center justify-between">
@@ -519,4 +521,5 @@ export const SavingInsightsPanel: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+SavingInsightsPanel.displayName = 'SavingInsightsPanel';

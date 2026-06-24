@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Package, 
@@ -17,6 +17,7 @@ import type { Column } from '../ui/Table';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
+import { Label } from '../ui/Label';
 import { sarprasApi } from '../../api/sarpras.api';
 import type { Asset } from '../../api/sarpras.api';
 import { Loader, ConfirmDialog } from '../ui';
@@ -40,7 +41,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(10);
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
@@ -74,7 +75,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
   }, [search]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['sarpras-assets', page, debouncedSearch, filterCategory, filterLocation, filterCondition, refreshTrigger],
+    queryKey: ['sarpras-assets', page, limit, debouncedSearch, filterCategory, filterLocation, filterCondition, refreshTrigger],
     queryFn: () => sarprasApi.getAssets({ 
       page, 
       limit, 
@@ -86,7 +87,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
     enabled: isEnabled
   });
 
-  const assets: Asset[] = data?.data?.list || [];
+  const assets: Asset[] = useMemo(() => data?.data?.list || [], [data]);
   const total = data?.data?.pagination?.total || 0;
   const totalPages = data?.data?.pagination?.totalPages || 0;
 
@@ -97,16 +98,16 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
     }
   });
 
-  const getConditionColor = (cond: string) => {
+  const getConditionColor = useCallback((cond: string) => {
     switch (cond) {
       case 'BAIK': return 'bg-green-100 text-green-700';
       case 'RUSAK': return 'bg-red-100 text-red-700';
       case 'PERBAIKAN': return 'bg-orange-100 text-orange-700';
       default: return 'bg-gray-100 text-gray-700';
     }
-  };
+  }, []);
 
-  const columns: Column[] = [
+  const columns: Column[] = useMemo(() => [
     {
       key: 'nama',
       label: 'Aset',
@@ -197,7 +198,48 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
         </div>
       )
     }
-  ];
+  ], [onView, onEdit, getConditionColor]);
+
+  const categoriesOptions = useMemo(() => {
+    const opts = categories?.data?.map((c: { id: string; nama: string }) => ({ value: c.id, label: c.nama })) || [];
+    return [{ value: '', label: 'Semua Kategori' }, ...opts];
+  }, [categories]);
+
+  const locationsOptions = useMemo(() => {
+    const opts = locations?.data?.map((l: { id: string; nama: string }) => ({ value: l.id, label: l.nama })) || [];
+    return [{ value: '', label: 'Semua Lokasi' }, ...opts];
+  }, [locations]);
+
+  const conditionOptions = useMemo(() => [
+    { value: '', label: 'Semua Kondisi' },
+    { value: 'BAIK', label: 'Baik' },
+    { value: 'RUSAK', label: 'Rusak' },
+    { value: 'PERBAIKAN', label: 'Perbaikan' },
+    { value: 'HILANG', label: 'Hilang' }
+  ], []);
+
+  const handleConfirmDelete = useCallback(() => {
+     if (deleteModal.assetId) {
+        deleteMutation.mutate(deleteModal.assetId);
+     }
+     setDeleteModal({ isOpen: false, assetId: null });
+  }, [deleteModal.assetId, deleteMutation]);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeleteModal({ isOpen: false, assetId: null });
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailModal({ isOpen: false, assetId: null });
+  }, []);
+
+  const handleClosePrint = useCallback(() => {
+    setPrintModal({ isOpen: false, assets: [] });
+  }, []);
+
+  const handlePrintAll = useCallback(() => {
+     if (assets?.length > 0) setPrintModal({ isOpen: true, assets });
+  }, [assets]);
 
   return (
     <div className="space-y-4">
@@ -217,9 +259,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
           <Button variant={showFilters ? 'primary' : 'outline'} className="flex-1 sm:flex-none" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" /> Filter
           </Button>
-          <Button variant="outline" className="flex-1 sm:flex-none hover:bg-slate-50" onClick={() => {
-             if (assets.length > 0) setPrintModal({ isOpen: true, assets });
-          }}>
+          <Button variant="outline" className="flex-1 sm:flex-none hover:bg-slate-50" onClick={handlePrintAll}>
             <Printer className="h-4 w-4 mr-2" /> Cetak (Halaman Ini)
           </Button>
           <Button onClick={onAdd} className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]">
@@ -232,31 +272,28 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
       {showFilters && (
         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in slide-in-from-top-2">
           <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1 block">Kategori</label>
+            <Label htmlFor="filterCategory" className="text-xs font-semibold text-slate-500 mb-1 block">Kategori</Label>
             <SearchableSelect 
-               options={[{value: '', label: 'Semua Kategori'}, ...(categories?.data?.map((c:any) => ({value: c.id, label: c.nama})) || [])]} 
+               id="filterCategory"
+               options={categoriesOptions} 
                value={filterCategory} 
                onValueChange={setFilterCategory} 
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1 block">Lokasi</label>
+            <Label htmlFor="filterLocation" className="text-xs font-semibold text-slate-500 mb-1 block">Lokasi</Label>
             <SearchableSelect 
-               options={[{value: '', label: 'Semua Lokasi'}, ...(locations?.data?.map((l:any) => ({value: l.id, label: l.nama})) || [])]} 
+               id="filterLocation"
+               options={locationsOptions} 
                value={filterLocation} 
                onValueChange={setFilterLocation} 
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500 mb-1 block">Kondisi</label>
+            <Label htmlFor="filterCondition" className="text-xs font-semibold text-slate-500 mb-1 block">Kondisi</Label>
             <SearchableSelect 
-               options={[
-                  {value: '', label: 'Semua Kondisi'},
-                  {value: 'BAIK', label: 'Baik'},
-                  {value: 'RUSAK', label: 'Rusak'},
-                  {value: 'PERBAIKAN', label: 'Perbaikan'},
-                  {value: 'HILANG', label: 'Hilang'}
-               ]} 
+               id="filterCondition"
+               options={conditionOptions} 
                value={filterCondition} 
                onValueChange={setFilterCondition} 
             />
@@ -270,34 +307,18 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
         data={assets} 
         loading={isLoading}
         emptyMessage="Belum ada data aset. Klik 'Tambah Aset' untuk mulai mengisi inventaris."
+        pagination={{
+          currentPage: page,
+          totalPages: totalPages,
+          totalItems: total,
+          itemsPerPage: limit,
+          onPageChange: (newPage) => setPage(newPage),
+          onLimitChange: (newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }
+        }}
       />
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="p-4 flex justify-between items-center">
-          <p className="text-sm text-slate-500">
-            Menampilkan {assets.length} dari {total} aset
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage(prev => prev - 1)}
-            >
-              Prev
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === totalPages}
-              onClick={() => setPage(prev => prev + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
 
       <ConfirmDialog
         isOpen={deleteModal.isOpen}
@@ -305,24 +326,19 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
         description="Apakah Anda yakin ingin menghapus aset ini? Tindakan ini tidak dapat dibatalkan jika aset sudah memiliki riwayat peminjaman."
         confirmText="Ya, Hapus"
         cancelText="Batal"
-        onConfirm={() => {
-           if (deleteModal.assetId) {
-              deleteMutation.mutate(deleteModal.assetId);
-           }
-           setDeleteModal({ isOpen: false, assetId: null });
-        }}
-        onCancel={() => setDeleteModal({ isOpen: false, assetId: null })}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
 
       <AssetDetailModal
         isOpen={detailModal.isOpen}
-        onClose={() => setDetailModal({ isOpen: false, assetId: null })}
+        onClose={handleCloseDetail}
         assetId={detailModal.assetId}
       />
 
       <AssetPrintLabelModal
         isOpen={printModal.isOpen}
-        onClose={() => setPrintModal({ isOpen: false, assets: [] })}
+        onClose={handleClosePrint}
         assetsToPrint={printModal.assets}
       />
     </div>

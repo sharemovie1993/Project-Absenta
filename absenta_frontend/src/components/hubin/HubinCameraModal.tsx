@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Camera, X, RefreshCw, Image as ImageIcon, Check, UploadCloud } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui';
@@ -27,18 +27,57 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
-  // 1. Initialize Camera
-  useEffect(() => {
-    if (isOpen) {
-      initInitialCamera();
-    } else {
-      stopCamera();
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+      setIsCameraReady(false);
     }
-    
-    return () => stopCamera();
-  }, [isOpen]);
+  }, [stream]);
 
-  const initInitialCamera = async () => {
+  const startCamera = useCallback(async (deviceId?: string) => {
+    stopCamera();
+    setIsCameraReady(false);
+    
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: deviceId 
+          ? { deviceId: { exact: deviceId } } 
+          : { facingMode: 'environment' }
+      };
+
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStream(newStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+        // Wait for video to be ready to play
+        videoRef.current.onloadedmetadata = () => {
+          setIsCameraReady(true);
+        };
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error starting camera:', error);
+      
+      // Extreme fallback if 'exact' deviceId failed
+      if (deviceId) {
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setStream(fallbackStream);
+          if (videoRef.current) {
+            videoRef.current.srcObject = fallbackStream;
+            setIsCameraReady(true);
+          }
+        } catch (fErr) {
+          toast.error('Gagal membuka kamera: ' + error.message);
+        }
+      } else {
+        toast.error('Gagal membuka kamera.');
+      }
+    }
+  }, [stopCamera]);
+
+  const initInitialCamera = useCallback(async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       toast.error('Browser Anda tidak mendukung akses kamera.');
       return;
@@ -68,70 +107,34 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
         setActiveDeviceId(selectedId);
         startCamera(selectedId);
       }
-    } catch (err: any) {
-      console.error('Initial camera error:', err);
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Initial camera error:', error);
       // Fallback: just try to start with default
       startCamera();
     }
-  };
+  }, [startCamera]);
 
-  const startCamera = async (deviceId?: string) => {
-    stopCamera();
-    setIsCameraReady(false);
+  useEffect(() => {
+    if (isOpen) {
+      initInitialCamera();
+    } else {
+      stopCamera();
+    }
     
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: deviceId 
-          ? { deviceId: { exact: deviceId } } 
-          : { facingMode: 'environment' }
-      };
+    return () => stopCamera();
+  }, [isOpen, initInitialCamera, stopCamera]);
 
-      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(newStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = newStream;
-        // Wait for video to be ready to play
-        videoRef.current.onloadedmetadata = () => {
-          setIsCameraReady(true);
-        };
-      }
-    } catch (err: any) {
-      console.error('Error starting camera:', err);
-      
-      // Extreme fallback if 'exact' deviceId failed
-      if (deviceId) {
-        try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setStream(fallbackStream);
-          if (videoRef.current) {
-            videoRef.current.srcObject = fallbackStream;
-            setIsCameraReady(true);
-          }
-        } catch (fErr) {
-          toast.error('Gagal membuka kamera: ' + err.message);
-        }
-      } else {
-        toast.error('Gagal membuka kamera.');
-      }
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-      setIsCameraReady(false);
-    }
-  };
-
-  const switchCamera = () => {
+  const switchCamera = useCallback(() => {
     if (devices.length < 2) return;
     const currentIndex = devices.findIndex(d => d.deviceId === activeDeviceId);
     const nextIndex = (currentIndex + 1) % devices.length;
-    setActiveDeviceId(devices[nextIndex].deviceId);
-  };
+    const nextDeviceId = devices[nextIndex].deviceId;
+    setActiveDeviceId(nextDeviceId);
+    startCamera(nextDeviceId);
+  }, [devices, activeDeviceId, startCamera]);
 
-  const capturePhoto = () => {
+  const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
     
     const context = canvasRef.current.getContext('2d');
@@ -148,9 +151,15 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
     const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
     setCapturedImage(dataUrl);
     stopCamera();
-  };
+  }, [stopCamera]);
 
-  const handleConfirm = () => {
+  const handleClose = useCallback(() => {
+    stopCamera();
+    setCapturedImage(null);
+    onClose();
+  }, [stopCamera, onClose]);
+
+  const handleConfirm = useCallback(() => {
     if (!capturedImage) return;
 
     // Convert dataUrl to File object
@@ -161,25 +170,19 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
         onCapture(file);
         handleClose();
       });
-  };
+  }, [capturedImage, onCapture, handleClose]);
 
-  const handleGalleryClick = () => {
+  const handleGalleryClick = useCallback(() => {
     fileInputRef.current?.click();
-  };
+  }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       onCapture(file);
       handleClose();
     }
-  };
-
-  const handleClose = () => {
-    stopCamera();
-    setCapturedImage(null);
-    onClose();
-  };
+  }, [onCapture, handleClose]);
 
   return (
     <Modal 

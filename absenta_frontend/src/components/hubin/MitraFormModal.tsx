@@ -48,7 +48,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
     }
   }, [isOpen]);
 
-  const handleGetGPSLocation = () => {
+  const handleGetGPSLocation = React.useCallback(() => {
     if (!navigator.geolocation) {
       toast.error('Perangkat atau browser Anda tidak mendukung layanan lokasi GPS');
       return;
@@ -122,7 +122,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  };
+  }, []);
 
   // Locked field inputs style helper
   const lockedInputClass = "bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800/80 cursor-not-allowed select-none opacity-80 font-medium";
@@ -161,10 +161,12 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
           )}
 
           <SimpleFormField 
+            htmlFor="mitra-nama"
             label={isEditKontakOnly ? "Nama Perusahaan (🔒 Terkunci oleh HUBIN)" : "Nama Perusahaan"} 
             required={!isEditKontakOnly}
           >
             <Input
+              id="mitra-nama"
               name="nama"
               defaultValue={editingMitra?.nama}
               required={!isEditKontakOnly}
@@ -176,9 +178,11 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <SimpleFormField 
+              htmlFor="mitra-bidang"
               label={isEditKontakOnly ? "Bidang Usaha (🔒 Terkunci)" : "Bidang Usaha"}
             >
               <Input
+                id="mitra-bidang"
                 name="bidang"
                 defaultValue={editingMitra?.bidang || ''}
                 disabled={isEditKontakOnly}
@@ -186,8 +190,9 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
                 placeholder="Contoh: Teknologi Informasi / Otomotif"
               />
             </SimpleFormField>
-            <SimpleFormField label="No. Kontak (WA / Telp) *" required={isEditKontakOnly}>
+            <SimpleFormField htmlFor="mitra-kontak" label="No. Kontak (WA / Telp) *" required={isEditKontakOnly}>
               <Input
+                id="mitra-kontak"
                 name="kontak"
                 defaultValue={editingMitra?.kontak || ''}
                 required={isEditKontakOnly}
@@ -198,7 +203,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
             </SimpleFormField>
           </div>
 
-          <SimpleFormField label="Alamat Lengkap Perusahaan *" required={isEditKontakOnly}>
+          <SimpleFormField htmlFor="mitra-alamat" label="Alamat Lengkap Perusahaan *" required={isEditKontakOnly}>
             <Textarea
               id="mitra-alamat"
               name="alamat"
@@ -211,9 +216,11 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
           </SimpleFormField>
 
           <SimpleFormField 
+            htmlFor="mitra-mou-url"
             label={isEditKontakOnly ? "Tautan / Link Berkas MOU (🔒 Terkunci)" : "Tautan / Link Berkas MOU (Opsional)"}
           >
             <Input
+              id="mitra-mou-url"
               name="mou_url"
               type="url"
               defaultValue={editingMitra?.mou_url || ''}
@@ -225,12 +232,12 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
 
           <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl space-y-3 border border-slate-100 dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">GEOFENCING PRESENSI (OPSIONAL)</p>
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">GEOFENCING PRESENSI (OPSIONAL)</p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleGetGPSLocation}
-                  className="flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-750 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors bg-white dark:bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
+                  className="flex items-center gap-1 text-[11px] font-bold text-indigo-650 hover:text-indigo-750 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors bg-white dark:bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm"
                 >
                   <Compass className="animate-pulse text-indigo-500" size={12} />
                   GPS Sinkron
@@ -239,7 +246,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <SimpleFormField label="Latitude (Editable)">
+              <SimpleFormField htmlFor="mitra-lat" label="Latitude (Editable)">
                 <Input
                   id="mitra-lat"
                   name="latitude"
@@ -250,7 +257,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
                   className="text-xs bg-white dark:bg-slate-950 border-blue-200 dark:border-blue-900"
                 />
               </SimpleFormField>
-              <SimpleFormField label="Longitude (Editable)">
+              <SimpleFormField htmlFor="mitra-lon" label="Longitude (Editable)">
                 <Input
                   id="mitra-lon"
                   name="longitude"
@@ -263,9 +270,11 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
               </SimpleFormField>
             </div>
             <SimpleFormField 
+              htmlFor="mitra-radius"
               label={isEditKontakOnly ? "Radius Jangkauan Absensi (🔒 Terkunci)" : "Radius Jangkauan Absensi (Meter)"}
             >
               <Input
+                id="mitra-radius"
                 name="radius"
                 type="number"
                 defaultValue={editingMitra?.radius || HUBIN_CONFIG.DEFAULT_RADIUS_METERS}
@@ -388,7 +397,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
               <div className="flex items-start gap-3">
                 {/* Cyan pin icon matching screenshot exactly */}
                 <div className="text-teal-600 dark:text-teal-400 shrink-0 mt-0.5">
-                  <svg className="w-6 h-6 stroke-[#0891b2] dark:stroke-[#06b6d4] fill-none" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="w-6 h-6 stroke-cyan-600 dark:stroke-cyan-400 fill-none" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
@@ -455,7 +464,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
                     ? 'bg-slate-300 dark:bg-slate-800 border-slate-300 dark:border-slate-800 cursor-not-allowed opacity-60'
                     : (gpsConfirmation.distanceValue && (gpsConfirmation.distanceValue / 1000) > GPS_UPDATE_TOLERANCE_KM)
                       ? 'bg-rose-600 hover:bg-rose-700 border-rose-600 hover:border-rose-700 shadow-rose-100 dark:shadow-none' // Warna merah untuk HUBIN (Bypass mode)
-                      : 'bg-[#0891b2] hover:bg-[#06b6d4] border-[#0891b2] hover:border-[#06b6d4] shadow-cyan-100 dark:shadow-none'
+                      : 'bg-cyan-600 hover:bg-cyan-500 border-cyan-600 hover:border-cyan-500 shadow-cyan-100 dark:shadow-none'
                 }`}
                 onClick={() => {
                   const latInput = document.getElementById('mitra-lat') as HTMLInputElement;

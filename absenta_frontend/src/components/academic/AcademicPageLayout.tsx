@@ -39,7 +39,7 @@ interface AcademicPageLayoutProps {
   hardeningModuleKey?: string; // Properti opsional pemegang kunci konfigurasi kepatuhan
 }
 
-export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = ({
+export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(({
   title,
   description,
   breadcrumbs,
@@ -84,7 +84,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = ({
     let maxMatchScore = 0;
     
     for (const key of keys) {
-      const entry = (auditReport as any)[key];
+      const entry = (auditReport as Record<string, { relativePath?: string; filename: string }>)[key];
       if (entry && entry.relativePath) {
         const pathParts = entry.relativePath
           .toLowerCase()
@@ -222,7 +222,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = ({
               )} />
             ))
           ) : (
-            stats.map((stat, idx) => (
+            (stats || []).map((stat, idx) => (
               <MemoizedAnalyticsCard
                 key={idx}
                 title={stat.title}
@@ -249,6 +249,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = ({
       </div>
     </div>
   );
-};
+});
+
+AcademicPageLayout.displayName = 'AcademicPageLayout';
 
 export default AcademicPageLayout;

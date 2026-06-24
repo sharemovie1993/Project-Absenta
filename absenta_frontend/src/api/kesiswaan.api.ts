@@ -1,5 +1,31 @@
 import api from '../lib/axiosInstance';
 
+export interface JenisPrestasi {
+  id: string;
+  kategori: string;
+  nama_prestasi: string;
+  poin: number;
+}
+
+export interface PrestasiSiswa {
+  id: string;
+  siswa_id: string;
+  tanggal: string;
+  jenis_prestasi_id?: string;
+  nama_prestasi: string;
+  poin: number;
+  keterangan?: string;
+  Siswa?: {
+    id: string;
+    nama_siswa: string;
+    nis: string;
+    Kelas?: {
+      nama_kelas: string;
+    };
+  };
+  Jenis?: JenisPrestasi;
+}
+
 export interface Pelanggaran {
   id: string;
   siswa_id: string;
@@ -72,6 +98,42 @@ export const kesiswaanApi = {
   },
   seedJenisPelanggaran: async () => {
     const response = await api.post('/kesiswaan/jenis-pelanggaran/seed', {});
+    return response.data;
+  },
+
+  // === Jenis Prestasi ===
+  getJenisPrestasi: async (): Promise<{ success: boolean; data: JenisPrestasi[] }> => {
+    const response = await api.get('/kesiswaan/jenis-prestasi');
+    return response.data;
+  },
+  createJenisPrestasi: async (data: any) => {
+    const response = await api.post('/kesiswaan/jenis-prestasi', data);
+    return response.data;
+  },
+  updateJenisPrestasi: async (id: string, data: any) => {
+    const response = await api.put(`/kesiswaan/jenis-prestasi/${id}`, data);
+    return response.data;
+  },
+  deleteJenisPrestasi: async (id: string) => {
+    const response = await api.delete(`/kesiswaan/jenis-prestasi/${id}`);
+    return response.data;
+  },
+
+  // === Prestasi Siswa ===
+  getPrestasiSiswa: async (params?: any): Promise<{ success: boolean; data: { list: PrestasiSiswa[]; pagination: any } }> => {
+    const response = await api.get('/kesiswaan/prestasi', { params });
+    return response.data;
+  },
+  createPrestasiSiswa: async (data: any) => {
+    const response = await api.post('/kesiswaan/prestasi', data);
+    return response.data;
+  },
+  updatePrestasiSiswa: async (id: string, data: any) => {
+    const response = await api.put(`/kesiswaan/prestasi/${id}`, data);
+    return response.data;
+  },
+  deletePrestasiSiswa: async (id: string) => {
+    const response = await api.delete(`/kesiswaan/prestasi/${id}`);
     return response.data;
   }
 };

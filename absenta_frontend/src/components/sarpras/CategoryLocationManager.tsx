@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, Tag, MapPin, Save, X, Loader2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -7,6 +7,7 @@ import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useToast } from '../../hooks/useToast';
+import { useAuthStore } from '../../store/authStore';
 
 interface CategoryLocationManagerProps {
   type: 'category' | 'location';
@@ -14,7 +15,11 @@ interface CategoryLocationManagerProps {
   onClose: () => void;
 }
 
-import { useAuthStore } from '../../store/authStore';
+interface Item {
+  id: string;
+  nama: string;
+  deskripsi?: string;
+}
 
 const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type, isOpen, onClose }) => {
   const { subscription } = useAuthStore();
@@ -39,7 +44,12 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
     enabled: isOpen && isEnabled
   });
 
-  const items = data?.data || [];
+  const items = (data?.data as Item[]) || [];
+
+  const resetForm = useCallback(() => {
+    setFormData({ nama: '', deskripsi: '' });
+    setEditingId(null);
+  }, []);
 
   const createMutation = useMutation({
     mutationFn: (payload: { nama: string; deskripsi?: string }) =>
@@ -49,24 +59,28 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       resetForm();
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Gagal menyimpan', 'error');
+    onError: (err: unknown) => {
+      let errMsg = 'Gagal menyimpan';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resErr = err as { response?: { data?: { message?: string } } };
+        if (resErr.response?.data?.message) {
+          errMsg = resErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast(errMsg, 'error');
     }
   });
 
-  const resetForm = () => {
-    setFormData({ nama: '', deskripsi: '' });
-    setEditingId(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nama.trim()) return;
     createMutation.mutate({
       nama: formData.nama.trim(),
       deskripsi: formData.deskripsi.trim() || undefined
     });
-  };
+  }, [formData, createMutation]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
@@ -129,7 +143,7 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {items.map((item: any) => (
+              {items?.map((item: Item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 group hover:border-indigo-200 dark:hover:border-indigo-800 transition-colors"

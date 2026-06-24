@@ -113,7 +113,7 @@ async function main() {
   
   if (asset && user) {
     const existingLoan = await (prisma as any).sarprasLoan.findFirst({
-        where: { asset_id: asset.id, peminjam_id: user.id, status: 'DIPINJAM' }
+        where: { asset_id: asset.id, peminjam_id: user.id, status: 'ACTIVE' }
     });
     if (!existingLoan) {
         await (prisma as any).sarprasLoan.create({
@@ -121,7 +121,7 @@ async function main() {
             tenant_id: tenant.id,
             asset_id: asset.id,
             peminjam_id: user.id,
-            status: 'DIPINJAM',
+            status: 'ACTIVE',
             catatan: 'Pinjam untuk presentasi'
           }
         });

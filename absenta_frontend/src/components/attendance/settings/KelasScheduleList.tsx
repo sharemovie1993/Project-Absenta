@@ -1,67 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getKelasList, updateKelas } from '../../../api/academic/kelas.api';
 import type { Kelas } from '../../../types/academic';
 import { Button, Input, Card, Label, Badge, Modal } from '../../ui';
 import { toast } from 'react-hot-toast';
-import { Edit2, Clock } from 'lucide-react';
+import { Edit2 } from 'lucide-react';
 
-export const KelasScheduleList: React.FC = () => {
+const KelasScheduleListComponent: React.FC = () => {
   const [kelas, setKelas] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingKelas, setEditingKelas] = useState<Kelas | null>(null);
   const [editForm, setEditForm] = useState({ jam_masuk: '', jam_pulang: '' });
 
-  useEffect(() => {
-    loadKelas();
-  }, []);
-
-  const loadKelas = async () => {
+  const loadKelas = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getKelasList(1, 100); // Fetch all (up to 100)
-      setKelas(response.data);
+      setKelas(response.data || []);
     } catch (error) {
       console.error('Error loading kelas', error);
       toast.error('Gagal memuat daftar kelas');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleEdit = (k: Kelas) => {
+  useEffect(() => {
+    loadKelas();
+  }, [loadKelas]);
+
+  const handleEdit = useCallback((k: Kelas) => {
     setEditingKelas(k);
     setEditForm({
       jam_masuk: k.jam_masuk || '',
       jam_pulang: k.jam_pulang || ''
     });
-  };
+  }, []);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingKelas) return;
 
     try {
       setLoading(true);
       await updateKelas(editingKelas.id, {
-        jam_masuk: editForm.jam_masuk || undefined, // Send undefined if empty to avoid clearing if not intended? Or empty string means clear?
-        // Let's assume empty string means clear (revert to default). API logic might need adjustment if it doesn't handle empty string -> null.
-        // Prisma usually expects null for optional fields.
-        // Let's check update logic. If I send empty string, prisma might error if field is Date or Time string?
-        // Field type is String. So empty string is valid but might not mean "null".
-        // I'll send null if empty string.
-        // But `UpdateKelasPayload` expects string | undefined.
-        // I'll send undefined if I don't want to change, but if I want to clear, I need to send null?
-        // The interface says `string`.
-        // Let's assume I can overwrite with new value. If empty, I'll pass it.
-      });
-      
-      // Actually, passing empty string might just set it to empty string.
-      // Ideally should pass null. But types might not allow.
-      // Let's modify api call to handle this or just pass as is.
-      // For now, let's assume valid time string or empty.
-      
-      await updateKelas(editingKelas.id, {
-        jam_masuk: editForm.jam_masuk || '', // Or send null? Typescript might complain.
+        jam_masuk: editForm.jam_masuk || '',
         jam_pulang: editForm.jam_pulang || ''
       });
 
@@ -74,7 +56,11 @@ export const KelasScheduleList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [editingKelas, editForm, loadKelas]);
+
+  const handleCloseModal = useCallback(() => {
+    setEditingKelas(null);
+  }, []);
 
   return (
     <Card className="p-6">
@@ -94,7 +80,7 @@ export const KelasScheduleList: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {kelas.map((k) => (
+            {(kelas || []).map((k) => (
               <tr key={k.id}>
                 <td className="py-3 px-4 font-medium">{k.nama_kelas}</td>
                 <td className="py-3 px-4">
@@ -125,30 +111,32 @@ export const KelasScheduleList: React.FC = () => {
       {editingKelas && (
         <Modal 
           isOpen={!!editingKelas} 
-          onClose={() => setEditingKelas(null)}
+          onClose={handleCloseModal}
           title={`Atur Jadwal - ${editingKelas.nama_kelas}`}
         >
           <form onSubmit={handleSave} className="space-y-4">
             <div>
-              <Label>Jam Masuk (Override)</Label>
+              <Label htmlFor="jam-masuk-field">Jam Masuk (Override)</Label>
               <Input
+                id="jam-masuk-field"
                 type="time"
                 value={editForm.jam_masuk}
-                onChange={(e) => setEditForm({...editForm, jam_masuk: e.target.value})}
+                onChange={(e) => setEditForm(prev => ({ ...prev, jam_masuk: e.target.value }))}
               />
               <p className="text-xs text-gray-500 mt-1">Kosongkan untuk mengikuti default sekolah.</p>
             </div>
             <div>
-              <Label>Jam Pulang (Override)</Label>
+              <Label htmlFor="jam-pulang-field">Jam Pulang (Override)</Label>
               <Input
+                id="jam-pulang-field"
                 type="time"
                 value={editForm.jam_pulang}
-                onChange={(e) => setEditForm({...editForm, jam_pulang: e.target.value})}
+                onChange={(e) => setEditForm(prev => ({ ...prev, jam_pulang: e.target.value }))}
               />
               <p className="text-xs text-gray-500 mt-1">Kosongkan untuk mengikuti default sekolah.</p>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <Button type="button" variant="ghost" onClick={() => setEditingKelas(null)}>Batal</Button>
+              <Button type="button" variant="ghost" onClick={handleCloseModal}>Batal</Button>
               <Button type="submit" isLoading={loading}>Simpan</Button>
             </div>
           </form>
@@ -157,3 +145,6 @@ export const KelasScheduleList: React.FC = () => {
     </Card>
   );
 };
+
+KelasScheduleListComponent.displayName = 'KelasScheduleList';
+export const KelasScheduleList = React.memo(KelasScheduleListComponent);

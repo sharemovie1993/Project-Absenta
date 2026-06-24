@@ -3,8 +3,9 @@ import { prisma } from '@/utils/prisma';
 export async function getSiswaTimelineQuery(params: {
   tenantId: string;
   siswaId: string;
+  userContext?: { id: string; capabilities: string[] };
 }) {
-  const { tenantId, siswaId } = params;
+  const { tenantId, siswaId, userContext } = params;
 
   // 1. Fetch student detail
   const student = await prisma.siswa.findFirst({
@@ -17,6 +18,35 @@ export async function getSiswaTimelineQuery(params: {
   if (!student) {
     throw new Error('Siswa tidak ditemukan');
   }
+
+  // 1.5. Calculate visibility context
+  let hasSensitive = true;
+  let isWali = true;
+
+  if (userContext) {
+    hasSensitive = userContext.capabilities.includes('bk.counseling.view.sensitive') ||
+                   userContext.capabilities.includes('system.platform.full_access');
+    
+    const assignment = await prisma.organizationalAssignment.findFirst({
+      where: {
+        tenant_id: tenantId,
+        user_id: userContext.id,
+        kelas_id: student.kelas_id,
+        is_active: true,
+        Position: { code: 'WALIKELAS' }
+      }
+    });
+    isWali = !!assignment;
+  }
+
+  const filterByVisibility = <T extends { visibility?: string }>(items: T[]): T[] => {
+    return items.filter(item => {
+      const vis = item.visibility || 'PUBLIC';
+      if (vis === 'SENSITIVE') return hasSensitive;
+      if (vis === 'LIMITED') return hasSensitive || isWali;
+      return true;
+    });
+  };
 
   // 2. Fetch all timeline sources in parallel
   const [
@@ -68,6 +98,13 @@ export async function getSiswaTimelineQuery(params: {
     })
   ]);
 
+  // Filter BK items by visibility
+  const filteredCounselings = filterByVisibility(counselings);
+  const filteredSummons = filterByVisibility(summons);
+  const filteredHomeVisits = filterByVisibility(homeVisits);
+  const filteredAssessments = filterByVisibility(assessments);
+  const filteredReferrals = filterByVisibility(referrals);
+
   // 3. Combine into timeline items
   const items: any[] = [];
 
@@ -111,7 +148,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   // Add counselings
-  counselings.forEach((c) => {
+  filteredCounselings.forEach((c) => {
     items.push({
       id: c.id,
       tanggal: c.tanggal,
@@ -124,7 +161,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   // Add summons
-  summons.forEach((s) => {
+  filteredSummons.forEach((s) => {
     items.push({
       id: s.id,
       tanggal: s.tanggal_pemanggilan,
@@ -138,7 +175,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   // Add home visits
-  homeVisits.forEach((h) => {
+  filteredHomeVisits.forEach((h) => {
     items.push({
       id: h.id,
       tanggal: h.tanggal,
@@ -152,7 +189,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   // Add assessments
-  assessments.forEach((a) => {
+  filteredAssessments.forEach((a) => {
     items.push({
       id: a.id,
       tanggal: a.tanggal,
@@ -166,7 +203,7 @@ export async function getSiswaTimelineQuery(params: {
   });
 
   // Add referrals
-  referrals.forEach((r) => {
+  filteredReferrals.forEach((r) => {
     items.push({
       id: r.id,
       tanggal: r.tanggal,

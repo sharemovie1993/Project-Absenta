@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Save, X, RefreshCw } from 'lucide-react';
@@ -28,7 +30,7 @@ const TIPE_OPTIONS = [
   { value: 'ESKUL', label: 'ESKUL' }
 ];
 
-export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = ({
+export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = React.memo(({
   itemId,
   onSuccess,
   onCancel,
@@ -90,7 +92,7 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = ({
     loadItemData();
   }, [itemId, mode, showToast, reset]);
 
-  const onFormSubmit = async (data: JenisKegiatanFormValues) => {
+  const onFormSubmit = useCallback(async (data: JenisKegiatanFormValues) => {
     if (isViewMode) return;
     
     try {
@@ -112,7 +114,7 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isViewMode, isEditMode, itemId, showToast, onSuccess]);
 
   if (loadingData) {
     return (
@@ -172,4 +174,8 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = ({
       </form>
     </div>
   );
-};
+});
+
+JenisKegiatanForm.displayName = 'JenisKegiatanForm';
+export default JenisKegiatanForm;
+

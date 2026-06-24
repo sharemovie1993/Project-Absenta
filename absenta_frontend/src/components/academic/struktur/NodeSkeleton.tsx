@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-export const NodeSkeleton: React.FC<{ type?: 'leadership' | 'member' | 'group' }> = ({ type = 'member' }) => {
+export const NodeSkeleton: React.FC<{ type?: 'leadership' | 'member' | 'group' }> = React.memo(({ type = 'member' }) => {
   if (type === 'group') {
     return (
       <div className="flex flex-col items-center mb-6 animate-pulse">
@@ -28,9 +28,11 @@ export const NodeSkeleton: React.FC<{ type?: 'leadership' | 'member' | 'group' }
       </div>
     </div>
   );
-};
+});
 
-export const TreeSkeleton: React.FC = () => {
+NodeSkeleton.displayName = 'NodeSkeleton';
+
+export const TreeSkeleton: React.FC = React.memo(() => {
   return (
     <div className="space-y-12 pb-20 min-h-screen">
       {[1, 2, 3].map((i) => (
@@ -50,4 +52,6 @@ export const TreeSkeleton: React.FC = () => {
       ))}
     </div>
   );
-};
+});
+
+TreeSkeleton.displayName = 'TreeSkeleton';

@@ -17,7 +17,7 @@ interface EmploymentSectionProps {
   statusOptions: any[];
 }
 
-export const EmploymentSection: React.FC<EmploymentSectionProps> = ({
+export const EmploymentSection = React.memo<EmploymentSectionProps>(({
   register,
   control,
   isViewMode,
@@ -42,25 +42,27 @@ export const EmploymentSection: React.FC<EmploymentSectionProps> = ({
       <div className="space-y-2 group">
         <Label htmlFor="status_kepegawaian" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Hubungan Kerja</Label>
         <Controller control={control} name="status_kepegawaian" render={({ field }) => (
-          <SearchableSelect value={field.value} onValueChange={field.onChange} options={statusKepegawaianOptions} placeholder="Pilih Status..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+          <SearchableSelect id="status_kepegawaian" value={field.value} onValueChange={field.onChange} options={statusKepegawaianOptions} placeholder="Pilih Status..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
         )} />
       </div>
       <div className="space-y-2 group">
         <Label htmlFor="pendidikan_terakhir" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kualifikasi Pendidikan</Label>
         <Controller control={control} name="pendidikan_terakhir" render={({ field }) => (
-          <SearchableSelect value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+          <SearchableSelect id="pendidikan_terakhir" value={field.value} onValueChange={field.onChange} options={PENDIDIKAN_OPTIONS} placeholder="Pilih Pendidikan..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
         )} />
       </div>
       <div className="space-y-2 group">
         <Label htmlFor="status" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Status Akun</Label>
         <Controller control={control} name="status" render={({ field }) => (
-          <SearchableSelect value={field.value} onValueChange={field.onChange} options={statusOptions} placeholder="Pilih Status..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+          <SearchableSelect id="status" value={field.value} onValueChange={field.onChange} options={statusOptions} placeholder="Pilih Status..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
         )} />
       </div>
       <div className="space-y-2 group">
         <Label htmlFor="rfid_tag" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Digital Tag (RFID)</Label>
-        <Input {...register('rfid_tag')} placeholder="Entry No RFID..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
+        <Input id="rfid_tag" {...register('rfid_tag')} placeholder="Entry No RFID..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
       </div>
     </SectionCard>
   );
-};
+});
+
+EmploymentSection.displayName = 'EmploymentSection';

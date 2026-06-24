@@ -23,7 +23,7 @@ interface QuickRegisterModalProps {
   registering: boolean;
 }
 
-export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
+export const QuickRegisterModal = React.memo<QuickRegisterModalProps>(({
   showQuickRegisterModal,
   setShowQuickRegisterModal,
   registerType,
@@ -53,7 +53,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
           </h3>
           <button
             onClick={() => setShowQuickRegisterModal(false)}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-505"
             aria-label="Tutup"
           >
             <X size={20} />
@@ -63,7 +63,7 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
         <div className="flex-1 overflow-y-auto pr-1 space-y-4">
           {/* Tipe Anggota Toggle */}
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tipe Anggota</label>
+            <span className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Tipe Anggota</span>
             <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-950 p-1 rounded-xl">
               <button
                 type="button"
@@ -102,10 +102,11 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
 
           {/* Cari Non Anggota */}
           <div className="space-y-2 relative">
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider">Cari Calon Anggota</label>
+            <label htmlFor="searchCandidate" className="block text-xs font-black text-slate-400 uppercase tracking-wider">Cari Calon Anggota</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-455" size={16} />
               <input
+                id="searchCandidate"
                 type="text"
                 placeholder={registerType === 'STUDENT' ? 'Ketik nama siswa...' : 'Ketik nama guru/staf...'}
                 className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-805 dark:text-slate-105"
@@ -117,13 +118,13 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
               />
             </div>
             {loadingNonMembers && (
-              <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-3 text-center text-xs text-slate-500 z-[60]">
+              <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg p-3 text-center text-xs text-slate-500 z-[60]">
                 Mencari...
               </div>
             )}
-            {!loadingNonMembers && nonMembers.length > 0 && (
+            {!loadingNonMembers && (nonMembers || []).length > 0 && (
               <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg max-h-48 overflow-y-auto z-[60] divide-y divide-slate-100 dark:divide-slate-800">
-                {nonMembers.map((nm) => (
+                {nonMembers?.map((nm) => (
                   <div
                     key={nm.id}
                     onClick={() => {
@@ -165,8 +166,9 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
 
           {/* Nomor Anggota (Auto-generated) */}
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-1">Nomor Anggota Koperasi</label>
+            <label htmlFor="nextMemberNumberInput" className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-1">Nomor Anggota Koperasi</label>
             <input
+              id="nextMemberNumberInput"
               type="text"
               readOnly
               placeholder="Akan dibuat otomatis..."
@@ -177,8 +179,9 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
 
           {/* PIN Transaksi */}
           <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-1">PIN Transaksi (6 Digit)</label>
+            <label htmlFor="registerPinInput" className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-1">PIN Transaksi (6 Digit)</label>
             <input
+              id="registerPinInput"
               type="password"
               maxLength={6}
               placeholder="PIN Default 123456"
@@ -209,4 +212,6 @@ export const QuickRegisterModal: React.FC<QuickRegisterModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+QuickRegisterModal.displayName = 'QuickRegisterModal';

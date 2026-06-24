@@ -32,7 +32,7 @@ interface SemesterListProps {
   toolbarRight?: React.ReactNode;
 }
 
-const SemesterList: React.FC<SemesterListProps> = ({ 
+const SemesterList: React.FC<SemesterListProps> = React.memo(({ 
   onEdit, 
   onView, 
   onAdd,
@@ -53,7 +53,6 @@ const SemesterList: React.FC<SemesterListProps> = ({
   
   const { showToast } = useToast();
   const { user, isLoading: isAuthLoading } = useAuthStore();
-  const navigate = useNavigate();
   
   if (isAuthLoading) {
     return <Loader size="lg" />;
@@ -73,7 +72,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
       const response = await getSemesterList(page, itemsPerPage, search, tahunPelajaranId);
       
       if (response.success && response.data) {
-        setSemesters(response.data);
+        setSemesters(response.data || []);
         // Add null safety check for pagination
         if (response.pagination) {
           setTotalPages(response.pagination.totalPages || 1);
@@ -104,7 +103,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [showToast, tahunPelajaranId]);
+  }, [showToast, tahunPelajaranId, itemsPerPage]);
 
   // Debounced search effect
   useEffect(() => {
@@ -131,7 +130,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
-      exportDataToExcel(semesters, [
+      exportDataToExcel(semesters || [], [
         { header: 'Nama Semester', accessor: (row) => row.nama_semester, width: 25 },
         { header: 'Tahun Pelajaran', accessor: (row) => row.TahunPelajaran?.tahun || '', width: 20 },
         { header: 'Status', accessor: (row) => row.is_active ? 'Aktif' : 'Tidak Aktif', width: 15 }
@@ -147,10 +146,15 @@ const SemesterList: React.FC<SemesterListProps> = ({
     try {
       setLoading(true);
       const detail = await getSemesterDetail(semester.id);
-      const anyDetail: any = detail as any;
-      const sesiCount = Number(anyDetail?._count?.SesiAbsensi || 0);
-      const siswaCount = Number(anyDetail?._count?.Siswa || 0);
-      const tp = String(anyDetail?.TahunPelajaran?.tahun || semester.TahunPelajaran?.tahun || '');
+      const typedDetail = detail as Semester & {
+        _count?: {
+          SesiAbsensi?: number;
+          Siswa?: number;
+        };
+      };
+      const sesiCount = Number(typedDetail?._count?.SesiAbsensi || 0);
+      const siswaCount = Number(typedDetail?._count?.Siswa || 0);
+      const tp = String(typedDetail?.TahunPelajaran?.tahun || semester.TahunPelajaran?.tahun || '');
       
       const hasRelated = sesiCount > 0 || siswaCount > 0;
 
@@ -281,7 +285,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
     { 
       key: 'TahunPelajaran', 
       label: 'Tahun Pelajaran',
-      render: (tahunPelajaran: any) => tahunPelajaran?.tahun || '-'
+      render: (tahunPelajaran: Semester['TahunPelajaran']) => tahunPelajaran?.tahun || '-'
     },
     { 
       key: 'is_active', 
@@ -295,7 +299,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
     { 
       key: 'actions', 
       label: 'Aksi', 
-      render: (_: any, semester: Semester) => (
+      render: (_: unknown, semester: Semester) => (
         <div className="flex items-center gap-1">
           <Button
             size="sm"
@@ -431,7 +435,7 @@ const SemesterList: React.FC<SemesterListProps> = ({
       </div>
     </div>
   );
-};
+});
 
+SemesterList.displayName = 'SemesterList';
 export default SemesterList;
-

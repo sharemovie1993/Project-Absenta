@@ -25,7 +25,7 @@ interface MemberImportModalProps {
   importResults: ImportResults | null;
 }
 
-export const MemberImportModal: React.FC<MemberImportModalProps> = ({
+export const MemberImportModal: React.FC<MemberImportModalProps> = React.memo(({
   isOpen,
   onClose,
   onFileChange,
@@ -75,14 +75,14 @@ export const MemberImportModal: React.FC<MemberImportModalProps> = ({
           {importResults && (
             <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 space-y-2 text-xs">
               <div className="flex gap-4 font-bold">
-                <span className="text-emerald-600">Sukses: {importResults.successCount}</span>
-                <span className="text-rose-600">Gagal: {importResults.failCount}</span>
+                <span className="text-emerald-600">Sukses: {importResults?.successCount}</span>
+                <span className="text-rose-600">Gagal: {importResults?.failCount}</span>
               </div>
               
-              {importResults.errors.length > 0 && (
+              {(importResults?.errors?.length || 0) > 0 && (
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
                   <p className="font-bold text-[10px] text-rose-500 uppercase tracking-wider">Detail Kegagalan:</p>
-                  {importResults.errors.map((err, idx) => (
+                  {importResults?.errors?.map((err, idx) => (
                     <div key={idx} className="p-2 bg-rose-50/50 dark:bg-rose-950/10 border border-rose-100/50 dark:border-rose-900/30 rounded-lg text-[10px]">
                       Baris {err.row} (No: {err.memberNo}): <span className="font-bold text-rose-700 dark:text-rose-400">{err.error}</span>
                     </div>
@@ -113,4 +113,4 @@ export const MemberImportModal: React.FC<MemberImportModalProps> = ({
       </div>
     </Modal>
   );
-};
+});

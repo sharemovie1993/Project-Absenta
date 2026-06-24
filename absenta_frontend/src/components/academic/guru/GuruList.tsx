@@ -562,7 +562,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           </div>
           <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
             <div className="max-h-64 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
-              {bulkErrorDetails.map((e) => (
+              {bulkErrorDetails?.map((e) => (
                 <div key={e.id} className="p-4 flex flex-col gap-1 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{e.name}</span>
                   <span className="text-[10px] text-rose-500 font-medium">{e.message}</span>
@@ -578,5 +578,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     </div>
   );
 });
+
+GuruList.displayName = 'GuruList';
 
 export default GuruList;

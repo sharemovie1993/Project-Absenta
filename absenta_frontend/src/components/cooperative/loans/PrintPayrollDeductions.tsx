@@ -29,7 +29,7 @@ const indonesianMonths = [
   'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'
 ];
 
-export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
+export const PrintPayrollDeductions = React.memo<PrintPayrollDeductionsProps>(({
   data,
   month,
   year,
@@ -40,13 +40,13 @@ export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
 }) => {
   const monthName = indonesianMonths[month - 1] || 'JANUARI';
   
-  const activeCats = savingCategories.filter(cat => visibleColumns[cat.code]);
+  const activeCats = savingCategories?.filter(cat => visibleColumns[cat.code]) || [];
   const showSavings = activeCats.length > 0;
   const savingsColSpan = activeCats.length;
 
   // Calculate column totals
-  const totalLoanPokok = data.reduce((sum, item) => sum + item.loan.pokok, 0);
-  const totalLoanJasa = data.reduce((sum, item) => sum + item.loan.jasa, 0);
+  const totalLoanPokok = data?.reduce((sum, item) => sum + item.loan.pokok, 0) || 0;
+  const totalLoanJasa = data?.reduce((sum, item) => sum + item.loan.jasa, 0) || 0;
   
   const calculateItemTotal = (item: PayrollItem) => {
     let sum = 0;
@@ -57,7 +57,7 @@ export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
     return sum;
   };
 
-  const grandTotal = data.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+  const grandTotal = data?.reduce((sum, item) => sum + calculateItemTotal(item), 0) || 0;
 
   return (
     <div id="print-payroll-deductions" className="hidden print:block p-8 bg-white text-black text-[10px] leading-tight font-sans">
@@ -104,7 +104,7 @@ export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
           </tr>
         </thead>
         <tbody>
-          {data.length === 0 ? (
+          {!data || data.length === 0 ? (
             <tr>
               <td colSpan={2 + (showSavings ? savingsColSpan : 0) + (showLoans ? 3 : 0) + 1} className="border border-black p-4 text-center text-slate-400 font-bold uppercase tracking-wider">
                 Tidak ada data potongan untuk periode ini.
@@ -150,7 +150,7 @@ export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
             <td className="border border-black px-1.5 py-1.5 text-center" colSpan={2}>JUMLAH</td>
             
             {activeCats.map(cat => {
-              const catTotal = data.reduce((sum, item) => sum + (item.savings[cat.code] || 0), 0);
+              const catTotal = data?.reduce((sum, item) => sum + (item.savings[cat.code] || 0), 0) || 0;
               return (
                 <td key={cat.code} className="border border-black px-1 py-1.5 text-right">
                   {catTotal > 0 ? `Rp ${Math.round(catTotal).toLocaleString('id-ID')}` : '-'}
@@ -195,6 +195,8 @@ export const PrintPayrollDeductions: React.FC<PrintPayrollDeductionsProps> = ({
       </div>
     </div>
   );
-};
+});
+
+PrintPayrollDeductions.displayName = 'PrintPayrollDeductions';
 
 export default PrintPayrollDeductions;

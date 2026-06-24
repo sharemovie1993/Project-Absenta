@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+
+
+import React, { useState, useCallback } from 'react';
 import { Modal, ModalFooter } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
@@ -13,7 +15,14 @@ interface UploadSiswaDocumentModalProps {
   onSuccess: () => void;
 }
 
-export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> = ({
+const CATEGORIES = [
+  { value: 'SURAT_PERINGATAN', label: 'Surat Peringatan (SP)' },
+  { value: 'LAPORAN_BK', label: 'Laporan Konseling/BK' },
+  { value: 'SURAT_PERNYATAAN', label: 'Surat Pernyataan' },
+  { value: 'LAINNYA', label: 'Dokumen Lainnya' }
+];
+
+export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> = React.memo(({
   isOpen,
   onClose,
   siswaId,
@@ -25,20 +34,13 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const categories = [
-    { value: 'SURAT_PERINGATAN', label: 'Surat Peringatan (SP)' },
-    { value: 'LAPORAN_BK', label: 'Laporan Konseling/BK' },
-    { value: 'SURAT_PERNYATAAN', label: 'Surat Pernyataan' },
-    { value: 'LAINNYA', label: 'Dokumen Lainnya' }
-  ];
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
     }
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!judul.trim()) {
       showToast('Judul dokumen wajib diisi', 'error');
@@ -66,14 +68,15 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [siswaId, file, judul, kategori, onSuccess, onClose, showToast]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Unggah Lampiran Baru">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Judul Dokumen</label>
+          <label htmlFor="doc-judul" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Judul Dokumen</label>
           <Input
+            id="doc-judul"
             value={judul}
             onChange={(e) => setJudul(e.target.value)}
             placeholder="Contoh: Surat Peringatan 1"
@@ -82,13 +85,14 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kategori Dokumen</label>
+          <label htmlFor="doc-kategori" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Kategori Dokumen</label>
           <select
+            id="doc-kategori"
             value={kategori}
             onChange={(e) => setKategori(e.target.value)}
             className="w-full h-10 px-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl text-xs focus:ring-blue-500 focus:border-blue-500 dark:text-white"
           >
-            {categories.map((c) => (
+            {(CATEGORIES || []).map((c) => (
               <option key={c.value} value={c.value}>
                 {c.label}
               </option>
@@ -97,9 +101,10 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Berkas Dokumen (PDF/Gambar)</label>
+          <label htmlFor="doc-file" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Berkas Dokumen (PDF/Gambar)</label>
           <div className="relative border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50/50 dark:bg-slate-900/50 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors">
             <input
+              id="doc-file"
               type="file"
               onChange={handleFileChange}
               accept="application/pdf,image/*"
@@ -126,4 +131,8 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
       </form>
     </Modal>
   );
-};
+});
+
+UploadSiswaDocumentModal.displayName = 'UploadSiswaDocumentModal';
+export default UploadSiswaDocumentModal;
+

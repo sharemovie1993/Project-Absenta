@@ -1,23 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Package, 
-  Tag, 
-  MapPin, 
-  Layers, 
   BarChart, 
-  Calendar, 
-  DollarSign, 
-  Info,
-  Save,
-  X,
   Wand2,
   RefreshCw,
-  ClipboardList
+  Save,
+  X
 } from 'lucide-react';
 import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader, Alert } from '../ui';
 import { sarprasApi } from '../../api/sarpras.api';
-import type { Asset } from '../../api/sarpras.api';
 import { useToast } from '../../hooks/useToast';
 import { useAuthStore } from '../../store/authStore';
 
@@ -38,7 +30,6 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
@@ -98,34 +89,48 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
     }
   }, [assetDetail]);
 
-  const categoryOptions = categories?.data?.map((c: any) => ({ value: c.id, label: c.nama })) || [];
-  const locationOptions = locations?.data?.map((l: any) => ({ value: l.id, label: l.nama })) || [];
+  const categoryOptions = useMemo(() => {
+    return categories?.data?.map((c: { id: string; nama: string }) => ({ value: c.id, label: c.nama })) || [];
+  }, [categories]);
+
+  const locationOptions = useMemo(() => {
+    return locations?.data?.map((l: { id: string; nama: string }) => ({ value: l.id, label: l.nama })) || [];
+  }, [locations]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => assetId 
+    mutationFn: (data: unknown) => assetId 
       ? sarprasApi.updateAsset(assetId, data)
       : sarprasApi.createAsset(data),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string }) => {
       showToast(res.message || 'Berhasil menyimpan aset', 'success');
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
       onSuccess?.();
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Gagal menyimpan aset', 'error');
+    onError: (err: unknown) => {
+      let errMsg = 'Gagal menyimpan aset';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resErr = err as { response?: { data?: { message?: string } } };
+        if (resErr.response?.data?.message) {
+          errMsg = resErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast(errMsg, 'error');
     }
   });
 
-  const generateLocalCode = () => {
+  const generateLocalCode = useCallback(() => {
     const years = new Date().getFullYear();
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let randomStr = '';
     for (let i = 0; i < 5; i++) {
       randomStr += characters.charAt(Math.floor(Math.random() * characters.length));
     }
-    setFormData({ ...formData, kode: `INV-${years}-${randomStr}` });
-  };
+    setFormData(prev => ({ ...prev, kode: `INV-${years}-${randomStr}` }));
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       ...formData,
@@ -134,7 +139,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
       purchase_date: formData.purchase_date ? new Date(formData.purchase_date) : undefined
     };
     mutation.mutate(payload);
-  };
+  }, [formData, mutation]);
 
   if (assetId && isLoadingDetail) return <div className="p-12 flex justify-center"><Loader size="lg" /></div>;
 
@@ -160,27 +165,29 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 group md:col-span-2">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="nama" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Nama Aset <span className="text-rose-500">*</span>
               </Label>
               <Input 
+                id="nama"
                 required 
                 placeholder="Entry Nama Aset..." 
                 value={formData.nama}
-                onChange={e => setFormData({...formData, nama: e.target.value})}
+                onChange={e => setFormData(prev => ({...prev, nama: e.target.value}))}
                 className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="kode" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Kode / Tag
               </Label>
               <div className="flex gap-2">
                 <Input 
+                  id="kode"
                   placeholder="AUTO" 
                   value={formData.kode}
-                  onChange={e => setFormData({...formData, kode: e.target.value})}
+                  onChange={e => setFormData(prev => ({...prev, kode: e.target.value}))}
                   className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl flex-1"
                 />
                 <Button 
@@ -196,38 +203,41 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="brand" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Brand / Merk
               </Label>
               <Input 
+                id="brand"
                 placeholder="Entry Brand..." 
                 value={formData.brand}
-                onChange={e => setFormData({...formData, brand: e.target.value})}
+                onChange={e => setFormData(prev => ({...prev, brand: e.target.value}))}
                 className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="category_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Kategori
               </Label>
               <SearchableSelect 
+                id="category_id"
                 options={categoryOptions} 
                 value={formData.category_id}
-                onValueChange={v => setFormData({...formData, category_id: v})}
+                onValueChange={v => setFormData(prev => ({...prev, category_id: v}))}
                 placeholder="Pilih Kategori"
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="location_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Lokasi
               </Label>
               <SearchableSelect 
+                id="location_id"
                 options={locationOptions} 
                 value={formData.location_id}
-                onValueChange={v => setFormData({...formData, location_id: v})}
+                onValueChange={v => setFormData(prev => ({...prev, location_id: v}))}
                 placeholder="Pilih Lokasi"
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
@@ -248,39 +258,42 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="kondisi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Kondisi Aset
               </Label>
               <SearchableSelect 
+                id="kondisi"
                 options={KONDISI_OPTIONS} 
                 value={formData.kondisi}
-                onValueChange={v => setFormData({...formData, kondisi: v})}
+                onValueChange={v => setFormData(prev => ({...prev, kondisi: v}))}
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="jumlah" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Jumlah Unit
               </Label>
               <Input 
+                id="jumlah"
                 type="number" 
                 min={1} 
                 value={formData.jumlah}
-                onChange={e => setFormData({...formData, jumlah: Number(e.target.value)})}
+                onChange={e => setFormData(prev => ({...prev, jumlah: Number(e.target.value)}))}
                 className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
 
             <div className="space-y-2 group md:col-span-2">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="deskripsi" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Deskripsi
               </Label>
               <Textarea 
+                id="deskripsi"
                 placeholder="Spesifikasi teknis atau catatan..." 
                 rows={3}
                 value={formData.deskripsi}
-                onChange={e => setFormData({...formData, deskripsi: e.target.value})}
+                onChange={e => setFormData(prev => ({...prev, deskripsi: e.target.value}))}
                 className="text-[13px] font-medium tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>

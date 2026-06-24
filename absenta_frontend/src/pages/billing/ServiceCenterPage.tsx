@@ -38,6 +38,28 @@ import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
 // Types
 import type { Invoice } from '../../types/invoice';
+import type { Plan } from '../../types/billing';
+
+interface ServiceInvoice extends Invoice {
+  subscription_id?: string;
+}
+
+interface CatalogVariant {
+  id: string;
+  billing_period?: string;
+  size_label?: string;
+  features_json?: string[];
+  price_monthly: number;
+  price_yearly: number;
+}
+
+interface CatalogGroup {
+  variants?: CatalogVariant[];
+  service_code?: string;
+  icon?: string;
+  module?: string;
+  baseName?: string;
+}
 interface OrderPayload {
   id: string;
   service_code?: string;
@@ -50,7 +72,7 @@ interface OrderPayload {
   price_monthly: number;
   price_yearly: number;
   // Metadata untuk Shopee style
-  group?: any;
+  group?: CatalogGroup;
 }
 import type { SubscriptionService } from '@/components/billing/AutoRenewModal';
 
@@ -185,7 +207,7 @@ export default function ServiceCenterPage() {
   });
 
   const subscription = subQuery.data;
-  const invoices = invQuery.data || [];
+  const invoices = (invQuery.data as ServiceInvoice[]) || [];
   
   const isLoading = subQuery.isLoading || invQuery.isLoading;
   const isError = subQuery.isError || invQuery.isError;
@@ -278,11 +300,11 @@ export default function ServiceCenterPage() {
   }, [services, invoices]);
 
   const handleCancelInvoice = useCallback(async (invoiceId: string) => {
-    const targetInvoice = invoices.find(i => i.id === invoiceId);
+    const targetInvoice = invoices.find(i => i.id === invoiceId) as ServiceInvoice | undefined;
     const subId = targetInvoice?.billing?.subscription_id || 
                   targetInvoice?.billing?.Subscription?.id || 
-                  (targetInvoice as any)?.subscription_id ||
-                  (targetInvoice as any)?.billing_id;
+                  targetInvoice?.subscription_id ||
+                  targetInvoice?.billing_id;
 
     if (!subId) {
       toast.error('Data langganan tidak ditemukan untuk pembatalan.');
@@ -432,7 +454,7 @@ export default function ServiceCenterPage() {
           <AlertCircle size={48} />
         </div>
         <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Terjadi Kesalahan</h2>
-        <p className="text-slate-500 mb-6 max-w-md">{(subQuery.error as any)?.message || 'Gagal memuat data layanan.'}</p>
+        <p className="text-slate-500 mb-6 max-w-md">{(subQuery.error as Error)?.message || 'Gagal memuat data layanan.'}</p>
         <Button onClick={() => subQuery.refetch()} className="rounded-xl bg-blue-600 px-8 py-3">Coba Lagi</Button>
       </div>
     );
@@ -556,14 +578,14 @@ export default function ServiceCenterPage() {
                                 <Button 
                                   variant="outline"
                                   onClick={() => {
-                                    const p = selectedService.Plan || (selectedService.plan_snapshot as unknown as SubscriptionPlan) || {};
-                                    const baseName = ((p as any).name || 'Layanan')
-                                        .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
-                                        .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
-                                        .replace(/-/g, '')
-                                        .replace(/\s+/g, ' ')
-                                        .trim();
-                                    const mode = String((p as any)?.absensi_mode || 'STANDARD');
+                                     const p = (selectedService.Plan || selectedService.plan_snapshot || {}) as Plan;
+                                     const baseName = (p.name || 'Layanan')
+                                         .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
+                                         .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
+                                         .replace(/-/g, '')
+                                         .replace(/\s+/g, ' ')
+                                         .trim();
+                                     const mode = String(p.absensi_mode || 'STANDARD');
                                     const groupKey = `${baseName}-${mode}`;
                                     navigate(`/services/${groupKey}`);
                                   }} 
@@ -622,15 +644,15 @@ export default function ServiceCenterPage() {
                   mode="private"
                   ownedFeatures={user?.features || []}
                   ownedServices={services}
-                  onSelectPlan={(group) => {
+                  onSelectPlan={(group: CatalogGroup) => {
                     const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
-                    const variants: any[] = group.variants || [];
+                    const variants = group.variants || [];
 
                     // Pilih default: varian MONTH dengan ukuran terkecil
-                    const monthlyVariants = variants.filter((v: any) =>
+                    const monthlyVariants = variants.filter((v) =>
                       v.billing_period === 'MONTH' || !v.billing_period
                     );
-                    const sortedMonthly = [...monthlyVariants].sort((a: any, b: any) => {
+                    const sortedMonthly = [...monthlyVariants].sort((a, b) => {
                       const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === (a.size_label || '').toLowerCase());
                       const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === (b.size_label || '').toLowerCase());
                       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);

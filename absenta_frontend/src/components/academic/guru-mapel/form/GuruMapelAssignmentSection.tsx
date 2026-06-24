@@ -13,11 +13,11 @@ interface GuruMapelAssignmentSectionProps {
   loading: boolean;
 }
 
-export const GuruMapelAssignmentSection: React.FC<GuruMapelAssignmentSectionProps> = ({
+export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionProps>(({
   control,
   errors,
-  guruOptions,
-  mapelOptions,
+  guruOptions = [],
+  mapelOptions = [],
   loading
 }) => {
   return (
@@ -33,9 +33,10 @@ export const GuruMapelAssignmentSection: React.FC<GuruMapelAssignmentSectionProp
           control={control}
           render={({ field }) => (
             <SearchableSelect
+              id="guru_id"
               value={field.value}
               onValueChange={field.onChange}
-              options={guruOptions.map(g => ({ label: g.nama_guru, value: g.id }))}
+              options={guruOptions?.map(g => ({ label: g.nama_guru, value: g.id }))}
               placeholder="Pilih Guru..."
               searchPlaceholder="Cari Guru..."
               disabled={loading}
@@ -59,9 +60,10 @@ export const GuruMapelAssignmentSection: React.FC<GuruMapelAssignmentSectionProp
           control={control}
           render={({ field }) => (
             <SearchableSelect
+              id="mapel_id"
               value={field.value}
               onValueChange={field.onChange}
-              options={mapelOptions.map(m => ({ label: m.nama_mapel, value: m.id }))}
+              options={mapelOptions?.map(m => ({ label: m.nama_mapel, value: m.id }))}
               placeholder="Pilih Mapel..."
               searchPlaceholder="Cari Mapel..."
               disabled={loading}
@@ -75,4 +77,6 @@ export const GuruMapelAssignmentSection: React.FC<GuruMapelAssignmentSectionProp
       </div>
     </SectionCard>
   );
-};
+});
+
+GuruMapelAssignmentSection.displayName = 'GuruMapelAssignmentSection';

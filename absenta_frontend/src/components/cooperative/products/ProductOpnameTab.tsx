@@ -18,6 +18,15 @@ interface ProductCategory {
   order: number;
 }
 
+interface OpnameSession {
+  id: string;
+  opnameNumber: string;
+  date: string;
+  status: string;
+  notes: string | null;
+  items?: { id: string }[];
+}
+
 interface ProductOpnameTabProps {
   categories: ProductCategory[];
   fetchProducts: () => Promise<void>;
@@ -33,7 +42,7 @@ interface AxiosErrorLike {
   };
 }
 
-export const ProductOpnameTab: React.FC<ProductOpnameTabProps> = ({
+export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
   categories,
   fetchProducts,
   activeTab
@@ -41,7 +50,7 @@ export const ProductOpnameTab: React.FC<ProductOpnameTabProps> = ({
   const { user } = useAuthStore();
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
 
-  const [opnameSessions, setOpnameSessions] = useState<any[]>([]);
+  const [opnameSessions, setOpnameSessions] = useState<OpnameSession[]>([]);
   const [opnameLoading, setOpnameLoading] = useState(false);
   const [activeOpnameSessionId, setActiveOpnameSessionId] = useState<string | null>(null);
   const [isCreateOpnameModalOpen, setIsCreateOpnameModalOpen] = useState(false);
@@ -144,7 +153,7 @@ export const ProductOpnameTab: React.FC<ProductOpnameTabProps> = ({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
-                    {opnameSessions.map((sess) => (
+                    {(opnameSessions || []).map((sess) => (
                       <tr key={sess.id} className="hover:bg-slate-50/50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800">
                           {sess.opnameNumber}
@@ -214,7 +223,7 @@ export const ProductOpnameTab: React.FC<ProductOpnameTabProps> = ({
               id="opname-cat-filter"
               options={[
                 { value: 'ALL', label: 'Semua Kategori (Rekomendasi)' },
-                ...categories.map(c => ({ value: c.name, label: c.name }))
+                ...(categories || []).map(c => ({ value: c.name, label: c.name }))
               ]}
               value={newOpnameCategoryFilter}
               onValueChange={setNewOpnameCategoryFilter}
@@ -250,6 +259,8 @@ export const ProductOpnameTab: React.FC<ProductOpnameTabProps> = ({
       </Modal>
     </div>
   );
-};
+});
+
+ProductOpnameTab.displayName = 'ProductOpnameTab';
 
 export default ProductOpnameTab;

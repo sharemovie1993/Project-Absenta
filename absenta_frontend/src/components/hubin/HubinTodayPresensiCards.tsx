@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Map as MapIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
@@ -10,13 +10,42 @@ import { HubinCameraModal } from './HubinCameraModal';
 import { HUBIN_CONFIG } from '../../constants/HubinConstants';
 import { calculateDistance, generateHubinFileName } from '../../utils/hubinUtils';
 
+interface TodayAbsensi {
+  jam_masuk?: string;
+  jam_pulang?: string;
+}
+
+interface StudentPkl {
+  id: string;
+  lat_override?: number;
+  lon_override?: number;
+  radius_override?: number;
+  is_flexible_location?: boolean;
+  Siswa?: {
+    Kelas?: {
+      nama_kelas?: string;
+      nama?: string;
+    };
+  };
+  Mitra?: {
+    nama?: string;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+  };
+}
+
+interface MutationProp {
+  mutateAsync: (variables: any) => Promise<any>;
+}
+
 interface HubinTodayPresensiCardsProps {
-  todayAbsensi: any;
-  studentPkl: any;
+  todayAbsensi: TodayAbsensi | null;
+  studentPkl: StudentPkl | null;
   location: { lat: number; lng: number; accuracy?: number } | null;
   isMockLocation?: boolean;
-  checkInMutation: any;
-  checkOutMutation: any;
+  checkInMutation: MutationProp;
+  checkOutMutation: MutationProp;
   kegiatan: string;
   studentName?: string;
   onRefreshLocation?: () => void;
@@ -44,6 +73,10 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
     return () => clearInterval(timer);
   }, []);
 
+  const handleToggleDinasLuar = useCallback(() => {
+    setIsDinasLuarMode((prev) => !prev);
+  }, []);
+
   const className = studentPkl?.Siswa?.Kelas?.nama_kelas || studentPkl?.Siswa?.Kelas?.nama;
 
   // -- Distance Logic --
@@ -67,12 +100,12 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
   }, [location, mitraCoords, studentPkl]);
 
   // -- Action Logic --
-  const triggerCamera = (type: 'IN' | 'OUT') => {
+  const triggerCamera = useCallback((type: 'IN' | 'OUT') => {
     setActiveType(type);
     setIsCameraOpen(true);
-  };
+  }, []);
 
-  const handleCapture = async (file: File) => {
+  const handleCapture = useCallback(async (file: File) => {
     const type = activeType;
     if (!file || !type) return;
 
@@ -109,7 +142,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
           ? [{ time: format(new Date(), 'HH:mm'), text: kegiatan.trim() }]
           : [];
         await checkInMutation.mutateAsync({ 
-          siswaPklId: studentPkl.id, 
+          siswaPklId: studentPkl?.id, 
           latitude: location?.lat, 
           longitude: location?.lng, 
           kegiatan: initialActivities.length ? JSON.stringify(initialActivities) : '', 
@@ -119,7 +152,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
         });
       } else {
         await checkOutMutation.mutateAsync({ 
-          siswaPklId: studentPkl.id, 
+          siswaPklId: studentPkl?.id, 
           latitude: location?.lat, 
           longitude: location?.lng, 
           image_url: uploadedUrl,
@@ -137,7 +170,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
     } finally {
       setIsUploading(null);
     }
-  };
+  }, [activeType, distanceInfo.inRange, isDinasLuarMode, location, className, studentName, kegiatan, checkInMutation, checkOutMutation, studentPkl]);
 
   const isCheckedIn = !!todayAbsensi?.jam_masuk;
   const isCheckedOut = !!todayAbsensi?.jam_pulang;
@@ -183,7 +216,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
             <span className="text-[8px] font-medium text-amber-600 dark:text-amber-500 italic">Membutuhkan verifikasi pembimbing</span>
           </div>
           <button
-            onClick={() => setIsDinasLuarMode(!isDinasLuarMode)}
+            onClick={handleToggleDinasLuar}
             className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${
               isDinasLuarMode 
                 ? 'bg-amber-500 text-white border-amber-500 shadow-sm' 

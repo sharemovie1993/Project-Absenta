@@ -94,3 +94,4 @@ export const AdminDutyWidget: React.FC<AdminDutyWidgetProps> = ({
     </CompactSectionCard>
   );
 };
+

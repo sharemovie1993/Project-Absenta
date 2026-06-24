@@ -3,11 +3,22 @@ import { BookOpen, Trash2, Plus, ExternalLink, History, ArrowRight } from 'lucid
 import { Button } from '../ui';
 import { getDriveThumbnailUrl } from '../../utils/hubinUtils';
 
+interface LogbookTimelineItem {
+  time: string;
+  text: string;
+  image_url?: string;
+}
+
+interface TodayAbsensi {
+  jam_masuk?: string;
+  jam_pulang?: string;
+}
+
 interface HubinTimelineLogbookBuilderProps {
-  parsedTimeline: any[];
+  parsedTimeline: LogbookTimelineItem[];
   handleDeleteActivity: (idx: number) => void;
   onOpenAddModal: () => void;
-  todayAbsensi: any;
+  todayAbsensi: TodayAbsensi | null;
 }
 
 export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderProps> = ({
@@ -55,7 +66,7 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
           </div>
         ) : (
           <div className="space-y-4">
-            {parsedTimeline.map((item: any, idx: number) => (
+            {parsedTimeline?.map((item: LogbookTimelineItem, idx: number) => (
               <div key={idx} className="flex gap-4 group">
                 <div className="flex flex-col items-center">
                   <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-[10px] border border-indigo-100 dark:border-indigo-500/20 group-hover:scale-110 transition-transform">

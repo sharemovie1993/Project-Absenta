@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -42,9 +42,9 @@ export const AssetPrintLabelModal: React.FC<AssetPrintLabelModalProps> = ({
     }
   }, [isOpen, assetsToPrint]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     window.print();
-  };
+  }, []);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cetak Label Aset" size="xl">
@@ -74,7 +74,7 @@ export const AssetPrintLabelModal: React.FC<AssetPrintLabelModalProps> = ({
            `}</style>
            
            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2">
-             {assetsToPrint.map((asset) => (
+             {assetsToPrint?.map((asset) => (
                 <div key={asset.id} className="print-page-break flex flex-col items-center bg-white border border-slate-300 rounded overflow-hidden p-2 shadow-sm print:shadow-none print:border-black">
                    <div className="w-full text-center border-b border-slate-200 print:border-black pb-1 mb-2">
                       <span className="text-[10px] font-bold block uppercase break-words truncate">SARPRAS SMK</span>

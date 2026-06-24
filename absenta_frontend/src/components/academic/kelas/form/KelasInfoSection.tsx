@@ -17,26 +17,26 @@ interface KelasInfoSectionProps {
   loadingDropdowns: boolean;
 }
 
-export const KelasInfoSection: React.FC<KelasInfoSectionProps> = ({
+export const KelasInfoSection = React.memo<KelasInfoSectionProps>(({
   register,
   control,
   errors,
   isViewMode,
   watch,
-  jurusanList,
-  tingkatOptions,
+  jurusanList = [],
+  tingkatOptions = [],
   loadingDropdowns
 }) => {
   if (isViewMode) {
-    const selectedTingkat = tingkatOptions.find(opt => opt.value === watch('tingkat'));
-    const selectedJurusan = jurusanList.find(j => j.id === watch('jurusan_id'));
+    const selectedTingkat = tingkatOptions?.find(opt => opt.value === watch('tingkat'));
+    const selectedJurusan = jurusanList?.find(j => j.id === watch('jurusan_id'));
     const isActive = watch('is_active');
 
     return (
       <SectionCard title="Informasi Kelas" icon={Building2}>
         <DetailRow icon={<Building2 size={16} />} label="Nama Kelas" value={watch('nama_kelas')} />
         <DetailRow icon={<Layers size={16} />} label="Tingkat" value={selectedTingkat?.label} />
-        <DetailRow icon={<Hash size={16} />} label="Jurusan" value={selectedJurusan ? `${selectedJurusan.nama} (${selectedJurusan.kode})` : '-'} />
+        <DetailRow icon={<Hash size={16} />} label="Jurusan" value={selectedJurusan ? `${selectedJurusan.nama} (${selectedJurusan.singkatan || selectedJurusan.kode || ''})` : '-'} />
         <DetailRow 
           icon={<Building2 size={16} />} 
           label="Status Keaktifan" 
@@ -85,9 +85,10 @@ export const KelasInfoSection: React.FC<KelasInfoSectionProps> = ({
           name="tingkat"
           render={({ field }) => (
             <SearchableSelect
-              value={field.value.toString()}
+              id="tingkat"
+              value={field.value ? field.value.toString() : ''}
               onValueChange={(val) => field.onChange(parseInt(val))}
-              options={tingkatOptions.map(opt => ({ value: opt.value.toString(), label: opt.label }))}
+              options={tingkatOptions?.map(opt => ({ value: opt.value.toString(), label: opt.label }))}
               placeholder="Pilih Tingkat"
               disabled={isViewMode || loadingDropdowns}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.tingkat ? 'border-red-500' : ''}`}
@@ -110,9 +111,10 @@ export const KelasInfoSection: React.FC<KelasInfoSectionProps> = ({
           name="jurusan_id"
           render={({ field }) => (
             <SearchableSelect
+              id="jurusan_id"
               value={field.value}
               onValueChange={field.onChange}
-              options={jurusanList.map((j) => ({ value: j.id, label: `${j.nama} ${j.kode ? `(${j.kode})` : ''}` }))}
+              options={jurusanList?.map((j) => ({ value: j.id, label: `${j.nama} ${j.singkatan || j.kode ? `(${j.singkatan || j.kode || ''})` : ''}` }))}
               placeholder="Pilih Jurusan"
               disabled={isViewMode || loadingDropdowns}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.jurusan_id ? 'border-red-500' : ''}`}
@@ -155,4 +157,7 @@ export const KelasInfoSection: React.FC<KelasInfoSectionProps> = ({
       />
     </SectionCard>
   );
-};
+});
+
+KelasInfoSection.displayName = 'KelasInfoSection';
+export default KelasInfoSection;

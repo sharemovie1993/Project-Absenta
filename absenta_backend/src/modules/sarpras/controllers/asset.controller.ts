@@ -86,7 +86,26 @@ export class AssetController {
 
   async createAsset(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await AssetService.createAsset(request.tenantId!, request.body, request.organizationalScope);
+      const { nama, jumlah, price_purchase, category_id, location_id } = request.body;
+      if (!nama || typeof nama !== 'string' || nama.trim() === '') {
+        return reply.status(400).send({ success: false, message: 'Nama aset wajib diisi dan harus berupa text' });
+      }
+      if (jumlah !== undefined && (typeof jumlah !== 'number' || jumlah < 1 || !Number.isInteger(jumlah))) {
+        return reply.status(400).send({ success: false, message: 'Jumlah wajib bertipe angka bulat positif minimal 1' });
+      }
+      if (price_purchase !== undefined && (typeof price_purchase !== 'number' || price_purchase < 0)) {
+        return reply.status(400).send({ success: false, message: 'Harga pembelian tidak boleh bernilai negatif' });
+      }
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (category_id && !uuidRegex.test(category_id)) {
+        return reply.status(400).send({ success: false, message: 'ID Kategori tidak valid' });
+      }
+      if (location_id && !uuidRegex.test(location_id)) {
+        return reply.status(400).send({ success: false, message: 'ID Lokasi tidak valid' });
+      }
+
+      const userId = (request.user as any).id || (request.user as any).userId;
+      const data = await AssetService.createAsset(request.tenantId!, request.body, request.organizationalScope, userId);
       return reply.status(201).send({ success: true, message: 'Aset berhasil dibuat', data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -96,7 +115,26 @@ export class AssetController {
   async updateAsset(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
-      const data = await AssetService.updateAsset(request.tenantId!, id, request.body, request.organizationalScope);
+      const { nama, jumlah, price_purchase, category_id, location_id } = request.body;
+      if (nama !== undefined && (typeof nama !== 'string' || nama.trim() === '')) {
+        return reply.status(400).send({ success: false, message: 'Nama aset tidak boleh kosong' });
+      }
+      if (jumlah !== undefined && (typeof jumlah !== 'number' || jumlah < 1 || !Number.isInteger(jumlah))) {
+        return reply.status(400).send({ success: false, message: 'Jumlah wajib bertipe angka bulat positif minimal 1' });
+      }
+      if (price_purchase !== undefined && (typeof price_purchase !== 'number' || price_purchase < 0)) {
+        return reply.status(400).send({ success: false, message: 'Harga pembelian tidak boleh bernilai negatif' });
+      }
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (category_id && !uuidRegex.test(category_id)) {
+        return reply.status(400).send({ success: false, message: 'ID Kategori tidak valid' });
+      }
+      if (location_id && !uuidRegex.test(location_id)) {
+        return reply.status(400).send({ success: false, message: 'ID Lokasi tidak valid' });
+      }
+
+      const userId = (request.user as any).id || (request.user as any).userId;
+      const data = await AssetService.updateAsset(request.tenantId!, id, request.body, request.organizationalScope, userId);
       return reply.status(200).send({ success: true, message: 'Aset berhasil diperbarui', data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -106,7 +144,8 @@ export class AssetController {
   async deleteAsset(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
-      await AssetService.deleteAsset(request.tenantId!, id);
+      const userId = (request.user as any).id || (request.user as any).userId;
+      await AssetService.deleteAsset(request.tenantId!, id, request.organizationalScope, userId);
       return reply.status(200).send({ success: true, message: 'Aset berhasil dihapus' });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -145,7 +184,8 @@ export class AssetController {
         location_nama: row['Lokasi'] || row['location_nama']
       }));
 
-      const results = await AssetService.upsertAssets(request.tenantId!, mappedAssets);
+      const userId = (request.user as any).id || (request.user as any).userId;
+      const results = await AssetService.upsertAssets(request.tenantId!, mappedAssets, userId);
 
       return reply.status(200).send({ 
         success: true, 

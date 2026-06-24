@@ -6,7 +6,7 @@ interface PrintLoanReceiptProps {
   coopSettings?: CooperativeSettings | null;
 }
 
-export const PrintLoanReceipt: React.FC<PrintLoanReceiptProps> = ({ loan, coopSettings }) => {
+export const PrintLoanReceipt = React.memo<PrintLoanReceiptProps>(({ loan, coopSettings }) => {
   const amountNumber = parseFloat(loan.amount);
   
   // Calculate administration/provision fee (e.g. 1.5% as standard cooperative administration fee)
@@ -56,7 +56,7 @@ export const PrintLoanReceipt: React.FC<PrintLoanReceiptProps> = ({ loan, coopSe
           <h2 className="text-sm font-bold uppercase tracking-wider text-black">
             KUITANSI PENCAIRAN DANA
           </h2>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">
+          <p className="text-[10px] text-slate-550 uppercase tracking-widest mt-0.5">
             Unit Usaha Simpan Pinjam (USP) Koperasi Sekolah
           </p>
         </div>
@@ -81,14 +81,14 @@ export const PrintLoanReceipt: React.FC<PrintLoanReceiptProps> = ({ loan, coopSe
 
         <div className="grid grid-cols-12 gap-2">
           <span className="col-span-3 text-slate-500">Untuk Pembayaran</span>
-          <span className="col-span-9 text-slate-800">
-            Pencairan bersih fasilitas kredit/pinjaman koperasi sekolah atas nama anggota <strong>{loan.member.name} ({loan.member.memberNo})</strong> dengan rincian pemotongan simpanan/administrasi terlampir.
+          <span className="col-span-9 text-slate-850">
+            Pencairan bersih fasilitas kredit/pinjaman koperasi sekolah atas nama anggota <strong>{loan.member?.name} ({loan.member?.memberNo})</strong> dengan rincian pemotongan simpanan/administrasi terlampir.
           </span>
         </div>
       </div>
 
       {/* Rincian Potongan Slip */}
-      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 mt-6 max-w-md ml-auto">
+      <div className="p-4 bg-slate-55 border border-slate-200 rounded-xl space-y-2 mt-6 max-w-md ml-auto">
         <h4 className="font-bold text-[10px] uppercase text-slate-500 border-b border-dashed border-slate-300 pb-1">
           Rincian Transaksi Pencairan (USP)
         </h4>
@@ -131,7 +131,7 @@ export const PrintLoanReceipt: React.FC<PrintLoanReceiptProps> = ({ loan, coopSe
           <p>Penerima Uang (Anggota)</p>
           <div>
             <div className="font-bold uppercase text-[11px] underline">
-              {loan.member.name}
+              {loan.member?.name}
             </div>
             <div className="text-[10px] text-slate-500 font-medium">Penerima Dana</div>
           </div>
@@ -139,7 +139,9 @@ export const PrintLoanReceipt: React.FC<PrintLoanReceiptProps> = ({ loan, coopSe
       </div>
     </div>
   );
-};
+});
+
+PrintLoanReceipt.displayName = 'PrintLoanReceipt';
 
 // Helper function to convert numeric amount to Indonesian text words (reused or standalone)
 function convertAmountToWords(num: number): string {

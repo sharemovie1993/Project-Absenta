@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Package, FileText, Send, X, RefreshCw, ClipboardList } from 'lucide-react';
 import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader } from '../ui';
@@ -9,6 +9,13 @@ import { useAuthStore } from '../../store/authStore';
 interface LoanRequestFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+}
+
+interface Asset {
+  id: string;
+  nama: string;
+  kode?: string;
+  jumlah: number;
 }
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }) => {
@@ -32,25 +39,37 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
     enabled: subscription !== undefined && !isLocked
   });
 
-  const assetOptions = (assetsData?.data?.list || []).map((a: any) => ({
-    value: a.id,
-    label: `${a.nama} ${a.kode ? `(${a.kode})` : ''} — Stok: ${a.jumlah}`
-  }));
+  const assetOptions = useMemo(() => {
+    const list = (assetsData?.data?.list as Asset[]) || [];
+    return list.map((a: Asset) => ({
+      value: a.id,
+      label: `${a.nama} ${a.kode ? `(${a.kode})` : ''} — Stok: ${a.jumlah}`
+    }));
+  }, [assetsData]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => sarprasApi.requestLoan(data),
-    onSuccess: (res: any) => {
+    mutationFn: (data: { asset_id: string; tanggal_kembali_plan?: Date; catatan?: string }) => sarprasApi.requestLoan(data),
+    onSuccess: (res: { message?: string }) => {
       showToast(res.message || 'Permohonan peminjaman berhasil dikirim', 'success');
       queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       onSuccess?.();
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Gagal mengirim permohonan', 'error');
+    onError: (err: unknown) => {
+      let errMsg = 'Gagal mengirim permohonan';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resErr = err as { response?: { data?: { message?: string } } };
+        if (resErr.response?.data?.message) {
+          errMsg = resErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast(errMsg, 'error');
     }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.asset_id) {
       showToast('Pilih aset yang ingin dipinjam', 'error');
@@ -61,7 +80,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
       tanggal_kembali_plan: formData.tanggal_kembali_plan ? new Date(formData.tanggal_kembali_plan) : undefined,
       catatan: formData.catatan || undefined
     });
-  };
+  }, [formData, mutation, showToast]);
 
   return (
     <div className="space-y-6">
@@ -79,10 +98,11 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
 
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="loan-asset-id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Aset yang Dipinjam <span className="text-rose-500">*</span>
               </Label>
               <SearchableSelect
+                id="loan-asset-id"
                 options={assetOptions}
                 value={formData.asset_id}
                 onValueChange={v => setFormData({ ...formData, asset_id: v })}
@@ -93,12 +113,13 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="loan-return-date" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Rencana Pengembalian
               </Label>
               <div className="relative">
                 <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
+                  id="loan-return-date"
                   type="date"
                   className="pl-10 h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                   value={formData.tanggal_kembali_plan}
@@ -109,10 +130,11 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
             </div>
 
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="loan-catatan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Catatan / Keperluan
               </Label>
               <Textarea
+                id="loan-catatan"
                 placeholder="Entry keperluan peminjaman..."
                 rows={3}
                 value={formData.catatan}

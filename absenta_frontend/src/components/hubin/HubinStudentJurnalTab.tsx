@@ -8,13 +8,35 @@ import { id as localeID } from 'date-fns/locale';
 import { renderDailyTimeline } from '../../utils/hubinUtils';
 import { PklStatusBadge } from './PklStatusBadge';
 
+interface JurnalJson {
+  status?: 'MENUNGGU_REVIEW' | 'REVISI' | 'DISETUJUI';
+  catatan_revisi?: string;
+}
+
+interface StudentPklJurnal {
+  Pembimbing?: { nama_guru?: string };
+  jurnal_json?: JurnalJson;
+}
+
+interface SubmitJurnalMutation {
+  mutate: (url: string) => void;
+  isPending: boolean;
+}
+
+interface AbsensiItem {
+  id: string;
+  tanggal: string;
+  status?: string;
+  is_verified?: boolean;
+}
+
 interface HubinStudentJurnalTabProps {
-  studentPkl: any;
+  studentPkl: StudentPklJurnal | null;
   jurnalUrl: string;
   setJurnalUrl: (val: string) => void;
-  submitJurnalMutation: any;
+  submitJurnalMutation: SubmitJurnalMutation;
   onPrint?: () => void;
-  rawAbsensiHistory: any[];
+  rawAbsensiHistory: AbsensiItem[];
 }
 
 export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
@@ -25,6 +47,14 @@ export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
   onPrint,
   rawAbsensiHistory
 }) => {
+  const handleSubmitJurnal = React.useCallback(() => {
+    if (!jurnalUrl.trim().startsWith('http')) {
+      toast.error('Harap masukkan alamat tautan link (URL) yang valid!');
+      return;
+    }
+    submitJurnalMutation.mutate(jurnalUrl);
+  }, [jurnalUrl, submitJurnalMutation]);
+
   return (
     <div className="space-y-8">
       <SectionCard 
@@ -59,7 +89,7 @@ export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
             <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Riwayat Jurnal Harian</h5>
             <div className="space-y-3">
               {rawAbsensiHistory && rawAbsensiHistory.length > 0 ? (
-                [...rawAbsensiHistory].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()).map((abs, idx) => {
+                [...rawAbsensiHistory].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())?.map((abs, idx) => {
                   return (
                     <div key={abs.id || idx} className="p-4 bg-white dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all group">
                       <div className="flex flex-col sm:flex-row justify-between gap-4">
@@ -160,8 +190,9 @@ export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
 
           {/* Form submission */}
           <div className="space-y-4">
-            <SimpleFormField label="Tautan Berkas Jurnal & Portofolio Akhir (PDF)" required>
+            <SimpleFormField htmlFor="student-jurnal-url" label="Tautan Berkas Jurnal & Portofolio Akhir (PDF)" required>
               <Input 
+                id="student-jurnal-url"
                 placeholder="https://drive.google.com/file/d/... (Pastikan akses diset publik/siapa saja memiliki link)"
                 value={jurnalUrl}
                 onChange={(e) => setJurnalUrl(e.target.value)}
@@ -172,13 +203,7 @@ export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = ({
 
             {studentPkl?.jurnal_json?.status !== 'DISETUJUI' && (
               <Button
-                onClick={() => {
-                  if (!jurnalUrl.trim().startsWith('http')) {
-                    toast.error('Harap masukkan alamat tautan link (URL) yang valid!');
-                    return;
-                  }
-                  submitJurnalMutation.mutate(jurnalUrl);
-                }}
+                onClick={handleSubmitJurnal}
                 disabled={submitJurnalMutation.isPending || !jurnalUrl.trim()}
                 isLoading={submitJurnalMutation.isPending}
                 variant="primary"

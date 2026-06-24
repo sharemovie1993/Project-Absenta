@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { Edit, Plus, Trash2, BookOpen } from 'lucide-react';
@@ -31,6 +31,40 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
   studentClassName,
   generateActivityFileName
 }) => {
+  const handleAddActivity = useCallback(() => {
+    const now = new Date();
+    const currentHHmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newAct = { time: currentHHmm, text: '' };
+    setEditingActivities([newAct, ...(editingActivities || [])]);
+  }, [editingActivities, setEditingActivities]);
+
+  const handleRemoveActivity = useCallback((idx: number) => {
+    const updated = (editingActivities || []).filter((_, i) => i !== idx);
+    setEditingActivities(updated);
+  }, [editingActivities, setEditingActivities]);
+
+  const handleTimeChange = useCallback((idx: number, val: string) => {
+    const updated = [...(editingActivities || [])];
+    updated[idx].time = val;
+    setEditingActivities(updated);
+  }, [editingActivities, setEditingActivities]);
+
+  const handleTextChange = useCallback((idx: number, val: string) => {
+    const updated = [...(editingActivities || [])];
+    updated[idx].text = val;
+    setEditingActivities(updated);
+  }, [editingActivities, setEditingActivities]);
+
+  const handleImageChange = useCallback((idx: number, val: string) => {
+    const updated = [...(editingActivities || [])];
+    updated[idx].image_url = val;
+    setEditingActivities(updated);
+  }, [editingActivities, setEditingActivities]);
+
+  const handleSaveClick = useCallback(() => {
+    onSave(editingActivities);
+  }, [onSave, editingActivities]);
+
   if (!editingAbsensi) return null;
 
   return (
@@ -56,18 +90,13 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
             <Button
               variant="toolbarOutline"
               size="sm"
-              onClick={() => {
-                const now = new Date();
-                const currentHHmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const newAct = { time: currentHHmm, text: '' };
-                setEditingActivities([newAct, ...editingActivities]);
-              }}
+              onClick={handleAddActivity}
               className="w-full sm:w-auto flex items-center gap-2 font-bold text-xs bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900"
             >
               <Plus size={16} />
               Tambah Baris Aktivitas
             </Button>
-
+ 
             <div className="flex gap-2 w-full sm:w-auto">
               <Button
                 variant="toolbarOutline"
@@ -81,7 +110,7 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
                 variant="primary"
                 size="sm"
                 isLoading={isPending}
-                onClick={() => onSave(editingActivities)}
+                onClick={handleSaveClick}
                 className="flex-1 sm:flex-initial font-black text-xs uppercase tracking-widest px-6 shadow-md shadow-indigo-100 dark:shadow-none"
               >
                 Simpan Perubahan
@@ -89,21 +118,17 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
             </div>
           </div>
         </div>
-
+ 
         {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto mt-4 pr-2 space-y-4 min-h-[300px]">
-          {editingActivities.map((act, idx) => (
+          {editingActivities?.map((act, idx) => (
             <div key={idx} className="space-y-3 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-150 dark:border-slate-800 animate-fadeIn group/edit-item">
               <div className="flex gap-3 items-center">
                 <div className="w-24 shrink-0">
                   <Input
                     type="time"
                     value={act.time}
-                    onChange={(e) => {
-                      const updated = [...editingActivities];
-                      updated[idx].time = e.target.value;
-                      setEditingActivities(updated);
-                    }}
+                    onChange={(e) => handleTimeChange(idx, e.target.value)}
                     className="text-center font-mono font-black text-xs h-10 bg-white dark:bg-slate-950"
                   />
                 </div>
@@ -111,20 +136,13 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
                   <Input
                     type="text"
                     value={act.text}
-                    onChange={(e) => {
-                      const updated = [...editingActivities];
-                      updated[idx].text = e.target.value;
-                      setEditingActivities(updated);
-                    }}
+                    onChange={(e) => handleTextChange(idx, e.target.value)}
                     className="text-xs font-bold h-10 bg-white dark:bg-slate-950"
                     placeholder="Apa yang Anda kerjakan?"
                   />
                 </div>
                 <button
-                  onClick={() => {
-                    const updated = editingActivities.filter((_, i) => i !== idx);
-                    setEditingActivities(updated);
-                  }}
+                  onClick={() => handleRemoveActivity(idx)}
                   className="text-slate-300 hover:text-rose-600 transition-all p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/20"
                   title="Hapus baris"
                 >
@@ -136,11 +154,7 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
                 <HubinGoogleDriveUploader
                   label="Foto Bukti (Opsional)"
                   value={act.image_url || ''}
-                  onChange={(val) => {
-                    const updated = [...editingActivities];
-                    updated[idx].image_url = val;
-                    setEditingActivities(updated);
-                  }}
+                  onChange={(val) => handleImageChange(idx, val)}
                   studentEmail={userEmail}
                   customFileName={generateActivityFileName(act.time, act.text)}
                   folderName={studentClassName}
@@ -149,8 +163,8 @@ export const HubinLogbookEditModal: React.FC<HubinLogbookEditModalProps> = ({
               </div>
             </div>
           ))}
-
-          {editingActivities.length === 0 && (
+ 
+          {(!editingActivities || editingActivities.length === 0) && (
             <div className="text-center py-12 text-slate-400 italic text-xs border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/30">
               <BookOpen size={24} className="mx-auto mb-2 opacity-20" />
               Tidak ada catatan kegiatan.

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../../ui/Button';
@@ -30,7 +32,7 @@ interface SiswaFormProps {
   mode?: 'create' | 'edit' | 'view';
 }
 
-export const SiswaForm: React.FC<SiswaFormProps> = ({
+export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
   siswaId,
   onSuccess,
   onCancel,
@@ -148,7 +150,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = ({
           hubungan_wali: siswa.hubungan_wali || '',
           pekerjaan_wali: siswa.pekerjaan_wali || '',
           penghasilan_wali: siswa.penghasilan_wali || '',
-          orang_tua: (siswa as any).OrangTua?.map((o: any) => ({
+          orang_tua: ((siswa as any).OrangTua || []).map((o: any) => ({
             id: o.id,
             nama: o.nama || '',
             hubungan: o.hubungan || '',
@@ -168,7 +170,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = ({
     loadSiswaData();
   }, [siswaId, mode, reset]);
 
-  const onFormSubmit = async (data: SiswaFormValues) => {
+  const onFormSubmit = useCallback(async (data: SiswaFormValues) => {
     if (isViewMode) return;
 
     try {
@@ -181,7 +183,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = ({
         tanggal_keluar: data.tanggal_keluar || undefined,
         alasan_keluar: data.alasan_keluar || undefined,
         no_rfid: data.no_rfid?.trim() ? data.no_rfid : undefined,
-        orang_tua: data.orang_tua?.filter(o => o.nama.trim()).map(o => ({
+        orang_tua: (data.orang_tua || []).filter(o => o.nama.trim()).map(o => ({
             ...o,
             email: o.email || undefined
         }))
@@ -201,7 +203,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [isViewMode, isEditMode, siswaId, onSuccess, showToast]);
 
   if (loadingData) {
     return (
@@ -303,6 +305,9 @@ export const SiswaForm: React.FC<SiswaFormProps> = ({
       </form>
     </div>
   );
-};
+});
 
+SiswaForm.displayName = 'SiswaForm';
 export default SiswaForm;
+
+

@@ -12,7 +12,7 @@ interface MemberPinModalProps {
   loading: boolean;
 }
 
-export const MemberPinModal: React.FC<MemberPinModalProps> = ({
+export const MemberPinModal: React.FC<MemberPinModalProps> = React.memo(({
   isOpen,
   onClose,
   member,
@@ -105,4 +105,4 @@ export const MemberPinModal: React.FC<MemberPinModalProps> = ({
       </form>
     </Modal>
   );
-};
+});

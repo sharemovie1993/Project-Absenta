@@ -79,18 +79,18 @@ export async function sarprasRoutes(fastify: any) {
 
   // --- Repairs / Maintenance ---
   fastify.get('/repairs', {
-    preHandler: [requireCapability('sarpras.repairs.view.list')]
+    preHandler: [requireCapability('sarpras.repairs.view.list'), organizationalScopeMiddleware]
   }, repairController.getRepairs.bind(repairController));
 
   fastify.get('/repairs/stats', {
-    preHandler: [requireCapability('sarpras.repairs.view.list')]
+    preHandler: [requireCapability('sarpras.repairs.view.list'), organizationalScopeMiddleware]
   }, repairController.getRepairStats.bind(repairController));
 
   fastify.post('/repairs', {
-    preHandler: [requireCapability('sarpras.repairs.manage')]
+    preHandler: [requireCapability('sarpras.repairs.manage'), organizationalScopeMiddleware]
   }, repairController.createRepair.bind(repairController));
 
   fastify.put('/repairs/:id', {
-    preHandler: [requireCapability('sarpras.repairs.manage')]
+    preHandler: [requireCapability('sarpras.repairs.manage'), organizationalScopeMiddleware]
   }, repairController.updateRepair.bind(repairController));
 }

@@ -7,7 +7,7 @@ interface PaymentInstructionsModalProps {
   onClose: () => void;
 }
 
-export const PaymentInstructionsModal: React.FC<PaymentInstructionsModalProps> = ({
+export const PaymentInstructionsModal = React.memo<PaymentInstructionsModalProps>(({
   isOpen,
   onClose,
 }) => {
@@ -15,13 +15,13 @@ export const PaymentInstructionsModal: React.FC<PaymentInstructionsModalProps> =
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-955/80 backdrop-blur-sm animate-in fade-in duration-300"
       aria-labelledby="payment-instructions-title"
       role="dialog"
       aria-modal="true"
     >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex justify-between items-center">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex justify-between items-center">
           <div>
             <h3 id="payment-instructions-title" className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-100">
               Panduan Pembayaran Angsuran
@@ -75,7 +75,7 @@ export const PaymentInstructionsModal: React.FC<PaymentInstructionsModalProps> =
           </div>
         </div>
 
-        <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-950/20 flex justify-end">
+        <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex justify-end">
           <Button
             onClick={onClose}
             size="sm"
@@ -87,4 +87,6 @@ export const PaymentInstructionsModal: React.FC<PaymentInstructionsModalProps> =
       </div>
     </div>
   );
-};
+});
+
+PaymentInstructionsModal.displayName = 'PaymentInstructionsModal';

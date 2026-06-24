@@ -12,13 +12,13 @@ const fmt = (n: number) =>
     ? `Rp ${(n / 1_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Jt`
     : `Rp ${Math.round(n).toLocaleString('id-ID')}`;
 
-export const SavingStatsBanner: React.FC<SavingStatsBannerProps> = ({ savings }) => {
+export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({ savings }) => {
   const stats = useMemo(() => {
     let totalBalance = 0;
     const categoryMap: Record<string, { name: string; color?: string; amount: number }> = {};
     let latestTxDate: Date | null = null;
 
-    savings.forEach((s) => {
+    savings?.forEach((s) => {
       const amt = parseFloat(s.amount) || 0;
       totalBalance += amt;
 
@@ -42,7 +42,7 @@ export const SavingStatsBanner: React.FC<SavingStatsBannerProps> = ({ savings })
 
     return {
       totalBalance,
-      accountsCount: savings.length,
+      accountsCount: savings?.length || 0,
       categories,
       latestTxDate: latestTxDate as Date | null,
     };
@@ -82,7 +82,7 @@ export const SavingStatsBanner: React.FC<SavingStatsBannerProps> = ({ savings })
         <div className="space-y-2 flex-1 flex flex-col justify-center">
           {stats.categories.length === 0 ? (
             <p className="text-slate-400 text-xs italic">Belum ada rekening</p>
-          ) : stats.categories.map(cat => {
+          ) : stats.categories?.map(cat => {
             const pct = stats.totalBalance > 0
               ? Math.round((cat.amount / stats.totalBalance) * 100)
               : 0;
@@ -126,4 +126,6 @@ export const SavingStatsBanner: React.FC<SavingStatsBannerProps> = ({ savings })
       />
     </div>
   );
-};
+});
+
+SavingStatsBanner.displayName = 'SavingStatsBanner';

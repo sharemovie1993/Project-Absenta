@@ -1,6 +1,13 @@
 import React from 'react';
 
-export const DetailRow = ({ icon, label, value, className = "" }: { icon: React.ReactNode, label: string, value: string | number | undefined, className?: string }) => (
+interface DetailRowProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number | undefined;
+  className?: string;
+}
+
+export const DetailRow = React.memo<DetailRowProps>(({ icon, label, value, className = "" }) => (
   <div className={`flex items-center justify-between py-3 px-5 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all duration-300 gap-4 group ${className}`}>
     <div className="flex items-center gap-3">
       <div className="p-2 bg-white dark:bg-slate-800 rounded-xl text-blue-600 dark:text-blue-400 shadow-sm group-hover:scale-110 transition-transform duration-500">
@@ -12,9 +19,18 @@ export const DetailRow = ({ icon, label, value, className = "" }: { icon: React.
       {value || '-'}
     </div>
   </div>
-);
+));
 
-export const SectionCard = ({ children, title, icon: Icon, fullWidth = false }: { children: React.ReactNode, title?: string, icon?: any, fullWidth?: boolean }) => (
+DetailRow.displayName = 'DetailRow';
+
+interface SectionCardProps {
+  children: React.ReactNode;
+  title?: string;
+  icon?: any;
+  fullWidth?: boolean;
+}
+
+export const SectionCard = React.memo<SectionCardProps>(({ children, title, icon: Icon, fullWidth = false }) => (
   <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm transition-all hover:shadow-md group">
     {title && (
       <div className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
@@ -30,4 +46,6 @@ export const SectionCard = ({ children, title, icon: Icon, fullWidth = false }: 
       {children}
     </div>
   </div>
-);
+));
+
+SectionCard.displayName = 'SectionCard';

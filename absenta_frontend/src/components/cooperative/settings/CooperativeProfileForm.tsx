@@ -12,7 +12,7 @@ interface CooperativeProfileFormProps {
   canEditProfile: boolean;
 }
 
-export const CooperativeProfileForm: React.FC<CooperativeProfileFormProps> = ({
+export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
   formData,
   saving,
   onInputChange,
@@ -240,4 +240,6 @@ export const CooperativeProfileForm: React.FC<CooperativeProfileFormProps> = ({
       </form>
     </SectionCard>
   );
-};
+});
+
+CooperativeProfileForm.displayName = 'CooperativeProfileForm';

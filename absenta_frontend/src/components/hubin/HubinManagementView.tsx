@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Building2, 
   MapPin, 
@@ -70,17 +69,22 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
-  const toggleRow = (id: string) => {
+  const toggleRow = useCallback((id: string) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  }, []);
 
-  const needsVerificationCount = rawPenempatan.reduce((acc: number, curr: any) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
-  const attendedTodayCount = rawPenempatan.filter((p: any) => {
-    const lastAbs = p.AbsensiPkl?.[0];
-    if (!lastAbs) return false;
-    const today = new Date().toISOString().split('T')[0];
-    return lastAbs.tanggal.startsWith(today);
-  }).length;
+  const needsVerificationCount = useMemo(() => {
+    return (rawPenempatan || []).reduce((acc: number, curr: any) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
+  }, [rawPenempatan]);
+
+  const attendedTodayCount = useMemo(() => {
+    return (rawPenempatan || []).filter((p: any) => {
+      const lastAbs = p.AbsensiPkl?.[0];
+      if (!lastAbs) return false;
+      const today = new Date().toISOString().split('T')[0];
+      return lastAbs.tanggal.startsWith(today);
+    }).length;
+  }, [rawPenempatan]);
 
   return (
     <>
@@ -126,6 +130,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <Input 
+                aria-label="Cari nama siswa"
                 placeholder="Cari nama siswa..." 
                 className="pl-9 h-9 w-64 rounded-xl border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-xs font-medium"
               />
@@ -147,7 +152,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
             </div>
           ) : (
             <div className="w-full space-y-4">
-              {rawPenempatan.map((p: any, idx: number) => {
+              {rawPenempatan?.map((p: any, idx: number) => {
                 const lastAbsensi = p.AbsensiPkl?.[0];
                 const isExpanded = expandedRows[p.id];
                 const needsVerification = lastAbsensi && !lastAbsensi.is_verified;
@@ -312,6 +317,8 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
                                 </div>
                                 <div className="relative group/input">
                                   <textarea 
+                                    id={`feedback-jurnal-${lastAbsensi?.id}`}
+                                    aria-label="Feedback jurnal"
                                     placeholder="Feedback jurnal..."
                                     value={quickAddTexts[lastAbsensi?.id || ''] || ''}
                                     onChange={(e) => setQuickAddTexts(prev => ({ ...prev, [lastAbsensi?.id || '']: e.target.value }))}
@@ -411,11 +418,13 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
 
                 <div className="space-y-4">
                   <SimpleFormField 
+                    htmlFor="gdrive-folder-url"
                     label="Tautan Folder Root (Google Drive)" 
                     description="Salin URL folder Google Drive tempat penyimpanan pusat."
                     required
                   >
                     <Input 
+                      id="gdrive-folder-url"
                       placeholder="https://drive.google.com/drive/folders/..."
                       value={settingsData.folderUrl || ''}
                       onChange={(e) => updateSettingsMutation.mutate({ ...settingsData, folderUrl: e.target.value })}

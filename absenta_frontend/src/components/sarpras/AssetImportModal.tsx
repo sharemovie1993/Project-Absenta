@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   FileUp, 
@@ -21,27 +21,43 @@ interface AssetImportModalProps {
   onClose: () => void;
 }
 
+interface ImportResult {
+  created: number;
+  updated: number;
+  failed: number;
+  errors: string[];
+}
+
 const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importResult, setImportResult] = useState<any>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const mutation = useMutation({
     mutationFn: (formData: FormData) => sarprasApi.importAssets(formData),
-    onSuccess: (res: any) => {
+    onSuccess: (res: { message?: string; data: ImportResult }) => {
       showToast(res.message || 'Import berhasil', 'success');
       setImportResult(res.data);
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
     },
-    onError: (err: any) => {
-      showToast(err.response?.data?.message || 'Gagal melakukan import', 'error');
+    onError: (err: unknown) => {
+      let errMsg = 'Gagal melakukan import';
+      if (err && typeof err === 'object' && 'response' in err) {
+        const resErr = err as { response?: { data?: { message?: string } } };
+        if (resErr.response?.data?.message) {
+          errMsg = resErr.response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      showToast(errMsg, 'error');
     }
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
@@ -51,16 +67,16 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
       setFile(selectedFile);
       setImportResult(null);
     }
-  };
+  }, [showToast]);
 
-  const handleUpload = () => {
+  const handleUpload = useCallback(() => {
     if (!file) return;
     const formData = new FormData();
     formData.append('file', file);
     mutation.mutate(formData);
-  };
+  }, [file, mutation]);
 
-  const handleDownloadTemplate = async () => {
+  const handleDownloadTemplate = useCallback(async () => {
     try {
       const blob = await sarprasApi.downloadImportTemplate();
       
@@ -86,13 +102,13 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
     } catch (error) {
       showToast('Gagal mengunduh template', 'error');
     }
-  };
+  }, [showToast]);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setFile(null);
     setImportResult(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, []);
 
   return (
     <Modal 
@@ -225,10 +241,10 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
                   <AlertCircle size={14} /> Detail Kesalahan:
                 </div>
                 <ul className="text-xs text-red-500 space-y-1 list-disc list-inside">
-                  {importResult.errors.slice(0, 50).map((err: string, i: number) => (
+                  {importResult?.errors?.slice(0, 50)?.map((err: string, i: number) => (
                     <li key={i}>{err}</li>
                   ))}
-                  {importResult.errors.length > 50 && <li>... dan {importResult.errors.length - 50} error lainnya</li>}
+                  {importResult?.errors && importResult.errors.length > 50 && <li>... dan {importResult.errors.length - 50} error lainnya</li>}
                 </ul>
               </div>
             )}

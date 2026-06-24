@@ -28,12 +28,40 @@ import {
   Eye, 
   CheckCircle2, 
   XCircle, 
-  Clock, 
   AlertCircle 
 } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
+
+interface RekapDetailItem {
+  tanggal?: string;
+  waktu?: string;
+  status?: string;
+  keterangan?: string;
+  jam_masuk?: string;
+}
+
+interface RekapStatistik {
+  HADIR?: number;
+  IZIN?: number;
+  SAKIT?: number;
+  ALPA?: number;
+  TERLAMBAT?: number;
+}
+
+interface RekapBulananResponse {
+  summary?: Record<string, number>;
+  detail?: RekapDetailItem[];
+  nama_siswa?: string;
+  statistik?: RekapStatistik;
+}
+
+interface StudentResponseItem {
+  id: string;
+  nama_siswa: string;
+  user_id?: string;
+}
 
 export default function RekapBulananSiswaPage() {
   const { subscription } = useAuthStore();
@@ -44,7 +72,7 @@ export default function RekapBulananSiswaPage() {
   const [siswaId, setSiswaId] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<{ summary?: Record<string, number>; detail?: Record<string, string | number>[]; nama_siswa?: string; statistik?: Record<string, number> } | null>(null);
+  const [data, setData] = useState<RekapBulananResponse | null>(null);
   const [kelasNama, setKelasNama] = useState<string>('');
   
   const canView = useMemo(() => can('attendance.reports.view'), [can]);
@@ -55,10 +83,10 @@ export default function RekapBulananSiswaPage() {
   
   const isSiswa = user?.role?.name === 'SISWA';
 
-  const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || 
+                      subscription?.Plan?.features_json || 
+                      subscription?.plan?.features_json || [];
+  const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
   useEffect(() => {
     let isMounted = true;
@@ -74,7 +102,7 @@ export default function RekapBulananSiswaPage() {
         try {
           const res = await siswaApi.getAll({ limit: 1000 });
           if (!isMounted) return;
-          const mySiswa = res.data?.find((s: any) => s.user_id === user.id);
+          const mySiswa = (res.data as StudentResponseItem[])?.find((s) => s.user_id === user.id);
           if (mySiswa) {
             setSiswaOptions([{ label: mySiswa.nama_siswa, value: mySiswa.id }]);
             setSiswaId(mySiswa.id);
@@ -105,7 +133,7 @@ export default function RekapBulananSiswaPage() {
     setLoading(true);
     try {
       const res = await getRekapBulananSiswa(siswaId, { bulan, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setData(res.data);
+      setData(res.data as RekapBulananResponse);
       try {
         const siswaRes = await siswaApi.getById(siswaId);
         const kid = (siswaRes.data as { kelas_id?: string })?.kelas_id;
@@ -134,41 +162,42 @@ export default function RekapBulananSiswaPage() {
   const statCards = useMemo(() => {
     if (!data) return [];
     return [
-      { label: 'Hadir', value: data.summary?.H || data.statistik?.HADIR || 0, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-100 dark:border-emerald-900/50' },
+      { label: 'Hadir', value: data.summary?.H || data.statistik?.HADIR || 0, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-55 dark:bg-emerald-950/30', border: 'border-emerald-100 dark:border-emerald-900/50' },
       { label: 'Izin', value: data.summary?.I || data.statistik?.IZIN || 0, icon: FileText, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-100 dark:border-blue-900/50' },
-      { label: 'Sakit', value: data.summary?.S || data.statistik?.SAKIT || 0, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-100 dark:border-amber-900/50' },
-      { label: 'Alpha', value: data.summary?.A || data.statistik?.ALPA || 0, icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-950/30', border: 'border-rose-100 dark:border-rose-900/50' },
+      { label: 'Sakit', value: data.summary?.S || data.statistik?.SAKIT || 0, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-955/30', border: 'border-amber-100 dark:border-amber-900/50' },
+      { label: 'Alpha', value: data.summary?.A || data.statistik?.ALPA || 0, icon: XCircle, color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-955/30', border: 'border-rose-100 dark:border-rose-900/50' },
       { label: 'Total', value: (data.summary?.H || data.statistik?.HADIR || 0) + (data.summary?.I || data.statistik?.IZIN || 0) + (data.summary?.S || data.statistik?.SAKIT || 0) + (data.summary?.A || data.statistik?.ALPA || 0), icon: Calendar, color: 'text-slate-600 dark:text-slate-300', bg: 'bg-slate-100 dark:bg-slate-800/50', border: 'border-slate-200 dark:border-slate-700/50' }
     ];
   }, [data]);
 
   const columns = useMemo(() => [
-    { label: 'Tanggal', key: 'tanggal', sortable: true, render: (v: string) => <div className="font-bold text-[11px] text-slate-700 dark:text-slate-300 uppercase tracking-widest">{formatDate(v, { dateStyle: 'medium' })}</div> },
+    { label: 'Tanggal', key: 'tanggal', sortable: true, render: (v: unknown) => <div className="font-bold text-[11px] text-slate-700 dark:text-slate-300 uppercase tracking-widest">{formatDate(String(v), { dateStyle: 'medium' })}</div> },
     { 
       label: 'Status', 
       key: 'status',
       sortable: true,
-      render: (v: string) => {
-        const variants: Record<string, any> = {
+      render: (v: unknown) => {
+        const statusStr = String(v);
+        const variants: Record<string, 'success' | 'info' | 'warning' | 'destructive' | 'default'> = {
           H: 'success', I: 'info', S: 'warning', A: 'destructive'
         };
         const labels: Record<string, string> = {
           H: 'Hadir', I: 'Izin', S: 'Sakit', A: 'Alpha'
         };
-        return <Badge variant={variants[v] || 'default'} className="text-[9px] uppercase tracking-widest px-2 py-0.5 font-black">{labels[v] || v || '-'}</Badge>;
+        return <Badge variant={variants[statusStr] || 'default'} className="text-[9px] uppercase tracking-widest px-2 py-0.5 font-black">{labels[statusStr] || statusStr || '-'}</Badge>;
       }
     },
     { 
       label: 'Waktu Masuk', 
       key: 'jam_masuk',
       sortable: true,
-      render: (v: string) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v || '-'}</span>
+      render: (v: unknown) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v ? String(v) : '-'}</span>
     },
     { 
       label: 'Keterangan', 
       key: 'keterangan',
       sortable: true,
-      render: (v: string) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v || '-'}</span>
+      render: (v: unknown) => <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">{v ? String(v) : '-'}</span>
     }
   ], []);
 
@@ -188,9 +217,9 @@ export default function RekapBulananSiswaPage() {
 
   const sortedData = useMemo(() => {
     if (!data?.detail || !Array.isArray(data.detail)) return [];
-    return [...data.detail].sort((a: Record<string, string | number>, b: Record<string, string | number>) => {
-      const aVal = a[sortBy];
-      const bVal = b[sortBy];
+    return [...data.detail].sort((a: RekapDetailItem, b: RekapDetailItem) => {
+      const aVal = a[sortBy as keyof RekapDetailItem];
+      const bVal = b[sortBy as keyof RekapDetailItem];
       if (aVal === bVal) return 0;
       if (aVal == null) return sortOrder === 'asc' ? 1 : -1;
       if (bVal == null) return sortOrder === 'asc' ? -1 : 1;
@@ -258,7 +287,7 @@ export default function RekapBulananSiswaPage() {
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {statCards?.map((stat, i) => (
+              {(statCards || [])?.map((stat, i) => (
                 <div key={i} className={`p-5 rounded-2xl border ${stat.border} ${stat.bg} transition-all hover:scale-[1.03]`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className={`p-2 rounded-lg bg-white dark:bg-slate-900 ${stat.color} shadow-sm`}>
@@ -295,7 +324,7 @@ export default function RekapBulananSiswaPage() {
                 toolbarRight={
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => openPrintView(false)} className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4">
-                      <Eye className="w-3.5 h-3.5 mr-2" /> Preview
+                      <Search className="w-3.5 h-3.5 mr-2" /> Preview
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => openPrintView(true)} className="rounded-xl border-slate-200 dark:border-slate-800 font-bold text-[10px] uppercase tracking-widest h-10 px-4">
                       <Printer className="w-3.5 h-3.5 mr-2" /> Cetak

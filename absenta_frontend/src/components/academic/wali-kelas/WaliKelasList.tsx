@@ -14,7 +14,7 @@ interface Props {
   refreshTrigger?: number;
 }
 
-const WaliKelasList: React.FC<Props> = ({ refreshTrigger = 0 }) => {
+const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const confirm = useConfirm();
   const [items, setItems] = useState<WaliKelasStrukturAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +89,7 @@ const WaliKelasList: React.FC<Props> = ({ refreshTrigger = 0 }) => {
     try {
       setBulkProcessing(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(id => nonaktifWaliKelasStruktur(id)));
+      const results = await Promise.allSettled(ids?.map(id => nonaktifWaliKelasStruktur(id)));
       
       const succeeded = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
       const failed = results.length - succeeded;
@@ -396,7 +396,9 @@ const WaliKelasList: React.FC<Props> = ({ refreshTrigger = 0 }) => {
       </Modal>
     </div>
   );
-};
+});
+
+WaliKelasList.displayName = 'WaliKelasList';
 
 export default WaliKelasList;
 

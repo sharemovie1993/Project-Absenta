@@ -8,7 +8,7 @@ interface PrintLoanRepaymentProps {
   coopSettings?: CooperativeSettings | null;
 }
 
-export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
+export const PrintLoanRepayment = React.memo<PrintLoanRepaymentProps>(({
   loan,
   installment,
   installmentNo,
@@ -58,7 +58,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
           <h2 className="text-sm font-bold uppercase tracking-wider text-black">
             BUKTI SETOR ANGSURAN PINJAMAN
           </h2>
-          <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">
+          <p className="text-[10px] text-slate-550 uppercase tracking-widest mt-0.5">
             Unit Usaha Simpan Pinjam (USP) Koperasi Sekolah
           </p>
         </div>
@@ -71,7 +71,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
       <div className="space-y-3.5 pl-2 font-semibold">
         <div className="grid grid-cols-12 gap-2">
           <span className="col-span-3 text-slate-500">Telah Diterima Dari</span>
-          <span className="col-span-9 uppercase text-slate-900">{loan.member.name} ({loan.member.memberNo})</span>
+          <span className="col-span-9 uppercase text-slate-900">{loan.member?.name} ({loan.member?.memberNo})</span>
         </div>
 
         <div className="grid grid-cols-12 gap-2">
@@ -106,7 +106,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
       </div>
 
       {/* Info Tagihan Sisa */}
-      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 mt-6 max-w-md ml-auto">
+      <div className="p-4 bg-slate-55 border border-slate-200 rounded-xl space-y-2 mt-6 max-w-md ml-auto">
         <h4 className="font-bold text-[10px] uppercase text-slate-500 border-b border-dashed border-slate-300 pb-1">
           Informasi Status Pinjaman
         </h4>
@@ -129,7 +129,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
       {/* Tanggal dan Tanda Tangan */}
       <div className="flex justify-between items-end pt-12 font-semibold">
         <div className="space-y-1">
-          <p className="text-[10px] text-slate-500 italic">Jumlah Uang Setoran:</p>
+          <p className="text-[10px] text-slate-550 italic">Jumlah Uang Setoran:</p>
           <div className="border-2 border-double border-black bg-slate-50 px-4 py-2 font-mono text-[16px] font-black text-slate-900 rounded-xl">
             RP {amountNumber.toLocaleString('id-ID')},-
           </div>
@@ -149,7 +149,7 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
           <p>Penyetor (Anggota)</p>
           <div>
             <div className="font-bold uppercase text-[11px] underline">
-              {loan.member.name}
+              {loan.member?.name}
             </div>
             <div className="text-[10px] text-slate-500 font-medium">Tanda Tangan</div>
           </div>
@@ -157,7 +157,9 @@ export const PrintLoanRepayment: React.FC<PrintLoanRepaymentProps> = ({
       </div>
     </div>
   );
-};
+});
+
+PrintLoanRepayment.displayName = 'PrintLoanRepayment';
 
 // Helper function to convert numeric amount to Indonesian text words
 function convertAmountToWords(num: number): string {

@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
 import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
 import { MM_TO_PX, EDITOR_SCALE } from './constants';
+import { Siswa } from '../../../types/academic';
 
-interface PreviewCardProps {
-    student?: any;
-    config: StudentCardConfig;
-    sekolah?: any;
-    onDragEnd: (field: 'photo' | 'qrcode' | 'data', info: any) => void;
+interface SekolahData {
+    logo_url?: string;
+    data?: {
+        logo_url?: string;
+    };
 }
 
-export const PreviewCard: React.FC<PreviewCardProps> = ({ 
+interface PreviewCardProps {
+    student?: Partial<Siswa> & { 
+        nama?: string; 
+        nama_siswa?: string;
+        kelas?: { nama?: string; nama_kelas?: string }; 
+        foto?: string | null;
+    };
+    config: StudentCardConfig;
+    sekolah?: SekolahData;
+    onDragEnd: (field: 'photo' | 'qrcode' | 'data', info: PanInfo) => void;
+}
+
+export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({ 
     student, 
     config, 
     sekolah,
@@ -25,14 +38,16 @@ export const PreviewCard: React.FC<PreviewCardProps> = ({
     const height = (isVertical ? cardW : cardH) * MM_TO_PX * EDITOR_SCALE;
 
     // Use passed student or dummy fallback
-    const rawStudent = student || {
+    const rawStudent = student || ({
       id: 'dummy-student-id',
       nama: 'John Doe',
+      nama_siswa: 'John Doe',
       nis: '12345678',
       nisn: '0012345678',
-      kelas: { nama: 'XII IPA 1' },
+      Kelas: { nama_kelas: 'XII IPA 1' } as unknown as Siswa['Kelas'],
+      kelas: { nama: 'XII IPA 1', nama_kelas: 'XII IPA 1' },
       foto: null 
-    };
+    } as NonNullable<PreviewCardProps['student']>);
 
     const displayStudent = {
         ...rawStudent,
@@ -194,4 +209,6 @@ export const PreviewCard: React.FC<PreviewCardProps> = ({
         </div>
       </div>
     );
-};
+});
+
+PreviewCard.displayName = 'PreviewCard';

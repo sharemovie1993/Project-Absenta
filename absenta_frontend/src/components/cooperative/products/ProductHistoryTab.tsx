@@ -39,7 +39,7 @@ interface ProductHistoryTabProps {
   activeTab: 'catalog' | 'stock-in' | 'history' | 'categories' | 'opname';
 }
 
-export const ProductHistoryTab: React.FC<ProductHistoryTabProps> = ({ activeTab }) => {
+export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab }) => {
   const [historyList, setHistoryList] = useState<StockIn[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySupplierFilter, setHistorySupplierFilter] = useState('');
@@ -141,9 +141,9 @@ export const ProductHistoryTab: React.FC<ProductHistoryTabProps> = ({ activeTab 
         </div>
       ) : (
         <div className="space-y-4">
-          {historyList.map((tx) => {
+          {(historyList || []).map((tx) => {
             const isExpanded = expandedTxId === tx.id;
-            const totalCost = tx.items?.reduce((sum, item) => sum + (item.quantity * Number(item.costPrice)), 0) || 0;
+            const totalCost = (tx.items || []).reduce((sum, item) => sum + (item.quantity * Number(item.costPrice)), 0) || 0;
             
             return (
               <div 
@@ -210,7 +210,7 @@ export const ProductHistoryTab: React.FC<ProductHistoryTabProps> = ({ activeTab 
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-100">
-                          {tx.items?.map((item) => (
+                          {(tx.items || []).map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50">
                               <td className="px-4 py-2.5">
                                 <p className="text-sm font-semibold text-gray-800">{item.Product?.name || 'Produk Dihapus'}</p>
@@ -235,6 +235,8 @@ export const ProductHistoryTab: React.FC<ProductHistoryTabProps> = ({ activeTab 
       )}
     </div>
   );
-};
+});
+
+ProductHistoryTab.displayName = 'ProductHistoryTab';
 
 export default ProductHistoryTab;

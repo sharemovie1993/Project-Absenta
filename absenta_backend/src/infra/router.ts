@@ -319,8 +319,11 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { jenisPelanggaranRoutes } = await import('../modules/kesiswaan/routes/jenis-pelanggaran.routes');
       await fastify.register(jenisPelanggaranRoutes, { prefix: '/kesiswaan/jenis-pelanggaran' });
 
-      const { bkRoutes } = await import('../modules/kesiswaan/routes/bk.routes');
-      await fastify.register(bkRoutes, { prefix: '/kesiswaan/bk' });
+      const { prestasiRoutes } = await import('../modules/kesiswaan/routes/prestasi.routes');
+      await fastify.register(prestasiRoutes, { prefix: '/kesiswaan' });
+
+      const { bpbkRoutes } = await import('../modules/bpbk/routes/bpbk.routes');
+      await fastify.register(bpbkRoutes, { prefix: '/bpbk' });
 
       // Kurikulum Module
       const { supervisiRoutes } = await import('../modules/kurikulum/routes/supervisi.routes');
@@ -350,7 +353,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(whatsappRoutes, { prefix: '/whatsapp' });
 
       // Piket Guru Module
-      const { piketModule } = await import('../modules/piket');
+      const { piketModule } = await import('../modules/kesiswaan/piket');
       await fastify.register(piketModule, { prefix: '/kesiswaan/piket' });
 
       const { registerInvoicePublicRoutes } = await import('../modules/invoice/routes/public.routes');

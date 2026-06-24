@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id as localeID } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface DatePickerProps {
+  id?: string;
   value?: string | Date;
   onChange?: (date: string) => void; // Returns YYYY-MM-DD string
   placeholder?: string;
@@ -14,6 +15,7 @@ interface DatePickerProps {
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({
+  id,
   value,
   onChange,
   placeholder = 'Pilih tanggal',
@@ -82,6 +84,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
+        id={id}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
           "flex items-center justify-between w-full h-8 px-2.5 py-1.5 text-sm rounded-md border bg-white dark:bg-slate-800 dark:text-gray-300 cursor-pointer transition-colors",
@@ -94,7 +97,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           <CalendarIcon className="h-4 w-4 text-gray-500 dark:text-gray-400 shrink-0" />
           <span className={cn("truncate", !selectedDate && "text-gray-400 dark:text-gray-500")}>
             {selectedDate && !isNaN(selectedDate.getTime()) 
-              ? format(selectedDate, 'd MMMM yyyy', { locale: id }) 
+              ? format(selectedDate, 'd MMMM yyyy', { locale: localeID }) 
               : placeholder}
           </span>
         </div>
@@ -120,7 +123,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {format(currentMonth, 'MMMM yyyy', { locale: id })}
+              {format(currentMonth, 'MMMM yyyy', { locale: localeID })}
             </span>
             <button
               type="button"

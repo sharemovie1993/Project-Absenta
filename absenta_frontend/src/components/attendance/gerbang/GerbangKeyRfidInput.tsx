@@ -1,0 +1,136 @@
+import React, { useEffect, useRef } from 'react';
+import { ShieldAlert } from 'lucide-react';
+import { Button, Label } from '../../ui';
+import { type Student } from '../../common/SmartStudentPicker';
+
+interface GerbangKeyRfidInputProps {
+  hidToken: string;
+  onHidTokenChange: (val: string) => void;
+  autoSubmitGateHID: (val: string) => void;
+  isBypassMode: boolean;
+  showDropdown: boolean;
+  setShowDropdown: (val: boolean) => void;
+  searchCandidates: Student[];
+  onSelectStudent: (token: string, student: Student) => void;
+  onSubmit: (token: string) => void;
+}
+
+const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
+  hidToken,
+  onHidTokenChange,
+  autoSubmitGateHID,
+  isBypassMode,
+  showDropdown,
+  setShowDropdown,
+  searchCandidates,
+  onSelectStudent,
+  onSubmit,
+}) => {
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [setShowDropdown]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="hid-input-field" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          {isBypassMode ? 'Input Token / ID Bypass' : 'Input Token / RFID / NIS'}
+        </Label>
+        <div className="relative group" ref={searchContainerRef}>
+          <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
+            <span className="text-gray-400">
+              {isBypassMode ? (
+                <ShieldAlert size={20} className="text-amber-500" />
+              ) : (
+                <div className="i-lucide-scan-line w-5 h-5" />
+              )}
+            </span>
+          </div>
+          <input
+            id="hid-input-field"
+            autoFocus
+            value={hidToken}
+            onChange={(e) => {
+              onHidTokenChange(e.target.value);
+              autoSubmitGateHID(e.target.value);
+            }}
+            className={`w-full pl-10 md:pl-11 pr-4 py-2.5 md:py-4 text-base md:text-lg font-mono rounded-lg border-2 focus:ring-4 transition-all outline-none ${
+              isBypassMode
+                ? 'border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 bg-amber-50/30'
+                : 'border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 bg-gray-50 focus:bg-white'
+            }`}
+            placeholder={isBypassMode ? 'Scan Kartu / Input ID...' : 'Scan Kartu / NIS...'}
+          />
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <span className="hidden md:inline text-xs text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 bg-white">
+              Auto-Submit
+            </span>
+          </div>
+
+          {/* Search Dropdown */}
+          {showDropdown && searchCandidates.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden max-h-60 overflow-y-auto">
+              {searchCandidates.map((student) => (
+                <button
+                  key={student.id}
+                  onClick={() => {
+                    const token = student.no_rfid || student.nis || student.id;
+                    onHidTokenChange(token);
+                    onSelectStudent(token, student);
+                    setShowDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0 flex items-center justify-between group/item"
+                  type="button"
+                >
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-gray-100">
+                      {student.nama_siswa}
+                    </div>
+                    <div className="text-xs text-gray-500 flex gap-2 mt-0.5">
+                      {student.nis && (
+                        <span className="bg-gray-100 dark:bg-gray-700 px-1.5 rounded">
+                          NIS: {student.nis}
+                        </span>
+                      )}
+                      {student.no_rfid && (
+                        <span className="bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 px-1.5 rounded">
+                          RFID
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    Pilih
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          variant={isBypassMode ? 'warning' : 'primary'}
+          size="lg"
+          onClick={() => onSubmit(hidToken)}
+          disabled={!hidToken}
+          className="w-full md:w-auto px-8"
+        >
+          {isBypassMode ? 'PROSES BYPASS' : 'KIRIM ABSENSI'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+GerbangKeyRfidInputComponent.displayName = 'GerbangKeyRfidInput';
+export const GerbangKeyRfidInput = React.memo(GerbangKeyRfidInputComponent);

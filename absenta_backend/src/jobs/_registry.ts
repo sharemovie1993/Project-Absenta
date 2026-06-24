@@ -19,6 +19,7 @@ import './tenantBackupPurge.job';
 
 // ── Risk & Analytics ─────────────────────────────────────────────────────────
 import './tenantRisk.job';
+import './ewsSnapshot.job';
 import './revenueAggregation.job';
 import './revenueForecast.job';       // juga mendaftarkan subJob 'cohort'
 import './upgradeIntelligence.job';

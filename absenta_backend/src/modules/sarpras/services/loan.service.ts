@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
+import { activityLogService } from '../../activity/services/activity-log.service';
 
 export class LoanService {
   static async requestLoan(tenantId: string, userId: string, data: {
@@ -9,7 +10,7 @@ export class LoanService {
   }) {
     // 1. Check asset availability
     const asset = await prisma.sarprasAsset.findFirst({
-      where: { id: data.asset_id, tenant_id: tenantId }
+      where: { id: data.asset_id, tenant_id: tenantId, deleted_at: null }
     });
 
     if (!asset) throw new Error('Asset not found');
@@ -29,7 +30,7 @@ export class LoanService {
     }
 
     // 3. Create request
-    return prisma.sarprasLoan.create({
+    const loan = await prisma.sarprasLoan.create({
       data: {
         tenant_id: tenantId,
         asset_id: data.asset_id,
@@ -39,6 +40,17 @@ export class LoanService {
         catatan: data.catatan
       }
     });
+
+    activityLogService.logEvent({
+      event_type: 'SARPRAS_LOAN_REQUEST',
+      tenant_id: tenantId,
+      user_id: userId,
+      entity: 'SarprasLoan',
+      entity_id: loan.id,
+      metadata: { asset_id: data.asset_id, asset_nama: asset.nama }
+    });
+
+    return loan;
   }
 
   static async updateLoanStatus(tenantId: string, approverId: string, loanId: string, status: 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'RETURNED', data?: {
@@ -47,13 +59,13 @@ export class LoanService {
   }, scope?: any) {
     const loan = await prisma.sarprasLoan.findFirst({
       where: { id: loanId, tenant_id: tenantId },
-      include: { Asset: true }
+      include: { Asset: { include: { Location: true } } }
     });
 
     if (!loan) throw new Error('Loan not found');
 
     if (scope && !scope.tenant_wide) {
-      if (loan.Asset.location_id && (!scope.unit_ids || !scope.unit_ids.includes(loan.Asset.location_id))) {
+      if (loan.Asset.Location?.unit_id && (!scope.unit_ids || !scope.unit_ids.includes(loan.Asset.Location.unit_id))) {
         throw new Error('Anda tidak memiliki akses untuk menyetujui peminjaman aset ini');
       }
     }
@@ -81,10 +93,21 @@ export class LoanService {
       }
     }
 
-    return prisma.sarprasLoan.update({
+    const updatedLoan = await prisma.sarprasLoan.update({
       where: { id: loanId },
       data: updateData
     });
+
+    activityLogService.logEvent({
+      event_type: 'SARPRAS_LOAN_STATUS_UPDATE',
+      tenant_id: tenantId,
+      user_id: approverId,
+      entity: 'SarprasLoan',
+      entity_id: loanId,
+      metadata: { status, asset_id: loan.asset_id, asset_nama: loan.Asset.nama }
+    });
+
+    return updatedLoan;
   }
 
   static async getLoans(tenantId: string, query: {
@@ -109,7 +132,9 @@ export class LoanService {
     if (scope && !scope.tenant_wide) {
       if (scope.unit_ids && scope.unit_ids.length > 0) {
         where.Asset = {
-          location_id: { in: scope.unit_ids }
+          Location: {
+            unit_id: { in: scope.unit_ids }
+          }
         };
       } else {
         return { list: [], pagination: { total: 0, page, limit, totalPages: 0 } };

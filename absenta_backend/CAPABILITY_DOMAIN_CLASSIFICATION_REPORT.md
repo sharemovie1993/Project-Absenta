@@ -1,13 +1,13 @@
 # Capability Domain Classification Report
-Generated on: 2026-06-14T14:46:25.250Z
+Generated on: 2026-06-23T09:28:39.781Z
 
 ## Summary Statistics
-Total Catalog: 382
+Total Catalog: 414
 
 - PLATFORM: 33
-- TENANT: 135
+- TENANT: 140
 - SHARED: 86
-- ORGANIZATIONAL: 110
+- ORGANIZATIONAL: 137
 - UNCLASSIFIED: 18
 
 ## Validation Results

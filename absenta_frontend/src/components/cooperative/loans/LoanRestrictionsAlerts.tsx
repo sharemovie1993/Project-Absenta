@@ -7,7 +7,7 @@ interface LoanRestrictionsAlertsProps {
   studentMetrics: StudentMetrics | null;
 }
 
-export const LoanRestrictionsAlerts: React.FC<LoanRestrictionsAlertsProps> = ({
+export const LoanRestrictionsAlerts = React.memo<LoanRestrictionsAlertsProps>(({
   isStudent,
   studentMetrics,
 }) => {
@@ -51,4 +51,6 @@ export const LoanRestrictionsAlerts: React.FC<LoanRestrictionsAlertsProps> = ({
       )}
     </>
   );
-};
+});
+
+LoanRestrictionsAlerts.displayName = 'LoanRestrictionsAlerts';

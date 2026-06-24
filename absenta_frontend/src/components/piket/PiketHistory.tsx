@@ -15,7 +15,7 @@ interface PiketHistoryProps {
   loadingPermits: boolean;
 }
 
-export const PiketHistory: React.FC<PiketHistoryProps> = ({
+export const PiketHistory: React.FC<PiketHistoryProps> = React.memo(({
   dailyPermits,
   historySearch,
   setHistorySearch,
@@ -34,9 +34,9 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
 
           {loadingPermits ? (
             <div className="py-20 flex items-center justify-center"><Loader /></div>
-          ) : dailyPermits.length > 0 ? (
+          ) : (dailyPermits?.length || 0) > 0 ? (
             <Timeline>
-              {dailyPermits.map((p, idx) => {
+              {dailyPermits?.map((p, idx) => {
                 const statusColors: Record<string, 'success' | 'info' | 'warning'> = {
                   'DISETUJUI': 'warning',
                   'KEMBALI': 'success'
@@ -71,7 +71,7 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
                         )}
                       </div>
                     }
-                    isLast={idx === dailyPermits.length - 1}
+                    isLast={idx === (dailyPermits?.length || 0) - 1}
                   />
                 );
               })}
@@ -92,6 +92,8 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <Input
+                id="history-search-input"
+                aria-label="Cari riwayat siswa"
                 placeholder="Cari riwayat siswa..."
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
@@ -101,7 +103,7 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
           </div>
 
           <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-            {filteredHistory.map((p) => (
+            {filteredHistory?.map((p) => (
               <Card key={p.id} className="p-4 rounded-xl bg-gray-50/50 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-800 flex items-center justify-between group hover:border-indigo-100 transition-all shadow-none">
                 <div className="space-y-1 min-w-0">
                   <h4 className="font-black text-xs text-gray-900 dark:text-white uppercase tracking-tight truncate">{p.SiswaAkademik?.siswa.nama_siswa}</h4>
@@ -118,7 +120,7 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
                 </div>
               </Card>
             ))}
-            {filteredHistory.length === 0 && (
+            {(filteredHistory?.length || 0) === 0 && (
               <p className="text-center text-xs text-gray-400 font-bold py-10 uppercase tracking-widest">Tidak ada hasil cocok</p>
             )}
           </div>
@@ -126,4 +128,4 @@ export const PiketHistory: React.FC<PiketHistoryProps> = ({
       </div>
     </div>
   );
-};
+});

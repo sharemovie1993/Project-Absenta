@@ -7,7 +7,7 @@ interface PrintLoanCardProps {
   coopSettings?: CooperativeSettings | null;
 }
 
-export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
+export const PrintLoanCard = React.memo<PrintLoanCardProps>(({
   loan,
   remainingBalance,
   coopSettings,
@@ -61,9 +61,9 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="p-4 border border-slate-300 rounded-xl bg-slate-50">
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Anggota</p>
-          <h4 className="text-sm font-bold text-black mt-1 uppercase truncate">{loan.member.name}</h4>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{loan.member.memberNo}</p>
-          <p className="text-[10px] text-slate-650 font-bold mt-2">Status: {loan.status}</p>
+          <h4 className="text-sm font-bold text-black mt-1 uppercase truncate">{loan.member?.name}</h4>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{loan.member?.memberNo}</p>
+          <p className="text-[10px] text-slate-655 font-bold mt-2">Status: {loan.status}</p>
         </div>
         <div className="p-4 border border-slate-300 rounded-xl bg-slate-50">
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Nilai Pinjaman</p>
@@ -102,7 +102,7 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
             </tr>
           </thead>
           <tbody>
-            {loan.installments.map((ins, index) => (
+            {loan.installments?.map((ins, index) => (
               <tr key={ins.id} className="border-b border-slate-300">
                 <td className="border border-slate-300 px-3 py-2 text-black font-semibold">{index + 1}</td>
                 <td className="border border-slate-300 px-3 py-2 text-black">
@@ -147,4 +147,6 @@ export const PrintLoanCard: React.FC<PrintLoanCardProps> = ({
       </div>
     </div>
   );
-};
+});
+
+PrintLoanCard.displayName = 'PrintLoanCard';

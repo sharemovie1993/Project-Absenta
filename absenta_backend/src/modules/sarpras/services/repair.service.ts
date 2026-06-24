@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
+import { activityLogService } from '../../activity/services/activity-log.service';
 
 export class RepairService {
   static async createRepair(tenantId: string, data: {
@@ -7,16 +8,17 @@ export class RepairService {
     teknisi?: string;
     biaya?: number;
     deskripsi?: string;
-  }, scope?: any) {
+  }, scope?: any, userId?: string) {
     // Verify asset exists and belongs to tenant
     const asset = await prisma.sarprasAsset.findFirst({
-      where: { id: data.asset_id, tenant_id: tenantId }
+      where: { id: data.asset_id, tenant_id: tenantId, deleted_at: null },
+      include: { Location: true }
     });
 
     if (!asset) throw new Error('Aset tidak ditemukan');
     
     if (scope && !scope.tenant_wide) {
-      if (asset.location_id && (!scope.unit_ids || !scope.unit_ids.includes(asset.location_id))) {
+      if (asset.Location?.unit_id && (!scope.unit_ids || !scope.unit_ids.includes(asset.Location.unit_id))) {
         throw new Error('Anda tidak memiliki akses untuk menambah perbaikan pada aset ini');
       }
     }
@@ -39,6 +41,17 @@ export class RepairService {
       })
     ]);
 
+    if (userId) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_REPAIR_CREATE',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAssetRepair',
+        entity_id: repair.id,
+        metadata: { asset_id: data.asset_id, asset_nama: asset.nama }
+      });
+    }
+
     return repair;
   }
 
@@ -48,7 +61,7 @@ export class RepairService {
     biaya?: number;
     deskripsi?: string;
     tanggal_selesai?: Date;
-  }, scope?: any) {
+  }, scope?: any, userId?: string) {
     const repair = await prisma.sarprasAssetRepair.findFirst({
       where: { id, tenant_id: tenantId }
     });
@@ -56,8 +69,11 @@ export class RepairService {
     if (!repair) throw new Error('Data perbaikan tidak ditemukan');
 
     if (scope && !scope.tenant_wide) {
-       const asset = await prisma.sarprasAsset.findFirst({ where: { id: repair.asset_id }});
-       if (asset && asset.location_id && (!scope.unit_ids || !scope.unit_ids.includes(asset.location_id))) {
+       const asset = await prisma.sarprasAsset.findFirst({ 
+         where: { id: repair.asset_id },
+         include: { Location: true }
+       });
+       if (asset && asset.Location?.unit_id && (!scope.unit_ids || !scope.unit_ids.includes(asset.Location.unit_id))) {
            throw new Error('Anda tidak memiliki akses untuk mengelola perbaikan aset ini');
        }
     }
@@ -110,10 +126,23 @@ export class RepairService {
       }
     }
 
-    return prisma.sarprasAssetRepair.update({
+    const updatedRepair = await prisma.sarprasAssetRepair.update({
       where: { id },
       data: updateData
     });
+
+    if (userId) {
+      activityLogService.logEvent({
+        event_type: 'SARPRAS_REPAIR_UPDATE',
+        tenant_id: tenantId,
+        user_id: userId,
+        entity: 'SarprasAssetRepair',
+        entity_id: id,
+        metadata: { status: data.status, asset_id: repair.asset_id }
+      });
+    }
+
+    return updatedRepair;
   }
 
   static async getRepairs(tenantId: string, query: {
@@ -136,7 +165,9 @@ export class RepairService {
     if (scope && !scope.tenant_wide) {
       if (scope.unit_ids && scope.unit_ids.length > 0) {
         where.Asset = {
-          location_id: { in: scope.unit_ids }
+          Location: {
+            unit_id: { in: scope.unit_ids }
+          }
         };
       } else {
         return { list: [], pagination: { total: 0, page, limit, totalPages: 0 } };
@@ -172,13 +203,13 @@ export class RepairService {
   static async getRepairStats(tenantId: string, scope?: any) {
     const [inProgress, completed, totalCost] = await Promise.all([
       prisma.sarprasAssetRepair.count({
-        where: { tenant_id: tenantId, status: 'PROSES', ...(scope && !scope.tenant_wide ? { Asset: { location_id: { in: scope.unit_ids || [] } } } : {}) }
+        where: { tenant_id: tenantId, status: 'PROSES', ...(scope && !scope.tenant_wide ? { Asset: { Location: { unit_id: { in: scope.unit_ids || [] } } } } : {}) }
       }),
       prisma.sarprasAssetRepair.count({
-        where: { tenant_id: tenantId, status: 'SELESAI', ...(scope && !scope.tenant_wide ? { Asset: { location_id: { in: scope.unit_ids || [] } } } : {}) }
+        where: { tenant_id: tenantId, status: 'SELESAI', ...(scope && !scope.tenant_wide ? { Asset: { Location: { unit_id: { in: scope.unit_ids || [] } } } } : {}) }
       }),
       prisma.sarprasAssetRepair.aggregate({
-        where: { tenant_id: tenantId, ...(scope && !scope.tenant_wide ? { Asset: { location_id: { in: scope.unit_ids || [] } } } : {}) },
+        where: { tenant_id: tenantId, ...(scope && !scope.tenant_wide ? { Asset: { Location: { unit_id: { in: scope.unit_ids || [] } } } } : {}) },
         _sum: { biaya: true }
       })
     ]);

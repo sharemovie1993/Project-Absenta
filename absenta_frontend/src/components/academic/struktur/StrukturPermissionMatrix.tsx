@@ -36,7 +36,7 @@ interface StrukturPermissionMatrixProps {
   canDistribute?: boolean; // Only for superadmin
 }
 
-export const StrukturPermissionMatrix: React.FC<StrukturPermissionMatrixProps> = ({
+export const StrukturPermissionMatrix: React.FC<StrukturPermissionMatrixProps> = React.memo(({
   structures,
   permissionCatalog,
   searchQuery,
@@ -386,13 +386,14 @@ export const StrukturPermissionMatrix: React.FC<StrukturPermissionMatrixProps> =
           
           <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
             <div className="space-y-2 group">
-              <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              <Label htmlFor="distribute_target" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Struktur Organisasi Target <span className="text-rose-500">*</span>
               </Label>
               <SearchableSelect
+                id="distribute_target"
                 value={distributeTargetId}
                 onValueChange={setDistributeTargetId}
-                options={structures.map(s => ({ label: `${s.nama} (${s.kode})`, value: s.id }))}
+                options={(structures || []).map(s => ({ label: `${s.nama} (${s.kode})`, value: s.id }))}
                 placeholder="Pilih Struktur..."
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
@@ -437,4 +438,6 @@ export const StrukturPermissionMatrix: React.FC<StrukturPermissionMatrixProps> =
       </Modal>
     </div>
   );
-};
+});
+
+StrukturPermissionMatrix.displayName = 'StrukturPermissionMatrix';

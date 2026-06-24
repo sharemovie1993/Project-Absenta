@@ -11,7 +11,7 @@ interface JurusanInfoSectionProps {
   watch: any;
 }
 
-export const JurusanInfoSection: React.FC<JurusanInfoSectionProps> = ({
+export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
   register,
   errors,
   isViewMode,
@@ -102,4 +102,6 @@ export const JurusanInfoSection: React.FC<JurusanInfoSectionProps> = ({
       </div>
     </SectionCard>
   );
-};
+});
+
+JurusanInfoSection.displayName = 'JurusanInfoSection';
