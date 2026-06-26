@@ -3,6 +3,7 @@ const path = require('path');
 
 async function startServer() {
   console.log('[Embedded Redis] Starting server on port 6379...');
+  process.title = 'absenta-redis';
   try {
     // Patch to prevent terminal popup on Windows for Memurai/Redis binary
     if (process.platform === 'win32') {

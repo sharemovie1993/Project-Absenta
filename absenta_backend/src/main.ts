@@ -47,6 +47,7 @@ fastify.decorate('prisma', prisma);
 
 // Start server
 async function start() {
+  process.title = 'absenta-api';
   const requireEnv = (name: string) => {
     const v = String(process.env[name] || '').trim();
     if (!v) {
