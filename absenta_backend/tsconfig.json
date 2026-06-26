@@ -8,6 +8,8 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuildinfo",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": false,
