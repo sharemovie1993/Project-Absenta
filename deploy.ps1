@@ -90,16 +90,23 @@ $Domain {
 "@
     $caddyfileContent | Set-Content "$PSScriptRoot\Caddyfile" -Encoding utf8
 
-    # Install as Service
+    # Install as Service (Windows Native approach)
     Write-Host "Mendaftarkan Caddy sebagai Windows Service..." -ForegroundColor Cyan
     try {
-        & $caddyPath stop 2>&1 | Out-Null
-        & $caddyPath service uninstall 2>&1 | Out-Null
-        & $caddyPath service install --config "$PSScriptRoot\Caddyfile"
-        & $caddyPath service start
-        Write-Host "Caddy Service berhasil dijalankan!" -ForegroundColor Green
+        # Check if sc.exe (Service Control) can handle it
+        $binPath = "`"$caddyPath`" run --config `"$PSScriptRoot\Caddyfile`""
+        
+        # Stop and Delete if exists
+        sc.exe stop Caddy 2>&1 | Out-Null
+        sc.exe delete Caddy 2>&1 | Out-Null
+        
+        # Create new service
+        sc.exe create Caddy binPath= $binPath start= auto DisplayName= "Absenta Reverse Proxy (Caddy)"
+        sc.exe start Caddy
+        
+        Write-Host "Caddy Service berhasil didaftarkan dan dijalankan!" -ForegroundColor Green
     } catch {
-        Write-Host "Peringatan: Gagal mengotomatisasi service Caddy. Anda mungkin perlu menjalankannya manual dengan perintah: caddy run" -ForegroundColor Yellow
+        Write-Host "Peringatan: Gagal mengotomatisasi service Caddy. Silakan jalankan manual: .\caddy.exe run" -ForegroundColor Yellow
     }
 }
 
