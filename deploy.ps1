@@ -105,9 +105,16 @@ $Domain {
         sc.exe create Caddy binPath= $binPath start= auto DisplayName= "Absenta Reverse Proxy (Caddy)"
         sc.exe start Caddy
         
-        # ZERO TOUCH SSL: Perintahkan Caddy untuk menginstal Root CA ke Windows Trusted Store
+        # ZERO TOUCH SSL: Import Root CA secara native ke Windows Store
         Write-Host "Menginstal Sertifikat Root Caddy ke Windows Trusted Store..." -ForegroundColor Cyan
-        Start-Process "$caddyPath" -ArgumentList "trust" -Verb RunAs -Wait
+        $caddyDataDir = "$env:AppData\Caddy"
+        if (Test-Path "$caddyDataDir\pki\authorities\local\root.crt") {
+            Import-Certificate -FilePath "$caddyDataDir\pki\authorities\local\root.crt" -CertStoreLocation Cert:\LocalMachine\Root
+            Write-Host "Sertifikat berhasil diimpor!" -ForegroundColor Green
+        } else {
+            # Coba jalankan trust command sebagai fallback terakhir dengan flag --force
+            Start-Process "$caddyPath" -ArgumentList "trust" -Verb RunAs -Wait
+        }
         
         Write-Host "Caddy Service & SSL Trust berhasil dikonfigurasi!" -ForegroundColor Green
     } catch {
