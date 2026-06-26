@@ -54,20 +54,21 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
-      windowsHide: true, // Prevent terminal popup on Windows
+      windowsHide: true,
+      kill_timeout: 5000, // Give more time to cleanup Redis binary on stop
       env: {
         NODE_ENV: 'production'
       }
     },
     {
-      name: `absenta-backend:${backendPort}`,
+      name: `absenta-api:${backendPort}`,
       script: 'dist/main.js',
       cwd: path.join(__dirname, 'absenta_backend'),
       instances: 'max', 
       exec_mode: 'cluster',
       windowsHide: true,
-      restart_delay: 3000, // Wait 3s before restarting if it fails
-      listen_timeout: 10000, // Give it 10s to start listening
+      restart_delay: 3000,
+      listen_timeout: 10000,
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
@@ -79,13 +80,13 @@ module.exports = {
       max_memory_restart: '1G'
     },
     {
-      name: `absenta-frontend:${frontendPort}`,
-      script: 'node_modules/serve/build/main.js', // Using 'serve' package directly
+      name: `absenta-web:${frontendPort}`,
+      script: 'node_modules/serve/build/main.js',
       args: `-s dist -l ${frontendPort}`,
       cwd: path.join(__dirname, 'absenta_frontend'),
       instances: 1, 
       exec_mode: 'fork',
-      windowsHide: true, // Prevent terminal popup on Windows
+      windowsHide: true,
       env: {
         NODE_ENV: 'production',
         ...frontendEnv

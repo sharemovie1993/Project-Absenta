@@ -1,8 +1,24 @@
 const { RedisMemoryServer } = require('redis-memory-server');
+const path = require('path');
 
 async function startServer() {
   console.log('[Embedded Redis] Starting server on port 6379...');
   try {
+    // Patch to prevent terminal popup on Windows for Memurai/Redis binary
+    if (process.platform === 'win32') {
+      const child_process = require('child_process');
+      const originalSpawn = child_process.spawn;
+      const originalSpawnSync = child_process.spawnSync;
+      
+      child_process.spawn = function(command, args, options) {
+        return originalSpawn.call(this, command, args, { ...options, windowsHide: true });
+      };
+      
+      child_process.spawnSync = function(command, args, options) {
+        return originalSpawnSync.call(this, command, args, { ...options, windowsHide: true });
+      };
+    }
+
     const redisServer = new RedisMemoryServer({
       instance: {
         port: 6379,
@@ -10,22 +26,13 @@ async function startServer() {
       binary: {
         version: '6.2.6',
         skipMD5: true,
+        // Use a more stable directory outside node_modules to avoid permission issues on some Windows setups
+        downloadDir: path.join(process.cwd(), '.redis-bin'),
       },
       autoStart: false,
     });
 
-    console.log('[Embedded Redis] Checking binary and starting (silent mode)...');
-    
-    // Patch to prevent terminal popup on Windows for Memurai/Redis binary
-    if (process.platform === 'win32') {
-      const originalSpawn = require('child_process').spawn;
-      const patchedSpawn = function(command, args, options) {
-        const opts = { ...options, windowsHide: true };
-        return originalSpawn.call(this, command, args, opts);
-      };
-      require('child_process').spawn = patchedSpawn;
-    }
-
+    console.log('[Embedded Redis] Starting (silent mode)...');
     await redisServer.start();
     const host = await redisServer.getHost();
     const port = await redisServer.getPort();

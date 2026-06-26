@@ -55,7 +55,8 @@ for (let i = 1; i <= maxAttempts; i += 1) {
     stdio: 'pipe',
     shell: true,
     env,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    windowsHide: true
   });
   const combined = String(r.stderr || '') + String(r.stdout || '');
   const isLock = lockRe ? lockRe.test(combined) : false;
