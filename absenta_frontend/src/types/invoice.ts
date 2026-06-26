@@ -111,6 +111,55 @@ export interface Invoice {
     domain?: string | null;
     tax_id?: string;
   };
+  payments?: any[];
+  reason?: string;
+  Billing?: any;
+}
+
+export interface TripayChannel {
+  code: string;
+  name?: string;
+  group?: string;
+  icon_url?: string;
+  minimum_amount?: number;
+  maximum_amount?: number;
+}
+
+export interface InvoicePublicData {
+  success: boolean;
+  message: string;
+  data: Invoice;
+  gateways?: string[];
+  tripay_channels?: TripayChannel[];
+  contact?: {
+    email?: string;
+    phone?: string;
+    company_name?: string;
+  };
+  manual_payment?: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    instruction?: string;
+  };
+  active_transaction?: {
+    reference: string;
+    method: string;
+    status: string;
+  };
+  issuer?: {
+    name: string;
+    address: string;
+    phone: string;
+    email: string;
+    logo_url: string;
+    signature_name?: string;
+    signature_title?: string;
+  };
+  branding?: {
+    logo_url?: string;
+    primary_color?: string;
+  };
 }
 
 export interface PublicInvoiceResponse {

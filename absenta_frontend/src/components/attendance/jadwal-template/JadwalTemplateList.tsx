@@ -18,7 +18,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { mapelApi, guruApi } from '../../../api/academic.api';
 import type { Mapel, Guru, Kelas } from '../../../types/academic';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
-import { useToast } from '../../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 
 // Pillar 5: Lazy Loading
 const JadwalTemplateForm = lazy(() => import('./JadwalTemplateForm').then(m => ({ default: m.JadwalTemplateForm })));
@@ -37,7 +37,7 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { user, can } = useAuth();
-  const { success, error, info } = useToast();
+
 
   // Context State
   const [kelasOptions, setKelasOptions] = useState<{value: string, label: string}[]>([]);
@@ -63,6 +63,13 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
     if (!value) return undefined;
     return options.find((opt) => opt.value === value)?.label;
   }, []);
+
+  // Sync selectedKelasId state with kelasId prop when it changes (essential for async default load)
+  useEffect(() => {
+    if (kelasId) {
+      setSelectedKelasId(kelasId);
+    }
+  }, [kelasId]);
 
   // 1. Load Context (Kelas, TP, Semester)
   useEffect(() => {
@@ -121,6 +128,8 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
   useEffect(() => {
     const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '');
     if (isAdmin && (!selectedKelasId || !activeTahunId || !activeSemesterId)) return;
+    // SISWA also needs a kelas_id to fetch (PETUGAS_KELAS has it injected from parent)
+    if (!isAdmin && user?.role?.name === 'SISWA' && !selectedKelasId) return;
     if (!isAdmin && user?.role?.name !== 'SISWA' && user?.role?.name !== 'GURU') return;
 
     const controller = new AbortController();
@@ -175,10 +184,10 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
       setRefreshKey(prev => prev + 1);
       setIsDeleteModalOpen(false);
       setDeletingId(null);
-      success('Jadwal berhasil dihapus');
+      toast.success('Jadwal berhasil dihapus');
     } catch (err) {
       LogService.error('Failed to delete jadwal', err);
-      error('Gagal menghapus jadwal');
+      toast.error('Gagal menghapus jadwal');
     } finally {
       setIsDeleting(false);
     }
@@ -215,7 +224,7 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
     const row = (pendingNewRows[day] || [])[idx];
     if (!row) return;
     if (String(row.jam_selesai) <= String(row.jam_mulai)) {
-      error('Jam selesai harus lebih besar dari jam mulai');
+      toast.error('Jam selesai harus lebih besar dari jam mulai');
       return;
     }
     try {
@@ -236,10 +245,10 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
         return next;
       });
       setRefreshKey(prev => prev + 1);
-      success('Jadwal berhasil disimpan');
+      toast.success('Jadwal berhasil disimpan');
     } catch (err) {
       LogService.error('Failed to save new jadwal row', err);
-      error(formatErrorMessage(err));
+      toast.error(formatErrorMessage(err));
     }
   }, [pendingNewRows, activeTahunId, activeSemesterId, selectedKelasId]);
 

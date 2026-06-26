@@ -777,6 +777,21 @@ export const gerbangController = {
         reply.status(400);
         return { success: false, message: `Invalid status. Allowed: ${allowedStatuses.join(', ')}` };
       }
+
+      if (status === 'HADIR') {
+        const isDev = process.env.NODE_ENV === 'development';
+        const allowManualConfig = await prisma.config.findFirst({
+          where: { tenant_id: String(tenantId), key: 'ALLOW_MANUAL_HADIR_GATE' }
+        });
+        const isAllowed = isDev || (allowManualConfig?.value === 'true');
+        if (!isAllowed) {
+          reply.status(400);
+          return {
+            success: false,
+            message: 'Pencatatan manual status HADIR dinonaktifkan. Kehadiran harus dicatat melalui scan gerbang fisik (Kecuali dikonfigurasi lain oleh Admin).'
+          };
+        }
+      }
       const session = await gerbangService.getOrCreateSession(String(tenantId));
       const existing = await prisma.absenGerbangSiswa.findFirst({
         where: { tenant_id: tenantId, sesi_gerbang_id: session.id, siswa_id, arah: 'GERBANG_DATANG' },

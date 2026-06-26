@@ -10,7 +10,7 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, Plus, Edit2, Trash2, MailOpen, Calendar, Paperclip } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -38,7 +38,7 @@ export const PemanggilanSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
 
   // Form states
@@ -118,39 +118,39 @@ export const PemanggilanSection: React.FC = () => {
     try {
       const res = await bpbkApi.deletePemanggilan(id);
       if (res.success) {
-        success('Surat pemanggilan berhasil dihapus');
+        toast.success('Surat pemanggilan berhasil dihapus');
         fetchData();
       } else {
-        error(res.message || 'Gagal menghapus');
+        toast.error(res.message || 'Gagal menghapus');
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [confirm, success, error, fetchData]);
+  }, [confirm, fetchData]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.siswa_id) {
-      error('Harap pilih siswa terlebih dahulu');
+      toast.error('Harap pilih siswa terlebih dahulu');
       return;
     }
     if (!formData.alasan.trim()) {
-      error('Harap isi alasan pemanggilan');
+      toast.error('Harap isi alasan pemanggilan');
       return;
     }
 
     try {
       await bpbkApi.createPemanggilan(formData);
-      success('Surat pemanggilan orang tua berhasil dibuat');
+      toast.success('Surat pemanggilan orang tua berhasil dibuat');
       setModalOpen(false);
       resetForm();
       fetchData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan pemanggilan';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [formData, success, error, resetForm, fetchData]);
+  }, [formData, resetForm, fetchData]);
 
   const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,16 +179,16 @@ export const PemanggilanSection: React.FC = () => {
         surat_dokumen_id: docId
       });
 
-      success('Hasil pemanggilan berhasil diperbarui');
+      toast.success('Hasil pemanggilan berhasil diperbarui');
       setEditModalOpen(false);
       fetchData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal memperbarui pemanggilan';
-      error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setUploadingDoc(false);
     }
-  }, [selectedId, selectedSiswa, editFormData, success, error, fetchData]);
+  }, [selectedId, selectedSiswa, editFormData, fetchData]);
 
   const columns: Column[] = useMemo(() => [
     {

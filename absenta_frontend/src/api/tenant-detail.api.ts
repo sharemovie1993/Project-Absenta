@@ -426,6 +426,12 @@ export interface AttendanceOverview {
     attendance_rate: number;
     total_sessions: number;
   }>;
+  daily_stats?: Array<{
+    date: string;
+    present_count: number;
+    total_students: number;
+    attendance_rate: number;
+  }>;
 }
 
 export interface AttendanceSession {

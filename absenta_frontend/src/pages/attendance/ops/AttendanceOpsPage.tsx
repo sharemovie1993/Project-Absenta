@@ -43,7 +43,13 @@ export default function AttendanceOpsPage() {
   }
 
   // Access Denied Logic
-  const isSiswaDenied = user?.role?.name === 'SISWA' && petugasChecked && !isPetugasSiswa;
+  // SISWA dengan capability PETUGAS_KELAS diizinkan masuk walau isPetugasSiswa belum terkonfirmasi
+  const siswaCaps = (user as any)?.capabilities || [];
+  const siswaHasPetugasKelasAccess =
+    siswaCaps.includes('attendance.sessions.create') ||
+    siswaCaps.includes('attendance.sessions.view.list') ||
+    siswaCaps.includes('attendance.schedules.view.list');
+  const isSiswaDenied = user?.role?.name === 'SISWA' && petugasChecked && !isPetugasSiswa && !siswaHasPetugasKelasAccess;
   const isGuruDenied = user?.role?.name === 'GURU' && petugasGuruChecked && !isPetugasGuru;
 
   const sharedProps = {

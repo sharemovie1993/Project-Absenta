@@ -7,7 +7,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, Paperclip } from 'lucide-react';
 import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
@@ -36,7 +36,7 @@ export const AsesmenSection: React.FC = () => {
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
 
   // Form states
@@ -115,24 +115,24 @@ export const AsesmenSection: React.FC = () => {
     try {
       const res = await bpbkApi.deleteAsesmen(id);
       if (res.success) {
-        success('Hasil asesmen berhasil dihapus');
+        toast.success('Hasil asesmen berhasil dihapus');
         fetchData();
       } else {
-        error(res.message || 'Gagal menghapus');
+        toast.error(res.message || 'Gagal menghapus');
       }
     } catch (err: any) {
-      error(err.message || 'Koneksi bermasalah');
+      toast.error(err.message || 'Koneksi bermasalah');
     }
-  }, [confirm, success, error, fetchData]);
+  }, [confirm, fetchData]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.siswa_id) {
-      error('Harap pilih siswa terlebih dahulu');
+      toast.error('Harap pilih siswa terlebih dahulu');
       return;
     }
     if (!formData.nama_asesmen.trim()) {
-      error('Harap isi nama/tipe asesmen');
+      toast.error('Harap isi nama/tipe asesmen');
       return;
     }
 
@@ -161,21 +161,21 @@ export const AsesmenSection: React.FC = () => {
 
       if (selectedId) {
         await bpbkApi.updateAsesmen(selectedId, payload);
-        success('Catatan asesmen berhasil diperbarui');
+        toast.success('Catatan asesmen berhasil diperbarui');
       } else {
         await bpbkApi.createAsesmen(payload);
-        success('Hasil asesmen baru berhasil disimpan');
+        toast.success('Hasil asesmen baru berhasil disimpan');
       }
 
       setModalOpen(false);
       resetForm();
       fetchData();
     } catch (err: any) {
-      error(err.message || 'Gagal menyimpan hasil asesmen');
+      toast.error(err.message || 'Gagal menyimpan hasil asesmen');
     } finally {
       setSaving(false);
     }
-  }, [selectedId, formData, selectedSiswa, error, success, fetchData, resetForm]);
+  }, [selectedId, formData, selectedSiswa, fetchData, resetForm]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);

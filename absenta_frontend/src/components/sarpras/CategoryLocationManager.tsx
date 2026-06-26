@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import { sarprasApi } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 
 interface CategoryLocationManagerProps {
@@ -24,13 +24,12 @@ interface Item {
 const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type, isOpen, onClose }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ nama: '', deskripsi: '' });
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
 
   const isCategory = type === 'category';
   const queryKey = isCategory ? 'sarpras-categories' : 'sarpras-locations';
@@ -55,7 +54,7 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
     mutationFn: (payload: { nama: string; deskripsi?: string }) =>
       isCategory ? sarprasApi.createCategory(payload) : sarprasApi.createLocation(payload),
     onSuccess: () => {
-      showToast(`${isCategory ? 'Kategori' : 'Lokasi'} berhasil ditambahkan`, 'success');
+      toast.success(`${isCategory ? 'Kategori' : 'Lokasi'} berhasil ditambahkan`);
       queryClient.invalidateQueries({ queryKey: [queryKey] });
       resetForm();
     },
@@ -69,7 +68,7 @@ const CategoryLocationManager: React.FC<CategoryLocationManagerProps> = ({ type,
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     }
   });
 

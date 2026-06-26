@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
-import { Table } from '../../components/cooperative/ui/Table';
-import { Modal } from '../../components/cooperative/ui/Modal';
 import { Input } from '../../components/cooperative/ui/Input';
 import { Select } from '../../components/cooperative/ui/Select';
 import { Plus, MessageSquare } from 'lucide-react';
@@ -11,6 +9,10 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+
+// Lazy load komponen berat
+const Table = lazy(() => import('../../components/cooperative/ui/Table').then(m => ({ default: m.Table })));
+const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
 interface Ticket {
   id: string;
@@ -31,16 +33,18 @@ const Tickets: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageLimit = 10;
   const [formData, setFormData] = useState({
     subject: '',
     priority: 'MEDIUM',
     message: ''
   });
 
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
+  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     if (isLocked) {
       setLoading(false);
       return;
@@ -48,21 +52,21 @@ const Tickets: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/cooperative/tickets');
-      setTickets(response.data.data);
+      setTickets(response.data.data ?? []);
     } catch (error) {
       console.error('Failed to fetch tickets', error);
       toast.error('Gagal mengambil data tiket');
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLocked]);
 
   useEffect(() => {
     if (subscription === undefined) return;
     fetchTickets();
-  }, [subscription, isLocked]);
+  }, [subscription, fetchTickets]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     if (isLocked) return;
     e.preventDefault();
     setSubmitLoading(true);
@@ -78,121 +82,182 @@ const Tickets: React.FC = () => {
     } finally {
       setSubmitLoading(false);
     }
-  };
+  }, [isLocked, formData, fetchTickets]);
 
-  const columns = [
-    { header: 'Subjek', accessor: 'subject' as keyof Ticket, className: 'font-medium' },
-    { header: 'Pengirim', accessor: (row: Ticket) => row.member?.name || 'Unknown' },
-    { header: 'Prioritas', accessor: (row: Ticket) => (
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * pageLimit;
+    return (tickets ?? []).slice(start, start + pageLimit);
+  }, [tickets, currentPage]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil((tickets ?? []).length / pageLimit)), [tickets]);
+
+  const columns = useMemo(() => [
+    { header: 'Subjek', accessor: 'subject' as keyof Ticket, className: 'font-medium', sortable: true },
+    { header: 'Pengirim', accessor: (row: Ticket) => row.member?.name ?? 'Unknown', sortable: true },
+    {
+      header: 'Prioritas', accessor: (row: Ticket) => (
         <span className={`text-xs font-bold ${
-            row.priority === 'HIGH' ? 'text-red-600' : 
+            row.priority === 'HIGH' ? 'text-red-600' :
             row.priority === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
         }`}>
             {row.priority}
         </span>
-    )},
-    { header: 'Status', accessor: (row: Ticket) => (
+      ), sortable: true
+    },
+    {
+      header: 'Status', accessor: (row: Ticket) => (
         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-            row.status === 'OPEN' ? 'bg-green-100 text-green-800' : 
+            row.status === 'OPEN' ? 'bg-green-100 text-green-800' :
             row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
         }`}>
             {row.status.replace('_', ' ')}
         </span>
-    )},
-    { header: 'Dibuat', accessor: (row: Ticket) => new Date(row.createdAt).toLocaleDateString('id-ID') },
-    { header: 'Aksi', accessor: (row: Ticket) => (
+      )
+    },
+    { header: 'Dibuat', accessor: (row: Ticket) => new Date(row.createdAt).toLocaleDateString('id-ID'), sortable: true },
+    {
+      header: 'Aksi', accessor: (row: Ticket) => (
         <Link to={`/cooperative/tickets/${row.id}`}>
             <Button size="sm" variant="outline">Lihat Detail</Button>
         </Link>
-    )}
-  ];
+      )
+    }
+  ], []);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', href: '/cooperative' },
+    { label: isManageRoute ? 'Kelola Tiket' : 'Tiket Bantuan' }
+  ], [isManageRoute]);
 
   return (
-    <PremiumFeatureGate 
-      isLocked={isLocked} 
-      moduleName="KOPERASI" 
+    <PremiumFeatureGate
+      isLocked={isLocked}
+      moduleName="KOPERASI"
       featureName="Layanan Bantuan (Tiket)"
     >
       <AcademicPageLayout
         title={isManageRoute ? "Kelola Keluhan Koperasi" : "Aduan & Keluhan Anggota"}
         description={isManageRoute ? "Kelola tiket aduan dan pertanyaan dari anggota koperasi" : "Sampaikan keluhan dan pertanyaan Anda kepada pengurus koperasi"}
         hardeningModuleKey="coop_tickets"
+        breadcrumbs={breadcrumbs}
+        instruction={{
+          title: 'Panduan Sistem Tiket',
+          description: 'Sistem tiket digunakan untuk menangani pengaduan dan pertanyaan anggota koperasi secara terstruktur.',
+          items: [
+            { text: 'Klik "Buat Tiket Baru" untuk mengajukan aduan atau pertanyaan kepada pengurus.' },
+            { text: 'Atur prioritas tiket: LOW untuk tidak mendesak, MEDIUM untuk biasa, HIGH untuk sangat mendesak.' },
+            { text: 'Pantau status tiket: OPEN (menunggu), IN_PROGRESS (diproses), CLOSED (selesai).' }
+          ]
+        }}
       >
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-              <MessageSquare className="mr-2" /> {isManageRoute ? "Kelola Tiket Bantuan" : "Aduan & Keluhan"}
-          </h2>
-          {!isManageRoute && (
-            <Button onClick={() => setShowModal(true)} icon={<Plus size={18} />}>
-              Buat Tiket Baru
-            </Button>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                <MessageSquare className="mr-2" /> {isManageRoute ? "Kelola Tiket Bantuan" : "Aduan & Keluhan"}
+            </h2>
+            {!isManageRoute && (
+              <Button onClick={() => setShowModal(true)} icon={<Plus size={18} />}>
+                Buat Tiket Baru
+              </Button>
+            )}
+          </div>
+
+          <Suspense fallback={<div className="h-64 bg-gray-100 rounded-lg animate-pulse" />}>
+            <Table
+              data={paginatedTickets}
+              columns={columns}
+              keyField="id"
+              isLoading={loading}
+              emptyMessage="Belum ada tiket bantuan."
+            />
+          </Suspense>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
+              <span>Halaman {currentPage} dari {totalPages}</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                  className="px-3 py-1 border rounded disabled:opacity-40"
+                  aria-label="Halaman sebelumnya"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-3 py-1 border rounded disabled:opacity-40"
+                  aria-label="Halaman berikutnya"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
           )}
+
+          <Suspense fallback={null}>
+            <Modal
+              isOpen={showModal}
+              onClose={() => setShowModal(false)}
+              title="Buat Tiket Bantuan Baru"
+            >
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <Input
+                  label="Subjek / Judul Masalah"
+                  id="ticket-subject"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  required
+                  placeholder="Contoh: Tidak bisa login"
+                />
+
+                <Select
+                  label="Prioritas"
+                  id="ticket-priority"
+                  value={formData.priority}
+                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                  options={[
+                      { value: 'LOW', label: 'Low - Tidak Mendesak' },
+                      { value: 'MEDIUM', label: 'Medium - Biasa' },
+                      { value: 'HIGH', label: 'High - Sangat Mendesak' },
+                  ]}
+                />
+
+                <div>
+                  <label htmlFor="ticket-message" className="block text-sm font-medium text-gray-700 mb-1">Pesan / Detail Masalah</label>
+                  <textarea
+                    id="ticket-message"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    rows={4}
+                    value={formData.message}
+                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    required
+                    placeholder="Jelaskan masalah anda secara detail..."
+                    aria-label="Detail masalah pada tiket"
+                  ></textarea>
+                </div>
+
+                <div className="flex justify-end space-x-3 mt-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowModal(false)}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    isLoading={submitLoading}
+                  >
+                    Kirim Tiket
+                  </Button>
+                </div>
+              </form>
+            </Modal>
+          </Suspense>
         </div>
-
-        <Table 
-          data={tickets} 
-          columns={columns} 
-          keyField="id" 
-          isLoading={loading}
-          emptyMessage="Belum ada tiket bantuan."
-        />
-
-        <Modal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          title="Buat Tiket Bantuan Baru"
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Subjek / Judul Masalah"
-              value={formData.subject}
-              onChange={(e) => setFormData({...formData, subject: e.target.value})}
-              required
-              placeholder="Contoh: Tidak bisa login"
-            />
-            
-            <Select
-              label="Prioritas"
-              value={formData.priority}
-              onChange={(e) => setFormData({...formData, priority: e.target.value})}
-              options={[
-                  { value: 'LOW', label: 'Low - Tidak Mendesak' },
-                  { value: 'MEDIUM', label: 'Medium - Biasa' },
-                  { value: 'HIGH', label: 'High - Sangat Mendesak' },
-              ]}
-            />
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pesan / Detail Masalah</label>
-              <textarea
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                rows={4}
-                value={formData.message}
-                onChange={(e) => setFormData({...formData, message: e.target.value})}
-                required
-                placeholder="Jelaskan masalah anda secara detail..."
-              ></textarea>
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={() => setShowModal(false)}
-              >
-                Batal
-              </Button>
-              <Button 
-                type="submit" 
-                isLoading={submitLoading}
-              >
-                Kirim Tiket
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      </div>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

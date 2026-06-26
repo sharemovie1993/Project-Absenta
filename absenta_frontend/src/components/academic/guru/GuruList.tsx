@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { 
   Edit, 
@@ -74,7 +74,6 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
-  const { showToast } = useToast();
   const { user, can } = useAuth();
   
   const isFiltered = useMemo(() => {
@@ -111,15 +110,15 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data guru', 'error');
+        toast.error('Gagal memuat data guru');
       }
     } catch (error) {
       console.error('Error fetching gurus:', error);
-      showToast('Terjadi kesalahan saat memuat data guru', 'error');
+      toast.error('Terjadi kesalahan saat memuat data guru');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage, filterStatusKepegawaian, filterGender]);
+  }, [itemsPerPage, filterStatusKepegawaian, filterGender]);
 
   // Debounced search effect
   useEffect(() => {
@@ -202,19 +201,19 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const response = await deleteGuru(guru.id);
       
       if (response.success) {
-        showToast(response.message || 'Guru berhasil dihapus', 'success');
+        toast.success(response.message || 'Guru berhasil dihapus');
         fetchGurus(currentPage, debouncedSearchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus guru', 'error');
+        toast.error(response.message || 'Gagal menghapus guru');
       }
     } catch (error: any) {
       console.error('Error deleting guru:', error);
       const errorMessage = error.response?.data?.message || 'Terjadi kesalahan saat menghapus guru';
-      showToast(errorMessage, 'error');
+      toast.error(errorMessage);
     } finally {
       setDeleting(false);
     }
-  }, [showToast, fetchGurus, currentPage, debouncedSearchTerm, confirm]);
+  }, [fetchGurus, currentPage, debouncedSearchTerm, confirm]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -315,9 +314,9 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       if (failed.length > 0) {
         setBulkErrorDetails(failed);
         setBulkErrorModalOpen(true);
-        showToast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, 'warning');
+        toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
       } else {
-        showToast(`Berhasil menghapus ${succeeded.length} guru`, 'success');
+        toast.success(`Berhasil menghapus ${succeeded.length} guru`);
       }
       const next = new Set<string>(selectedIds);
       succeeded.forEach(id => next.delete(id));
@@ -325,11 +324,11 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       fetchGurus(currentPage, searchTerm);
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
-      showToast(msg, 'error');
+      toast.error(msg);
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedIds, deleteGuru, showToast, gurus, fetchGurus, currentPage, searchTerm]);
+  }, [selectedIds, deleteGuru, gurus, fetchGurus, currentPage, searchTerm]);
 
   return (
     <div className="flex flex-col">

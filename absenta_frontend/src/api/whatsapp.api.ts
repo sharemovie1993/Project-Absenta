@@ -17,16 +17,36 @@ export interface WhatsappConfig {
 }
 
 export const getWhatsappConfig = async () => {
-  const response = await axiosInstance.get('/api/whatsapp/config');
+  const response = await axiosInstance.get('/whatsapp/config');
   return response.data;
 };
 
 export const saveWhatsappConfig = async (data: WhatsappConfig) => {
-  const response = await axiosInstance.post('/api/whatsapp/config', data);
+  const response = await axiosInstance.post('/whatsapp/config', data);
   return response.data;
 };
 
 export const testWhatsappConnection = async (testNumber: string) => {
-  const response = await axiosInstance.post('/api/whatsapp/test', { test_number: testNumber });
+  const response = await axiosInstance.post('/whatsapp/test', { test_number: testNumber });
+  return response.data;
+};
+
+export const connectLocalWhatsapp = async () => {
+  const response = await axiosInstance.post('/whatsapp/connect');
+  return response.data;
+};
+
+export const disconnectLocalWhatsapp = async () => {
+  const response = await axiosInstance.post('/whatsapp/disconnect');
+  return response.data;
+};
+
+export const getLocalWhatsappStatus = async () => {
+  const response = await axiosInstance.get('/whatsapp/status');
+  return response.data;
+};
+
+export const getLocalWhatsappQR = async () => {
+  const response = await axiosInstance.get('/whatsapp/qr');
   return response.data;
 };

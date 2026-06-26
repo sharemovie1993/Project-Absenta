@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader } from '../../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../../components/ui/Alert';
-import { useToast } from '../../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../../hooks/useAuth';
 import { 
   getSesiAbsensiList, 
@@ -89,7 +89,6 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
   userRole,
   canCreateSession,
 }) => {
-  const { toasts, removeToast, clearAllToasts, success, error, notice } = useToast();
   const { subscribe, unsubscribe } = useSocket();
   
   // State
@@ -191,22 +190,22 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     try {
       const res = await generateSesiFromTemplate();
       if (res.success) {
-        success(res.message || 'Sesi otomatis berhasil diproses');
+        toast.success(res.message || 'Sesi otomatis berhasil diproses');
         fetchSessions();
       } else {
         const detailMsg = (res as { data?: { errors?: string[] } }).data?.errors && (res as { data?: { errors?: string[] } }).data!.errors!.length > 0 
           ? `\nDetail: ${ (res as { data?: { errors?: string[] } }).data!.errors![0] }`
           : '';
-        error((res.message || 'Gagal membuat sesi dari template') + detailMsg);
+        toast.error((res.message || 'Gagal membuat sesi dari template') + detailMsg);
       }
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } }; message?: string };
       const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal memicu pembuatan sesi';
-      error(msg);
+      toast.error(msg);
     } finally {
       setGeneratingTemplate(false);
     }
-  }, [success, error]);
+  }, []);
 
   // Helper Functions for Labels
   const getKelasLabel = useCallback(
@@ -336,24 +335,24 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     const tanggalSesi = petugasForm.tanggal || tanggal || toLocalDate();
 
     if (!kelasId) {
-      notice('Pilih kelas terlebih dahulu');
+      toast('Pilih kelas terlebih dahulu', { icon: 'ℹ️' });
       return;
     }
     if (!petugasForm.jenis_kegiatan) {
-      notice('Pilih jenis kegiatan terlebih dahulu');
+      toast('Pilih jenis kegiatan terlebih dahulu', { icon: 'ℹ️' });
       return;
     }
     if (!petugasForm.waktu_mulai || !petugasForm.waktu_selesai) {
-      notice('Mohon lengkapi waktu mulai dan selesai');
+      toast('Mohon lengkapi waktu mulai dan selesai', { icon: 'ℹ️' });
       return;
     }
     const t = jenisTypeByName[petugasForm.jenis_kegiatan] || '';
     if ((t === 'KBM' || t === 'ESKUL') && !petugasForm.guru_id) {
-      notice('Pilih guru untuk kegiatan KBM/Eskul');
+      toast('Pilih guru untuk kegiatan KBM/Eskul', { icon: 'ℹ️' });
       return;
     }
     if (t === 'KBM' && !petugasForm.mapel_id) {
-      notice('Pilih mata pelajaran untuk kegiatan KBM');
+      toast('Pilih mata pelajaran untuk kegiatan KBM', { icon: 'ℹ️' });
       return;
     }
     
@@ -367,17 +366,17 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         waktu_selesai: normalizeDateTimeWithTanggal(tanggalSesi, petugasForm.waktu_selesai),
       };
       await createSesiAbsensi(payload);
-      success('Sesi berhasil dibuat');
+      toast.success('Sesi berhasil dibuat');
       setShowCreateSessionForm(false);
       fetchSessions();
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } }; message?: string };
       const m = errObj?.response?.data?.message || errObj?.message || 'Gagal membuat sesi';
-      error(String(m));
+      toast.error(String(m));
     } finally {
       setCreatingSession(false);
     }
-  }, [petugasForm, selectedKelasId, tanggal, jenisTypeByName, normalizeDateTimeWithTanggal, success, error, notice, fetchSessions]);
+  }, [petugasForm, selectedKelasId, tanggal, jenisTypeByName, normalizeDateTimeWithTanggal, fetchSessions]);
   
   const handleDeleteSesi = useCallback((sesiId: string) => {
     setDeletingSesiId(sesiId);
@@ -391,20 +390,20 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
     try {
       const res = await deleteSesiAbsensi(deletingSesiId);
       if (res.success) {
-        success('Sesi berhasil dihapus');
+        toast.success('Sesi berhasil dihapus');
         setIsDeleteModalOpen(false);
         setDeletingSesiId(null);
         fetchSessions();
       } else {
-        error(res.message || 'Gagal menghapus sesi');
+        toast.error(res.message || 'Gagal menghapus sesi');
       }
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } }; message?: string };
-      error(errObj?.response?.data?.message || errObj?.message || 'Gagal menghapus sesi');
+      toast.error(errObj?.response?.data?.message || errObj?.message || 'Gagal menghapus sesi');
     } finally {
       setIsDeletingSession(false);
     }
-  }, [deletingSesiId, success, error, fetchSessions]);
+  }, [deletingSesiId, fetchSessions]);
 
   // Expand Handler
   const toggleExpand = useCallback(async (sesiId: string) => {
@@ -420,7 +419,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
 
   // Scan Handlers
   const handleOpenScan = useCallback(async (sesiId: string) => {
-    clearAllToasts();
+    toast.dismiss();
     setInputModalSesiId(sesiId);
     setScannerInput('');
     setInputModalOpen(true);
@@ -429,7 +428,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       const res = await getSesiAbsenSiswa(sesiId);
       setSessionAttendance((p) => ({ ...p, [sesiId]: (res.data as SesiAttendanceRecord[]) || [] }));
     } catch {}
-  }, [clearAllToasts]);
+  }, []);
 
   const handleOpenJournal = useCallback((session: SessionData) => {
     setJournalSesiId(session.id);
@@ -452,13 +451,13 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       if (isGuruFromUniversal) {
         if (expectedGuruId && token === expectedGuruId) {
           await updateAbsenGuru(currentSesiId, expectedGuruId, { status: 'HADIR' });
-          success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
+          toast.success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
           await playBeep();
           fetchSessions();
           setScannerInput('');
           scannerInputRef.current?.focus();
         } else {
-          error(`Guru yang di-scan tidak sesuai dengan jadwal sesi ini (${sesi?.guru_nama || 'Tanpa Guru'})`, { duration: 8000 });
+          toast.error(`Guru yang di-scan tidak sesuai dengan jadwal sesi ini (${sesi?.guru_nama || 'Tanpa Guru'})`, { duration: 8000 });
           setScannerInput('');
           scannerInputRef.current?.focus();
         }
@@ -467,7 +466,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
 
       if (expectedGuruId && token === expectedGuruId) {
         await updateAbsenGuru(currentSesiId, expectedGuruId, { status: 'HADIR' });
-        success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
+        toast.success(`Guru ${sesi?.guru_nama || ''} berhasil dikonfirmasi hadir`, { duration: 8000 });
         await playBeep();
         fetchSessions();
         setScannerInput('');
@@ -477,7 +476,7 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
 
       const tapRes = await tapSiswaKeSesi(currentSesiId, { siswa_id: token });
       if (tapRes?.success) {
-        success('Berhasil dicatat', { duration: 8000 });
+        toast.success('Berhasil dicatat', { duration: 8000 });
         await playBeep();
         const resList = await getSesiAbsenSiswa(currentSesiId);
         setSessionAttendance((p) => ({ ...p, [currentSesiId]: (resList.data as SesiAttendanceRecord[]) || [] }));
@@ -486,40 +485,40 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       } else {
         const msg = String(tapRes?.message || '').toLowerCase();
         if (msg.includes('sudah') || msg.includes('exist')) {
-          notice(`Siswa sudah terekam`, { duration: 8000 });
+          toast('Siswa sudah terekam', { icon: 'ℹ️', duration: 8000 });
           setScannerInput('');
           scannerInputRef.current?.focus();
         } else {
-          error(tapRes?.message || 'Gagal absen siswa', { duration: 8000 });
+          toast.error(tapRes?.message || 'Gagal absen siswa', { duration: 8000 });
         }
       }
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } }; message?: string };
       const m = errObj?.response?.data?.message || errObj?.message || 'Gagal melakukan scan';
-      error(String(m), { duration: 8000 });
+      toast.error(String(m), { duration: 8000 });
     } finally {
       setScanLoading(false);
     }
-  }, [scannerInput, playBeep, fetchSessions, success, error, notice]);
+  }, [scannerInput, playBeep, fetchSessions]);
 
   const handleFinishSesi = useCallback(async (sesiId: string) => {
     try {
       const res = await updateSesiStatus(sesiId, 'SELESAI');
       if (res.success) {
-        success('Sesi berhasil diselesaikan. Absensi ALPA otomatis telah diproses.');
+        toast.success('Sesi berhasil diselesaikan. Absensi ALPA otomatis telah diproses.');
         fetchSessions();
         if (expandedRef.current[sesiId]) {
           const attRes = await getSesiAbsenSiswa(sesiId);
           setSessionAttendance((p) => ({ ...p, [sesiId]: (attRes.data as SesiAttendanceRecord[]) || [] }));
         }
       } else {
-        error(res.message || 'Gagal menyelesaikan sesi');
+        toast.error(res.message || 'Gagal menyelesaikan sesi');
       }
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } } };
-      error(errObj?.response?.data?.message || 'Gagal menyelesaikan sesi');
+      toast.error(errObj?.response?.data?.message || 'Gagal menyelesaikan sesi');
     }
-  }, [success, error, fetchSessions]);
+  }, [fetchSessions]);
 
   // Socket
   useEffect(() => {
@@ -779,8 +778,6 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
             sessionAttendanceRecords={sessionAttendance[inputModalSesiId] || []}
             currentSession={sessions.find((s) => s.id === inputModalSesiId) as unknown as SesiDetail}
             kelasLabel={getKelasLabel(sessions.find((s) => s.id === inputModalSesiId)?.kelas_id)}
-            toasts={toasts}
-            removeToast={removeToast}
           />
 
           {/* Jurnal KBM Modal */}

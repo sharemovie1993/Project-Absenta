@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Switch, Loader, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger, TabsContent, Badge } from '@/components/ui';
-import { MessageSquare, Save, Send, ShieldCheck, FileText, Info, CheckCircle2, XCircle } from 'lucide-react';
-import { getWhatsappConfig, saveWhatsappConfig, testWhatsappConnection, type WhatsappConfig } from '@/api/whatsapp.api';
+import { MessageSquare, Save, Send, ShieldCheck, FileText, Info, CheckCircle2, XCircle, QrCode, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { getWhatsappConfig, saveWhatsappConfig, testWhatsappConnection, connectLocalWhatsapp, disconnectLocalWhatsapp, getLocalWhatsappStatus, getLocalWhatsappQR, type WhatsappConfig } from '@/api/whatsapp.api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -26,12 +26,70 @@ const WhatsappSettingsPage: React.FC = () => {
   const [testNumber, setTestNumber] = useState('');
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  const [localStatus, setLocalStatus] = useState<'disconnected' | 'connecting' | 'connected' | null>(null);
+  const [connectedNumber, setConnectedNumber] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [dbProviderName, setDbProviderName] = useState<string | null>(null);
+
+  const fetchLocalStatus = useCallback(async () => {
+    try {
+      const response = await getLocalWhatsappStatus();
+      if (response.success && response.data) {
+        setLocalStatus(response.data.status);
+        setConnectedNumber(response.data.number);
+        
+        // If connecting, also fetch QR code
+        if (response.data.status === 'connecting') {
+          const qrRes = await getLocalWhatsappQR();
+          if (qrRes.success && qrRes.qr) {
+            setQrCode(qrRes.qr);
+          } else {
+            setQrCode(null);
+          }
+        } else {
+          setQrCode(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching local WA status:', error);
+    }
+  }, []);
+
+  const handleConnectLocal = useCallback(async () => {
+    try {
+      setLocalStatus('connecting');
+      const response = await connectLocalWhatsapp();
+      if (response.success) {
+        toast.success('Sesi WhatsApp diinisialisasi. Menunggu QR code...');
+        fetchLocalStatus();
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal memulai sesi WhatsApp');
+      setLocalStatus('disconnected');
+    }
+  }, [fetchLocalStatus]);
+
+  const handleDisconnectLocal = useCallback(async () => {
+    try {
+      const response = await disconnectLocalWhatsapp();
+      if (response.success) {
+        toast.success('Koneksi WhatsApp diputuskan');
+        setLocalStatus('disconnected');
+        setConnectedNumber(null);
+        setQrCode(null);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal memutuskan sesi WhatsApp');
+    }
+  }, []);
+
   const fetchConfig = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getWhatsappConfig();
       if (response.success && response.data) {
         setConfig(response.data);
+        setDbProviderName(response.data.provider_name);
       }
     } catch (error) {
       console.error('Error fetching config:', error);
@@ -45,12 +103,25 @@ const WhatsappSettingsPage: React.FC = () => {
     fetchConfig();
   }, [fetchConfig]);
 
+  // Poll status while local provider is active and either status is connecting or loading
+  useEffect(() => {
+    if (config.provider_name !== 'LOCAL') return;
+
+    fetchLocalStatus();
+    const interval = setInterval(() => {
+      fetchLocalStatus();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [config.provider_name, fetchLocalStatus]);
+
   const handleSave = useCallback(async () => {
     try {
       setSaving(true);
       const response = await saveWhatsappConfig(config);
       if (response.success) {
         toast.success('Konfigurasi berhasil disimpan');
+        setDbProviderName(config.provider_name);
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Gagal menyimpan konfigurasi';
@@ -149,11 +220,10 @@ const WhatsappSettingsPage: React.FC = () => {
               <Send className="h-4 w-4 mr-2" /> Uji Coba
             </TabsTrigger>
           </MenuTabs>
-
           <TabsContent value="connection" className="animate-in slide-in-from-bottom-2 duration-300">
             <Card className="border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
               <CardHeader className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
-                <CardTitle className="text-lg font-bold">Kredensial API Gateway</CardTitle>
+                <CardTitle className="text-lg font-bold">Kredensial & Tipe Gateway</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
                 <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -167,55 +237,186 @@ const WhatsappSettingsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="provider_name" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Provider Name</Label>
-                    <Input 
-                      id="provider_name"
-                      value={config.provider_name} 
-                      onChange={(e) => setConfig({ ...config, provider_name: e.target.value.toUpperCase() })}
-                      placeholder="Contoh: FONNTE, WOWA, CUSTOM"
-                      className="h-12 rounded-xl border-slate-200 focus:ring-green-500"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sender_number" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Sender Number</Label>
-                    <Input 
-                      id="sender_number"
-                      value={config.sender_number || ''} 
-                      onChange={(e) => setConfig({ ...config, sender_number: e.target.value })}
-                      placeholder="628123456789"
-                      className="h-12 rounded-xl border-slate-200"
-                    />
+                <div className="space-y-3">
+                  <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Tipe Gateway</Label>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config, provider_name: 'LOCAL' })}
+                      className={`flex-1 py-4 px-6 rounded-2xl border text-left transition-all ${
+                        config.provider_name === 'LOCAL'
+                          ? 'border-green-600 bg-green-50/50 dark:bg-green-950/20 dark:border-green-800'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <QrCode className={`h-6 w-6 ${config.provider_name === 'LOCAL' ? 'text-green-600' : 'text-slate-400'}`} />
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 dark:text-slate-200">Local Gateway (Scan QR)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Tautkan nomor WhatsApp sendiri dengan scan QR code.</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfig({ ...config, provider_name: 'FONNTE' })}
+                      className={`flex-1 py-4 px-6 rounded-2xl border text-left transition-all ${
+                        config.provider_name !== 'LOCAL'
+                          ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-800'
+                          : 'border-slate-200 hover:border-slate-300 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Send className={`h-6 w-6 ${config.provider_name !== 'LOCAL' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 dark:text-slate-200">External API (BYOG)</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">Gunakan provider pihak ketiga seperti Fonnte atau WoWA.</p>
+                        </div>
+                      </div>
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="api_url" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Gateway API URL</Label>
-                  <Input 
-                    id="api_url"
-                    value={config.api_url} 
-                    onChange={(e) => setConfig({ ...config, api_url: e.target.value })}
-                    placeholder={"https://" + "api.fonnte.com/send"}
-                    className="h-12 rounded-xl border-slate-200"
-                  />
-                </div>
+                {config.provider_name === 'LOCAL' ? (
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Status Local Gateway</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Pantau status tautan sesi WhatsApp local Anda.</p>
+                      </div>
+                      <div>
+                        {localStatus === 'connected' ? (
+                          <Badge variant="success" className="gap-1 px-3 py-1 text-xs">
+                            <Wifi className="h-3 w-3" /> Connected
+                          </Badge>
+                        ) : localStatus === 'connecting' ? (
+                          <Badge variant="warning" className="gap-1 px-3 py-1 text-xs animate-pulse">
+                            <RefreshCw className="h-3 w-3 animate-spin" /> Connecting
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 px-3 py-1 text-xs bg-slate-100 dark:bg-slate-850">
+                            <WifiOff className="h-3 w-3 text-slate-500" /> Disconnected
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="api_token" className="text-[11px] font-black uppercase tracking-widest text-slate-400">API Token / Key</Label>
-                  <Input 
-                    id="api_token"
-                    type="password"
-                    value={config.api_token} 
-                    onChange={(e) => setConfig({ ...config, api_token: e.target.value })}
-                    placeholder="Masukkan API Key dari provider Anda"
-                    className="h-12 rounded-xl border-slate-200"
-                  />
-                </div>
+                    {localStatus === 'connected' && (
+                      <div className="p-4 bg-green-50 dark:bg-green-950/10 rounded-xl border border-green-100 dark:border-green-900/30 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                        <div>
+                          <p className="text-xs text-green-800 dark:text-green-400 font-bold">Nomor WhatsApp Terhubung</p>
+                          <p className="text-sm font-black text-green-900 dark:text-green-300 mt-1">+{connectedNumber}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="bg-white dark:bg-slate-900 text-red-600 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/20 border-slate-200 dark:border-slate-800 text-xs font-bold w-full sm:w-auto"
+                          onClick={handleDisconnectLocal}
+                        >
+                          Putuskan Koneksi
+                        </Button>
+                      </div>
+                    )}
+
+                    {localStatus === 'connecting' && (
+                      <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                        {qrCode ? (
+                          <div className="space-y-4 text-center max-w-sm">
+                            <div className="bg-white p-4 rounded-2xl inline-block border border-slate-200 shadow-md">
+                              <img src={qrCode} alt="WhatsApp Connection QR Code" className="w-56 h-56 mx-auto" />
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold leading-relaxed">
+                              Silakan buka WhatsApp di HP Anda &rarr; <b>Perangkat Tertaut (Linked Devices)</b> &rarr; <b>Tautkan Perangkat</b> lalu scan QR Code di atas.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 space-y-3">
+                            <Loader size="lg" />
+                            <p className="text-xs text-slate-500">Menyiapkan sesi & memuat QR Code dari server...</p>
+                          </div>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          className="text-slate-600 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold"
+                          onClick={handleDisconnectLocal}
+                        >
+                          Batal / Tutup Sesi
+                        </Button>
+                      </div>
+                    )}
+
+                    {localStatus === 'disconnected' && (
+                      <div className="text-center py-8 space-y-4 max-w-md mx-auto">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto border border-slate-200 dark:border-slate-700">
+                          <QrCode className="h-8 w-8 text-slate-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 dark:text-slate-200">WhatsApp Belum Ditautkan</p>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                            Hubungkan sistem dengan nomor WhatsApp sekolah untuk mengirimkan notifikasi absensi siswa secara langsung dari server.
+                          </p>
+                        </div>
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-green-600/20"
+                          onClick={handleConnectLocal}
+                        >
+                          Hubungkan WhatsApp
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-8 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="provider_name" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Provider Name</Label>
+                        <Input 
+                          id="provider_name"
+                          value={config.provider_name} 
+                          onChange={(e) => setConfig({ ...config, provider_name: e.target.value.toUpperCase() })}
+                          placeholder="Contoh: FONNTE, WOWA, CUSTOM"
+                          className="h-12 rounded-xl border-slate-200 focus:ring-green-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="sender_number" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Sender Number</Label>
+                        <Input 
+                          id="sender_number"
+                          value={config.sender_number || ''} 
+                          onChange={(e) => setConfig({ ...config, sender_number: e.target.value })}
+                          placeholder="628123456789"
+                          className="h-12 rounded-xl border-slate-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="api_url" className="text-[11px] font-black uppercase tracking-widest text-slate-400">Gateway API URL</Label>
+                      <Input 
+                        id="api_url"
+                        value={config.api_url} 
+                        onChange={(e) => setConfig({ ...config, api_url: e.target.value })}
+                        placeholder={"https://" + "api.fonnte.com/send"}
+                        className="h-12 rounded-xl border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="api_token" className="text-[11px] font-black uppercase tracking-widest text-slate-400">API Token / Key</Label>
+                      <Input 
+                        id="api_token"
+                        type="password"
+                        value={config.api_token} 
+                        onChange={(e) => setConfig({ ...config, api_token: e.target.value })}
+                        placeholder="Masukkan API Key dari provider Anda"
+                        className="h-12 rounded-xl border-slate-200"
+                      />
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
-
           <TabsContent value="templates" className="animate-in slide-in-from-bottom-2 duration-300">
             <Card className="border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xl">
               <CardHeader className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800">
@@ -270,9 +471,34 @@ const WhatsappSettingsPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-slate-800 dark:text-white">Uji Coba Pengiriman</h3>
-                    <p className="text-xs text-slate-500 mt-2">Pastikan API Key sudah disimpan sebelum melakukan pengetesan.</p>
+                    <p className="text-xs text-slate-500 mt-2">Kirim pesan uji coba untuk memverifikasi fungsionalitas pengiriman WhatsApp.</p>
                   </div>
                   
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-5 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 text-left w-full">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Gateway Aktif (Database)</p>
+                      <p className="font-bold text-sm text-slate-800 dark:text-slate-200 mt-0.5">
+                        {dbProviderName === 'LOCAL' ? 'Local Gateway (Scan QR)' : `External API (BYOG - ${dbProviderName || 'FONNTE'})`}
+                      </p>
+                    </div>
+                    {dbProviderName === 'LOCAL' ? (
+                      <Badge variant="success" className="px-2.5 py-0.5 text-[10px]">LOCAL GATEWAY</Badge>
+                    ) : (
+                      <Badge variant="outline" className="px-2.5 py-0.5 text-[10px] border-indigo-200 text-indigo-700 bg-indigo-50/30">EXTERNAL API</Badge>
+                    )}
+                  </div>
+
+                  {config.provider_name !== dbProviderName && (
+                    <Alert className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 rounded-xl shadow-sm text-left">
+                      <Info className="h-4 w-4 text-amber-600" />
+                      <AlertTitle className="text-amber-800 dark:text-amber-400 font-bold text-xs">Perubahan Belum Disimpan!</AlertTitle>
+                      <AlertDescription className="text-amber-600 dark:text-amber-300 text-[11px] leading-relaxed mt-1">
+                        Anda telah mengubah opsi gateway di tab <b>Koneksi</b> menjadi <b>{config.provider_name === 'LOCAL' ? 'Local Gateway' : 'External API'}</b>. 
+                        Silakan klik tombol <b>Simpan Konfigurasi WhatsApp</b> di bagian bawah halaman terlebih dahulu agar server pengujian menggunakan opsi terbaru Anda.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <div className="space-y-4 text-left">
                     <div className="space-y-2">
                       <Label htmlFor="test_number" className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nomor WA Tujuan</Label>

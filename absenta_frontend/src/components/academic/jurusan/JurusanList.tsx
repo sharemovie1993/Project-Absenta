@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { 
   Edit, 
@@ -66,7 +66,6 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
-  const { showToast } = useToast();
   const { can } = useAuth();
   
   // Check if user can perform CRUD operations
@@ -91,15 +90,15 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data jurusan', 'error');
+        toast.error('Gagal memuat data jurusan');
       }
     } catch (error) {
       console.error('Error fetching jurusans:', error);
-      showToast('Terjadi kesalahan saat memuat data jurusan', 'error');
+      toast.error('Terjadi kesalahan saat memuat data jurusan');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage]);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     fetchJurusans(1, debouncedSearchTerm);
@@ -135,18 +134,18 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       const response = await deleteJurusan(jurusan.id);
       
       if (response.success) {
-        showToast(response.message || 'Jurusan berhasil dihapus', 'success');
+        toast.success(response.message || 'Jurusan berhasil dihapus');
         fetchJurusans(currentPage, debouncedSearchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus jurusan', 'error');
+        toast.error(response.message || 'Gagal menghapus jurusan');
       }
     } catch (error: any) {
       console.error('Error deleting jurusan:', error);
-      showToast(error.response?.data?.message || 'Terjadi kesalahan saat menghapus jurusan', 'error');
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus jurusan');
     } finally {
       setDeleting(false);
     }
-  }, [showToast, fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
+  }, [fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
 
   const columns = useMemo(() => [
     { 

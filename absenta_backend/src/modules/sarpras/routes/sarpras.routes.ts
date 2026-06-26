@@ -29,7 +29,7 @@ export async function sarprasRoutes(fastify: any) {
 
   // --- Assets ---
   fastify.get('/assets', {
-    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+    preHandler: [requireCapability(['sarpras.inventory.view.list', 'sarpras.loans.request']), organizationalScopeMiddleware]
   }, assetController.getAssets.bind(assetController));
 
   fastify.get('/assets/:id', {

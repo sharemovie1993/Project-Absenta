@@ -107,7 +107,7 @@ export class TransitionService {
     for (const c of candidates) {
       const fromKelas = byId.get(c.kelas_id);
       const override = overrides.get(c.siswa_id);
-      let status: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' = override?.status || 'NAIK';
+      let status: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
       let toKelasId: string | null = null;
       if (status === 'TINGGAL') {
         toKelasId = c.kelas_id;
@@ -168,7 +168,7 @@ export class TransitionService {
     for (const c of candidates) {
       const fromKelas = byId.get(c.kelas_id);
       const override = overrides.get(c.siswa_id);
-      const status = override?.status || 'NAIK';
+      const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
       const toKelasId = status === 'TINGGAL' || status === 'LULUS' ? c.kelas_id : map.get(c.kelas_id) || null;
       if (!fromKelas || ((status === 'NAIK' || status === 'PINDAH') && !toKelasId)) {
         invalids.push(c.siswa_id);
@@ -190,7 +190,7 @@ export class TransitionService {
       let count = 0;
       for (const c of candidates) {
         const override = overrides.get(c.siswa_id);
-        const status = override?.status || 'NAIK';
+        const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
         
         if (status === 'LULUS') {
           // IDEAL GRADUATION: Keep them locked in their graduation year, preserve their graduation class, and set status to LULUS

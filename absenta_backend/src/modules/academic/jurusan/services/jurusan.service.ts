@@ -248,6 +248,22 @@ export class JurusanService {
       },
     });
 
+    // Automatically update the default Sarpras Location name/abbr if name/singkatan/kode changes
+    if (input.nama !== undefined || input.singkatan !== undefined || input.kode !== undefined) {
+      const abbr = updatedJurusan.singkatan || updatedJurusan.kode || updatedJurusan.nama.substring(0, 5).toUpperCase();
+      try {
+        await prisma.sarprasLocation.updateMany({
+          where: { unit_id: jurusanId, tenant_id: existingJurusan.tenant_id },
+          data: {
+            nama: `Lab Utama ${abbr}`,
+            deskripsi: `Lokasi inventaris utama untuk jurusan ${updatedJurusan.nama}`
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to update automatic Sarpras Location for Jurusan:', err);
+      }
+    }
+
     return updatedJurusan as JurusanResponse;
   }
 
@@ -288,6 +304,16 @@ export class JurusanService {
 
     if (existingJurusan._count.organizationalAssigns > 0) {
       throw new Error('Tidak dapat menghapus jurusan yang masih terhubung dengan Penugasan Organisasi');
+    }
+
+    // Soft-delete the corresponding location
+    try {
+      await prisma.sarprasLocation.updateMany({
+        where: { unit_id: jurusanId, tenant_id: existingJurusan.tenant_id },
+        data: { deleted_at: new Date() }
+      });
+    } catch (err) {
+      console.warn('Failed to delete automatic Sarpras Location for Jurusan:', err);
     }
 
     await prisma.jurusan.delete({

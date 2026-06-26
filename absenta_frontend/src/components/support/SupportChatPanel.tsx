@@ -19,6 +19,7 @@ import {
   type SupportQuickReply,
   getCategoryLabel
 } from '../../api/support-ticket.api';
+import { type User as AuthUser } from '../../store/authStore';
 import SupportStatusBadge from './SupportStatusBadge';
 import SupportPriorityBadge from './SupportPriorityBadge';
 import SupportChatBubble from './SupportChatBubble';
@@ -28,7 +29,7 @@ export interface SupportChatPanelProps {
   selectedTicket: SupportTicket;
   messages: SupportTicketMessage[];
   newMessageIds: Set<string>;
-  currentAgent: any;
+  currentAgent: AuthUser | null;
   liveUnreadCount: number;
   setLiveUnreadCount: (count: number) => void;
   isScrollAtBottom: boolean;

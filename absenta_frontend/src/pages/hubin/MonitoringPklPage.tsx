@@ -81,7 +81,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
                    (sub?.Plan as Record<string, unknown>)?.features_json || 
                    (sub?.plan as Record<string, unknown>)?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('HUBIN');
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
 
   // Queries
   const { data: penempatanData, isLoading, refetch } = useQuery({

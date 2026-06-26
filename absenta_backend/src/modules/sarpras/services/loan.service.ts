@@ -5,6 +5,7 @@ import { activityLogService } from '../../activity/services/activity-log.service
 export class LoanService {
   static async requestLoan(tenantId: string, userId: string, data: {
     asset_id: string;
+    peminjam_id?: string;
     tanggal_kembali_plan?: Date;
     catatan?: string;
   }) {
@@ -34,7 +35,7 @@ export class LoanService {
       data: {
         tenant_id: tenantId,
         asset_id: data.asset_id,
-        peminjam_id: userId,
+        peminjam_id: data.peminjam_id || userId,
         status: 'PENDING',
         tanggal_kembali_plan: data.tanggal_kembali_plan,
         catatan: data.catatan
@@ -63,6 +64,20 @@ export class LoanService {
     });
 
     if (!loan) throw new Error('Loan not found');
+
+    // Stock check when approving or activating a loan that wasn't approved/active before
+    if ((status === 'APPROVED' || status === 'ACTIVE') && !['APPROVED', 'ACTIVE'].includes(loan.status)) {
+      const activeLoansCount = await prisma.sarprasLoan.count({
+        where: {
+          asset_id: loan.asset_id,
+          status: { in: ['APPROVED', 'ACTIVE'] }
+        }
+      });
+
+      if (activeLoansCount >= loan.Asset.jumlah) {
+        throw new Error('Aset sudah sepenuhnya dipinjam (stok tidak mencukupi)');
+      }
+    }
 
     if (scope && !scope.tenant_wide) {
       if (loan.Asset.Location?.unit_id && (!scope.unit_ids || !scope.unit_ids.includes(loan.Asset.Location.unit_id))) {

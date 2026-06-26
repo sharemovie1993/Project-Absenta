@@ -38,7 +38,17 @@ export class AuthorizationService {
     }
 
     if (directFromUser.length > 0) {
-      return this.unique(directFromUser);
+      const resolved = this.unique(directFromUser);
+      if (roleNameFromUser === 'SISWA') {
+        const student = await prisma.siswa.findFirst({
+          where: { user_id: userId },
+          select: { status: true }
+        });
+        if (student?.status?.toUpperCase() !== 'LULUS') {
+          return resolved.filter(c => c !== 'hubin.self.tracer' && c !== 'hubin.self.bkk');
+        }
+      }
+      return resolved;
     }
 
     const user: any = await prisma.user.findUnique({
@@ -70,7 +80,18 @@ export class AuthorizationService {
     const orgCaps = await organizationalAuthorizationEngine.resolveOrganizationalCapabilities(userId);
     orgCaps.forEach((c) => caps.add(String(c)));
 
-    return Array.from(caps);
+    const resolved = Array.from(caps);
+    if (roleName === 'SISWA') {
+      const student = await prisma.siswa.findFirst({
+        where: { user_id: userId },
+        select: { status: true }
+      });
+      if (student?.status?.toUpperCase() !== 'LULUS') {
+        return resolved.filter(c => c !== 'hubin.self.tracer' && c !== 'hubin.self.bkk');
+      }
+    }
+
+    return resolved;
   }
 
   async isUserAuthorized(
@@ -91,6 +112,16 @@ export class AuthorizationService {
       .concat(this.parseCapabilityList(user?.Role?.rolePermissions?.map((rp: any) => rp?.Permission?.id)));
     if (fastCaps.length > 0) {
       const set = new Set<string>(fastCaps.map((c) => String(c)));
+      if (roleName === 'SISWA' && (set.has('hubin.self.tracer') || set.has('hubin.self.bkk'))) {
+        const student = await prisma.siswa.findFirst({
+          where: { user_id: userId },
+          select: { status: true }
+        });
+        if (student?.status?.toUpperCase() !== 'LULUS') {
+          set.delete('hubin.self.tracer');
+          set.delete('hubin.self.bkk');
+        }
+      }
       if (required.some((c) => set.has(c))) return { allowed: true };
     }
 

@@ -1025,13 +1025,7 @@ export class SesiService {
   }
 
   async checkPetugasActive(userId: string, _tenantId: string, org: any) {
-    // 1. Check by Capability (RBAC)
-    const canScan = await authorizationService.hasUserPermission(userId, 'attendance.scan');
-    const canManageSessions = await authorizationService.hasUserPermission(userId, 'attendance.sessions.update.attendance');
-
-    if (canScan || canManageSessions) return { active: true };
-
-    // 2. Check by Organizational Scope (Petugas Siswa)
+    // 1. Check by Organizational Scope (Petugas Siswa / Class-restricted officers)
     if (org && org.tenant_wide !== true && Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
       // Fetch Class Names for better UX in frontend
       const kelasData = await prisma.kelas.findMany({
@@ -1043,10 +1037,31 @@ export class SesiService {
       return { 
         active: true, 
         managed_kelas_ids: org.kelas_ids,
-        managed_kelas_names: kelasData.map(k => k.nama_kelas).join(', '),
+        managed_kelas_names: kelasData.map((k: { id: string; nama_kelas: string }) => k.nama_kelas).join(', '),
         is_petugas_kelas: true 
       };
+    }
 
+    // 2. Check by Capability (RBAC)
+    const canScan = await authorizationService.hasUserPermission(userId, 'attendance.scan');
+    const canManageSessions = await authorizationService.hasUserPermission(userId, 'attendance.sessions.update.attendance');
+    const canCreateSessions = await authorizationService.hasUserPermission(userId, 'attendance.sessions.create');
+
+    if (canScan) return { active: true };
+    if (canManageSessions) return { active: true };
+    // PETUGAS_KELAS has sessions.create but not sessions.update.attendance
+    // Also include managed_kelas_ids from org scope if available
+    if (canCreateSessions) {
+      const base: any = { active: true, is_petugas_kelas: true };
+      if (org && Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
+        const kelasData = await prisma.kelas.findMany({
+          where: { id: { in: org.kelas_ids } },
+          select: { id: true, nama_kelas: true }
+        });
+        base.managed_kelas_ids = org.kelas_ids;
+        base.managed_kelas_names = kelasData.map((k: { id: string; nama_kelas: string }) => k.nama_kelas).join(', ');
+      }
+      return base;
     }
 
     return { active: false };

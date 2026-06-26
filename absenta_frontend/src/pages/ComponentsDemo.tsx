@@ -10,8 +10,7 @@ import {
   InfoAlert,
   AlertContainer
 } from '@/components/ui/Alert';
-import { useToast } from '@/hooks/useToast';
-import { ToastContainer } from '@/components/ui/Toast';
+import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Edit, Trash2, Eye } from 'lucide-react';
@@ -23,7 +22,7 @@ const ComponentsDemo: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showPageLoader, setShowPageLoader] = useState(false);
   const [isButtonLoading, setIsButtonLoading] = useState(false);
-  const { showToast, toasts, removeToast, clearAllToasts } = useToast();
+
 
   // Sample data for table
   const tableData = [
@@ -64,7 +63,10 @@ const ComponentsDemo: React.FC = () => {
       info: 'Here is some important information for you.',
     };
 
-    showToast(messages[type], type);
+    if (type === 'success') toast.success(messages[type]);
+    else if (type === 'error') toast.error(messages[type]);
+    else if (type === 'warning') toast(messages[type], { icon: '⚠️' });
+    else toast(messages[type], { icon: 'ℹ️' });
   };
 
   const handleButtonLoading = () => {
@@ -274,7 +276,7 @@ const ComponentsDemo: React.FC = () => {
               <Button onClick={() => handleToastDemo('info')} variant="secondary">
                 Info Toast
               </Button>
-              <Button onClick={clearAllToasts} variant="outline">
+              <Button onClick={() => toast.dismiss()} variant="outline">
                 Clear All
               </Button>
             </div>
@@ -318,7 +320,7 @@ const ComponentsDemo: React.FC = () => {
       </Card>
 
       {/* Toast Container */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
 
       {/* Page Loader */}
       {showPageLoader && (

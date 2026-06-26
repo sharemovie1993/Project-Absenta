@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 import {
@@ -15,22 +15,50 @@ import {
   LayoutGrid,
   Settings,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  ClipboardList,
+  Network,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
+import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
+import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/prep-checklist.api';
 
 const AcademicDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<AcademicStats | null>(null);
+  const [checklistData, setChecklistData] = useState<PrepChecklistData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const academicModules = [
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [statsRes, checklistRes] = await Promise.all([
+          getAcademicStats(),
+          getPrepChecklist()
+        ]);
+        if (statsRes.success) setStats(statsRes.data);
+        if (checklistRes.success) setChecklistData(checklistRes.data);
+      } catch (error) {
+        console.error('Failed to load academic dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const masterModules = [
     {
       title: 'Tahun Pelajaran',
       description: 'Kelola kalender & periode akademik',
       icon: Calendar,
       path: '/academic/tahun-pelajaran',
       gradient: 'from-rose-500 to-pink-600',
-      badge: 'Master'
+      color: 'text-rose-500 bg-rose-50 dark:bg-rose-950/30'
     },
     {
       title: 'Semester',
@@ -38,57 +66,85 @@ const AcademicDashboard: React.FC = () => {
       icon: Clock,
       path: '/academic/semester',
       gradient: 'from-indigo-500 to-blue-600',
-      badge: 'Master'
+      color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30'
     },
     {
       title: 'Jurusan',
       description: 'Program studi & kompetensi keahlian',
       icon: School,
       path: '/academic/jurusan',
-      gradient: 'from-emerald-500 to-teal-600'
+      gradient: 'from-emerald-500 to-teal-600',
+      color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30'
     },
     {
       title: 'Mata Pelajaran',
       description: 'Kurikulum & katalog pelajaran',
       icon: BookOpen,
       path: '/academic/mapel',
-      gradient: 'from-amber-500 to-orange-600'
+      gradient: 'from-amber-500 to-orange-600',
+      color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/30'
     },
     {
       title: 'Data Guru',
       description: 'Profil pendidik & tenaga kependidikan',
       icon: Users,
       path: '/academic/guru',
-      gradient: 'from-blue-500 to-cyan-600'
+      gradient: 'from-blue-500 to-cyan-600',
+      color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/30'
     },
     {
       title: 'Data Kelas',
       description: 'Manajemen rombongan belajar',
       icon: Award,
       path: '/academic/kelas',
-      gradient: 'from-purple-500 to-violet-600'
+      gradient: 'from-purple-500 to-violet-600',
+      color: 'text-purple-500 bg-purple-50 dark:bg-purple-950/30'
     },
+    {
+      title: 'Struktur Organisasi',
+      description: 'Bagan organisasi & penugasan staf',
+      icon: Network,
+      path: '/academic/struktur-organisasi',
+      gradient: 'from-cyan-500 to-blue-600',
+      color: 'text-cyan-500 bg-cyan-50 dark:bg-cyan-950/30'
+    }
+  ];
+
+  const workflowModules = [
     {
       title: 'Registrasi Siswa',
       description: 'Aktivasi & pendaftaran semesteran',
       icon: GraduationCap,
       path: '/academic/registrasi-siswa',
       gradient: 'from-green-500 to-emerald-600',
+      color: 'text-green-500 bg-green-50 dark:bg-green-950/30',
       featured: true
+    },
+    {
+      title: 'Persiapan & Cetak TU',
+      description: 'Checklist Tahun Baru & Cetak Administrasi',
+      icon: ClipboardList,
+      path: '/academic/prep-checklist',
+      gradient: 'from-blue-600 to-indigo-700',
+      color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30',
+      featured: true,
+      badge: 'TU'
     },
     {
       title: 'Transisi Siswa',
       description: 'Proses kenaikan & kelulusan massal',
       icon: LayoutGrid,
       path: '/academic/transition',
-      gradient: 'from-indigo-600 to-purple-700'
+      gradient: 'from-indigo-600 to-purple-700',
+      color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30'
     },
     {
       title: 'Backup & Seed',
       description: 'Arsip & sinkronisasi data sistem',
       icon: Database,
       path: '/academic/backup',
-      gradient: 'from-slate-500 to-slate-700'
+      gradient: 'from-slate-500 to-slate-700',
+      color: 'text-slate-500 bg-slate-50 dark:bg-slate-950/30'
     }
   ];
 
@@ -96,6 +152,7 @@ const AcademicDashboard: React.FC = () => {
     <AcademicPageLayout
       title="Pusat Kendali Akademik"
       description="Kelola seluruh infrastruktur data dan operasional pendidikan dalam satu dashboard terintegrasi."
+      isLoading={isLoading}
       instruction={{
         title: "Panduan Modul Akademik",
         description: "Gunakan modul ini untuk membangun pondasi data sekolah. Pastikan data master (Tahun & Semester) diatur terlebih dahulu.",
@@ -106,110 +163,230 @@ const AcademicDashboard: React.FC = () => {
         ]
       }}
     >
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden space-y-8">
         {/* Decorative Background Elements */}
         <div className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 -mb-20 -ml-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6 lg:p-10 relative z-10">
-          {academicModules.map((module, index) => (
+        {/* 1. Header Banner: Active Period & Prep Checklist Progress */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 lg:p-8 shadow-xl relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute left-1/3 bottom-0 w-60 h-60 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <span className="text-[9px] font-black tracking-widest uppercase text-indigo-400 bg-indigo-500/10 px-3.5 py-1.5 rounded-full border border-indigo-500/20">
+                Tahun Ajaran Aktif
+              </span>
+              <h2 className="text-3xl lg:text-4xl font-black tracking-tight uppercase">
+                {stats?.tahun_pelajaran?.tahun || 'Belum Diatur'}
+              </h2>
+              <p className="text-slate-300 text-sm font-medium">
+                Semester {stats?.semester?.nama_semester || 'Belum Diatur'}
+              </p>
+            </div>
+            
+            {checklistData && (
+              <div className="w-full md:w-80 bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-md">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-300">Kesiapan Tahun Pelajaran</span>
+                  <span className="text-sm font-black text-indigo-400">{checklistData.completion_percentage}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-400 to-indigo-400 transition-all duration-1000" 
+                    style={{ width: `${checklistData.completion_percentage}%` }} 
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                  {checklistData.completion_percentage === 100 
+                    ? "Semua checklist konfigurasi sistem sudah selesai!" 
+                    : `${checklistData.checklist.filter(item => !item.completed).length} langkah setup tersisa.`}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2. Grid metrics cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Tenaga Pendidik",
+              value: stats?.total_guru || 0,
+              subtitle: "Total Guru & Staf",
+              icon: Users,
+              color: "text-blue-500",
+              bgColor: "bg-blue-50 dark:bg-blue-950/50",
+              onClick: () => navigate('/academic/guru')
+            },
+            {
+              label: "Peserta Didik",
+              value: stats?.total_siswa || 0,
+              subtitle: "Siswa Aktif Terdaftar",
+              icon: GraduationCap,
+              color: "text-emerald-500",
+              bgColor: "bg-emerald-50 dark:bg-emerald-950/50",
+              onClick: () => navigate('/academic/siswa')
+            },
+            {
+              label: "Rombongan Belajar",
+              value: stats?.total_kelas || 0,
+              subtitle: `${stats?.total_jurusan || 0} Bidang Kompetensi`,
+              icon: School,
+              color: "text-purple-500",
+              bgColor: "bg-purple-50 dark:bg-purple-950/50",
+              onClick: () => navigate('/academic/kelas')
+            },
+            {
+              label: "Mata Pelajaran",
+              value: stats?.total_mapel || 0,
+              subtitle: "Kurikulum Terdaftar",
+              icon: BookOpen,
+              color: "text-amber-500",
+              bgColor: "bg-amber-50 dark:bg-amber-950/50",
+              onClick: () => navigate('/academic/mapel')
+            }
+          ].map((card, idx) => (
             <motion.div
-              key={module.path}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.05, duration: 0.5 }}
-              whileHover={{ y: -5 }}
+              key={idx}
+              whileHover={{ y: -4 }}
+              onClick={card.onClick}
+              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group flex flex-col justify-between"
             >
-              <Card
-                onClick={() => navigate(module.path)}
-                className={`group relative h-full overflow-hidden border-slate-200/60 dark:border-slate-800/60 hover:border-transparent transition-all duration-500 cursor-pointer rounded-3xl shadow-sm hover:shadow-2xl active:scale-[0.98] bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm ${module.featured ? 'lg:scale-105 z-10' : ''}`}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${module.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-
-                <CardContent className="relative z-10 p-8 h-full flex flex-col justify-between group-hover:bg-transparent transition-colors duration-500">
-                  <div>
-                    <div className="flex justify-between items-start mb-8">
-                      <div className={`w-16 h-16 rounded-xl bg-gradient-to-br ${module.gradient} flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:bg-white group-hover:text-slate-900 group-hover:shadow-white/20 transition-all duration-500`}>
-                        <module.icon className="h-8 w-8" />
-                      </div>
-                      {module.badge && (
-                        <Badge variant="outline" className="text-[9px] font-black tracking-widest uppercase py-1 border-slate-200 dark:border-slate-800 group-hover:border-white/40 group-hover:text-white">
-                          {module.badge}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mb-2 group-hover:text-white transition-colors duration-500">
-                      {module.title}
-                    </h3>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-white/80 transition-colors duration-500 leading-relaxed">
-                      {module.description}
-                    </p>
-                  </div>
-
-                  <div className="mt-10 flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center group-hover:border-white/30 transition-colors duration-500">
-                      <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-white" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-white opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-500">
-                      Buka Modul
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="flex justify-between items-start mb-4">
+                <div className={`w-10 h-10 rounded-xl ${card.bgColor} flex items-center justify-center ${card.color} group-hover:scale-110 transition-transform duration-300`}>
+                  <card.icon size={20} />
+                </div>
+                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  {card.label}
+                </span>
+              </div>
+              <div>
+                <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{card.value}</div>
+                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 group-hover:text-blue-500 transition-colors">
+                  <span>{card.subtitle}</span>
+                  <ChevronRight size={10} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
 
-        <div className="px-6 lg:px-10 pb-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="bg-slate-900 dark:bg-slate-950 rounded-[3rem] p-10 lg:p-14 relative overflow-hidden group shadow-2xl shadow-blue-500/10"
-          >
-            <div className="absolute right-0 top-0 w-2/3 h-full bg-gradient-to-l from-blue-600/20 via-purple-600/10 to-transparent blur-3xl" />
-            <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
-
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-              <div className="space-y-8">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/20">
-                    <Settings className="w-6 h-6 animate-spin-slow" />
-                  </div>
-                  <Badge variant="outline" className="text-[10px] font-black text-blue-400 border-blue-500/30 tracking-widest uppercase px-4 py-1.5 rounded-full bg-blue-500/5">Konfigurasi Sistem Lanjutan</Badge>
-                </div>
-                <h2 className="text-4xl font-black text-white uppercase tracking-tight leading-[0.9]">
-                  Optimalkan Infrastruktur <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 italic">Akademik Sekolah</span>
-                </h2>
-                <p className="text-slate-400 text-base leading-relaxed max-w-md">
-                  Pastikan seluruh sinkronisasi data siswa dan pemetaan kelas dilakukan secara berkala untuk akurasi laporan absensi dan jurnal mengajar yang valid secara hukum.
-                </p>
-                <Button variant="outline" className="rounded-xl border-slate-700 text-white hover:bg-white hover:text-slate-900 font-bold uppercase tracking-widest text-[10px] h-12 px-8">
-                  Pelajari Selengkapnya
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-5">
-                {[
-                  { label: 'Otomatisasi Semester', color: 'bg-emerald-500', icon: Sparkles },
-                  { label: 'Sinkronisasi Cloud', color: 'bg-blue-500', icon: RefreshCw },
-                  { label: 'Audit Log Sistem', color: 'bg-purple-500', icon: ShieldCheck },
-                  { label: 'Pemulihan Kilat', color: 'bg-orange-500', icon: Database }
-                ].map((item, i) => (
+        {/* 3. Main content grid split */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Panel: Module Navigation Grouped */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Group 1: Data Master */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                <Database size={14} /> Data Master & Referensi
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {masterModules.map((mod, index) => (
                   <motion.div
-                    key={i}
-                    whileHover={{ y: -5, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                    className="bg-white/5 border border-white/10 p-6 rounded-xl transition-all group/item"
+                    key={mod.path}
+                    whileHover={{ x: 4 }}
+                    onClick={() => navigate(mod.path)}
+                    className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 hover:border-slate-200 dark:hover:border-slate-700/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer flex items-center gap-4 group"
                   >
-                    <div className={`w-3 h-3 rounded-full ${item.color} mb-4 shadow-[0_0_15px_rgba(0,0,0,0.5)] shadow-current`} />
-                    <p className="text-[11px] font-black text-white uppercase tracking-[0.15em] leading-tight">{item.label}</p>
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${mod.color} shadow-sm shadow-current/5`}>
+                      <mod.icon size={22} className="group-hover:rotate-6 transition-transform duration-300" />
+                    </div>
+                    <div className="space-y-0.5 truncate">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {mod.title}
+                      </h4>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[220px]">
+                        {mod.description}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="ml-auto text-slate-300 group-hover:translate-x-1 transition-all" />
                   </motion.div>
                 ))}
               </div>
             </div>
-          </motion.div>
+
+            {/* Group 2: Operasional */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 px-1">
+                <Sparkles size={14} /> Alur Kerja & Operasional
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {workflowModules.map((mod, index) => (
+                  <motion.div
+                    key={mod.path}
+                    whileHover={{ x: 4 }}
+                    onClick={() => navigate(mod.path)}
+                    className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer flex items-center gap-4 group ${
+                      mod.featured 
+                        ? 'bg-gradient-to-br from-indigo-50/40 to-blue-50/10 border-indigo-100 dark:from-indigo-950/20 dark:to-blue-950/5 dark:border-indigo-900/40' 
+                        : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800/80 hover:border-slate-200 dark:hover:border-slate-700/80'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${mod.color} shadow-sm shadow-current/5`}>
+                      <mod.icon size={22} className="group-hover:rotate-6 transition-transform duration-300" />
+                    </div>
+                    <div className="space-y-0.5 truncate">
+                      <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-2">
+                        {mod.title}
+                        {mod.featured && (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[220px]">
+                        {mod.description}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="ml-auto text-slate-300 group-hover:translate-x-1 transition-all" />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel: Interactive Checklist & Summary */}
+          <div className="space-y-6">
+            {checklistData && (
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-3xl p-6 shadow-sm">
+                <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-50 dark:border-slate-800/80 pb-3">
+                  <ClipboardList size={18} className="text-indigo-500" /> Checklist Kesiapan
+                </h3>
+                
+                <div className="space-y-4">
+                  {checklistData.checklist.map((item, idx) => (
+                    <div 
+                      key={item.key}
+                      onClick={() => navigate(item.action_path)}
+                      className="flex items-start gap-3 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {item.completed ? (
+                          <CheckCircle2 size={16} className="text-emerald-500 fill-emerald-500/10" />
+                        ) : (
+                          <AlertTriangle size={16} className="text-amber-500 fill-amber-500/10" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {idx + 1}. {item.label}
+                        </h4>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-normal">
+                          {item.description}
+                        </p>
+                      </div>
+                      <ChevronRight size={14} className="ml-auto text-slate-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all self-center shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AcademicPageLayout>

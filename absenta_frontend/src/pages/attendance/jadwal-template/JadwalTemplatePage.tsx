@@ -23,7 +23,7 @@ import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api'
 import { getSemesterList } from '../../../api/academic/semester.api';
 import { LogService } from '../../../utils/LogService';
 import useConfirm from '../../../hooks/useConfirm';
-import { useToast } from '../../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTemplateList = lazy(() => import('../../../components/attendance/jadwal-template/JadwalTemplateList').then(m => ({ default: m.JadwalTemplateList })));
@@ -35,10 +35,11 @@ export default function JadwalTemplatePage() {
   const { user, isLoading, can } = useAuth();
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
-  const { success, error } = useToast();
   
   // ── 1. Role & Capability Detection ──────────────────────────────────────────
-  const isGuru = user?.role?.name === 'GURU';
+  const roleName = user?.role?.name || '';
+  const isSiswa = roleName === 'SISWA';
+  const isGuru = roleName === 'GURU';
   const myGuruId = user?.guru_profile?.id;
   const myKelasId = (user?.guru_profile as { wali_kelas_di?: { id: string } })?.wali_kelas_di?.id;
   const isWaliKelas = !!myKelasId;
@@ -72,15 +73,21 @@ export default function JadwalTemplatePage() {
     }
   }, [viewMode, isGuru, isWaliKelas, myGuruId, myKelasId]);
 
-  const { absensiMode, petugasChecked } = useGerbangModeAndRole({
+  const { absensiMode, petugasChecked, managedKelasIds } = useGerbangModeAndRole({
     user,
     tenantId: user?.tenant_id,
   });
 
+  // For SISWA PETUGAS_KELAS: inject their managed kelas as default if no kelas_id in URL
+  const defaultKelasId = useMemo(() => {
+    if (isSiswa && managedKelasIds && managedKelasIds.length > 0 && !selectedKelasId) {
+      return managedKelasIds[0];
+    }
+    return selectedKelasId;
+  }, [isSiswa, managedKelasIds, selectedKelasId]);
+
   const features = (subscription as { features?: string[] })?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
-  const roleName = user?.role?.name || '';
-  const isSiswa = roleName === 'SISWA';
 
   // Pillar 4: AbortController for useEffect cleanup
   React.useEffect(() => {
@@ -115,7 +122,9 @@ export default function JadwalTemplatePage() {
 
   React.useEffect(() => {
     if (viewMode !== 'grid' || !selectedTahunId || !selectedSemesterId) return;
-    if (!selectedKelasId && !selectedGuruId && user?.role?.name !== 'GURU') return;
+    
+    const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
+    if (!targetKelasId && !selectedGuruId && user?.role?.name !== 'GURU') return;
 
     const controller = new AbortController();
 
@@ -123,7 +132,7 @@ export default function JadwalTemplatePage() {
       setLoadingJadwal(true);
       try {
         const res = await getJadwalTemplate({
-          kelas_id: selectedKelasId || undefined,
+          kelas_id: targetKelasId || undefined,
           guru_id: selectedGuruId || undefined,
           tahun_pelajaran_id: selectedTahunId,
           semester_id: selectedSemesterId
@@ -144,7 +153,7 @@ export default function JadwalTemplatePage() {
     fetchData();
 
     return () => controller.abort();
-  }, [viewMode, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey]);
+  }, [viewMode, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa]);
 
   // Pillar 2: Memoize callbacks
   const handleEditSlot = useCallback((item: JadwalTemplate) => {
@@ -183,10 +192,10 @@ export default function JadwalTemplatePage() {
       try {
         await deleteJadwalTemplate(id);
         setRefreshKey(k => k + 1);
-        success('Jadwal berhasil dihapus');
+        toast.success('Jadwal berhasil dihapus');
       } catch (err) {
         LogService.error('Delete failed', err);
-        error('Gagal menghapus jadwal');
+        toast.error('Gagal menghapus jadwal');
       }
     }
   }, [canManage, confirm]);
@@ -213,7 +222,7 @@ export default function JadwalTemplatePage() {
             )}
         </div>
 
-        {isGuru && canManage && (
+        {canManage && (
           <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <Button 
                   variant={viewMode === 'grid' ? 'primary' : 'ghost'} 
@@ -237,10 +246,10 @@ export default function JadwalTemplatePage() {
         )}
       </div>
 
-      <SectionCard>
+      <SectionCard fullWidth>
         <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
           {(viewMode === 'list' && canManage) ? (
-              <JadwalTemplateList kelasId={selectedKelasId} />
+              <JadwalTemplateList kelasId={defaultKelasId} />
           ) : (
               <div className="space-y-6">
                   {loadingJadwal ? (
@@ -258,7 +267,7 @@ export default function JadwalTemplatePage() {
         </Suspense>
       </SectionCard>
     </div>
-  ), [viewMode, canManage, selectedKelasId, loadingJadwal, jadwal, handlePrint, handleEditSlot, handleDeleteSlot]);
+  ), [viewMode, canManage, selectedKelasId, defaultKelasId, loadingJadwal, jadwal, handlePrint, handleEditSlot, handleDeleteSlot]);
 
   if (isLoading || ((isSiswa && !petugasChecked && !absensiMode) || (!isSiswa && !absensiMode))) {
     return <div className="flex justify-center py-20"><Loader size="lg" /></div>;

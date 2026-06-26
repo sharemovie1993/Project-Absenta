@@ -26,7 +26,7 @@ import { getKelasList, deleteKelas, updateKelas } from '../../../api/academic/ke
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Kelas, Jurusan } from '../../../types/academic';
 import { useAuth } from '../../../hooks/useAuth';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
 
@@ -76,7 +76,6 @@ const KelasList = React.memo<KelasListProps>(({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
 
-  const { showToast } = useToast();
   const { user, can } = useAuth();
   
   // Check if user can perform CRUD operations
@@ -136,15 +135,15 @@ const KelasList = React.memo<KelasListProps>(({
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data kelas', 'error');
+        toast.error('Gagal memuat data kelas');
       }
     } catch (error) {
       console.error('Error fetching kelas:', error);
-      showToast('Terjadi kesalahan saat memuat data kelas', 'error');
+      toast.error('Terjadi kesalahan saat memuat data kelas');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage, filterTingkat, filterJurusan, filterStatus]);
+  }, [itemsPerPage, filterTingkat, filterJurusan, filterStatus]);
 
   // Toggle active status handler
   const handleToggleActive = async (kelas: Kelas) => {
@@ -153,15 +152,15 @@ const KelasList = React.memo<KelasListProps>(({
       const targetState = !kelas.is_active;
       const response = await updateKelas(kelas.id, { is_active: targetState });
       if (response.success) {
-        showToast(`Kelas ${kelas.nama_kelas} berhasil ${targetState ? 'diaktifkan' : 'dinonaktifkan'}.`, 'success');
+        toast.success(`Kelas ${kelas.nama_kelas} berhasil ${targetState ? 'diaktifkan' : 'dinonaktifkan'}.`);
         // Optimistic UI update
         setKelasList(prev => prev.map(k => k.id === kelas.id ? { ...k, is_active: targetState } : k));
       } else {
-        showToast(response.message || 'Gagal mengubah status kelas', 'error');
+        toast.error(response.message || 'Gagal mengubah status kelas');
       }
     } catch (err: any) {
       const errMsg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat mengubah status kelas';
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     } finally {
       setTogglingId(null);
     }
@@ -241,19 +240,19 @@ const KelasList = React.memo<KelasListProps>(({
       const response = await deleteKelas(kelas.id);
       
       if (response.success) {
-        showToast(response.message || 'Kelas berhasil dihapus', 'success');
+        toast.success(response.message || 'Kelas berhasil dihapus');
         fetchKelas(currentPage, debouncedSearchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus kelas', 'error');
+        toast.error(response.message || 'Gagal menghapus kelas');
       }
     } catch (error: any) {
       console.error('Error deleting kelas:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat menghapus kelas';
-      showToast(errorMessage, 'error');
+      toast.error(errorMessage);
     } finally {
       setDeleting(false);
     }
-  }, [showToast, fetchKelas, currentPage, debouncedSearchTerm, confirm]);
+  }, [fetchKelas, currentPage, debouncedSearchTerm, confirm]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -279,9 +278,9 @@ const KelasList = React.memo<KelasListProps>(({
       });
 
       if (failed.length > 0) {
-        showToast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, 'warning');
+        toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
       } else {
-        showToast(`Berhasil menghapus ${succeeded.length} kelas`, 'success');
+        toast.success(`Berhasil menghapus ${succeeded.length} kelas`);
       }
       
       const next = new Set<string>(selectedIds);
@@ -290,11 +289,11 @@ const KelasList = React.memo<KelasListProps>(({
       fetchKelas(currentPage, searchTerm);
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
-      showToast(msg, 'error');
+      toast.error(msg);
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedIds, showToast, fetchKelas, currentPage, searchTerm]);
+  }, [selectedIds, fetchKelas, currentPage, searchTerm]);
 
   // Table columns configuration
   const columns = useMemo(() => [

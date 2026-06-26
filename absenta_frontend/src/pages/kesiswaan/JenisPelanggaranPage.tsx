@@ -6,7 +6,7 @@ import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import { Label } from '../../components/ui/Label';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
 import type { JenisPelanggaran } from '../../api/kesiswaan.api';
@@ -35,7 +35,7 @@ export default function JenisPelanggaranPage() {
     nama_pelanggaran: '',
     poin: 5
   });
-  const { error, success } = useToast();
+
   const confirm = useConfirm();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -54,11 +54,11 @@ export default function JenisPelanggaranPage() {
       setCurrentPage(page);
     } catch (err) {
       console.error(err);
-      error('Gagal mengambil data referensi');
+      toast.error('Gagal mengambil data referensi');
     } finally {
       setLoading(false);
     }
-  }, [error, itemsPerPage]);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     fetchData(1);
@@ -80,19 +80,19 @@ export default function JenisPelanggaranPage() {
     try {
       if (selectedId) {
         await kesiswaanApi.updateJenisPelanggaran(selectedId, formData);
-        success('Data berhasil diperbarui');
+        toast.success('Data berhasil diperbarui');
       } else {
         await kesiswaanApi.createJenisPelanggaran(formData);
-        success('Data berhasil disimpan');
+        toast.success('Data berhasil disimpan');
       }
       setModalOpen(false);
       fetchData(currentPage);
       resetForm();
     } catch (err) {
       console.error(err);
-      error('Gagal menyimpan data');
+      toast.error('Gagal menyimpan data');
     }
-  }, [selectedId, formData, error, success, fetchData, currentPage]);
+  }, [selectedId, formData, fetchData, currentPage]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -124,13 +124,13 @@ export default function JenisPelanggaranPage() {
     if (ok) {
       try {
         await kesiswaanApi.deleteJenisPelanggaran(id);
-        success('Data berhasil dihapus');
+        toast.success('Data berhasil dihapus');
         fetchData(currentPage);
       } catch (err) {
-        error('Gagal menghapus data');
+        toast.error('Gagal menghapus data');
       }
     }
-  }, [error, success, fetchData, currentPage, confirm]);
+  }, [fetchData, currentPage, confirm]);
 
   const columns: Column[] = useMemo(() => [
     { 

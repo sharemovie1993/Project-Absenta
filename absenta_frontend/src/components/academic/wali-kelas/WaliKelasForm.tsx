@@ -4,7 +4,7 @@ import { Button, Loader, ModalFooter } from '../../ui';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import { assignWaliKelasStruktur } from '../../../api/academic/waliKelas.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 // Modular Sections
 import { AssignmentSection } from './form/AssignmentSection';
@@ -20,7 +20,7 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
   onCancel,
   preset
 }) => {
-  const { showToast } = useToast();
+
   const [assignLoading, setAssignLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [guruOptions, setGuruOptions] = useState<Array<{ id: string; nama_guru: string }>>([]);
@@ -43,11 +43,11 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
         setKelasOptions(((kelasRes.data || []) as any[]).map((k: any) => ({ id: k.id, nama_kelas: k.nama_kelas, tingkat: k.tingkat })));
       }
     } catch (e: any) {
-      showToast('Gagal memuat data dropdown', 'error');
+      toast.error('Gagal memuat data dropdown');
     } finally {
       setAssignLoading(false);
     }
-  }, [showToast]);
+  }, []);
 
   useEffect(() => {
     loadAssignOptions();
@@ -55,20 +55,20 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
 
   const handleSave = async () => {
     if (!selectedGuruId || !selectedKelasId) {
-      showToast('Guru dan kelas wajib dipilih', 'warning');
+      toast('Guru dan kelas wajib dipilih', { icon: '⚠️' });
       return;
     }
     try {
       setAssigning(true);
       const res = await assignWaliKelasStruktur({ guru_id: selectedGuruId, kelas_id: selectedKelasId });
       if (!res.success) {
-        showToast(res.message || 'Gagal menyimpan penugasan', 'error');
+        toast.error(res.message || 'Gagal menyimpan penugasan');
         return;
       }
-      showToast('Berhasil menyimpan penugasan wali kelas', 'success');
+      toast.success('Berhasil menyimpan penugasan wali kelas');
       onSuccess?.();
     } catch (e: any) {
-      showToast(e?.message || 'Gagal menyimpan penugasan', 'error');
+      toast.error(e?.message || 'Gagal menyimpan penugasan');
     } finally {
       setAssigning(false);
     }

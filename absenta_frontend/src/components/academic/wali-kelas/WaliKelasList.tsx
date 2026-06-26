@@ -4,7 +4,7 @@ import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Downl
 import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
 import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/academic/waliKelas.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
@@ -29,7 +29,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [assigning, setAssigning] = useState(false);
   const [presetData, setPresetData] = useState<{ guru_id?: string; kelas_id?: string } | undefined>(undefined);
 
-  const { showToast } = useToast();
+
   const { can, isAdmin } = useAuth();
 
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -48,15 +48,15 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data wali kelas', 'error');
+        toast.error('Gagal memuat data wali kelas');
       }
     } catch (error) {
       console.error('Error loading wali kelas:', error);
-      showToast('Terjadi kesalahan saat memuat data', 'error');
+      toast.error('Terjadi kesalahan saat memuat data');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage]);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     fetchData(1, debouncedSearchTerm, includeInactive);
@@ -95,19 +95,19 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
       const failed = results.length - succeeded;
 
       if (failed > 0) {
-        showToast(`Berhasil: ${succeeded}, Gagal: ${failed}`, 'warning');
+        toast(`Berhasil: ${succeeded}, Gagal: ${failed}`, { icon: '⚠️' });
       } else {
-        showToast(`Berhasil menonaktifkan ${succeeded} penugasan`, 'success');
+        toast.success(`Berhasil menonaktifkan ${succeeded} penugasan`);
       }
       
       setSelectedIds(new Set());
       fetchData(currentPage, debouncedSearchTerm, includeInactive);
     } catch (e) {
-      showToast('Terjadi kesalahan saat bulk nonaktif', 'error');
+      toast.error('Terjadi kesalahan saat bulk nonaktif');
     } finally {
       setBulkProcessing(false);
     }
-  }, [selectedIds, confirm, showToast, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
+  }, [selectedIds, confirm, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
 
   const openAssignModal = useCallback((preset?: { guru_id?: string; kelas_id?: string }) => {
     setPresetData(preset);
@@ -147,39 +147,39 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     try {
       const res = await nonaktifWaliKelasStruktur(item.id);
       if (!res.success) {
-        showToast(res.message || 'Gagal menonaktifkan', 'error');
+        toast.error(res.message || 'Gagal menonaktifkan');
         return;
       }
-      showToast(res.message || 'Berhasil menonaktifkan penugasan', 'success');
+      toast.success(res.message || 'Berhasil menonaktifkan penugasan');
       fetchData(currentPage, debouncedSearchTerm, includeInactive);
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menonaktifkan';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
-  }, [confirm, showToast, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
+  }, [confirm, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
 
   const handleAktifkan = useCallback(async (item: WaliKelasStrukturAssignment) => {
     const kelasId = item.StrukturOrganisasi?.Kelas?.id;
     const guruId = item.Guru?.id;
     if (!kelasId || !guruId) {
-      showToast('Data kelas/guru tidak valid', 'error');
+      toast.error('Data kelas/guru tidak valid');
       return;
     }
     try {
       setAssigning(true);
       const res = await assignWaliKelasStruktur({ kelas_id: kelasId, guru_id: guruId });
       if (!res.success) {
-        showToast(res.message || 'Gagal mengaktifkan', 'error');
+        toast.error(res.message || 'Gagal mengaktifkan');
         return;
       }
-      showToast('Berhasil mengaktifkan penugasan', 'success');
+      toast.success('Berhasil mengaktifkan penugasan');
       fetchData(currentPage, debouncedSearchTerm, includeInactive);
     } catch (e: any) {
-      showToast(e?.message || 'Gagal mengaktifkan', 'error');
+      toast.error(e?.message || 'Gagal mengaktifkan');
     } finally {
       setAssigning(false);
     }
-  }, [showToast, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
+  }, [fetchData, currentPage, debouncedSearchTerm, includeInactive]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
@@ -193,9 +193,9 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
         { header: 'Status', accessor: (row) => row.is_active ? 'AKTIF' : 'NONAKTIF', width: 15 }
       ], 'Laporan_Wali_Kelas', 'DATA PENUGASAN WALI KELAS');
     } catch (error: any) {
-      showToast(error.message || 'Gagal mengekspor data', 'warning');
+      toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [items, showToast]);
+  }, [items]);
 
   const columns = useMemo(() => {
     const base = [

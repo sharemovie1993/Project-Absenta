@@ -19,7 +19,7 @@ import { getSiswaList } from '@/api/academic/siswa.api';
 import { getJurusanList } from '@/api/academic/jurusan.api';
 import type { Guru, Siswa } from '@/types/academic';
 import { Trash2, Plus, Search, User, Briefcase, GraduationCap, CheckCircle2, ChevronDown } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { dropdownApi, type DropdownOption } from '@/api/dropdown.api';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -53,7 +53,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
   const [jurusanOptions, setJurusanOptions] = useState<{ label: string, value: string }[]>([]);
@@ -98,7 +98,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         }
       }
     } catch (error) {
-      showErrorToast('Gagal memuat detail struktur');
+      toast.error('Gagal memuat detail struktur');
     } finally {
       setIsLoading(false);
     }
@@ -172,7 +172,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         kelas_id: activeKelasId || struktur?.kelas_id,
         start_date: startDate
       });
-      showSuccessToast('Guru berhasil ditugaskan');
+      toast.success('Guru berhasil ditugaskan');
       // Reset pending state
       setPendingGuruId(null);
       setSelectedUnitId('');
@@ -181,7 +181,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       await loadData();
       onSuccess?.();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menugaskan guru');
+      toast.error(error?.message || 'Gagal menugaskan guru');
     } finally {
       setIsSubmitting(false);
     }
@@ -193,11 +193,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
     if (pendingGuruId) {
       if (needsJurusan && !selectedUnitId) {
-        showErrorToast('Silakan pilih jurusan terlebih dahulu');
+        toast.error('Silakan pilih jurusan terlebih dahulu');
         return;
       }
       if (needsKelas && !selectedKelasIdAssignment) {
-        showErrorToast('Silakan pilih kelas terlebih dahulu');
+        toast.error('Silakan pilih kelas terlebih dahulu');
         return;
       }
       
@@ -214,11 +214,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     setIsSubmitting(true);
     try {
       await removeGuruFromStruktur(strukturId, guruId);
-      showSuccessToast('Penugasan guru dihapus');
+      toast.success('Penugasan guru dihapus');
       await loadData();
       onSuccess?.();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menghapus penugasan');
+      toast.error(error?.message || 'Gagal menghapus penugasan');
     } finally {
       setIsSubmitting(false);
     }
@@ -231,7 +231,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     const targetKelasId = defaultKelasId || selectedKelasId || struktur?.kelas_id;
 
     if (!targetKelasId && struktur?.kode === 'PETUGAS_KELAS') {
-      showErrorToast('Silakan pilih kelas di filter terlebih dahulu');
+      toast.error('Silakan pilih kelas di filter terlebih dahulu');
       return;
     }
 
@@ -243,11 +243,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
         unit_id: defaultUnitId || selectedUnitId || struktur?.unit_id,
         start_date: startDate
       });
-      showSuccessToast('Siswa berhasil ditugaskan');
+      toast.success('Siswa berhasil ditugaskan');
       await loadData();
       onSuccess?.();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menugaskan siswa');
+      toast.error(error?.message || 'Gagal menugaskan siswa');
     } finally {
       setIsSubmitting(false);
     }
@@ -258,11 +258,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     setIsSubmitting(true);
     try {
       await removeSiswaFromStruktur(strukturId, siswaId);
-      showSuccessToast('Penugasan siswa dihapus');
+      toast.success('Penugasan siswa dihapus');
       await loadData();
       onSuccess?.();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menghapus penugasan');
+      toast.error(error?.message || 'Gagal menghapus penugasan');
     } finally {
       setIsSubmitting(false);
     }

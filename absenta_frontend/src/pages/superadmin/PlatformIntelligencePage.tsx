@@ -1,13 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, AlertDescription, AlertTitle, SectionCard } from '@/components/ui';
+import { Alert, AlertDescription, AlertTitle, SectionCard, Loader } from '@/components/ui';
 import { superadminIntelligenceApi } from '@/api/superadmin-intelligence.api';
-import IntelligenceRiskTable from '@/components/superadmin/intelligence/IntelligenceRiskTable';
-import IntelligenceEmailChart from '@/components/superadmin/intelligence/IntelligenceEmailChart';
-import IntelligencePaymentChart from '@/components/superadmin/intelligence/IntelligencePaymentChart';
-import AttendancePerformanceSection from '@/components/superadmin/intelligence/AttendancePerformanceSection';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { Users, UserCheck, CreditCard, AlertTriangle } from 'lucide-react';
+
+// Lazy load complex sections
+const IntelligenceRiskTable = lazy(() => import('@/components/superadmin/intelligence/IntelligenceRiskTable'));
+const IntelligenceEmailChart = lazy(() => import('@/components/superadmin/intelligence/IntelligenceEmailChart'));
+const IntelligencePaymentChart = lazy(() => import('@/components/superadmin/intelligence/IntelligencePaymentChart'));
+const AttendancePerformanceSection = lazy(() => import('@/components/superadmin/intelligence/AttendancePerformanceSection'));
 
 function formatNumber(n: number) {
   if (!Number.isFinite(n)) return '0';
@@ -20,6 +22,16 @@ function formatCurrencyIdr(n: number) {
 }
 
 export default function PlatformIntelligencePage() {
+  const instruction = useMemo(() => ({
+    title: 'Panduan Platform Intelligence',
+    description: 'Halaman ini menyajikan analisis data tingkat lanjut untuk memantau kesehatan seluruh ekosistem platform Absenta.',
+    items: [
+      { text: 'Analisis Risiko mendeteksi anomali pada tenant yang mungkin memerlukan perhatian teknis atau administratif.' },
+      { text: 'Metrik Pengiriman Email memantau reputasi server pengiriman (SMTP/SES) agar notifikasi tidak masuk spam.' },
+      { text: 'Monitoring Pembayaran memberikan gambaran real-time mengenai keberhasilan transaksi dan potensi gagal bayar.' }
+    ]
+  }), []);
+
   const overviewQuery = useQuery({
     queryKey: ['superadmin', 'intelligence', 'overview'],
     queryFn: async () => {
@@ -108,22 +120,29 @@ export default function PlatformIntelligencePage() {
 
   return (
     <SuperAdminPageLayout
-      title="Dashboard Ringkasan Platform"
-      description="Analisis kesehatan tenant, pengiriman notifikasi, performa transaksi, serta estimasi tingkat risiko platform Absenta.id."
-      breadcrumbs={[
-        { label: 'Platform Intelligence' }
-      ]}
+      title="Platform Intelligence & Analytics"
+      description="Dashboard analisis prediktif, pemantauan risiko infrastruktur, dan metrik kesehatan ekosistem Absenta."
       stats={statsList}
-      isLoading={anyLoading && !overviewQuery.data}
+      hardeningModuleKey="platformintelligencepage"
+      instruction={instruction}
+      breadcrumbs={[
+        { label: 'Intelligence Center' }
+      ]}
     >
-      <div className="space-y-6">
+      <div className="space-y-8 animate-in fade-in duration-500 pb-12">
         {/* Tabel Risiko Tenant */}
-        <IntelligenceRiskTable data={topRiskQuery.data || []} loading={topRiskQuery.isLoading} />
+        <Suspense fallback={<Loader />}>
+          <IntelligenceRiskTable data={topRiskQuery.data || []} loading={topRiskQuery.isLoading} />
+        </Suspense>
 
         {/* Grafik Notifikasi & Transaksi */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <IntelligenceEmailChart data={emailQuery.data} />
-          <IntelligencePaymentChart data={paymentQuery.data} />
+          <Suspense fallback={<Loader />}>
+            <IntelligenceEmailChart data={emailQuery.data} />
+          </Suspense>
+          <Suspense fallback={<Loader />}>
+            <IntelligencePaymentChart data={paymentQuery.data} />
+          </Suspense>
         </div>
 
         {/* Performa Presensi Global */}
@@ -133,7 +152,9 @@ export default function PlatformIntelligencePage() {
           fullWidth
         >
           <div className="w-full">
-            <AttendancePerformanceSection topRiskTenants={topRiskQuery.data || []} />
+            <Suspense fallback={<Loader />}>
+              <AttendancePerformanceSection topRiskTenants={topRiskQuery.data || []} />
+            </Suspense>
           </div>
         </SectionCard>
       </div>

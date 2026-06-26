@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useToast } from '../../hooks/useToast';
-import { ToastContainer } from '../../components/ui/Toast';
+import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
@@ -49,7 +48,7 @@ export const PRINT_PRESETS: PrintPreset[] = [
 
 export default function PiketPage() {
   const { user } = useAuthStore();
-  const { toasts, success, error, removeToast } = useToast();
+
 
   // Shared States
   const [activeTab, setActiveTab] = useState('scan');
@@ -88,11 +87,11 @@ export default function PiketPage() {
       }
     } catch (err: unknown) {
       console.error('Failed to load permits:', err);
-      error('Gagal memuat daftar izin hari ini');
+      toast.error('Gagal memuat daftar izin hari ini');
     } finally {
       setLoadingPermits(false);
     }
-  }, [error]);
+  }, []);
 
   useEffect(() => {
     fetchPermits();
@@ -116,15 +115,15 @@ export default function PiketPage() {
     try {
       const res = await piketApi.markReturned(id);
       if (res.success) {
-        success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
+        toast.success(`Siswa ${namaSiswa} dinyatakan telah kembali ke sekolah`);
         await fetchPermits();
       }
     } catch (err: unknown) {
       console.error(err);
       const e = err as { message?: string };
-      error(e.message || 'Gagal memproses kepulangan siswa');
+      toast.error(e.message || 'Gagal memproses kepulangan siswa');
     }
-  }, [fetchPermits, success, error]);
+  }, [fetchPermits]);
 
   // Shared Action: Delete/Cancel permit (Batal Izin)
   const handleDeletePermit = useCallback(async (id: string) => {
@@ -139,16 +138,16 @@ export default function PiketPage() {
         status: 'INVALID',
         message: `IZIN SUDAH EXPIRED: Siswa ${permit.SiswaAkademik?.siswa.nama_siswa} sudah kembali sebelumnya!`
       });
-      error('Verifikasi Gagal: Izin kedaluwarsa');
+      toast.error('Verifikasi Gagal: Izin kedaluwarsa');
     } else {
       setVerificationResult({
         status: 'VALID',
         permit,
         message: `IZIN VALID: ${permit.SiswaAkademik?.siswa.nama_siswa} diperbolehkan keluar`
       });
-      success('Verifikasi Berhasil: Izin Valid');
+      toast.success('Verifikasi Berhasil: Izin Valid');
     }
-  }, [error, success]);
+  }, []);
 
   const handleSecurityEnter = useCallback((code?: string) => {
     if (!code) return;
@@ -169,9 +168,9 @@ export default function PiketPage() {
         status: 'INVALID',
         message: `TIDAK ADA IZIN AKTIF HARI INI untuk NIS / Kartu: "${code}"`
       });
-      error('Verifikasi Gagal: Tidak ada izin aktif');
+      toast.error('Verifikasi Gagal: Tidak ada izin aktif');
     }
-  }, [dailyPermits, handleSecuritySelect, error]);
+  }, [dailyPermits, handleSecuritySelect]);
 
   // Memos
   const activeOutStudents = useMemo(() => {
@@ -389,13 +388,13 @@ export default function PiketPage() {
               try {
                 const res = await piketApi.deletePermit(permitToDelete);
                 if (res.success) {
-                  success('Surat izin keluar berhasil dibatalkan');
+                  toast.success('Surat izin keluar berhasil dibatalkan');
                   await fetchPermits();
                 }
               } catch (err: unknown) {
                 console.error(err);
                 const e = err as { message?: string };
-                error(e.message || 'Gagal membatalkan surat izin');
+                toast.error(e.message || 'Gagal membatalkan surat izin');
               } finally {
                 setIsDeleting(false);
                 setDeleteConfirmOpen(false);
@@ -491,7 +490,7 @@ export default function PiketPage() {
         }
       `}</style>
       </div>
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </AcademicPageLayout>
   );
 }

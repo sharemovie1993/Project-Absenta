@@ -4,7 +4,7 @@ import { Loader } from '../../../components/ui/Loader';
 import { Alert, AlertDescription } from '../../../components/ui/Alert';
 import { ModalFooter } from '../../../components/ui/Modal';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { 
     CheckCircle2, 
     XCircle, 
@@ -30,7 +30,7 @@ interface Props {
 }
 
 const SemesterTransitionWizard: React.FC<Props> = React.memo(({ onDone, onClose }) => {
-  const { showToast } = useToast();
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<number>(1);
@@ -57,13 +57,13 @@ const SemesterTransitionWizard: React.FC<Props> = React.memo(({ onDone, onClose 
           setActiveSemesterState(active || null);
         }
       } catch {
-        showToast('Gagal memuat data akademik', 'error');
+        toast.error('Gagal memuat data akademik');
       } finally {
         setLoading(false);
       }
     };
     init();
-  }, [showToast]);
+  }, []);
 
   const mode = useMemo<'IN_YEAR' | 'CROSS_YEAR'>(() => {
     const name = String(activeSemester?.nama_semester || '').toLowerCase();
@@ -125,15 +125,15 @@ const SemesterTransitionWizard: React.FC<Props> = React.memo(({ onDone, onClose 
       // 3. Set Active Semester
       if (semId) {
         await setActiveSemester(semId);
-        showToast('Transisi semester berhasil dilakukan', 'success');
+        toast.success('Transisi semester berhasil dilakukan');
         setStep(3);
       }
     } catch (error: any) {
-      showToast(error.message || 'Gagal melakukan transisi', 'error');
+      toast.error(error.message || 'Gagal melakukan transisi');
     } finally {
       setSubmitting(false);
     }
-  }, [mode, targetYearId, targetYear, targetSemester, targetExists, showToast]);
+  }, [mode, targetYearId, targetYear, targetSemester, targetExists]);
 
   if (loading) {
     return (

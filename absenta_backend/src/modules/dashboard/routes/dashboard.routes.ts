@@ -668,6 +668,42 @@ export async function dashboardRoutes(fastify: any) {
                 totalSiswaPkl: { type: 'number' },
                 pklAktif: { type: 'number' },
                 pendingReports: { type: 'number' },
+                mouExpiringCount: { type: 'number' },
+                totalLowonganAktif: { type: 'number' },
+                totalAlumniTraced: { type: 'number' },
+                tracerCoverage: { type: 'number' },
+                employmentRate: { type: 'number' },
+                totalRecruitmentSuccess: { type: 'number' },
+                tracerStats: {
+                  type: 'object',
+                  properties: {
+                    BEKERJA: { type: 'number' },
+                    KULIAH: { type: 'number' },
+                    WIRAUSAHA: { type: 'number' },
+                    MENCARI_KERJA: { type: 'number' }
+                  }
+                },
+                topMitra: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      nama: { type: 'string' },
+                      count: { type: 'number' }
+                    }
+                  }
+                },
+                topJurusanTerserap: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      nama: { type: 'string' },
+                      count: { type: 'number' }
+                    }
+                  }
+                },
                 recentPkl: {
                   type: 'array',
                   items: {

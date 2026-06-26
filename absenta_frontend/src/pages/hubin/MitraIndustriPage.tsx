@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
 import type { MitraIndustri } from '../../api/hubin.api';
-import { guruApi } from '../../api/academic.api';
+import { guruApi, jurusanApi } from '../../api/academic.api';
 import { 
   Plus, 
   Search, 
@@ -16,7 +16,8 @@ import {
   Navigation,
   CheckCircle2,
   RefreshCw,
-  History
+  History,
+  Eye
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -30,6 +31,7 @@ import useConfirm from '../../hooks/useConfirm';
 // Lazy load heavy form component
 const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(module => ({ default: module.MitraFormModal })));
 const HubinMoUHistoryModal = lazy(() => import('../../components/hubin/HubinMoUHistoryModal').then(module => ({ default: module.HubinMoUHistoryModal })));
+const MitraDetailModal = lazy(() => import('../../components/hubin/MitraDetailModal').then(module => ({ default: module.MitraDetailModal })));
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -61,6 +63,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMitra, setEditingMitra] = useState<MitraIndustri | null>(null);
   const [selectedMoUMitra, setSelectedMoUMitra] = useState<MitraIndustri | null>(null);
+  const [selectedDetailMitra, setSelectedDetailMitra] = useState<MitraIndustri | null>(null);
 
   // Gating Logic
   const sub = subscription as unknown as SubscriptionWithFeatures | null;
@@ -81,13 +84,13 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   const { data: penempatanData } = useQuery({
     queryKey: ['penempatan-pkl', { limit: 100 }],
     queryFn: () => hubinApi.getPenempatan({ limit: 100 }),
-    enabled: (user?.role?.name?.toUpperCase() === 'GURU' || isHubin) && !isLocked
+    enabled: user?.role?.name?.toUpperCase() === 'GURU' || isHubin
   });
 
   const { data: guruList } = useQuery({
     queryKey: ['guru', { limit: 100 }],
     queryFn: () => guruApi.getAll({ limit: 100 }),
-    enabled: user?.role?.name?.toUpperCase() === 'GURU' && !isLocked
+    enabled: user?.role?.name?.toUpperCase() === 'GURU'
   });
 
   const rawGuru = useMemo(() => {
@@ -97,6 +100,19 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     }
     return [];
   }, [guruList]);
+
+  const { data: jurusanListQuery } = useQuery({
+    queryKey: ['jurusan', { limit: 100 }],
+    queryFn: () => jurusanApi.getAll({ limit: 100 }),
+  });
+
+  const jurusanList = useMemo(() => {
+    if (Array.isArray(jurusanListQuery)) return jurusanListQuery;
+    if (jurusanListQuery && typeof jurusanListQuery === 'object' && 'data' in jurusanListQuery) {
+      return (jurusanListQuery as { data: any[] }).data || [];
+    }
+    return [];
+  }, [jurusanListQuery]);
 
   const activeGuruId = useMemo(() => {
     if (user?.guru_profile?.id) return user.guru_profile.id;
@@ -116,7 +132,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   const { data: mitraData, isLoading, refetch } = useQuery({
     queryKey: ['mitra-industri', { search: searchTerm, page, limit }],
     queryFn: () => hubinApi.getMitra({ search: searchTerm, page, limit }),
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined
   });
 
   // Mutations
@@ -153,15 +169,42 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    const tMulai = formData.get('mou_tanggal_mulai') as string;
+    const tSelesai = formData.get('mou_tanggal_berakhir') as string;
+
     const data = {
       nama: formData.get('nama') as string,
-      bidang: formData.get('bidang') as string,
-      alamat: formData.get('alamat') as string,
-      kontak: formData.get('kontak') as string,
-      mou_url: formData.get('mou_url') as string || undefined,
-      latitude: parseFloat(formData.get('latitude') as string) || undefined,
-      longitude: parseFloat(formData.get('longitude') as string) || undefined,
+      bidang: formData.get('bidang') as string || null,
+      alamat: formData.get('alamat') as string || null,
+      kontak: formData.get('kontak') as string || null,
+      mou_url: formData.get('mou_url') as string || null,
+      latitude: parseFloat(formData.get('latitude') as string) || null,
+      longitude: parseFloat(formData.get('longitude') as string) || null,
       radius: parseInt(formData.get('radius') as string) || 100,
+
+      // PIC Details
+      pic_nama: formData.get('pic_nama') as string || null,
+      pic_jabatan: formData.get('pic_jabatan') as string || null,
+      pic_telepon: formData.get('pic_telepon') as string || null,
+      pic_email: formData.get('pic_email') as string || null,
+
+      // MoU Details
+      mou_nomor: formData.get('mou_nomor') as string || null,
+      mou_status: formData.get('mou_status') as string || 'AKTIF',
+      mou_tanggal_mulai: tMulai ? new Date(tMulai).toISOString() : null,
+      mou_tanggal_berakhir: tSelesai ? new Date(tSelesai).toISOString() : null,
+
+      // PKL Capacity
+      kuota_pkl: parseInt(formData.get('kuota_pkl') as string) || 0,
+      kompetensi_keahlian: (() => {
+        const checkedKeahlian = formData.getAll('kompetensi_keahlian')
+          .map(val => (val as string).split(','))
+          .flat()
+          .map(s => s.trim())
+          .filter(Boolean);
+        return checkedKeahlian.length > 0 ? checkedKeahlian.join(', ') : null;
+      })(),
     };
 
     if (editingMitra) {
@@ -298,64 +341,75 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       }
     ];
 
-    if (isHubin || isPembimbing) {
-      cols.push({
-        key: 'actions',
-        label: 'Aksi',
-        render: (_: unknown, row: MitraIndustri) => (
-          <div className="flex items-center gap-1">
-            {isHubin ? (
-              <>
-                 <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  onClick={() => {
-                    setEditingMitra(row);
-                    setIsModalOpen(true);
-                  }}
-                  title="Edit"
-                >
-                  <Edit size={16} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                  onClick={() => setSelectedMoUMitra(row)}
-                  title="Riwayat MoU"
-                >
-                  <History size={16} />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={() => handleDelete(row)}
-                  title="Hapus"
-                >
-                  <Trash2 size={16} />
-                </Button>
-              </>
-            ) : (
+    cols.push({
+      key: 'actions',
+      label: 'Aksi',
+      render: (_: unknown, row: MitraIndustri) => (
+        <div className="flex items-center gap-1">
+          {/* Detail button is always visible to everyone who can view the table */}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            onClick={() => setSelectedDetailMitra(row)}
+            title="Lihat Detail"
+          >
+            <Eye size={16} />
+          </Button>
+
+          {isHubin && (
+            <>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 px-2.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 flex items-center gap-1 text-[11px] font-bold rounded-lg border border-amber-200/50 dark:border-amber-900/40"
+                className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                 onClick={() => {
                   setEditingMitra(row);
                   setIsModalOpen(true);
                 }}
-                title="Perbarui Kontak Perusahaan"
+                title="Edit"
               >
-                <Phone size={12} />
-                Update Kontak
+                <Edit size={16} />
               </Button>
-            )}
-          </div>
-        )
-      });
-    }
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                onClick={() => setSelectedMoUMitra(row)}
+                title="Riwayat MoU"
+              >
+                <History size={16} />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={() => handleDelete(row)}
+                title="Hapus"
+              >
+                <Trash2 size={16} />
+              </Button>
+            </>
+          )}
+
+          {isPembimbing && !isHubin && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 flex items-center gap-1 text-[11px] font-bold rounded-lg border border-amber-200/50 dark:border-amber-900/40"
+              onClick={() => {
+                setEditingMitra(row);
+                setIsModalOpen(true);
+              }}
+              title="Perbarui Kontak Perusahaan"
+            >
+              <Phone size={12} />
+              Update Kontak
+            </Button>
+          )}
+        </div>
+      )
+    });
 
     return cols;
   }, [isHubin, isPembimbing, handleDelete]);
@@ -452,6 +506,12 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
             editingMitra={editingMitra}
             isPending={createMutation.isPending || updateMutation.isPending}
             isEditKontakOnly={isPembimbing && !isHubin}
+            jurusanList={jurusanList}
+          />
+          <MitraDetailModal
+            isOpen={!!selectedDetailMitra}
+            onClose={() => setSelectedDetailMitra(null)}
+            mitra={selectedDetailMitra}
           />
         </Suspense>
       </div>
@@ -505,12 +565,18 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
             editingMitra={editingMitra}
             isPending={createMutation.isPending || updateMutation.isPending}
             isEditKontakOnly={isPembimbing && !isHubin}
+            jurusanList={jurusanList}
           />
           <HubinMoUHistoryModal
             isOpen={!!selectedMoUMitra}
             onClose={() => setSelectedMoUMitra(null)}
             mitraId={selectedMoUMitra?.id || null}
             mitraNama={selectedMoUMitra?.nama || null}
+          />
+          <MitraDetailModal
+            isOpen={!!selectedDetailMitra}
+            onClose={() => setSelectedDetailMitra(null)}
+            mitra={selectedDetailMitra}
           />
         </Suspense>
       </AcademicPageLayout>

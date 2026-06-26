@@ -178,6 +178,9 @@ export interface Plan {
   features: string | null; // Backend returns string, not array
   features_json?: any; // Backend optional structured JSON
   trial_days?: number; // Backend optional trial length in days
+  module_id?: string; // Standardisasi hardening (ID modul fungsional)
+  size_label?: string; // Standardisasi hardening (label ukuran tenant: SMALL, MEDIUM, etc)
+  billing_period?: string; // Standardisasi hardening (periode billing: MONTH, YEAR)
   absensi_mode?: 'SIMPLE' | 'MULTI_SESI'; // Patch A: Added to Plan
   is_active: boolean;
   created_at: string;

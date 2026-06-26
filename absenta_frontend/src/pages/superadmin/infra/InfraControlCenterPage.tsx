@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { 
   Server, Activity, Zap, Network, Eye, EyeOff, CalendarCheck
 } from 'lucide-react';
+import { SectionCard } from '@/components/ui';
 
 // Impor sub-komponen modular pendukung kita secara lazy untuk optimasi load bundle (Code Splitting)
 const InfraQueuePanel = React.lazy(() => 
@@ -124,7 +125,7 @@ const fetchQueuePressure = async (): Promise<QueuePressureRow[]> => {
 
 // ─── STATEFUL WIDGET ──────────────────────────────────────────────────────────
 
-const InfraControlCenterPage: React.FC = () => {
+const InfraControlCenterContent: React.FC = () => {
   const queryClient = useQueryClient();
   const { subscribe, unsubscribe, emit, isConnected } = useSocket();
   const [activeTab, setActiveTab] = useState<string>('queues');
@@ -145,12 +146,12 @@ const InfraControlCenterPage: React.FC = () => {
 
   // Throttled update handler untuk mencegah UI freeze saat lonjakan pembaruan WebSocket ekstrim (1.5 detik limit)
   const throttledUpdateRef = useRef(
-    throttle((payload: any) => {
+    throttle((payload: Record<string, any>) => {
       if (!payload) return;
 
       // Update server time offset dari paket WebSocket untuk mengatasi drift jam lokal
       if (payload.timestamp && typeof window !== 'undefined') {
-        (window as any).__SERVER_TIME_OFFSET__ = Date.now() - payload.timestamp;
+        (window as any).__SERVER_TIME_OFFSET__ = Date.now() - Number(payload.timestamp);
       }
 
       // Update cache React Query secara langsung untuk performa instan dan DRY
@@ -208,7 +209,7 @@ const InfraControlCenterPage: React.FC = () => {
     // Registrasi langganan ke room infra monitoring
     emit('infra_monitoring_subscribe', {});
 
-    const handleUpdate = (payload: any) => {
+    const handleUpdate = (payload: Record<string, any>) => {
       throttledUpdateRef.current(payload);
     };
 
@@ -292,19 +293,19 @@ const InfraControlCenterPage: React.FC = () => {
   const summary = useMemo(() => {
     const nodes = clusterNodesQuery.data || [];
     const queues = clusterQueuesQuery.data || [];
-    const workers = (clusterWorkersQuery.data || []).map(w => ({ ...w, uiStatus: toWorkerUiStatus(w) }));
+    const workers = (clusterWorkersQuery.data || [])?.map(w => ({ ...w, uiStatus: toWorkerUiStatus(w) }));
     
     const totalNodes = nodes.length;
     const onlineNodes = nodes.filter((n) => n.status === 'online').length;
     const totalQueues = queues.length;
     const backlog = queues.reduce((acc, q) => acc + (typeof q.length === 'number' ? q.length : 0), 0);
     
-    const totalWorkers = workers.reduce((acc: number, w: any) => {
+    const totalWorkers = workers.reduce((acc: number, w: ClusterWorkerRow) => {
       const inst = typeof w.instances === 'number' && Number.isFinite(w.instances) ? Math.max(0, Math.floor(w.instances)) : 1;
       return acc + Math.max(1, inst);
     }, 0);
     
-    const runningWorkers = workers.reduce((acc: number, w: any) => {
+    const runningWorkers = workers.reduce((acc: number, w: ClusterWorkerRow & { uiStatus: WorkerUiStatus }) => {
       if (w.uiStatus !== 'running') return acc;
       const inst = typeof w.instances === 'number' && Number.isFinite(w.instances) ? Math.max(0, Math.floor(w.instances)) : 1;
       return acc + Math.max(1, inst);
@@ -353,7 +354,7 @@ const InfraControlCenterPage: React.FC = () => {
   // Data Queue Load olahan (Memoized)
   const queueLoadDataList = useMemo(() => {
     const list = clusterQueuesQuery.data || [];
-    return list.map(r => ({
+    return list?.map(r => ({
       name: r.name,
       length: r.length,
       rate: queueRates[r.name] ?? null,
@@ -364,7 +365,7 @@ const InfraControlCenterPage: React.FC = () => {
   // Data Queue Pressure olahan (Memoized)
   const queuePressureList = useMemo(() => {
     const list = queuePressureQuery.data || [];
-    return list.map(r => ({
+    return list?.map(r => ({
       queue: r.queue,
       pressure: r.pressure
     }));
@@ -374,7 +375,7 @@ const InfraControlCenterPage: React.FC = () => {
   const filteredWorkersList = useMemo(() => {
     const rawList = clusterWorkersQuery.data || [];
     return rawList
-      .map(w => ({ ...w, uiStatus: toWorkerUiStatus(w) }))
+      ?.map(w => ({ ...w, uiStatus: toWorkerUiStatus(w) }))
       .filter(w => !hideOfflineWorkers || w.uiStatus !== 'offline')
       .filter(w => !workerSearch || `${w.nodeId} ${w.workerType}`.toLowerCase().includes(workerSearch.toLowerCase()));
   }, [clusterWorkersQuery.data, hideOfflineWorkers, workerSearch, toWorkerUiStatus]);
@@ -412,17 +413,31 @@ const InfraControlCenterPage: React.FC = () => {
 
   const anyLoading = clusterNodesQuery.isLoading && !clusterNodesQuery.data;
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'System Utilities', path: '/menu/system' },
+    { label: 'Pusat Kontrol Infra' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Panduan Pusat Kontrol Infra',
+    description: 'Monitor dan kelola infrastruktur backend, antrean tugas, dan performa worker secara real-time.',
+    items: [
+      { text: 'Tab "Antrean & Beban" menampilkan tumpukan tugas background yang sedang diproses.' },
+      { text: 'Tab "Daftar Worker" memungkinkan Anda memantau kesehatan dan merestart instance worker.' },
+      { text: 'Tab "Status Server Node" memberikan informasi tentang kapasitas klaster server fisik/virtual.' },
+      { text: 'Gunakan fitur pencarian dan filter untuk menemukan worker spesifik dalam klaster besar.' }
+    ]
+  }), []);
+
   return (
     <SuperAdminPageLayout
+      hardeningModuleKey="superadmin_infra_control"
+      instruction={instruction}
       title="Pusat Kontrol Infrastruktur (Cluster)"
       description="Kelola daur hidup antrean tugas, autoscaling cluster backend, monitoring beban kerja server node, serta performa background job Absenta.id."
-      breadcrumbs={[
-        { label: 'System Utilities' },
-        { label: 'Pusat Kontrol Infra' }
-      ]}
+      breadcrumbs={breadcrumbs}
       stats={statsList}
       isLoading={anyLoading}
-      toolbar={toolbarSlot}
     >
       <div className="space-y-6">
         <HardeningInspector 
@@ -453,13 +468,15 @@ const InfraControlCenterPage: React.FC = () => {
               queryKeyToInvalidate={['infra-cluster-queues', 'infra-queue-pressure']}
             >
               <React.Suspense fallback={<InfraPanelLoader />}>
-                <InfraQueuePanel
-                  queueLoadData={queueLoadDataList}
-                  queuePressureData={queuePressureList}
-                  isLoadingLoad={clusterQueuesQuery.isLoading}
-                  isLoadingPressure={queuePressureQuery.isLoading}
-                  getWorkerIcon={getWorkerIcon}
-                />
+                <SectionCard title="Monitoring Antrean Real-time" icon={Zap} fullWidth>
+                  <InfraQueuePanel
+                    queueLoadData={queueLoadDataList}
+                    queuePressureData={queuePressureList}
+                    isLoadingLoad={clusterQueuesQuery.isLoading}
+                    isLoadingPressure={queuePressureQuery.isLoading}
+                    getWorkerIcon={getWorkerIcon}
+                  />
+                </SectionCard>
               </React.Suspense>
             </InfraErrorBoundary>
           </TabsContent>
@@ -471,12 +488,19 @@ const InfraControlCenterPage: React.FC = () => {
               queryKeyToInvalidate={['infra-cluster-workers']}
             >
               <React.Suspense fallback={<InfraPanelLoader />}>
-                <InfraWorkerPanel
-                  workersData={filteredWorkersList}
-                  isLoading={clusterWorkersQuery.isLoading}
-                  onRestartWorker={handleRestartWorker}
-                  isPendingAction={workerActionMutation.isPending}
-                />
+                <SectionCard 
+                  title="Manajemen Cluster Worker" 
+                  icon={Activity} 
+                  fullWidth
+                  actions={toolbarSlot}
+                >
+                  <InfraWorkerPanel
+                    workersData={filteredWorkersList}
+                    isLoading={clusterWorkersQuery.isLoading}
+                    onRestartWorker={handleRestartWorker}
+                    isPendingAction={workerActionMutation.isPending}
+                  />
+                </SectionCard>
               </React.Suspense>
             </InfraErrorBoundary>
           </TabsContent>
@@ -488,14 +512,18 @@ const InfraControlCenterPage: React.FC = () => {
               queryKeyToInvalidate={['infra-cluster-nodes', 'infra-autoscaler-events']}
             >
               <React.Suspense fallback={<InfraPanelLoader />}>
-                <InfraServerPanel
-                  nodesData={serverNodesList}
-                  autoscalerEvents={autoscalerEventsQuery.data || []}
-                  isLoadingNodes={clusterNodesQuery.isLoading}
-                  isLoadingEvents={autoscalerEventsQuery.isLoading}
-                  runningWorkers={summary.runningWorkers}
-                  totalWorkers={summary.totalWorkers}
-                />
+                <div className="space-y-6">
+                  <SectionCard title="Status Klaster Server (Nodes)" icon={Server} fullWidth>
+                    <InfraServerPanel
+                      nodesData={serverNodesList}
+                      autoscalerEvents={autoscalerEventsQuery.data || []}
+                      isLoadingNodes={clusterNodesQuery.isLoading}
+                      isLoadingEvents={autoscalerEventsQuery.isLoading}
+                      runningWorkers={summary.runningWorkers}
+                      totalWorkers={summary.totalWorkers}
+                    />
+                  </SectionCard>
+                </div>
               </React.Suspense>
             </InfraErrorBoundary>
           </TabsContent>
@@ -507,12 +535,14 @@ const InfraControlCenterPage: React.FC = () => {
               queryKeyToInvalidate={['infra-cluster-jobs']}
             >
               <React.Suspense fallback={<InfraPanelLoader />}>
-                <InfraJobPanel
-                  jobsData={clusterJobsQuery.data || []}
-                  isLoading={clusterJobsQuery.isLoading}
-                  onRunJob={handleRunJob}
-                  isPendingAction={runJobMutation.isPending}
-                />
+                <SectionCard title="Background Jobs & Scheduler" icon={CalendarCheck} fullWidth>
+                  <InfraJobPanel
+                    jobsData={clusterJobsQuery.data || []}
+                    isLoading={clusterJobsQuery.isLoading}
+                    onRunJob={handleRunJob}
+                    isPendingAction={runJobMutation.isPending}
+                  />
+                </SectionCard>
               </React.Suspense>
             </InfraErrorBoundary>
           </TabsContent>
@@ -522,4 +552,10 @@ const InfraControlCenterPage: React.FC = () => {
   );
 };
 
-export default InfraControlCenterPage;
+export default function InfraControlCenterPage() {
+  return (
+    <InfraErrorBoundary fallbackTitle="Pusat Kontrol Infrastruktur Gagal Memuat">
+      <InfraControlCenterContent />
+    </InfraErrorBoundary>
+  );
+}

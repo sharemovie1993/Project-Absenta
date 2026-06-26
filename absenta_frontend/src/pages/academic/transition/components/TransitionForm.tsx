@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react';
-import { Button, Label, Badge, SectionCard, Alert, AlertDescription } from '../../../../components/ui';
+import { Label, SectionCard, Alert, AlertDescription } from '../../../../components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Database, ArrowRight, Target, Info, LayoutGrid, Clock } from 'lucide-react';
+import { Database, Target, Info, Clock } from 'lucide-react';
 import type { TahunPelajaran } from '../../../../types/academic';
-import type { TransitionPreviewInput } from '../../../../api/academic/transition.api';
 
 interface Props {
   tahunAktif: TahunPelajaran[];
@@ -12,8 +11,6 @@ interface Props {
   selectedTahunBaruId: string;
   onTahunLamaChange: (val: string) => void;
   onTahunBaruChange: (val: string) => void;
-  onNext: () => void;
-  loading?: boolean;
 }
 
 const TransitionForm: React.FC<Props> = ({ 
@@ -22,17 +19,14 @@ const TransitionForm: React.FC<Props> = ({
   selectedTahunLamaId,
   selectedTahunBaruId,
   onTahunLamaChange,
-  onTahunBaruChange,
-  onNext, 
-  loading 
+  onTahunBaruChange
 }) => {
-  const canProceed = useMemo(() => !!selectedTahunLamaId && !!selectedTahunBaruId, [selectedTahunLamaId, selectedTahunBaruId]);
-  
   const selectedLama = useMemo(() => tahunAktif.find(t => t.id === selectedTahunLamaId), [tahunAktif, selectedTahunLamaId]);
   const selectedBaru = useMemo(() => tahunBelumAktif.find(t => t.id === selectedTahunBaruId), [tahunBelumAktif, selectedTahunBaruId]);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full animate-in fade-in duration-500">
+      {/* Info Bar */}
       <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
         <Alert className="bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-800 rounded-xl p-5 border-dashed">
           <div className="flex gap-4">
@@ -46,19 +40,17 @@ const TransitionForm: React.FC<Props> = ({
         </Alert>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Source & Target Columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch animate-in fade-in slide-in-from-bottom-4 duration-700">
         {/* Source Card */}
-        <SectionCard 
-          fullWidth
-          className="relative overflow-hidden transition-all duration-300 group"
-        >
+        <div className="p-6 bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-2xl relative overflow-hidden transition-all duration-300 group flex flex-col justify-between gap-6 shadow-sm hover:shadow-md">
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500">
              <Clock size={80} />
           </div>
           
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 shadow-sm border border-slate-200 dark:border-slate-700">
-              <Database size={24} />
+               <Database size={24} />
             </div>
             <div>
                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Data Sumber</h3>
@@ -85,13 +77,10 @@ const TransitionForm: React.FC<Props> = ({
                <p className="text-[10px] text-slate-500 font-medium leading-tight italic">Tahun pelajaran yang sedang berjalan atau akan segera berakhir.</p>
             </div>
           </div>
-        </SectionCard>
+        </div>
 
         {/* Target Card */}
-        <SectionCard 
-          fullWidth
-          className="relative overflow-hidden transition-all duration-300 group border-2 border-blue-100 dark:border-blue-900/30 bg-blue-50/10 dark:bg-blue-900/5"
-        >
+        <div className="p-6 bg-blue-50/10 dark:bg-blue-900/5 border border-blue-100 dark:border-blue-900/20 rounded-2xl relative overflow-hidden transition-all duration-300 group flex flex-col justify-between gap-6 shadow-sm hover:shadow-md">
           <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500 text-blue-600">
              <Target size={80} />
           </div>
@@ -125,18 +114,7 @@ const TransitionForm: React.FC<Props> = ({
                <p className="text-[10px] text-blue-500/80 font-medium leading-tight italic">Tahun pelajaran baru yang sudah disiapkan untuk periode mendatang.</p>
             </div>
           </div>
-        </SectionCard>
-      </div>
-
-      <div className="flex justify-center pt-8 animate-in fade-in zoom-in duration-700">
-        <Button
-          onClick={onNext}
-          disabled={!canProceed || !!loading}
-          className="h-14 gap-3 font-black px-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-        >
-          {loading ? 'Menyiapkan...' : 'Lanjut ke Pemetaan Kelas'}
-          <ArrowRight className="w-5 h-5" />
-        </Button>
+        </div>
       </div>
     </div>
   );

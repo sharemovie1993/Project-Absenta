@@ -199,6 +199,10 @@ async function start() {
     await trackService('Analytics Worker', 'worker', async () => { await import('./workers/analytics.worker'); });
     await trackService('Infra Worker', 'worker', async () => { await import('./workers/infra.worker'); });
     await trackService('Maintenance Worker', 'worker', async () => { await import('./workers/maintenance.worker'); });
+    await trackService('WhatsApp Gateway Pool', 'infra', async () => {
+      const { waGatewayService } = await import('./services/wa-gateway.service');
+      await waGatewayService.restoreConnections();
+    });
 
     const tenantDetailProvider = new TenantDetailService();
     await trackService('Realtime (Socket.IO)', 'infra', async () => {

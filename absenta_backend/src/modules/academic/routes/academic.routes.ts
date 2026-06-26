@@ -16,6 +16,7 @@ import { studentCardConfigRoutes } from '../student-card-config/routes/student-c
 import { organizationalRoutes } from '../organizational/routes/organizational.routes';
 import { AcademicStatsController } from '../controllers/academic-stats.controller';
 import { UniversalSearchController } from '../controllers/universal-search.controller';
+import { PrepChecklistController } from '../controllers/prep-checklist.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { organizationalScopeMiddleware } from '../../../middlewares/organizationalScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
@@ -40,6 +41,16 @@ export async function academicRoutes(fastify: any) {
 
   const academicStatsController = new AcademicStatsController();
   const universalSearchController = new UniversalSearchController();
+  const prepChecklistController = new PrepChecklistController();
+
+  // --- PREPARATION CHECKLIST ---
+  fastify.get(
+    '/prep-checklist',
+    {
+      preHandler: [requireCapability(['academic.years.view.list'])]
+    },
+    prepChecklistController.getChecklist.bind(prepChecklistController)
+  );
 
   // --- UNIVERSAL SEARCH (One Door) ---
   fastify.get(

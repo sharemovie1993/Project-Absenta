@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance, { resolvePublicApiBaseUrl } from '@/lib/axiosInstance';
-import { CheckCircle2, AlertCircle, Clock, CreditCard, ArrowRight, ShieldCheck, Home, FileText, Loader2, XCircle } from 'lucide-react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { CheckCircle2, AlertCircle, CreditCard, ArrowRight, ShieldCheck, Home, FileText, Loader2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, Button } from '@/components/ui';
+import { Button, SectionCard } from '@/components/ui';
 import { useAuthStore } from '@/store/authStore';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
 type PublicPaymentStatus = {
   success: boolean;
@@ -23,17 +22,7 @@ type PublicPaymentStatus = {
   };
 };
 
-const formatDateTime = (iso?: string | null) => {
-  if (!iso) return '-';
-  try {
-    const d = new Date(iso);
-    return `${d.toLocaleDateString('id-ID')} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
-  } catch {
-    return String(iso);
-  }
-};
-
-const PaymentStatusPage: React.FC = () => {
+function PaymentStatusContent() {
   const { ref } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, loadUser, isLoading: isAuthLoading } = useAuthStore();
@@ -41,31 +30,32 @@ const PaymentStatusPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusData, setStatusData] = useState<PublicPaymentStatus | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    const apiRoot = resolvePublicApiBaseUrl();
-    const fetchStatus = async () => {
-      try {
-        const res = await axiosInstance.get(`/payment/public/status?ref=${encodeURIComponent(String(ref || ''))}`, {
-          baseURL: apiRoot,
-          headers: { Accept: 'application/json' },
-        });
-        if (alive) setStatusData(res.data as PublicPaymentStatus);
-      } catch (e: any) {
-        if (alive) setError(e?.message || 'Gagal memuat status pembayaran');
-      } finally {
-        if (alive) setLoading(false);
-      }
-    };
-    fetchStatus();
-    const id = setInterval(fetchStatus, 5000);
-    return () => { alive = false; clearInterval(id); };
+  const fetchStatus = useCallback(async (alive: boolean) => {
+    try {
+      const apiRoot = resolvePublicApiBaseUrl();
+      const res = await axiosInstance.get(`/payment/public/status?ref=${encodeURIComponent(String(ref || ''))}`, {
+        baseURL: apiRoot,
+        headers: { Accept: 'application/json' },
+      });
+      if (alive) setStatusData(res.data as PublicPaymentStatus);
+    } catch (e: unknown) {
+      if (alive) setError(e instanceof Error ? e.message : 'Gagal memuat status pembayaran');
+    } finally {
+      if (alive) setLoading(false);
+    }
   }, [ref]);
 
-  const s = String(statusData?.data?.status || '').toUpperCase();
-  const isPaid = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(s);
-  const isFailed = ['FAILED', 'EXPIRED', 'CANCELLED', 'CANCELED'].includes(s);
-  const isPending = !isPaid && !isFailed;
+  useEffect(() => {
+    let alive = true;
+    fetchStatus(alive);
+    const id = setInterval(() => fetchStatus(alive), 5000);
+    return () => { alive = false; clearInterval(id); };
+  }, [fetchStatus]);
+
+  const s = useMemo(() => String(statusData?.data?.status || '').toUpperCase(), [statusData]);
+  const isPaid = useMemo(() => ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(s), [s]);
+  const isFailed = useMemo(() => ['FAILED', 'EXPIRED', 'CANCELLED', 'CANCELED'].includes(s), [s]);
+  const isPending = useMemo(() => !isPaid && !isFailed, [isPaid, isFailed]);
 
   useEffect(() => {
     if (isPaid && isAuthenticated) {
@@ -76,10 +66,10 @@ const PaymentStatusPage: React.FC = () => {
     }
   }, [isPaid, isAuthenticated, loadUser, navigate]);
 
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: "easeOut" as any } }
-  };
+  }), []);
 
   const renderStatusIcon = () => {
     if (isPaid) return (
@@ -102,13 +92,32 @@ const PaymentStatusPage: React.FC = () => {
     );
   };
 
+  const breadcrumbs = useMemo(() => [
+    { label: 'Invoice' },
+    { label: 'Status Pembayaran' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Status Transaksi',
+    description: 'Halaman ini menampilkan status terbaru dari transaksi pembayaran Anda.',
+    items: [
+      { text: 'Jika status sudah "SUCCESS", sistem akan otomatis memperbarui langganan Anda.' },
+      { text: 'Anda akan dialihkan ke dashboard dalam beberapa detik setelah pembayaran lunas.' },
+      { text: 'Jika pembayaran gagal, Anda dapat mencoba kembali melalui halaman invoice.' }
+    ]
+  }), []);
+
   if (isAuthLoading) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col font-sans">
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center p-4 pt-24 pb-20 relative overflow-hidden">
+    <AcademicPageLayout
+      title="Status Pembayaran"
+      description="Pantau status transaksi Anda secara real-time melalui sistem gateway kami."
+      breadcrumbs={breadcrumbs}
+      instruction={instruction}
+      hardeningModuleKey="payment_status_page"
+    >
+      <div className="flex-grow flex items-center justify-center p-4 pb-20 relative overflow-hidden">
         {/* BG Decorations */}
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl" />
@@ -123,16 +132,16 @@ const PaymentStatusPage: React.FC = () => {
               </motion.div>
             ) : error ? (
               <motion.div key="error" variants={containerVariants} initial="hidden" animate="visible" className="text-center">
-                 <Card className="p-12 rounded-[3rem]">
+                 <SectionCard className="p-12 rounded-[3rem]">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
                     <h2 className="text-2xl font-black mb-2">Terjadi Gangguan</h2>
                     <p className="text-slate-500 mb-8">{error}</p>
                     <Button onClick={() => window.location.reload()} className="rounded-full px-10">Coba Lagi</Button>
-                 </Card>
+                 </SectionCard>
               </motion.div>
             ) : (
               <motion.div key="status" variants={containerVariants} initial="hidden" animate="visible">
-                <Card className="rounded-[3rem] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900 border-0">
+                <SectionCard noPadding fullWidth className="rounded-[3rem] overflow-hidden shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900 border-0">
                   <div className="p-8 sm:p-12 text-center">
                      <motion.div 
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -199,16 +208,18 @@ const PaymentStatusPage: React.FC = () => {
                        <span className="text-[10px] font-black tracking-widest text-blue-600 dark:text-blue-400 uppercase">Menunggu konfirmasi otomatis...</span>
                     </motion.div>
                   )}
-                </Card>
+                </SectionCard>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </AcademicPageLayout>
   );
-};
+}
 
-export default PaymentStatusPage;
+export default function PaymentStatusPage() {
+  return (
+    <PaymentStatusContent />
+  );
+}

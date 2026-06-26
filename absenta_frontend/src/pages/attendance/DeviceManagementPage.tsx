@@ -31,7 +31,7 @@ import {
   Label
 } from '../../components/ui';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { getDevices, createDevice, updateDevice, deleteDevice, type AttendanceDevice } from '../../api/attendance/device.api';
 import { getKelasList } from '../../api/academic/kelas.api';
@@ -75,7 +75,6 @@ export const DeviceManagementPage: React.FC = React.memo(() => {
     kelas_id: '',
   });
 
-  const { success, error } = useToast();
   const confirm = useConfirm();
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
@@ -101,11 +100,11 @@ export const DeviceManagementPage: React.FC = React.memo(() => {
         label: k.nama_kelas
       })));
     } catch (e) {
-      error('Gagal mengambil data perangkat');
+      toast.error('Gagal mengambil data perangkat');
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, error, isLocked]);
+  }, [searchTerm, isLocked]);
 
   useEffect(() => {
     fetchData();
@@ -135,16 +134,16 @@ export const DeviceManagementPage: React.FC = React.memo(() => {
     try {
       if (editingDevice) {
         await updateDevice(editingDevice.id, formData);
-        success('Perangkat berhasil diperbarui');
+        toast.success('Perangkat berhasil diperbarui');
       } else {
         await createDevice(formData);
-        success('Perangkat berhasil didaftarkan');
+        toast.success('Perangkat berhasil didaftarkan');
       }
       setIsModalOpen(false);
       setRefreshTrigger(p => p + 1);
     } catch (e: unknown) {
       const errObj = e as { response?: { data?: { message?: string } } };
-      error(errObj?.response?.data?.message || 'Gagal menyimpan perangkat');
+      toast.error(errObj?.response?.data?.message || 'Gagal menyimpan perangkat');
     }
   };
 
@@ -163,10 +162,10 @@ export const DeviceManagementPage: React.FC = React.memo(() => {
 
     try {
       await deleteDevice(id);
-      success('Perangkat berhasil dihapus');
+      toast.success('Perangkat berhasil dihapus');
       setRefreshTrigger(p => p + 1);
     } catch (e) {
-      error('Gagal menghapus perangkat');
+      toast.error('Gagal menghapus perangkat');
     }
   };
 

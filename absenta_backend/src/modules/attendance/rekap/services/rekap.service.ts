@@ -802,7 +802,7 @@ export class RekapService {
   }
 
   // 4. Rekap Harian Siswa (Single Day Status & Poin)
-  async getRekapHarianSiswa(siswaId: string, tanggal: string, tenantId: string, tahunPelajaranId?: string) {
+  async getRekapHarianSiswa(siswaId: string, tanggal: string, tenantId: string, tahunPelajaranId?: string): Promise<RekapHarianSiswaResponse & { total_poin: number; poin: number }> {
     // 1. Validate Siswa & Tenant
     const siswa = await prisma.siswa.findFirst({
       where: { id: siswaId, tenant_id: tenantId },
@@ -835,10 +835,10 @@ export class RekapService {
 
     const gateTaps = await prisma.absenGerbangSiswa.findMany({
       where: gateWhere,
-      select: { status: true, is_terlambat: true, poin_kehadiran: true }
+      select: { status: true, is_terlambat: true, poin_kehadiran: true, waktu_tap: true, arah: true }
     });
 
-    // Class (MULTI_SESI only, untuk poin saja)
+    // Class (MULTI_SESI only, untuk poin & rincian)
     let classTaps: any[] = [];
     if (tenant.absensi_mode === AbsensiMode.MULTI_SESI) {
       const sesiWhere: any = { tanggal: { gte: startOfDay, lte: endOfDay } };
@@ -850,7 +850,23 @@ export class RekapService {
           SiswaAkademik: { siswa_id: siswaId },
           SesiAbsensi: sesiWhere
         },
-        select: { status: true, is_terlambat: true, poin_kehadiran: true }
+        select: {
+          status: true,
+          is_terlambat: true,
+          poin_kehadiran: true,
+          waktu_tap: true,
+          SesiAbsensi: {
+            select: {
+              waktu_mulai: true,
+              jenis_kegiatan: true,
+              Mapel: {
+                select: {
+                  nama_mapel: true
+                }
+              }
+            }
+          }
+        }
       });
     }
 
@@ -876,18 +892,23 @@ export class RekapService {
     const pklStatus = pklAbsen?.status;
     const pklPoin = pklAbsen?.status === 'HADIR' ? ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU : 0;
     
-    // Class Data hanya untuk akumulasi poin
     const classPoinSum = classTaps.reduce((sum, c) => sum + (c.poin_kehadiran || 0), 0);
 
-    // Logika status: SELALU diturunkan dari Gerbang (fisik) atau PKL
-    if (gateStatus === 'HADIR' || pklStatus === 'HADIR') {
+    const classHasHadir = classTaps.some(c => c.status === 'HADIR' || c.status === 'TERLAMBAT');
+    const classHasLate = classTaps.some(c => c.is_terlambat || c.status === 'TERLAMBAT');
+    const classHasSakit = classTaps.some(c => c.status === 'SAKIT');
+    const classHasIzin = classTaps.some(c => c.status === 'IZIN' || c.status === 'DISPEN');
+    const classHasDispen = classTaps.some(c => c.status === 'DISPEN');
+
+    // Logika status hibrida (Gerbang + Kelas + PKL)
+    if (gateStatus === 'HADIR' || classHasHadir || pklStatus === 'HADIR') {
         finalStatus = 'HADIR';
-        if (gateLate) isLate = true;
-    } else if (gateStatus === 'SAKIT') {
+        if (gateLate || classHasLate) isLate = true;
+    } else if (gateStatus === 'SAKIT' || classHasSakit) {
         finalStatus = 'SAKIT';
-    } else if (gateStatus === 'IZIN') {
+    } else if (gateStatus === 'IZIN' || classHasIzin) {
         finalStatus = 'IZIN';
-    } else if (gateStatus === 'DISPEN') {
+    } else if (gateStatus === 'DISPEN' || classHasDispen) {
         finalStatus = 'DISPEN';
     }
 
@@ -912,10 +933,47 @@ export class RekapService {
 
     const totalPoin = dbPoin > 0 ? dbPoin : calculatedPoin;
 
+    // 5. Construct Rincian Array
+    const rincian: Array<{ jenis_kegiatan: string; status: string; waktu_tap: string | null }> = [];
+
+    gateTaps.forEach(tap => {
+      rincian.push({
+        jenis_kegiatan: tap.arah === 'GERBANG_DATANG' ? 'Datang (Gerbang)' : 'Pulang (Gerbang)',
+        status: tap.is_terlambat && tap.status === 'HADIR' ? 'TERLAMBAT' : tap.status,
+        waktu_tap: tap.waktu_tap ? tap.waktu_tap.toISOString() : null
+      });
+    });
+
+    classTaps.forEach(tap => {
+      const mapelName = tap.SesiAbsensi?.Mapel?.nama_mapel;
+      const rawJenis = tap.SesiAbsensi?.jenis_kegiatan || 'KBM';
+      const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      const cleanJenis = isUUID(rawJenis) ? 'KBM' : rawJenis;
+      const activityName = mapelName ? `${cleanJenis} - ${mapelName}` : (isUUID(rawJenis) ? 'Sesi Kelas' : rawJenis);
+      
+      const effectiveTime = tap.waktu_tap || tap.SesiAbsensi?.waktu_mulai;
+
+      rincian.push({
+        jenis_kegiatan: activityName,
+        status: tap.is_terlambat && tap.status === 'HADIR' ? 'TERLAMBAT' : tap.status,
+        waktu_tap: effectiveTime ? effectiveTime.toISOString() : null
+      });
+    });
+
+    rincian.sort((a, b) => {
+      if (!a.waktu_tap && !b.waktu_tap) return 0;
+      if (!a.waktu_tap) return 1;
+      if (!b.waktu_tap) return -1;
+      return new Date(a.waktu_tap).getTime() - new Date(b.waktu_tap).getTime();
+    });
+
     return {
+        nama_siswa: siswa.nama_siswa,
+        tanggal: tanggal,
         status: isLate && finalStatus === 'HADIR' ? 'TERLAMBAT' : finalStatus,
-        total_poin: totalPoin, // Use total_poin key to match what might be expected
-        poin: totalPoin
+        total_poin: totalPoin,
+        poin: totalPoin,
+        rincian
     };
   }
 
@@ -1034,14 +1092,20 @@ export class RekapService {
       
       const classPoinSum = sClassTaps.reduce((sum, c) => sum + (c.poin_kehadiran || 0), 0);
 
-      if (gateStatus === 'HADIR' || pklStatus === 'HADIR') {
+      const classHasHadir = sClassTaps.some(c => c.status === 'HADIR' || c.status === 'TERLAMBAT');
+      const classHasLate = sClassTaps.some(c => c.is_terlambat || c.status === 'TERLAMBAT');
+      const classHasSakit = sClassTaps.some(c => c.status === 'SAKIT');
+      const classHasIzin = sClassTaps.some(c => c.status === 'IZIN' || c.status === 'DISPEN');
+      const classHasDispen = sClassTaps.some(c => c.status === 'DISPEN');
+
+      if (gateStatus === 'HADIR' || classHasHadir || pklStatus === 'HADIR') {
           finalStatus = 'HADIR';
-          if (gateLate) isLate = true;
-      } else if (gateStatus === 'SAKIT') {
+          if (gateLate || classHasLate) isLate = true;
+      } else if (gateStatus === 'SAKIT' || classHasSakit) {
           finalStatus = 'SAKIT';
-      } else if (gateStatus === 'IZIN') {
+      } else if (gateStatus === 'IZIN' || classHasIzin) {
           finalStatus = 'IZIN';
-      } else if (gateStatus === 'DISPEN') {
+      } else if (gateStatus === 'DISPEN' || classHasDispen) {
           finalStatus = 'DISPEN';
       }
 
@@ -1073,9 +1137,7 @@ export class RekapService {
     });
   }
 
-  // 6. Statistik Ringkas per Hari (Dashboard)
   async getStatistikHarian(tanggal: string, tenantId: string, tahunPelajaranId?: string, scope?: DataScope): Promise<StatistikHarianResponse[]> {
-    
     // Get tenant mode
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -1100,7 +1162,82 @@ export class RekapService {
 
     const kelasList = await prisma.kelas.findMany({
       where: whereKelas,
-      include: { Siswa: true },
+      include: { Siswa: { select: { id: true, nama_siswa: true } } },
+    });
+
+    const studentIds = kelasList.flatMap(k => k.Siswa.map(s => s.id));
+    if (studentIds.length === 0) return [];
+
+    // Determine Time Range (Start/End of Day)
+    const tzConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'TIMEZONE' } });
+    const timeZone = tzConfig?.value || 'Asia/Jakarta';
+    const TZ_OFFSET: Record<string, number> = { 'Asia/Jakarta': 7, 'Asia/Makassar': 8, 'Asia/Jayapura': 9 };
+    const offset = TZ_OFFSET[timeZone] ?? 7;
+    const dayStr = String(tanggal);
+    const startOfDay = new Date(new Date(`${dayStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+    const endOfDay = new Date(new Date(`${dayStr}T23:59:59.999Z`).getTime() - (offset * 60 * 60 * 1000));
+
+    // Fetch Gate Taps in bulk
+    const gateWhere: any = {
+      siswa_id: { in: studentIds },
+      tenant_id: tenantId,
+      waktu_tap: { gte: startOfDay, lte: endOfDay },
+    };
+    if (tahunPelajaranId) gateWhere.tahun_pelajaran_id_snapshot = tahunPelajaranId;
+
+    const gateTaps = await prisma.absenGerbangSiswa.findMany({
+      where: gateWhere,
+      select: { siswa_id: true, status: true, is_terlambat: true }
+    });
+
+    // Fetch Class KBM Sessions in bulk (only for MULTI_SESI)
+    let classTaps: any[] = [];
+    if (tenant.absensi_mode === AbsensiMode.MULTI_SESI) {
+      const sesiWhere: any = { tanggal: { gte: startOfDay, lte: endOfDay } };
+      if (tahunPelajaranId) sesiWhere.tahun_pelajaran_id = tahunPelajaranId;
+
+      classTaps = await prisma.absenSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          SiswaAkademik: { siswa_id: { in: studentIds } },
+          SesiAbsensi: sesiWhere
+        },
+        select: { SiswaAkademik: { select: { siswa_id: true } }, status: true, is_terlambat: true }
+      });
+    }
+
+    // Fetch PKL Absences in bulk
+    const pklAbsens = await prisma.absensiPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        SiswaPkl: { siswa_id: { in: studentIds } },
+        tanggal: { gte: startOfDay, lte: endOfDay },
+      },
+      select: { SiswaPkl: { select: { siswa_id: true } }, status: true }
+    });
+
+    // Map for fast lookup
+    const gateTapsMap = new Map<string, any[]>();
+    gateTaps.forEach(tap => {
+      if (!gateTapsMap.has(tap.siswa_id)) gateTapsMap.set(tap.siswa_id, []);
+      gateTapsMap.get(tap.siswa_id)!.push(tap);
+    });
+
+    const classTapsMap = new Map<string, any[]>();
+    classTaps.forEach(tap => {
+      const sId = tap.SiswaAkademik?.siswa_id;
+      if (sId) {
+        if (!classTapsMap.has(sId)) classTapsMap.set(sId, []);
+        classTapsMap.get(sId)!.push(tap);
+      }
+    });
+
+    const pklAbsensMap = new Map<string, any>();
+    pklAbsens.forEach(absen => {
+      const sId = absen.SiswaPkl?.siswa_id;
+      if (sId) {
+        pklAbsensMap.set(sId, absen);
+      }
     });
 
     const result: StatistikHarianResponse[] = [];
@@ -1116,14 +1253,39 @@ export class RekapService {
       };
 
       for (const siswa of kelas.Siswa) {
-        try {
-          const rekapHarian = await this.getRekapHarianSiswa(siswa.id, tanggal, tenantId, tahunPelajaranId);
-          if (statistik[rekapHarian.status as keyof typeof statistik] !== undefined) {
-            statistik[rekapHarian.status as keyof typeof statistik]++;
-          }
-        } catch (error) {
-          // If no attendance record, count as ALPA
-          statistik.ALPA++;
+        const sGateTaps = gateTapsMap.get(siswa.id) || [];
+        const sClassTaps = classTapsMap.get(siswa.id) || [];
+        const sPklAbsen = pklAbsensMap.get(siswa.id) || null;
+
+        let finalStatus = 'ALPA';
+        let isLate = false;
+
+        const gateStatus = sGateTaps.find(t => t.status === 'HADIR')?.status || sGateTaps[0]?.status;
+        const gateLate = sGateTaps.some(t => t.is_terlambat);
+
+        const pklStatus = sPklAbsen?.status;
+
+        const classHasHadir = sClassTaps.some(c => c.status === 'HADIR' || c.status === 'TERLAMBAT');
+        const classHasLate = sClassTaps.some(c => c.is_terlambat || c.status === 'TERLAMBAT');
+        const classHasSakit = sClassTaps.some(c => c.status === 'SAKIT');
+        const classHasIzin = sClassTaps.some(c => c.status === 'IZIN' || c.status === 'DISPEN');
+        const classHasDispen = sClassTaps.some(c => c.status === 'DISPEN');
+
+        if (gateStatus === 'HADIR' || classHasHadir || pklStatus === 'HADIR') {
+            finalStatus = 'HADIR';
+            if (gateLate || classHasLate) isLate = true;
+        } else if (gateStatus === 'SAKIT' || classHasSakit) {
+            finalStatus = 'SAKIT';
+        } else if (gateStatus === 'IZIN' || classHasIzin) {
+            finalStatus = 'IZIN';
+        } else if (gateStatus === 'DISPEN' || classHasDispen) {
+            finalStatus = 'DISPEN';
+        }
+
+        const resolvedStatus = isLate && finalStatus === 'HADIR' ? 'TERLAMBAT' : finalStatus;
+
+        if (statistik[resolvedStatus as keyof typeof statistik] !== undefined) {
+          statistik[resolvedStatus as keyof typeof statistik]++;
         }
       }
 

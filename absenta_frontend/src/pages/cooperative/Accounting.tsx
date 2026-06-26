@@ -41,7 +41,7 @@ const indonesianMonths = [
 ];
 
 const Accounting: React.FC = () => {
-    const { subscription, user, can, isSuperAdmin } = useAuth();
+    const { subscription, can, isSuperAdmin } = useAuth();
     const [activeTab, setActiveTab] = useState<'journal' | 'balance' | 'payroll'>('journal');
     const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [balanceSheet, setBalanceSheet] = useState<BalanceSheetItem[]>([]);
@@ -147,9 +147,9 @@ const Accounting: React.FC = () => {
             toast.success('Potongan gaji massal berhasil diposting!');
             fetchPayrollDeductions();
             setShowPostConfirm(false);
-        } catch (e) {
+        } catch (e: unknown) {
             console.error(e);
-            const err = e as Error & { response?: { data?: { message?: string } } };
+            const err = e as { response?: { data?: { message?: string } } };
             toast.error(err.response?.data?.message || 'Gagal memproses posting potongan gaji.');
         } finally {
             setPostingLoading(false);
@@ -166,9 +166,9 @@ const Accounting: React.FC = () => {
             toast.success('Posting potongan gaji massal berhasil dibatalkan!');
             fetchPayrollDeductions();
             setShowCancelConfirm(false);
-        } catch (e) {
+        } catch (e: unknown) {
             console.error(e);
-            const err = e as Error & { response?: { data?: { message?: string } } };
+            const err = e as { response?: { data?: { message?: string } } };
             toast.error(err.response?.data?.message || 'Gagal membatalkan posting potongan gaji.');
         } finally {
             setPostingLoading(false);

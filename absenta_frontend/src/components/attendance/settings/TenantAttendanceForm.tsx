@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, updateTenant, type UpdateTenantRequest } from '../../../api/tenants.api';
-import { Button, Input, Label, ModalFooter, Loader, Alert } from '../../ui';
-import { useToast } from '../../../hooks/useToast';
+import { Button, Input, Label, ModalFooter, Loader, Alert, Switch } from '../../ui';
+import { toast } from 'react-hot-toast';
 import { Clock, Settings2, Save, RefreshCw } from 'lucide-react';
 
 const TenantAttendanceFormComponent: React.FC = () => {
   const { user } = useAuthStore();
-  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     jam_masuk_default: '07:00',
     jam_pulang_default: '14:00',
-    toleransi_keterlambatan_menit: 15
+    toleransi_keterlambatan_menit: 15,
+    allow_manual_hadir_gate: false
   });
 
   const loadTenantData = useCallback(async () => {
@@ -23,11 +23,12 @@ const TenantAttendanceFormComponent: React.FC = () => {
       setLoadingData(true);
       setError(null);
       const response = await getTenantById(user.tenant_id);
-      const tenant = response.data;
+      const tenant = response.data as any;
       setFormData({
         jam_masuk_default: tenant.jam_masuk_default || '07:00',
         jam_pulang_default: tenant.jam_pulang_default || '14:00',
-        toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit || 15
+        toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit || 15,
+        allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate
       });
     } catch (err) {
       console.error('Failed to load tenant data', err);
@@ -51,23 +52,24 @@ const TenantAttendanceFormComponent: React.FC = () => {
       const updateData: UpdateTenantRequest = {
         jam_masuk_default: formData.jam_masuk_default,
         jam_pulang_default: formData.jam_pulang_default,
-        toleransi_keterlambatan_menit: Number(formData.toleransi_keterlambatan_menit)
+        toleransi_keterlambatan_menit: Number(formData.toleransi_keterlambatan_menit),
+        allow_manual_hadir_gate: formData.allow_manual_hadir_gate
       };
       
       const response = await updateTenant(user.tenant_id, updateData);
       if (response.success) {
-        showToast('Pengaturan berhasil disimpan', 'success');
+        toast.success('Pengaturan berhasil disimpan');
       } else {
-        showToast(response.message || 'Gagal menyimpan pengaturan', 'error');
+        toast.error(response.message || 'Gagal menyimpan pengaturan');
       }
     } catch (err: unknown) {
       console.error('Failed to update settings', err);
       const errObj = err as { response?: { data?: { message?: string } } };
-      showToast(errObj.response?.data?.message || 'Gagal menyimpan pengaturan', 'error');
+      toast.error(errObj.response?.data?.message || 'Gagal menyimpan pengaturan');
     } finally {
       setLoading(false);
     }
-  }, [user?.tenant_id, formData, showToast]);
+  }, [user?.tenant_id, formData]);
 
   if (loadingData) {
     return (
@@ -145,6 +147,34 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 Pengaturan ini akan menjadi acuan dasar untuk semua jadwal yang tidak memiliki ketentuan waktu khusus.
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+              <Settings2 size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Validasi Kehadiran</h3>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Aturan Scan Fisik vs Manual</p>
+            </div>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/60 shadow-sm">
+            <div className="space-y-1">
+              <Label htmlFor="allow-manual-hadir-field" className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-tighter cursor-pointer">
+                Izinkan Absensi Manual "Hadir"
+              </Label>
+              <p className="text-[10px] text-slate-400 font-medium leading-relaxed max-w-xl">
+                Bila diaktifkan, guru atau petugas kelas dapat menandai siswa sebagai "Hadir" secara manual di dashboard tanpa memerlukan scan alat/kartu gerbang fisik.
+              </p>
+            </div>
+            <Switch
+              id="allow-manual-hadir-field"
+              checked={formData.allow_manual_hadir_gate}
+              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, allow_manual_hadir_gate: checked }))}
+            />
           </div>
         </div>
 

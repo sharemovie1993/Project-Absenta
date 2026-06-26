@@ -7,7 +7,7 @@ import { Label } from '../ui/Label';
 import { Textarea } from '../ui/Textarea';
 import { SearchableSelect } from '../ui/SearchableSelect';
 import { sarprasApi } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 
 interface LoanStatusActionsProps {
   loan: {
@@ -29,7 +29,6 @@ const CONDITION_OPTIONS = [
 
 const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnData, setReturnData] = useState<ReturnDataPayload>({
     condition_on_return: 'BAIK',
@@ -40,7 +39,7 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
     mutationFn: ({ status, data }: { status: string; data?: ReturnDataPayload }) =>
       sarprasApi.updateLoanStatus(loan.id, { status, ...data }),
     onSuccess: (res: { message?: string }) => {
-      showToast(res.message || 'Status berhasil diperbarui', 'success');
+      toast.success(res.message || 'Status berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       setReturnModalOpen(false);
@@ -55,7 +54,7 @@ const LoanStatusActions: React.FC<LoanStatusActionsProps> = ({ loan }) => {
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     }
   });
 

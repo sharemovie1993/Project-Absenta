@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader, Alert } from '../ui';
 import { sarprasApi } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 
 interface AssetFormProps {
@@ -29,11 +29,10 @@ const KONDISI_OPTIONS = [
 const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
 
   const [formData, setFormData] = useState({
     nama: '',
@@ -94,7 +93,41 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
   }, [categories]);
 
   const locationOptions = useMemo(() => {
-    return locations?.data?.map((l: { id: string; nama: string }) => ({ value: l.id, label: l.nama })) || [];
+    if (!locations?.data) return [];
+
+    const classrooms: any[] = [];
+    const majors: any[] = [];
+    const general: any[] = [];
+
+    locations.data.forEach((l: { id: string; nama: string; kelas_id?: string; unit_id?: string }) => {
+      const option = { value: l.id, label: `   • ${l.nama}` };
+      if (l.kelas_id) {
+        classrooms.push(option);
+      } else if (l.unit_id) {
+        majors.push(option);
+      } else {
+        general.push(option);
+      }
+    });
+
+    const options: any[] = [];
+
+    if (classrooms.length > 0) {
+      options.push({ value: 'header-classrooms', label: '🏢 RUANG KELAS', disabled: true });
+      options.push(...classrooms);
+    }
+
+    if (majors.length > 0) {
+      options.push({ value: 'header-majors', label: '🔬 LABORATORIUM / JURUSAN', disabled: true });
+      options.push(...majors);
+    }
+
+    if (general.length > 0) {
+      options.push({ value: 'header-general', label: '📦 FASILITAS UMUM / TAMBAHAN', disabled: true });
+      options.push(...general);
+    }
+
+    return options;
   }, [locations]);
 
   const mutation = useMutation({
@@ -102,8 +135,9 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
       ? sarprasApi.updateAsset(assetId, data)
       : sarprasApi.createAsset(data),
     onSuccess: (res: { message?: string }) => {
-      showToast(res.message || 'Berhasil menyimpan aset', 'success');
+      toast.success(res.message || 'Berhasil menyimpan aset');
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       onSuccess?.();
     },
     onError: (err: unknown) => {
@@ -116,7 +150,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     }
   });
 

@@ -2,8 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
-import { ToastContainer } from '../../components/ui';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
 import { useAuth } from '../../hooks/useAuth';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui';
@@ -53,7 +52,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 }) => {
   const { setInstructionData } = useInstruction();
   const { isAdmin } = useAuth();
-  const { toasts, removeToast } = useToast();
+
 
   // Admin always has access to pages by default
   const canView = useMemo(() => {
@@ -162,8 +161,6 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
 
   return (
     <div className="px-4 pt-4 pb-8 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 max-w-full overflow-x-hidden relative">
-      {/* Global Toast */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Responsive Breadcrumbs */}
       {breadcrumbs && (

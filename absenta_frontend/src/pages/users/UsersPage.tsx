@@ -17,7 +17,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAuth } from '../../hooks/useAuth';
 import { getTenantById } from '../../api/tenants.api';
 import { isSystemSuperAdmin } from '../../utils/rbac';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import axiosInstance from '../../lib/axiosInstance';
 
 interface UserStats {
@@ -45,7 +45,7 @@ const UserPage: React.FC = () => {
 
   const { user, can, isAdmin, isLoading } = useAuth();
   const [tenantLabel, setTenantLabel] = useState<string>('Tenant Anda');
-  const { showToast } = useToast();
+
 
   if (isLoading) {
     return (
@@ -121,11 +121,11 @@ const UserPage: React.FC = () => {
         const normalized = toRoleArray(res.data);
         setRoleList(normalized);
       } catch {
-        showToast('Gagal memuat role', 'error');
+        toast.error('Gagal memuat role');
       }
     };
     loadRoles();
-  }, [showToast]);
+  }, []);
 
   // Load statistics
   useEffect(() => {
@@ -169,23 +169,23 @@ const UserPage: React.FC = () => {
 
   const handleAddUser = useCallback(() => {
     if (!canManage) {
-      showToast('Anda tidak memiliki izin untuk menambah pengguna', 'error');
+      toast.error('Anda tidak memiliki izin untuk menambah pengguna');
       return;
     }
     setSelectedUser(null);
     setModalMode('create');
     setIsModalOpen(true);
-  }, [canManage, showToast]);
+  }, [canManage]);
 
   const handleEditUser = useCallback((userData: User) => {
     if (!canManage) {
-      showToast('Anda tidak memiliki izin untuk mengedit pengguna', 'error');
+      toast.error('Anda tidak memiliki izin untuk mengedit pengguna');
       return;
     }
     setSelectedUser(userData);
     setModalMode('edit');
     setIsModalOpen(true);
-  }, [canManage, showToast]);
+  }, [canManage]);
 
   const handleViewUser = useCallback((userData: User) => {
     setSelectedUser(userData);

@@ -16,7 +16,7 @@ import {
 } from '../../components/ui';
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -54,7 +54,6 @@ interface GroupedRiwayat {
 
 export const RiwayatAjarPage: React.FC = () => {
   const { user, tenantId, subscription } = useAuthStore();
-  const { success, error } = useToast();
   
   const features = user?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
@@ -164,7 +163,7 @@ export const RiwayatAjarPage: React.FC = () => {
   const handleExport = useCallback(async () => {
     if (isExporting) return;
     if (!sesiData?.data?.length) {
-      error('Tidak ada data untuk diekspor');
+      toast.error('Tidak ada data untuk diekspor');
       return;
     }
 
@@ -191,14 +190,14 @@ export const RiwayatAjarPage: React.FC = () => {
       link.download = `Riwayat_Ajar_${selectedYear}_${selectedMonth + 1}.csv`;
       link.href = url;
       link.click();
-      success('Buku Jurnal Riwayat berhasil diunduh');
+      toast.success('Buku Jurnal Riwayat berhasil diunduh');
     } catch (err) {
       console.error(err);
-      error(err instanceof Error ? err.message : 'Gagal mengekspor data');
+      toast.error(err instanceof Error ? err.message : 'Gagal mengekspor data');
     } finally {
       setIsExporting(false);
     }
-  }, [riwayatGrouped, sesiData?.data?.length, selectedMonth, selectedYear, success, error, isExporting]);
+  }, [riwayatGrouped, sesiData?.data?.length, selectedMonth, selectedYear, isExporting]);
 
   const pageContent = useMemo(() => (
     <div className="space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">

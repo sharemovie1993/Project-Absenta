@@ -88,8 +88,10 @@ model Tenant {
   HubinMoUHistory HubinMoUHistory[]
   HubinLowongan HubinLowongan[]
   HubinLamaran HubinLamaran[]
+  HubinLamaranLog HubinLamaranLog[]
   HubinTracerStudy HubinTracerStudy[]
   HubinTefaOrder HubinTefaOrder[]
+  WaTenantConnection WaTenantConnection?
 
   // BK & Prestasi
   JenisPrestasi       JenisPrestasi[]
@@ -838,6 +840,7 @@ model Kelas {
   PelanggaranSiswa          PelanggaranSiswa[]
   AttendanceDevice          AttendanceDevice?
   PrestasiSiswa             PrestasiSiswa[]
+  sarprasLocations          SarprasLocation[]
 
 
   @@index([tenant_id])
@@ -3019,11 +3022,48 @@ model HubinLamaran {
   Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Lowongan        HubinLowongan @relation(fields: [lowongan_id], references: [id], onDelete: Cascade)
   Siswa           Siswa         @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Logs            HubinLamaranLog[]
 
   @@index([tenant_id])
   @@index([lowongan_id])
   @@index([siswa_id])
   @@index([tenant_id, deleted_at])
+}
+
+model HubinLamaranLog {
+  id                   String    @id @default(uuid())
+  lamaran_id           String
+  tenant_id            String
+  status_dari          String?
+  status_ke            String
+  catatan              String?   @db.Text
+  // Interview scheduling fields
+  interview_tanggal    DateTime?
+  interview_lokasi     String?
+  interview_link       String?
+  interview_pesan      String?   @db.Text
+  interview_narahubung String?
+  // Actor
+  created_by           String?
+  created_at           DateTime  @default(now())
+
+  Lamaran HubinLamaran @relation(fields: [lamaran_id], references: [id], onDelete: Cascade)
+  Tenant  Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([lamaran_id])
+  @@index([tenant_id])
+}
+
+model WaTenantConnection {
+  id               String   @id @default(uuid())
+  tenant_id        String   @unique
+  status           String   @default("disconnected")
+  connected_number String?
+  auth_dir         String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 }
 
 model HubinTracerStudy {
@@ -3187,6 +3227,7 @@ model SarprasLocation {
   nama       String
   deskripsi  String?
   unit_id    String?
+  kelas_id   String?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   deleted_at DateTime?
@@ -3194,6 +3235,7 @@ model SarprasLocation {
   Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Assets SarprasAsset[]
   Unit   Jurusan?       @relation(fields: [unit_id], references: [id], onDelete: SetNull)
+  Kelas  Kelas?         @relation(fields: [kelas_id], references: [id], onDelete: SetNull)
 
   @@unique([tenant_id, nama])
   @@index([tenant_id])

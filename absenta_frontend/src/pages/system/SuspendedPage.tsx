@@ -1,31 +1,44 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, CreditCard, Home, Mail, AlertCircle } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { motion } from 'framer-motion';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
-
 import { DEFAULT_SUPPORT_EMAIL } from '@/config/env-config';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
-export default function SuspendedPage() {
+function SuspendedContent() {
   const navigate = useNavigate();
 
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
-  };
+  }), []);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Sistem', path: '/home' },
+    { label: 'Penangguhan Akun' }
+  ], []);
+
+  const handleGoToBilling = useCallback(() => navigate('/billing'), [navigate]);
+  const handleGoHome = useCallback(() => navigate('/home'), [navigate]);
+  const handleContactSupport = useCallback(() => { window.location.href = `mailto:${DEFAULT_SUPPORT_EMAIL}`; }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-100">
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center p-6 pt-24 pb-20 relative overflow-hidden">
-        {/* Decorative background */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl" />
-        </div>
-
+    <AcademicPageLayout
+      title="Status Akun: Ditangguhkan"
+      description="Akses aplikasi untuk institusi Anda sedang kami tangguhkan sementara."
+      hardeningModuleKey="system_suspended"
+      instruction={{
+        title: "Penangguhan Akun",
+        description: "Penangguhan ini biasanya terjadi karena masalah administrasi atau tagihan yang belum diselesaikan.",
+        items: [
+          { text: "Silakan periksa detail tagihan Anda di Pusat Billing." },
+          { text: "Hubungi tim support jika Anda merasa ini adalah kesalahan." }
+        ]
+      }}
+      breadcrumbs={breadcrumbs}
+    >
+      <div className="flex items-center justify-center p-6 relative min-h-[50vh]">
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -48,8 +61,8 @@ export default function SuspendedPage() {
                    </div>
                 </motion.div>
 
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight uppercase">Akun Ditangguhkan</h1>
-                <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 max-w-xs mx-auto leading-relaxed">
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-4 tracking-tight uppercase">Akun Ditangguhkan</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-10 max-w-xs mx-auto leading-relaxed">
                    Maaf, akses aplikasi untuk institusi Anda sedang kami tangguhkan sementara karena masalah administrasi atau tagihan.
                 </p>
 
@@ -66,14 +79,14 @@ export default function SuspendedPage() {
                 </div>
 
                 <div className="space-y-4">
-                   <Button onClick={() => navigate('/billing')} className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all gap-2">
+                   <Button onClick={handleGoToBilling} className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all gap-2">
                       <CreditCard className="w-5 h-5" /> Buka Pusat Billing
                    </Button>
-                   <div className="flex gap-3">
-                      <Button variant="ghost" onClick={() => navigate('/home')} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
+                   <div className="flex flex-col sm:flex-row gap-3">
+                      <Button variant="ghost" onClick={handleGoHome} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
                          <Home className="w-4 h-4" /> Beranda
                       </Button>
-                      <Button variant="ghost" onClick={() => window.location.href = `mailto:${DEFAULT_SUPPORT_EMAIL}`} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
+                      <Button variant="ghost" onClick={handleContactSupport} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
                          <Mail className="w-4 h-4" /> Hubungi Kami
                       </Button>
                    </div>
@@ -85,9 +98,13 @@ export default function SuspendedPage() {
              </div>
           </Card>
         </motion.div>
-      </main>
+      </div>
+    </AcademicPageLayout>
+  );
+}
 
-      <Footer />
-    </div>
+export default function SuspendedPage() {
+  return (
+    <SuspendedContent />
   );
 }

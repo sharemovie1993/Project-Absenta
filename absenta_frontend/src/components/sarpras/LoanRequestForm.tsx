@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Package, FileText, Send, X, RefreshCw, ClipboardList } from 'lucide-react';
 import { Button, Input, Label, Textarea, SearchableSelect, ModalFooter, Loader } from '../ui';
 import { sarprasApi } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
+import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 
 interface LoanRequestFormProps {
   onSuccess?: () => void;
@@ -19,15 +20,22 @@ interface Asset {
 }
 
 const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }) => {
-  const { subscription } = useAuthStore();
+  const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
 
   const [formData, setFormData] = useState({
     asset_id: '',
     tanggal_kembali_plan: '',
     catatan: ''
   });
+
+  const [selectedBorrower, setSelectedBorrower] = useState<Student | null>(null);
+
+  const isAdminOrStaff = useMemo(() => {
+    const roleName = user?.role?.name || '';
+    const hasManageCapability = user?.capabilities?.includes('sarpras.loans.manage') || false;
+    return ['SUPERADMIN', 'ADMIN', 'SARPRAS', 'TOOLMAN', 'KABENG'].includes(roleName) || hasManageCapability;
+  }, [user]);
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
@@ -36,7 +44,7 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
   const { data: assetsData, isLoading: loadingAssets } = useQuery({
     queryKey: ['sarpras-assets-loanable'],
     queryFn: () => sarprasApi.getAssets({ is_loanable: 'true', limit: 100 }),
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined
   });
 
   const assetOptions = useMemo(() => {
@@ -48,9 +56,9 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
   }, [assetsData]);
 
   const mutation = useMutation({
-    mutationFn: (data: { asset_id: string; tanggal_kembali_plan?: Date; catatan?: string }) => sarprasApi.requestLoan(data),
+    mutationFn: (data: { asset_id: string; peminjam_id?: string; tanggal_kembali_plan?: Date; catatan?: string }) => sarprasApi.requestLoan(data),
     onSuccess: (res: { message?: string }) => {
-      showToast(res.message || 'Permohonan peminjaman berhasil dikirim', 'success');
+      toast.success(res.message || 'Permohonan peminjaman berhasil dikirim');
       queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       onSuccess?.();
@@ -65,22 +73,31 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     }
   });
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.asset_id) {
-      showToast('Pilih aset yang ingin dipinjam', 'error');
+      toast.error('Pilih aset yang ingin dipinjam');
+      return;
+    }
+    if (isAdminOrStaff && !selectedBorrower) {
+      toast.error('Pilih peminjam terlebih dahulu');
+      return;
+    }
+    if (isAdminOrStaff && selectedBorrower && !selectedBorrower.user_id) {
+      toast.error('Peminjam terpilih tidak memiliki akun pengguna yang aktif di sistem.');
       return;
     }
     mutation.mutate({
       asset_id: formData.asset_id,
+      peminjam_id: isAdminOrStaff ? (selectedBorrower?.user_id || undefined) : undefined,
       tanggal_kembali_plan: formData.tanggal_kembali_plan ? new Date(formData.tanggal_kembali_plan) : undefined,
       catatan: formData.catatan || undefined
     });
-  }, [formData, mutation, showToast]);
+  }, [formData, mutation, isAdminOrStaff, selectedBorrower]);
 
   return (
     <div className="space-y-6">
@@ -111,6 +128,28 @@ const LoanRequestForm: React.FC<LoanRequestFormProps> = ({ onSuccess, onCancel }
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>
+
+            {isAdminOrStaff && (
+              <div className="space-y-2 group">
+                <Label htmlFor="loan-borrower-id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                  Peminjam (Guru / Siswa) <span className="text-rose-500">*</span>
+                </Label>
+                <div className="bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                  <SmartStudentPicker
+                    id="loan-borrower-id"
+                    mode="universal"
+                    scope="global"
+                    onSelect={(item) => setSelectedBorrower(item)}
+                    placeholder="Scan RFID atau ketik nama/NIS/NIP..."
+                  />
+                </div>
+                {selectedBorrower && (
+                  <p className="text-xs text-emerald-600 font-bold mt-1">
+                    Terpilih: {selectedBorrower.nama_siswa || selectedBorrower.nama_guru || selectedBorrower.full_name} ({selectedBorrower.nis || selectedBorrower.nip || 'Staff'})
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2 group">
               <Label htmlFor="loan-return-date" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">

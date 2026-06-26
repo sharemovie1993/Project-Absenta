@@ -6,7 +6,7 @@ import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { Upload } from 'lucide-react';
 import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 interface UploadSiswaDocumentModalProps {
   isOpen: boolean;
@@ -28,7 +28,7 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
   siswaId,
   onSuccess
 }) => {
-  const { showToast } = useToast();
+
   const [judul, setJudul] = useState('');
   const [kategori, setKategori] = useState('SURAT_PERINGATAN');
   const [file, setFile] = useState<File | null>(null);
@@ -43,11 +43,11 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!judul.trim()) {
-      showToast('Judul dokumen wajib diisi', 'error');
+      toast.error('Judul dokumen wajib diisi');
       return;
     }
     if (!file) {
-      showToast('Pilih file berkas terlebih dahulu', 'error');
+      toast.error('Pilih file berkas terlebih dahulu');
       return;
     }
 
@@ -55,20 +55,20 @@ export const UploadSiswaDocumentModal: React.FC<UploadSiswaDocumentModalProps> =
       setSubmitting(true);
       const res = await uploadSiswaDocument(siswaId, file, judul.trim(), kategori);
       if (res.success) {
-        showToast('Dokumen berhasil diunggah', 'success');
+        toast.success('Dokumen berhasil diunggah');
         setJudul('');
         setFile(null);
         onSuccess();
         onClose();
       } else {
-        showToast(res.message || 'Gagal mengunggah dokumen', 'error');
+        toast.error(res.message || 'Gagal mengunggah dokumen');
       }
     } catch (err: any) {
-      showToast(err.message || 'Koneksi bermasalah', 'error');
+      toast.error(err.message || 'Koneksi bermasalah');
     } finally {
       setSubmitting(false);
     }
-  }, [siswaId, file, judul, kategori, onSuccess, onClose, showToast]);
+  }, [siswaId, file, judul, kategori, onSuccess, onClose]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Unggah Lampiran Baru">

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { 
   getStrukturTree, 
   createStruktur,
@@ -13,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import { 
   Plus, 
@@ -37,15 +38,20 @@ const TABS = [
 
 const StrukturOrganisasiList: React.FC = () => {
   const queryClient = useQueryClient();
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+  const [searchParams] = useSearchParams();
+
   const { confirm } = useConfirm();
   const { user, can, isLoading: authLoading } = useAuth();
 
   const isGlobalStrukturAdmin = can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
   const canManageAcademic = can('academic.structures.view.tree') || can('academic.structures.view.list');
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState<string>('PIMPINAN');
+  // Tab State — default dari query param ?tab= jika ada, fallback ke 'PIMPINAN'
+  const initialTab = useMemo(() => {
+    const tabParam = searchParams.get('tab');
+    return tabParam && TABS.some(t => t.id === tabParam) ? tabParam : 'PIMPINAN';
+  }, [searchParams]);
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   // Modal State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -77,15 +83,15 @@ const StrukturOrganisasiList: React.FC = () => {
     try {
       if (editingItem) {
         await updateStruktur(editingItem.id, values);
-        showSuccessToast('Jabatan berhasil diperbarui');
+        toast.success('Jabatan berhasil diperbarui');
       } else {
         await createStruktur(values);
-        showSuccessToast('Jabatan baru berhasil dibuat');
+        toast.success('Jabatan baru berhasil dibuat');
       }
       setIsFormOpen(false);
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
     } catch (err: any) {
-      showErrorToast(err?.message || 'Gagal menyimpan jabatan');
+      toast.error(err?.message || 'Gagal menyimpan jabatan');
     } finally {
       setIsSubmittingForm(false);
     }

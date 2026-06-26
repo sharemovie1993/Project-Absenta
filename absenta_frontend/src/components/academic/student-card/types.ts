@@ -52,6 +52,20 @@ export interface StudentCardConfig {
   // Data Positioning
   data_x?: number;
   data_y?: number;
+
+  // Print Settings
+  print_paper_size?: string;
+  print_orientation?: string;
+  print_margin_top?: number;
+  print_margin_bottom?: number;
+  print_margin_left?: number;
+  print_margin_right?: number;
+  print_gap_x?: number;
+  print_gap_y?: number;
+  print_custom_width?: number;
+  print_custom_height?: number;
+  print_auto_center_x?: boolean;
+  print_auto_center_y?: boolean;
 }
 
 export interface PrintConfig {

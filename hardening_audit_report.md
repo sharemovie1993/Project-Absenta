@@ -9,9 +9,9 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **143 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **68 Halaman** | 48% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **31 Halaman** | 22% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **44 Halaman** | 31% | **Prioritas Utama Refaktor** |
+| **✅ Lolos Sempurna (Hardened)** | **89 Halaman** | 62% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **28 Halaman** | 20% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **26 Halaman** | 18% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -19,35 +19,26 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halaman utama:
 
-### 📄 Halaman: `BackupPage.tsx`
-* **Lokasi File:** [BackupPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/BackupPage.tsx)
+### 📄 Halaman: `CheckoutPage.tsx`
+* **Lokasi File:** [CheckoutPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/billing/CheckoutPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Aksi utama halaman terdeteksi tetapi tidak menggunakan properti toolbar Table (Wajib: toolbarLeft/Right)
-
----
-
-### 📄 Halaman: `StudentCardPage.tsx`
-* **Lokasi File:** [StudentCardPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/StudentCardPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Menggunakan listeners/timer di useEffect tetapi lupa menulis return cleanup (Kebocoran Memori Klien)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
 
 ---
 
-### 📄 Halaman: `AcademicTransitionPage.tsx`
-* **Lokasi File:** [AcademicTransitionPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/transition/AcademicTransitionPage.tsx)
+### 📄 Halaman: `MySubscriptionPage.tsx`
+* **Lokasi File:** [MySubscriptionPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/billing/MySubscriptionPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
 
 ---
 
@@ -55,13 +46,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [Announcements.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Announcements.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
@@ -79,8 +64,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [Dashboard.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Dashboard.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
   * ❌ Terdeteksi kode warna keras/arbitrer (Hex atau [#[...]]) yang melanggar konsistensi tema desain
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
@@ -101,45 +85,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `LoanDetail.tsx`
-* **Lokasi File:** [LoanDetail.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/LoanDetail.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-
----
-
-### 📄 Halaman: `PPOB.tsx`
-* **Lokasi File:** [PPOB.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/PPOB.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
-
----
-
 ### 📄 Halaman: `TicketDetail.tsx`
 * **Lokasi File:** [TicketDetail.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/TicketDetail.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Ditemukan elemen seleksi tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
@@ -147,15 +99,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [Tickets.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Tickets.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
   * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
   * ⚠️  Ditemukan elemen seleksi tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
@@ -223,34 +169,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `JadwalPelajaranPage.tsx`
-* **Lokasi File:** [JadwalPelajaranPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/JadwalPelajaranPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `SupervisiPage.tsx`
-* **Lokasi File:** [SupervisiPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/SupervisiPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-
----
-
 ### 📄 Halaman: `Login.tsx`
 * **Lokasi File:** [Login.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/Login.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
@@ -269,9 +187,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [MenuAuditPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/management/MenuAuditPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
 
 ---
@@ -280,15 +195,11 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [RoleManagementPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/management/RoleManagementPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
   * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 1182 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 1200 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -315,73 +226,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `EmailVerificationStatusPage.tsx`
-* **Lokasi File:** [EmailVerificationStatusPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/EmailVerificationStatusPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-
----
-
-### 📄 Halaman: `HomePage.tsx`
-* **Lokasi File:** [HomePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/HomePage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton (Risiko Flash Konten Kosong)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
-### 📄 Halaman: `InvoicePublicPage.tsx`
-* **Lokasi File:** [InvoicePublicPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/InvoicePublicPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras/arbitrer (Hex atau [#[...]]) yang melanggar konsistensi tema desain
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 1137 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
 ### 📄 Halaman: `PaymentInstructionPage.tsx`
 * **Lokasi File:** [PaymentInstructionPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PaymentInstructionPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras/arbitrer (Hex atau [#[...]]) yang melanggar konsistensi tema desain
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
-### 📄 Halaman: `PaymentPublicPage.tsx`
-* **Lokasi File:** [PaymentPublicPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PaymentPublicPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
 
 ---
 
@@ -389,9 +240,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [PaymentReturnPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PaymentReturnPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
 
 ---
@@ -400,21 +248,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [PaymentStatusPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PaymentStatusPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-
----
-
-### 📄 Halaman: `PricingPage.tsx`
-* **Lokasi File:** [PricingPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PricingPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
 
 ---
@@ -423,20 +256,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [ServiceDetailPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/ServiceDetailPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras/arbitrer (Hex atau [#[...]]) yang melanggar konsistensi tema desain
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-
----
-
-### 📄 Halaman: `ReportsPage.tsx`
-* **Lokasi File:** [ReportsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/reports/ReportsPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
 
 ---
 
@@ -444,14 +264,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [SystemUpdatePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/settings/SystemUpdatePage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)
-  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
@@ -459,12 +272,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [BackupsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/BackupsPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
 
 ---
 
@@ -472,164 +280,12 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [RevenueIntelligencePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/intelligence/RevenueIntelligencePage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-
----
-
-### 📄 Halaman: `UpgradeIntelligencePage.tsx`
-* **Lokasi File:** [UpgradeIntelligencePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/intelligence/UpgradeIntelligencePage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
   * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
   * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
   * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
-### 📄 Halaman: `PlatformIntelligencePage.tsx`
-* **Lokasi File:** [PlatformIntelligencePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/PlatformIntelligencePage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-
----
-
-### 📄 Halaman: `AdminSupportTicketPage.tsx`
-* **Lokasi File:** [AdminSupportTicketPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/support/AdminSupportTicketPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ❌ Menggunakan listeners/timer di useEffect tetapi lupa menulis return cleanup (Kebocoran Memori Klien)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `TenantDetailPage.tsx`
-* **Lokasi File:** [TenantDetailPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/TenantDetailPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 3096 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-
----
-
-### 📄 Halaman: `CancelledPage.tsx`
-* **Lokasi File:** [CancelledPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/system/CancelledPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-
----
-
-### 📄 Halaman: `SuspendedPage.tsx`
-* **Lokasi File:** [SuspendedPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/system/SuspendedPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-
----
-
-### 📄 Halaman: `TenantsPage.tsx`
-* **Lokasi File:** [TenantsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/tenants/TenantsPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
-  * ❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)
-  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `GuruMapelPage.tsx`
-* **Lokasi File:** [GuruMapelPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/GuruMapelPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `GuruPage.tsx`
-* **Lokasi File:** [GuruPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/GuruPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `JurusanPage.tsx`
-* **Lokasi File:** [JurusanPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/JurusanPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `KelasPage.tsx`
-* **Lokasi File:** [KelasPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/KelasPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `MapelPage.tsx`
-* **Lokasi File:** [MapelPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/MapelPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `SiswaPage.tsx`
-* **Lokasi File:** [SiswaPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/SiswaPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
-
----
-
-### 📄 Halaman: `WaliKelasPage.tsx`
-* **Lokasi File:** [WaliKelasPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/WaliKelasPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
@@ -677,47 +333,17 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [BillingsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/billing/BillingsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
 
 ---
 
-### 📄 Halaman: `CheckoutPage.tsx`
-* **Lokasi File:** [CheckoutPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/billing/CheckoutPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
-### 📄 Halaman: `MySubscriptionPage.tsx`
-* **Lokasi File:** [MySubscriptionPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/billing/MySubscriptionPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
-
----
-
-### 📄 Halaman: `OpnameFormModal.tsx`
-* **Lokasi File:** [OpnameFormModal.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/components/OpnameFormModal.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-
----
-
-### 📄 Halaman: `ProductFormModal.tsx`
-* **Lokasi File:** [ProductFormModal.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx)
+### 📄 Halaman: `PPOB.tsx`
+* **Lokasi File:** [PPOB.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/PPOB.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-
----
-
-### 📄 Halaman: `Loans.tsx`
-* **Lokasi File:** [Loans.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Loans.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
 
 ---
 
@@ -725,30 +351,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [DashboardPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/dashboard/DashboardPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-
----
-
-### 📄 Halaman: `MasterStrukturPage.tsx`
-* **Lokasi File:** [MasterStrukturPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/MasterStrukturPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-
----
-
-### 📄 Halaman: `StrukturKurikulumPage.tsx`
-* **Lokasi File:** [StrukturKurikulumPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/StrukturKurikulumPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
 
 ---
 
@@ -756,24 +360,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [MenuManagementPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/management/MenuManagementPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `NotificationsPage.tsx`
-* **Lokasi File:** [NotificationsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/notifications/NotificationsPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
 
 ---
 
@@ -781,10 +368,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [AboutUsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/AboutUsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
   * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
 
 ---
 
@@ -792,9 +376,37 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [DataProcessingAgreementPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/DataProcessingAgreementPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
+  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+
+---
+
+### 📄 Halaman: `EmailVerificationStatusPage.tsx`
+* **Lokasi File:** [EmailVerificationStatusPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/EmailVerificationStatusPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
   * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
+
+---
+
+### 📄 Halaman: `HomePage.tsx`
+* **Lokasi File:** [HomePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/HomePage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
+
+---
+
+### 📄 Halaman: `InvoicePublicPage.tsx`
+* **Lokasi File:** [InvoicePublicPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/InvoicePublicPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)
+  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
 
 ---
 
@@ -802,8 +414,17 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [LearnMorePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/LearnMorePage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+
+---
+
+### 📄 Halaman: `PaymentPublicPage.tsx`
+* **Lokasi File:** [PaymentPublicPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PaymentPublicPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
 
 ---
 
@@ -811,12 +432,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [PrivacyPolicyPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PrivacyPolicyPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
   * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton (Risiko Flash Konten Kosong)
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
 
 ---
 
@@ -824,8 +441,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [ServicesCatalogPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/ServicesCatalogPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
 
 ---
 
@@ -833,11 +449,16 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [TermsOfServicePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/TermsOfServicePage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
   * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton (Risiko Flash Konten Kosong)
-  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+
+---
+
+### 📄 Halaman: `ReportsPage.tsx`
+* **Lokasi File:** [ReportsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/reports/ReportsPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
 
 ---
 
@@ -845,7 +466,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [SettingsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/settings/SettingsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 969 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
 
 ---
 
@@ -853,17 +474,106 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [InfraControlCenterPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/infra/InfraControlCenterPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+
+---
+
+### 📄 Halaman: `UpgradeIntelligencePage.tsx`
+* **Lokasi File:** [UpgradeIntelligencePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/intelligence/UpgradeIntelligencePage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap
+  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)
+  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+
+---
+
+### 📄 Halaman: `PlatformIntelligencePage.tsx`
+* **Lokasi File:** [PlatformIntelligencePage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/PlatformIntelligencePage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)
+
+---
+
+### 📄 Halaman: `AdminSupportTicketPage.tsx`
+* **Lokasi File:** [AdminSupportTicketPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/support/AdminSupportTicketPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+
+---
+
+### 📄 Halaman: `CancelledPage.tsx`
+* **Lokasi File:** [CancelledPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/system/CancelledPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+
+---
+
+### 📄 Halaman: `SuspendedPage.tsx`
+* **Lokasi File:** [SuspendedPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/system/SuspendedPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
+
+---
+
+### 📄 Halaman: `TenantsPage.tsx`
+* **Lokasi File:** [TenantsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/tenants/TenantsPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+
+---
+
+### 📄 Halaman: `BackupPage.tsx`
+* **Lokasi File:** [BackupPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/BackupPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `GuruMapelPage.tsx`
+* **Lokasi File:** [GuruMapelPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/GuruMapelPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `GuruPage.tsx`
+* **Lokasi File:** [GuruPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/GuruPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
 ---
 
 ### 📄 Halaman: `JenisKegiatanMasterPage.tsx`
 * **Lokasi File:** [JenisKegiatanMasterPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/JenisKegiatanMasterPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `JurusanPage.tsx`
+* **Lokasi File:** [JurusanPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/JurusanPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `KelasPage.tsx`
+* **Lokasi File:** [KelasPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/KelasPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `MapelPage.tsx`
+* **Lokasi File:** [MapelPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/MapelPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -890,6 +600,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `SiswaPage.tsx`
+* **Lokasi File:** [SiswaPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/SiswaPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
 ### 📄 Halaman: `StaffActivityLogPage.tsx`
 * **Lokasi File:** [StaffActivityLogPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/StaffActivityLogPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -897,8 +614,29 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `StudentCardPage.tsx`
+* **Lokasi File:** [StudentCardPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/StudentCardPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
 ### 📄 Halaman: `TahunPelajaranPage.tsx`
 * **Lokasi File:** [TahunPelajaranPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/TahunPelajaranPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `AcademicTransitionPage.tsx`
+* **Lokasi File:** [AcademicTransitionPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/transition/AcademicTransitionPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `WaliKelasPage.tsx`
+* **Lokasi File:** [WaliKelasPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/academic/WaliKelasPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1128,6 +866,34 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `OpnameFormModal.tsx`
+* **Lokasi File:** [OpnameFormModal.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/components/OpnameFormModal.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `ProductFormModal.tsx`
+* **Lokasi File:** [ProductFormModal.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `LoanDetail.tsx`
+* **Lokasi File:** [LoanDetail.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/LoanDetail.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `Loans.tsx`
+* **Lokasi File:** [Loans.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Loans.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
 ### 📄 Halaman: `Members.tsx`
 * **Lokasi File:** [Members.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/cooperative/Members.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1275,6 +1041,48 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `JadwalPelajaranPage.tsx`
+* **Lokasi File:** [JadwalPelajaranPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/JadwalPelajaranPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `MasterStrukturPage.tsx`
+* **Lokasi File:** [MasterStrukturPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/MasterStrukturPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `StrukturKurikulumPage.tsx`
+* **Lokasi File:** [StrukturKurikulumPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/StrukturKurikulumPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `SupervisiPage.tsx`
+* **Lokasi File:** [SupervisiPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/kurikulum/SupervisiPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `NotificationsPage.tsx`
+* **Lokasi File:** [NotificationsPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/notifications/NotificationsPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `PricingPage.tsx`
+* **Lokasi File:** [PricingPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/public/PricingPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
 ### 📄 Halaman: `SarprasDashboard.tsx`
 * **Lokasi File:** [SarprasDashboard.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/sarpras/SarprasDashboard.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1312,6 +1120,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `RevenueDashboardPage.tsx`
 * **Lokasi File:** [RevenueDashboardPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/revenue/RevenueDashboardPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `TenantDetailPage.tsx`
+* **Lokasi File:** [TenantDetailPage.tsx](file:///C:/Users/SERVER-DELL/Documents/Project Absenta/absenta_frontend/src/pages/superadmin/TenantDetailPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

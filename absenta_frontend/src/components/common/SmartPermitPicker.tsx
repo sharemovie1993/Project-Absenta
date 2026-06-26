@@ -6,7 +6,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 
 interface SmartPermitPickerProps {
@@ -39,7 +39,7 @@ export const SmartPermitPicker = React.forwardRef<HTMLInputElement, SmartPermitP
   const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<{ stop: () => void } | null>(null);
   const hidTimerRef = useRef<number | null>(null);
-  const { error: toastError } = useToast();
+
 
   // Combine external ref and internal ref
   const combinedRef = (node: HTMLInputElement) => {
@@ -149,7 +149,7 @@ export const SmartPermitPicker = React.forwardRef<HTMLInputElement, SmartPermitP
       } catch (err) {
         console.error("[SmartPermitPicker] Camera Error:", err);
         setScannerStatus('error');
-        toastError("Gagal mengakses kamera");
+        toast.error("Gagal mengakses kamera");
       }
     }, 300);
   };

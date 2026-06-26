@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useToast } from './useToast';
+import toast from 'react-hot-toast';
 
 interface BulkActionOptions {
   onSuccess?: (succeededIds: string[]) => void;
@@ -14,7 +14,6 @@ interface BulkActionOptions {
  */
 export function useBulkAction<T = any>() {
   const [isExecuting, setIsExecuting] = useState(false);
-  const { showToast } = useToast();
 
   const executeBulk = useCallback(
     async (
@@ -50,10 +49,10 @@ export function useBulkAction<T = any>() {
         });
 
         if (failed.length > 0) {
-          showToast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, 'warning');
+          toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
           options?.onError?.(failed, errors);
         } else {
-          showToast(options?.successMessage || `Berhasil mengeksekusi ${succeeded.length} item`, 'success');
+          toast.success(options?.successMessage || `Berhasil mengeksekusi ${succeeded.length} item`);
         }
 
         if (succeeded.length > 0) {
@@ -61,13 +60,13 @@ export function useBulkAction<T = any>() {
         }
       } catch (error: any) {
         console.error('Bulk action error:', error);
-        showToast('Terjadi kesalahan tidak terduga saat mengeksekusi data', 'error');
+        toast.error('Terjadi kesalahan tidak terduga saat mengeksekusi data');
       } finally {
         setIsExecuting(false);
         options?.onSettled?.();
       }
     },
-    [showToast]
+    []
   );
 
   return { executeBulk, isExecuting };

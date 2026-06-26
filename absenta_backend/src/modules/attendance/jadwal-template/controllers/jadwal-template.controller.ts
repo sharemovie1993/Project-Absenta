@@ -40,7 +40,7 @@ export class JadwalTemplateController {
           user_id: userId,
           is_active: true,
           AND: [{ OR: [{ start_date: null }, { start_date: { lte: now } }] }, { OR: [{ end_date: null }, { end_date: { gte: now } }] }],
-          Position: { code: 'PETUGAS_KELAS', scope_type: 'attendance' },
+          Position: { code: 'PETUGAS_KELAS' },
         },
         include: { Kelas: true, Position: true },
       });

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { useToast } from '../../hooks/useToast';
-import { ToastContainer } from '../ui/Toast';
+import toast from 'react-hot-toast';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -31,7 +30,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
   printPaperSize,
   setPrintPaperSize
 }) => {
-  const { toasts, success, error, removeToast } = useToast();
+
   const scannerInputRef = useRef<any>(null);
 
   // Form states
@@ -58,7 +57,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
     e.preventDefault();
     if (!selectedStudent) return;
     if (!alasan.trim()) {
-      error('Alasan izin keluar harus diisi');
+      toast.error('Alasan izin keluar harus diisi');
       return;
     }
 
@@ -73,7 +72,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
       });
 
       if (res.success) {
-        success(`Izin berhasil diterbitkan untuk ${selectedStudent.nama_siswa}`);
+        toast.success(`Izin berhasil diterbitkan untuk ${selectedStudent.nama_siswa}`);
         
         // Generate offline QR Code instantly
         try {
@@ -108,7 +107,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
       console.error(err);
       const errorObj = err as any;
       const errMsg = errorObj.response?.data?.message || errorObj.message || 'Gagal menyimpan izin keluar';
-      error(errMsg);
+      toast.error(errMsg);
     } finally {
       setSavingPermit(false);
       setTimeout(() => scannerInputRef.current?.focus(), 500);
@@ -133,7 +132,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
                 placeholder="Scan RFID / QR Kamera, atau cari Nama/NIS..."
                 onSelect={(siswa: Student) => {
                   setSelectedStudent(siswa);
-                  success(`Siswa ditemukan: ${siswa.nama_siswa}`);
+                  toast.success(`Siswa ditemukan: ${siswa.nama_siswa}`);
                 }}
                 autoFocus
               />
@@ -293,7 +292,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
         )}
       </div>
     </div>
-    <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </>
   );
 });

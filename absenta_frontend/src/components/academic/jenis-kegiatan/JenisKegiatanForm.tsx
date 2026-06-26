@@ -11,7 +11,7 @@ import {
   ModalFooter
 } from '../../ui';
 import { jenisKegiatanMasterApi } from '../../../api/academic/jenisKegiatanMaster.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { jenisKegiatanSchema, type JenisKegiatanFormValues } from '../../../schemas/academic/jenis-kegiatan.schema';
 
 // Modular Sections
@@ -40,7 +40,7 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = React.memo(({
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   
-  const { showToast } = useToast();
+
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -83,14 +83,14 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = React.memo(({
         }
       } catch (error) {
         console.error('Error loading data:', error);
-        showToast('Gagal memuat data jenis kegiatan', 'error');
+        toast.error('Gagal memuat data jenis kegiatan');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadItemData();
-  }, [itemId, mode, showToast, reset]);
+  }, [itemId, mode, reset]);
 
   const onFormSubmit = useCallback(async (data: JenisKegiatanFormValues) => {
     if (isViewMode) return;
@@ -101,10 +101,10 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = React.memo(({
 
       if (isEditMode && itemId) {
         await jenisKegiatanMasterApi.update(itemId, data as any);
-        showToast('Jenis kegiatan berhasil diperbarui', 'success');
+        toast.success('Jenis kegiatan berhasil diperbarui');
       } else {
         await jenisKegiatanMasterApi.create(data as any);
-        showToast('Jenis kegiatan berhasil dibuat', 'success');
+        toast.success('Jenis kegiatan berhasil dibuat');
       }
 
       onSuccess?.();
@@ -114,7 +114,7 @@ export const JenisKegiatanForm: React.FC<JenisKegiatanFormProps> = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [isViewMode, isEditMode, itemId, showToast, onSuccess]);
+  }, [isViewMode, isEditMode, itemId, onSuccess]);
 
   if (loadingData) {
     return (

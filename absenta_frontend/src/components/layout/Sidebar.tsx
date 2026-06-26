@@ -5,7 +5,9 @@ import {
   X, ChevronDown, Lock, AlertTriangle, Sparkles, 
   GraduationCap, Building2, Briefcase, Wallet, 
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
-  Award
+  Award, LayoutDashboard, Users, UserCheck, MailOpen,
+  Home, ClipboardList, Send, BarChart3, History, List,
+  ShieldAlert
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -17,6 +19,8 @@ import Tooltip from '../ui/Tooltip';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { useNavStore, type HubType } from '../../store/navStore';
 import { HubSwitcher } from './HubSwitcher';
+import { getHubByLabel } from '@/config/navigation.config';
+import { MODULE_REGISTRY } from '@/config/module.registry';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,6 +28,93 @@ interface SidebarProps {
   onToggle: () => void;
   isInline?: boolean;
 }
+
+const getIconColor = (label: string, path: string, isActive: boolean) => {
+  const text = label.toLowerCase();
+  const p = path.toLowerCase();
+  
+  // 1. Absensi
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || text.includes('piket') || text.includes('jurnal') || text.includes('ajar') || text.includes('piket')) {
+    return isActive 
+      ? 'text-white bg-emerald-600 dark:bg-emerald-500' 
+      : 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20';
+  }
+  // 2. Koperasi
+  if (p.startsWith('/cooperative') || text.includes('koperasi') || text.includes('kantin') || text.includes('belanja') || text.includes('pos') || text.includes('voucher') || text.includes('ppob') || text.includes('shu') || text.includes('billing') || text.includes('tagihan') || text.includes('invoice') || text.includes('payment') || text.includes('transaksi') || text.includes('produk') || text.includes('opname')) {
+    return isActive 
+      ? 'text-white bg-orange-600 dark:bg-orange-500' 
+      : 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20';
+  }
+  // 3. Hubin
+  if (p.startsWith('/hubin') || p.startsWith('/pkl') || text.includes('hubin') || text.includes('pkl') || text.includes('mitra') || text.includes('tracer') || text.includes('bkk') || text.includes('lulusan') || text.includes('mou')) {
+    return isActive 
+      ? 'text-white bg-purple-600 dark:bg-purple-500' 
+      : 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20';
+  }
+  // 4. Sarpras
+  if (p.startsWith('/sarpras') || text.includes('sarpras') || text.includes('aset') || text.includes('asset') || text.includes('invent') || text.includes('maintenance') || text.includes('pinjam') || text.includes('kondisi')) {
+    return isActive 
+      ? 'text-white bg-indigo-600 dark:bg-indigo-500' 
+      : 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20';
+  }
+  // 5. BP/BK
+  if (p.startsWith('/bpbk') || text.includes('bk') || text.includes('konseling') || text.includes('visit') || text.includes('panggilan') || text.includes('pemanggilan') || text.includes('kasus') || text.includes('pelanggaran') || text.includes('asesmen') || text.includes('angket') || text.includes('rujukan')) {
+    return isActive 
+      ? 'text-white bg-rose-600 dark:bg-rose-500' 
+      : 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20';
+  }
+  // 6. Kurikulum (Teal)
+  if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal') || text.includes('mapel') || text.includes('pelajaran') || text.includes('pembelajaran') || text.includes('rpp') || text.includes('modul ajar') || text.includes('silabus') || text.includes('prota') || text.includes('prosem')) {
+    return isActive 
+      ? 'text-white bg-teal-600 dark:bg-teal-500' 
+      : 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/20';
+  }
+  // 7. Kesiswaan (Amber)
+  if (p.startsWith('/kesiswaan') || text.includes('kesiswaan') || text.includes('ekskul') || text.includes('osis') || text.includes('ekstrakurikuler') || text.includes('kedisiplinan') || text.includes('prestasi') || text.includes('beasiswa') || text.includes('alumni')) {
+    return isActive 
+      ? 'text-white bg-amber-600 dark:bg-amber-500' 
+      : 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20';
+  }
+  // 8. Data Master / Akademik (Blue) — data referensi sekolah
+  if (p.startsWith('/academic') || p.startsWith('/master') || p.startsWith('/data-master') || text.includes('tahun') || text.includes('semester') || text.includes('jurusan') || text.includes('kompetensi') || text.includes('kelas') || text.includes('guru') || text.includes('siswa') || text.includes('pegawai') || text.includes('golongan')) {
+    return isActive 
+      ? 'text-white bg-blue-600 dark:bg-blue-500' 
+      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20';
+  }
+  // 9. Settings / Management
+  if (text.includes('setting') || text.includes('pengaturan') || text.includes('menu') || text.includes('role') || text.includes('user') || text.includes('backup') || text.includes('audit')) {
+    return isActive 
+      ? 'text-white bg-slate-600 dark:bg-slate-500' 
+      : 'text-slate-600 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40';
+  }
+
+  return isActive 
+    ? 'text-white bg-blue-600 dark:bg-blue-500' 
+    : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20';
+};
+
+const hasBackendPathAccess = (
+  menuTree: any[],
+  backendPath?: string,
+  isSuperAdmin = false
+): boolean => {
+  if (isSuperAdmin) return true;
+  if (!backendPath) return true;
+
+  const checkNodes = (nodes: any[]): boolean => {
+    for (const node of nodes) {
+      const normNodePath = String(node.path || '').split('?')[0].toLowerCase();
+      const normBackendPath = String(backendPath).split('?')[0].toLowerCase();
+      if (normNodePath === normBackendPath) return true;
+      if (node.children && node.children.length > 0) {
+        if (checkNodes(node.children)) return true;
+      }
+    }
+    return false;
+  };
+
+  return checkNodes(menuTree);
+};
 
 export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false }: SidebarProps) => {
   const { user, subscription, token } = useAuthStore();
@@ -64,6 +155,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     children?: NavItem[];
     badge?: string;
     state?: any;
+    requiredCapability?: string;
   };
 
   const inferPathFromLabel = (label: string): { path: string; state?: any } | null => {
@@ -99,7 +191,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       const hasChildren = !!children && children.length > 0;
 
       const inferred = rawPath ? null : inferPathFromLabel(n.name);
-      const normalizedPath = rawPath || inferred?.path || (hasChildren ? `menu:${n.id}` : '#');
+      let normalizedPath = rawPath || inferred?.path || (hasChildren ? `menu:${n.id}` : '#');
+      
       const normalizedState = inferred?.state;
 
       // Clean label from numbering (e.g., "1. Master Data" -> "Master Data")
@@ -191,60 +284,50 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     const mapped = mapToNavItems(sorted);
 
     const finalTree: NavItem[] = [];
+    const isSuperAdmin = String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN';
 
-    // 1. Dashboard Injection (Keep it at the top as core global)
-    const dashboardItems = mapped.filter(item => {
-      const path = String(item.path || '').toLowerCase();
-      const label = item.label.toLowerCase();
-      return path === '/' || path.includes('/dashboard') || label.includes('dashboard');
-    });
-    
-    // Add Dashboard if not already in the tree as a root item
-    if (dashboardItems.length === 0) {
-       finalTree.push({
-         label: 'Dashboard',
-         path: '/dashboard',
-         icon: LayoutGrid,
-         type: 'item'
-       });
-    } else {
-       finalTree.push(...dashboardItems);
+    const config = MODULE_REGISTRY[activeHub];
+
+    if (config && config.type === 'WORKSPACE' && config.tabs) {
+      const workspaceNav: NavItem[] = config.tabs
+        .filter(tab => hasBackendPathAccess(menuTree, tab.backendPath, isSuperAdmin))
+        .map(tab => ({
+          label: tab.label,
+          path: tab.path,
+          icon: tab.icon,
+          type: 'item'
+        }));
+      finalTree.push(...workspaceNav);
+      return finalTree;
     }
 
-    // 2. Find the root item matching the current activeHub and promote its children
-    const hubRoot = mapped.find(item => {
+    // 2. Find all root items belonging to the activeHub and promote their children
+    const matchingRoots = mapped.filter(item => {
        const path = String(item.path || '').toLowerCase();
        const label = item.label.toLowerCase();
        const isDashboard = path === '/' || path.includes('/dashboard') || label.includes('dashboard');
        
        if (isDashboard) return false;
        
-       // Robust matching: trim and case-insensitive
        const cleanedItemLabel = item.label.trim().toUpperCase();
        const cleanedActiveHub = activeHub.trim().toUpperCase();
+       if (cleanedItemLabel === cleanedActiveHub) return true;
        
-       return cleanedItemLabel === cleanedActiveHub;
+       const inferredHub = getHubByLabel(item.label);
+       return inferredHub === activeHub;
     });
 
-    if (hubRoot && hubRoot.children) {
-      const activeChildren = [...cleanEmptyParents(hubRoot.children)];
-      
-      const isCoopHub = activeHub.trim().toUpperCase() === 'KOPERASI' || activeHub.trim().toUpperCase() === 'COOPERATIVE';
-      const hasSettings = activeChildren.some(child => child.path === '/cooperative/settings');
-      const canViewSettings = user?.capabilities?.includes('cooperative.settings.view') || user?.capabilities?.includes('cooperative.members.manage') || user?.role?.name === 'SUPERADMIN';
-      
-      if (isCoopHub && !hasSettings && canViewSettings) {
-        activeChildren.push({
-          label: 'Pengaturan Koperasi',
-          path: '/cooperative/settings',
-          icon: Settings,
-          type: 'item'
-        });
+    const activeChildren: NavItem[] = [];
+    matchingRoots.forEach(root => {
+      if (root.children) {
+        activeChildren.push(...cleanEmptyParents(root.children));
       }
-      
+    });
+
+    if (activeChildren.length > 0) {
       finalTree.push(...activeChildren);
-    } else if (hubRoot) {
-      finalTree.push(hubRoot);
+    } else if (matchingRoots.length > 0) {
+      finalTree.push(...matchingRoots);
     } else {
       // Safety Fallback: If no hub match is found, show all other items
       // This prevents a blank sidebar for users whose menus aren't hub-indexed
@@ -267,11 +350,11 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     
     // Find which root item contains the current path
     const activeRoot = nav.find(root => {
-      if (root.path === currentPath) return true;
+      if (root.path.split('?')[0] === currentPath) return true;
       if (root.children) {
         const checkChildren = (items: NavItem[]): boolean => {
           return items.some(child => {
-            if (child.path === currentPath) return true;
+            if (child.path.split('?')[0] === currentPath) return true;
             if (child.children) return checkChildren(child.children);
             return false;
           });
@@ -347,16 +430,17 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                        isDisabled && "opacity-50 cursor-not-allowed"
                      )}
                    >
-                     {featureState === 'LOCKED' ? (
-                       <Lock className="w-5 h-5 text-gray-400" />
-                     ) : featureState === 'EXPIRED' ? (
+                      {featureState === 'LOCKED' ? (
+                        <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive || hasActiveChild))}>
+                          <Lock className="w-4 h-4 flex-shrink-0" />
+                        </div>
+                      ) : featureState === 'EXPIRED' ? (
                        <AlertTriangle className="w-5 h-5 text-amber-500" />
-                     ) : (
-                       <Icon className={cn(
-                         "w-5 h-5 flex-shrink-0",
-                         (isActive || hasActiveChild) ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
-                       )} />
-                     )}
+                      ) : (
+                        <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive || hasActiveChild))}>
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                        </div>
+                      )}
                    </button>
                  </Tooltip>
               ) : (
@@ -383,16 +467,22 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                   >
                     <div className="flex items-center space-x-3 overflow-hidden">
                       {featureState === 'LOCKED' ? (
-                        <Lock className={cn(depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5", "text-slate-400")} />
+                        <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive || hasActiveChild))}>
+                          <Lock className={cn(
+                            depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
+                            "flex-shrink-0"
+                          )} />
+                        </div>
                       ) : featureState === 'EXPIRED' ? (
                         <AlertTriangle className={cn(depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5", "text-amber-500")} />
                       ) : (
                         !startsWithEmoji(item.label) && (
-                          <Icon className={cn(
-                            depth === 0 ? "w-5 h-5" : "w-4 h-4",
-                            "flex-shrink-0 transition-colors",
-                            (isActive || hasActiveChild) ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-400 group-hover:text-blue-500"
-                          )} />
+                          <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive || hasActiveChild))}>
+                            <Icon className={cn(
+                              depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
+                              "flex-shrink-0 transition-colors"
+                            )} />
+                          </div>
                         )
                       )}
                       <span className={cn(
@@ -452,15 +542,16 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                      )}
                    >
                      {featureState === 'LOCKED' ? (
-                       <Lock className="w-5 h-5 text-gray-400" />
+                       <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive))}>
+                         <Lock className="w-4 h-4 flex-shrink-0" />
+                       </div>
                      ) : featureState === 'EXPIRED' ? (
                        <AlertTriangle className="w-5 h-5 text-amber-500" />
-                     ) : (
-                       <Icon className={cn(
-                         "w-5 h-5 flex-shrink-0",
-                         isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
-                       )} />
-                     )}
+                      ) : (
+                        <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive))}>
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                        </div>
+                      )}
                    </Link>
                  </Tooltip>
               ) : (
@@ -490,20 +581,22 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                   )}
                 >
                   {featureState === 'LOCKED' ? (
-                    <Lock className={cn(depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5", "text-slate-400")} />
+                    <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive))}>
+                      <Lock className={cn(
+                        depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
+                        "flex-shrink-0"
+                      )} />
+                    </div>
                   ) : featureState === 'EXPIRED' ? (
                     <AlertTriangle className={cn(depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5", "text-amber-500")} />
                   ) : (
                     !startsWithEmoji(item.label) && (
-                      <Icon className={cn(
-                        depth === 0 ? "w-5 h-5" : "w-4 h-4",
-                        "flex-shrink-0 transition-colors",
-                        isActive ? "text-blue-600 dark:text-blue-400" : (
-                          item.label.toLowerCase().includes('paket') && item.label.toLowerCase().includes('langganan')
-                          ? "text-indigo-600 dark:text-indigo-400 group-hover:text-amber-500"
-                          : "text-slate-500 dark:text-slate-400 group-hover:text-blue-500"
-                        )
-                      )} />
+                      <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive))}>
+                        <Icon className={cn(
+                          depth === 0 ? "w-4 h-4" : "w-3.5 h-3.5",
+                          "flex-shrink-0 transition-colors"
+                        )} />
+                      </div>
                     )
                   )}
                   <span className={cn(

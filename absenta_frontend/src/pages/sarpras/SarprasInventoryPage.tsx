@@ -59,7 +59,7 @@ const SarprasInventoryPage: React.FC = () => {
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ['sarpras-stats'],
     queryFn: sarprasApi.getStats,
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined
   });
 
   const stats = useMemo(() => {

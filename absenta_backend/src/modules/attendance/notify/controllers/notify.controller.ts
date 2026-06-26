@@ -10,9 +10,14 @@ export async function buildAttendanceFeed(tenantId: string, userId: string, role
   const { tanggal, kelas_id, guru_id, siswa_id } = params || {};
 
   let dateFilter: { gte: Date; lte: Date } | undefined;
-  const baseDate = tanggal ? new Date(tanggal) : new Date();
-  const start = new Date(baseDate); start.setHours(0,0,0,0);
-  const end = new Date(baseDate); end.setHours(23,59,59,999);
+  const tzConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'TIMEZONE' } });
+  const timeZone = tzConfig?.value || 'Asia/Jakarta';
+  const TZ_OFFSET: Record<string, number> = { 'Asia/Jakarta': 7, 'Asia/Makassar': 8, 'Asia/Jayapura': 9 };
+  const offset = TZ_OFFSET[timeZone] ?? 7;
+
+  const dayStr = tanggal || new Date().toISOString().split('T')[0];
+  const start = new Date(new Date(`${dayStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+  const end = new Date(new Date(`${dayStr}T23:59:59.999Z`).getTime() - (offset * 60 * 60 * 1000));
   dateFilter = { gte: start, lte: end };
 
   let kelasFilter = kelas_id as string | undefined;

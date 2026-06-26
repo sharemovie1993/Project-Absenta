@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../api/academic/jenisKegiatanMaster.api';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useDebounce } from '../../hooks/useDebounce';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { JenisKegiatanList } from '../../components/academic/jenis-kegiatan/JenisKegiatanList';
@@ -22,7 +22,7 @@ type ModalMode = 'create' | 'edit' | 'view' | null;
 
 export default function JenisKegiatanMasterPage() {
   const { can, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
+
   const showConfirm = useConfirm();
   
   const canManage = can('academic.activities.types.manage');
@@ -40,11 +40,11 @@ export default function JenisKegiatanMasterPage() {
       setItems(res.data || []);
     } catch (error: unknown) {
       console.error(error);
-      showToast('Gagal memuat data kategori kegiatan', 'error');
+      toast.error('Gagal memuat data kategori kegiatan');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, showToast]);
+  }, [debouncedSearch]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -72,12 +72,12 @@ export default function JenisKegiatanMasterPage() {
     try {
       const res = await jenisKegiatanMasterApi.delete(id); 
       if (res.success) {
-        showToast('Kategori berhasil dihapus', 'success');
+        toast.success('Kategori berhasil dihapus');
         fetchList(); 
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
-      showToast(err.response?.data?.message || 'Gagal menghapus data', 'error');
+      toast.error(err.response?.data?.message || 'Gagal menghapus data');
     }
   };
 
@@ -89,12 +89,12 @@ export default function JenisKegiatanMasterPage() {
         { header: 'Urutan', accessor: (row) => row.urutan || '', width: 10 },
         { header: 'Status', accessor: (row) => row.aktif ? 'Aktif' : 'Nonaktif', width: 15 }
       ], 'Laporan_Jenis_Kegiatan', 'DATA MASTER KATEGORI KEGIATAN');
-      showToast('Data berhasil diekspor', 'success');
+      toast.success('Data berhasil diekspor');
     } catch (error: unknown) {
       const err = error as { message?: string };
-      showToast(err.message || 'Gagal mengekspor data', 'warning');
+      toast(err.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [items, showToast]);
+  }, [items]);
 
   const academicStats = useMemo(() => [
     {

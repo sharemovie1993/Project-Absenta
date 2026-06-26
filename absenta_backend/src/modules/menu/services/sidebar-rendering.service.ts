@@ -181,14 +181,18 @@ export class SidebarRenderingService {
       // 1. Check Petugas Active Status (Contextual)
       if (m.requires_petugas_active && !petugasActive) return false;
 
-      // 2. SaaS Feature Gating Check (Now allows through to show as LOCKED in UI)
-      // const requiredFeatures = resolveEffectiveFeatures(m);
-      // if (requiredFeatures.length > 0 && !isSuperAdmin) {
-      //     const hasFeature = requiredFeatures.some(f => context.tenantFeatures.includes(f));
-      //     if (!hasFeature) return false;
-      // }
+      // 2. SaaS Feature Gating — SENGAJA TIDAK DIFILTER DI SINI.
+      //
+      // Kebijakan arsitektur: endpoint GET /menu/sidebar berfungsi sebagai
+      // "etalase platform". Semua menu selalu dikirim ke frontend terlepas
+      // dari status langganan tenant. Menu yang belum dilanggani akan
+      // diberi tanda locked:true + feature_state:'LOCKED' agar frontend
+      // dapat menampilkan preview/showcase ekosistem platform.
+      //
+      // Filter SaaS yang keras (hard-filter) hanya berlaku di:
+      // GET /menu/tree → menuService.treeForUser() → untuk admin UI & diagnosa.
 
-      // 3. Permission Check
+      // 3. Permission Check (Capability-based)
       const requiredCapRaw = m.required_capability ? String(m.required_capability).trim() : '';
       if (requiredCapRaw) {
         if (isSuperAdmin) return true;
@@ -261,11 +265,14 @@ export class SidebarRenderingService {
 
         const children = prune(n.children || []);
         const isGroup = String(n.required_capability || '').trim() === '' && !n.path;
-        
-        // Parent menu harus tampil jika minimal satu child visible.
-        // Jika semua child tidak visible karena capability (bukan feature) maka parent menu harus disembunyikan.
-        // Feature mismatch sekarang hanya mengunci menu, bukan menyembunyikannya.
-        if (isGroup && children.length === 0) continue;
+        const isLocked = n.feature_state === 'LOCKED' || n.feature_state === 'EXPIRED' || n.locked === true;
+
+        // Aturan etalase platform:
+        // - Group yang LOCKED (belum berlangganan) → selalu tampil meski children kosong,
+        //   agar calon pembeli dapat melihat ekosistem yang tersedia.
+        // - Group yang TIDAK locked dan children kosong → tidak ditampilkan
+        //   (benar-benar tidak punya capability → sembunyikan).
+        if (isGroup && children.length === 0 && !isLocked) continue;
 
         out.push({ 
           id: n.id, 

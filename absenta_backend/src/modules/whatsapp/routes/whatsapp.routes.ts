@@ -22,4 +22,28 @@ export async function whatsappRoutes(fastify: any) {
     preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
     handler: whatsappController.testConnection.bind(whatsappController),
   });
+
+  // POST /whatsapp/connect - Connect local WhatsApp session
+  fastify.post('/connect', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.connectLocal.bind(whatsappController),
+  });
+
+  // POST /whatsapp/disconnect - Disconnect local WhatsApp session
+  fastify.post('/disconnect', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.disconnectLocal.bind(whatsappController),
+  });
+
+  // GET /whatsapp/status - Get status of local connection
+  fastify.get('/status', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.getLocalStatus.bind(whatsappController),
+  });
+
+  // GET /whatsapp/qr - Get QR code for local gateway connection
+  fastify.get('/qr', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.getLocalQR.bind(whatsappController),
+  });
 }

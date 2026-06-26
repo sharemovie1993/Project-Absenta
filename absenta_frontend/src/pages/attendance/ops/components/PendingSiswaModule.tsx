@@ -6,7 +6,7 @@ import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
 import Label from '../../../../components/ui/Label';
 import { GerbangPendingStudentsPanel } from '../../../../components/attendance/gerbang/GerbangPendingStudentsPanel';
 import { markGateAbsence } from '../../../../api/attendanceGerbang.api';
-import { useToast } from '../../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { logAttendanceMetric } from '../../../../utils/attendanceMetrics';
 import type { DropdownOption } from '../../../../api/dropdown.api';
 import { 
@@ -62,7 +62,6 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   socketConnected,
   refreshData,
 }) => {
-  const { success, error, notice } = useToast();
   const [confirmEnabled, setConfirmEnabled] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -100,7 +99,7 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   const handleMarkStatus = useCallback(async (siswaId: string, status: string) => {
     try {
       await markGateAbsence({ siswa_id: siswaId, status: status as 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN' });
-      success(`Status ${status} direkam`);
+      toast.success(`Status ${status} direkam`);
       logAttendanceMetric('GERBANG_MANUAL_STATUS', { role: userRole, kelasId: inferredKelasId || null, siswaId, status });
       await refreshData();
     } catch (e: unknown) {
@@ -108,17 +107,17 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
       const statusCode = errObj?.response?.status;
       const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal merekam status';
       if (statusCode === 409) {
-        notice('Siswa ini sudah terekam sebelumnya');
+        toast('Siswa ini sudah terekam sebelumnya', { icon: 'ℹ️' });
         await refreshData();
       } else if (statusCode === 404) {
-        notice('Tidak ada sesi gerbang aktif hari ini');
+        toast('Tidak ada sesi gerbang aktif hari ini', { icon: 'ℹ️' });
       } else if (statusCode === 403) {
-        notice('Akses ditolak untuk kelas ini');
+        toast('Akses ditolak untuk kelas ini', { icon: 'ℹ️' });
       } else {
-        error(String(msg));
+        toast.error(String(msg));
       }
     }
-  }, [inferredKelasId, userRole, refreshData, success, error, notice]);
+  }, [inferredKelasId, userRole, refreshData]);
 
 
   return (

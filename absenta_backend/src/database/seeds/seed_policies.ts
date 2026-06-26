@@ -49,6 +49,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.sessions.view.detail',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
+    'attendance.recap.view.global',
+    'attendance.monitoring.view.live.status',
     'documents.upload',
     'documents.view.list',
     'notify.check.status',
@@ -98,6 +100,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'hubin.tracer.view',
     'bk.cases.view.list',
     'bk.cases.view.detail',
+    'sarpras.loans.view.list',
+    'sarpras.loans.request',
   ]);
 
   const siswa = uniqueStrings([
@@ -142,6 +146,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.view.detail',
+    'sarpras.loans.view.list',
+    'sarpras.loans.request',
   ]);
 
   const anggotaKoperasiExternal = uniqueStrings([
@@ -358,8 +364,10 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.backups.restore',
     'academic.student.card.view.config',
     'academic.student.card.update.config',
+    'attendance.gate.bypass',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
+    'attendance.recap.view.global',
     'attendance.gate.view.logs',
     'attendance.gate.view.face.templates',
     'attendance.officers.view',
@@ -375,6 +383,11 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.schedules.update',
     'attendance.schedules.delete',
     'attendance.schedules.view.list',
+    'attendance.manage.session',
+    'attendance.manage.petugas',
+    'attendance.manage.face.templates',
+    'attendance.monitoring.view.live.status',
+    'attendance.gate.tap.entry',
     'documents.view.list',
     'documents.view.detail',
     'documents.upload',
@@ -462,8 +475,11 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'dashboard.view.sarpras',
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
     'sarpras.loans.view.list',
     'sarpras.loans.manage',
+    'sarpras.loans.request',
     'sarpras.repairs.view.list',
     'sarpras.repairs.manage',
     'academic.manage.wali.kelas',
@@ -507,7 +523,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'bk.assessment.manage',
     'bk.referrals.manage',
     'bk.reports.view',
-  ]);
+  ].concat(allPermissionIds.filter(id => id.startsWith('cooperative.'))));
 
   const ensureNoOrganizationalInBaseline = (role: string, baseline: string[]) => {
     const violating = baseline.filter((id) => {
@@ -528,7 +544,9 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         // perlu di-whitelist di sini agar seed tidak gagal.
         id === 'cooperative.savings.view.list' ||
         id === 'cooperative.reports.view.daily' ||
-        id === 'cooperative.reports.view.monthly'
+        id === 'cooperative.reports.view.monthly' ||
+        id === 'attendance.recap.view.global' ||
+        id === 'attendance.monitoring.view.live.status'
       )) return false;
       return domainOf(id) === 'ORGANIZATIONAL';
     });

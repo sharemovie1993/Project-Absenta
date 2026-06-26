@@ -3,15 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Card } from '@/components/ui';
 import { ArrowRight, Bookmark, ShieldCheck, Copy, Globe, Share2, MousePointer2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/hooks/useToast';
-import ToastContainer from '@/components/ui/Toast';
+import toast from 'react-hot-toast';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 
 const SubdomainRedirect = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toasts, showToast, removeToast } = useToast();
+
   const state = location.state as { redirectUrl?: string; tenantName?: string; tenantDomain?: string } | undefined;
 
   const envLanding = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || (import.meta as any).env?.VITE_LANDING_URL || '';
@@ -20,7 +19,7 @@ const SubdomainRedirect = () => {
 
   const handleCopy = () => {
     navigator.clipboard.writeText(redirectUrl);
-    showToast('Alamat subdomain berhasil disalin!', 'success');
+    toast.success('Alamat subdomain berhasil disalin!');
   };
 
   const handleNavigate = () => {
@@ -127,7 +126,7 @@ const SubdomainRedirect = () => {
       </main>
 
       <Footer />
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </div>
   );
 };

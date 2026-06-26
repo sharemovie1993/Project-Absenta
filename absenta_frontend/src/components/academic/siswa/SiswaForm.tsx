@@ -18,7 +18,7 @@ import {
   type DropdownOption
 } from '../../../api/dropdown.api';
 import { siswaSchema, type SiswaFormValues } from '../../../schemas/academic/siswa.schema';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 // Modular Sections
 import { PersonalSection } from './form/PersonalSection';
@@ -40,7 +40,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
 }) => {
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
-  const { showToast } = useToast();
+
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -195,7 +195,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         await createSiswa(payload as CreateSiswaPayload);
       }
 
-      showToast(isEditMode ? 'Data siswa berhasil diperbarui' : 'Siswa baru berhasil ditambahkan', 'success');
+      toast.success(isEditMode ? 'Data siswa berhasil diperbarui' : 'Siswa baru berhasil ditambahkan');
       onSuccess?.();
     } catch (error: any) {
       console.error('Error submitting form:', error);
@@ -203,7 +203,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [isViewMode, isEditMode, siswaId, onSuccess, showToast]);
+  }, [isViewMode, isEditMode, siswaId, onSuccess]);
 
   if (loadingData) {
     return (

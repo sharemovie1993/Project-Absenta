@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { LogService } from '../utils/LogService';
-import { useToast } from '../hooks/useToast';
+import toast from 'react-hot-toast';
 import { formatErrorMessage } from '../api/apiUtils';
 
 interface ErrorInfo {
@@ -25,7 +25,6 @@ interface RetryOptions {
  * Hook untuk error handling dengan retry logic dan logging
  */
 export function useErrorHandler() {
-  const { error: showErrorToast } = useToast();
   const [errors, setErrors] = useState<ErrorInfo[]>([]);
   const errorCountRef = useRef(0);
 
@@ -92,11 +91,11 @@ export function useErrorHandler() {
 
     // Show toast notification
     if (showToast && !silent) {
-      showErrorToast(`${toastTitle}: ${formatErrorMessage(error)}`);
+      toast.error(`${toastTitle}: ${formatErrorMessage(error)}`);
     }
 
     return errorInfo;
-  }, [addError, showErrorToast]);
+  }, [addError]);
 
   // Retry function with exponential backoff
   const withRetry = useCallback(async <T>(

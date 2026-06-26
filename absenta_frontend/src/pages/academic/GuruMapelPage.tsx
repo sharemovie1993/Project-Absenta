@@ -7,9 +7,9 @@ import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.a
 import { listGuruMapel, importGuruMapelFromExcel } from '../../api/academic/guru-mapel.api';
 import { guruApi, mapelApi } from '../../api/academic.api';
 import { Users, BookOpen, GraduationCap, Download, Upload, FileSpreadsheet } from 'lucide-react';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { GuruMapel } from '../../types/academic';
 import { Loader } from '../../components/ui/Loader';
 
@@ -26,7 +26,7 @@ const GuruMapelPage: React.FC = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const { showToast } = useToast();
+
 
   const canView = useMemo(() => can('academic.teaching.view'), [can]);
   const canManage = useMemo(() => can('academic.teaching.manage'), [can]);
@@ -78,17 +78,17 @@ const GuruMapelPage: React.FC = () => {
         ],
         'daftar_guru_pengampu'
       );
-      showToast('Data berhasil diekspor.', 'success');
-    } catch (e: unknown) {
-      showToast('Gagal mengekspor data.', 'error');
+      toast.success('Data berhasil diekspor.');
+    } catch {
+      toast.error('Gagal mengekspor data.');
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan referensi data...', 'info');
+      toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [gurusRes, mapelsRes] = await Promise.all([
         guruApi.getAll({ limit: 1000 }),
         mapelApi.getAll({ limit: 1000 })
@@ -115,12 +115,11 @@ const GuruMapelPage: React.FC = () => {
           }
         }
       );
-      showToast('Template cerdas berhasil diunduh.', 'success');
-    } catch (e: unknown) {
-      console.error(e);
-      showToast('Gagal mengunduh template.', 'error');
+      toast.success('Template cerdas berhasil diunduh.');
+    } catch {
+      toast.error('Gagal mengunduh template.');
     }
-  }, [showToast]);
+  }, []);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },

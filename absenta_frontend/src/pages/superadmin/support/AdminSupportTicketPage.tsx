@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { RefreshCw, Ticket, Shield, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore, type User as AuthUser } from '../../../store/authStore';
 import { SuperAdminPageLayout } from '../../../components/layout/SuperAdminPageLayout';
-import SupportAnalyticsPanel from '../../../components/support/SupportAnalyticsPanel';
-import SupportSettingsPanel from '../../../components/support/SupportSettingsPanel';
+import { Loader, SectionCard } from '@/components/ui';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { 
@@ -18,13 +17,15 @@ import {
   type SupportKnowledgeBase,
   type SupportAnalytics
 } from '../../../api/support-ticket.api';
-import SupportStatusBadge from '../../../components/support/SupportStatusBadge';
-import SupportPriorityBadge from '../../../components/support/SupportPriorityBadge';
-import SupportSlaBanner from '../../../components/support/SupportSlaBanner';
-import SupportSidebarDiagnostic from '../../../components/support/SupportSidebarDiagnostic';
-import SupportFocusModeModal from '../../../components/support/SupportFocusModeModal';
-import SupportChatPanel from '../../../components/support/SupportChatPanel';
-import SupportQueuePanel from '../../../components/support/SupportQueuePanel';
+
+// Lazy load complex panels
+const SupportAnalyticsPanel = lazy(() => import('../../../components/support/SupportAnalyticsPanel'));
+const SupportSettingsPanel = lazy(() => import('../../../components/support/SupportSettingsPanel'));
+const SupportChatPanel = lazy(() => import('../../../components/support/SupportChatPanel'));
+const SupportQueuePanel = lazy(() => import('../../../components/support/SupportQueuePanel'));
+const SupportSidebarDiagnostic = lazy(() => import('../../../components/support/SupportSidebarDiagnostic'));
+const SupportFocusModeModal = lazy(() => import('../../../components/support/SupportFocusModeModal'));
+const SupportSlaBanner = lazy(() => import('../../../components/support/SupportSlaBanner'));
 
 // 🔌 Custom Hooks Modular
 import { useAssistLogin } from '../../../hooks/support/useAssistLogin';
@@ -105,10 +106,10 @@ export default function AdminSupportTicketPage() {
   // =========================================================================
   // 📡 API CALLS
   // =========================================================================
-  const fetchTickets = async (showToast = false) => {
+  const fetchTickets = useCallback(async (showToast = false) => {
     setIsLoading(true);
     try {
-      const filters: any = {};
+      const filters: Record<string, unknown> = {};
       if (filterPriority !== 'ALL') filters.priority = filterPriority as SupportTicketPriority;
       if (filterCategory !== 'ALL') filters.category = filterCategory as SupportTicketCategory;
       if (searchQuery.trim() !== '') filters.search = searchQuery;
@@ -120,58 +121,45 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal memuat antrean tiket.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal terhubung ke server.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal terhubung ke server.';
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterPriority, filterCategory, searchQuery]);
 
-  const fetchQuickReplies = async () => {
+  const fetchQuickReplies = useCallback(async () => {
     try {
       const res = await supportTicketApi.getQuickReplies();
       if (res.success && res.data) setQuickReplies(res.data);
-    } catch (err: any) {
-      console.error('Gagal memuat Quick Replies:', err.message);
+    } catch (err: unknown) {
+      console.error('Gagal memuat Quick Replies:', err instanceof Error ? err.message : 'Unknown error');
     }
-  };
+  }, []);
 
-  const fetchKnowledgeBase = async (search = '') => {
+  const fetchKnowledgeBase = useCallback(async (search = '') => {
     try {
       const res = await supportTicketApi.getKnowledgeBase(search);
       if (res.success && res.data) setKnowledgeBase(res.data);
-    } catch (err: any) {
-      console.error('Gagal memuat Knowledge Base:', err.message);
+    } catch (err: unknown) {
+      console.error('Gagal memuat Knowledge Base:', err instanceof Error ? err.message : 'Unknown error');
     }
-  };
+  }, []);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setIsAnalyticsLoading(true);
     try {
       const res = await supportTicketApi.getSupportAnalytics();
       if (res.success && res.data) setAnalytics(res.data);
-    } catch (err: any) {
-      console.error('Gagal memuat analitik SLA:', err.message);
+    } catch (err: unknown) {
+      console.error('Gagal memuat analitik SLA:', err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsAnalyticsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchQuickReplies();
-    fetchKnowledgeBase();
-    fetchAnalytics();
-
-    const params = new URLSearchParams(window.location.search);
-    const ticketIdParam = params.get('ticketId');
-    if (ticketIdParam) fetchTicketDetail(ticketIdParam);
   }, []);
 
-  useEffect(() => {
-    fetchTickets();
-  }, [filterPriority, filterCategory]);
-
-  const fetchTicketDetail = async (ticketId: string) => {
+  const fetchTicketDetail = useCallback(async (ticketId: string) => {
     setIsDetailLoading(true);
     const unreadCount = unreadTicketCounts[ticketId] || 0;
     setActiveUnreadCount(unreadCount);
@@ -187,12 +175,36 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal memuat detail tiket.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal terhubung ke server.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal terhubung ke server.';
+      toast.error(msg);
     } finally {
       setIsDetailLoading(false);
     }
-  };
+  }, [unreadTicketCounts, setLiveUnreadCount, clearUnreadCount]);
+
+  useEffect(() => {
+    fetchQuickReplies();
+    fetchKnowledgeBase();
+    fetchAnalytics();
+
+    const params = new URLSearchParams(window.location.search);
+    const ticketIdParam = params.get('ticketId');
+    if (ticketIdParam) fetchTicketDetail(ticketIdParam);
+
+    const handlePopState = () => {
+      const p = new URLSearchParams(window.location.search);
+      const tid = p.get('ticketId');
+      if (tid) fetchTicketDetail(tid);
+      else setSelectedTicket(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [fetchQuickReplies, fetchKnowledgeBase, fetchAnalytics, fetchTicketDetail]);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   const handleClaimTicket = async () => {
     if (!selectedTicket || !currentAgent) return;
@@ -206,8 +218,9 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal mengklaim tiket.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengubah penugasan tiket.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengubah penugasan tiket.';
+      toast.error(msg);
     } finally {
       setIsActionLoading(false);
     }
@@ -225,8 +238,9 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal memperbarui status.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengubah status.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengubah status.';
+      toast.error(msg);
     } finally {
       setIsActionLoading(false);
     }
@@ -244,8 +258,9 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal memperbarui urgensi.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengubah urgensi.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengubah urgensi.';
+      toast.error(msg);
     } finally {
       setIsActionLoading(false);
     }
@@ -272,8 +287,9 @@ export default function AdminSupportTicketPage() {
       } else {
         toast.error(res.message || 'Gagal mengirim pesan.');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal mengirim jawaban.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengirim jawaban.';
+      toast.error(msg);
     } finally {
       setIsSubmittingMessage(false);
     }
@@ -316,7 +332,7 @@ export default function AdminSupportTicketPage() {
   }, [tickets]);
 
   const filteredTickets = React.useMemo(() => {
-    return tickets.filter(t => {
+    return (tickets ?? [])?.filter(t => {
       if (filterStatus === 'ALL') return true;
       if (filterStatus === 'IN_PROGRESS') return t.status === 'IN_PROGRESS';
       return t.status === filterStatus;
@@ -324,43 +340,43 @@ export default function AdminSupportTicketPage() {
   }, [tickets, filterStatus]);
 
   // Layout configs
-  const breadcrumbsList = [
-    { label: 'Superadmin Console', path: '/superadmin' },
-    { label: 'Helpdesk & Support', path: '/superadmin/support' }
-  ];
+  const breadcrumbsList = useMemo(() => [
+    { label: 'Superadmin Console', path: '/menu/system' },
+    { label: 'Helpdesk & Support' }
+  ], []);
 
-  const statsList = [
+  const statsList = useMemo(() => [
     {
       title: 'Antrean Nasional',
       value: `${tickets.length} Tiket`,
-      icon: <Ticket size={18} />,
+      icon: <Ticket size={14} />,
       gradient: 'from-rose-500 to-red-600',
       subtitle: 'Total aduan aktif masuk'
     },
     {
       title: 'Ditangani Saya',
       value: `${tickets.filter(t => t.assigned_to_id === currentAgent?.id).length} Tiket`,
-      icon: <Shield size={18} />,
+      icon: <Shield size={14} />,
       gradient: 'from-emerald-500 to-teal-600',
       subtitle: 'Klaim penanganan aktif'
     },
     {
       title: 'Status OPEN',
       value: `${tickets.filter(t => t.status === 'OPEN').length} Tiket`,
-      icon: <Clock size={18} />,
+      icon: <Clock size={14} />,
       gradient: 'from-blue-500 to-indigo-600',
       subtitle: 'Belum disentuh agen'
     },
     {
       title: 'Menunggu Klien',
       value: `${tickets.filter(t => t.status === 'PENDING_CUSTOMER').length} Tiket`,
-      icon: <AlertCircle size={18} />,
+      icon: <AlertCircle size={14} />,
       gradient: 'from-amber-500 to-orange-600',
       subtitle: 'Menanti respons sekolah'
     }
-  ];
+  ], [tickets, currentAgent?.id]);
 
-  const handleExportCsatReport = async () => {
+  const handleExportCsatReport = useCallback(async () => {
     const loadToast = toast.loading('Menyiapkan Laporan CSAT Sekolah...');
     try {
       // Ambil seluruh tiket CLOSED
@@ -380,7 +396,7 @@ export default function AdminSupportTicketPage() {
       }
 
       // Format data untuk Excel
-      const excelRows = ratedTickets.map((t) => ({
+      const excelRows = (ratedTickets ?? [])?.map((t) => ({
         'No Tiket': t.ticket_number,
         'Sekolah (Tenant)': t.Tenant?.name || 'Sekolah',
         'Topik Keluhan': t.title,
@@ -397,27 +413,25 @@ export default function AdminSupportTicketPage() {
         }) : '-'
       }));
 
-      // Proses dengan XLSX secara DRY
       const worksheet = XLSX.utils.json_to_sheet(excelRows);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan CSAT');
 
-      // Autofit lebar kolom
       const colWidths = [15, 25, 30, 15, 12, 12, 40, 25];
-      worksheet['!cols'] = colWidths.map(w => ({ wch: w }));
+      worksheet['!cols'] = (colWidths ?? [])?.map(w => ({ wch: w }));
 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8' });
 
-      // Save file
       saveAs(dataBlob, `Laporan_CSAT_Absenta_${new Date().toISOString().split('T')[0]}.xlsx`);
       toast.dismiss(loadToast);
       toast.success('Laporan CSAT sukses diunduh!');
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.dismiss(loadToast);
-      toast.error('Gagal memproses ekspor Excel.');
+      const msg = err instanceof Error ? err.message : 'Gagal memproses ekspor Excel.';
+      toast.error(msg);
     }
-  };
+  }, [tickets]);
 
   const toolbarContent = (
     <div className="flex items-center gap-2.5">
@@ -437,15 +451,33 @@ export default function AdminSupportTicketPage() {
     </div>
   );
 
+  const instruction = React.useMemo(() => ({
+    title: 'Panduan Admin Support',
+    description: 'Pusat bantuan pelanggan untuk menangani tiket dukungan, keluhan teknis, dan bantuan operasional sekolah.',
+    items: [
+      { text: 'Gunakan tab "Antrean Tiket" untuk membalas pesan masuk dari admin sekolah secara real-time.' },
+      { text: 'Fitur "Focus Mode" memungkinkan Anda berkonsentrasi pada satu tiket tanpa gangguan notifikasi lain.' },
+      { text: 'Manfaatkan "Quick Replies" untuk membalas pertanyaan umum dengan cepat dan konsisten.' },
+      { text: 'Tab "Analitik" memberikan metrik performa agen dan waktu respon rata-rata (SLA).' }
+    ]
+  }), []);
+
   return (
     <SuperAdminPageLayout
-      title="National Support Helpdesk"
-      description="Dashboard Tim Customer Support & Relations Absenta.id untuk menyelesaikan aduan operasional sekolah se-Indonesia"
-      breadcrumbs={breadcrumbsList}
+      title="Pusat Bantuan & Tiket"
+      description="Manajemen layanan pelanggan, resolusi tiket dukungan, dan monitoring SLA bantuan teknis."
       stats={statsList}
-      toolbar={toolbarContent}
+      hardeningModuleKey="adminsupportticketpage"
+      instruction={instruction}
+      breadcrumbs={[
+        { label: 'Customer Support' },
+        { label: 'Helpdesk' }
+      ]}
     >
-      <SupportSlaBanner analytics={analytics} />
+      <div className="flex flex-col h-[calc(100vh-14rem)] overflow-hidden bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800 animate-in fade-in duration-500">
+        <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-t-2xl" />}>
+          <SupportSlaBanner analytics={analytics} />
+        </Suspense>
 
       {/* 🚀 Tab Switcher Menu Utama Dasbor Helpdesk */}
       <div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/60 max-w-lg mb-6 shadow-sm">
@@ -483,30 +515,33 @@ export default function AdminSupportTicketPage() {
 
       {activePageTab === 'QUEUE' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[550px]">
-          <SupportQueuePanel
-            tickets={tickets}
-            selectedTicket={selectedTicket}
-            isLoading={isLoading}
-            unreadTicketCounts={unreadTicketCounts}
-            currentAgent={currentAgent}
-            fetchTicketDetail={fetchTicketDetail}
-            fetchTickets={() => fetchTickets(false)}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            filterPriority={filterPriority}
-            setFilterPriority={setFilterPriority}
-            filterCategory={filterCategory}
-            setFilterCategory={setFilterCategory}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            countAll={countAll}
-            countOpen={countOpen}
-            countHandling={countHandling}
-            countWaiting={countWaiting}
-            countResolved={countResolved}
-            countClosed={countClosed}
-            filteredTickets={filteredTickets}
-          />
+          <Suspense fallback={<Loader />}>
+            <SupportQueuePanel
+              tickets={tickets}
+              selectedTicket={selectedTicket}
+              isLoading={isLoading}
+              unreadTicketCounts={unreadTicketCounts}
+              currentAgent={currentAgent as any}
+              fetchTicketDetail={fetchTicketDetail}
+              fetchTickets={() => fetchTickets(false)}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filterPriority={filterPriority}
+              setFilterPriority={setFilterPriority}
+              filterCategory={filterCategory}
+              setFilterCategory={setFilterCategory}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              countAll={countAll}
+              countOpen={countOpen}
+              countHandling={countHandling}
+              countWaiting={countWaiting}
+              countResolved={countResolved}
+              countClosed={countClosed}
+              filteredTickets={filteredTickets}
+              onExportReport={handleExportCsatReport}
+            />
+          </Suspense>
 
           {/* PANEL 2: INTERACTIVE CHAT PANEL */}
           {!selectedTicket ? (
@@ -514,93 +549,104 @@ export default function AdminSupportTicketPage() {
               <span className="text-xs font-semibold">Pilih keluhan sekolah dari panel sebelah kiri untuk membaca thread chat aduan.</span>
             </div>
           ) : (
-            <SupportChatPanel
-              selectedTicket={selectedTicket}
-              messages={messages}
-              newMessageIds={newMessageIds}
-              currentAgent={currentAgent}
-              liveUnreadCount={liveUnreadCount}
-              setLiveUnreadCount={setLiveUnreadCount}
-              isScrollAtBottom={isScrollAtBottom}
-              setIsScrollAtBottom={setIsScrollAtBottom}
-              activeUnreadCount={activeUnreadCount}
-              replyMessage={replyMessage}
-              setReplyMessage={setReplyMessage}
-              isInternalNote={isInternalNote}
-              setIsInternalNote={setIsInternalNote}
-              isSubmittingMessage={isSubmittingMessage}
-              handleReplyMessage={handleReplyMessage}
-              quickReplies={quickReplies}
-              isQuickRepliesOpen={isQuickRepliesOpen}
-              setIsQuickRepliesOpen={setIsQuickRepliesOpen}
-              isActionLoading={isActionLoading}
-              handleClaimTicket={handleClaimTicket}
-              handleUpdateStatus={handleUpdateStatus}
-              handleUpdatePriority={handleUpdatePriority}
-              setIsFocusMode={setIsFocusMode}
-              chatContainerRef={chatContainerRef}
-              chatEndRef={chatEndRef}
-              unreadMessageRef={unreadMessageRef}
-            />
+            <Suspense fallback={<Loader />}>
+              <SupportChatPanel
+                selectedTicket={selectedTicket}
+                messages={messages}
+                newMessageIds={newMessageIds}
+                currentAgent={currentAgent as any}
+                liveUnreadCount={liveUnreadCount}
+                setLiveUnreadCount={setLiveUnreadCount}
+                isScrollAtBottom={isScrollAtBottom}
+                setIsScrollAtBottom={setIsScrollAtBottom}
+                activeUnreadCount={activeUnreadCount}
+                replyMessage={replyMessage}
+                setReplyMessage={setReplyMessage}
+                isInternalNote={isInternalNote}
+                setIsInternalNote={setIsInternalNote}
+                isSubmittingMessage={isSubmittingMessage}
+                handleReplyMessage={handleReplyMessage}
+                quickReplies={quickReplies}
+                isQuickRepliesOpen={isQuickRepliesOpen}
+                setIsQuickRepliesOpen={setIsQuickRepliesOpen}
+                isActionLoading={isActionLoading}
+                handleClaimTicket={handleClaimTicket}
+                handleUpdateStatus={handleUpdateStatus}
+                handleUpdatePriority={handleUpdatePriority}
+                setIsFocusMode={setIsFocusMode}
+                chatContainerRef={chatContainerRef}
+                chatEndRef={chatEndRef}
+                unreadMessageRef={unreadMessageRef}
+              />
+            </Suspense>
           )}
 
           {/* PANEL 3: LIVE TENANT DIAGNOSTIC PANEL */}
-          <SupportSidebarDiagnostic
-            selectedTicket={selectedTicket}
-            rightPanelTab={rightPanelTab}
-            setRightPanelTab={setRightPanelTab}
-            kbSearchQuery={kbSearchQuery}
-            setKbSearchQuery={setKbSearchQuery}
-            fetchKnowledgeBase={fetchKnowledgeBase}
-            knowledgeBase={knowledgeBase}
-            handleAssistLogin={handleAssistLogin}
-          />
+          <Suspense fallback={<Loader />}>
+            <SupportSidebarDiagnostic
+              selectedTicket={selectedTicket}
+              rightPanelTab={rightPanelTab}
+              setRightPanelTab={setRightPanelTab}
+              kbSearchQuery={kbSearchQuery}
+              setKbSearchQuery={setKbSearchQuery}
+              fetchKnowledgeBase={fetchKnowledgeBase}
+              knowledgeBase={knowledgeBase}
+              handleAssistLogin={handleAssistLogin}
+            />
+          </Suspense>
         </div>
       )}
 
       {activePageTab === 'ANALYTICS' && (
         <div className="bg-white dark:bg-slate-850 border border-slate-100 dark:border-slate-800/80 rounded-xl p-6 shadow-sm">
-          <SupportAnalyticsPanel />
+          <Suspense fallback={<Loader />}>
+            <SupportAnalyticsPanel />
+          </Suspense>
         </div>
       )}
 
       {activePageTab === 'SETTINGS' && (
         <div className="bg-white dark:bg-slate-850 border border-slate-100 dark:border-slate-800/80 rounded-xl p-6 shadow-sm">
-          <SupportSettingsPanel />
+          <Suspense fallback={<Loader />}>
+            <SupportSettingsPanel />
+          </Suspense>
         </div>
       )}
 
       {/* FOCUS MODE: EXPANDED DIALOG MELAYANG (Leap-UX) */}
       {selectedTicket && (
-        <SupportFocusModeModal
-          isOpen={isFocusMode}
-          onClose={() => setIsFocusMode(false)}
-          selectedTicket={selectedTicket}
-          messages={messages}
-          newMessageIds={newMessageIds}
-          currentAgent={currentAgent}
-          liveUnreadCount={liveUnreadCount}
-          setLiveUnreadCount={setLiveUnreadCount}
-          isScrollAtBottom={isScrollAtBottom}
-          setIsScrollAtBottom={setIsScrollAtBottom}
-          activeUnreadCount={activeUnreadCount}
-          replyMessage={replyMessage}
-          setReplyMessage={setReplyMessage}
-          isInternalNote={isInternalNote}
-          setIsInternalNote={setIsInternalNote}
-          isSubmittingMessage={isSubmittingMessage}
-          handleReplyMessage={handleReplyMessage}
-          quickReplies={quickReplies}
-          isQuickRepliesOpen={isQuickRepliesOpen}
-          setIsQuickRepliesOpen={setIsQuickRepliesOpen}
-          isActionLoading={isActionLoading}
-          handleClaimTicket={handleClaimTicket}
-          handleUpdateStatus={handleUpdateStatus}
-          handleUpdatePriority={handleUpdatePriority}
-          handleAssistLogin={handleAssistLogin}
-        />
+        <Suspense fallback={null}>
+          <SupportFocusModeModal
+            isOpen={isFocusMode}
+            onClose={() => setIsFocusMode(false)}
+            selectedTicket={selectedTicket}
+            messages={messages}
+            newMessageIds={newMessageIds}
+            currentAgent={currentAgent as any}
+            liveUnreadCount={liveUnreadCount}
+            setLiveUnreadCount={setLiveUnreadCount}
+            isScrollAtBottom={isScrollAtBottom}
+            setIsScrollAtBottom={setIsScrollAtBottom}
+            activeUnreadCount={activeUnreadCount}
+            replyMessage={replyMessage}
+            setReplyMessage={setReplyMessage}
+            isInternalNote={isInternalNote}
+            setIsInternalNote={setIsInternalNote}
+            isSubmittingMessage={isSubmittingMessage}
+            handleReplyMessage={handleReplyMessage}
+            quickReplies={quickReplies}
+            isQuickRepliesOpen={isQuickRepliesOpen}
+            setIsQuickRepliesOpen={setIsQuickRepliesOpen}
+            isActionLoading={isActionLoading}
+            handleClaimTicket={handleClaimTicket}
+            handleUpdateStatus={handleUpdateStatus}
+            handleUpdatePriority={handleUpdatePriority}
+            handleAssistLogin={handleAssistLogin}
+          />
+        </Suspense>
       )}
 
+      </div>
     </SuperAdminPageLayout>
   );
 }

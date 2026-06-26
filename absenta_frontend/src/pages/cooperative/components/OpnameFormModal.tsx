@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../../../components/cooperative/ui/Modal';
 import { Input } from '../../../components/cooperative/ui/Input';
 import { Button } from '../../../components/cooperative/ui/Button';
@@ -38,6 +38,16 @@ export const OpnameFormModal: React.FC<OpnameFormModalProps> = ({
     }
   }, [product, isOpen]);
 
+  const productInfo = useMemo(() => {
+    if (!product) return null;
+    return {
+      name: product.name,
+      code: product.code,
+      stock: product.stock,
+      costPrice: Number(product.costPrice || 0).toLocaleString('id-ID'),
+    };
+  }, [product]);
+
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     const stockVal = Number(newStock);
@@ -50,13 +60,13 @@ export const OpnameFormModal: React.FC<OpnameFormModalProps> = ({
       onClose={onClose}
       title={product ? `Stock Opname: ${product.name}` : 'Stock Opname'}
     >
-      {product && (
+      {product && productInfo && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-slate-50 p-4 rounded-lg text-sm border border-slate-100 space-y-1">
-            <p><strong>Nama Produk:</strong> {product.name}</p>
-            <p><strong>Kode Produk:</strong> {product.code}</p>
-            <p><strong>Stok Sistem Saat Ini:</strong> {product.stock} pcs</p>
-            <p><strong>Harga Modal:</strong> Rp {Number(product.costPrice || 0).toLocaleString('id-ID')}</p>
+            <p><strong>Nama Produk:</strong> {productInfo.name}</p>
+            <p><strong>Kode Produk:</strong> {productInfo.code}</p>
+            <p><strong>Stok Sistem Saat Ini:</strong> {productInfo.stock} pcs</p>
+            <p><strong>Harga Modal:</strong> Rp {productInfo.costPrice}</p>
           </div>
 
           <Input

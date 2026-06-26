@@ -18,7 +18,7 @@ import {
   getSemesterDetail
 } from '../../../api/academic/semester.api';
 import type { Semester } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
@@ -51,7 +51,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   const [deleting, setDeleting] = useState(false);
   const [activating, setActivating] = useState(false);
   
-  const { showToast } = useToast();
+
   const { user, isLoading: isAuthLoading } = useAuthStore();
   
   if (isAuthLoading) {
@@ -85,7 +85,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
           setCurrentPage(1);
         }
       } else {
-        showToast('Gagal memuat data semester', 'error');
+        toast.error('Gagal memuat data semester');
         // Reset to default values on error
         setSemesters([]);
         setTotalPages(1);
@@ -94,7 +94,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       }
     } catch (error) {
       console.error('Error fetching semesters:', error);
-      showToast('Terjadi kesalahan saat memuat data semester', 'error');
+      toast.error('Terjadi kesalahan saat memuat data semester');
       // Reset to default values on error
       setSemesters([]);
       setTotalPages(1);
@@ -103,7 +103,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [showToast, tahunPelajaranId, itemsPerPage]);
+  }, [tahunPelajaranId, itemsPerPage]);
 
   // Debounced search effect
   useEffect(() => {
@@ -136,9 +136,9 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
         { header: 'Status', accessor: (row) => row.is_active ? 'Aktif' : 'Tidak Aktif', width: 15 }
       ], 'Laporan_Semester', 'DATA SEMESTER AKADEMIK');
     } catch (error: any) {
-      showToast(error.message || 'Gagal mengekspor data', 'warning');
+      toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [semesters, showToast]);
+  }, [semesters]);
 
   // Handle delete
   const handleDelete = useCallback(async (semester: Semester) => {
@@ -205,19 +205,19 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       const response = await deleteSemester(semester.id);
       
       if (response.success) {
-        showToast(response.message || 'Semester berhasil dihapus', 'success');
+        toast.success(response.message || 'Semester berhasil dihapus');
         fetchSemesters(currentPage, searchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus semester', 'error');
+        toast.error(response.message || 'Gagal menghapus semester');
       }
     } catch (error: any) {
       console.error('Error deleting semester:', error);
-      showToast(error.response?.data?.message || 'Terjadi kesalahan saat menghapus semester', 'error');
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus semester');
     } finally {
       setDeleting(false);
       setLoading(false);
     }
-  }, [confirm, showToast, fetchSemesters, currentPage, searchTerm]);
+  }, [confirm, fetchSemesters, currentPage, searchTerm]);
 
   // Handle set active
   const handleSetActive = useCallback(async (semester: Semester) => {
@@ -247,18 +247,18 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       const response = await setActiveSemester(semester.id);
       
       if (response.success) {
-        showToast(`Semester "${semester.nama_semester}" berhasil diaktifkan`, 'success');
+        toast.success(`Semester "${semester.nama_semester}" berhasil diaktifkan`);
         fetchSemesters(currentPage, searchTerm);
       } else {
-        showToast('Gagal mengaktifkan semester', 'error');
+        toast.error('Gagal mengaktifkan semester');
       }
     } catch (error: any) {
       console.error('Error activating semester:', error);
-      showToast(error.response?.data?.message || 'Terjadi kesalahan saat mengaktifkan semester', 'error');
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat mengaktifkan semester');
     } finally {
       setActivating(false);
     }
-  }, [confirm, showToast, fetchSemesters, currentPage, searchTerm]);
+  }, [confirm, fetchSemesters, currentPage, searchTerm]);
 
   // Table columns configuration
   const columns = useMemo(() => [

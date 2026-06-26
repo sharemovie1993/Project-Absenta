@@ -10,7 +10,7 @@ import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
 import { Loader2, Search, AlertTriangle, GraduationCap, LogOut, Users, RefreshCw, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { getAcademicStats } from '../../../api/academic-stats.api';
@@ -20,7 +20,7 @@ const Modal = lazy(() => import('../../../components/ui').then(module => ({ defa
 
 const StudentMutationPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
-  const { success, error: toastError } = useToast();
+
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(false);
@@ -128,35 +128,35 @@ const StudentMutationPage: React.FC = () => {
   ], []);
 
   const openMutationModal = useCallback(() => {
-    if (selectedSiswa.length === 0) { toastError('Pilih minimal satu siswa.'); return; }
+    if (selectedSiswa.length === 0) { toast.error('Pilih minimal satu siswa.'); return; }
     setMutationDate(new Date().toISOString().split('T')[0]);
     setMutationReason(''); setMutationStatus('PINDAH');
     setIsMutationModalOpen(true);
-  }, [selectedSiswa.length, toastError]);
+  }, [selectedSiswa.length]);
 
   const openGraduationModal = useCallback(() => {
-    if (selectedSiswa.length === 0) { toastError('Pilih minimal satu siswa.'); return; }
+    if (selectedSiswa.length === 0) { toast.error('Pilih minimal satu siswa.'); return; }
     setMutationDate(new Date().toISOString().split('T')[0]);
     setIsGraduationModalOpen(true);
-  }, [selectedSiswa.length, toastError]);
+  }, [selectedSiswa.length]);
 
   const handleExecute = useCallback(async (type: 'MUTATION' | 'GRADUATION') => {
-    if (!mutationDate) { toastError('Tanggal wajib diisi.'); return; }
-    if (type === 'MUTATION' && !mutationReason) { toastError('Alasan wajib diisi untuk mutasi.'); return; }
+    if (!mutationDate) { toast.error('Tanggal wajib diisi.'); return; }
+    if (type === 'MUTATION' && !mutationReason) { toast.error('Alasan wajib diisi untuk mutasi.'); return; }
     setExecuting(true);
     try {
       const status = type === 'GRADUATION' ? 'LULUS' : mutationStatus;
       const reason = type === 'GRADUATION' ? 'Lulus Sekolah' : mutationReason;
       await bulkUpdateStatus({ ids: selectedSiswa, status, tanggal: new Date(mutationDate), keterangan: reason });
-      success(`Berhasil memproses ${selectedSiswa.length} siswa.`);
+      toast.success(`Berhasil memproses ${selectedSiswa.length} siswa.`);
       setSelectedSiswa([]); setIsMutationModalOpen(false); setIsGraduationModalOpen(false);
       fetchSiswa();
     } catch (e: unknown) {
       const err = e as { message?: string };
-      toastError(err.message || 'Gagal memproses data.');
+      toast.error(err.message || 'Gagal memproses data.');
     }
     finally { setExecuting(false); }
-  }, [mutationDate, mutationReason, mutationStatus, selectedSiswa, success, toastError, fetchSiswa]);
+  }, [mutationDate, mutationReason, mutationStatus, selectedSiswa, fetchSiswa]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },

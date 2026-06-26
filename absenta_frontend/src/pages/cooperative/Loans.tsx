@@ -616,7 +616,11 @@ const Loans: React.FC = () => {
           description="Akses pengajuan pinjaman dan histori angsuran"
           instruction={{
             title: "Memuat Data",
-            description: "Harap tunggu, sistem sedang memuat status keanggotaan dan riwayat pengajuan pinjaman koperasi sekolah Anda."
+            description: "Harap tunggu, sistem sedang memuat status keanggotaan dan riwayat pengajuan pinjaman koperasi sekolah Anda.",
+            items: [
+              { text: 'Status keanggotaan sedang diverifikasi.' },
+              { text: 'Riwayat pinjaman sedang diambil dari server.' }
+            ]
           }}
           breadcrumbs={breadcrumbs}
         >
@@ -636,7 +640,11 @@ const Loans: React.FC = () => {
           description="Akses pengajuan pinjaman dan histori angsuran"
           instruction={{
             title: "Pendaftaran Koperasi",
-            description: "Anda belum terdaftar sebagai anggota aktif koperasi sekolah. Hubungi Bendahara Koperasi untuk melakukan pendaftaran agar dapat mengakses layanan pinjaman."
+            description: "Anda belum terdaftar sebagai anggota aktif koperasi sekolah. Hubungi Bendahara Koperasi untuk melakukan pendaftaran agar dapat mengakses layanan pinjaman.",
+            items: [
+              { text: 'Hubungi Bendahara Koperasi untuk mendaftarkan diri sebagai anggota.' },
+              { text: 'Setelah aktif, Anda dapat mengajukan pinjaman dan melihat riwayat angsuran.' }
+            ]
           }}
           breadcrumbs={breadcrumbs}
         >
@@ -674,7 +682,15 @@ const Loans: React.FC = () => {
           title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Kredit",
           description: isStudent 
             ? "Halaman ini digunakan untuk melihat histori pengajuan pinjaman Anda, melacak progres pelunasan angsuran bulanan, dan melakukan pengajuan pinjaman koperasi sekolah yang baru dengan simulasi bunga transparan."
-            : "Halaman ini digunakan oleh pengurus dan staf koperasi untuk mengelola, meninjau kelayakan berkas, dan memutasi persetujuan status kredit pengajuan pinjaman anggota koperasi sekolah."
+            : "Halaman ini digunakan oleh pengurus dan staf koperasi untuk mengelola, meninjau kelayakan berkas, dan memutasi persetujuan status kredit pengajuan pinjaman anggota koperasi sekolah.",
+          items: [
+            isStudent
+              ? { text: 'Ajukan pinjaman baru melalui tombol "Ajukan Pinjaman Baru" di kanan atas.' }
+              : { text: 'Gunakan tombol Setuju/Tolak di kolom Tindakan untuk memproses pengajuan PENDING.' },
+            isStudent
+              ? { text: 'Pantau progres pelunasan angsuran pada kolom "Progres Pelunasan".' }
+              : { text: 'Klik Detail untuk meninjau analisis kelayakan dan rekonsiliasi angsuran anggota.' }
+          ]
         }}
         hardeningModuleKey="coop_loans"
         breadcrumbs={breadcrumbs}

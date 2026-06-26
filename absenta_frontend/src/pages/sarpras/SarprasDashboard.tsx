@@ -64,11 +64,6 @@ const SarprasDashboard: React.FC = () => {
     if (subscription === undefined) return;
 
     const fetchStats = async () => {
-      if (isLocked) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const res = await requestWithFallback<StandardApiResponse<AssetStats>>('get', '/sarpras/assets/stats');
         if (res.success && res.data) {
@@ -81,7 +76,7 @@ const SarprasDashboard: React.FC = () => {
       }
     };
     fetchStats();
-  }, [subscription, isLocked]);
+  }, [subscription]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },

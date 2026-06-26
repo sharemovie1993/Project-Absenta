@@ -7,13 +7,14 @@ import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
 import { Label } from '../../components/ui/Label';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useDebounce } from '../../hooks/useDebounce';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
 import type { Pelanggaran, JenisPelanggaran } from '../../api/kesiswaan.api';
 import type { Siswa } from '../../types/academic';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   Clock,
@@ -62,6 +63,7 @@ interface Student {
 }
 
 export default function PelanggaranPage() {
+  const queryClient = useQueryClient();
   const [data, setData] = useState<Pelanggaran[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,7 +87,7 @@ export default function PelanggaranPage() {
   // Tipe eksplisit Siswa – pengganti tipe longgar sebelumnya
   const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
   const [jenisPelanggaranList, setJenisPelanggaranList] = useState<JenisPelanggaran[]>([]);
-  const { error, success } = useToast();
+
   const confirm = useConfirm();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -110,11 +112,11 @@ export default function PelanggaranPage() {
       }
     } catch (err: unknown) {
       console.error(err);
-      error('Gagal mengambil data catatan');
+      toast.error('Gagal mengambil data catatan');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, itemsPerPage, error]);
+  }, [debouncedSearch, itemsPerPage]);
 
   const fetchJenisPelanggaran = useCallback(async () => {
     try {
@@ -150,19 +152,20 @@ export default function PelanggaranPage() {
     try {
       if (selectedId) {
         await kesiswaanApi.updatePelanggaran(selectedId, formData);
-        success('Catatan perkembangan berhasil diperbarui');
+        toast.success('Catatan perkembangan berhasil diperbarui');
       } else {
         await kesiswaanApi.createPelanggaran(formData);
-        success('Catatan perkembangan berhasil disimpan');
+        toast.success('Catatan perkembangan berhasil disimpan');
       }
+      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
       setModalOpen(false);
       fetchData();
       resetForm();
     } catch (err: unknown) {
       console.error(err);
-      error('Gagal menyimpan catatan');
+      toast.error('Gagal menyimpan catatan');
     }
-  }, [selectedId, formData, success, error, fetchData]);
+  }, [selectedId, formData, fetchData, queryClient]);
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -299,9 +302,10 @@ export default function PelanggaranPage() {
               });
               if (ok) {
                 kesiswaanApi.deletePelanggaran(item.id).then(() => {
-                  success('Catatan perkembangan berhasil dihapus');
+                  toast.success('Catatan perkembangan berhasil dihapus');
+                  queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
                   fetchData();
-                }).catch(() => error('Gagal menghapus catatan perkembangan'));
+                }).catch(() => toast.error('Gagal menghapus catatan perkembangan'));
               }
             }}
             className="w-8 h-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
@@ -311,7 +315,7 @@ export default function PelanggaranPage() {
         </div>
       )
     }
-  ], [getStatusDisplay, handleEdit, fetchData]);
+  ], [getStatusDisplay, handleEdit, fetchData, queryClient]);
 
   const pageStats = useMemo(() => {
     const total = data?.length || 0;

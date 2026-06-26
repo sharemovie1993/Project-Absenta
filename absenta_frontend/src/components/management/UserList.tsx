@@ -17,7 +17,7 @@ import {
 import { getStatusBadgeClass, getStatusLabel } from '../../utils/layoutUtils';
 import UserFilter, { type UserFilterState } from './UserFilter';
 import { getUsers, deleteUser, resetUserPassword, type User } from '../../api/user.api';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -60,7 +60,7 @@ const UserList: React.FC<UserListProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  const { showToast } = useToast();
+
   const { user, can, isAdmin, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
   const confirm = useConfirm();
   
@@ -103,11 +103,11 @@ const UserList: React.FC<UserListProps> = ({
       if (pagination?.page) setCurrentPage(pagination.page);
     } catch (error) {
       console.error('Failed to load users:', error);
-      showToast('Gagal memuat daftar pengguna', 'error');
+      toast.error('Gagal memuat daftar pengguna');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedFilters, user, showToast]);
+  }, [currentPage, itemsPerPage, debouncedFilters, user]);
 
   useEffect(() => {
     loadUsers();
@@ -168,7 +168,7 @@ const UserList: React.FC<UserListProps> = ({
       const role = user?.role?.name || user?.role;
       // Prevent SUPERADMIN from deleting their own account (UI safety)
       if (isSystemSuperAdmin(role, user?.tenant_id) && selectedUser.id === user?.id) {
-        showToast('SUPERADMIN tidak boleh menghapus akun sendiri', 'error');
+        toast.error('SUPERADMIN tidak boleh menghapus akun sendiri');
         return;
       }
       const tenantId = isSystemSuperAdmin(role, user?.tenant_id) ? selectedUser.tenant_id : user?.tenant_id;
@@ -176,17 +176,16 @@ const UserList: React.FC<UserListProps> = ({
       const response = await deleteUser(selectedUser.id, tenantId);
       
       if (response.success) {
-        showToast('Pengguna berhasil dihapus', 'success');
+        toast.success('Pengguna berhasil dihapus');
         await loadUsers();
       } else {
-        showToast(response.message || 'Failed to delete user', 'error');
+        toast.error(response.message || 'Failed to delete user');
       }
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      showToast(
-        error.response?.data?.message || 'An error occurred while deleting user', 
-        'error'
-      );
+        toast.error(
+          error.response?.data?.message || 'An error occurred while deleting user'
+        );
     } finally {
       setDeleting(false);
       setDeleteModalOpen(false);
@@ -329,9 +328,9 @@ const UserList: React.FC<UserListProps> = ({
                     if (failed.length > 0) {
                       setBulkErrorDetails(failed);
                       setBulkErrorModalOpen(true);
-                      showToast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, 'warning');
+                      toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
                     } else {
-                      showToast(`Berhasil menghapus ${succeeded.length} pengguna`, 'success');
+                      toast.success(`Berhasil menghapus ${succeeded.length} pengguna`);
                     }
 
                     const next = new Set<string>(selectedIds);
@@ -339,7 +338,7 @@ const UserList: React.FC<UserListProps> = ({
                     setSelectedIds(next);
                     await loadUsers();
                   } catch (err: any) {
-                    showToast(err?.message || 'Terjadi kesalahan saat bulk delete', 'error');
+                    toast.error(err?.message || 'Terjadi kesalahan saat bulk delete');
                   } finally {
                     setBulkDeleting(false);
                   }
@@ -586,23 +585,23 @@ const UserList: React.FC<UserListProps> = ({
             <Button
               onClick={async () => {
                 if (!selectedUser) return;
-                if (!newPassword || newPassword.length < 8) { showToast('Password minimal 8 karakter', 'error'); return; }
-                if (newPassword !== confirmPassword) { showToast('Konfirmasi password tidak cocok', 'error'); return; }
+                if (!newPassword || newPassword.length < 8) { toast.error('Password minimal 8 karakter'); return; }
+                if (newPassword !== confirmPassword) { toast.error('Konfirmasi password tidak cocok'); return; }
                 try {
                   setResetting(true);
                   const role = user?.role?.name || user?.role;
                   const tenantId = isSystemSuperAdmin(role, user?.tenant_id) ? selectedUser.tenant_id : user?.tenant_id;
                   const res = await resetUserPassword(selectedUser.id, newPassword, tenantId || undefined);
                   if (res.success) {
-                    showToast('Password berhasil direset', 'success');
+                    toast.success('Password berhasil direset');
                     setResetModalOpen(false);
                     setSelectedUser(null);
                     await loadUsers();
                   } else {
-                    showToast(res.message || 'Gagal reset password', 'error');
+                    toast.error(res.message || 'Gagal reset password');
                   }
                 } catch (err: any) {
-                  showToast(err?.response?.data?.message || 'Terjadi kesalahan saat reset password', 'error');
+                  toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat reset password');
                 } finally {
                   setResetting(false);
                 }

@@ -1,13 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axiosInstance, { resolvePublicApiBaseUrl } from '@/lib/axiosInstance';
 import { Loader2, AlertCircle, CheckCircle2, Clock, ShieldCheck, CreditCard, ChevronRight } from 'lucide-react';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, Button } from '@/components/ui';
+import { Button, SectionCard } from '@/components/ui';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
-const PaymentReturnPage: React.FC = () => {
+const PaymentReturnPageContent: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const ref = searchParams.get('ref');
@@ -18,65 +17,74 @@ const PaymentReturnPage: React.FC = () => {
   const [attempt, setAttempt] = useState<number>(0);
 
   const normalizedStatus = useMemo(() => String(status || '').toUpperCase(), [status]);
-  const isSuccess = ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(normalizedStatus);
-  const isTerminalFail = ['FAILED', 'EXPIRED', 'CANCELLED'].includes(normalizedStatus);
+  const isSuccess = useMemo(() => ['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(normalizedStatus), [normalizedStatus]);
+  const isTerminalFail = useMemo(() => ['FAILED', 'EXPIRED', 'CANCELLED'].includes(normalizedStatus), [normalizedStatus]);
+
+  const fetchStatus = useCallback(async () => {
+    if (!ref) return;
+    const apiRoot = resolvePublicApiBaseUrl();
+    try {
+      const res = await axiosInstance.get(`/payment/public/status?ref=${encodeURIComponent(String(ref))}`, {
+        baseURL: apiRoot,
+        headers: { Accept: 'application/json' },
+      });
+      const d = res?.data?.data;
+      setStatus(d?.status || '');
+      if (d?.invoice_token) setInvoiceToken(d.invoice_token);
+      
+      const norm = String(d?.status || '').toUpperCase();
+      if (['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(norm)) {
+        setTimeout(() => {
+          if (d.invoice_token) navigate(`/payment/public/${encodeURIComponent(d.invoice_token)}/instruction?ref=${encodeURIComponent(String(ref))}`, { replace: true });
+          else navigate(`/payment/status/${encodeURIComponent(String(ref))}`, { replace: true });
+        }, 2000);
+      } else if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(norm)) {
+          setTimeout(() => navigate(`/payment/status/${encodeURIComponent(String(ref))}`, { replace: true }), 2000);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Gagal memeriksa status';
+      setError(msg);
+    } finally {
+      setAttempt(a => a + 1);
+    }
+  }, [ref, navigate]);
 
   useEffect(() => {
     if (!ref) { navigate('/'); return; }
-  }, [ref, navigate]);
-
-  useEffect(() => {
-    if (!ref) return;
-    let alive = true;
-    const apiRoot = resolvePublicApiBaseUrl();
-
-    const fetchStatus = async () => {
-      try {
-        const res = await axiosInstance.get(`/payment/public/status?ref=${encodeURIComponent(String(ref))}`, {
-          baseURL: apiRoot,
-          headers: { Accept: 'application/json' },
-        });
-        const d = res?.data?.data;
-        if (!alive) return;
-        setStatus(d?.status || '');
-        if (d?.invoice_token) setInvoiceToken(d.invoice_token);
-        
-        const norm = String(d?.status || '').toUpperCase();
-        if (['SUCCESS', 'PAID', 'SETTLEMENT', 'COMPLETED'].includes(norm)) {
-          setTimeout(() => {
-            if (d.invoice_token) navigate(`/payment/public/${encodeURIComponent(d.invoice_token)}/instruction?ref=${encodeURIComponent(String(ref))}`, { replace: true });
-            else navigate(`/payment/status/${encodeURIComponent(String(ref))}`, { replace: true });
-          }, 2000);
-        } else if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(norm)) {
-            setTimeout(() => navigate(`/payment/status/${encodeURIComponent(String(ref))}`, { replace: true }), 2000);
-        }
-      } catch (e: any) {
-        if (alive) setError(e?.message || 'Gagal memeriksa status');
-      } finally {
-        if (alive) setAttempt(a => a + 1);
-      }
-    };
-
     fetchStatus();
     const id = setInterval(fetchStatus, 3000);
-    return () => { alive = false; clearInterval(id); };
-  }, [ref, navigate]);
+    return () => clearInterval(id);
+  }, [ref, navigate, fetchStatus]);
 
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0, scale: 0.9 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
-  };
+  }), []);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Gerbang Pembayaran' },
+    { label: 'Status Verifikasi' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Verifikasi Pembayaran',
+    description: 'Mohon tunggu sejenak sementara sistem memverifikasi pembayaran Anda.',
+    items: [
+      { text: 'Jangan menutup atau menyegarkan halaman ini agar proses sinkronisasi berjalan lancar.' },
+      { text: 'Sistem sedang menunggu konfirmasi resmi dari gateway pembayaran.' },
+      { text: 'Anda akan dialihkan secara otomatis setelah status terverifikasi.' }
+    ]
+  }), []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center p-4 pt-24 pb-20 relative">
-        {/* Background mesh */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl" />
-        </div>
-
+    <AcademicPageLayout
+      title="Verifikasi Pembayaran"
+      description="Sinkronisasi status transaksi dengan gateway pembayaran"
+      hardeningModuleKey="payment_return"
+      instruction={instruction}
+      breadcrumbs={breadcrumbs}
+    >
+      <div className="flex items-center justify-center p-4 relative min-h-[50vh]">
         <div className="max-w-md w-full relative z-10">
           <AnimatePresence mode="wait">
              <motion.div
@@ -85,7 +93,7 @@ const PaymentReturnPage: React.FC = () => {
                 initial="hidden"
                 animate="visible"
              >
-                <Card className="rounded-[3rem] overflow-hidden border-0 shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900">
+                <SectionCard noPadding fullWidth className="rounded-[3rem] overflow-hidden border-0 shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900">
                    <div className="p-8 sm:p-12 text-center">
                       <div className="mb-10 flex justify-center">
                          <div className="relative">
@@ -129,7 +137,6 @@ const PaymentReturnPage: React.FC = () => {
                       </div>
                    </div>
                    
-                   {/* Progress bar for pending */}
                    {!isSuccess && !isTerminalFail && (
                      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                         <motion.div 
@@ -140,15 +147,17 @@ const PaymentReturnPage: React.FC = () => {
                         />
                      </div>
                    )}
-                </Card>
+                </SectionCard>
              </motion.div>
           </AnimatePresence>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </AcademicPageLayout>
   );
 };
+
+const PaymentReturnPage: React.FC = () => (
+  <PaymentReturnPageContent />
+);
 
 export default PaymentReturnPage;

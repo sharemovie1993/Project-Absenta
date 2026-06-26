@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 interface HubinCameraModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCapture: (file: File) => void;
+  onCapture: (file: File | null) => void;
   title?: string;
 }
 
@@ -20,6 +20,7 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -28,12 +29,13 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
   const [activeDeviceId, setActiveDeviceId] = useState<string>('');
 
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-      setIsCameraReady(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
-  }, [stream]);
+    setStream(null);
+    setIsCameraReady(false);
+  }, []);
 
   const startCamera = useCallback(async (deviceId?: string) => {
     stopCamera();
@@ -47,6 +49,7 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
       };
 
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = newStream;
       setStream(newStream);
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
@@ -63,6 +66,7 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
       if (deviceId) {
         try {
           const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          streamRef.current = fallbackStream;
           setStream(fallbackStream);
           if (videoRef.current) {
             videoRef.current.srcObject = fallbackStream;
@@ -202,64 +206,78 @@ export const HubinCameraModal: React.FC<HubinCameraModalProps> = ({
           onChange={handleFileChange} 
         />
 
-        {/* Viewfinder / Preview */}
-        <div className="flex-1 relative bg-black flex items-center justify-center">
+        {/* Viewfinder / Preview with fixed aspect-ratio and heights to prevent layout jumping */}
+        <div className="w-full h-[320px] sm:h-[420px] relative bg-black flex items-center justify-center overflow-hidden">
           {!capturedImage ? (
             <>
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
-                className="w-full h-full object-cover"
+                className="absolute inset-0 w-full h-full object-cover"
               />
               {!isCameraReady && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 gap-3">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 bg-black gap-3 z-10">
                   <RefreshCw className="animate-spin" size={32} />
                   <p className="text-[10px] font-black uppercase tracking-widest">Memulai Kamera...</p>
                 </div>
               )}
             </>
           ) : (
-            <img src={capturedImage} className="w-full h-full object-cover" alt="Captured" />
+            <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover" alt="Captured" />
           )}
 
           {/* Guidelines Overlay */}
-          <div className="absolute inset-0 border-[20px] border-black/20 pointer-events-none">
+          <div className="absolute inset-0 border-[20px] border-black/20 pointer-events-none z-10">
             <div className="w-full h-full border border-white/20 rounded-xl" />
           </div>
         </div>
 
         {/* Controls */}
-        <div className="p-6 bg-slate-900 border-t border-slate-800">
+        <div className="p-6 bg-slate-900 border-t border-slate-800 flex flex-col gap-4">
           {!capturedImage ? (
-            <div className="flex items-center justify-between gap-4">
+            <>
+              {/* Optional Skip Button */}
               <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleGalleryClick}
-                className="flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:text-white rounded-xl h-12 uppercase font-black text-[10px] tracking-widest"
+                variant="ghost" 
+                onClick={() => {
+                  onCapture(null);
+                  handleClose();
+                }}
+                className="w-full h-10 rounded-xl text-slate-400 hover:text-white uppercase font-black text-[10px] tracking-widest border border-slate-800 hover:border-slate-700 bg-slate-950/20"
               >
-                <ImageIcon size={18} className="mr-2" /> Galeri
+                Lanjutkan Tanpa Foto
               </Button>
 
-              <button 
-                onClick={capturePhoto}
-                disabled={!isCameraReady}
-                className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl active:scale-90 transition-all disabled:opacity-50"
-              >
-                <div className="w-12 h-12 rounded-full border-4 border-slate-900" />
-              </button>
+              <div className="flex items-center justify-between gap-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleGalleryClick}
+                  className="flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:text-white rounded-xl h-12 uppercase font-black text-[10px] tracking-widest"
+                >
+                  <ImageIcon size={18} className="mr-2" /> Galeri
+                </Button>
 
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={switchCamera}
-                disabled={devices.length < 2}
-                className="flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:text-white rounded-xl h-12 uppercase font-black text-[10px] tracking-widest"
-              >
-                <RefreshCw size={18} className="mr-2" /> Putar
-              </Button>
-            </div>
+                <button 
+                  onClick={capturePhoto}
+                  disabled={!isCameraReady}
+                  className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl active:scale-90 transition-all disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-full border-4 border-slate-900" />
+                </button>
+
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={switchCamera}
+                  disabled={devices.length < 2}
+                  className="flex-1 bg-slate-800 border-slate-700 text-slate-300 hover:text-white rounded-xl h-12 uppercase font-black text-[10px] tracking-widest"
+                >
+                  <RefreshCw size={18} className="mr-2" /> Putar
+                </Button>
+              </div>
+            </>
           ) : (
             <div className="flex items-center gap-4">
               <Button 

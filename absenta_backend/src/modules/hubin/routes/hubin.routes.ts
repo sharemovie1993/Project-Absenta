@@ -15,6 +15,8 @@ export async function hubinRoutes(fastify: any) {
   fastify.get('/penempatan', { preHandler: [requireCapability('hubin.pkl.view.list'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getPenempatan(req, reply));
   fastify.get('/penempatan/me', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getMyPenempatan(req, reply));
   fastify.post('/penempatan', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.createPenempatan(req, reply));
+  fastify.post('/penempatan/bulk', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.bulkCreatePenempatan(req, reply));
+  fastify.put('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updatePenempatan(req, reply));
   fastify.put('/penempatan/:id/nilai', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updatePenilaian(req, reply));
   fastify.post('/penempatan/:id/kunjungan', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.addKunjungan(req, reply));
   fastify.delete('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.deletePenempatan(req, reply));
@@ -51,9 +53,12 @@ export async function hubinRoutes(fastify: any) {
   fastify.get('/bkk/lamaran', { preHandler: [requireCapability(['hubin.lamaran.manage', 'hubin.self.bkk', 'hubin.partners.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getLamaran(req, reply));
   fastify.post('/bkk/lamaran', { preHandler: [requireCapability('hubin.self.bkk'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.createLamaran(req, reply));
   fastify.put('/bkk/lamaran/:id/status', { preHandler: [requireCapability('hubin.lamaran.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updateLamaranStatus(req, reply));
+  fastify.post('/bkk/lamaran/:id/interview', { preHandler: [requireCapability('hubin.lamaran.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.scheduleInterview(req, reply));
+  fastify.get('/bkk/lamaran/:id/timeline', { preHandler: [requireCapability(['hubin.lamaran.manage', 'hubin.self.bkk']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getLamaranTimeline(req, reply));
+  fastify.delete('/bkk/lamaran/:id', { preHandler: [requireCapability('hubin.lamaran.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.deleteLamaran(req, reply));
 
   // --- TRACER STUDY ---
-  fastify.get('/tracer', { preHandler: [requireCapability(['hubin.tracer.view', 'hubin.partners.manage', 'hubin.pkl.view.list']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getTracerStudy(req, reply));
+  fastify.get('/tracer', { preHandler: [requireCapability(['hubin.tracer.view', 'hubin.partners.manage', 'hubin.pkl.view.list', 'hubin.self.tracer']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getTracerStudy(req, reply));
   fastify.post('/tracer', { preHandler: [requireCapability('hubin.self.tracer'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.submitTracerStudy(req, reply));
   fastify.get('/tracer/stats', { preHandler: [requireCapability(['hubin.tracer.view', 'hubin.partners.manage', 'hubin.pkl.view.list']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getTracerStats(req, reply));
 

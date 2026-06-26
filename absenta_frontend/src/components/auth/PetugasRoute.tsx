@@ -37,7 +37,24 @@ export const PetugasRoute = () => {
         return;
       }
 
-      // Check Petugas status (Siswa Only)
+      // ── SISWA PETUGAS_KELAS: shortcut via capabilities ──────────────────────
+      // Jika user SISWA sudah memiliki capability operasional absensi di capabilities array
+      // (dikirim dari server saat login), langsung izinkan tanpa API call tambahan.
+      // Ini mencegah redirect ke dashboard akibat race condition atau API error.
+      if (user.role?.name === 'SISWA') {
+        const caps = user?.capabilities || [];
+        const hasPetugasKelasAccess =
+          caps.includes('attendance.sessions.create') ||
+          caps.includes('attendance.sessions.view.list') ||
+          caps.includes('attendance.schedules.view.list');
+
+        if (hasPetugasKelasAccess) {
+          if (mounted) setIsAllowed(true);
+          return;
+        }
+      }
+
+      // Fallback: Check Petugas status via API (Siswa tanpa capability di token)
       try {
         const res = await isPetugasActive();
         if (mounted) setIsAllowed(!!res?.data?.active);

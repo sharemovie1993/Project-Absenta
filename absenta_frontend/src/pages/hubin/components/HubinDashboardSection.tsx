@@ -67,7 +67,7 @@ interface HubinDashboardSectionProps {
 }
 
 export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ onNavigateTab }) => {
-  const [stats, setStats] = useState<HubinStats | null>(null);
+  const [statsState, setStatsState] = useState<HubinStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -76,31 +76,65 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ on
 
   useEffect(() => {
     const fetchStatsAndActivities = async () => {
+      setLoading(true);
+      setActivitiesLoading(true);
+      setError(null);
+
+      // 1. Fetch stats
       try {
-        setLoading(true);
-        setActivitiesLoading(true);
-        const [statsRes, actRes] = await Promise.all([
-          hubinApi.getStats(),
-          hubinApi.getRecentActivity()
-        ]);
+        const statsRes = await hubinApi.getStats();
         if (statsRes.success) {
-          setStats(statsRes.data);
+          setStatsState(statsRes.data);
         } else {
           setError('Gagal memuat statistik HUBIN');
         }
-        if (actRes.success) {
-          setActivities(actRes.data);
-        }
-      } catch (err: unknown) {
-        const errMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
+      } catch (err: any) {
+        const errMsg = err instanceof Error ? err.message : 'Koneksi bermasalah saat memuat statistik';
         setError(errMsg);
       } finally {
         setLoading(false);
+      }
+
+      // 2. Fetch activities (independent)
+      try {
+        const actRes = await hubinApi.getRecentActivity();
+        if (actRes.success) {
+          setActivities(actRes.data);
+        }
+      } catch (err: any) {
+        console.error('Failed to load recent activities:', err);
+      } finally {
         setActivitiesLoading(false);
       }
     };
     fetchStatsAndActivities();
   }, []);
+
+  const stats = useMemo(() => {
+    if (!statsState) return null;
+    return {
+      ...statsState,
+      totalMitra: statsState.totalMitra ?? 0,
+      totalSiswaPkl: statsState.totalSiswaPkl ?? 0,
+      pklAktif: statsState.pklAktif ?? 0,
+      pendingReports: statsState.pendingReports ?? 0,
+      mouExpiringCount: statsState.mouExpiringCount ?? 0,
+      totalLowonganAktif: statsState.totalLowonganAktif ?? 0,
+      totalAlumniTraced: statsState.totalAlumniTraced ?? 0,
+      tracerCoverage: statsState.tracerCoverage ?? 0,
+      employmentRate: statsState.employmentRate ?? 0,
+      totalRecruitmentSuccess: statsState.totalRecruitmentSuccess ?? 0,
+      tracerStats: {
+        BEKERJA: statsState.tracerStats?.BEKERJA ?? 0,
+        KULIAH: statsState.tracerStats?.KULIAH ?? 0,
+        WIRAUSAHA: statsState.tracerStats?.WIRAUSAHA ?? 0,
+        MENCARI_KERJA: statsState.tracerStats?.MENCARI_KERJA ?? 0,
+      },
+      recentPkl: statsState.recentPkl ?? [],
+      topMitra: statsState.topMitra ?? [],
+      topJurusanTerserap: statsState.topJurusanTerserap ?? [],
+    };
+  }, [statsState]);
 
   const getActionLabel = useCallback((action: string) => {
     switch (action) {

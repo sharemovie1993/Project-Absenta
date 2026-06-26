@@ -113,7 +113,42 @@ export class HubinController {
 
   async createPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.createPenempatan(request.tenantId!, request.body, request.user.id);
+      const data = await this.hubinService.createPenempatan(
+        request.tenantId!, 
+        request.body, 
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updatePenempatan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const data = await this.hubinService.updatePenempatan(
+        request.tenantId!, 
+        id, 
+        request.body,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async bulkCreatePenempatan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.bulkCreatePenempatan(
+        request.tenantId!,
+        request.body,
+        request.user.id,
+        request.organizationalScope
+      );
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -123,7 +158,12 @@ export class HubinController {
   async deletePenempatan(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
-      await this.hubinService.deletePenempatan(request.tenantId!, id, request.user.id);
+      await this.hubinService.deletePenempatan(
+        request.tenantId!, 
+        id, 
+        request.user.id,
+        request.organizationalScope
+      );
       return reply.status(200).send({ success: true, message: 'Penempatan berhasil dihapus' });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
@@ -522,16 +562,64 @@ export class HubinController {
     }
   }
 
+  async scheduleInterview(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const data = await this.hubinService.scheduleInterview(
+        request.tenantId!,
+        id,
+        request.body,
+        request.user.id
+      );
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getLamaranTimeline(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const data = await this.hubinService.getLamaranTimeline(request.tenantId!, id);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteLamaran(request: AuthenticatedRequest, reply: any) {
+    try {
+      await this.hubinService.deleteLamaran(request.tenantId!, request.params.id, request.user.id);
+      return reply.status(200).send({ success: true, message: 'Lamaran berhasil direset/dihapus' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   // --- TRACER STUDY ---
   async getTracerStudy(request: AuthenticatedRequest, reply: any) {
     try {
       const { search, tahunLulus, statusAlumni, page, limit } = request.query;
+
+      const roleName = request.user.role || (request.user as any).roleName || (request.user as any).Role?.name;
+      const isGlobalHubin = roleName === 'SUPERADMIN' || roleName === 'ADMIN' || roleName === 'HUBIN';
+
+      let forceSiswaId: string | undefined;
+      if (!isGlobalHubin && roleName === 'SISWA') {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(404).send({ success: false, message: 'Profil siswa tidak ditemukan untuk akun ini' });
+        }
+        forceSiswaId = siswaId;
+      }
+
       const data = await this.hubinService.getTracerStudy(request.tenantId!, {
         search,
         tahunLulus: tahunLulus ? parseInt(tahunLulus) : undefined,
         statusAlumni,
         page: page ? parseInt(page) : undefined,
-        limit: limit ? parseInt(limit) : undefined
+        limit: limit ? parseInt(limit) : undefined,
+        forceSiswaId
       });
       return reply.status(200).send({ success: true, ...data });
     } catch (error: any) {

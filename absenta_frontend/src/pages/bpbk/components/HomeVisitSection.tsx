@@ -8,7 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, Home, Paperclip } from 'lucide-react';
 
@@ -31,7 +31,7 @@ export const HomeVisitSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
 
   // Form states
@@ -106,25 +106,25 @@ export const HomeVisitSection: React.FC = () => {
     try {
       const res = await bpbkApi.deleteHomeVisit(id);
       if (res.success) {
-        success('Log kunjungan rumah berhasil dihapus');
+        toast.success('Log kunjungan rumah berhasil dihapus');
         fetchData();
       } else {
-        error(res.message || 'Gagal menghapus');
+        toast.error(res.message || 'Gagal menghapus');
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [confirm, success, error, fetchData]);
+  }, [confirm, fetchData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.siswa_id) {
-      error('Harap pilih siswa terlebih dahulu');
+      toast.error('Harap pilih siswa terlebih dahulu');
       return;
     }
     if (!formData.alasan.trim()) {
-      error('Harap isi alasan kunjungan');
+      toast.error('Harap isi alasan kunjungan');
       return;
     }
 
@@ -153,10 +153,10 @@ export const HomeVisitSection: React.FC = () => {
 
       if (selectedId) {
         await bpbkApi.updateHomeVisit(selectedId, payload);
-        success('Log kunjungan rumah berhasil diperbarui');
+        toast.success('Log kunjungan rumah berhasil diperbarui');
       } else {
         await bpbkApi.createHomeVisit(payload);
-        success('Kunjungan rumah baru berhasil dicatat');
+        toast.success('Kunjungan rumah baru berhasil dicatat');
       }
 
       setModalOpen(false);
@@ -164,7 +164,7 @@ export const HomeVisitSection: React.FC = () => {
       fetchData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan kunjungan rumah';
-      error(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setSaving(false);
     }

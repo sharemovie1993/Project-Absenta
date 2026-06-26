@@ -10,7 +10,7 @@ import {
 } from '@/api/academic/strukturOrganisasi.api';
 import { getJurusanList } from '@/api/academic/jurusan.api';
 import { Loader } from '@/components/ui/Loader';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { TopologyTree } from './TopologyTree';
 import { LiveNodeEditor } from './LiveNodeEditor';
 import { TreeErrorBoundary } from './TreeErrorBoundary';
@@ -28,7 +28,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 }) => {
   const queryClient = useQueryClient();
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+
   const { confirm } = useConfirm();
 
   // Queries
@@ -79,12 +79,12 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       }
     },
     onSuccess: (_, { node }) => {
-      showSuccessToast(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
+      toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
       setEditingNode(null);
     },
     onError: (error: any) => {
-      showErrorToast(error.message || 'Gagal menyimpan penugasan');
+      toast.error(error.message || 'Gagal menyimpan penugasan');
     }
   });
 
@@ -99,11 +99,11 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       }
     },
     onSuccess: () => {
-      showSuccessToast('Anggota berhasil dihapus');
+      toast.success('Anggota berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
     },
     onError: (error: any) => {
-      showErrorToast(error.message || 'Gagal menghapus anggota');
+      toast.error(error.message || 'Gagal menghapus anggota');
     }
   });
 
@@ -116,7 +116,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     if (!data || Object.keys(data).length === 0) return map;
 
     const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
-    const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS'], data, jurusans);
+    const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'], data, jurusans);
     
     if (kepalaSekolahTree) {
       map['G1'] = {

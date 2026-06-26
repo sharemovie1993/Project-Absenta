@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, ChevronRight, ChevronDown, AlertCircle, Share2, Save, X } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import iconForName from '@/lib/iconForName';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Button } from '@/components/ui/Button';
@@ -33,7 +33,7 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
   structures = [],
   onRefresh
 }) => {
-  const { showToast } = useToast();
+
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
   
@@ -110,7 +110,7 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
       setChangedStructures(new Set());
     } catch (err) {
       console.error("Failed to fetch permissions", err);
-      showToast("Gagal memuat permission struktur", "error");
+      toast.error("Gagal memuat permission struktur");
     } finally {
       setLoadingPerms(false);
     }
@@ -132,7 +132,7 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
   const handleToggle = (menu: MenuItem, structureId: string, isChecked: boolean) => {
     const capability = menu.required_capability;
     if (!capability) {
-      showToast("Menu ini tidak memiliki Capability yang didefinisikan", "warning");
+      toast("Menu ini tidak memiliki Capability yang didefinisikan", { icon: '⚠️' });
       return;
     }
 
@@ -184,19 +184,19 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
       await Promise.all(promises);
 
       if (failCount === 0) {
-        showToast(`Berhasil menyimpan perubahan untuk ${successCount} struktur`, "success");
+        toast.success(`Berhasil menyimpan perubahan untuk ${successCount} struktur`);
         setChangedStructures(new Set());
         // Update original permissions
         const newOriginals = { ...structurePermissions };
         setOriginalPermissions(newOriginals);
         if (onRefresh) onRefresh();
       } else {
-        showToast(`Disimpan: ${successCount}, Gagal: ${failCount}`, "warning");
+        toast(`Disimpan: ${successCount}, Gagal: ${failCount}`, { icon: '⚠️' });
       }
 
     } catch (err) {
       console.error(err);
-      showToast("Terjadi kesalahan saat menyimpan", "error");
+      toast.error("Terjadi kesalahan saat menyimpan");
     } finally {
       setIsSaving(false);
     }
@@ -217,7 +217,7 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
 
   const handleDistribute = async (structureId: string) => {
     if (changedStructures.has(structureId)) {
-      showToast("Harap simpan perubahan terlebih dahulu sebelum mendistribusikan pengaturan.", "warning");
+      toast("Harap simpan perubahan terlebih dahulu sebelum mendistribusikan pengaturan.", { icon: '⚠️' });
       return;
     }
 
@@ -234,14 +234,14 @@ export const StrukturMenuMatrix: React.FC<StrukturMenuMatrixProps> = ({
       const res = await distributeStrukturPermissions(structureId, structure.tenant_id);
       
       if (res.success) {
-        showToast(res.message || "Berhasil mendistribusikan permission", "success");
+        toast.success(res.message || "Berhasil mendistribusikan permission");
         setIsDistributeOpen(false);
       } else {
-        showToast(res.message || "Gagal mendistribusikan permission", "error");
+        toast.error(res.message || "Gagal mendistribusikan permission");
       }
     } catch (err: any) {
       console.error(err);
-      showToast(err.message || "Terjadi kesalahan saat distribusi", "error");
+      toast.error(err.message || "Terjadi kesalahan saat distribusi");
     } finally {
       setUpdating(prev => ({ ...prev, [key]: false }));
     }

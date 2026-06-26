@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import MapelList from '../../components/academic/mapel/MapelList';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { Mapel } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { BookOpen, Target } from 'lucide-react';
@@ -15,7 +15,7 @@ import {
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 
 const MapelForm = lazy(() => import('../../components/academic/mapel/MapelForm').then(m => ({ default: m.MapelForm })));
@@ -31,7 +31,7 @@ interface ModalState {
 
 export const MapelPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
+
   const navigate = useNavigate();
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
@@ -101,21 +101,21 @@ export const MapelPage: React.FC = () => {
           { header: 'Nama Mata Pelajaran', accessor: (row: Mapel) => row.nama_mapel, width: 30 },
           { header: 'Kode Mapel', accessor: (row: Mapel) => row.kode_mapel || '-', width: 15 }
         ], 'Laporan_Mata_Pelajaran', 'DATA MASTER MATA PELAJARAN SEKOLAH');
-        showToast('Data mata pelajaran berhasil diekspor.', 'success');
+        toast.success('Data mata pelajaran berhasil diekspor.');
       } else {
-        showToast('Tidak ada data untuk diekspor.', 'warning');
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
       }
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan template cerdas...', 'info');
+      toast('Menyiapkan template cerdas...', { icon: 'ℹ️' });
       const tingkatList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
       const kelompokList = ['A', 'B', 'C', 'Peminatan', 'Muatan Lokal'];
 
@@ -139,12 +139,12 @@ export const MapelPage: React.FC = () => {
           }
         }
       );
-      showToast('Template cerdas berhasil diunduh.', 'success');
+      toast.success('Template cerdas berhasil diunduh.');
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     }
-  }, [showToast]);
+  }, []);
 
   return (
     <AcademicPageLayout

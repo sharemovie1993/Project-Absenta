@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Loader2, Save, ChevronRight, ChevronDown, RotateCcw, Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import iconForName, { iconNames } from '@/lib/iconForName';
 import { setMenuRoles, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuRoleItem, type MenuPayload } from '@/api/menu.api';
 import { type RoleItem } from '@/api/user.api';
@@ -48,7 +48,7 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
   roles = [],
   onRefresh
 }) => {
-  const { showToast } = useToast();
+
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   
   // Track changes: menuId -> roleId -> newValue
@@ -160,7 +160,7 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
 
   const handleSubmit = async () => {
     if (!formData.name) {
-      showToast('Nama menu wajib diisi', 'error');
+      toast.error('Nama menu wajib diisi');
       return;
     }
 
@@ -174,18 +174,17 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
       }
 
       if (res.success) {
-        showToast(
-          editingMenu ? 'Menu berhasil diperbarui' : 'Menu berhasil ditambahkan',
-          'success'
+        toast.success(
+          editingMenu ? 'Menu berhasil diperbarui' : 'Menu berhasil ditambahkan'
         );
         setIsFormOpen(false);
         onRefresh();
       } else {
-        showToast(res.message || 'Gagal menyimpan menu', 'error');
+        toast.error(res.message || 'Gagal menyimpan menu');
       }
     } catch (err) {
       console.error(err);
-      showToast('Terjadi kesalahan saat menyimpan menu', 'error');
+      toast.error('Terjadi kesalahan saat menyimpan menu');
     } finally {
       setIsSubmitting(false);
     }
@@ -198,16 +197,16 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
     try {
       const res = await deleteMenu(deletingMenu.id);
       if (res.success) {
-        showToast('Menu berhasil dihapus', 'success');
+        toast.success('Menu berhasil dihapus');
         setIsDeleteOpen(false);
         setDeletingMenu(null);
         onRefresh();
       } else {
-        showToast(res.message || 'Gagal menghapus menu', 'error');
+        toast.error(res.message || 'Gagal menghapus menu');
       }
     } catch (err) {
       console.error(err);
-      showToast('Terjadi kesalahan saat menghapus menu', 'error');
+      toast.error('Terjadi kesalahan saat menghapus menu');
     } finally {
       setIsSubmitting(false);
     }
@@ -239,7 +238,7 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
 
   const handleReset = () => {
     setPendingChanges({});
-    showToast('Perubahan telah di-reset', 'info');
+    toast('Perubahan telah di-reset');
   };
 
   const handleSave = async () => {
@@ -285,11 +284,11 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
       await Promise.all(promises);
 
       if (failCount === 0) {
-        showToast(`Berhasil menyimpan perubahan pada ${successCount} menu`, 'success');
+        toast.success(`Berhasil menyimpan perubahan pada ${successCount} menu`);
         setPendingChanges({});
         onRefresh();
       } else {
-        showToast(`Disimpan: ${successCount}, Gagal: ${failCount}`, 'warning');
+        toast(`Disimpan: ${successCount}, Gagal: ${failCount}`, { icon: '⚠️' });
         // We keep pending changes if there were failures, or maybe just clear all?
         // Better to clear all and refresh to see true state.
         setPendingChanges({});
@@ -298,7 +297,7 @@ export const MenuPermissionMatrix: React.FC<MenuPermissionMatrixProps> = ({
 
     } catch (err: any) {
       console.error(err);
-      showToast('Gagal menyimpan perubahan', 'error');
+      toast.error('Gagal menyimpan perubahan');
     } finally {
       setIsSaving(false);
     }

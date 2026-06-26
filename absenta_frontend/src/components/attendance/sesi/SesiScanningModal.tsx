@@ -1,10 +1,9 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import { Modal, Alert, AlertDescription, Badge, ToastContainer, Label } from '../../ui';
+import { Modal, Alert, AlertDescription, Badge, Label } from '../../ui';
 import Button from '../../ui/Button';
 import { SmartStudentPicker, type Student } from '../../common/SmartStudentPicker';
 import { SesiAttendanceList, type SesiAttendanceRecord, type SesiDetail } from './SesiAttendanceList';
-import { type Toast } from '../../../hooks/useToast';
 
 interface SesiScanningModalProps {
   isOpen: boolean;
@@ -18,8 +17,6 @@ interface SesiScanningModalProps {
   sessionAttendanceRecords: SesiAttendanceRecord[];
   currentSession?: SesiDetail;
   kelasLabel: string;
-  toasts: Toast[];
-  removeToast: (id: string) => void;
 }
 
 const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
@@ -34,8 +31,6 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
   sessionAttendanceRecords,
   currentSession,
   kelasLabel,
-  toasts,
-  removeToast,
 }) => {
   return (
     <Modal
@@ -102,8 +97,6 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
             <SesiAttendanceList records={sessionAttendanceRecords} sesi={currentSession} />
           </div>
         </div>
-
-        <ToastContainer toasts={toasts} onRemove={removeToast} className="space-y-2 w-full" />
       </div>
     </Modal>
   );

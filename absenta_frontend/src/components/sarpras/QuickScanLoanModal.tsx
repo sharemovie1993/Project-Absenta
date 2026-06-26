@@ -1,14 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { Label } from '../ui/Label';
-import { ScanLine, UserCheck, PackageCheck, Loader2, Camera, X } from 'lucide-react';
+import { ScanLine, UserCheck, PackageCheck, Loader2, Camera, X, Package } from 'lucide-react';
 import { sarprasApi } from '../../api/sarpras.api';
 import { BrowserMultiFormatReader } from '@zxing/browser';
-import { useToast } from '../../hooks/useToast';
-import { requestWithFallback } from '../../api/apiUtils';
+import { toast } from 'react-hot-toast';
+import { SmartStudentPicker } from '../common/SmartStudentPicker';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface QuickScanLoanModalProps {
   isOpen: boolean;
@@ -29,18 +29,18 @@ interface ScannedAsset {
 
 export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   
   const [step, setStep] = useState<1 | 2>(1);
-  const [userStr, setUserStr] = useState('');
-  const [assetStr, setAssetStr] = useState('');
+  const [assetSearch, setAssetSearch] = useState('');
+  const [showAssetDropdown, setShowAssetDropdown] = useState(false);
+  const debouncedAssetSearch = useDebounce(assetSearch, 300);
 
   // Loaded Data
   const [scannedUser, setScannedUser] = useState<ScannedUser | null>(null);
   const [scannedAsset, setScannedAsset] = useState<ScannedAsset | null>(null);
 
-  const userInputRef = useRef<HTMLInputElement>(null);
   const assetInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [useCamera, setUseCamera] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -48,12 +48,23 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
 
   const resetScan = useCallback(() => {
     setStep(1);
-    setUserStr('');
-    setAssetStr('');
+    setAssetSearch('');
     setScannedUser(null);
     setScannedAsset(null);
     setUseCamera(false);
+    setShowAssetDropdown(false);
   }, []);
+
+  // Fetch search results for assets
+  const { data: assetsSearchResult, isLoading: loadingAssets } = useQuery({
+    queryKey: ['sarpras-assets-search', debouncedAssetSearch],
+    queryFn: () => sarprasApi.getAssets({ search: debouncedAssetSearch, is_loanable: 'true', limit: 10 }),
+    enabled: isOpen && step === 2 && debouncedAssetSearch.trim().length > 0
+  });
+
+  const assetResults = useMemo(() => {
+    return (assetsSearchResult?.data?.list as ScannedAsset[]) || [];
+  }, [assetsSearchResult]);
 
   useEffect(() => {
     if (useCamera && videoRef.current) {
@@ -62,11 +73,8 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
       reader.decodeFromVideoDevice(undefined, videoRef.current, (result) => {
         if (result && result.getText()) {
           const code = result.getText();
-          if (step === 1) {
-             setUserStr(code);
-             lookupUserMutation.mutate(code);
-          } else if (step === 2) {
-             setAssetStr(code);
+          if (step === 2) {
+             setAssetSearch(code);
              lookupAssetMutation.mutate(code);
           }
           setUseCamera(false);
@@ -89,27 +97,19 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
   useEffect(() => {
     if (isOpen) {
       resetScan();
-      setTimeout(() => userInputRef.current?.focus(), 100);
     }
   }, [isOpen, resetScan]);
 
-  // Real API call checking User ID / NIS / NIP / RFID
-  const lookupUserMutation = useMutation({
-    mutationFn: async (id: string) => {
-       const res = await sarprasApi.scanUser(id);
-       if (!res?.data) throw new Error('Pengguna tidak ditemukan');
-       return res.data as ScannedUser;
-    },
-    onSuccess: (data) => {
-       setScannedUser(data);
-       setStep(2);
-       setTimeout(() => assetInputRef.current?.focus(), 100);
-    },
-    onError: () => {
-       showToast('Pengguna tidak ditemukan berdasarkan barcode ini', 'error');
-       setUserStr('');
-    }
-  });
+  // Click outside listener to close asset dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowAssetDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const lookupAssetMutation = useMutation({
     mutationFn: async (code: string) => {
@@ -124,12 +124,12 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
     onSuccess: (data) => {
        setScannedAsset(data);
        if (scannedUser) {
-         submitLoanMutation.mutate({ asset_id: data.id, user_id: scannedUser.id });
+          submitLoanMutation.mutate({ asset_id: data.id, user_id: scannedUser.id });
        }
     },
     onError: () => {
-       showToast('Aset tidak ditemukan. Coba scan ulang', 'error');
-       setAssetStr('');
+       toast.error('Aset tidak ditemukan. Coba scan ulang');
+       setAssetSearch('');
     }
   });
 
@@ -138,51 +138,56 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
        // Request loan
        const request = await sarprasApi.requestLoan({
           asset_id,
+          peminjam_id: user_id,
           catatan: 'Peminjaman Kilat Barcode',
        });
        
-       // Force Approve/Active if Admin operates (assuming context)
+       // Force Approve/Active transition
+       await sarprasApi.updateLoanStatus(request.data.id, { status: 'APPROVED' });
        await sarprasApi.updateLoanStatus(request.data.id, { status: 'ACTIVE' });
        return request;
     },
     onSuccess: () => {
-       showToast('Peminjaman Berhasil Dicatat!', 'success');
+       toast.success('Peminjaman Berhasil Dicatat!');
        queryClient.invalidateQueries({ queryKey: ['sarpras-loans'] });
        queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
        queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
        
        // Ready for next person
        setTimeout(() => resetScan(), 1000);
-       setTimeout(() => userInputRef.current?.focus(), 1100);
     },
     onError: (err: unknown) => {
        let errMsg = 'Gagal meminjamkan barang';
-       if (err instanceof Error) {
+       if (err && typeof err === 'object' && 'response' in err) {
+         const resErr = err as { response?: { data?: { message?: string } } };
+         if (resErr.response?.data?.message) {
+            errMsg = resErr.response.data.message;
+         }
+       } else if (err instanceof Error) {
          errMsg = err.message;
-       } else if (err && typeof err === 'object' && 'message' in err) {
-         errMsg = String((err as { message: unknown }).message);
        }
-       showToast(errMsg, 'error');
-       setAssetStr('');
+       toast.error(errMsg);
+       setAssetSearch('');
        setTimeout(() => assetInputRef.current?.focus(), 100);
     }
   });
 
-  const handleUserParams = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && userStr.trim()) {
-       lookupUserMutation.mutate(userStr.trim());
+  const handleSelectAsset = (asset: ScannedAsset) => {
+    setScannedAsset(asset);
+    if (scannedUser) {
+      submitLoanMutation.mutate({ asset_id: asset.id, user_id: scannedUser.id });
     }
-  }, [userStr, lookupUserMutation]);
+  };
 
   const handleAssetParams = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && assetStr.trim()) {
-       lookupAssetMutation.mutate(assetStr.trim());
+    if (e.key === 'Enter' && assetSearch.trim()) {
+       lookupAssetMutation.mutate(assetSearch.trim());
     }
-  }, [assetStr, lookupAssetMutation]);
+  }, [assetSearch, lookupAssetMutation]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Peminjaman Kilat (Barcode Scanner)" size="md">
-      <div className="space-y-6 pb-4">
+      <div className="space-y-6 pb-4" ref={containerRef}>
          {/* Status Indicators */}
          <div className="flex items-center gap-4 justify-center">
             <div className={`p-3 rounded-full flex items-center justify-center border-2 transition-colors ${step >= 1 ? 'border-indigo-500 text-indigo-600 bg-indigo-50' : 'border-slate-200 text-slate-400'}`}>
@@ -194,39 +199,37 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
             </div>
          </div>
 
-         {/* Step 1: Scan User */}
-         <div className={step === 1 ? 'block animate-in fade-in' : 'hidden'}>
+         {/* Step 1: Scan / Search User */}
+         <div className={step === 1 ? 'block animate-in fade-in pb-48' : 'hidden'}>
             <div className="text-center mb-6">
                <h3 className="text-lg font-bold text-slate-800">Langkah 1: Identifikasi Peminjam</h3>
-               <p className="text-sm text-slate-500">Arahkan scanner ke Kartu Pelajar / ID Card peminjam.</p>
+               <p className="text-sm text-slate-500">Scan kartu identitas (RFID/Barcode) atau cari nama siswa/guru.</p>
             </div>
             
-            <div className="relative">
-               <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-6 w-6" />
-               <Input 
-                  ref={userInputRef}
-                  value={userStr}
-                  onChange={e => setUserStr(e.target.value)}
-                  onKeyDown={handleUserParams}
-                  placeholder="Scan Barcode ID..."
-                  className="pl-12 py-4 text-lg font-mono text-center"
+            <div className="bg-white dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+               <SmartStudentPicker
+                  mode="universal"
+                  scope="global"
                   autoFocus
-                  disabled={lookupUserMutation.isPending}
+                  onSelect={(student) => {
+                     if (!student.user_id) {
+                        toast.error('Pengguna terpilih tidak memiliki akun pengguna yang aktif di sistem.');
+                        return;
+                     }
+                     setScannedUser({
+                        id: student.user_id,
+                        full_name: student.nama_siswa || student.nama_guru || student.full_name || 'Pengguna'
+                     });
+                     setStep(2);
+                     setTimeout(() => assetInputRef.current?.focus(), 100);
+                  }}
+                  placeholder="Scan RFID atau ketik nama/NIS/NIP..."
                />
-               {lookupUserMutation.isPending && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 animate-spin h-5 w-5" />
-               )}
-            </div>
-            
-            <div className="mt-4 text-center">
-               <Button type="button" variant="outline" onClick={() => setUseCamera(true)}>
-                  <Camera className="w-4 h-4 mr-2" /> Gunakan Kamera
-               </Button>
             </div>
          </div>
 
          {/* Step 2: Scan Asset */}
-         <div className={step === 2 ? 'block animate-in slide-in-from-right-4 fade-in' : 'hidden'}>
+         <div className={step === 2 ? 'block animate-in slide-in-from-right-4 fade-in pb-48' : 'hidden'}>
             
             {scannedUser && (
                <div className="bg-emerald-50 text-emerald-800 p-3 rounded-lg flex items-center gap-3 mb-6 outline outline-1 outline-emerald-200">
@@ -240,22 +243,55 @@ export const QuickScanLoanModal: React.FC<QuickScanLoanModalProps> = ({ isOpen, 
 
             <div className="text-center mb-6">
                <h3 className="text-lg font-bold text-slate-800">Langkah 2: Scan Barang Aset</h3>
-               <p className="text-sm text-slate-500">Arahkan scanner ke label Barcode pada fisik Aset.</p>
+               <p className="text-sm text-slate-500">Arahkan scanner ke label Barcode atau ketik nama/kode aset.</p>
             </div>
 
             <div className="relative">
                <ScanLine className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-6 w-6" />
                <Input 
                   ref={assetInputRef}
-                  value={assetStr}
-                  onChange={e => setAssetStr(e.target.value)}
+                  value={assetSearch}
+                  onChange={e => {
+                    setAssetSearch(e.target.value);
+                    setShowAssetDropdown(true);
+                  }}
+                  onFocus={() => setShowAssetDropdown(true)}
                   onKeyDown={handleAssetParams}
-                  placeholder="Scan Kode Aset..."
+                  placeholder="Ketik nama / scan kode aset..."
                   className="pl-12 py-4 text-lg font-mono text-center"
                   disabled={lookupAssetMutation.isPending || submitLoanMutation.isPending}
+                  autoComplete="off"
                />
-               {(lookupAssetMutation.isPending || submitLoanMutation.isPending) && (
+               {(lookupAssetMutation.isPending || submitLoanMutation.isPending || loadingAssets) && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 animate-spin h-5 w-5" />
+               )}
+
+               {/* Asset Search Dropdown */}
+               {showAssetDropdown && assetResults.length > 0 && (
+                 <div className="absolute z-[100] mt-2 w-full bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-[220px] overflow-y-auto">
+                   <div className="p-2 space-y-1">
+                     {assetResults.map((item) => (
+                       <button
+                         key={item.id}
+                         type="button"
+                         onClick={() => {
+                           setAssetSearch('');
+                           setShowAssetDropdown(false);
+                           handleSelectAsset(item);
+                         }}
+                         className="w-full flex items-center gap-3 p-3 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl transition-colors text-left border-b border-gray-50 dark:border-slate-800/50 last:border-0 group"
+                       >
+                         <div className="h-8 w-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 transition-colors">
+                           <Package size={16} />
+                         </div>
+                         <div>
+                           <p className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{item.nama}</p>
+                           <p className="text-xs text-slate-500">{item.kode || 'Tanpa Kode'}</p>
+                         </div>
+                       </button>
+                     ))}
+                   </div>
+                 </div>
                )}
             </div>
 

@@ -5,7 +5,7 @@ import { Modal, ModalFooter } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { AlertTriangle, Upload } from 'lucide-react';
 import { completeSiswaExit } from '../../../api/academic/siswa.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 interface CompleteSiswaExitModalProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = Rea
   siswaId,
   onSuccess
 }) => {
-  const { showToast } = useToast();
+
   const [status, setStatus] = useState('KELUAR');
   const [alasan, setAlasan] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -41,7 +41,7 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = Rea
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      showToast('Wajib mengunggah bukti pindaian Dapodik', 'error');
+      toast.error('Wajib mengunggah bukti pindaian Dapodik');
       return;
     }
 
@@ -49,20 +49,20 @@ export const CompleteSiswaExitModal: React.FC<CompleteSiswaExitModalProps> = Rea
       setSubmitting(true);
       const res = await completeSiswaExit(siswaId, file, status, alasan.trim() || undefined);
       if (res.success) {
-        showToast('Siswa berhasil dinyatakan keluar resmi', 'success');
+        toast.success('Siswa berhasil dinyatakan keluar resmi');
         setAlasan('');
         setFile(null);
         onSuccess();
         onClose();
       } else {
-        showToast(res.message || 'Gagal mengeluarkan siswa', 'error');
+        toast.error(res.message || 'Gagal mengeluarkan siswa');
       }
     } catch (err: any) {
-      showToast(err.message || 'Koneksi bermasalah', 'error');
+      toast.error(err.message || 'Koneksi bermasalah');
     } finally {
       setSubmitting(false);
     }
-  }, [siswaId, file, status, alasan, onSuccess, onClose, showToast]);
+  }, [siswaId, file, status, alasan, onSuccess, onClose]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Finalisasi Keluar Siswa" size="md">

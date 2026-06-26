@@ -1,6 +1,5 @@
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { usePreviewMode } from '@/hooks/usePreviewMode';
 
 const buttonVariants = cva(
   'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:pointer-events-none',
@@ -54,9 +53,7 @@ export function Button({
   disabled,
   ...props 
 }: ButtonProps) {
-  const isPreview = usePreviewMode();
-  const isMutation = props.type === 'submit' || (typeof children === 'string' && /Tambah|Simpan|Edit|Hapus|Delete|Update|Create|Save/i.test(children));
-  const effectiveDisabled = isLoading || disabled || (isPreview && isMutation);
+  const effectiveDisabled = isLoading || disabled;
 
   return (
     <button

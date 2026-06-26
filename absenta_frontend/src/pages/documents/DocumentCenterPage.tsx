@@ -1,29 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Download, FileText, History, Pencil, Plus, RefreshCw, Search, Trash2, CheckSquare } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
+import { FileText, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import useConfirm from '@/hooks/useConfirm';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useAuthStore } from '@/store/authStore';
 import {
-  Badge,
   Button,
   Loader,
+  SectionCard,
+  Input,
+  PageLoader,
   Modal,
   ModalFooter,
-  SectionHeader,
-  Table,
-  TableActions,
-  Textarea,
-  ToastContainer,
-  Input,
-  Checkbox,
 } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { formatDateTime } from '@/utils/layoutUtils';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import {
   type DocumentCategory,
   type DocumentItem,
@@ -37,6 +31,13 @@ import {
   uploadDocument,
   uploadDocumentVersion,
 } from '@/api/documents.api';
+
+// Lazy loaded sub-components
+const DocumentTable = lazy(() => import('@/components/documents/DocumentTable').then(m => ({ default: m.DocumentTable })));
+const UploadModal = lazy(() => import('@/components/documents/DocumentModals').then(m => ({ default: m.UploadModal })));
+const MouModal = lazy(() => import('@/components/documents/DocumentModals').then(m => ({ default: m.MouModal })));
+const VersionHistoryModal = lazy(() => import('@/components/documents/DocumentModals').then(m => ({ default: m.VersionHistoryModal })));
+const EditMetadataModal = lazy(() => import('@/components/documents/DocumentModals').then(m => ({ default: m.EditMetadataModal })));
 
 const BASE_CATEGORY_OPTIONS: Array<{ value: DocumentCategory | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'Semua Dokumen' },
@@ -55,39 +56,16 @@ const CATEGORY_CAPABILITIES: Record<DocumentCategory, string> = {
 };
 
 function parseCategoryFromQuery(raw: string | null): DocumentCategory | 'ALL' {
-  const token = String(raw ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_');
-
+  const token = String(raw ?? '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   if (!token) return 'ALL';
-  if (
-    token === 'ALL' ||
-    token === 'SEMUA' ||
-    token === 'SEMUA_DOKUMEN' ||
-    token === 'SEMUA_DOKUMENT' ||
-    token === 'SEMUA_DOCUMENT' ||
-    token === 'SEMUA_DOCUMENTS'
-  ) {
-    return 'ALL';
-  }
+  if (['ALL', 'SEMUA', 'SEMUA_DOKUMEN'].includes(token)) return 'ALL';
 
   const aliasMap: Record<string, DocumentCategory> = {
     ADMIN: 'ADMINISTRATIVE',
     ADMINISTRASI: 'ADMINISTRATIVE',
     COMPANY: 'ADMINISTRATIVE',
-    COMPANY_DOCUMENT: 'ADMINISTRATIVE',
-    COMPANY_DOCUMENTS: 'ADMINISTRATIVE',
-    COMPANY_DOC: 'ADMINISTRATIVE',
-    COMPANY_DOCS: 'ADMINISTRATIVE',
     LEGAL_DOCUMENT: 'LEGAL',
-    LEGAL_DOCUMENTS: 'LEGAL',
-    LEGAL_DOC: 'LEGAL',
-    LEGAL_DOCS: 'LEGAL',
     MANUALS: 'MANUAL',
-    MANUAL_DOCUMENT: 'MANUAL',
-    MANUAL_DOCUMENTS: 'MANUAL',
-    SOP: 'MANUAL',
     LAINNYA: 'OTHER',
   };
 
@@ -97,21 +75,6 @@ function parseCategoryFromQuery(raw: string | null): DocumentCategory | 'ALL' {
   const allowed = BASE_CATEGORY_OPTIONS.map((o) => o.value).filter((v) => v !== 'ALL') as DocumentCategory[];
   if (allowed.includes(token as DocumentCategory)) return token as DocumentCategory;
   return 'ALL';
-}
-
-function formatBytes(bytes: number): string {
-  const n = Number(bytes);
-  if (!Number.isFinite(n) || n < 0) return '-';
-  if (n < 1024) return `${n} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = n / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-  const rounded = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
-  return `${rounded} ${units[unitIndex]}`;
 }
 
 const uploadSchema = z.object({
@@ -144,7 +107,7 @@ type EditMetadataFormValues = z.infer<typeof editMetadataSchema>;
 
 export default function DocumentCenterPage() {
   const confirm = useConfirm();
-  const { toasts, success, error, removeToast } = useToast();
+
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { can, isSuperAdmin } = useAuth();
@@ -197,67 +160,25 @@ export default function DocumentCenterPage() {
   const [editMetadataOpen, setEditMetadataOpen] = useState(false);
   const [editMetadataTarget, setEditMetadataTarget] = useState<DocumentItem | null>(null);
 
-  // Pagination & Bulk Actions
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    isSubmitting,
-    errors,
-    isValid,
-  } = useFormValidation({
+  const { register, handleSubmit, setValue, watch, reset, isSubmitting, errors, isValid } = useFormValidation({
     schema: uploadSchema,
-    defaultValues: {
-      title: '',
-      category: 'ADMINISTRATIVE',
-      description: '',
-      file: undefined,
-    },
+    defaultValues: { title: '', category: 'ADMINISTRATIVE', description: '', file: undefined },
     mode: 'onChange',
   });
 
-  const {
-    register: registerMou,
-    handleSubmit: handleSubmitMou,
-    reset: resetMou,
-    isSubmitting: isSubmittingMou,
-    errors: mouErrors,
-    isValid: isMouValid,
-  } = useFormValidation({
+  const { register: registerMou, handleSubmit: handleSubmitMou, reset: resetMou, isSubmitting: isSubmittingMou, errors: mouErrors, isValid: isMouValid } = useFormValidation({
     schema: mouSchema,
-    defaultValues: {
-      title: '',
-      description: '',
-      tanggal: '',
-      nomor: '',
-      pihak_kedua_nama: '',
-      pihak_kedua_alamat: '',
-    },
+    defaultValues: { title: '', description: '', tanggal: '', nomor: '', pihak_kedua_nama: '', pihak_kedua_alamat: '' },
     mode: 'onChange',
   });
 
-  const {
-    register: registerEditMetadata,
-    handleSubmit: handleSubmitEditMetadata,
-    setValue: setValueEditMetadata,
-    watch: watchEditMetadata,
-    reset: resetEditMetadata,
-    isSubmitting: isSubmittingEditMetadata,
-    errors: editMetadataErrors,
-    isValid: isEditMetadataValid,
-  } = useFormValidation({
+  const { register: registerEditMetadata, handleSubmit: handleSubmitEditMetadata, setValue: setValueEditMetadata, watch: watchEditMetadata, reset: resetEditMetadata, isSubmitting: isSubmittingEditMetadata, errors: editMetadataErrors, isValid: isEditMetadataValid } = useFormValidation({
     schema: editMetadataSchema,
-    defaultValues: {
-      title: '',
-      category: 'ADMINISTRATIVE',
-      description: '',
-    },
+    defaultValues: { title: '', category: 'ADMINISTRATIVE', description: '' },
     mode: 'onChange',
   });
 
@@ -281,7 +202,7 @@ export default function DocumentCenterPage() {
         if (!res.success) {
           const msg = res.message || 'Gagal memuat dokumen';
           setLoadError(msg);
-          error(msg);
+          toast.error(msg);
           return;
         }
 
@@ -292,971 +213,313 @@ export default function DocumentCenterPage() {
       } catch (e: any) {
         const msg = e?.message || 'Gagal memuat dokumen';
         setLoadError(msg);
-        error(msg);
+        toast.error(msg);
       } finally {
         setLoading(false);
       }
     },
-    [error, selectedCategory, itemsPerPage, debouncedSearch]
+    [selectedCategory, itemsPerPage, debouncedSearch]
   );
-
-  useEffect(() => {
-    setSelectedCategory((prev) => (prev === initialSelectedCategory ? prev : initialSelectedCategory));
-  }, [initialSelectedCategory]);
 
   useEffect(() => {
     fetchDocuments(1);
     setCurrentPage(1);
   }, [fetchDocuments]);
 
-  const handlePageChange = useCallback(
-    (page: number) => {
-      setCurrentPage(page);
-      fetchDocuments(page);
-    },
-    [fetchDocuments]
-  );
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    fetchDocuments(page);
+  }, [fetchDocuments]);
 
-  const paginationInfo = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage + 1;
-    const end = Math.min(currentPage * itemsPerPage, totalItems);
-    if (totalItems === 0) return 'Menampilkan 0 data';
-    return `Menampilkan ${start}-${end} dari ${totalItems} data`;
-  }, [currentPage, totalItems]);
-
-  const emptyState = useMemo(() => {
-    const label = BASE_CATEGORY_OPTIONS.find((o) => o.value === selectedCategory)?.label || String(selectedCategory);
-    const title = selectedCategory === 'ALL' ? 'Belum ada dokumen' : `Belum ada dokumen untuk ${label}`;
-    const description = canUpload
-      ? 'Silakan upload dokumen atau generate MoU untuk mulai mengisi Document Center.'
-      : 'Dokumen akan muncul di sini setelah diupload oleh Admin.';
-    return { title, description };
-  }, [canUpload, selectedCategory]);
-
-  const setCategory = useCallback(
-    (next: DocumentCategory | 'ALL') => {
-      setSelectedCategory(next);
-    },
-    []
-  );
-
-  const handleDownload = useCallback(
-    async (doc: DocumentItem) => {
-      try {
-        const a = document.createElement('a');
-        const signed = await createDocumentSignedUrl(doc.id);
-        a.href = signed.download_url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (e: any) {
-        error(e?.message || 'Gagal mengunduh dokumen');
-      }
-    },
-    [error]
-  );
-
-  const handleDelete = useCallback(
-    async (doc: DocumentItem) => {
-      const ok = await confirm({
-        title: 'Konfirmasi Hapus Dokumen',
-        description: `Apakah Anda yakin ingin menghapus dokumen "${doc.title}"?`,
-        confirmText: 'Hapus',
-        cancelText: 'Batal',
-        style: 'danger',
-      });
-      if (!ok) return;
-
-      try {
-        const res = await softDeleteDocument(doc.id);
-        if (!res.success) {
-          error(res.message || 'Gagal menghapus dokumen');
-          return;
-        }
-        success('Dokumen berhasil dihapus');
-        fetchDocuments(currentPage);
-      } catch (e: any) {
-        error(e?.message || 'Gagal menghapus dokumen');
-      }
-    },
-    [confirm, currentPage, error, fetchDocuments, success]
-  );
-
-  const openVersionUpload = useCallback((doc: DocumentItem) => {
-    setVersionTarget(doc);
-    setVersionFile(null);
-    setVersionUploadProgress(null);
-    setVersionUploadOpen(true);
-  }, []);
-
-  const openVersionHistory = useCallback(
-    async (doc: DocumentItem) => {
-      try {
-        setVersionHistoryTarget(doc);
-        setVersionHistoryItems([]);
-        setVersionHistoryOpen(true);
-        setVersionHistoryLoading(true);
-
-        const res = await listDocumentVersions(doc.id);
-        if (!res.success) {
-          error(res.message || 'Gagal memuat version history');
-          return;
-        }
-        const items = Array.isArray(res.data) ? res.data : [];
-        const sorted = [...items].sort((a, b) => Number(b.version) - Number(a.version));
-        setVersionHistoryItems(sorted);
-      } catch (e: any) {
-        error(e?.message || 'Gagal memuat version history');
-      } finally {
-        setVersionHistoryLoading(false);
-      }
-    },
-    [error]
-  );
-
-  const closeVersionHistory = useCallback(() => {
-    setVersionHistoryOpen(false);
-    setVersionHistoryTarget(null);
-    setVersionHistoryItems([]);
-    setVersionHistoryLoading(false);
-  }, []);
-
-  const handleDownloadVersion = useCallback(
-    async (doc: DocumentItem, version: number) => {
-      try {
-        const a = document.createElement('a');
-        const signed = await createDocumentSignedUrl(doc.id, { version });
-        a.href = signed.download_url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (e: any) {
-        error(e?.message || 'Gagal mengunduh dokumen');
-      }
-    },
-    [error]
-  );
-
-  const openEditMetadata = useCallback(
-    (doc: DocumentItem) => {
-      setEditMetadataTarget(doc);
-      resetEditMetadata({
-        title: doc.title || '',
-        category: (doc.category || 'ADMINISTRATIVE') as any,
-        description: doc.description || '',
-      });
-      setEditMetadataOpen(true);
-    },
-    [resetEditMetadata]
-  );
-
-  const closeEditMetadata = useCallback(() => {
-    setEditMetadataOpen(false);
-    setEditMetadataTarget(null);
-    resetEditMetadata({
-      title: '',
-      category: 'ADMINISTRATIVE',
-      description: '',
-    });
-  }, [resetEditMetadata]);
-
-  const onSubmitEditMetadata = useMemo(
-    () =>
-      handleSubmitEditMetadata(async (values: EditMetadataFormValues) => {
-        if (!editMetadataTarget) return;
-        try {
-          const title = String(values.title || '').trim();
-          const descriptionRaw = String(values.description ?? '');
-          const descriptionTrimmed = descriptionRaw.trim();
-          const description = descriptionTrimmed.length > 0 ? descriptionTrimmed : null;
-
-          const res = await updateDocumentMetadata(editMetadataTarget.id, {
-            title,
-            category: values.category as any,
-            description,
-          });
-
-          if (!res.success) {
-            error(res.message || 'Gagal memperbarui metadata dokumen');
-            return;
-          }
-
-          success('Metadata dokumen berhasil diperbarui');
-          closeEditMetadata();
-          fetchDocuments(currentPage);
-        } catch (e: any) {
-          error(e?.message || 'Gagal memperbarui metadata dokumen');
-        }
-      }),
-    [closeEditMetadata, currentPage, editMetadataTarget, error, fetchDocuments, handleSubmitEditMetadata, success]
-  );
-
-  const closeVersionUpload = useCallback(() => {
-    setVersionUploadOpen(false);
-    setVersionTarget(null);
-    setVersionFile(null);
-    setVersionUploadProgress(null);
-  }, []);
-
-  const submitVersionUpload = useCallback(async () => {
-    if (!versionTarget || !versionFile) return;
+  const handleDownload = useCallback(async (doc: DocumentItem) => {
     try {
-      setVersionUploadProgress(0);
-      const res = await uploadDocumentVersion({
-        id: versionTarget.id,
-        file: versionFile,
-        onProgress: setVersionUploadProgress,
-      });
-      if (!res.success) {
-        error(res.message || 'Gagal mengunggah versi dokumen');
-        return;
-      }
-      success('Versi dokumen berhasil diunggah');
-      closeVersionUpload();
-      fetchDocuments(currentPage);
+      const signed = await createDocumentSignedUrl(doc.id);
+      window.open(signed.download_url, '_blank', 'noopener,noreferrer');
     } catch (e: any) {
-      error(e?.message || 'Gagal mengunggah versi dokumen');
-    } finally {
-      setVersionUploadProgress(null);
+      toast.error(e?.message || 'Gagal mengunduh dokumen');
     }
-  }, [closeVersionUpload, currentPage, error, fetchDocuments, success, versionFile, versionTarget]);
+  }, []);
 
-  const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (checked) {
-        const newSelected = new Set(selectedIds);
-        documents.forEach((item) => newSelected.add(item.id));
-        setSelectedIds(newSelected);
-      } else {
-        const newSelected = new Set(selectedIds);
-        documents.forEach((item) => newSelected.delete(item.id));
-        setSelectedIds(newSelected);
-      }
-    },
-    [documents, selectedIds]
-  );
-
-  const handleSelectOne = useCallback(
-    (id: string, checked: boolean) => {
-      const newSelected = new Set(selectedIds);
-      if (checked) {
-        newSelected.add(id);
-      } else {
-        newSelected.delete(id);
-      }
-      setSelectedIds(newSelected);
-    },
-    [selectedIds]
-  );
-
-  const allVisibleSelected = useMemo(() => {
-    if (documents.length === 0) return false;
-    return documents.every((item) => selectedIds.has(item.id));
-  }, [documents, selectedIds]);
-
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-
+  const handleDelete = useCallback(async (doc: DocumentItem) => {
     const ok = await confirm({
-      title: 'Konfirmasi Hapus Massal',
-      description: `Apakah Anda yakin ingin menghapus ${selectedIds.size} dokumen terpilih?`,
-      confirmText: `Hapus (${selectedIds.size})`,
+      title: 'Hapus Dokumen?',
+      description: `Apakah Anda yakin ingin menghapus dokumen "${doc.title}"?`,
+      confirmText: 'Hapus',
       cancelText: 'Batal',
       style: 'danger',
     });
     if (!ok) return;
 
     try {
+      const res = await softDeleteDocument(doc.id);
+      if (!res.success) {
+        toast.error(res.message || 'Gagal menghapus dokumen');
+        return;
+      }
+      toast.success('Dokumen berhasil dihapus');
+      fetchDocuments(currentPage);
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal menghapus dokumen');
+    }
+  }, [confirm, currentPage, fetchDocuments]);
+
+  const openVersionHistory = useCallback(async (doc: DocumentItem) => {
+    try {
+      setVersionHistoryTarget(doc);
+      setVersionHistoryItems([]);
+      setVersionHistoryOpen(true);
+      setVersionHistoryLoading(true);
+      const res = await listDocumentVersions(doc.id);
+      if (!res.success) {
+        toast.error(res.message || 'Gagal memuat riwayat versi');
+        return;
+      }
+      const items = Array.isArray(res.data) ? res.data : [];
+      setVersionHistoryItems([...items].sort((a, b) => Number(b.version) - Number(a.version)));
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal memuat riwayat versi');
+    } finally {
+      setVersionHistoryLoading(false);
+    }
+  }, []);
+
+  const handleDownloadVersion = useCallback(async (doc: DocumentItem, version: number) => {
+    try {
+      const signed = await createDocumentSignedUrl(doc.id, { version });
+      window.open(signed.download_url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal mengunduh versi dokumen');
+    }
+  }, []);
+
+  const openEditMetadata = useCallback((doc: DocumentItem) => {
+    setEditMetadataTarget(doc);
+    resetEditMetadata({ title: doc.title || '', category: (doc.category || 'ADMINISTRATIVE') as any, description: doc.description || '' });
+    setEditMetadataOpen(true);
+  }, [resetEditMetadata]);
+
+  const onSubmitEditMetadata = handleSubmitEditMetadata(async (values: EditMetadataFormValues) => {
+    if (!editMetadataTarget) return;
+    try {
+      const res = await updateDocumentMetadata(editMetadataTarget.id, { title: values.title, category: values.category as any, description: values.description || null });
+      if (!res.success) {
+        toast.error(res.message || 'Gagal memperbarui metadata');
+        return;
+      }
+      toast.success('Metadata berhasil diperbarui');
+      setEditMetadataOpen(false);
+      fetchDocuments(currentPage);
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal memperbarui metadata');
+    }
+  });
+
+  const submitVersionUpload = useCallback(async () => {
+    if (!versionTarget || !versionFile) return;
+    try {
+      setVersionUploadProgress(0);
+      const res = await uploadDocumentVersion({ id: versionTarget.id, file: versionFile, onProgress: setVersionUploadProgress });
+      if (!res.success) {
+        toast.error(res.message || 'Gagal mengunggah versi');
+        return;
+      }
+      toast.success('Versi baru berhasil diunggah');
+      setVersionUploadOpen(false);
+      fetchDocuments(currentPage);
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal mengunggah versi');
+    } finally {
+      setVersionUploadProgress(null);
+    }
+  }, [currentPage, fetchDocuments, versionFile, versionTarget]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const ok = await confirm({ title: 'Hapus Massal?', description: `Hapus ${selectedIds.size} dokumen terpilih?`, confirmText: `Hapus (${selectedIds.size})`, style: 'danger' });
+    if (!ok) return;
+
+    try {
       setBulkProcessing(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(
-        ids.map(async (id) => {
-          const res = await softDeleteDocument(id);
-          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
-          return id;
-        })
-      );
-
-      const failed: { id: string; message: string }[] = [];
-      const succeeded: string[] = [];
-
-      results.forEach((r, idx) => {
-        const id = ids[idx];
-        if (r.status === 'fulfilled') {
-          succeeded.push(id);
-        } else {
-          failed.push({ id, message: (r.reason as Error)?.message || 'Gagal menghapus' });
-        }
-      });
-
-      if (failed.length > 0) {
-        error(`Gagal menghapus ${failed.length} dokumen. Berhasil: ${succeeded.length}`);
-      } else {
-        success(`Berhasil menghapus ${succeeded.length} dokumen`);
-      }
-
-      const next = new Set<string>(selectedIds);
-      succeeded.forEach((id) => next.delete(id));
-      setSelectedIds(next);
+      const results = await Promise.allSettled(ids.map(id => softDeleteDocument(id)));
+      const succeeded = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+      succeeded === ids.length
+        ? toast.success(`Berhasil menghapus ${succeeded} dokumen`)
+        : toast(`Berhasil menghapus ${succeeded} dokumen`, { icon: '⚠️' });
+      setSelectedIds(new Set());
       fetchDocuments(currentPage);
     } catch (err: any) {
-      const msg = err?.message || 'Terjadi kesalahan saat hapus massal';
-      error(msg);
+      toast.error(err?.message || 'Gagal menghapus massal');
     } finally {
       setBulkProcessing(false);
     }
-  }, [selectedIds, confirm, error, success, fetchDocuments, currentPage]);
+  }, [selectedIds, confirm, fetchDocuments, currentPage]);
 
-  const columns = useMemo(
-    () => [
-      {
-        key: 'select',
-        label: (
-          <Checkbox
-            checked={allVisibleSelected}
-            onCheckedChange={(checked) => handleSelectAll(!!checked)}
-            aria-label="Select all"
-          />
-        ),
-        className: 'w-10',
-        render: (_: any, row: DocumentItem) => (
-          <Checkbox
-            checked={selectedIds.has(row.id)}
-            onCheckedChange={(checked) => handleSelectOne(row.id, !!checked)}
-            aria-label={`Select ${row.title}`}
-          />
-        ),
-      },
-      {
-        key: 'title',
-        label: 'Dokumen',
-        render: (_: any, row: DocumentItem) => (
-          <div className="min-w-0">
-            <div className="font-medium truncate">{row.title}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {row.file_original_name} (v{row.current_version || 1})
-            </div>
-            {row.description ? (
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{row.description}</div>
-            ) : null}
-          </div>
-        ),
-      },
-      {
-        key: 'category',
-        label: 'Kategori',
-        className: 'w-40',
-        render: (value: DocumentCategory) => {
-          const label = BASE_CATEGORY_OPTIONS.find((o) => o.value === value)?.label || value;
-          return <Badge variant="outline">{label}</Badge>;
-        },
-      },
-      {
-        key: 'size_bytes',
-        label: 'Ukuran',
-        className: 'w-28',
-        render: (value: number) => formatBytes(value),
-      },
-      {
-        key: 'created_at',
-        label: 'Dibuat',
-        className: 'w-48',
-        render: (value: string) => formatDateTime(value),
-      },
-      {
-        key: 'actions',
-        label: 'Aksi',
-        className: 'w-44',
-        render: (_: any, row: DocumentItem) => (
-          <TableActions>
-            <Button size="sm" variant="outline" onClick={() => handleDownload(row)} title="Unduh">
-              <Download className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => openVersionHistory(row)} title="Version history">
-              <History className="w-4 h-4" />
-            </Button>
-            {canUpload ? (
-              <>
-                <Button size="sm" variant="outline" onClick={() => openEditMetadata(row)} title="Edit metadata">
-                  <Pencil className="w-4 h-4" />
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => openVersionUpload(row)} title="Upload versi">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </>
-            ) : null}
-            {canDelete ? (
-              <Button size="sm" variant="danger" onClick={() => handleDelete(row)} title="Hapus">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            ) : null}
-          </TableActions>
-        ),
-      },
-    ],
-    [
-      canDelete,
-      canUpload,
-      handleDelete,
-      handleDownload,
-      openEditMetadata,
-      openVersionHistory,
-      openVersionUpload,
-      allVisibleSelected,
-      handleSelectAll,
-      handleSelectOne,
-      selectedIds,
-    ]
-  );
+  const onSubmitUpload = handleSubmit(async (values: UploadFormValues) => {
+    try {
+      setUploadProgress(0);
+      const res = await uploadDocument({ file: values.file as File, title: values.title, category: values.category as DocumentCategory, description: values.description, onProgress: setUploadProgress });
+      if (!res.success) {
+        toast.error(res.message || 'Gagal mengunggah');
+        return;
+      }
+      toast.success('Dokumen berhasil diunggah');
+      setUploadOpen(false);
+      reset();
+      fetchDocuments(1);
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal mengunggah');
+    } finally {
+      setUploadProgress(null);
+    }
+  });
 
-  const closeUpload = useCallback(() => {
-    setUploadOpen(false);
-    setUploadProgress(null);
-    reset({
-      title: '',
-      category: 'ADMINISTRATIVE',
-      description: '',
-      file: undefined,
-    });
-  }, [reset]);
+  const onSubmitMou = handleSubmitMou(async (values: MouFormValues) => {
+    try {
+      const res = await generateMouDocument({ title: values.title || undefined, description: values.description || undefined, tanggal: values.tanggal || undefined, nomor: values.nomor || undefined, pihak_kedua_nama: values.pihak_kedua_nama || undefined, pihak_kedua_alamat: values.pihak_kedua_alamat || undefined });
+      if (!res.success) {
+        toast.error(res.message || 'Gagal generate MoU');
+        return;
+      }
+      toast.success('MoU berhasil digenerate');
+      setMouOpen(false);
+      resetMou();
+      fetchDocuments(1);
+    } catch (e: any) {
+      toast.error(e?.message || 'Gagal generate MoU');
+    }
+  });
 
-  const onSubmitUpload = useMemo(
-    () =>
-      handleSubmit(async (values: UploadFormValues) => {
-        try {
-          setUploadProgress(0);
-          const res = await uploadDocument({
-            file: values.file as File,
-            title: values.title,
-            category: values.category as DocumentCategory,
-            description: values.description,
-            onProgress: setUploadProgress,
-          });
+  const statsList = useMemo(() => [
+    { title: "Total Dokumen", value: totalItems, icon: <FileText className="h-4 w-4 text-white" />, gradient: "from-blue-500 to-indigo-600", subtitle: "Semua arsip aktif" },
+    { title: "Kategori Terpilih", value: selectedCategory === 'ALL' ? 'Semua' : BASE_CATEGORY_OPTIONS.find(o => o.value === selectedCategory)?.label, icon: <Search className="h-4 w-4 text-white" />, gradient: "from-indigo-500 to-purple-600", subtitle: "Filter aktif saat ini" },
+  ], [totalItems, selectedCategory]);
 
-          if (!res.success) {
-            error(res.message || 'Gagal mengunggah dokumen');
-            return;
-          }
-
-          success('Dokumen berhasil diunggah');
-          closeUpload();
-          fetchDocuments(1);
-          setCurrentPage(1);
-        } catch (e: any) {
-          error(e?.message || 'Gagal mengunggah dokumen');
-        } finally {
-          setUploadProgress(null);
-        }
-      }),
-    [closeUpload, error, fetchDocuments, handleSubmit, success]
-  );
-
-  const closeMou = useCallback(() => {
-    setMouOpen(false);
-    resetMou({
-      title: '',
-      description: '',
-      tanggal: '',
-      nomor: '',
-      pihak_kedua_nama: '',
-      pihak_kedua_alamat: '',
-    });
-  }, [resetMou]);
-
-  const onSubmitMou = useMemo(
-    () =>
-      handleSubmitMou(async (values: MouFormValues) => {
-        try {
-          const normalize = (v: any) => {
-            const s = String(v ?? '').trim();
-            return s.length > 0 ? s : undefined;
-          };
-          const res = await generateMouDocument({
-            title: normalize(values.title),
-            description: normalize(values.description),
-            tanggal: normalize(values.tanggal),
-            nomor: normalize(values.nomor),
-            pihak_kedua_nama: normalize(values.pihak_kedua_nama),
-            pihak_kedua_alamat: normalize(values.pihak_kedua_alamat),
-          });
-
-          if (!res.success) {
-            error(res.message || 'Gagal generate MoU');
-            return;
-          }
-
-          success('MoU berhasil digenerate');
-          closeMou();
-          fetchDocuments(1);
-          setCurrentPage(1);
-        } catch (e: any) {
-          error(e?.message || 'Gagal generate MoU');
-        }
-      }),
-    [closeMou, error, fetchDocuments, handleSubmitMou, success]
-  );
+  const toolbarSlot = useMemo(() => (
+    <div className="flex gap-2 flex-wrap items-center">
+      <Button variant="outline" size="sm" onClick={() => fetchDocuments(currentPage)} disabled={loading} className="rounded-xl h-9 text-xs font-bold uppercase tracking-widest gap-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+      </Button>
+      {canDelete && selectedIds.size > 0 && (
+        <Button variant="danger" size="sm" onClick={handleBulkDelete} disabled={bulkProcessing} className="rounded-xl h-9 text-xs font-bold uppercase tracking-widest gap-2">
+          <Trash2 size={14} /> Hapus ({selectedIds.size})
+        </Button>
+      )}
+      {canUpload && (
+        <>
+          <Button variant="outline" size="sm" onClick={() => setMouOpen(true)} className="rounded-xl h-9 text-xs font-bold uppercase tracking-widest gap-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <FileText size={14} /> Generate MoU
+          </Button>
+          <Button size="sm" onClick={() => setUploadOpen(true)} className="rounded-xl h-9 text-xs font-bold uppercase tracking-widest gap-2 bg-blue-600 text-white">
+            <Plus size={14} /> Upload
+          </Button>
+        </>
+      )}
+    </div>
+  ), [loading, currentPage, fetchDocuments, canDelete, selectedIds.size, bulkProcessing, handleBulkDelete, canUpload]);
 
   return (
-    <div className="space-y-6">
-      <SectionHeader
-        title="Document Center"
-        subtitle="Kelola dokumen: unggah, unduh, dan hapus"
-        icon={<FileText className="w-6 h-6" />}
-      >
-        <Button variant="outline" onClick={() => fetchDocuments(currentPage)} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-        {canDelete && selectedIds.size > 0 && (
-          <Button variant="danger" onClick={handleBulkDelete} disabled={bulkProcessing}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Hapus ({selectedIds.size})
-          </Button>
-        )}
-        {canUpload ? (
-          <>
-            <Button variant="outline" onClick={() => setMouOpen(true)}>
-              <FileText className="w-4 h-4 mr-2" />
-              Generate MoU
-            </Button>
-            <Button onClick={() => setUploadOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Upload
-            </Button>
-          </>
-        ) : null}
-      </SectionHeader>
+    <AcademicPageLayout
+      title="Pusat Dokumen & Arsip"
+      description="Kelola dokumen administrasi, legal, manual, dan MoU secara terpusat dengan dukungan riwayat versi."
+      stats={statsList}
+      toolbar={toolbarSlot}
+      hardeningModuleKey="document_center"
+      breadcrumbs={[{ label: 'System' }, { label: 'Document Center' }]}
+      instruction={{
+        title: 'Panduan Document Center',
+        description: 'Pusat pengelolaan file digital institusi Anda.',
+        items: [
+          { text: 'Gunakan filter kategori untuk menyaring dokumen spesifik.' },
+          { text: 'Setiap dokumen mendukung multi-versi (Versioning History).' },
+          { text: 'Fitur Generate MoU memudahkan pembuatan kontrak standar secara instan.' },
+          { text: 'Pilih beberapa dokumen untuk melakukan aksi massal (Hapus).' }
+        ]
+      }}
+    >
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <Input placeholder="Cari dokumen berdasarkan judul atau deskripsi..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
+          </div>
+          <div className="w-full md:w-[240px]">
+            <SearchableSelect value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as any)} options={categoryOptions} placeholder="Pilih Kategori" triggerClassName="h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          </div>
+        </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari dokumen..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <div className="w-full md:w-[200px]">
-          <SearchableSelect
-            value={selectedCategory}
-            onValueChange={(v) => setCategory(v as DocumentCategory | 'ALL')}
-            options={categoryOptions}
-            placeholder="Pilih kategori"
-            className="w-full"
-          />
-        </div>
+        <SectionCard noPadding fullWidth>
+          <Suspense fallback={<PageLoader />}>
+            <DocumentTable
+              documents={documents}
+              selectedIds={selectedIds}
+              allVisibleSelected={documents.length > 0 && documents.every(d => selectedIds.has(d.id))}
+              onSelectAll={(checked) => {
+                const next = new Set(selectedIds);
+                documents.forEach(d => checked ? next.add(d.id) : next.delete(d.id));
+                setSelectedIds(next);
+              }}
+              onSelectOne={(id, checked) => {
+                const next = new Set(selectedIds);
+                checked ? next.add(id) : next.delete(id);
+                setSelectedIds(next);
+              }}
+              onDownload={handleDownload}
+              onVersionHistory={openVersionHistory}
+              onEditMetadata={openEditMetadata}
+              onVersionUpload={(doc) => { setVersionTarget(doc); setVersionUploadOpen(true); }}
+              onDelete={handleDelete}
+              canUpload={canUpload}
+              canDelete={canDelete}
+            />
+          </Suspense>
+
+          {documents.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 gap-4">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-4">
+                <span>Total: {totalItems} Data</span>
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline">Rows:</span>
+                  <SearchableSelect value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }} options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]} triggerClassName="w-[70px] h-8 rounded-lg text-[10px]" />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1 || loading} className="rounded-xl text-[10px] font-black uppercase tracking-widest h-9 px-4">Sebelumnya</Button>
+                <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-[10px] font-black text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800">{currentPage} / {totalPages}</div>
+                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= totalPages || loading} className="rounded-xl text-[10px] font-black uppercase tracking-widest h-9 px-4">Berikutnya</Button>
+              </div>
+            </div>
+          )}
+        </SectionCard>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader size="lg" />
-          </div>
-        ) : (
-          <div>
-            {loadError ? (
-              <div className="px-6 py-16 text-center">
-                <div className="mx-auto w-12 h-12 bg-red-50 dark:bg-red-950/30 rounded-full flex items-center justify-center mb-3">
-                  <FileText className="w-6 h-6 text-red-500" />
+      <Suspense fallback={null}>
+        <UploadModal isOpen={uploadOpen} onClose={() => setUploadOpen(false)} onSubmit={onSubmitUpload} register={register} errors={errors} isValid={isValid} isSubmitting={isSubmitting} formCategory={formCategory} setValue={setValue} formFile={formFile} uploadProgress={uploadProgress} />
+        <MouModal isOpen={mouOpen} onClose={() => setMouOpen(false)} onSubmit={onSubmitMou} register={registerMou} errors={mouErrors} isValid={isMouValid} isSubmitting={isSubmittingMou} />
+        <VersionHistoryModal isOpen={versionHistoryOpen} onClose={() => setVersionHistoryOpen(false)} target={versionHistoryTarget} loading={versionHistoryLoading} items={versionHistoryItems} onDownload={handleDownloadVersion} />
+        <EditMetadataModal isOpen={editMetadataOpen} onClose={() => setEditMetadataOpen(false)} onSubmit={onSubmitEditMetadata} register={registerEditMetadata} errors={editMetadataErrors} isValid={isEditMetadataValid} isSubmitting={isSubmittingEditMetadata} formCategory={editMetadataCategory} setValue={setValueEditMetadata} target={editMetadataTarget} />
+        
+        <Modal isOpen={versionUploadOpen} onClose={() => setVersionUploadOpen(false)} title="Upload Versi Baru" size="md">
+            <div className="space-y-4">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Pilih File Baru</label>
+                    <input type="file" className="w-full text-xs" onChange={(e) => setVersionFile(e.target.files?.[0] || null)} />
+                    {versionFile && <div className="text-[10px] text-slate-500 font-mono mt-1">{versionFile.name}</div>}
                 </div>
-                <div className="font-medium text-slate-700 dark:text-slate-200">Gagal memuat dokumen</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">{loadError}</div>
-                <div className="mt-5 flex items-center justify-center gap-2">
-                  <Button variant="outline" onClick={() => fetchDocuments(currentPage)}>
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Coba Lagi
-                  </Button>
-                </div>
-              </div>
-            ) : documents.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <div className="mx-auto w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                  <FileText className="w-6 h-6 text-slate-400" />
-                </div>
-                <div className="font-medium text-slate-700 dark:text-slate-200">{emptyState.title}</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">{emptyState.description}</div>
-                {canUpload ? (
-                  <div className="mt-5 flex items-center justify-center gap-2">
-                    <Button variant="outline" onClick={() => setMouOpen(true)}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Generate MoU
-                    </Button>
-                    <Button onClick={() => setUploadOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Upload
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <Table columns={columns} data={documents} emptyMessage="Tidak ada dokumen" />
-            )}
-
-            {documents.length > 0 && (
-              <div className="flex flex-col md:flex-row items-center justify-between px-4 py-4 border-t dark:border-gray-700 gap-4">
-                <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-4">
-                  <span>{paginationInfo}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline">Baris per halaman:</span>
-                    <SearchableSelect
-                      value={String(itemsPerPage)}
-                      onValueChange={(v) => {
-                        setItemsPerPage(Number(v));
-                        setCurrentPage(1);
-                      }}
-                      options={[
-                        { value: '10', label: '10' },
-                        { value: '25', label: '25' },
-                        { value: '50', label: '50' },
-                        { value: '100', label: '100' },
-                      ]}
-                      className="w-[70px]"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage <= 1 || loading}
-                  >
-                    Sebelumnya
-                  </Button>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    Halaman {currentPage} dari {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages || loading}
-                  >
-                    Berikutnya
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <Modal
-        isOpen={uploadOpen && canUpload}
-        onClose={closeUpload}
-        title="Upload Dokumen"
-        description="Unggah dokumen baru ke Document Center"
-        size="md"
-      >
-        <form onSubmit={onSubmitUpload} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Judul</label>
-            <Input
-              className="w-full"
-              placeholder="Contoh: Panduan Penggunaan"
-              {...register('title')}
-              error={(errors as any).title?.message}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Kategori</label>
-            <SearchableSelect
-              value={formCategory}
-              onValueChange={(v) => setValue('category', v as any, { shouldValidate: true })}
-              options={BASE_CATEGORY_OPTIONS.filter((o) => o.value !== 'ALL')}
-              placeholder="Pilih kategori"
-              searchPlaceholder="Cari kategori..."
-              triggerClassName="h-10"
-            />
-            {errors?.category ? (
-              <div className="text-xs text-red-600 mt-1">{String((errors as any).category?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Deskripsi</label>
-            <Textarea
-              rows={3}
-              placeholder="Opsional"
-              className="w-full"
-              {...register('description')}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">File</label>
-            <input
-              type="file"
-              className="w-full text-sm"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                setValue('file', file, { shouldValidate: true });
-              }}
-            />
-            {formFile ? (
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {formFile.name} ({formatBytes(formFile.size)})
-              </div>
-            ) : null}
-            {errors?.file ? (
-              <div className="text-xs text-red-600 mt-1">{String((errors as any).file?.message || '')}</div>
-            ) : null}
-            {typeof uploadProgress === 'number' ? (
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                  <span>Upload</span>
-                  <span>{uploadProgress}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded mt-1 overflow-hidden">
-                  <div className="h-2 bg-blue-600" style={{ width: `${uploadProgress}%` }} />
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={closeUpload} disabled={isSubmitting}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={!isValid || isSubmitting}>
-              {isSubmitting ? 'Mengunggah...' : 'Upload'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      <Modal
-        isOpen={versionUploadOpen && canUpload}
-        onClose={closeVersionUpload}
-        title="Upload Versi Dokumen"
-        description={versionTarget ? `Upload versi baru untuk "${versionTarget.title}"` : 'Upload versi baru'}
-        size="md"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">File</label>
-            <input
-              type="file"
-              className="w-full text-sm"
-              onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setVersionFile(file);
-              }}
-            />
-            {versionFile ? (
-              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                {versionFile.name} ({formatBytes(versionFile.size)})
-              </div>
-            ) : null}
-            {typeof versionUploadProgress === 'number' ? (
-              <div className="mt-2">
-                <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                  <span>Upload</span>
-                  <span>{versionUploadProgress}%</span>
-                </div>
-                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded mt-1 overflow-hidden">
-                  <div className="h-2 bg-blue-600" style={{ width: `${versionUploadProgress}%` }} />
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={closeVersionUpload} disabled={typeof versionUploadProgress === 'number'}>
-              Batal
-            </Button>
-            <Button type="button" onClick={submitVersionUpload} disabled={!versionTarget || !versionFile || typeof versionUploadProgress === 'number'}>
-              Upload Versi
-            </Button>
-          </ModalFooter>
-        </div>
-      </Modal>
-
-      <Modal
-        isOpen={mouOpen && canUpload}
-        onClose={closeMou}
-        title="Generate MoU"
-        description="Generate MoU dalam bentuk PDF dan simpan ke Document Center"
-        size="md"
-      >
-        <form onSubmit={onSubmitMou} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Judul</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
-              placeholder="Opsional"
-              {...registerMou('title')}
-            />
-            {mouErrors?.title ? (
-              <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).title?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nomor</label>
-              <input
-                type="text"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
-                placeholder="Opsional"
-                {...registerMou('nomor')}
-              />
-              {mouErrors?.nomor ? (
-                <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).nomor?.message || '')}</div>
-              ) : null}
+                {typeof versionUploadProgress === 'number' && (
+                    <div className="mt-4 space-y-1">
+                        <div className="flex items-center justify-between text-[10px] font-black text-blue-600 tracking-widest uppercase"><span>Uploading</span><span>{versionUploadProgress}%</span></div>
+                        <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600" style={{ width: `${versionUploadProgress}%` }} /></div>
+                    </div>
+                )}
+                <ModalFooter>
+                    <Button variant="outline" onClick={() => setVersionUploadOpen(false)} disabled={typeof versionUploadProgress === 'number'} className="rounded-xl h-10 px-6 font-bold uppercase tracking-widest text-[10px]">Batal</Button>
+                    <Button onClick={submitVersionUpload} disabled={!versionFile || typeof versionUploadProgress === 'number'} className="rounded-xl h-10 px-8 font-black uppercase tracking-widest text-[10px] bg-blue-600 text-white">Upload Versi</Button>
+                </ModalFooter>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tanggal</label>
-              <input
-                type="date"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
-                {...registerMou('tanggal')}
-              />
-              {mouErrors?.tanggal ? (
-                <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).tanggal?.message || '')}</div>
-              ) : null}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Pihak Kedua (Nama)</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
-              placeholder="Opsional"
-              {...registerMou('pihak_kedua_nama')}
-            />
-            {mouErrors?.pihak_kedua_nama ? (
-              <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).pihak_kedua_nama?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Pihak Kedua (Alamat)</label>
-            <Textarea rows={2} placeholder="Opsional" className="w-full" {...registerMou('pihak_kedua_alamat')} />
-            {mouErrors?.pihak_kedua_alamat ? (
-              <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).pihak_kedua_alamat?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Deskripsi</label>
-            <Textarea rows={3} placeholder="Opsional" className="w-full" {...registerMou('description')} />
-            {mouErrors?.description ? (
-              <div className="text-xs text-red-600 mt-1">{String((mouErrors as any).description?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={closeMou} disabled={isSubmittingMou}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={!isMouValid || isSubmittingMou}>
-              {isSubmittingMou ? 'Memproses...' : 'Generate'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      <Modal
-        isOpen={versionHistoryOpen}
-        onClose={closeVersionHistory}
-        title="Version History"
-        description={versionHistoryTarget ? `Riwayat versi untuk "${versionHistoryTarget.title}"` : 'Riwayat versi dokumen'}
-        size="md"
-      >
-        {versionHistoryLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader size="lg" />
-          </div>
-        ) : versionHistoryItems.length === 0 ? (
-          <div className="text-sm text-gray-600 dark:text-gray-400">Belum ada versi yang tersimpan.</div>
-        ) : (
-          <div className="space-y-2">
-            {versionHistoryItems.map((v) => (
-              <div
-                key={v.id}
-                className="flex items-start justify-between gap-3 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <div className="font-medium truncate">
-                    v{v.version} <span className="text-xs text-gray-500 dark:text-gray-400">({formatBytes(v.size_bytes)})</span>
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{v.file_original_name}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{formatDateTime(v.created_at)}</div>
-                </div>
-                {versionHistoryTarget ? (
-                  <Button size="sm" variant="outline" onClick={() => handleDownloadVersion(versionHistoryTarget, v.version)} title="Unduh versi">
-                    <Download className="w-4 h-4" />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
-
-      <Modal
-        isOpen={editMetadataOpen && canUpload}
-        onClose={closeEditMetadata}
-        title="Edit Metadata Dokumen"
-        description={editMetadataTarget ? `Perbarui metadata untuk "${editMetadataTarget.title}"` : 'Perbarui metadata dokumen'}
-        size="md"
-      >
-        <form onSubmit={onSubmitEditMetadata} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Judul</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-gray-100"
-              placeholder="Judul dokumen"
-              {...registerEditMetadata('title')}
-            />
-            {editMetadataErrors?.title ? (
-              <div className="text-xs text-red-600 mt-1">{String((editMetadataErrors as any).title?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Kategori</label>
-            <SearchableSelect
-              value={editMetadataCategory}
-              onValueChange={(v) => setValueEditMetadata('category', v as any, { shouldValidate: true })}
-              options={BASE_CATEGORY_OPTIONS.filter((o) => o.value !== 'ALL')}
-              placeholder="Pilih kategori"
-              searchPlaceholder="Cari kategori..."
-              triggerClassName="h-10"
-            />
-            {editMetadataErrors?.category ? (
-              <div className="text-xs text-red-600 mt-1">{String((editMetadataErrors as any).category?.message || '')}</div>
-            ) : null}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Deskripsi</label>
-            <Textarea rows={3} placeholder="Opsional" className="w-full" {...registerEditMetadata('description')} />
-          </div>
-
-          <ModalFooter>
-            <Button variant="outline" type="button" onClick={closeEditMetadata} disabled={isSubmittingEditMetadata}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={!isEditMetadataValid || isSubmittingEditMetadata}>
-              {isSubmittingEditMetadata ? 'Menyimpan...' : 'Simpan'}
-            </Button>
-          </ModalFooter>
-        </form>
-      </Modal>
-
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
-    </div>
+        </Modal>
+      </Suspense>
+    </AcademicPageLayout>
   );
 }

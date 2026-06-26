@@ -1,4 +1,5 @@
 import { WhatsappService } from '../services/whatsapp.service';
+import { waGatewayService } from '../../../services/wa-gateway.service';
 
 const whatsappService = new WhatsappService();
 
@@ -35,6 +36,46 @@ export class WhatsappController {
     try {
       const result = await whatsappService.testConnection(tenant_id, test_number);
       return reply.send({ success: true, message: 'Pesan tes berhasil dikirim', data: result });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async connectLocal(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      await waGatewayService.initTenant(tenant_id);
+      return reply.send({ success: true, message: 'Menghubungkan ke WhatsApp...' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async disconnectLocal(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      await waGatewayService.disconnectTenant(tenant_id);
+      return reply.send({ success: true, message: 'Koneksi WhatsApp terputus' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getLocalStatus(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      const status = waGatewayService.getStatus(tenant_id);
+      return reply.send({ success: true, data: status });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getLocalQR(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      const qr = waGatewayService.getQRBase64(tenant_id);
+      return reply.send({ success: true, qr });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }

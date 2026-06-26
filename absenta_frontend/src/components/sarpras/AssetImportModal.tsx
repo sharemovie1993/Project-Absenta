@@ -13,7 +13,7 @@ import {
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { sarprasApi } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AssetImportModalProps {
@@ -30,7 +30,6 @@ interface ImportResult {
 
 const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) => {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -38,7 +37,7 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
   const mutation = useMutation({
     mutationFn: (formData: FormData) => sarprasApi.importAssets(formData),
     onSuccess: (res: { message?: string; data: ImportResult }) => {
-      showToast(res.message || 'Import berhasil', 'success');
+      toast.success(res.message || 'Import berhasil');
       setImportResult(res.data);
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
@@ -53,7 +52,7 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      showToast(errMsg, 'error');
+      toast.error(errMsg);
     }
   });
 
@@ -61,13 +60,13 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       if (!selectedFile.name.match(/\.(xlsx|xls)$/)) {
-        showToast('Format file harus Excel (.xlsx atau .xls)', 'error');
+        toast.error('Format file harus Excel (.xlsx atau .xls)');
         return;
       }
       setFile(selectedFile);
       setImportResult(null);
     }
-  }, [showToast]);
+  }, []);
 
   const handleUpload = useCallback(() => {
     if (!file) return;
@@ -100,9 +99,9 @@ const AssetImportModal: React.FC<AssetImportModalProps> = ({ isOpen, onClose }) 
         window.URL.revokeObjectURL(url);
       }, 100);
     } catch (error) {
-      showToast('Gagal mengunduh template', 'error');
+      toast.error('Gagal mengunduh template');
     }
-  }, [showToast]);
+  }, []);
 
   const reset = useCallback(() => {
     setFile(null);

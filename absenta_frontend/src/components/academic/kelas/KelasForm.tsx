@@ -12,7 +12,7 @@ import { createKelas, updateKelas, getKelasDetail, type CreateKelasPayload, type
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Jurusan } from '../../../types/academic';
 import { createKelasSchema, type CreateKelasSchema } from '../../../schemas/academic/kelas.schema';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 // Modular Sections
 import { KelasInfoSection } from './form/KelasInfoSection';
@@ -42,7 +42,7 @@ export const KelasForm = React.memo<KelasFormProps>(({
   const [loadingDropdowns, setLoadingDropdowns] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
 
-  const { showToast } = useToast();
+
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -101,14 +101,14 @@ export const KelasForm = React.memo<KelasFormProps>(({
 
       } catch (error) {
         console.error('Error loading kelas data:', error);
-        showToast('Gagal memuat data kelas', 'error');
+        toast.error('Gagal memuat data kelas');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadKelasData();
-  }, [kelasId, mode, showToast, reset]);
+  }, [kelasId, mode, reset]);
 
   // Handle form submission
   const onFormSubmit = async (data: CreateKelasSchema) => {
@@ -134,10 +134,7 @@ export const KelasForm = React.memo<KelasFormProps>(({
       }
 
       if (response.success) {
-        showToast(
-          isEditMode ? 'Kelas berhasil diperbarui' : 'Kelas berhasil dibuat',
-          'success'
-        );
+        toast.success(isEditMode ? 'Kelas berhasil diperbarui' : 'Kelas berhasil dibuat');
         onSuccess?.();
       } else {
         setSubmitError(response.message || 'Terjadi kesalahan saat menyimpan data');

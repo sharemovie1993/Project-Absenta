@@ -1,4 +1,5 @@
 import { LoanService } from '../services/loan.service';
+import { authorizationService } from '../../auth/services/authorization.service';
 
 interface AuthenticatedRequest {
   user: {
@@ -18,11 +19,22 @@ export class LoanController {
   async getLoans(request: AuthenticatedRequest, reply: any) {
     try {
       const { page, limit, status, peminjam_id, asset_id } = request.query;
+      const userId = request.user.id || (request.user as any).userId;
+
+      // Check if user has capability to manage loans
+      const authCheck = await authorizationService.isUserAuthorized(String(userId), ['sarpras.loans.manage'], { user: request.user });
+      
+      let targetPeminjamId = peminjam_id as string;
+      if (!authCheck.allowed) {
+        // Regular user (GURU/SISWA) can only view their own loans
+        targetPeminjamId = userId;
+      }
+
       const data = await LoanService.getLoans(request.tenantId!, {
         page: page ? parseInt(page as string) : undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         status: status as string,
-        peminjam_id: peminjam_id as string,
+        peminjam_id: targetPeminjamId,
         asset_id: asset_id as string
       }, request.organizationalScope);
       return reply.status(200).send({ success: true, data });
@@ -55,6 +67,15 @@ export class LoanController {
       }
       
       const userId = (request.user as any).id || (request.user as any).userId;
+      
+      // Security: if user is not a manager, they cannot request on behalf of others
+      if (body.peminjam_id && body.peminjam_id !== userId) {
+        const authCheck = await authorizationService.isUserAuthorized(String(userId), ['sarpras.loans.manage'], { user: request.user });
+        if (!authCheck.allowed) {
+          return reply.status(403).send({ success: false, message: 'Anda tidak memiliki hak akses untuk mengajukan pinjaman atas nama orang lain' });
+        }
+      }
+
       const data = await LoanService.requestLoan(request.tenantId!, userId, body);
       return reply.status(201).send({ success: true, message: 'Permohonan pinjaman berhasil dikirim', data });
     } catch (error: any) {

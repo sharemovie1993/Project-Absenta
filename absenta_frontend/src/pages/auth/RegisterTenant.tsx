@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { Button, Input, Checkbox, Modal, ModalFooter, Card } from '@/components/ui';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { registerTenant } from '@/api/auth.api';
 import { 
   Loader2, 
@@ -36,7 +36,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { useDebounce } from '@/hooks/useDebounce';
-import ToastContainer from '@/components/ui/Toast';
+
 import { MAIN_DOMAIN } from '@/config/env-config';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
@@ -66,7 +66,7 @@ type NpsnLookupResult = {
 const RegisterTenant = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showToast, toasts, removeToast } = useToast();
+
 
   // Extract plan_id from URL query params
   const { planIdFromQuery, cycleFromQuery } = useMemo(() => {
@@ -199,7 +199,7 @@ const RegisterTenant = () => {
           alamat: result.data.alamat || prev.alamat,
           tenant_domain: !domainEdited ? result.data.nama.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) : prev.tenant_domain
         }));
-        showToast('Data sekolah ditemukan!', 'success');
+        toast.success('Data sekolah ditemukan!');
       } else {
         setNpsnStatus('not_found');
         setNpsnMessage('Sekolah tidak ditemukan');
@@ -210,8 +210,8 @@ const RegisterTenant = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (Object.values(errors).some(err => err !== '')) { showToast('Mohon perbaiki kesalahan pada form.', 'error'); return; }
-    if (!formData.agreedToTerms) { showToast('Anda harus menyetujui Syarat & Ketentuan.', 'error'); return; }
+    if (Object.values(errors).some(err => err !== '')) { toast.error('Mohon perbaiki kesalahan pada form.'); return; }
+    if (!formData.agreedToTerms) { toast.error('Anda harus menyetujui Syarat & Ketentuan.'); return; }
     
     setLoading(true);
     try {
@@ -221,11 +221,11 @@ const RegisterTenant = () => {
         plan_id: planIdFromQuery || undefined,
         billing_cycle_months: cycleFromQuery || 1
       });
-      showToast('Registrasi berhasil! Silakan cek email Anda.', 'success');
+      toast.success('Registrasi berhasil! Silakan cek email Anda.');
       setIsSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      showToast(err.response?.data?.message || 'Gagal registrasi', 'error');
+      toast.error(err.response?.data?.message || 'Gagal registrasi');
     } finally { setLoading(false); }
   };
 
@@ -542,7 +542,7 @@ const RegisterTenant = () => {
       </main>
 
       <Footer />
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
     </div>
   );
 };

@@ -1,31 +1,41 @@
-import React, { Suspense } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { isSystemSuperAdmin } from '../../utils/rbac';
-import { Loader } from '../../components/ui';
-import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
+import React, { Suspense, useMemo } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { isSystemSuperAdmin } from '@/utils/rbac';
+import { Loader } from '@/components/ui';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
 // Lazily load sub-views to optimize performance and compile size
 const AdminBillingsView = React.lazy(() => import('./components/AdminBillingsView'));
 const SuperAdminBillingsView = React.lazy(() => import('./components/SuperAdminBillingsView'));
 
-export default function BillingsPage() {
+function BillingsPageContent() {
   const { user, subscription, isLoading: isAuthLoading } = useAuth();
   
-  const isSuperAdmin = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
+  const isSuperAdmin = useMemo(() => 
+    isSystemSuperAdmin(user?.role?.name, user?.tenant_id),
+    [user?.role?.name, user?.tenant_id]
+  );
 
   if (isAuthLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader size="lg" />
+        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Menyiapkan Informasi Tagihan...</p>
       </div>
     );
   }
 
   return (
-    <InfraErrorBoundary>
+    <AcademicPageLayout
+      title="Manajemen Billing & Invoice"
+      description={isSuperAdmin ? "Pusat kontrol pendapatan global dan pemantauan billing tenant." : "Kelola metode pembayaran, tinjau riwayat transaksi, dan unduh invoice sekolah Anda."}
+      hardeningModuleKey="billings_page"
+    >
       <Suspense fallback={
-        <div className="flex justify-center items-center min-h-screen">
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
           <Loader size="lg" />
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Memuat Panel Billing...</p>
         </div>
       }>
         {isSuperAdmin ? (
@@ -34,12 +44,15 @@ export default function BillingsPage() {
           <AdminBillingsView subscription={subscription} />
         )}
       </Suspense>
-    </InfraErrorBoundary>
+    </AcademicPageLayout>
   );
 }
 
-// Static audit compliance comment guards:
-// instruction={{ items: [] }}
-// breadcrumbs={[]}
-// <Card />
+export default function BillingsPage() {
+  return (
+    <ErrorBoundary>
+      <BillingsPageContent />
+    </ErrorBoundary>
+  );
+}
 

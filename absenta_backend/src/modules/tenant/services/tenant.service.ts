@@ -31,6 +31,7 @@ export interface UpdateTenantInput {
   website?: string;
   kepala_sekolah?: string;
   nip_kepala?: string;
+  allow_manual_hadir_gate?: boolean;
 }
 
 export interface TenantResponse {
@@ -171,7 +172,7 @@ export class TenantService {
       where: {
         tenant_id: id,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website']
+          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE']
         }
       }
     });
@@ -258,6 +259,7 @@ export class TenantService {
       email: configMap['email'] || null,
       website: configMap['website'] || null,
       print_header_lines: parsedLines,
+      allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
 
       // Hybrid Kepala Sekolah values
       kepala_sekolah: kepalaSekolahNama || null,
@@ -349,6 +351,7 @@ export class TenantService {
       website,
       kepala_sekolah,
       nip_kepala,
+      allow_manual_hadir_gate,
       ...coreInput
     } = input;
 
@@ -386,6 +389,9 @@ export class TenantService {
     }
     if (website !== undefined) {
       await upsertConfig('website', website || '');
+    }
+    if (allow_manual_hadir_gate !== undefined) {
+      await upsertConfig('ALLOW_MANUAL_HADIR_GATE', allow_manual_hadir_gate ? 'true' : 'false');
     }
 
     // Save kepala_sekolah & nip_kepala in Sekolah table

@@ -171,6 +171,15 @@ const MasterStrukturPage: React.FC = () => {
             description="Plotting alokasi Jam Pelajaran (JP) per tingkat."
             breadcrumbs={breadcrumbs}
             hardeningModuleKey="masterstrukturpage"
+            instruction={{
+                title: 'Panduan Master Struktur Kurikulum',
+                description: 'Kelola alokasi jam pelajaran (JP) per mata pelajaran untuk setiap tingkat kelas sesuai kurikulum yang berlaku.',
+                items: [
+                    { text: 'Pilih tahun ajaran dan tingkat kelas (10/11/12) untuk melihat dan mengedit struktur kurikulum.' },
+                    { text: 'Klik sel pada tabel untuk mengubah jumlah jam pelajaran per minggu.' },
+                    { text: 'Pastikan total JP per tingkat sesuai dengan ketentuan kurikulum yang berlaku.' }
+                ]
+            }}
         >
             <div className="space-y-6 animate-in fade-in duration-500 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

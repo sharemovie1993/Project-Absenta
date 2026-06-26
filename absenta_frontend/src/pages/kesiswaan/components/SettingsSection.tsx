@@ -11,7 +11,7 @@ import { Input } from '../../../components/ui/Input';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, ShieldAlert, Trophy } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
@@ -23,7 +23,7 @@ export const SettingsSection: React.FC = () => {
   const [achievements, setAchievements] = useState<JenisPrestasi[]>([]);
   
   const [loading, setLoading] = useState(true);
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
 
   // Modal forms
@@ -75,24 +75,24 @@ export const SettingsSection: React.FC = () => {
   const handleVSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vForm.nama_pelanggaran.trim()) {
-      error('Nama pelanggaran wajib diisi');
+      toast.error('Nama pelanggaran wajib diisi');
       return;
     }
     try {
       if (vId) {
         await kesiswaanApi.updateJenisPelanggaran(vId, vForm);
-        success('Kategori pelanggaran berhasil diperbarui');
+        toast.success('Kategori pelanggaran berhasil diperbarui');
       } else {
         await kesiswaanApi.createJenisPelanggaran(vForm);
-        success('Kategori pelanggaran baru berhasil ditambahkan');
+        toast.success('Kategori pelanggaran baru berhasil ditambahkan');
       }
       setViolationModalOpen(false);
       fetchViolations();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [vId, vForm, error, success, fetchViolations]);
+  }, [vId, vForm, fetchViolations]);
 
   const handleVDelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -105,36 +105,36 @@ export const SettingsSection: React.FC = () => {
     if (!ok) return;
     try {
       await kesiswaanApi.deleteJenisPelanggaran(id);
-      success('Kategori pelanggaran berhasil dihapus');
+      toast.success('Kategori pelanggaran berhasil dihapus');
       fetchViolations();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [confirm, error, success, fetchViolations]);
+  }, [confirm, fetchViolations]);
 
   // === ACHIEVEMENT ACTIONS ===
   const handleASubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aForm.nama_prestasi.trim()) {
-      error('Nama prestasi wajib diisi');
+      toast.error('Nama prestasi wajib diisi');
       return;
     }
     try {
       if (aId) {
         await kesiswaanApi.updateJenisPrestasi(aId, aForm);
-        success('Kategori prestasi berhasil diperbarui');
+        toast.success('Kategori prestasi berhasil diperbarui');
       } else {
         await kesiswaanApi.createJenisPrestasi(aForm);
-        success('Kategori prestasi baru berhasil ditambahkan');
+        toast.success('Kategori prestasi baru berhasil ditambahkan');
       }
       setAchievementModalOpen(false);
       fetchAchievements();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [aId, aForm, error, success, fetchAchievements]);
+  }, [aId, aForm, fetchAchievements]);
 
   const handleADelete = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -147,13 +147,13 @@ export const SettingsSection: React.FC = () => {
     if (!ok) return;
     try {
       await kesiswaanApi.deleteJenisPrestasi(id);
-      success('Kategori prestasi berhasil dihapus');
+      toast.success('Kategori prestasi berhasil dihapus');
       fetchAchievements();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [confirm, error, success, fetchAchievements]);
+  }, [confirm, fetchAchievements]);
 
   const violationColumns: Column[] = useMemo(() => [
     {
@@ -412,5 +412,3 @@ export const SettingsSection: React.FC = () => {
     </Card>
   );
 };
-
-

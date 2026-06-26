@@ -9,13 +9,13 @@ import { Users, CheckCircle2, GraduationCap, UserCheck, UserX } from 'lucide-rea
 import { getActiveTahunPelajaran, getActiveSemester } from '../../api/dropdown.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { getAcademicRegistrationStats, getSiswaList, importSiswaFromExcel } from '../../api/academic/siswa.api';
 import { getSemesterByTahunPelajaranForDropdown, getTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { kelasApi } from '../../api/academic.api';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { lazy, Suspense } from 'react';
 import { Plus, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
 
@@ -56,7 +56,7 @@ const SiswaPage: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<{ label: string; value: string }[]>([]);
   const [availableSemesters, setAvailableSemesters] = useState<{ label: string; value: string }[]>([]);
   const [isExporting, setIsExporting] = useState(false);
-  const { showToast } = useToast();
+
 
   // Permissions
   const canCreate = can('academic.students.create');
@@ -147,7 +147,7 @@ const SiswaPage: React.FC = () => {
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan referensi data...', 'info');
+      toast('Menyiapkan referensi data...');
       const kelasRes = await kelasApi.getAll({ limit: 500 });
       const kelasNames = (kelasRes.data || [])?.map(k => k.nama_kelas).filter(Boolean);
 
@@ -178,12 +178,12 @@ const SiswaPage: React.FC = () => {
           }
         }
       );
-      showToast('Template cerdas berhasil diunduh.', 'success');
+      toast.success('Template cerdas berhasil diunduh.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
-  }, [showToast]);
+  }, []);
 
   const handleExport = useCallback(async () => {
     try {
@@ -202,17 +202,17 @@ const SiswaPage: React.FC = () => {
           { header: 'Alamat', accessor: (row: Siswa) => row.alamat || '-', width: 40 },
           { header: 'Status', accessor: (row: Siswa) => row.status, width: 10 }
         ], 'Laporan_Siswa', 'DATA MASTER PESERTA DIDIK');
-        showToast('Data siswa berhasil diekspor.', 'success');
+        toast.success('Data siswa berhasil diekspor.');
       } else {
-        showToast('Tidak ada data untuk diekspor.', 'warning');
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
-      showToast(msg, 'error');
+      toast.error(msg);
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   // Fetch dropdown data for import
   useEffect(() => {

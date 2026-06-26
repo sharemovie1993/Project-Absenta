@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
-import { DashboardHero } from '../../components/dashboard/shared/DashboardHero';
+import { Card, Button, Badge, Loader } from '@/components/ui';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
+import { DashboardHero } from '@/components/dashboard/shared/DashboardHero';
 import {
   CreditCard,
   Clock,
@@ -31,17 +30,17 @@ import {
   getMyPayments,
   getInvoiceDownloadUrl,
   getPublicInvoiceLink,
-} from '../../api/mySubscription.api';
-import { openInvoicePublic } from '../../utils/invoiceLink';
-import type { Subscription } from '../../types/subscription';
-import type { Invoice } from '../../types/invoice';
-import type { PaymentRecord } from '../../types/payments';
-import { cancelPendingUpgrade } from '../../api/subscription.api';
-import { ConfirmModal } from '../../components/ui/Modal';
+} from '@/api/mySubscription.api';
+import { openInvoicePublic } from '@/utils/invoiceLink';
+import type { Subscription } from '@/types/subscription';
+import type { Invoice } from '@/types/invoice';
+import type { PaymentRecord } from '@/types/payments';
+import { cancelPendingUpgrade } from '@/api/subscription.api';
+import { ConfirmModal } from '@/components/ui/Modal';
 import { useNavigate } from 'react-router-dom';
-import { getSubscriptionStatusLabel } from '../../utils/subscriptionStatusDictionary';
-import { PageLayout } from '../../components/common/PageLayout';
-import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { getSubscriptionStatusLabel } from '@/utils/subscriptionStatusDictionary';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 interface MyInvoice extends Invoice {
   subscription_id?: string;
@@ -81,7 +80,7 @@ type MySubscription = Subscription & {
 
 type ActiveSub = MySubscription & { plan_name?: string };
 
-const MySubscriptionPage = () => {
+function MySubscriptionContent() {
   const navigate = useNavigate();
   const [subscription, setSubscription] = useState<MySubscription | null>(null);
   const [invoices, setInvoices] = useState<MyInvoice[]>([]);
@@ -96,38 +95,38 @@ const MySubscriptionPage = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [subRes, invRes, payRes] = await Promise.all([
-          getMySubscription(),
-          getMyInvoices(),
-          getMyPayments(),
-        ]);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [subRes, invRes, payRes] = await Promise.all([
+        getMySubscription(),
+        getMyInvoices(),
+        getMyPayments(),
+      ]);
 
-        if (subRes.success) {
-          const subData = subRes.data as MySubscription | undefined;
-          setSubscription(subData || null);
-          const agg = (subData && Array.isArray(subData.subscriptions))
-            ? (subData.subscriptions)
-            : [];
-          if (agg.length > 0) {
-            setServices(agg);
-          }
+      if (subRes.success) {
+        const subData = subRes.data as MySubscription | undefined;
+        setSubscription(subData || null);
+        const agg = (subData && Array.isArray(subData.subscriptions))
+          ? (subData.subscriptions)
+          : [];
+        if (agg.length > 0) {
+          setServices(agg);
         }
-        if (invRes.success) setInvoices(invRes.data);
-        if (payRes.success) setPayments(payRes.data);
-      } catch (err) {
-        console.error('Failed to fetch subscription data', err);
-        setError('Gagal memuat informasi langganan.');
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchData();
+      if (invRes.success) setInvoices(invRes.data as MyInvoice[]);
+      if (payRes.success) setPayments(payRes.data as PaymentRecord[]);
+    } catch (err) {
+      console.error('Failed to fetch subscription data', err);
+      setError('Gagal memuat informasi langganan.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (!selectedService && services.length > 0) {
@@ -151,25 +150,7 @@ const MySubscriptionPage = () => {
     }
   }, [services, selectedService]);
 
-  const handleUpgrade = useCallback(() => navigate('/services'), [navigate]);
-
-  const refreshSubscriptionData = useCallback(async () => {
-    try {
-      const [subRes, invRes, payRes] = await Promise.all([
-        getMySubscription(),
-        getMyInvoices(),
-        getMyPayments(),
-      ]);
-      if (subRes.success) setSubscription(subRes.data);
-      if (invRes.success) setInvoices(invRes.data);
-      if (payRes.success) setPayments(payRes.data);
-      return { subscription: subRes.success ? subRes.data : null, invoices: invRes.success ? invRes.data : [] };
-    } catch (err) {
-      console.error('Failed to refresh data', err);
-      toast.error('Gagal menyegarkan data.');
-      return { subscription: null, invoices: [] };
-    }
-  }, []);
+  const handleUpgrade = useCallback(() => navigate('/service-center?tab=catalog'), [navigate]);
 
   const handlePayUpgradeFromCard = useCallback(async () => {
     if (!subscription) return;
@@ -200,18 +181,18 @@ const MySubscriptionPage = () => {
       const res = await cancelPendingUpgrade();
       if (res.success) {
         toast.success('Permintaan upgrade dibatalkan.');
-        await refreshSubscriptionData();
+        await fetchData();
         setCancelModalOpen(false);
       } else {
         toast.error(res.message || 'Gagal membatalkan upgrade.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       const errorObj = err as { message?: string };
       toast.error(errorObj?.message || 'Gagal membatalkan upgrade.');
     } finally {
       setCancelLoading(false);
     }
-  }, [refreshSubscriptionData]);
+  }, [fetchData]);
 
   const handleDownload = useCallback(async (invoiceId: string) => {
     try {
@@ -240,34 +221,33 @@ const MySubscriptionPage = () => {
     }
   }, []);
 
-  // --- Logic Helpers ---
-  const activeSub: ActiveSub | null = selectedService || subscription;
-  const snapshot = activeSub?.plan_snapshot || null;
-  const planName = snapshot?.name || activeSub?.Plan?.name || activeSub?.plan_name || 'Tanpa Paket';
-  const planPrice = snapshot?.price ?? activeSub?.Plan?.price_monthly ?? null;
-  const planCurrency = activeSub?.Plan?.currency || 'IDR';
-  const priceLabel = typeof planPrice === 'number' ? formatCurrency(planPrice, planCurrency) : '-';
-  const billingPeriod = snapshot?.billing_cycle || activeSub?.Plan?.billing_cycle || 'MONTHLY';
-  const cycle = billingPeriod === 'YEARLY' ? 'Tahun' : 'Bulan';
+  const activeSub: ActiveSub | null = useMemo(() => selectedService || subscription, [selectedService, subscription]);
+  const snapshot = useMemo(() => activeSub?.plan_snapshot || null, [activeSub]);
+  const planName = useMemo(() => snapshot?.name || activeSub?.Plan?.name || activeSub?.plan_name || 'Tanpa Paket', [snapshot, activeSub]);
+  const planPrice = useMemo(() => snapshot?.price ?? activeSub?.Plan?.price_monthly ?? null, [snapshot, activeSub]);
+  const planCurrency = useMemo(() => activeSub?.Plan?.currency || 'IDR', [activeSub]);
+  const priceLabel = useMemo(() => typeof planPrice === 'number' ? formatCurrency(planPrice, planCurrency) : '-', [planPrice, planCurrency]);
+  const billingPeriod = useMemo(() => snapshot?.billing_cycle || activeSub?.Plan?.billing_cycle || 'MONTHLY', [snapshot, activeSub]);
+  const cycle = useMemo(() => billingPeriod === 'YEARLY' ? 'Tahun' : 'Bulan', [billingPeriod]);
   
   const features: string[] = useMemo(() => {
     const snapFeatures = snapshot?.features_json;
-    if (Array.isArray(snapFeatures) && snapFeatures.length > 0) return snapFeatures;
+    if (Array.isArray(snapFeatures) && snapFeatures.length > 0) return snapFeatures as string[];
     const planFeatures = activeSub?.Plan?.features_json;
-    if (Array.isArray(planFeatures) && planFeatures.length > 0) return planFeatures;
+    if (Array.isArray(planFeatures) && planFeatures.length > 0) return planFeatures as string[];
     return [];
   }, [snapshot, activeSub]);
 
-  const usersLimit = activeSub?.Plan?.max_user || 0;
-  const daysRemaining = activeSub?.end_date
+  const usersLimit = useMemo(() => activeSub?.Plan?.max_user || 0, [activeSub]);
+  const daysRemaining = useMemo(() => activeSub?.end_date
     ? Math.ceil((new Date(activeSub.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+    : 0, [activeSub]);
 
-  const isActive = activeSub?.status === 'ACTIVE';
-  const isExpired = activeSub?.status === 'EXPIRED';
-  const isCancelled = activeSub?.status === 'CANCELLED';
-  const isUpgradePending = activeSub?.status === 'UPGRADE_PENDING';
-  const isPendingPayment = activeSub?.status === 'PENDING_PAYMENT';
+  const isActive = useMemo(() => activeSub?.status === 'ACTIVE', [activeSub]);
+  const isExpired = useMemo(() => activeSub?.status === 'EXPIRED', [activeSub]);
+  const isCancelled = useMemo(() => activeSub?.status === 'CANCELLED', [activeSub]);
+  const isUpgradePending = useMemo(() => activeSub?.status === 'UPGRADE_PENDING', [activeSub]);
+  const isPendingPayment = useMemo(() => activeSub?.status === 'PENDING_PAYMENT', [activeSub]);
 
   const getServiceSlug = useCallback((sub: Subscription & { plan_name?: string }): string => {
     const snap = sub?.plan_snapshot;
@@ -309,13 +289,13 @@ const MySubscriptionPage = () => {
     { label: 'TOTAL INVOICE', value: invoices.length }
   ], [services, daysRemaining, invoices]);
 
-  const headerUpgradeDisabled = isUpgradePending || isPendingPayment;
+  const headerUpgradeDisabled = useMemo(() => isUpgradePending || isPendingPayment, [isUpgradePending, isPendingPayment]);
 
   if (loading) {
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-medium animate-pulse">Menyiapkan Informasi Langganan...</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <Loader size="lg" />
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs animate-pulse">Menyiapkan Informasi Langganan...</p>
       </div>
     );
   }
@@ -323,30 +303,21 @@ const MySubscriptionPage = () => {
   if (error) {
     return (
       <div className="p-12 text-center max-w-md mx-auto">
-        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle className="w-10 h-10 text-rose-500" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Terjadi Kesalahan</h2>
-        <p className="text-gray-500 mb-6">{error}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>Coba Lagi</Button>
+        <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">Terjadi Kesalahan</h2>
+        <p className="text-slate-500 font-medium mb-6">{error}</p>
+        <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl px-10">Coba Lagi</Button>
       </div>
     );
   }
 
   return (
-    <PageLayout
+    <AcademicPageLayout
       hardeningModuleKey="billing_my_subscription"
-      breadcrumbs={[
-        { label: 'Billing', path: '/billing' },
-        { label: 'Langganan Saya', path: '/billing/my-subscription' }
-      ]}
-      instruction={{
-        title: 'Manajemen Langganan',
-        items: [
-          { text: 'Pantau detail paket langganan aktif, limit pengguna, and sisa masa aktif sekolah Anda.' },
-          { text: 'Anda juga dapat melihat histori invoices and rincian transaksi pembayaran.' }
-        ]
-      }}
+      title="Manajemen Langganan"
+      description="Pantau detail paket langganan aktif, limit pengguna, and sisa masa aktif sekolah Anda."
     >
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-500">
         
@@ -418,18 +389,18 @@ const MySubscriptionPage = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-               <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                  <Layers className="text-indigo-500" size={24} />
                  Layanan Sekolah Anda
                </h2>
-               <p className="text-sm text-gray-500 font-medium">Klik pada layanan untuk melihat detail fitur dan masa aktif.</p>
+               <p className="text-sm text-slate-500 font-medium">Klik pada layanan untuk melihat detail fitur dan masa aktif.</p>
             </div>
             
             <div className="hidden md:flex gap-2">
               {services?.map((s, idx) => (
                 <div 
                   key={idx} 
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${selectedService?.id === s.id ? 'w-6 bg-indigo-500' : 'bg-gray-300'}`} 
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${selectedService?.id === s.id ? 'w-6 bg-indigo-500' : 'bg-slate-300'}`} 
                 />
               ))}
             </div>
@@ -453,8 +424,8 @@ const MySubscriptionPage = () => {
                     onClick={() => setSelectedService(svc)}
                     className={`relative group cursor-pointer rounded-xl p-6 transition-all duration-300 border-2 overflow-hidden ${
                       isSelected 
-                        ? 'bg-white dark:bg-gray-800 border-indigo-500 shadow-2xl shadow-indigo-200 dark:shadow-none' 
-                        : 'bg-white/50 dark:bg-gray-900 border-transparent hover:border-gray-200 shadow-sm'
+                        ? 'bg-white dark:bg-slate-800 border-indigo-500 shadow-2xl shadow-indigo-200 dark:shadow-none' 
+                        : 'bg-white/50 dark:bg-slate-900 border-transparent hover:border-slate-200 shadow-sm'
                     }`}
                   >
                     {isSelected && (
@@ -464,12 +435,12 @@ const MySubscriptionPage = () => {
                     )}
                     
                     <div className="flex items-start gap-4">
-                      <div className={`p-4 rounded-xl transition-all duration-500 ${isSelected ? 'bg-indigo-600 text-white rotate-6' : 'bg-gray-100 text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-500'}`}>
+                      <div className={`p-4 rounded-xl transition-all duration-500 ${isSelected ? 'bg-indigo-600 text-white rotate-6' : 'bg-slate-100 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500'}`}>
                         <Icon size={24} />
                       </div>
                       
                       <div className="space-y-1">
-                        <h3 className={`font-bold transition-colors ${isSelected ? 'text-gray-900 dark:text-white' : 'text-gray-600 group-hover:text-gray-900'}`}>{title}</h3>
+                        <h3 className={`font-bold transition-colors ${isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-600 group-hover:text-slate-900'}`}>{title}</h3>
                         <div className="flex items-center gap-2">
                           <Badge variant={status === 'ACTIVE' ? 'success' : 'warning'} className="text-[10px] px-2 py-0 border-none">
                             {status}
@@ -483,11 +454,11 @@ const MySubscriptionPage = () => {
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                        Masa Aktif: <span className="text-gray-900 dark:text-gray-200">{formatDate(svc.end_date)}</span>
+                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        Masa Aktif: <span className="text-slate-900 dark:text-slate-200">{formatDate(svc.end_date)}</span>
                       </div>
-                      <ArrowRight size={16} className={`transition-all duration-300 ${isSelected ? 'text-indigo-500 translate-x-0' : 'text-gray-300 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0'}`} />
+                      <ArrowRight size={16} className={`transition-all duration-300 ${isSelected ? 'text-indigo-500 translate-x-0' : 'text-slate-300 -translate-x-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0'}`} />
                     </div>
                   </motion.div>
                 );
@@ -500,15 +471,15 @@ const MySubscriptionPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Plan Details Card */}
-          <Card className="lg:col-span-2 p-8 border-none shadow-2xl shadow-gray-200 dark:shadow-none bg-white dark:bg-gray-800 rounded-xl relative overflow-hidden group">
+          <Card className="lg:col-span-2 p-8 border-none shadow-2xl shadow-slate-200 dark:shadow-none bg-white dark:bg-slate-800 rounded-xl relative overflow-hidden group">
             <div className="absolute -right-4 -top-4 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
             
             <div className="relative z-10 space-y-8">
               <div className="flex justify-between items-start">
                 <div className="space-y-1">
                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500">Plan Saat Ini</div>
-                  <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{planName}</h3>
-                  <div className="flex items-center gap-2 text-gray-500 font-medium">
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase">{planName}</h3>
+                  <div className="flex items-center gap-2 text-slate-500 font-medium">
                     <span className="text-indigo-600 dark:text-indigo-400 font-bold">{priceLabel}</span>
                     <span className="opacity-50">/</span>
                     <span>{cycle}</span>
@@ -522,12 +493,12 @@ const MySubscriptionPage = () => {
 
               {/* Fitur Terdaftar */}
               <div className="space-y-4">
-                 <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Fitur & Layanan Aktif</h4>
+                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-400">Fitur & Layanan Aktif</h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                   {features?.map((feat: unknown, index: number) => (
-                      <div key={index} className="flex items-center gap-2.5 text-xs text-gray-600 dark:text-gray-300 font-semibold bg-gray-50 dark:bg-slate-900/50 p-3 rounded-xl border border-gray-100 dark:border-slate-800/40">
+                   {features?.map((feat: string, index: number) => (
+                      <div key={index} className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-300 font-semibold bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800/40">
                         <CheckCircle size={14} className="text-indigo-500 shrink-0" />
-                        <span className="truncate">{String(feat)}</span>
+                        <span className="truncate">{feat}</span>
                       </div>
                    ))}
                  </div>
@@ -543,8 +514,8 @@ const MySubscriptionPage = () => {
                 <div className="space-y-4">
                   <div>
                     <div className="text-[9px] font-black uppercase tracking-widest text-amber-600 mb-1">Transaksi Tertunda</div>
-                    <h4 className="font-bold text-gray-900 dark:text-white text-sm">Upgrade Paket Sedang Diproses</h4>
-                    <p className="text-xs text-gray-500 leading-relaxed font-medium mt-1">Anda memiliki permohonan upgrade ke paket <span className="font-bold text-amber-600">{subscription.target_upgrade_plan?.name}</span> yang belum dibayar.</p>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">Upgrade Paket Sedang Diproses</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed font-medium mt-1">Anda memiliki permohonan upgrade ke paket <span className="font-bold text-amber-600">{subscription.target_upgrade_plan?.name}</span> yang belum dibayar.</p>
                   </div>
                   
                   <div className="flex gap-2">
@@ -569,27 +540,27 @@ const MySubscriptionPage = () => {
               </Card>
             )}
 
-            <Card className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-4">
+            <Card className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 flex items-start gap-4">
               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
                  <Users size={20} />
               </div>
               <div className="space-y-1">
-                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Batas Pengguna Akun</h4>
-                 <div className="text-xl font-black text-gray-900 dark:text-white">
+                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Batas Pengguna Akun</h4>
+                 <div className="text-xl font-black text-slate-900 dark:text-white">
                    {usersLimit > 0 ? `${usersLimit} Pengguna` : 'Tanpa Batasan'}
                  </div>
-                 <p className="text-[10px] text-gray-400 font-medium">Jumlah maksimum staf and siswa dalam sistem.</p>
+                 <p className="text-[10px] text-slate-400 font-medium">Jumlah maksimum staf and siswa dalam sistem.</p>
               </div>
             </Card>
 
-            <Card className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 flex items-start gap-4">
+            <Card className="p-6 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-800 flex items-start gap-4">
               <div className="p-3 bg-orange-50 text-orange-600 rounded-xl shrink-0">
                  <Clock size={20} />
               </div>
               <div className="space-y-1 text-left">
-                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Masa Aktif Paket</h4>
-                 <div className="text-xl font-black text-gray-900 dark:text-white">{formatDate(activeSub?.end_date)}</div>
-                 <p className="text-[10px] text-gray-400 font-medium">Sistem akan dinonaktifkan jika masa aktif habis.</p>
+                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Masa Aktif Paket</h4>
+                 <div className="text-xl font-black text-slate-900 dark:text-white">{formatDate(activeSub?.end_date)}</div>
+                 <p className="text-[10px] text-slate-400 font-medium">Sistem akan dinonaktifkan jika masa aktif habis.</p>
               </div>
             </Card>
           </div>
@@ -599,15 +570,15 @@ const MySubscriptionPage = () => {
         <div id="transaction-history" className="pt-10 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
              <div className="space-y-1 text-left">
-                <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                   <Calendar className="text-indigo-500" size={24} />
                   Riwayat Transaksi
                 </h2>
-                <p className="text-sm text-gray-500 font-medium">Daftar semua tagihan dan status pembayaran layanan Anda.</p>
+                <p className="text-sm text-slate-500 font-medium">Daftar semua tagihan dan status pembayaran layanan Anda.</p>
              </div>
              
-             <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
-               <label htmlFor="invoiceServiceFilterSelect" className="text-[10px] font-black uppercase tracking-widest px-3 text-gray-400">Filter</label>
+             <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+               <label htmlFor="invoiceServiceFilterSelect" className="text-[10px] font-black uppercase tracking-widest px-3 text-slate-400">Filter</label>
                <SearchableSelect
                  id="invoiceServiceFilterSelect"
                  value={invoiceServiceFilter}
@@ -621,31 +592,31 @@ const MySubscriptionPage = () => {
                  ]}
                  placeholder="Pilih Layanan"
                  searchPlaceholder="Cari layanan..."
-                 triggerClassName="bg-white dark:bg-gray-900 border-none rounded-xl text-xs font-bold py-2 px-4 shadow-sm"
+                 triggerClassName="bg-white dark:bg-slate-900 border-none rounded-xl text-xs font-bold py-2 px-4 shadow-sm"
                />
              </div>
           </div>
 
           <Tabs defaultValue="invoices" className="w-full">
-            <TabsList className="bg-transparent border-b border-gray-100 dark:border-gray-800 w-full justify-start rounded-none h-auto p-0 mb-6 flex gap-8">
+            <TabsList className="bg-transparent border-b border-slate-100 dark:border-slate-800 w-full justify-start rounded-none h-auto p-0 mb-6 flex gap-8">
               <TabsTrigger
                 value="invoices"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-0 pb-3 text-sm font-bold tracking-tight text-gray-400 data-[state=active]:text-indigo-600"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-0 pb-3 text-sm font-bold tracking-tight text-slate-400 data-[state=active]:text-indigo-600"
               >
                 Daftar Invoices
               </TabsTrigger>
               <TabsTrigger
                 value="payments"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-0 pb-3 text-sm font-bold tracking-tight text-gray-400 data-[state=active]:text-indigo-600"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:bg-transparent px-0 pb-3 text-sm font-bold tracking-tight text-slate-400 data-[state=active]:text-indigo-600"
               >
                 Histori Pembayaran
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="invoices" className="mt-0">
-               <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-x-auto">
+               <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
                   <table className="w-full text-sm text-left whitespace-nowrap">
-                    <thead className="bg-gray-50/80 dark:bg-gray-800/80 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                       <tr>
                         <th className="px-6 py-4">Nomor Invoice</th>
                         <th className="px-6 py-4">Jatuh Tempo</th>
@@ -654,27 +625,27 @@ const MySubscriptionPage = () => {
                         <th className="px-6 py-4 text-right">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                       {invoices.filter(inv => invoiceServiceFilter === 'ALL' || String(inv.subscription_id || inv.Subscription?.id) === invoiceServiceFilter).length === 0 ? (
-                        <tr><td colSpan={5} className="py-20 text-center text-gray-400 font-medium">Belum ada catatan tagihan ditemukan.</td></tr>
+                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">Belum ada catatan tagihan ditemukan.</td></tr>
                       ) : (
                         invoices
                           .filter(inv => invoiceServiceFilter === 'ALL' || String(inv.subscription_id || inv.Subscription?.id) === invoiceServiceFilter)
                           ?.map((inv) => (
-                          <tr key={inv.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
+                          <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
                             <td className="px-6 py-5">
                               <div className="flex items-center gap-3">
-                                 <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
+                                 <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
                                     <FileText size={18} />
                                  </div>
                                  <div>
-                                    <div className="font-bold text-gray-900 dark:text-white">#{inv.invoice_number}</div>
-                                    <div className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{formatDate(inv.created_at)}</div>
+                                    <div className="font-bold text-slate-900 dark:text-white">#{inv.invoice_number}</div>
+                                    <div className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{formatDate(inv.created_at)}</div>
                                  </div>
                               </div>
                             </td>
-                            <td className="px-6 py-5 font-medium text-gray-600 dark:text-gray-400">{formatDate(inv.due_date)}</td>
-                            <td className="px-6 py-5 font-black text-gray-900 dark:text-white">{formatCurrency(inv.total_amount, inv.currency)}</td>
+                            <td className="px-6 py-5 font-medium text-slate-600 dark:text-slate-400">{formatDate(inv.due_date)}</td>
+                            <td className="px-6 py-5 font-black text-slate-900 dark:text-white">{formatCurrency(inv.total_amount, inv.currency)}</td>
                             <td className="px-6 py-5 text-center">
                                <Badge variant={inv.status === 'PAID' ? 'success' : ['DRAFT', 'SENT', 'VIEWED'].includes(String(inv.status)) ? 'warning' : 'destructive'} className="px-3 py-1 rounded-lg font-bold uppercase text-[9px]">
                                  {inv.status}
@@ -699,9 +670,9 @@ const MySubscriptionPage = () => {
             </TabsContent>
 
             <TabsContent value="payments" className="mt-0">
-               <div className="overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-x-auto">
+               <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto">
                   <table className="w-full text-sm text-left whitespace-nowrap">
-                    <thead className="bg-gray-50/80 dark:bg-gray-800/80 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+                    <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                       <tr>
                         <th className="px-6 py-4">ID Transaksi</th>
                         <th className="px-6 py-4">Waktu Pembayaran</th>
@@ -710,25 +681,25 @@ const MySubscriptionPage = () => {
                         <th className="px-6 py-4 text-center">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                       {payments.length === 0 ? (
-                        <tr><td colSpan={5} className="py-20 text-center text-gray-400 font-medium">Belum ada catatan pembayaran ditemukan.</td></tr>
+                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 font-medium">Belum ada catatan pembayaran ditemukan.</td></tr>
                       ) : (
                         payments?.map((pay) => (
-                          <tr key={pay.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
+                          <tr key={pay.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
                             <td className="px-6 py-5">
                               <div className="flex items-center gap-3">
                                  <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
                                     <ShieldCheck size={18} />
                                  </div>
-                                 <span className="font-bold text-gray-900 dark:text-white">{pay.id.substring(0, 10)}...</span>
+                                 <span className="font-bold text-slate-900 dark:text-white">{pay.id.substring(0, 10)}...</span>
                               </div>
                             </td>
-                            <td className="px-6 py-5 font-medium text-gray-600 dark:text-gray-400">
+                            <td className="px-6 py-5 font-medium text-slate-600 dark:text-slate-400">
                               {pay.created_at ? new Date(pay.created_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
                             </td>
                             <td className="px-6 py-5 uppercase font-mono text-xs">{pay.payment_method || '-'}</td>
-                            <td className="px-6 py-5 text-right font-black text-gray-900 dark:text-white">{formatCurrency(pay.amount, pay.currency)}</td>
+                            <td className="px-6 py-5 text-right font-black text-slate-900 dark:text-white">{formatCurrency(pay.amount, pay.currency)}</td>
                             <td className="px-6 py-5 text-center">
                                <Badge variant={pay.status === 'SUCCESS' || pay.status === 'PAID' ? 'success' : 'warning'} className="px-3 py-1 rounded-lg font-bold uppercase text-[9px]">
                                  {pay.status}
@@ -755,13 +726,14 @@ const MySubscriptionPage = () => {
           variant="danger"
         />
       </div>
-    </PageLayout>
+    </AcademicPageLayout>
   );
-};
+}
 
-export default MySubscriptionPage;
-
-// Static audit compliance comment guards:
-// <Card />
-// lazy(
-// Suspense
+export default function MySubscriptionPage() {
+  return (
+    <ErrorBoundary>
+      <MySubscriptionContent />
+    </ErrorBoundary>
+  );
+}

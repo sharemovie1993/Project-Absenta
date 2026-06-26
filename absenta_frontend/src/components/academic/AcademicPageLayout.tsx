@@ -3,11 +3,10 @@ import { cn } from '@/lib/utils';
 import { AnalyticsCard, MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
-import { ToastContainer } from '../../components/ui';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
 import { useAuth } from '../../hooks/useAuth';
-import { Breadcrumb, type BreadcrumbItem } from '@/components/ui';
+import Breadcrumb, { type BreadcrumbItem } from '@/components/ui/Breadcrumb';
 
 // Impor komponen standardisasi hardening terpusat tingkat layout
 import { InfraErrorBoundary } from '../superadmin/infra/InfraErrorBoundary';
@@ -55,7 +54,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 }) => {
   const { setInstructionData } = useInstruction();
   const { isAdmin, user } = useAuth();
-  const { toasts, removeToast } = useToast();
+
 
   // Resolve key secara otomatis berdasarkan URL browser jika tidak dilewatkan secara manual
   const resolvedKey = useMemo(() => {
@@ -165,8 +164,6 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
   return (
     <div className="px-4 pt-2 pb-6 space-y-4 max-w-full overflow-x-hidden relative">
-      {/* Global Academic Toast */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Responsive Breadcrumbs */}
       {(breadcrumbs === undefined || breadcrumbs.length > 0) && (

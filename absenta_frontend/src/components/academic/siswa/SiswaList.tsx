@@ -23,7 +23,7 @@ import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils'
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess } from '../../../api/academic/siswa.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -82,7 +82,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  const { showToast } = useToast();
+
   const { can, user, hasPermissionCode, isLoading } = useAuth();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -168,15 +168,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data siswa', 'error');
+        toast.error('Gagal memuat data siswa');
       }
     } catch (error) {
       console.error('Error fetching siswas:', error);
-      showToast('Terjadi kesalahan saat memuat data siswa', 'error');
+      toast.error('Terjadi kesalahan saat memuat data siswa');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage, filterKelas, filterStatus, filterGender]);
+  }, [itemsPerPage, filterKelas, filterStatus, filterGender]);
 
   const handleDeleteAll = useCallback(async () => {
     const ok = await confirm({
@@ -214,35 +214,35 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
     try {
       setLoading(true);
-      showToast('Sedang menghapus seluruh data siswa...', 'info');
+      toast('Sedang menghapus seluruh data siswa...', { icon: 'ℹ️' });
       const res = await deleteAllSiswa();
       if (res.success) {
-        showToast(res.message, 'success');
+        toast.success(res.message);
         // Reset pagination and selection
         setCurrentPage(1);
         setSelectedIds(new Set());
         fetchSiswas(1, '');
       } else {
-        showToast(res.message || 'Gagal menghapus data', 'error');
+        toast.error(res.message || 'Gagal menghapus data');
       }
     } catch (error: any) {
       console.error('Delete all error:', error);
-      showToast(error?.message || 'Terjadi kesalahan saat menghapus data', 'error');
+      toast.error(error?.message || 'Terjadi kesalahan saat menghapus data');
     } finally {
       setLoading(false);
     }
-  }, [confirm, showToast, fetchSiswas, totalItems]);
+  }, [confirm, fetchSiswas, totalItems]);
 
   const handleSendParentAccess = useCallback(async (siswa: Siswa) => {
     // Check local data if available
     if (siswa.OrangTua && Array.isArray(siswa.OrangTua)) {
       if (siswa.OrangTua.length === 0) {
-        showToast('Siswa belum memiliki data Orang Tua', 'error');
+      toast.error('Siswa belum memiliki data Orang Tua');
         return;
       }
       const hasPhone = siswa.OrangTua.some(p => p.no_hp);
       if (!hasPhone) {
-        showToast('Orang Tua tidak memiliki nomor HP', 'error');
+      toast.error('Orang Tua tidak memiliki nomor HP');
         return;
       }
     }
@@ -267,23 +267,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     if (!ok) return;
 
     try {
-      showToast('Mengirim akses...', 'info'); 
+      toast('Mengirim akses...', { icon: 'ℹ️' });
       const res = await sendParentAccess(siswa.id);
       if (res.success) {
         if (res.data && res.data.nama && res.data.phone) {
-          showToast(`Akses berhasil dikirim ke ${res.data.nama} (${res.data.phone})`, 'success');
+          toast.success(`Akses berhasil dikirim ke ${res.data.nama} (${res.data.phone})`);
         } else {
-          showToast('Akses Orang Tua berhasil dikirim', 'success');
+          toast.success('Akses Orang Tua berhasil dikirim');
         }
       } else {
-        showToast(res.message || 'Gagal mengirim akses', 'error');
+        toast.error(res.message || 'Gagal mengirim akses');
       }
     } catch (error: any) {
       console.error('Error sending access:', error);
       const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
-  }, [confirm, showToast]);
+  }, [confirm]);
 
   // Effect for search and filters
   useEffect(() => {
@@ -384,19 +384,19 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       const response = await deleteSiswa(siswa.id);
       
       if (response.success) {
-        showToast(response.message || 'Siswa berhasil dihapus', 'success');
+        toast.success(response.message || 'Siswa berhasil dihapus');
         fetchSiswas(currentPage, searchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus siswa', 'error');
+        toast.error(response.message || 'Gagal menghapus siswa');
       }
     } catch (error: any) {
       console.error('Error deleting siswa:', error);
-      showToast(error.response?.data?.message || 'Terjadi kesalahan saat menghapus siswa', 'error');
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus siswa');
     } finally {
       setDeleting(false);
       setLoading(false);
     }
-  }, [confirm, showToast, fetchSiswas, currentPage, searchTerm]);
+  }, [confirm, fetchSiswas, currentPage, searchTerm]);
 
 
   // Format status badge
@@ -543,9 +543,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       if (failed.length > 0) {
         setBulkErrorDetails(failed);
         setBulkErrorModalOpen(true);
-        showToast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, 'warning');
+        toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
       } else {
-        showToast(`Berhasil menghapus ${succeeded.length} siswa`, 'success');
+        toast.success(`Berhasil menghapus ${succeeded.length} siswa`);
       }
       const next = new Set<string>(selectedIds);
       (succeeded || []).forEach(id => next.delete(id));
@@ -553,11 +553,11 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       fetchSiswas(currentPage, searchTerm);
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
-      showToast(msg, 'error');
+      toast.error(msg);
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedIds, showToast, siswas, fetchSiswas, currentPage, searchTerm]);
+  }, [selectedIds, siswas, fetchSiswas, currentPage, searchTerm]);
 
   // Don't render if user doesn't have permission to view
   if (!canView) {

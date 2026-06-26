@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SectionCard } from '../../components/ui';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Alert } from '../../components/ui/Alert';
 import { Table } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
 import { Input } from '../../components/ui/Input';
@@ -11,14 +9,18 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { getSiswaList, syncSiswaAkademik, getAcademicRegistrationStats, checkAcademicStatus } from '../../api/academic/siswa.api';
 import { getKelasForDropdown, getActiveTahunPelajaran, getActiveSemester, getTahunPelajaranForDropdown, getSemesterByTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { Siswa, TahunPelajaran, Semester, Kelas } from '../../types/academic';
-import { RefreshCw, CheckCircle2, XCircle, Search, History, Info, AlertCircle, Pencil, Sparkles, LayoutDashboard, ArrowUpCircle, Users } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, Search, History, Pencil, RefreshCw as RefreshIcon, ArrowUpCircle, Users } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Progress } from '../../components/ui/Progress';
 import Tooltip from '../../components/ui/Tooltip';
 import { Loader } from '../../components/ui/Loader';
+
+// Internal Components
+import { RegistrationPeriodControl } from '../../components/academic/registrasi-siswa/RegistrationPeriodControl';
+import { RegistrationSyncCard } from '../../components/academic/registrasi-siswa/RegistrationSyncCard';
+import { RegistrationSyncResult } from '../../components/academic/registrasi-siswa/RegistrationSyncResult';
 
 // Lazy load Modal dan Komponen Berat
 const Modal = lazy(() => import('../../components/ui/Modal').then(module => ({ default: module.Modal })));
@@ -31,7 +33,7 @@ const RegistrasiSiswaPage: React.FC = () => {
   const canManage = useMemo(() => can('academic.students.update'), [can]);
   const canView = useMemo(() => can('academic.students.view.list'), [can]);
 
-  const { showToast } = useToast();
+
   const [siswas, setSiswas] = useState<Siswa[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -115,7 +117,7 @@ const RegistrasiSiswaPage: React.FC = () => {
       setCurrentPage(res?.pagination?.page || page);
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal memuat data siswa';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     }
     finally { setLoading(false); }
   }, [itemsPerPage, debouncedSearchTerm, selectedKelasId]);
@@ -156,19 +158,19 @@ const RegistrasiSiswaPage: React.FC = () => {
     {
       title: "Total Siswa Aktif",
       value: globalStats?.total_active || 0,
-      icon: <Users size={14} />,
+      icon: <Users size={14} className="text-white" />,
       gradient: "from-blue-500 to-indigo-600"
     },
     {
       title: "Sudah Terdaftar",
       value: globalStats?.registered || 0,
-      icon: <CheckCircle2 size={14} />,
+      icon: <CheckCircle2 size={14} className="text-white" />,
       gradient: "from-emerald-500 to-teal-600"
     },
     {
       title: "Belum Terdaftar",
       value: Math.max(0, (globalStats?.total_active || 0) - (globalStats?.registered || 0)),
-      icon: <XCircle size={14} />,
+      icon: <XCircle size={14} className="text-white" />,
       gradient: "from-rose-500 to-pink-600"
     }
   ], [globalStats]);
@@ -245,11 +247,6 @@ const RegistrasiSiswaPage: React.FC = () => {
     finally { setSyncLoading(false); }
   };
 
-  const registrationPercentage = useMemo(() => {
-    if (!globalStats?.total_active) return 0;
-    return Math.round((globalStats.registered / globalStats.total_active) * 100);
-  }, [globalStats]);
-
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },
     { label: 'Registrasi Siswa' },
@@ -322,7 +319,7 @@ const RegistrasiSiswaPage: React.FC = () => {
         title="Refresh Data"
         disabled={loading}
       >
-        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+        <RefreshIcon className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
       </Button>
     </div>
   );
@@ -340,7 +337,7 @@ const RegistrasiSiswaPage: React.FC = () => {
         items: [
           { text: "Pilih Tahun Pelajaran dan Semester yang ingin dikelola pada bilah kontrol di bawah." },
           { text: "Klik tombol 'Aktivasi & Daftarkan Siswa' untuk mendaftarkan siswa secara massal ke periode terpilih." },
-          { text: "Lakukan sinkronisasi ulang setiap kali ada penambahan siswa baru di menu Biodata." }
+          { text: "Lakukan sinkronisasi ulang setiap kali ada penambahan siswa baru di menu Biodata Induk." }
         ]
       }}
       canView={canView}
@@ -348,110 +345,31 @@ const RegistrasiSiswaPage: React.FC = () => {
       hardeningModuleKey="registrasisiswapage"
     >
       <div className="flex flex-col bg-transparent">
-        {/* 1. Control Bar - Period Selection */}
-        <div className="px-6 py-3 bg-white/40 dark:bg-slate-900/20 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 rounded-xl px-4 py-1 border border-slate-200/60 dark:border-slate-800 shadow-sm">
-              <History size={14} className="text-slate-400 mr-2" />
-              <SearchableSelect
-                triggerClassName="h-8 text-[11px] w-40 border-none bg-transparent shadow-none font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight"
-                value={selectedYearId}
-                onValueChange={setSelectedYearId}
-                options={yearOptions}
-                placeholder="Tahun"
-              />
-              <div className="w-[1px] h-4 bg-slate-100 dark:bg-slate-800 mx-2" />
-              <SearchableSelect
-                triggerClassName="h-8 text-[11px] w-36 border-none bg-transparent shadow-none font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight"
-                value={selectedSemesterId}
-                onValueChange={setSelectedSemesterId}
-                options={semesterOptions}
-                placeholder="Semester"
-              />
-            </div>
+        <RegistrationPeriodControl 
+          selectedYearId={selectedYearId}
+          setSelectedYearId={setSelectedYearId}
+          yearOptions={yearOptions}
+          selectedSemesterId={selectedSemesterId}
+          setSelectedSemesterId={setSelectedSemesterId}
+          semesterOptions={semesterOptions}
+          isActiveContext={isActiveContext}
+          filteredCount={filteredSiswas.length}
+          totalCount={siswas.length}
+        />
 
-            {isActiveContext ? (
-              <div className="flex items-center gap-2 px-3 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Periode Aktif</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 px-3 h-10 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                <History size={14} className="text-slate-500" />
-                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Mode Historis</span>
-              </div>
-            )}
-          </div>
+        <RegistrationSyncCard 
+          needsSync={isActiveContext && needsSync}
+          unregisteredCount={(globalStats?.total_active || 0) - (globalStats?.registered || 0)}
+          onSync={doSyncAkademik}
+          syncLoading={syncLoading}
+        />
 
-          <div className="hidden lg:flex items-center gap-4 bg-white/50 dark:bg-slate-900/50 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-800">
-             <div className="flex flex-col items-end mr-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Cakupan Data</p>
-                <p className="text-xs font-black text-slate-700 dark:text-slate-200">{filteredSiswas.length} / {siswas.length} Siswa</p>
-             </div>
-             <Progress value={(filteredSiswas.length / Math.max(1, siswas.length)) * 100} className="w-20 h-1.5" />
-          </div>
-        </div>
+        <RegistrationSyncResult 
+          syncResult={syncResult}
+          syncError={syncError}
+          onClear={() => { setSyncResult(null); setSyncError(null); }}
+        />
 
-        {/* 2. Action Card - Sync Needed */}
-        {isActiveContext && needsSync && !syncLoading && (
-          <div className="p-4 bg-amber-50/20 dark:bg-amber-900/5 border-b border-amber-100 dark:border-amber-900/20">
-            <SectionCard
-              fullWidth
-              className="p-6 border-2 border-amber-100 dark:border-amber-900/30 shadow-xl shadow-amber-500/5 bg-white/80 dark:bg-slate-900/80"
-              noPadding
-            >
-              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 w-full">
-                <div className="w-16 h-16 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 shrink-0 shadow-md border-2 border-white dark:border-slate-900">
-                  <Sparkles size={32} className="animate-pulse" />
-                </div>
-                
-                <div className="flex-1 text-center md:text-left space-y-1">
-                  <div className="flex flex-col md:flex-row md:items-center gap-2">
-                     <h3 className="text-lg font-black text-slate-900 dark:text-white italic tracking-tight">Sinkronisasi Diperlukan!</h3>
-                     <Badge className="w-fit mx-auto md:mx-0 bg-amber-500 text-white font-black text-[9px] px-2 rounded-full border-none">WAJIB AKTIVASI</Badge>
-                  </div>
-                  <p className="text-[13px] font-medium text-slate-500 max-w-2xl">
-                    Terdapat <span className="text-amber-600 font-black">{(globalStats?.total_active || 0) - (globalStats?.registered || 0)} siswa</span> yang belum terdaftar. Lakukan aktivasi massal sekarang.
-                  </p>
-                </div>
-
-                <Button
-                  onClick={doSyncAkademik}
-                  className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-[0.1em] text-[11px] gap-3 shadow-lg shadow-blue-500/20 hover:scale-102 active:scale-98 transition-all group"
-                >
-                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-700" />
-                  Mulai Aktivasi Massal
-                </Button>
-              </div>
-            </SectionCard>
-          </div>
-        )}
-
-        {/* 3. Sync Results */}
-        {(syncResult || syncError) && (
-          <div className="px-6 py-4 animate-in slide-in-from-top-4 duration-500">
-            <Alert variant={syncError ? 'destructive' : 'default'} className={`rounded-xl border-2 border-dashed ${syncError ? 'bg-rose-50/50 border-rose-100' : 'bg-emerald-50/50 border-emerald-100'} p-5`}>
-              <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${syncError ? 'bg-white text-rose-600' : 'bg-white text-emerald-600'}`}>
-                  {syncError ? <XCircle size={24} /> : <CheckCircle2 size={24} />}
-                </div>
-                <div className="flex-1">
-                  <h5 className={`text-xs font-black uppercase tracking-[0.15em] mb-1 ${syncError ? 'text-rose-700' : 'text-emerald-700'}`}>
-                    {syncError ? 'Operasi Gagal' : 'Aktivasi Berhasil Diselesaikan'}
-                  </h5>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400 leading-normal">
-                    {syncError || `Berhasil mendaftarkan ${syncResult?.created} siswa baru. Data akademik kini sinkron dengan Biodata Induk.`}
-                  </p>
-                </div>
-                <Button size="icon" variant="ghost" onClick={() => { setSyncResult(null); setSyncError(null); }} className="hover:bg-white/50 rounded-full">
-                  <XCircle size={18} className="opacity-40" />
-                </Button>
-              </div>
-            </Alert>
-          </div>
-        )}
-
-        {/* 4. Loading State */}
         {syncLoading && (
           <div className="p-20 flex flex-col items-center justify-center animate-in fade-in duration-500">
             <div className="w-32 h-32 relative mb-10 group">

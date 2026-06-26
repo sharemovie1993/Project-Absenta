@@ -21,7 +21,7 @@ import {
   academicQueryKeys
 } from '../../../api/academic/tahunPelajaran.api';
 import type { TahunPelajaran } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
@@ -47,7 +47,7 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const { showToast } = useToast();
+
   const { user } = useAuth();
 
   // Queries
@@ -75,13 +75,13 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   const activateMutation = useMutation({
     mutationFn: activateTahunPelajaran,
     onSuccess: () => {
-      showToast('Tahun pelajaran berhasil diaktifkan', 'success');
+      toast.success('Tahun pelajaran berhasil diaktifkan');
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.all });
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.stats });
       queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.active });
     },
     onError: (error: Error) => {
-      showToast(error.message || 'Gagal mengaktifkan tahun pelajaran', 'error');
+      toast.error(error.message || 'Gagal mengaktifkan tahun pelajaran');
     }
   });
 
@@ -89,15 +89,15 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
     mutationFn: deleteTahunPelajaran,
     onSuccess: (res) => {
       if (res.success) {
-        showToast(res.message || 'Tahun pelajaran berhasil dihapus', 'success');
+        toast.success(res.message || 'Tahun pelajaran berhasil dihapus');
         queryClient.invalidateQueries({ queryKey: academicQueryKeys.tahunPelajaran.all });
         queryClient.invalidateQueries({ queryKey: academicQueryKeys.stats });
       } else {
-        showToast(res.message || 'Gagal menghapus tahun pelajaran', 'error');
+        toast.error(res.message || 'Gagal menghapus tahun pelajaran');
       }
     },
     onError: (error: Error) => {
-      showToast(error.message || 'Gagal menghapus tahun pelajaran', 'error');
+      toast.error(error.message || 'Gagal menghapus tahun pelajaran');
     }
   });
 
@@ -119,9 +119,9 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
         { header: 'Jumlah Semester', accessor: (row) => row._count?.Semester || 0, width: 20 }
       ], 'Laporan_Tahun_Pelajaran', 'DATA TAHUN PELAJARAN');
     } catch (error: any) {
-      showToast(error.message || 'Gagal mengekspor data', 'warning');
+      toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [tahunPelajarans, showToast]);
+  }, [tahunPelajarans]);
 
   const { executeBulk, isExecuting: isBulkDeleting } = useBulkAction();
 

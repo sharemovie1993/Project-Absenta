@@ -181,6 +181,7 @@ export default function ServiceCenterPage() {
       if (!res.success) throw new Error(res.message || 'Gagal memuat langganan');
       return res.data as SubscriptionData;
     },
+    enabled: !!tenantId,
     staleTime: 1000 * 60 * 5,
   });
 
@@ -347,23 +348,20 @@ export default function ServiceCenterPage() {
       if (res.success && res.data?.token) {
         const token = res.data.token;
         
-        // 1. Jika mode forceDocument, langsung ke halaman kertas putih
         if (forceDocument) {
           navigate(`/invoice/public/${token}`);
           return;
         }
 
-        // 2. DOUBLE CHECK: Ambil data publik invoice lengkap untuk cek transaksi aktif
         try {
           const publicRes = await axiosInstance.get(`/invoice/public/${token}`, {
             baseURL: resolvePublicApiBaseUrl(),
             headers: { Accept: 'application/json' }
           });
           
-          const fullInv = publicRes.data?.data;
+          const fullInv = publicRes.data?.data as Invoice & { active_transaction?: { status: string; reference: string } };
           const activeTx = fullInv?.active_transaction;
 
-          // SMART LOGIC: Jika ada transaksi PENDING, langsung ke instruksi
           if (activeTx && activeTx.status === 'PENDING' && activeTx.reference) {
             toast.success('Melanjutkan transaksi aktif...');
             navigate(`/payment/public/${token}/instruction?ref=${encodeURIComponent(activeTx.reference)}`);
@@ -371,10 +369,8 @@ export default function ServiceCenterPage() {
           }
         } catch (checkError) {
           console.error('Gagal verifikasi transaksi aktif:', checkError);
-          // Jika gagal cek, biarkan lanjut ke flow normal
         }
 
-        // 3. Fallback: Normal redirect to unified invoice page (DOCUMENT VIEW)
         navigate(`/invoice/public/${token}`);
       } else if (res.success && res.data?.url) {
         window.open(res.data.url, '_blank');

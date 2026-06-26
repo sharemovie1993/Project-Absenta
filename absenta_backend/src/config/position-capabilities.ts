@@ -230,25 +230,36 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.petugas',
     'dashboard.view.overview',
     'core.tenants.view.detail',
+    // ─── Referensi Akademik ───────────────────────────────────────────
     'academic.students.view.list',
     'academic.students.view.detail',
-    'academic.teachers.view.list', // Tambahan: Referensi Dropdown Guru
-    'academic.subjects.view.list', // Tambahan: Referensi Dropdown Mapel
-    'academic.structures.view.list', // Tambahan: Referensi Dropdown Kelas
+    'academic.teachers.view.list',       // Dropdown Guru saat buat jadwal
+    'academic.subjects.view.list',        // Dropdown Mapel saat buat jadwal
+    'academic.structures.view.list',      // Dropdown Kelas saat buat jadwal
     'academic.teaching.view',
+    // ─── Template Jadwal (CRUD penuh) ────────────────────────────────
     'attendance.schedules.view.list',
     'attendance.schedules.manage',
     'attendance.schedules.create',
     'attendance.schedules.update',
     'attendance.schedules.delete',
+    // ─── Sesi Absensi (CRUD penuh) ───────────────────────────────────
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
     'attendance.sessions.create',
     'attendance.sessions.update',
     'attendance.sessions.delete',
-    'attendance.sessions.update.attendance',
-    'attendance.sessions.tap',
-    'attendance.sessions.update.journal',
+    'attendance.sessions.close',          // Tutup sesi absensi
+    'attendance.sessions.update.attendance', // Koreksi status kehadiran
+    'attendance.sessions.tap',            // Scan siswa
+    'attendance.sessions.update.journal', // Isi jurnal KBM
+    // ─── Kejadian Khusus (libur/kegiatan) ───────────────────────────
+    'attendance.events.view.list',        // Lihat daftar kejadian khusus
+    'attendance.events.create',           // Catat hari libur/kegiatan
+    'attendance.events.delete',           // Hapus kejadian khusus
+    // ─── Notifikasi & Laporan ────────────────────────────────────────
+    'attendance.notifications.send',      // Kirim notif WA saat sesi dibuat
+    'attendance.reports.view',            // Lihat feed & rekap
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.monitoring.view.live.status',
@@ -274,6 +285,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'hubin.guidance.manage',
     'hubin.logbook.manage',
     'hubin.tefa.manage',
+    'hubin.bkk.manage',
+    'hubin.lamaran.manage',
     'reports.hubin.view'
   ],
   [STRUKTUR_CODES.SARPRAS]: [
@@ -281,8 +294,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.sarpras',
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
     'sarpras.loans.view.list',
     'sarpras.loans.manage',
+    'sarpras.loans.request',
     'sarpras.repairs.view.list',
     'sarpras.repairs.manage'
   ],
@@ -291,8 +307,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.sarpras',
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
     'sarpras.loans.view.list',
     'sarpras.loans.manage',
+    'sarpras.loans.request',
     'sarpras.repairs.view.list',
     'sarpras.repairs.manage'
   ],
@@ -352,8 +371,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.sarpras',
     'sarpras.inventory.view.list',
     'sarpras.inventory.manage',
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
     'sarpras.loans.view.list',
     'sarpras.loans.manage',
+    'sarpras.loans.request',
     'sarpras.repairs.view.list',
     'sarpras.repairs.manage'
   ],
@@ -379,6 +401,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list', // Tambahan: Kaprog pantau siswa di jurusannya
     'dashboard.view.hubin',
     'hubin.pkl.view.list',
+    'hubin.pkl.manage',
     'hubin.absensi.view.history',
     'hubin.absensi.recap',
     'hubin.mou.view.list',

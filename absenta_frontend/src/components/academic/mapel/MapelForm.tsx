@@ -9,7 +9,7 @@ import {
   ModalFooter
 } from '../../ui';
 import { createMapel, updateMapel, getMapelDetail, type CreateMapelPayload, type UpdateMapelPayload } from '../../../api/academic/mapel.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { createMapelSchema, type CreateMapelSchema } from '../../../schemas/academic/mapel.schema';
 
 // Modular Sections
@@ -48,7 +48,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
 
-  const { showToast } = useToast();
+
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -121,10 +121,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
       }
 
       if (response.success) {
-        showToast(
-          isEditMode ? 'Mata pelajaran berhasil diperbarui' : 'Mata pelajaran berhasil dibuat',
-          'success'
-        );
+        toast.success(isEditMode ? 'Mata pelajaran berhasil diperbarui' : 'Mata pelajaran berhasil dibuat');
         onSuccess?.();
       } else {
         setSubmitError(response.message || 'Terjadi kesalahan saat menyimpan data');

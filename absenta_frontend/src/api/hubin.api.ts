@@ -68,7 +68,27 @@ export interface HubinLamaran {
   Siswa?: {
     nama_siswa: string;
     nis: string;
+    no_hp?: string | null;
+    User?: {
+      email: string;
+    } | null;
   };
+  Logs?: HubinLamaranLog[];
+}
+
+export interface HubinLamaranLog {
+  id: string;
+  lamaran_id: string;
+  status_dari?: string | null;
+  status_ke: string;
+  catatan?: string | null;
+  interview_tanggal?: string | null;
+  interview_lokasi?: string | null;
+  interview_link?: string | null;
+  interview_pesan?: string | null;
+  interview_narahubung?: string | null;
+  created_by?: string | null;
+  created_at: string;
 }
 
 export interface HubinTracerStudy {
@@ -111,6 +131,10 @@ export interface SiswaPkl {
   tanggal_selesai?: string;
   status: string;
   pembimbing_id?: string;
+  lat_override?: number | null;
+  lon_override?: number | null;
+  radius_override?: number | null;
+  is_flexible_location?: boolean;
   Siswa: { 
     nama_siswa: string; 
     nis: string; 
@@ -147,8 +171,16 @@ export interface AbsensiPkl {
   kegiatan?: string;
   image_url?: string;
   image_url_out?: string;
+  latitude_masuk?: number;
+  longitude_masuk?: number;
+  latitude_pulang?: number;
+  longitude_pulang?: number;
+  is_outside_radius?: boolean;
+  distance_meters?: number;
+  address_snapshot?: string;
   is_verified: boolean;
 }
+
 
 export const hubinApi = {
   // Mitra
@@ -163,6 +195,8 @@ export const hubinApi = {
     requestWithFallback<any>('get', '/hubin/penempatan', { params }),
   getMyPenempatan: () => requestWithFallback<any>('get', '/hubin/penempatan/me'),
   createPenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan', { data }),
+  updatePenempatan: (id: string, data: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}`, { data }),
+  bulkCreatePenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/bulk', { data }),
   updatePenilaian: (id: string, nilai: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/nilai`, { data: { nilai } }),
   addKunjungan: (id: string, data: any) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/kunjungan`, { data }),
   deletePenempatan: (id: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}`),
@@ -206,6 +240,12 @@ export const hubinApi = {
   createLamaran: (data: Partial<HubinLamaran>) => requestWithFallback<any>('post', '/hubin/bkk/lamaran', { data }),
   updateLamaranStatus: (id: string, status: string, catatan?: string) => 
     requestWithFallback<any>('put', `/hubin/bkk/lamaran/${id}/status`, { data: { status, catatan } }),
+  scheduleInterview: (id: string, data: { tanggal: string; lokasi?: string; link?: string; pesan?: string; narahubung?: string }) =>
+    requestWithFallback<any>('post', `/hubin/bkk/lamaran/${id}/interview`, { data }),
+  getLamaranTimeline: (id: string) =>
+    requestWithFallback<any>('get', `/hubin/bkk/lamaran/${id}/timeline`),
+  deleteLamaran: (id: string) =>
+    requestWithFallback<any>('delete', `/hubin/bkk/lamaran/${id}`),
 
   // Tracer Study
   getTracerStudy: (params?: { search?: string; tahunLulus?: number; statusAlumni?: string; page?: number; limit?: number }) => 

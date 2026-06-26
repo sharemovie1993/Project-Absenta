@@ -31,7 +31,7 @@ interface SectionCardProps {
 }
 
 export const SectionCard = React.memo<SectionCardProps>(({ children, title, icon: Icon, fullWidth = false }) => (
-  <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm transition-all hover:shadow-md group">
+  <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 overflow-visible shadow-sm transition-all hover:shadow-md group">
     {title && (
       <div className="bg-slate-50/50 dark:bg-slate-800/50 px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
         {Icon && (

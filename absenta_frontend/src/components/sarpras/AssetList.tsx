@@ -45,7 +45,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
   
   const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, assetId: string | null}>({ isOpen: false, assetId: null });
   const [detailModal, setDetailModal] = useState<{isOpen: boolean, assetId: string | null}>({ isOpen: false, assetId: null });
@@ -95,6 +95,7 @@ const AssetList: React.FC<AssetListProps> = ({ onEdit, onView, onAdd, refreshTri
     mutationFn: (id: string) => sarprasApi.deleteAsset(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
     }
   });
 

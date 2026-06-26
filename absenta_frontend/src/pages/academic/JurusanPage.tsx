@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import JurusanList from '../../components/academic/jurusan/JurusanList';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { Jurusan } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { School, Users, Download, Calendar, Layers } from 'lucide-react';
@@ -11,7 +11,7 @@ import { importJurusanFromExcel, downloadJurusanImportTemplate, getJurusanList }
 import { Alert, Card, Button, SectionCard, Loader } from '../../components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { lazy, Suspense, useCallback } from 'react';
 
@@ -32,7 +32,7 @@ export const JurusanPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { showToast } = useToast();
+
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -111,7 +111,7 @@ export const JurusanPage: React.FC = () => {
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan template...', 'info');
+      toast('Menyiapkan template...', { icon: 'ℹ️' });
       await generateAdvancedTemplate(
         [
           { header: 'Nama Jurusan', key: 'nama', width: 35, required: true },
@@ -127,12 +127,12 @@ export const JurusanPage: React.FC = () => {
           ]
         }
       );
-      showToast('Template berhasil diunduh.', 'success');
+      toast.success('Template berhasil diunduh.');
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     }
-  }, [showToast]);
+  }, []);
 
   const handleExport = useCallback(async () => {
     try {
@@ -145,17 +145,17 @@ export const JurusanPage: React.FC = () => {
           { header: 'Kode', accessor: (row: Jurusan) => row.kode || '', width: 15 },
           { header: 'Singkatan', accessor: (row: Jurusan) => row.singkatan || '', width: 15 }
         ], 'Laporan_Jurusan', 'DATA MASTER JURUSAN SEKOLAH');
-        showToast('Data jurusan berhasil diekspor.', 'success');
+        toast.success('Data jurusan berhasil diekspor.');
       } else {
-        showToast('Tidak ada data untuk diekspor.', 'warning');
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
       }
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   const handleOpenImport = useCallback(() => setImportOpen(true), []);
   const handleCloseImport = useCallback(() => setImportOpen(false), []);

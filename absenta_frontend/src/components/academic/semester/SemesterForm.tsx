@@ -12,7 +12,7 @@ import { semesterSchema, type SemesterFormValues } from '../../../schemas/academ
 import { Save, X, RefreshCw } from 'lucide-react';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterDetail, createSemester, updateSemester, type CreateSemesterPayload, type UpdateSemesterPayload } from '../../../api/academic/semester.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { TahunPelajaran } from '../../../types/academic';
 
 // Modular Sections
@@ -43,7 +43,7 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
   const [submitError, setSubmitError] = useState<string>('');
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   
-  const { showToast } = useToast();
+
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -77,14 +77,14 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
         }
       } catch (error) {
         console.error('Error loading tahun pelajaran:', error);
-        showToast('Gagal memuat data tahun pelajaran', 'error');
+        toast.error('Gagal memuat data tahun pelajaran');
       } finally {
         setLoadingTahunPelajaran(false);
       }
     };
 
     loadTahunPelajaran();
-  }, [showToast]);
+  }, []);
 
   // Load semester data for edit/view mode
   useEffect(() => {
@@ -103,25 +103,25 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
       } catch (error) {
         console.error('Error loading semester data:', error);
         setSubmitError('Gagal memuat data semester');
-        showToast('Gagal memuat data semester', 'error');
+        toast.error('Gagal memuat data semester');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadSemesterData();
-  }, [semesterId, mode, reset, showToast]);
+  }, [semesterId, mode, reset]);
 
   const handleActiveChange = useCallback((checked: boolean) => {
     if (checked) {
       if (!watchedTahunPelajaranId) {
-        showToast('Pilih Tahun Pelajaran terlebih dahulu', 'error');
+        toast.error('Pilih Tahun Pelajaran terlebih dahulu');
         return;
       }
 
       const selectedTp = (tahunPelajaranList || []).find(t => t.id === watchedTahunPelajaranId);
       if (!selectedTp?.is_active) {
-        showToast('Semester tidak dapat diaktifkan karena Tahun Pelajaran terpilih tidak aktif', 'error');
+        toast.error('Semester tidak dapat diaktifkan karena Tahun Pelajaran terpilih tidak aktif');
         return;
       }
 
@@ -129,7 +129,7 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
     } else {
       setValue('is_active', false, { shouldDirty: true });
     }
-  }, [watchedTahunPelajaranId, tahunPelajaranList, setValue, showToast]);
+  }, [watchedTahunPelajaranId, tahunPelajaranList, setValue]);
 
   const confirmActivation = useCallback(() => {
     setValue('is_active', true, { shouldDirty: true });
@@ -150,7 +150,7 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
         
         const response = await updateSemester(semesterId, updatePayload);
         if (response.success) {
-          showToast('Semester berhasil diperbarui', 'success');
+          toast.success('Semester berhasil diperbarui');
           onSuccess?.();
         } else {
           setSubmitError(response.message || 'Gagal memperbarui semester');
@@ -164,7 +164,7 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
         
         const response = await createSemester(createPayload);
         if (response.success) {
-          showToast('Semester berhasil dibuat', 'success');
+          toast.success('Semester berhasil dibuat');
           onSuccess?.();
         } else {
           setSubmitError(response.message || 'Gagal membuat semester');
@@ -174,7 +174,7 @@ const SemesterForm: React.FC<SemesterFormProps> = React.memo(({
       console.error('Error submitting semester:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat menyimpan data';
       setSubmitError(errorMessage);
-      showToast(errorMessage, 'error');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

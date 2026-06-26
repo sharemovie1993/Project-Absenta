@@ -3,8 +3,7 @@ import { cn } from '@/lib/utils';
 import { MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
 import { Alert } from '@/components/ui/Alert';
-import { ToastContainer } from '../ui';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui';
 import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
@@ -54,7 +53,7 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
 }) => {
   const { setInstructionData } = useInstruction();
   const { user } = useAuth();
-  const { toasts, removeToast } = useToast();
+
 
   // Set Instruction Panel Content
   useEffect(() => {
@@ -167,8 +166,6 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
 
   return (
     <div className="px-4 pt-2 pb-6 space-y-4 max-w-full overflow-x-hidden relative">
-      {/* Toast Notifikasi Global */}
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Navigasi Breadcrumbs Responsif */}
       {(breadcrumbs === undefined || breadcrumbs.length > 0) && (

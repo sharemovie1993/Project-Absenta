@@ -21,6 +21,7 @@ import {
   type SupportTicketCategory,
   getCategoryLabel
 } from '../../api/support-ticket.api';
+import { type User } from '../../store/authStore';
 import SupportStatusBadge from './SupportStatusBadge';
 import SupportPriorityBadge from './SupportPriorityBadge';
 import SupportChatBubble from './SupportChatBubble';
@@ -32,7 +33,7 @@ export interface SupportFocusModeModalProps {
   selectedTicket: SupportTicket | null;
   messages: SupportTicketMessage[];
   newMessageIds: Set<string>;
-  currentAgent: any;
+  currentAgent: User | null;
   liveUnreadCount: number;
   setLiveUnreadCount: (c: number) => void;
   isScrollAtBottom: boolean;

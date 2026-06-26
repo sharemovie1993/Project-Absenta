@@ -7,7 +7,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 export interface Student {
   id: string;
@@ -22,6 +22,7 @@ export interface Student {
   };
   foto_profile_url?: string;
   status?: string;
+  user_id?: string | null;
 }
 
 interface SmartStudentPickerProps {
@@ -75,7 +76,7 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
   const zxingReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const scannerControlsRef = useRef<{ stop: () => void } | null>(null);
   const hidTimerRef = useRef<number | null>(null);
-  const { error: toastError } = useToast();
+
 
   // Combine external ref and internal ref
   const combinedRef = (node: HTMLInputElement) => {
@@ -237,7 +238,7 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
     } catch (err) {
       console.error('[SmartStudentPicker] Failed to start QR scanner', err);
       setScannerStatus('error');
-      toastError('Gagal mengakses kamera');
+      toast.error('Gagal mengakses kamera');
     }
   };
 

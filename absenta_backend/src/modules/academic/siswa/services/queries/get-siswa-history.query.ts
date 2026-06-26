@@ -11,12 +11,18 @@ export async function getSiswaHistoryQuery(
 
   // Apply Isolate/Scope filter from Organization Engine
   if (org && org.tenant_wide !== true) {
-    const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-    if (allowed.length > 0) {
-      siswaWhere.kelas_id = { in: allowed };
+    if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+      siswaWhere.Kelas = {
+        jurusan_id: { in: org.unit_ids }
+      };
     } else {
-        // No assigned classes, deny access to specific siswa history
-        throw new Error('Siswa not found');
+      const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+      if (allowed.length > 0) {
+        siswaWhere.kelas_id = { in: allowed };
+      } else {
+          // No assigned classes, deny access to specific siswa history
+          throw new Error('Siswa not found');
+      }
     }
   }
 

@@ -28,7 +28,7 @@ import {
 } from '@/api/academic/strukturOrganisasi.api';
 import type { Guru, Siswa } from '@/types/academic';
 import type { StrukturOrganisasi } from '@/api/academic/strukturOrganisasi.api';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 
 interface GlobalAssignmentModalProps {
   isOpen: boolean;
@@ -48,7 +48,7 @@ export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [jurusanOptions, setJurusanOptions] = useState<{ label: string; value: string }[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+
   const [assignmentTab, setAssignmentTab] = useState<'GURU' | 'SISWA'>('GURU');
   const [selectedStrukturForForm, setSelectedStrukturForForm] = useState<string>('');
   const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
@@ -119,32 +119,32 @@ export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = ({
 
   const handleSaveGlobalAssignment = async () => {
     if (assignmentTab === 'GURU' && !selectedStrukturForForm) {
-      showErrorToast('Silakan pilih struktur terlebih dahulu');
+      toast.error('Silakan pilih struktur terlebih dahulu');
       return;
     }
 
     if (assignmentTab === 'GURU' && !selectedGuruIdForForm) {
-      showErrorToast('Silakan pilih guru yang akan ditugaskan');
+      toast.error('Silakan pilih guru yang akan ditugaskan');
       return;
     }
 
     if (assignmentTab === 'GURU' && selectedStruktur?.kode === 'WALIKELAS' && !selectedKelasIdForGuruForm) {
-      showErrorToast('Silakan pilih kelas untuk penugasan wali kelas');
+      toast.error('Silakan pilih kelas untuk penugasan wali kelas');
       return;
     }
 
     if (assignmentTab === 'SISWA' && !selectedKelasIdForSiswaForm) {
-      showErrorToast('Silakan pilih kelas terlebih dahulu');
+      toast.error('Silakan pilih kelas terlebih dahulu');
       return;
     }
 
     if (assignmentTab === 'SISWA' && !selectedStrukturForForm) {
-      showErrorToast('Struktur Petugas Kelas untuk kelas ini belum tersedia');
+      toast.error('Struktur Petugas Kelas untuk kelas ini belum tersedia');
       return;
     }
 
     if (assignmentTab === 'SISWA' && !selectedSiswaIdForForm) {
-      showErrorToast('Silakan pilih siswa yang akan ditugaskan');
+      toast.error('Silakan pilih siswa yang akan ditugaskan');
       return;
     }
 
@@ -177,19 +177,19 @@ export const GlobalAssignmentModal: React.FC<GlobalAssignmentModalProps> = ({
           kelas_id: selectedKelasIdForGuruForm || (selectedStruktur as any)?.kelas_id,
           start_date: assignmentStartDate
         });
-        showSuccessToast('Penugasan guru berhasil disimpan');
+        toast.success('Penugasan guru berhasil disimpan');
       } else {
         await assignSiswaToStruktur(selectedStrukturForForm, {
           siswa_id: selectedSiswaIdForForm,
           kelas_id: selectedKelasIdForSiswaForm,
           start_date: assignmentStartDate
         });
-        showSuccessToast('Penugasan siswa berhasil disimpan');
+        toast.success('Penugasan siswa berhasil disimpan');
       }
       onSuccess();
       onClose();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menyimpan penugasan');
+      toast.error(error?.message || 'Gagal menyimpan penugasan');
     } finally {
       setIsSavingAssignment(false);
     }

@@ -4,7 +4,7 @@ import { Button, Modal, ModalFooter, Table, Pagination, Badge, Input } from '../
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Plus, Trash2, Search } from 'lucide-react';
 import useConfirm from '../../../hooks/useConfirm';
-import { useToast } from '../../../hooks/useToast';
+import { toast } from 'react-hot-toast';
 import { getPetugasList, assignPetugas, unassignPetugas } from '../../../api/attendance/petugas.api';
 import type { PetugasResponse } from '../../../api/attendance/petugas.api';
 import { getSiswaList } from '../../../api/academic/siswa.api';
@@ -16,7 +16,6 @@ import { useDebounce } from '../../../hooks/useDebounce';
 export default function PetugasList() {
   const { user } = useAuthStore();
   const confirm = useConfirm();
-  const { showToast } = useToast();
 
   // State for Petugas List
   const [petugas, setPetugas] = useState<PetugasResponse[]>([]);
@@ -56,7 +55,7 @@ export default function PetugasList() {
       }
     } catch (error) {
       console.error('Failed to fetch petugas:', error);
-      showToast('Gagal memuat daftar petugas', 'error');
+      toast.error('Gagal memuat daftar petugas');
     } finally {
       setLoading(false);
     }
@@ -79,7 +78,7 @@ export default function PetugasList() {
       }
     } catch (error) {
       console.error('Failed to fetch kelas:', error);
-      showToast('Gagal memuat daftar kelas', 'error');
+      toast.error('Gagal memuat daftar kelas');
     }
   };
 
@@ -98,7 +97,7 @@ export default function PetugasList() {
       }
     } catch (error) {
       console.error('Failed to fetch siswa:', error);
-      showToast('Gagal memuat daftar siswa', 'error');
+      toast.error('Gagal memuat daftar siswa');
     } finally {
       setLoadingSiswa(false);
     }
@@ -131,14 +130,14 @@ export default function PetugasList() {
         kelas_id: selectedKelas
       });
       if (res.success) {
-        showToast('Petugas berhasil ditambahkan', 'success');
+        toast.success('Petugas berhasil ditambahkan');
         setIsModalOpen(false);
         fetchPetugas();
       } else {
-        showToast(res.message || 'Gagal menambahkan petugas', 'error');
+        toast.error(res.message || 'Gagal menambahkan petugas');
       }
     } catch (error: any) {
-      showToast(error?.message || 'Terjadi kesalahan', 'error');
+      toast.error(error?.message || 'Terjadi kesalahan');
     } finally {
       setSubmitting(false);
     }
@@ -157,11 +156,11 @@ export default function PetugasList() {
       try {
         const res = await unassignPetugas(id);
         if (res.success) {
-          showToast('Petugas berhasil dihapus', 'success');
+          toast.success('Petugas berhasil dihapus');
           fetchPetugas();
         }
       } catch (error: any) {
-        showToast(error?.message || 'Gagal menghapus petugas', 'error');
+        toast.error(error?.message || 'Gagal menghapus petugas');
       }
     }
   };

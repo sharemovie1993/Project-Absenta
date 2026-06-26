@@ -11,7 +11,7 @@ import { createGuru, updateGuru, getGuruDetail, type CreateGuruPayload, type Upd
 import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/academic/guru-mapel.api';
 import { guruSchema, type GuruFormValues } from '../../../schemas/academic/guru.schema';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 // Modular Sections
 import { PersonalSection } from './form/PersonalSection';
@@ -46,7 +46,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
 }) => {
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
-  const { showToast } = useToast();
+
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -224,7 +224,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
         }
       }
 
-      showToast(isEditMode ? 'Data guru berhasil diperbarui' : 'Guru baru berhasil ditambahkan', 'success');
+      toast.success(isEditMode ? 'Data guru berhasil diperbarui' : 'Guru baru berhasil ditambahkan');
       onSuccess?.();
     } catch (error: any) {
       console.error('Error submitting form:', error);

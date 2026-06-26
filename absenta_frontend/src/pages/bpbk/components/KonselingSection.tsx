@@ -9,7 +9,7 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { useAuth } from '../../../hooks/useAuth';
 import { Search, Plus, Edit2, Trash2, Calendar, Clipboard, UserCheck, MessageSquare, RotateCcw } from 'lucide-react';
@@ -40,7 +40,7 @@ export const KonselingSection: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
   const { can } = useAuth();
 
@@ -140,59 +140,59 @@ export const KonselingSection: React.FC = () => {
     try {
       const res = await bpbkApi.deleteKonseling(id);
       if (res.success) {
-        success('Catatan konseling berhasil dihapus');
+        toast.success('Catatan konseling berhasil dihapus');
         fetchData();
       } else {
-        error(res.message || 'Gagal menghapus catatan');
+        toast.error(res.message || 'Gagal menghapus catatan');
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [confirm, success, error, fetchData]);
+  }, [confirm, fetchData]);
 
   const handleRestore = useCallback(async (id: string) => {
     try {
       const res = await bpbkApi.restoreKonseling(id);
       if (res.success) {
-        success('Catatan konseling berhasil dipulihkan');
+        toast.success('Catatan konseling berhasil dipulihkan');
         fetchData();
       } else {
-        error('Gagal memulihkan catatan');
+        toast.error('Gagal memulihkan catatan');
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Koneksi bermasalah';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [success, error, fetchData]);
+  }, [fetchData]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.siswa_id) {
-      error('Harap pilih siswa terlebih dahulu');
+      toast.error('Harap pilih siswa terlebih dahulu');
       return;
     }
     if (!formData.masalah.trim()) {
-      error('Harap isi deskripsi masalah');
+      toast.error('Harap isi deskripsi masalah');
       return;
     }
 
     try {
       if (selectedId) {
         await bpbkApi.updateKonseling(selectedId, formData);
-        success('Sesi konseling berhasil diperbarui');
+        toast.success('Sesi konseling berhasil diperbarui');
       } else {
         await bpbkApi.createKonseling(formData);
-        success('Sesi konseling baru berhasil dicatat');
+        toast.success('Sesi konseling baru berhasil dicatat');
       }
       setModalOpen(false);
       resetForm();
       fetchData();
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan catatan konseling';
-      error(errorMsg);
+      toast.error(errorMsg);
     }
-  }, [selectedId, formData, success, error, resetForm, fetchData]);
+  }, [selectedId, formData, resetForm, fetchData]);
 
   const columns: Column[] = useMemo(() => [
     {

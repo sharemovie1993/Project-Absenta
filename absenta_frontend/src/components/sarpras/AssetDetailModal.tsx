@@ -41,7 +41,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ isOpen, onCl
 
   // Gating Logic
   const isLocked = subscription?.plan?.name === 'CORE_PLATFORM' || subscription?.Plan?.name === 'CORE_PLATFORM';
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
 
   // 1. Fetch Asset Detail
   const { data: assetData, isLoading: loadingAsset } = useQuery({

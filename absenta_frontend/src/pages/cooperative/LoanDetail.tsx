@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
+import useConfirm from '../../hooks/useConfirm';
 
 import { PrintLoanCard } from '../../components/cooperative/loans/PrintLoanCard';
 import { PrintLoanAgreement } from '../../components/cooperative/loans/PrintLoanAgreement';
@@ -21,15 +22,19 @@ const LoanDetail: React.FC = () => {
   const { user, subscription } = useAuthStore();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   const [loan, setLoan] = useState<LoanDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [printTarget, setPrintTarget] = useState<'CARD' | 'AGREEMENT' | 'RECEIPT' | 'REPAYMENT' | null>(null);
   const [selectedRepayment, setSelectedRepayment] = useState<{ installment: Installment; index: number } | null>(null);
   const [coopSettings, setCoopSettings] = useState<CooperativeSettings | null>(null);
+  const [installmentPage, setInstallmentPage] = useState(1);
+  const installmentLimit = 12;
 
   // Gating Logic
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  const subData = subscription as any;
+  const features = (subData?.features as string[]) || (subData?.Plan as any)?.features_json as string[] || (subData?.plan as any)?.features_json as string[] || [];
   const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
   // Capability checks
@@ -39,15 +44,23 @@ const LoanDetail: React.FC = () => {
 
   const handleUpdateStatus = async (status: 'APPROVED' | 'REJECTED') => {
     const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
-    if (!confirm(`Apakah Anda yakin ingin ${actionLabel} pengajuan pinjaman ini?`)) return;
+    const isConfirmed = await confirm({
+      title: status === 'APPROVED' ? 'Setujui Pengajuan' : 'Tolak Pengajuan',
+      description: `Apakah Anda yakin ingin ${actionLabel} pengajuan pinjaman ini?`,
+      confirmText: status === 'APPROVED' ? 'Setujui' : 'Tolak',
+      cancelText: 'Batal',
+      style: status === 'APPROVED' ? 'success' : 'danger'
+    });
+    if (!isConfirmed) return;
     
     try {
       await api.put(`/cooperative/loans/${id}/status`, { status });
       toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
       fetchDetail(); // Refresh data
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Gagal mengubah status pengajuan');
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      console.error(err);
+      toast.error(err.response?.data?.message || 'Gagal mengubah status pengajuan');
     }
   };
 
@@ -72,7 +85,7 @@ const LoanDetail: React.FC = () => {
     const loadSettings = async () => {
       try {
         const data = await fetchCoopSettings();
-        setCoopSettings(data as any);
+        setCoopSettings(data as CooperativeSettings);
       } catch (error) {
         console.warn('Failed to load cooperative settings:', error);
       }
@@ -96,14 +109,22 @@ const LoanDetail: React.FC = () => {
   }, [printTarget]);
 
   const handlePayInstallment = async (installmentId: string, installmentNo: number) => {
-    if (!confirm(`Konfirmasi pembayaran angsuran ke-${installmentNo}?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Konfirmasi Pembayaran',
+      description: `Konfirmasi pembayaran angsuran ke-${installmentNo}?`,
+      confirmText: 'Bayar',
+      cancelText: 'Batal',
+      style: 'success'
+    });
+    if (!isConfirmed) return;
     
     try {
       await api.post('/cooperative/loans/pay-installment', { installmentId });
       toast.success(`Pembayaran angsuran ke-${installmentNo} berhasil diproses!`);
       fetchDetail(); // Refresh data
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Pembayaran gagal');
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Pembayaran gagal');
     }
   };
 
@@ -124,7 +145,8 @@ const LoanDetail: React.FC = () => {
       },
       { 
         key: 'dueDate', 
-        label: 'Jatuh Tempo', 
+        label: 'Jatuh Tempo',
+        sortable: true, 
         render: (_, row: Installment) => (
           <div className="flex items-center gap-1.5 font-semibold text-slate-600 dark:text-slate-400">
             <Calendar size={13} className="text-slate-400" />
@@ -134,7 +156,8 @@ const LoanDetail: React.FC = () => {
       },
       { 
         key: 'amount', 
-        label: 'Jumlah Tagihan', 
+        label: 'Jumlah Tagihan',
+        sortable: true,
         render: (_, row: Installment) => (
           <span className="font-extrabold text-slate-800 dark:text-slate-100">
             Rp {Math.round(parseFloat(row.amount)).toLocaleString('id-ID')}
@@ -143,7 +166,8 @@ const LoanDetail: React.FC = () => {
       },
       { 
         key: 'status', 
-        label: 'Status', 
+        label: 'Status',
+        sortable: true, 
         render: (_, row: Installment) => (
           <Badge 
             variant={row.status === 'PAID' ? 'success' : 'destructive'} 
@@ -220,6 +244,16 @@ const LoanDetail: React.FC = () => {
         <AcademicPageLayout
           title="Detail Pinjaman Anggota"
           description="Informasi detail pinjaman dan jadwal angsuran"
+          hardeningModuleKey="coop_loandetail"
+          instruction={{
+            title: "Detail Pinjaman Anggota",
+            description: "Halaman ini menampilkan rincian status pinjaman, jadwal angsuran, dan analisis kelayakan kredit anggota koperasi.",
+            items: [
+              { text: "Tinjau informasi pokok pinjaman, bunga, dan tenor pada panel metrik." },
+              { text: "Pengurus dapat menyetujui atau menolak pengajuan yang berstatus PENDING." },
+              { text: "Gunakan tombol cetak untuk menghasilkan kartu kendali, akad, dan kuitansi." }
+            ]
+          }}
           breadcrumbs={breadcrumbs}
         >
           <div className="flex justify-center items-center h-64">
@@ -236,6 +270,16 @@ const LoanDetail: React.FC = () => {
         <AcademicPageLayout
           title="Detail Pinjaman Anggota"
           description="Informasi detail pinjaman dan jadwal angsuran"
+          hardeningModuleKey="coop_loandetail"
+          instruction={{
+            title: "Detail Pinjaman Anggota",
+            description: "Halaman ini menampilkan rincian status pinjaman, jadwal angsuran, dan analisis kelayakan kredit anggota koperasi.",
+            items: [
+              { text: "Tinjau informasi pokok pinjaman, bunga, dan tenor pada panel metrik." },
+              { text: "Pengurus dapat menyetujui atau menolak pengajuan yang berstatus PENDING." },
+              { text: "Gunakan tombol cetak untuk menghasilkan kartu kendali, akad, dan kuitansi." }
+            ]
+          }}
           breadcrumbs={breadcrumbs}
         >
           <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-150 dark:border-slate-800 rounded-2xl">
@@ -254,6 +298,16 @@ const LoanDetail: React.FC = () => {
       <AcademicPageLayout
         title="Detail Angsuran & Pinjaman"
         description="Rincian status kelayakan, total tagihan, dan rekonsiliasi pembayaran cicilan"
+        hardeningModuleKey="coop_loandetail"
+        instruction={{
+          title: "Detail Pinjaman Anggota",
+          description: "Halaman ini menampilkan rincian status pinjaman, jadwal angsuran, dan analisis kelayakan kredit anggota koperasi.",
+          items: [
+            { text: "Tinjau informasi pokok pinjaman, bunga, dan tenor pada panel metrik." },
+            { text: "Pengurus dapat menyetujui atau menolak pengajuan yang berstatus PENDING." },
+            { text: "Gunakan tombol cetak untuk menghasilkan kartu kendali, akad, dan kuitansi." }
+          ]
+        }}
         breadcrumbs={breadcrumbs}
       >
         <div className="space-y-6 animate-in fade-in duration-300 print:hidden">
@@ -426,7 +480,7 @@ const LoanDetail: React.FC = () => {
                     <div className="pt-2">
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2">Rincian Saldo Simpanan</p>
                       <div className="flex flex-wrap gap-2">
-                        {loan.member.savingsBreakdown.map((s, idx) => (
+                        {loan.member.savingsBreakdown?.map((s, idx) => (
                           <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] rounded-lg border font-bold"
                             style={s.color ? { color: s.color, borderColor: `${s.color}40`, backgroundColor: `${s.color}10` } : {
                               color: '#475569', borderColor: '#e2e8f0', backgroundColor: '#f8fafc'
@@ -511,10 +565,18 @@ const LoanDetail: React.FC = () => {
               </div>
 
               <Table 
-                data={loan.installments}
+                data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
                 columns={installmentColumns}
                 rowKey="id"
                 emptyMessage="Tidak ada data jadwal angsuran terdaftar."
+                pagination={{
+                  currentPage: installmentPage,
+                  itemsPerPage: installmentLimit,
+                  totalItems: loan.installments.length,
+                  totalPages: Math.ceil(loan.installments.length / installmentLimit),
+                  onPageChange: (newPage) => setInstallmentPage(newPage),
+                  onLimitChange: () => {}
+                }}
               />
             </SectionCard>
           </div>

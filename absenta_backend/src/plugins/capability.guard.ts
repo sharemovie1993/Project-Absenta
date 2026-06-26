@@ -61,6 +61,12 @@ export const capabilityGuard = fp(async (fastify: any) => {
       const capabilities = await getTenantCapabilities(tenantId);
       
       if (!capabilities.includes(config.capability)) {
+        // ALLOW trial mode access for ABSENSI, KOPERASI, HUBIN, and SARPRAS
+        const trialAllowedModules = ['ABSENSI', 'KOPERASI', 'HUBIN', 'SARPRAS'];
+        if (trialAllowedModules.includes(config.capability)) {
+          return; // Proceed to endpoint
+        }
+
         return reply.code(403).send({
           code: 'FORBIDDEN_CAPABILITY',
           message: `Tenant does not have access to module: ${config.capability}`,

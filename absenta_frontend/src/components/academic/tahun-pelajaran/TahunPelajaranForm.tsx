@@ -20,7 +20,7 @@ import {
   type UpdateTahunPelajaranPayload 
 } from '../../../api/academic/tahunPelajaran.api';
 import type { TahunPelajaran } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { createTahunPelajaranSchema, type CreateTahunPelajaranSchema } from '../../../schemas/academic/tahun-pelajaran.schema';
 
 // Modular Sections
@@ -45,7 +45,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
   const [activeYear, setActiveYear] = useState<TahunPelajaran | null>(null);
   
   const confirm = useConfirm();
-  const { showToast } = useToast();
+
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
 
@@ -92,14 +92,14 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
         });
       } catch (error) {
         console.error('Error loading tahun pelajaran:', error);
-        showToast('Gagal memuat data tahun pelajaran', 'error');
+        toast.error('Gagal memuat data tahun pelajaran');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadTahunPelajaranData();
-  }, [tahunPelajaranId, mode, showToast, reset]);
+  }, [tahunPelajaranId, mode, reset]);
 
   const onFormSubmit = useCallback(async (data: CreateTahunPelajaranSchema) => {
     if (isViewMode) return;
@@ -152,14 +152,13 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
         if (needsActivation) {
            const activateRes = await activateTahunPelajaran(targetId);
            if (!activateRes.success) {
-             showToast('Data tersimpan tapi gagal mengaktifkan tahun pelajaran', 'warning');
+             toast('Data tersimpan tapi gagal mengaktifkan tahun pelajaran', { icon: '⚠️' });
            }
         }
       }
 
-      showToast(
-        isEditMode ? 'Tahun pelajaran berhasil diperbarui' : 'Tahun pelajaran berhasil dibuat',
-        'success'
+      toast.success(
+        isEditMode ? 'Tahun pelajaran berhasil diperbarui' : 'Tahun pelajaran berhasil dibuat'
       );
       onSuccess?.();
     } catch (error: any) {
@@ -172,7 +171,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
     } finally {
       setLoading(false);
     }
-  }, [isViewMode, activeYear, isEditMode, tahunPelajaranId, confirm, showToast, onSuccess]);
+  }, [isViewMode, activeYear, isEditMode, tahunPelajaranId, confirm, onSuccess]);
 
   if (loadingData) {
     return (

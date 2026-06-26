@@ -56,8 +56,8 @@ export default defineConfig(({ mode }) => {
       strictPort: false,
       cors: true,
       hmr: {
-        protocol: 'wss',
-        port: 5173,
+        protocol: env.VITE_HMR_PROTOCOL || undefined,
+        port: env.VITE_HMR_PORT ? parseInt(env.VITE_HMR_PORT) : undefined,
       },
       headers: {
         'Cache-Control': 'no-store',

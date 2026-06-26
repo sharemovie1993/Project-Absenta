@@ -1,15 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '@/lib/axiosInstance';
-import { Card, CardContent, Button } from '@/components/ui';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
+import { Button, SectionCard, Loader } from '@/components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle2, XCircle, AlertTriangle, Mail, ArrowRight, Loader2, MessageSquare, Clock } from 'lucide-react';
+import { CheckCircle2, XCircle, Mail, ArrowRight, Loader2, MessageSquare, Clock } from 'lucide-react';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+
+// Lazy load layout components
+const Navbar = lazy(() => import('@/components/layout/Navbar').then(m => ({ default: m.Navbar })));
+const Footer = lazy(() => import('@/components/layout/Footer').then(m => ({ default: m.Footer })));
 
 type VerifyStatus = 'VERIFIED' | 'NEEDS_CONFIRM' | 'EXPIRED' | 'INVALID' | 'MISSING_TOKEN' | '';
 
-const EmailVerificationStatusPage: React.FC = () => {
+const EmailVerificationContent: React.FC = () => {
   const navigate = useNavigate();
   const { token: tokenParam } = useParams();
   const location = useLocation();
@@ -49,10 +52,11 @@ const EmailVerificationStatusPage: React.FC = () => {
         setExpiresAt(data?.expiresAt || null);
         setLoginUrl(data?.loginUrl || '');
         if (active) setStatus(st || '');
-      } catch (e: any) {
-        const msg = e?.response?.data?.message || e?.message || 'Gagal memuat status verifikasi';
+      } catch (e: unknown) {
+        const err = e as any;
+        const msg = err?.response?.data?.message || err?.message || 'Gagal memuat status verifikasi';
         setError(msg);
-        const st = String(e?.response?.data?.status || '').toUpperCase() as VerifyStatus;
+        const st = String(err?.response?.data?.status || '').toUpperCase() as VerifyStatus;
         setStatus(st || '');
       } finally {
         if (active) setLoading(false);
@@ -62,7 +66,7 @@ const EmailVerificationStatusPage: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    let timer: any = null;
+    let timer: NodeJS.Timeout | null = null;
     const update = () => {
       if (!expiresAt) return;
       const endMs = new Date(expiresAt).getTime();
@@ -100,8 +104,9 @@ const EmailVerificationStatusPage: React.FC = () => {
       const data = res?.data;
       const st = String(data?.status || '').toUpperCase() as VerifyStatus;
       setStatus(st || 'VERIFIED');
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Gagal mengonfirmasi verifikasi';
+    } catch (e: unknown) {
+      const err = e as any;
+      const msg = err?.response?.data?.message || err?.message || 'Gagal mengonfirmasi verifikasi';
       setError(msg);
     } finally {
       setLoading(false);
@@ -125,8 +130,9 @@ const EmailVerificationStatusPage: React.FC = () => {
         if (channel === 'email') navigate('/check-email');
         else setError('Tautan baru telah dikirim via WhatsApp.');
       }
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || `Gagal mengirim ulang verifikasi via ${channel}`;
+    } catch (e: unknown) {
+      const err = e as any;
+      const msg = err?.response?.data?.message || err?.message || `Gagal mengirim ulang verifikasi via ${channel}`;
       setError(msg);
     } finally {
       setLoading(false);
@@ -143,6 +149,21 @@ const EmailVerificationStatusPage: React.FC = () => {
     visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: "easeOut" as any } },
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   };
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Otentikasi' },
+    { label: 'Verifikasi Email' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Verifikasi Akun',
+    description: 'Pastikan email Anda telah terverifikasi untuk mengakses seluruh fitur platform.',
+    items: [
+      { text: 'Klik tombol konfirmasi untuk mengaktifkan akun Anda.' },
+      { text: 'Jika tautan kedaluwarsa, silakan minta pengiriman ulang tautan baru.' },
+      { text: 'Hubungi dukungan kami jika Anda tidak menerima email verifikasi.' }
+    ]
+  }), []);
 
   const statusConfig = {
     VERIFIED: {
@@ -189,35 +210,40 @@ const EmailVerificationStatusPage: React.FC = () => {
         <div className="space-y-6 w-full text-left">
            <div className="space-y-4">
               <div className="group">
-                <label className="text-xs font-bold text-slate-500 mb-1.5 block">Kirim ulang ke Email</label>
+                <label htmlFor="email-input" className="text-xs font-bold text-slate-500 mb-1.5 block">Kirim ulang ke Email</label>
                 <div className="relative">
                   <input 
+                    id="email-input"
                     type="email" 
                     placeholder="nama@sekolah.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-900 focus:ring-2 focus:ring-amber-500 transition-all outline-none"
+                    aria-label="Email untuk pengiriman ulang"
                   />
-                  <button onClick={() => handleResendChannel('email')} className="absolute right-2 top-2 p-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-100 transition-colors">
+                  <button onClick={() => handleResendChannel('email')} className="absolute right-2 top-2 p-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-100 transition-colors" aria-label="Kirim via Email">
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
               </div>
               <div className="relative flex items-center gap-4 py-2">
                  <div className="flex-grow h-px bg-slate-100 dark:bg-slate-800" />
-                 <span className="text-[10px] font-black text-slate-300 uppercase">Atau WahshApp</span>
+                 <span className="text-[10px] font-black text-slate-300 uppercase">Atau WhatsApp</span>
                  <div className="flex-grow h-px bg-slate-100 dark:bg-slate-800" />
               </div>
               <div className="group">
+                <label htmlFor="whatsapp-input" className="text-xs font-bold text-slate-500 mb-1.5 block">Nomor WhatsApp</label>
                 <div className="relative">
                   <input 
+                    id="whatsapp-input"
                     type="text" 
                     placeholder="Nomor WhatsApp (62...)"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 dark:bg-slate-900 focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
+                    aria-label="Nomor WhatsApp untuk pengiriman ulang"
                   />
-                  <button onClick={() => handleResendChannel('whatsapp')} className="absolute right-2 top-2 p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                  <button onClick={() => handleResendChannel('whatsapp')} className="absolute right-2 top-2 p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-100 transition-colors" aria-label="Kirim via WhatsApp">
                     <MessageSquare className="w-5 h-5" />
                   </button>
                 </div>
@@ -245,103 +271,119 @@ const EmailVerificationStatusPage: React.FC = () => {
   const activeContent = statusConfig[status as keyof typeof statusConfig] || statusConfig.default;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col font-sans selection:bg-blue-100 dark:selection:bg-blue-900">
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center py-16 px-4 relative overflow-hidden">
-        {/* Decorative Background Elements */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-30 dark:opacity-20 translate-y-[-10%]">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl opacity-50" />
-        </div>
+    <AcademicPageLayout
+      title="Status Verifikasi Email"
+      description="Verifikasi akun Anda untuk memulai pengalaman digital di platform kami."
+      breadcrumbs={breadcrumbs}
+      instruction={instruction}
+      hardeningModuleKey="email_verification_status"
+    >
+      <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-100 dark:selection:bg-blue-900">
+        <Suspense fallback={<div className="h-16" />}>
+          <Navbar />
+        </Suspense>
+        
+        <main className="flex-grow flex items-center justify-center py-16 px-4 relative overflow-hidden">
+          {/* Decorative Background Elements */}
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-30 dark:opacity-20 translate-y-[-10%]">
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl opacity-50" />
+          </div>
 
-        <AnimatePresence mode="wait">
-          {loading ? (
-            <motion.div 
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center"
-            >
-              <div className="relative w-20 h-20 mx-auto mb-6">
-                 <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
-                 <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" as any }}
-                    className="absolute inset-0 rounded-full border-4 border-t-blue-600 border-r-transparent"
-                 />
-                 <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-blue-600 animate-pulse" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Memproses Data...</h2>
-              <p className="text-slate-500 mt-2">Sedang memproses tautan verifikasi Anda.</p>
-            </motion.div>
-          ) : (
-            <motion.div
-              key={status}
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="w-full max-w-md relative z-10"
-            >
-              <Card className="rounded-3xl border-0 shadow-2xl shadow-blue-500/10 dark:bg-slate-900 overflow-hidden bg-white">
-                <div className="p-8 sm:p-12 text-center">
-                  <motion.div 
-                    initial={{ scale: 0.5, rotate: -20, opacity: 0 }}
-                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                    transition={{ type: "spring", damping: 15, delay: 0.2 }}
-                    className="mb-10 flex justify-center"
-                  >
-                    <div className="relative">
-                       <div className={`absolute inset-0 rounded-full bg-${activeContent.theme}-500/20 dark:bg-${activeContent.theme}-500/10 blur-2xl animate-pulse`} />
-                       <div className="relative bg-white dark:bg-slate-900 rounded-full p-4">
-                        {activeContent.icon}
-                       </div>
-                    </div>
-                  </motion.div>
-
-                  <motion.h1 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight"
-                  >
-                    {activeContent.title}
-                  </motion.h1>
-
-                  <motion.p 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-slate-600 dark:text-slate-400 mb-10 leading-relaxed text-balance"
-                  >
-                    {activeContent.subtitle}
-                  </motion.p>
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    {activeContent.action}
-                  </motion.div>
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div 
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center"
+              >
+                <div className="relative w-20 h-20 mx-auto mb-6">
+                   <div className="absolute inset-0 rounded-full border-4 border-slate-100 dark:border-slate-800" />
+                   <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" as any }}
+                      className="absolute inset-0 rounded-full border-4 border-t-blue-600 border-r-transparent"
+                   />
+                   <Loader2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-blue-600 animate-pulse" />
                 </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Memproses Data...</h2>
+                <p className="text-slate-500 mt-2">Sedang memproses tautan verifikasi Anda.</p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key={status}
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="w-full max-w-md relative z-10"
+              >
+                <SectionCard noPadding fullWidth className="rounded-3xl border-0 shadow-2xl shadow-blue-500/10 dark:bg-slate-900 overflow-hidden bg-white">
+                  <div className="p-8 sm:p-12 text-center">
+                    <motion.div 
+                      initial={{ scale: 0.5, rotate: -20, opacity: 0 }}
+                      animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                      transition={{ type: "spring", damping: 15, delay: 0.2 }}
+                      className="mb-10 flex justify-center"
+                    >
+                      <div className="relative">
+                         <div className={`absolute inset-0 rounded-full bg-${activeContent.theme}-500/20 dark:bg-${activeContent.theme}-500/10 blur-2xl animate-pulse`} />
+                         <div className="relative bg-white dark:bg-slate-900 rounded-full p-4">
+                          {activeContent.icon}
+                         </div>
+                      </div>
+                    </motion.div>
 
-                {/* Motivational Footer */}
-                <div className="bg-slate-50/80 dark:bg-slate-800/50 p-6 text-center border-t border-slate-100 dark:border-slate-800">
-                   <p className="text-xs text-slate-400 m-0">
-                    Membutuhkan bantuan teknis? <span className="text-blue-600 hover:underline cursor-pointer font-bold">Hubungi Support</span>
-                   </p>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
+                    <motion.h1 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight"
+                    >
+                      {activeContent.title}
+                    </motion.h1>
 
-      <Footer />
-    </div>
+                    <motion.p 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="text-slate-600 dark:text-slate-400 mb-10 leading-relaxed text-balance"
+                    >
+                      {activeContent.subtitle}
+                    </motion.p>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      {activeContent.action}
+                    </motion.div>
+                  </div>
+
+                  {/* Motivational Footer */}
+                  <div className="bg-slate-50/80 dark:bg-slate-800/50 p-6 text-center border-t border-slate-100 dark:border-slate-800">
+                     <p className="text-xs text-slate-400 m-0">
+                      Membutuhkan bantuan teknis? <span className="text-blue-600 hover:underline cursor-pointer font-bold">Hubungi Support</span>
+                     </p>
+                  </div>
+                </SectionCard>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
+        <Suspense fallback={<div className="h-64" />}>
+          <Footer />
+        </Suspense>
+      </div>
+    </AcademicPageLayout>
   );
 };
 
-export default EmailVerificationStatusPage;
+export default function EmailVerificationStatusPage() {
+  return (
+    <EmailVerificationContent />
+  );
+}

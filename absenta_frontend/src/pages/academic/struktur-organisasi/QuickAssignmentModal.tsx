@@ -4,7 +4,7 @@ import Modal from '@/components/ui/Modal';
 import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
 import { assignGuruToStruktur, assignSiswaToStruktur } from '@/api/academic/strukturOrganisasi.api';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { User, Search, Loader2 } from 'lucide-react';
 
 interface QuickAssignmentModalProps {
@@ -29,7 +29,7 @@ export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = ({
   const [options, setOptions] = useState<{ label: string; value: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { error: showErrorToast, success: showSuccessToast } = useToast();
+
 
   const isSiswaRole = roleCode === 'PETUGAS_KELAS';
 
@@ -80,11 +80,11 @@ export const QuickAssignmentModal: React.FC<QuickAssignmentModalProps> = ({
           start_date: new Date().toISOString().split('T')[0]
         });
       }
-      showSuccessToast('Penugasan berhasil disimpan');
+      toast.success('Penugasan berhasil disimpan');
       onSuccess();
       onClose();
     } catch (error: any) {
-      showErrorToast(error?.message || 'Gagal menyimpan penugasan');
+      toast.error(error?.message || 'Gagal menyimpan penugasan');
     } finally {
       setIsSubmitting(false);
     }

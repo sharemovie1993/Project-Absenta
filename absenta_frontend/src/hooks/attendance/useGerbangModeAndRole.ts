@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getIntegrationStatus, isPetugasActiveForKelas, isPetugasActive } from '../../api/attendanceGerbang.api';
 import { getMyTenant, type AbsensiMode } from '../../api/tenants.api';
-import { guruApi } from '../../api/academic.api';
 import { useAuthStore } from '../../store/authStore';
+
 type PetugasVariant = 'success' | 'destructive' | 'outline';
 
 interface Params {
@@ -12,12 +12,20 @@ interface Params {
 }
 
 export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Params) {
-  const { token } = useAuthStore();
-  const [absensiMode, setAbsensiMode] = useState<AbsensiMode | null>(null);
+  const { token, tenantMode: storeTenantModeFromStore } = useAuthStore();
+  const storeTenantMode = storeTenantModeFromStore || (user as any)?.tenant?.absensi_mode || null;
+  const [absensiMode, setAbsensiMode] = useState<AbsensiMode | null>(storeTenantMode);
   const [petugasActive, setPetugasActive] = useState<boolean>(false);
   const [petugasActiveGlobal, setPetugasActiveGlobal] = useState<boolean>(false);
   const [petugasChecked, setPetugasChecked] = useState<boolean>(false);
   const [kelasNama, setKelasNama] = useState<string>('');
+  const [managedKelasIds, setManagedKelasIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (storeTenantMode) {
+      setAbsensiMode(storeTenantMode);
+    }
+  }, [storeTenantMode]);
 
   useEffect(() => {
     if (!token) return;
@@ -25,7 +33,9 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
     if (role === 'ADMIN') {
       getMyTenant()
         .then(res => setAbsensiMode(res.data?.absensi_mode || null))
-        .catch(() => {});
+        .catch(() => {
+          if (storeTenantMode) setAbsensiMode(storeTenantMode);
+        });
       return;
     }
     if (role === 'SUPERADMIN') {
@@ -38,10 +48,10 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
         if (status === 403) {
           setAbsensiMode('SIMPLE');
         } else {
-          setAbsensiMode(null);
+          setAbsensiMode(storeTenantMode || null);
         }
       });
-  }, [tenantId, user?.tenant_id, user?.role?.name, token]);
+  }, [tenantId, user?.tenant_id, user?.role?.name, token, storeTenantMode]);
 
   useEffect(() => {
     let mounted = true;
@@ -55,6 +65,7 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
             if (mounted) {
               setPetugasActive(active);
               if (res?.data?.managed_kelas_names) setKelasNama(res.data.managed_kelas_names);
+              if ((res?.data as any)?.managed_kelas_ids) setManagedKelasIds((res.data as any).managed_kelas_ids);
             }
           } else {
             const resAny = await isPetugasActive();
@@ -62,6 +73,7 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
             if (mounted) {
               setPetugasActiveGlobal(activeAny);
               if (resAny?.data?.managed_kelas_names) setKelasNama(resAny.data.managed_kelas_names);
+              if ((resAny?.data as any)?.managed_kelas_ids) setManagedKelasIds((resAny.data as any).managed_kelas_ids);
             }
           }
           if (mounted) setPetugasChecked(true);
@@ -69,7 +81,7 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
         }
         // GURU check is now handled via capabilities in useMemo below
         if (user?.role?.name === 'GURU') {
-           // No async check needed for capabilities
+           if (mounted) setPetugasChecked(true); // GURU check is synchronous via capabilities
            return;
         }
         setPetugasActive(false); setPetugasActiveGlobal(false);
@@ -82,7 +94,19 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
     return () => { mounted = false; };
   }, [user?.role?.name, user?.id, selectedKelasId, token]);
 
-  const isPetugasSiswa = useMemo(() => (user?.role?.name === 'SISWA' && (petugasActive || petugasActiveGlobal)), [user?.role?.name, petugasActive, petugasActiveGlobal]);
+  // Short-circuit: if SISWA already has petugas capabilities in their token, consider them active
+  // without waiting for the async API check (eliminates race condition)
+  const hasPetugasCap = useMemo(() => {
+    if (user?.role?.name !== 'SISWA') return false;
+    const caps: string[] = user?.capabilities || [];
+    return caps.includes('attendance.sessions.create') ||
+      caps.includes('attendance.scan') ||
+      caps.includes('attendance.sessions.update.attendance');
+  }, [user?.role?.name, user?.capabilities]);
+
+  const isPetugasSiswa = useMemo(() => (
+    user?.role?.name === 'SISWA' && (hasPetugasCap || petugasActive || petugasActiveGlobal)
+  ), [user?.role?.name, hasPetugasCap, petugasActive, petugasActiveGlobal]);
   
   // Use capability 'attendance.scan' to determine if GURU is a petugas gerbang
   const isPetugasGuru = useMemo(() => {
@@ -99,7 +123,7 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
   const petugasVariant: PetugasVariant = (user?.role?.name === 'SISWA') ? (isPetugasSiswa ? 'success' : 'destructive') : (user?.role?.name === 'GURU') ? (isPetugasGuru ? 'success' : 'destructive') : 'outline';
 
   return {
-    absensiMode,
+    absensiMode: absensiMode || storeTenantMode,
     roleLabel,
     isPetugasSiswa,
     isPetugasGuru,
@@ -107,6 +131,7 @@ export function useGerbangModeAndRole({ user, tenantId, selectedKelasId }: Param
     petugasVariant,
     petugasChecked,
     petugasGuruChecked,
+    managedKelasIds,
     kelasLabel: kelasNama || user?.Kelas?.nama_kelas || user?.Siswa?.Kelas?.nama_kelas || '-'
   };
 }

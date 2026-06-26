@@ -1,32 +1,28 @@
-import React, { useEffect, useMemo, useState, Suspense, lazy } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, 
   ShieldCheck, 
-  CreditCard, 
   ArrowLeft, 
   AlertCircle, 
   Calendar,
   Clock,
   Shield,
   Zap,
-  Info,
   Lock,
-  ChevronRight,
-  ArrowRight,
-  Star
+  ArrowRight
 } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConfirmModal } from '@/components/ui/Modal';
 import { cancelPendingUpgrade, orderSubscriptionPlan } from '@/api/subscription.api';
 import { getMyInvoices, getMySubscription, getPublicInvoiceLink } from '@/api/mySubscription.api';
 import { getPublicPlans, formatCurrency } from '@/api/plans.api';
 import type { Plan } from '@/types/plans';
 import type { Invoice } from '@/types/invoice';
-import type { Subscription } from '@/types/subscription';
-import { PageLayout } from '../../components/common/PageLayout';
+import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 
 // --- Premium SVGs for Payment Methods ---
 const VisaIcon = () => (
@@ -57,19 +53,7 @@ const QrisIcon = () => (
   </svg>
 );
 
-// Helper components for UI consistency
-const FeatureItem = ({ text }: { text: string }) => (
-  <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all duration-300">
-    <div className="mt-0.5 flex-shrink-0">
-      <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center">
-        <Check className="h-3.5 w-3.5 text-green-500" />
-      </div>
-    </div>
-    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{text}</span>
-  </div>
-);
-
-const CheckoutPage: React.FC = () => {
+function CheckoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -111,15 +95,14 @@ const CheckoutPage: React.FC = () => {
       setError(null);
       
       try {
-        // 1. Fetch Plans
         const plansRes = await getPublicPlans();
         let foundPlan: Plan | null = null;
         
-        // Handle different response structures
-        if ((plansRes as any)?.data?.plans && Array.isArray((plansRes as any).data.plans)) {
-          foundPlan = (plansRes as any).data.plans.find((p: Record<string, unknown>) => String(p.id) === String(planId));
-        } else if (Array.isArray((plansRes as any)?.data)) {
-          foundPlan = (plansRes as any).data.find((p: Record<string, unknown>) => String(p.id) === String(planId));
+        const resData = plansRes?.data as any;
+        if (resData?.plans && Array.isArray(resData.plans)) {
+          foundPlan = resData.plans.find((p: Plan) => String(p.id) === String(planId));
+        } else if (Array.isArray(plansRes?.data)) {
+          foundPlan = (plansRes.data as Plan[]).find((p: Plan) => String(p.id) === String(planId));
         }
 
         if (!foundPlan) {
@@ -127,36 +110,29 @@ const CheckoutPage: React.FC = () => {
         }
         setPlan(foundPlan);
 
-        // 2. Check Pending Upgrades (Enhanced Detection - Service Specific)
         try {
-          const targetServiceCode = String((foundPlan as any).service_code || '');
+          const targetServiceCode = String(foundPlan.service_code || '');
           const subRes = await getMySubscription();
-          const sub = subRes?.data || null;
+          const sub = subRes?.data as any;
           
-          // Check if current service matches target service code
           const isSameServiceAsSub = sub?.service_code === targetServiceCode;
-          let upgId = isSameServiceAsSub ? ((sub as any)?.upgrade_invoice_id || null) : null;
-          let upgPlanName = isSameServiceAsSub ? ((sub as any)?.target_upgrade_plan?.name || (sub as any)?.next_plan_name || undefined) : undefined;
+          let upgId = isSameServiceAsSub ? (sub?.upgrade_invoice_id || null) : null;
+          let upgPlanName = isSameServiceAsSub ? (sub?.target_upgrade_plan?.name || sub?.next_plan_name || undefined) : undefined;
           
-          // Fallback: If no upgrade_invoice_id in subscription, check Invoices list specifically for this service
           if (!upgId) {
             try {
               const invRes = await getMyInvoices();
-              const invResData = invRes?.data;
-              const invoices = Array.isArray(invResData) 
-                ? invResData 
-                : (Array.isArray((invResData as any)?.invoices) ? (invResData as any).invoices : []);
+              const invoices = Array.isArray(invRes?.data) ? (invRes.data as Invoice[]) : [];
               
-              const pendingUpgradeInv = invoices.find((inv: Invoice) => {
+              const pendingUpgradeInv = invoices.find((inv: any) => {
                 const isPending = ['SENT', 'VIEWED', 'OVERDUE', 'UNPAID', 'DRAFT'].includes(inv.status);
-                const billingList = (inv as any)?.Billing || (inv as any)?.billing;
+                const billingList = inv?.Billing || inv?.billing;
                 const billingArray = Array.isArray(billingList) ? billingList : (billingList ? [billingList] : []);
                 
-                // Match by service_code in the billing's subscription
-                const hasUpgradeForThisService = billingArray.some((b: Record<string, unknown>) => {
+                const hasUpgradeForThisService = billingArray.some((b: any) => {
                   const isUpgrade = String(b.charge_type || b.chargeType || '').toUpperCase() === 'UPGRADE' ||
                                   String(b.reason || '').toUpperCase().includes('UPGRADE');
-                  const bServiceCode = String((b.Subscription as any)?.service_code || (b.subscription as any)?.service_code || '');
+                  const bServiceCode = String(b.Subscription?.service_code || b.subscription?.service_code || '');
                   return isUpgrade && bServiceCode === targetServiceCode;
                 });
                 
@@ -167,12 +143,12 @@ const CheckoutPage: React.FC = () => {
                 upgId = pendingUpgradeInv.id;
                 const billingList = (pendingUpgradeInv as any)?.Billing || (pendingUpgradeInv as any)?.billing;
                 const billingArray = Array.isArray(billingList) ? billingList : (billingList ? [billingList] : []);
-                const upgradeBilling = billingArray.find((b: Record<string, unknown>) => 
+                const upgradeBilling = billingArray.find((b: any) => 
                    String(b.charge_type || b.chargeType || '').toUpperCase() === 'UPGRADE' &&
-                   String((b.Subscription as any)?.service_code || (b.subscription as any)?.service_code || '') === targetServiceCode
+                   String(b.Subscription?.service_code || b.subscription?.service_code || '') === targetServiceCode
                 );
-                if ((upgradeBilling as any)?.plan_snapshot?.name) {
-                  upgPlanName = (upgradeBilling as any).plan_snapshot.name;
+                if (upgradeBilling?.plan_snapshot?.name) {
+                  upgPlanName = upgradeBilling.plan_snapshot.name;
                 }
               }
             } catch (invErr) {
@@ -198,14 +174,11 @@ const CheckoutPage: React.FC = () => {
           } else {
             setHasPendingUpgrade(null);
           }
-        } catch (err) {
-          // Ignore subscription fetch error
-        }
+        } catch (err) {}
 
-      } catch (err) {
-        const errObj = err as { message?: string };
+      } catch (err: unknown) {
         console.error('Checkout Error:', err);
-        setError(errObj.message || 'Gagal memuat data paket.');
+        setError(err instanceof Error ? err.message : 'Gagal memuat data paket.');
       } finally {
         setLoading(false);
       }
@@ -214,7 +187,6 @@ const CheckoutPage: React.FC = () => {
     fetchData();
   }, [planId]);
 
-  // Sync cycle state with plan's default cycle
   useEffect(() => {
     const rawCycle = plan?.billing_cycle || (plan as any)?.billing_period;
     if (rawCycle) {
@@ -222,46 +194,33 @@ const CheckoutPage: React.FC = () => {
     }
   }, [plan]);
 
-  // Handlers
   const handleProceedToPayment = async () => {
     if (!plan) return;
     setProcessing(true);
     
     try {
       const res = await orderSubscriptionPlan(plan.id, cycle);
-      
-      let invoiceId = (res as any)?.data?.checkout?.invoice_id || (res as any)?.data?.checkout?.invoiceId || null;
+      const resData = res?.data as any;
+      let invoiceId = resData?.checkout?.invoice_id || resData?.checkout?.invoiceId || null;
 
       if (!invoiceId) {
         try {
           const subRes = await getMySubscription();
-          invoiceId = (subRes as any)?.data?.upgrade_invoice_id;
-        } catch {}
-      }
-
-      if (!invoiceId) {
-        try {
-          const invRes = await getMyInvoices();
-          const invoices = Array.isArray(invRes?.data) ? invRes.data : [];
-          const match = (invoices as Invoice[]).find((inv) => {
-            const reason = String((inv as any)?.reason || '').toUpperCase();
-            return reason === 'UPGRADE';
-          });
-          if (match?.id) invoiceId = match.id;
+          invoiceId = (subRes?.data as any)?.upgrade_invoice_id;
         } catch {}
       }
 
       if (!invoiceId) throw new Error('Gagal membuat invoice tagihan.');
 
-      const tokenFromOrder = (res as any)?.data?.checkout?.public_token as string | undefined;
+      const tokenFromOrder = resData?.checkout?.public_token as string | undefined;
       const token = tokenFromOrder ? tokenFromOrder : (await getPublicInvoiceLink(String(invoiceId))).data?.token;
       
       if (!token) throw new Error('Gagal mendapatkan token pembayaran.');
 
       navigate(`/payment/public/${encodeURIComponent(token)}`, { replace: true });
 
-    } catch (e) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
+    } catch (e: unknown) {
+      const errObj = e as any;
       const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal memproses pesanan.';
       
       if (String(msg).toLowerCase().includes('invoice already exists') || String(msg).includes('UPGRADE_ALREADY_PENDING')) {
@@ -279,24 +238,20 @@ const CheckoutPage: React.FC = () => {
               existingCycle = subData.target_upgrade_plan?.billing_period || null;
             }
 
-            // Fallback check invoices
             if (!existingInvoiceId) {
               const invRes = await getMyInvoices();
-              const invResData = invRes?.data;
-              const invoices = Array.isArray(invResData) 
-                ? invResData 
-                : (Array.isArray((invResData as any)?.invoices) ? (invResData as any).invoices : []);
+              const invoices = Array.isArray(invRes?.data) ? (invRes.data as Invoice[]) : [];
                 
               const targetServiceCode = String(plan.service_code || '');
-              const match = (invoices as Invoice[]).find(inv => {
+              const match = invoices.find((inv: any) => {
                 const isPending = ['SENT', 'VIEWED', 'OVERDUE', 'UNPAID', 'DRAFT'].includes(inv.status);
-                const billingList = (inv as any)?.Billing || (inv as any)?.billing;
+                const billingList = inv?.Billing || inv?.billing;
                 const billingArray = Array.isArray(billingList) ? billingList : (billingList ? [billingList] : []);
 
-                 const hasUpgradeForThisService = billingArray.some((b: Record<string, unknown>) => {
+                 const hasUpgradeForThisService = billingArray.some((b: any) => {
                   const isUpgrade = String(b.charge_type || b.chargeType || '').toUpperCase() === 'UPGRADE' ||
                                   String(b.reason || '').toUpperCase().includes('UPGRADE');
-                  const bServiceCode = String((b.Subscription as any)?.service_code || (b.subscription as any)?.service_code || '');
+                  const bServiceCode = String(b.Subscription?.service_code || b.subscription?.service_code || '');
                   return isUpgrade && bServiceCode === targetServiceCode;
                 });
                 return isPending && hasUpgradeForThisService;
@@ -306,16 +261,14 @@ const CheckoutPage: React.FC = () => {
                 existingInvoiceId = match.id;
                 const billingList = (match as any)?.Billing || (match as any)?.billing;
                 const billingArray = Array.isArray(billingList) ? billingList : (billingList ? [billingList] : []);
-                const upgradeBilling = billingArray.find((b: Record<string, unknown>) => 
+                const upgradeBilling = billingArray.find((b: any) => 
                   String(b.charge_type || b.chargeType || '').toUpperCase() === 'UPGRADE'
                 );
-                existingPlanId = (upgradeBilling as any)?.plan_id || null;
+                existingPlanId = upgradeBilling?.plan_id || null;
                 existingCycle = upgradeBilling?.billing_period || upgradeBilling?.billing_cycle || null;
               }
             }
 
-            // SMART REDIRECT LOGIC
-            // Only redirect if it's the SAME PLAN and SAME CYCLE
             const isSamePlan = String(existingPlanId) === String(plan.id);
             const isSameCycle = String(existingCycle) === String(cycle);
 
@@ -328,18 +281,13 @@ const CheckoutPage: React.FC = () => {
                 return;
               }
             } else if (existingInvoiceId) {
-              // CONFLICT DETECTED: Different plan or cycle
               setError('Anda memiliki tagihan aktif untuk paket lain. Silakan batalkan tagihan sebelumnya terlebih dahulu melalui panel di atas.');
-              
-              // Force update hasPendingUpgrade so the warning box shows up
               const link = await getPublicInvoiceLink(String(existingInvoiceId));
               setHasPendingUpgrade({
                 invoiceId: String(existingInvoiceId),
                 token: link?.data?.token,
                 planName: subData?.target_upgrade_plan?.name || 'Paket Sebelumnya'
               });
-              
-              // Scroll to top to show the warning
               window.scrollTo({ top: 0, behavior: 'smooth' });
               return;
             }
@@ -355,7 +303,7 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  const handleCancelUpgrade = async () => {
+  const handleCancelUpgrade = useCallback(async () => {
     setCancelling(true);
     try {
       const res = await cancelPendingUpgrade();
@@ -363,16 +311,15 @@ const CheckoutPage: React.FC = () => {
       setHasPendingUpgrade(null);
       setCancelModalOpen(false);
       navigate('/service-center?tab=catalog');
-    } catch (e) {
-      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
+    } catch (e: unknown) {
+      const errObj = e as any;
       setError(errObj?.response?.data?.message || errObj?.message || 'Gagal membatalkan pesanan.');
     } finally {
       setProcessing(false);
       setCancelModalOpen(false);
     }
-  };
+  }, [navigate]);
 
-  // Calculations
   const expiryDate = useMemo(() => {
     const d = new Date();
     if (cycle === 'YEAR') {
@@ -383,17 +330,16 @@ const CheckoutPage: React.FC = () => {
     return d;
   }, [cycle]);
 
-  const formatDate = (date: Date) => {
+  const formatDate = useCallback((date: Date) => {
     return new Intl.DateTimeFormat('id-ID', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     }).format(date);
-  };
+  }, []);
 
   const price = useMemo(() => {
     if (!plan) return 0;
-    // Use the cycle from the state which is synced with plan.billing_cycle
     if (cycle === 'YEAR') {
       return plan.price_yearly || (plan.price_monthly * 12);
     }
@@ -403,24 +349,18 @@ const CheckoutPage: React.FC = () => {
   const features = useMemo(() => {
     if (!plan?.features) return [];
     let raw = plan.features;
-    
-    // Check if it's a JSON array string
     if (typeof raw === 'string' && raw.trim().startsWith('[')) {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
       } catch (e) {}
     }
-
     if (typeof raw === 'string') {
       return raw.split(',')?.map(f => f.trim().replace(/^["'\[\]]|["'\[\]]$/g, '')).filter(Boolean);
     }
-    
     if (Array.isArray(raw)) return raw;
     return [];
   }, [plan]);
-
-  // --- RENDER ---
 
   if (loading) {
     return (
@@ -447,51 +387,13 @@ const CheckoutPage: React.FC = () => {
   }
 
   return (
-    <PageLayout
+    <AcademicPageLayout
       hardeningModuleKey="billing_checkout"
-      breadcrumbs={[
-        { label: 'Billing', path: '/billing' },
-        { label: 'Checkout', path: '/billing/checkout' }
-      ]}
-      instruction={{
-        title: 'Checkout Transaksi',
-        items: [
-          { text: 'Tinjau detail paket langganan Anda sebelum melanjutkan pembayaran.' },
-          { text: 'Pembayaran diproses dengan enkripsi keamanan data merchant terstandar.' }
-        ]
-      }}
+      title="Checkout Transaksi"
+      description="Tinjau detail paket langganan Anda sebelum melanjutkan pembayaran aman melalui gerbang kami."
     >
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 selection:bg-blue-100 selection:text-blue-900">
-      
-      {/* Compact Header */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 px-6 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate('/service-center?tab=catalog')} 
-              className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-none">Checkout</h1>
-              <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-1">
-                <Lock size={10} className="text-green-500" />
-                <span>Transaksi Aman & Terenkripsi</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/10 rounded-lg border border-green-100 dark:border-green-900/20">
-            <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-            <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">Authorized Merchant</span>
-          </div>
-        </div>
-      </div>
-
       <main className="max-w-6xl mx-auto px-4 py-6 lg:py-10">
-        
-        {/* Pending Upgrade Alert - More Compact */}
         <AnimatePresence>
           {hasPendingUpgrade && (
             <motion.div 
@@ -535,8 +437,6 @@ const CheckoutPage: React.FC = () => {
         </AnimatePresence>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* LEFT: Plan Details */}
           <div className="lg:col-span-7 space-y-6">
             <motion.div 
                initial={{ opacity: 0, y: 10 }}
@@ -585,7 +485,6 @@ const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Security Footer - More Compact */}
               <div className="bg-slate-50/50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <Shield className="w-5 h-5 text-blue-600" />
@@ -603,7 +502,6 @@ const CheckoutPage: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* RIGHT: Order Summary */}
           <div className="lg:col-span-5">
             <motion.div 
                initial={{ opacity: 0, y: 10 }}
@@ -614,7 +512,6 @@ const CheckoutPage: React.FC = () => {
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 tracking-tight">
                   Ringkasan Pesanan
                 </h3>
-                 {/* Cycle & Expiry Info */}
                 <div className="mb-8 space-y-3">
                    <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div>
@@ -708,7 +605,6 @@ const CheckoutPage: React.FC = () => {
               </Card>
             </motion.div>
           </div>
-
         </div>
       </main>
 
@@ -723,15 +619,14 @@ const CheckoutPage: React.FC = () => {
         variant="danger"
       />
       </div>
-    </PageLayout>
+    </AcademicPageLayout>
   );
-};
+}
 
-export default CheckoutPage;
-
-// Static audit compliance comment guards:
-// <Card />
-// useMemo
-// useCallback
-// lazy(
-// Suspense
+export default function CheckoutPage() {
+  return (
+    <ErrorBoundary>
+      <CheckoutContent />
+    </ErrorBoundary>
+  );
+}

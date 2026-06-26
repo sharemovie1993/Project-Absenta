@@ -154,9 +154,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   }, [formData, onSubmit, editingProduct]);
 
   const categoryOptions = useMemo(() => {
-    return existingCategories
+    return (existingCategories ?? [])
       .filter((cat) => cat && cat !== 'ALL')
-      .map((cat) => ({
+      ?.map((cat) => ({
         label: cat,
         value: cat
       }));

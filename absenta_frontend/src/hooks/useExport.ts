@@ -7,7 +7,7 @@ import {
   formatStatusForExport
 } from '../utils/exportUtils';
 import type { ExportOptions } from '../utils/exportUtils';
-import { useToast } from './useToast';
+import toast from 'react-hot-toast';
 
 export interface UseExportOptions {
   onExportStart?: () => void;
@@ -17,7 +17,6 @@ export interface UseExportOptions {
 
 export const useExport = (options: UseExportOptions = {}) => {
   const [isExporting, setIsExporting] = useState(false);
-  const { showToast } = useToast();
 
   const exportData = async <T extends Record<string, unknown>>(exportOptions: ExportOptions<T>) => {
     try {
@@ -33,12 +32,12 @@ export const useExport = (options: UseExportOptions = {}) => {
         exportToExcel(exportOptions);
       }
 
-      showToast(`Data berhasil diekspor ke ${exportOptions.format.toUpperCase()}`, 'success');
+      toast.success(`Data berhasil diekspor ke ${exportOptions.format.toUpperCase()}`);
       options.onExportComplete?.();
     } catch (error) {
       console.error('Export error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Gagal mengekspor data';
-      showToast(`Gagal mengekspor data: ${errorMessage}`, 'error');
+      toast.error(`Gagal mengekspor data: ${errorMessage}`);
       options.onExportError?.(error instanceof Error ? error : new Error(errorMessage));
     } finally {
       setIsExporting(false);

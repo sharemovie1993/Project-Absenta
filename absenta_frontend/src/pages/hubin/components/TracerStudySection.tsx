@@ -49,7 +49,10 @@ export const TracerStudySection: React.FC = () => {
            roleName === 'SUPERADMIN' || 
            roleName === 'ADMIN' ||
            user?.position_codes?.includes('HUBIN') ||
-           user?.capabilities?.includes('hubin.partners.manage');
+           user?.position_codes?.includes('BKK') ||
+           user?.capabilities?.includes('hubin.partners.manage') ||
+           user?.capabilities?.includes('hubin.tracer.view') ||
+           user?.capabilities?.includes('hubin.bkk.manage');
   }, [user]);
 
   // Queries

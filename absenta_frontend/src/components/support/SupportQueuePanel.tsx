@@ -1,10 +1,11 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Ticket } from 'lucide-react';
 import { 
   type SupportTicket, 
   type SupportTicketPriority, 
   type SupportTicketCategory 
 } from '../../api/support-ticket.api';
+import { type User } from '../../api/user.api';
 import SupportStatusBadge from './SupportStatusBadge';
 import SupportPriorityBadge from './SupportPriorityBadge';
 
@@ -13,7 +14,7 @@ export interface SupportQueuePanelProps {
   selectedTicket: SupportTicket | null;
   isLoading: boolean;
   unreadTicketCounts: Record<string, number>;
-  currentAgent: any;
+  currentAgent: User | null;
   fetchTicketDetail: (ticketId: string) => void;
   fetchTickets: () => void;
   searchQuery: string;
@@ -31,6 +32,7 @@ export interface SupportQueuePanelProps {
   countResolved: number;
   countClosed: number;
   filteredTickets: SupportTicket[];
+  onExportReport?: () => void;
 }
 
 export default function SupportQueuePanel({
@@ -55,7 +57,8 @@ export default function SupportQueuePanel({
   countWaiting,
   countResolved,
   countClosed,
-  filteredTickets
+  filteredTickets,
+  onExportReport
 }: SupportQueuePanelProps) {
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -67,6 +70,27 @@ export default function SupportQueuePanel({
     <div className="lg:col-span-4 flex flex-col space-y-4">
       {/* Box Filter & Pencarian */}
       <div className="bg-white rounded-xl p-4 shadow-xl border border-slate-100 flex flex-col space-y-3">
+        <div className="flex items-center justify-between">
+           <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest">Filter Antrean</h3>
+           <div className="flex gap-2">
+              <button 
+                onClick={() => fetchTickets()} 
+                className="p-1.5 rounded-lg bg-slate-50 text-slate-400 hover:text-indigo-600 transition-colors"
+                title="Refresh List"
+              >
+                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+              </button>
+              {onExportReport && (
+                <button 
+                  onClick={onExportReport} 
+                  className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors"
+                  title="Export Report"
+                >
+                  <Ticket size={14} />
+                </button>
+              )}
+           </div>
+        </div>
         <div className="relative">
           <input
             type="text"

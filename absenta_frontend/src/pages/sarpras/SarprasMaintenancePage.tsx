@@ -28,7 +28,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import type { Asset } from '../../api/sarpras.api';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -82,7 +82,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: React.Rea
 const SarprasMaintenancePage: React.FC = () => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -109,21 +109,21 @@ const SarprasMaintenancePage: React.FC = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['sarpras-repairs', page, limit, statusFilter],
     queryFn: () => sarprasApi.getRepairs({ page, limit, status: statusFilter || undefined }),
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined
   });
 
   // Fetch stats
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ['sarpras-repair-stats'],
     queryFn: sarprasApi.getRepairStats,
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined
   });
 
   // Fetch assets for dropdown (damaged or needing repair)
   const { data: assetsData, isLoading: loadingAssets } = useQuery({
     queryKey: ['sarpras-assets-for-repair'],
     queryFn: () => sarprasApi.getAssets({ limit: 200 }),
-    enabled: createModalOpen && !isLocked
+    enabled: createModalOpen
   });
 
   const repairs: RepairRecord[] = useMemo(() => data?.data?.list || [], [data]);
@@ -143,15 +143,16 @@ const SarprasMaintenancePage: React.FC = () => {
   const createMutation = useMutation({
     mutationFn: (payload: CreateRepairPayload) => sarprasApi.createRepair(payload),
     onSuccess: (res: { message?: string }) => {
-      showToast(res.message || 'Data perbaikan berhasil dibuat', 'success');
+      toast.success(res.message || 'Data perbaikan berhasil dibuat');
       queryClient.invalidateQueries({ queryKey: ['sarpras-repairs'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-repair-stats'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
       setCreateModalOpen(false);
       setFormData({ asset_id: '', teknisi: '', biaya: '', deskripsi: '' });
     },
     onError: (err: ApiErrorResponse) => {
-      showToast(err.response?.data?.message || 'Gagal membuat data perbaikan', 'error');
+      toast.error(err.response?.data?.message || 'Gagal membuat data perbaikan');
     }
   });
 
@@ -159,13 +160,14 @@ const SarprasMaintenancePage: React.FC = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: { status: 'SELESAI' | 'BATAL' } }) => sarprasApi.updateRepair(id, data),
     onSuccess: (res: { message?: string }) => {
-      showToast(res.message || 'Status berhasil diperbarui', 'success');
+      toast.success(res.message || 'Status berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['sarpras-repairs'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-repair-stats'] });
       queryClient.invalidateQueries({ queryKey: ['sarpras-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['sarpras-stats'] });
     },
     onError: (err: ApiErrorResponse) => {
-      showToast(err.response?.data?.message || 'Gagal memperbarui status', 'error');
+      toast.error(err.response?.data?.message || 'Gagal memperbarui status');
     }
   });
 

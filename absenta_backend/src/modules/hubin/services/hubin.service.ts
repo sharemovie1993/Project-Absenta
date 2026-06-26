@@ -2,6 +2,7 @@ import { prisma } from '../../../utils/prisma';
 import crypto from 'crypto';
 import { activityLogService } from '../../activity/services/activity-log.service';
 import { studentResolverService } from '../../../services/student-resolver.service';
+import { waGatewayService } from '../../../services/wa-gateway.service';
 
 export class HubinService {
   private log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
@@ -151,20 +152,37 @@ export class HubinService {
     const skip = (page - 1) * limit;
     
     let where: any = { tenant_id: tenantId };
+    let andConditions: any[] = [];
 
     // Enterprise Scoping Logic
     if (org) {
-      // Jika dia HUBIN (tenant_wide), dia bisa lihat semua.
-      // Jika dia GURU (restricted), dia hanya bisa lihat bimbingannya.
       if (org.tenant_wide !== true) {
-        // Cek apakah dia Guru
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          include: { Guru: true }
-        });
-        
-        if (user?.Guru?.id) {
-          where.pembimbing_id = user.Guru.id;
+        if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { Guru: true }
+          });
+          const scopeOr: any[] = [
+            {
+              Siswa: {
+                Kelas: {
+                  jurusan_id: { in: org.unit_ids }
+                }
+              }
+            }
+          ];
+          if (user?.Guru?.id) {
+            scopeOr.push({ pembimbing_id: user.Guru.id });
+          }
+          andConditions.push({ OR: scopeOr });
+        } else {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { Guru: true }
+          });
+          if (user?.Guru?.id) {
+            andConditions.push({ pembimbing_id: user.Guru.id });
+          }
         }
       }
     } else if (userId) {
@@ -188,16 +206,22 @@ export class HubinService {
                            user?.Role?.rolePermissions.some((rp: any) => rp.permission_id === 'hubin.partners.manage');
 
       if (!isGlobalHubin && user?.Guru?.id) {
-        where.pembimbing_id = user.Guru.id;
+        andConditions.push({ pembimbing_id: user.Guru.id });
       }
     }
 
     if (params?.search) {
-      where.OR = [
-        { Siswa: { nama_siswa: { contains: params.search, mode: 'insensitive' } } },
-        { Mitra: { nama: { contains: params.search, mode: 'insensitive' } } },
-        { Pembimbing: { nama_guru: { contains: params.search, mode: 'insensitive' } } },
-      ];
+      andConditions.push({
+        OR: [
+          { Siswa: { nama_siswa: { contains: params.search, mode: 'insensitive' } } },
+          { Mitra: { nama: { contains: params.search, mode: 'insensitive' } } },
+          { Pembimbing: { nama_guru: { contains: params.search, mode: 'insensitive' } } },
+        ]
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     const [total, data] = await Promise.all([
@@ -252,7 +276,24 @@ export class HubinService {
     });
   }
 
-  async createPenempatan(tenantId: string, data: any, actorUserId?: string | null) {
+  async createPenempatan(tenantId: string, data: any, actorUserId?: string | null, org?: any) {
+    if (org && org.tenant_wide !== true) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        const student = await prisma.siswa.findFirst({
+          where: {
+            id: data.siswa_id,
+            tenant_id: tenantId,
+            Kelas: {
+              jurusan_id: { in: org.unit_ids }
+            }
+          }
+        });
+        if (!student) {
+          throw new Error('Akses ditolak: Siswa tidak berada di bawah program keahlian Anda.');
+        }
+      }
+    }
+
     // Ambil info akademik saat ini
     const siswa = await prisma.siswa.findUnique({
       where: { id: data.siswa_id },
@@ -283,14 +324,149 @@ export class HubinService {
     return result;
   }
 
-  async updatePenempatan(tenantId: string, id: string, data: any) {
-    return await prisma.siswaPkl.update({
+  async updatePenempatan(tenantId: string, id: string, data: any, actorUserId?: string | null, org?: any) {
+    if (org && org.tenant_wide !== true) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        const user = await prisma.user.findUnique({
+          where: { id: actorUserId || '' },
+          include: { Guru: true }
+        });
+        const existing = await prisma.siswaPkl.findFirst({
+          where: {
+            id,
+            tenant_id: tenantId,
+            OR: [
+              {
+                Siswa: {
+                  Kelas: {
+                    jurusan_id: { in: org.unit_ids }
+                  }
+                }
+              },
+              ...(user?.Guru?.id ? [{ pembimbing_id: user.Guru.id }] : [])
+            ]
+          }
+        });
+        if (!existing) {
+          throw new Error('Akses ditolak: Penempatan siswa tidak berada di bawah program keahlian Anda.');
+        }
+      }
+    }
+
+    const updateData: any = { ...data };
+    if (updateData.tanggal_mulai) {
+      updateData.tanggal_mulai = new Date(updateData.tanggal_mulai);
+    }
+    if (updateData.tanggal_selesai !== undefined) {
+      updateData.tanggal_selesai = updateData.tanggal_selesai ? new Date(updateData.tanggal_selesai) : null;
+    }
+
+    const result = await prisma.siswaPkl.update({
       where: { id, tenant_id: tenantId },
-      data,
+      data: updateData,
+      include: { Siswa: { select: { nama_siswa: true } } }
     });
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_UPDATE', 'SiswaPkl', id, { 
+      siswa_nama: result.Siswa?.nama_siswa, 
+      status: result.status 
+    });
+    return result;
   }
 
-  async deletePenempatan(tenantId: string, id: string, actorUserId?: string | null) {
+  async bulkCreatePenempatan(tenantId: string, data: any, actorUserId?: string | null, org?: any) {
+    const { siswa_ids, mitra_id, pembimbing_id, tanggal_mulai, tanggal_selesai, status } = data;
+    if (!Array.isArray(siswa_ids) || siswa_ids.length === 0) {
+      throw new Error('siswa_ids must be a non-empty array');
+    }
+
+    if (org && org.tenant_wide !== true) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        for (const siswaId of siswa_ids) {
+          const student = await prisma.siswa.findFirst({
+            where: {
+              id: siswaId,
+              tenant_id: tenantId,
+              Kelas: {
+                jurusan_id: { in: org.unit_ids }
+              }
+            }
+          });
+          if (!student) {
+            throw new Error('Akses ditolak: Salah satu siswa tidak berada di bawah program keahlian Anda.');
+          }
+        }
+      }
+    }
+
+    const results = [];
+    for (const siswaId of siswa_ids) {
+      const siswa = await prisma.siswa.findUnique({
+        where: { id: siswaId },
+        select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
+      });
+
+      let siswaAkademikId: string | undefined;
+      if (siswa && siswa.tahun_pelajaran_id && siswa.semester_id) {
+        const sa = await prisma.siswaAkademik.findFirst({
+          where: {
+            siswa_id: siswaId,
+            kelas_id: siswa.kelas_id,
+            tahun_pelajaran_id: siswa.tahun_pelajaran_id,
+            semester_id: siswa.semester_id
+          }
+        });
+        siswaAkademikId = sa?.id;
+      }
+
+      const res = await prisma.siswaPkl.create({
+        data: {
+          tenant_id: tenantId,
+          siswa_id: siswaId,
+          siswa_akademik_id: siswaAkademikId,
+          mitra_id,
+          pembimbing_id: pembimbing_id || null,
+          tanggal_mulai: tanggal_mulai ? new Date(tanggal_mulai) : new Date(),
+          tanggal_selesai: tanggal_selesai ? new Date(tanggal_selesai) : null,
+          status: status || 'AKTIF'
+        }
+      });
+
+      this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', res.id, { siswa_nama: siswa?.nama_siswa });
+      results.push(res);
+    }
+    return results;
+  }
+
+  async deletePenempatan(tenantId: string, id: string, actorUserId?: string | null, org?: any) {
+    if (org && org.tenant_wide !== true) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        const user = await prisma.user.findUnique({
+          where: { id: actorUserId || '' },
+          include: { Guru: true }
+        });
+        const existing = await prisma.siswaPkl.findFirst({
+          where: {
+            id,
+            tenant_id: tenantId,
+            OR: [
+              {
+                Siswa: {
+                  Kelas: {
+                    jurusan_id: { in: org.unit_ids }
+                  }
+                }
+              },
+              ...(user?.Guru?.id ? [{ pembimbing_id: user.Guru.id }] : [])
+            ]
+          }
+        });
+        if (!existing) {
+          throw new Error('Akses ditolak: Penempatan siswa tidak berada di bawah program keahlian Anda.');
+        }
+      }
+    }
+
     const result = await prisma.siswaPkl.delete({
       where: { id, tenant_id: tenantId },
       include: { Siswa: { select: { nama_siswa: true } } }
@@ -847,7 +1023,14 @@ export class HubinService {
         where,
         include: {
           Lowongan: { select: { judul_posisi: true, perusahaan_nama: true } },
-          Siswa: { select: { nama_siswa: true, nis: true } }
+          Siswa: { 
+            select: { 
+              nama_siswa: true, 
+              nis: true, 
+              no_hp: true,
+              User: { select: { email: true } }
+            } 
+          }
         },
         orderBy: { created_at: 'desc' },
         skip,
@@ -868,36 +1051,281 @@ export class HubinService {
 
   async createLamaran(tenantId: string, data: any, actorUserId?: string | null) {
     const result = await prisma.hubinLamaran.create({
+      data: { ...data, tenant_id: tenantId }
+    });
+    // Create initial log entry
+    await (prisma as any).hubinLamaranLog.create({
       data: {
-        ...data,
-        tenant_id: tenantId
+        lamaran_id: result.id,
+        tenant_id: tenantId,
+        status_dari: null,
+        status_ke: 'TERKIRIM',
+        catatan: 'Lamaran berhasil dikirim',
+        created_by: actorUserId || null,
       }
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_CREATE', 'HubinLamaran', result.id, { lowongan_id: result.lowongan_id });
     return result;
   }
 
-  async updateLamaranStatus(tenantId: string, id: string, status: string, catatan?: string, actorUserId?: string | null) {
+  async updateLamaranStatus(
+    tenantId: string,
+    id: string,
+    status: string,
+    catatan?: string,
+    actorUserId?: string | null
+  ) {
+    // Fetch current status before update (for log)
+    const current = await prisma.hubinLamaran.findFirst({
+      where: { id, tenant_id: tenantId },
+      include: {
+        Siswa: { 
+          select: { 
+            id: true,
+            nama_siswa: true, 
+            no_hp: true,
+            tanggal_keluar: true,
+            tahun_pelajaran_id: true
+          } 
+        },
+        Lowongan: { select: { judul_posisi: true, perusahaan_nama: true } },
+      }
+    });
+    if (!current) throw new Error('Lamaran tidak ditemukan');
+
     const result = await prisma.hubinLamaran.update({
       where: { id, tenant_id: tenantId },
       data: { status_seleksi: status, catatan }
     });
+
+    // Write audit log
+    await (prisma as any).hubinLamaranLog.create({
+      data: {
+        lamaran_id: id,
+        tenant_id: tenantId,
+        status_dari: current.status_seleksi,
+        status_ke: status,
+        catatan: catatan || null,
+        created_by: actorUserId || null,
+      }
+    });
+
     this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_STATUS', 'HubinLamaran', id, { status_seleksi: status });
+
+    // Send WA notification to alumni (soft — won't throw if WA not connected)
+    const noHp = current.Siswa?.no_hp;
+    if (noHp) {
+      const statusLabels: Record<string, string> = {
+        PROSES: 'sedang diproses secara administrasi',
+        INTERVIEW: 'dijadwalkan untuk interview',
+        DITERIMA: 'DITERIMA! 🎉 Selamat!',
+        DITOLAK: 'tidak berhasil pada seleksi kali ini',
+      };
+      const label = statusLabels[status];
+      if (label) {
+        const pesan = [
+          `*[Absenta - BKK Notifikasi]*`,
+          `Halo ${current.Siswa?.nama_siswa || 'Alumni'},`,
+          ``,
+          `Lamaran Anda untuk posisi *${current.Lowongan?.judul_posisi}* di *${current.Lowongan?.perusahaan_nama}* ${label}.`,
+          status === 'DITOLAK' && catatan ? `\nCatatan: ${catatan}` : '',
+          ``,
+          `Pantau terus status lamaran Anda di platform Absenta.`,
+        ].filter(Boolean).join('\n');
+        waGatewayService.sendMessageSoft(tenantId, noHp, pesan);
+      }
+    }
+
+    // Automate Tracer Study if status is DITERIMA
+    if (status === 'DITERIMA' && current.siswa_id) {
+      try {
+        let graduationYear = new Date().getFullYear();
+        
+        if (current.Siswa?.tanggal_keluar) {
+          graduationYear = new Date(current.Siswa.tanggal_keluar).getFullYear();
+        } else if (current.Siswa?.tahun_pelajaran_id) {
+          const tapel = await prisma.tahunPelajaran.findFirst({
+            where: { id: current.Siswa.tahun_pelajaran_id }
+          });
+          if (tapel?.tahun) {
+            const parts = tapel.tahun.split('/');
+            if (parts.length === 2) {
+              const parsed = parseInt(parts[1]);
+              if (!isNaN(parsed)) {
+                graduationYear = parsed;
+              }
+            }
+          }
+        }
+
+        await prisma.hubinTracerStudy.upsert({
+          where: { siswa_id: current.siswa_id },
+          update: {
+            status_alumni: 'BEKERJA',
+            perusahaan_nama: current.Lowongan?.perusahaan_nama || null,
+            posisi: current.Lowongan?.judul_posisi || null,
+            deleted_at: null,
+          },
+          create: {
+            tenant_id: tenantId,
+            siswa_id: current.siswa_id,
+            tahun_lulus: graduationYear,
+            status_alumni: 'BEKERJA',
+            perusahaan_nama: current.Lowongan?.perusahaan_nama || null,
+            posisi: current.Lowongan?.judul_posisi || null,
+          }
+        });
+
+        this.log(tenantId, actorUserId || null, 'HUBIN_TRACER_SUBMIT', 'HubinTracerStudy', current.siswa_id, { 
+          status_alumni: 'BEKERJA', 
+          auto: true 
+        });
+      } catch (err) {
+        console.error('[BKK-Tracer-Otomasi] Gagal update tracer study:', err);
+      }
+    }
+
     return result;
   }
 
+  async deleteLamaran(tenantId: string, id: string, actorUserId?: string | null) {
+    const current = await prisma.hubinLamaran.findFirst({
+      where: { id, tenant_id: tenantId, deleted_at: null },
+      include: {
+        Siswa: { select: { nama_siswa: true } },
+        Lowongan: { select: { judul_posisi: true } }
+      }
+    });
+    if (!current) throw new Error('Lamaran tidak ditemukan atau sudah dihapus');
+
+    const result = await prisma.hubinLamaran.update({
+      where: { id, tenant_id: tenantId },
+      data: { deleted_at: new Date() }
+    });
+
+    await (prisma as any).hubinLamaranLog.create({
+      data: {
+        lamaran_id: id,
+        tenant_id: tenantId,
+        status_dari: current.status_seleksi,
+        status_ke: 'DELETED',
+        catatan: 'Lamaran direset oleh koordinator BKK',
+        created_by: actorUserId || null,
+      }
+    });
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_DELETE', 'HubinLamaran', id, {
+      siswa_nama: current.Siswa?.nama_siswa,
+      posisi: current.Lowongan?.judul_posisi
+    });
+    return result;
+  }
+
+  /**
+   * Jadwalkan interview untuk sebuah lamaran.
+   * Otomatis memindahkan status ke INTERVIEW dan menyimpan detail jadwal di log.
+   */
+  async scheduleInterview(
+    tenantId: string,
+    lamaranId: string,
+    data: {
+      tanggal: string;
+      lokasi?: string;
+      link?: string;
+      pesan?: string;
+      narahubung?: string;
+    },
+    actorUserId?: string | null
+  ) {
+    const current = await prisma.hubinLamaran.findFirst({
+      where: { id: lamaranId, tenant_id: tenantId },
+      include: {
+        Siswa: { select: { nama_siswa: true, no_hp: true } },
+        Lowongan: { select: { judul_posisi: true, perusahaan_nama: true } },
+      }
+    });
+    if (!current) throw new Error('Lamaran tidak ditemukan');
+
+    const result = await prisma.hubinLamaran.update({
+      where: { id: lamaranId, tenant_id: tenantId },
+      data: { status_seleksi: 'INTERVIEW' }
+    });
+
+    const interviewDate = new Date(data.tanggal);
+
+    // Write detailed log
+    await (prisma as any).hubinLamaranLog.create({
+      data: {
+        lamaran_id: lamaranId,
+        tenant_id: tenantId,
+        status_dari: current.status_seleksi,
+        status_ke: 'INTERVIEW',
+        catatan: data.pesan || 'Interview dijadwalkan',
+        interview_tanggal: interviewDate,
+        interview_lokasi: data.lokasi || null,
+        interview_link: data.link || null,
+        interview_pesan: data.pesan || null,
+        interview_narahubung: data.narahubung || null,
+        created_by: actorUserId || null,
+      }
+    });
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_LAMARAN_INTERVIEW', 'HubinLamaran', lamaranId, { tanggal: data.tanggal });
+
+    // WA notification with interview details
+    const noHp = current.Siswa?.no_hp;
+    if (noHp) {
+      const tanggalStr = interviewDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const waktuStr = interviewDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+      const pesan = [
+        `*[Absenta - BKK Undangan Interview]*`,
+        `Halo ${current.Siswa?.nama_siswa || 'Alumni'},`,
+        ``,
+        `Anda diundang untuk *Interview* posisi *${current.Lowongan?.judul_posisi}* di *${current.Lowongan?.perusahaan_nama}*.`,
+        ``,
+        `📅 *Jadwal:* ${tanggalStr}, ${waktuStr}`,
+        data.lokasi ? `📍 *Lokasi:* ${data.lokasi}` : '',
+        data.link ? `🔗 *Link Meet:* ${data.link}` : '',
+        data.narahubung ? `👤 *Narahubung:* ${data.narahubung}` : '',
+        data.pesan ? `\n📝 ${data.pesan}` : '',
+        ``,
+        `Semoga sukses! — Tim BKK`,
+      ].filter(Boolean).join('\n');
+      waGatewayService.sendMessageSoft(tenantId, noHp, pesan);
+    }
+
+    return result;
+  }
+
+  /**
+   * Ambil riwayat/timeline log perubahan status sebuah lamaran.
+   */
+  async getLamaranTimeline(tenantId: string, lamaranId: string) {
+    return await (prisma as any).hubinLamaranLog.findMany({
+      where: { lamaran_id: lamaranId, tenant_id: tenantId },
+      orderBy: { created_at: 'asc' },
+    });
+  }
+
   // --- 8. TRACER STUDY ALUMNI ---
-  async getTracerStudy(tenantId: string, params?: { search?: string; tahunLulus?: number; statusAlumni?: string; page?: number; limit?: number }) {
+  async getTracerStudy(tenantId: string, params?: { search?: string; tahunLulus?: number; statusAlumni?: string; page?: number; limit?: number; forceSiswaId?: string }) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
     const skip = (page - 1) * limit;
 
     const where: any = { tenant_id: tenantId, deleted_at: null };
+    if (params?.forceSiswaId) {
+      where.siswa_id = params.forceSiswaId;
+    }
     if (params?.tahunLulus) where.tahun_lulus = parseInt(params.tahunLulus as any);
     if (params?.statusAlumni) where.status_alumni = params.statusAlumni;
-    if (params?.search) {
+    if (params?.search && !params?.forceSiswaId) {
       where.Siswa = {
-        nama_siswa: { contains: params.search, mode: 'insensitive' }
+        OR: [
+          { nama_siswa: { contains: params.search, mode: 'insensitive' } },
+          { nis: { contains: params.search, mode: 'insensitive' } },
+          { User: { username: { contains: params.search, mode: 'insensitive' } } }
+        ]
       };
     }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, RefreshCw } from 'lucide-react';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import {
   Badge,
@@ -11,7 +11,6 @@ import {
   SectionHeader,
   SearchableSelect,
   Table,
-  ToastContainer,
 } from '@/components/ui';
 import { formatDateTime } from '@/utils/layoutUtils';
 import { type DocumentAction, type DocumentActivityItem, listDocumentActivities } from '@/api/documents.api';
@@ -37,7 +36,6 @@ function badgeVariantForAction(action: DocumentAction) {
 }
 
 export default function DocumentActivityPage() {
-  const { toasts, error, removeToast } = useToast();
   const { user, tenantId } = useAuthStore();
 
   const roleName = ((user as any)?.role?.name || (user as any)?.role || '') as string;
@@ -75,7 +73,7 @@ export default function DocumentActivityPage() {
         });
 
         if (!res.success) {
-          error(res.message || 'Gagal memuat aktivitas dokumen');
+          toast.error(res.message || 'Gagal memuat aktivitas dokumen');
           return;
         }
 
@@ -84,12 +82,12 @@ export default function DocumentActivityPage() {
         setTotalPages(res.pagination.totalPages);
         setTotalItems(res.pagination.total);
       } catch (e: any) {
-        error(e?.message || 'Gagal memuat aktivitas dokumen');
+        toast.error(e?.message || 'Gagal memuat aktivitas dokumen');
       } finally {
         setLoading(false);
       }
     },
-    [actionFilter, actorUserIdFilter, dateFrom, dateTo, documentIdFilter, error, isSuperAdmin, tenantIdFilter]
+    [actionFilter, actorUserIdFilter, dateFrom, dateTo, documentIdFilter, isSuperAdmin, tenantIdFilter]
   );
 
   useEffect(() => {
@@ -270,7 +268,6 @@ export default function DocumentActivityPage() {
         )}
       </div>
 
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

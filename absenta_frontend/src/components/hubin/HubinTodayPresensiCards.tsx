@@ -105,12 +105,12 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
     setIsCameraOpen(true);
   }, []);
 
-  const handleCapture = useCallback(async (file: File) => {
+  const handleCapture = useCallback(async (file: File | null) => {
     const type = activeType;
-    if (!file || !type) return;
+    if (!type) return;
 
-    const uploadToast = toast.loading(`Mengunggah foto bukti ${type === 'IN' ? 'Masuk' : 'Pulang'}...`);
-    setIsUploading(type);
+    let uploadedUrl = '';
+    let uploadToast: string | undefined = undefined;
 
     try {
       // Get address snapshot if outside radius
@@ -125,17 +125,25 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
         }
       }
 
-      const formData = new FormData();
-      if (className) formData.append('folder_name', className);
-      const customFileName = generateHubinFileName(studentName, className, type === 'IN' ? 'CheckIn' : 'CheckOut');
-      formData.append('file', file, customFileName);
+      if (file) {
+        uploadToast = toast.loading(`Mengunggah foto bukti ${type === 'IN' ? 'Masuk' : 'Pulang'}...`);
+        setIsUploading(type);
 
-      const res = await axiosInstance.post('/hubin/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+        const formData = new FormData();
+        if (className) formData.append('folder_name', className);
+        const customFileName = generateHubinFileName(studentName, className, type === 'IN' ? 'CheckIn' : 'CheckOut');
+        formData.append('file', file, customFileName);
 
-      const uploadedUrl = res.data?.data?.url || res.data?.url || '';
-      if (!uploadedUrl) throw new Error('Gagal mendapatkan URL foto');
+        const res = await axiosInstance.post('/hubin/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+
+        uploadedUrl = res.data?.data?.url || res.data?.url || '';
+        if (!uploadedUrl) throw new Error('Gagal mendapatkan URL foto');
+      } else {
+        // Presensi tanpa foto
+        setIsUploading(type);
+      }
 
       if (type === 'IN') {
         const initialActivities = kegiatan.trim() 
@@ -146,7 +154,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
           latitude: location?.lat, 
           longitude: location?.lng, 
           kegiatan: initialActivities.length ? JSON.stringify(initialActivities) : '', 
-          image_url: uploadedUrl,
+          image_url: uploadedUrl || undefined,
           is_dinas_luar: isDinasLuarMode,
           address_snapshot: addressSnapshot
         });
@@ -155,14 +163,14 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = (
           siswaPklId: studentPkl?.id, 
           latitude: location?.lat, 
           longitude: location?.lng, 
-          image_url: uploadedUrl,
+          image_url: uploadedUrl || undefined,
           is_dinas_luar: isDinasLuarMode,
           address_snapshot: addressSnapshot
         });
       }
-      toast.dismiss(uploadToast);
+      if (uploadToast) toast.dismiss(uploadToast);
     } catch (err: any) {
-      toast.dismiss(uploadToast);
+      if (uploadToast) toast.dismiss(uploadToast);
       if (!err.response?.data?.message || !err.config?.url?.includes('/absensi/')) {
         toast.error('Gagal: ' + (err.response?.data?.message || err.message || 'Error Unknown'));
       }

@@ -8,7 +8,7 @@ import {
   downloadSiswaExitBundle,
   type SiswaTimelineItem 
 } from '../../../api/academic/siswa.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { Button } from '../../ui/Button';
 import { Loader } from '../../ui/Loader';
 import { Card, CardContent, Timeline, TimelineItem } from '../../ui';
@@ -23,7 +23,7 @@ interface SiswaTimelineAndExitTabProps {
 
 export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = React.memo(({ siswa }) => {
   const { can, user } = useAuth();
-  const { showToast } = useToast();
+
   
   const [timeline, setTimeline] = useState<SiswaTimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,13 +69,13 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showToast('Arsip bundel berkas berhasil diunduh.', 'success');
+      toast.success('Arsip bundel berkas berhasil diunduh.');
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengunduh berkas bundel', 'error');
+      toast.error(err.message || 'Gagal mengunduh berkas bundel');
     } finally {
       setDownloadingZip(false);
     }
-  }, [siswa.id, siswa.nama_siswa, showToast]);
+  }, [siswa.id, siswa.nama_siswa]);
 
   const handleDownloadDoc = useCallback(async (docId: string, fileName: string) => {
     try {
@@ -89,13 +89,13 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showToast('Dokumen berhasil diunduh.', 'success');
+      toast.success('Dokumen berhasil diunduh.');
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengunduh dokumen', 'error');
+      toast.error(err.message || 'Gagal mengunduh dokumen');
     } finally {
       setDownloadingDocId(null);
     }
-  }, [siswa.id, showToast]);
+  }, [siswa.id]);
 
   const handleDeleteDoc = useCallback(async (docId: string, judul: string) => {
     if (!window.confirm(`Apakah Anda yakin ingin menghapus lampiran '${judul}'?`)) return;
@@ -103,17 +103,17 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
       setLoading(true);
       const res = await deleteSiswaDocument(siswa.id, docId);
       if (res.success) {
-        showToast('Dokumen berhasil dihapus', 'success');
+        toast.success('Dokumen berhasil dihapus');
         fetchTimeline();
       } else {
-        showToast(res.message || 'Gagal menghapus dokumen', 'error');
+        toast.error(res.message || 'Gagal menghapus dokumen');
       }
     } catch (err: any) {
-      showToast(err.message || 'Koneksi bermasalah', 'error');
+      toast.error(err.message || 'Koneksi bermasalah');
     } finally {
       setLoading(false);
     }
-  }, [siswa.id, showToast, fetchTimeline]);
+  }, [siswa.id, fetchTimeline]);
 
   if (loading && timeline.length === 0) return (
     <div className="py-20 flex flex-col items-center justify-center">

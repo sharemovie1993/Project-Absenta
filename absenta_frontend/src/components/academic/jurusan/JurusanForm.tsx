@@ -9,7 +9,7 @@ import {
   ModalFooter
 } from '../../ui';
 import { createJurusan, updateJurusan, getJurusanDetail, type CreateJurusanPayload, type UpdateJurusanPayload } from '../../../api/academic/jurusan.api';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { createJurusanSchema, type CreateJurusanSchema } from '../../../schemas/academic/jurusan.schema';
 
 // Modular Sections
@@ -32,7 +32,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   
-  const { showToast } = useToast();
+
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -68,14 +68,14 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
         });
       } catch (error) {
         console.error('Error loading jurusan data:', error);
-        showToast('Gagal memuat data jurusan', 'error');
+        toast.error('Gagal memuat data jurusan');
       } finally {
         setLoadingData(false);
       }
     };
 
     loadJurusanData();
-  }, [jurusanId, mode, showToast, reset]);
+  }, [jurusanId, mode, reset]);
 
   // Handle form submission
   const onFormSubmit = async (data: CreateJurusanSchema) => {
@@ -99,10 +99,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
       }
 
       if (response.success) {
-        showToast(
-          isEditMode ? 'Jurusan berhasil diperbarui' : 'Jurusan berhasil dibuat',
-          'success'
-        );
+        toast.success(isEditMode ? 'Jurusan berhasil diperbarui' : 'Jurusan berhasil dibuat');
         onSuccess?.();
       } else {
         setSubmitError(response.message || 'Terjadi kesalahan saat menyimpan data');

@@ -537,7 +537,11 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
                     rawPenempatan={rawPenempatan} isLoading={isLoading} onVerify={verifyMutation.mutate}
                     onQuickAddForId={(abs: AbsensiPkl, text: string) => {
                       let parsed: ActivityItem[] = [];
-                      try { parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; } catch(e) {}
+                      try { 
+                        parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; 
+                      } catch (e) { 
+                        console.error('Failed to parse kegiatan:', e);
+                      }
                       const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
                       updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
                     }}

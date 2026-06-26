@@ -23,7 +23,7 @@ import {
 import { BookOpen } from 'lucide-react';
 import { getMapelList, deleteMapel } from '../../../api/academic/mapel.api';
 import type { Mapel } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 
@@ -65,7 +65,6 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
-  const { showToast } = useToast();
   const { user, can } = useAuth();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -92,15 +91,15 @@ const MapelList = React.memo<MapelListProps>(({
         setTotalItems(response.pagination.total);
         setCurrentPage(response.pagination.page);
       } else {
-        showToast('Gagal memuat data mata pelajaran', 'error');
+        toast.error('Gagal memuat data mata pelajaran');
       }
     } catch (error) {
       console.error('Error fetching mapels:', error);
-      showToast('Terjadi kesalahan saat memuat data mata pelajaran', 'error');
+      toast.error('Terjadi kesalahan saat memuat data mata pelajaran');
     } finally {
       setLoading(false);
     }
-  }, [showToast, itemsPerPage, filterTingkat]);
+  }, [itemsPerPage, filterTingkat]);
 
   useEffect(() => {
     fetchMapels(1, debouncedSearchTerm);
@@ -168,19 +167,19 @@ const MapelList = React.memo<MapelListProps>(({
       const response = await deleteMapel(mapel.id);
       
       if (response.success) {
-        showToast(response.message || 'Mata pelajaran berhasil dihapus', 'success');
+        toast.success(response.message || 'Mata pelajaran berhasil dihapus');
         fetchMapels(currentPage, debouncedSearchTerm);
       } else {
-        showToast(response.message || 'Gagal menghapus mata pelajaran', 'error');
+        toast.error(response.message || 'Gagal menghapus mata pelajaran');
       }
     } catch (error: any) {
       console.error('Error deleting mapel:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat menghapus mata pelajaran';
-      showToast(errorMessage, 'error');
+      toast.error(errorMessage);
     } finally {
       setDeleting(false);
     }
-  }, [showToast, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
+  }, [fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
 
 
@@ -217,10 +216,10 @@ const MapelList = React.memo<MapelListProps>(({
         setBulkErrorDetails(failed);
         setBulkErrorModalOpen(true);
         if (succeeded.length > 0) {
-          showToast(`Berhasil menghapus ${succeeded.length} mata pelajaran, ${failed.length} gagal.`, 'warning');
+          toast(`Berhasil menghapus ${succeeded.length} mata pelajaran, ${failed.length} gagal.`, { icon: '⚠️' });
         }
       } else {
-        showToast(`Berhasil menghapus ${succeeded.length} mata pelajaran`, 'success');
+        toast.success(`Berhasil menghapus ${succeeded.length} mata pelajaran`);
       }
 
       const next = new Set<string>(selectedIds);
@@ -230,11 +229,11 @@ const MapelList = React.memo<MapelListProps>(({
       fetchMapels(currentPage, debouncedSearchTerm);
     } catch (err: any) {
       console.error('Error bulk deleting mapel:', err);
-      showToast('Terjadi kesalahan saat menghapus data terpilih', 'error');
+      toast.error('Terjadi kesalahan saat menghapus data terpilih');
     } finally {
       setBulkDeleting(false);
     }
-  }, [selectedIds, showToast, fetchMapels, currentPage, debouncedSearchTerm]);
+  }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm]);
 
   // Table columns configuration
   const columns = useMemo(() => [

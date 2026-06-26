@@ -31,6 +31,11 @@ export class WhatsappService {
   }
 
   async sendMessage(config: any, to: string, message: string) {
+    if (config.provider_name === 'LOCAL') {
+      const { waGatewayService } = await import('../../../services/wa-gateway.service');
+      return waGatewayService.sendMessage(config.tenant_id, to, message);
+    }
+
     if (!config.api_url || !config.api_token) {
       throw new Error('API URL or Token missing');
     }

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type HubType = 'AKADEMIK' | 'ABSENSI' | 'SARPRAS' | 'HUBIN' | 'KOPERASI' | 'MANAGEMENT';
+export type HubType = 'AKADEMIK' | 'KURIKULUM' | 'KESISWAAN' | 'ABSENSI' | 'SARPRAS' | 'HUBIN' | 'KOPERASI' | 'BPBK' | 'RAPOR' | 'CBT';
 
 interface NavState {
   activeHub: HubType;
@@ -17,7 +17,13 @@ export const useNavStore = create<NavState>()(
       detectHubFromPath: (path) => {
         const p = path.toLowerCase();
         
-        if (p.startsWith('/academic') || p.startsWith('/kesiswaan') || p.startsWith('/kurikulum')) {
+        if (p.startsWith('/bpbk')) {
+          set({ activeHub: 'BPBK' });
+        } else if (p.startsWith('/kurikulum')) {
+          set({ activeHub: 'KURIKULUM' });
+        } else if (p.startsWith('/kesiswaan')) {
+          set({ activeHub: 'KESISWAAN' });
+        } else if (p.startsWith('/academic') || p.startsWith('/data-master') || p.startsWith('/master')) {
           set({ activeHub: 'AKADEMIK' });
         } else if (p.startsWith('/attendance')) {
           set({ activeHub: 'ABSENSI' });
@@ -25,10 +31,6 @@ export const useNavStore = create<NavState>()(
           set({ activeHub: 'SARPRAS' });
         } else if (p.startsWith('/hubin') || p.startsWith('/pkl') || p.includes('mitra')) {
           set({ activeHub: 'HUBIN' });
-        } else if (p.startsWith('/billing') || p.startsWith('/invoice') || p.includes('tagihan') || p.includes('spp')) {
-          if (!(p.includes('subscription') || p.includes('services'))) {
-            set({ activeHub: 'KOPERASI' });
-          }
         } else if (p.startsWith('/cooperative') || p.includes('koperasi') || p.includes('kantin')) {
           set({ activeHub: 'KOPERASI' });
         }

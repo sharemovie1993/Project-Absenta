@@ -26,7 +26,7 @@ import {
 import { Timeline, TimelineItem } from '../../components/ui/Timeline';
 import { getTenantActivityLogs, type ActivityLogItem } from '../../api/activityLog.api';
 import { getUsersForDropdown, type User as UserType } from '../../api/user.api';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 
 // Lazy loading SearchableSelect to pass audit scanner optimization checks
 const SearchableSelect = lazy(() =>
@@ -73,7 +73,7 @@ function getEventStatusConfig(action: string) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const StaffActivityLogPage: React.FC = () => {
-  const { error } = useToast();
+
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
   const [staffUsers, setStaffUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -136,11 +136,11 @@ export const StaffActivityLogPage: React.FC = () => {
       const msg = typeof err === 'object' && err !== null && 'message' in err
         ? String((err as { message?: unknown }).message)
         : 'Terjadi kesalahan saat mengambil log aktivitas.';
-      error(msg);
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, selectedUser, selectedAction, dateFrom, dateTo, error]);
+  }, [page, debouncedSearch, selectedUser, selectedAction, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchLogs();

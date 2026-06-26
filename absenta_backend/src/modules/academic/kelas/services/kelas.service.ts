@@ -97,7 +97,9 @@ export class KelasService {
 
     // Apply Isolate/Scope filter from Organization Engine
     if (org && org.tenant_wide !== true) {
-      if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        whereClause.jurusan_id = { in: org.unit_ids };
+      } else if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
         whereClause.id = { in: org.kelas_ids };
       } else {
         // No assigned classes, return empty
@@ -402,6 +404,20 @@ export class KelasService {
         }
       }
 
+      // Automatically create a default Sarpras Location for the new Class
+      try {
+        await tx.sarprasLocation.create({
+          data: {
+            tenant_id: tenantId,
+            nama: `Ruang Kelas ${kelas.nama_kelas}`,
+            kelas_id: kelas.id,
+            deskripsi: `Ruang kelas untuk ${kelas.nama_kelas} tingkat ${kelas.tingkat}`
+          }
+        });
+      } catch (err) {
+        console.warn('Failed to create automatic Sarpras Location for Kelas:', err);
+      }
+
       return kelas;
     });
 
@@ -590,6 +606,21 @@ export class KelasService {
           }
         }
       }
+
+      // Automatically update the default Sarpras Location for the Class if name changes
+      if (input.nama_kelas !== undefined) {
+        try {
+          await tx.sarprasLocation.updateMany({
+            where: { kelas_id: kelasId, tenant_id: existingKelas.tenant_id },
+            data: {
+              nama: `Ruang Kelas ${input.nama_kelas}`,
+              deskripsi: `Ruang kelas untuk ${input.nama_kelas} tingkat ${input.tingkat || existingKelas.tingkat}`
+            }
+          });
+        } catch (err) {
+          console.warn('Failed to update automatic Sarpras Location for Kelas:', err);
+        }
+      }
     });
 
     // Fetch the complete kelas with relations
@@ -663,6 +694,16 @@ export class KelasService {
       if (counts.JadwalTemplate > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki data jadwal pelajaran');
       if (counts.OrganizationalAssignments > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki penugasan organisasi (misal: Wali Kelas)');
       if (counts.PelanggaranSiswa > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki catatan pelanggaran siswa');
+    }
+
+    // Soft-delete the corresponding location
+    try {
+      await prisma.sarprasLocation.updateMany({
+        where: { kelas_id: kelasId, tenant_id: tenantId },
+        data: { deleted_at: new Date() }
+      });
+    } catch (err) {
+      console.warn('Failed to delete automatic Sarpras Location for Kelas:', err);
     }
 
     await prisma.kelas.delete({

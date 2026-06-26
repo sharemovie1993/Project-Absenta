@@ -34,7 +34,11 @@ export const InstructionProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useInstruction = () => {
   const context = useContext(InstructionContext);
   if (context === undefined) {
-    throw new Error('useInstruction must be used within an InstructionProvider');
+    // Return a dummy context to avoid crashing when components are rendered outside an InstructionProvider
+    return {
+      instructionData: null,
+      setInstructionData: () => {}
+    };
   }
   return context;
 };

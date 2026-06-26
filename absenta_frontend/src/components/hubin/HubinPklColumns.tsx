@@ -8,7 +8,8 @@ import {
   MapPin, 
   FileText, 
   Printer, 
-  Trash2 
+  Trash2,
+  Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
@@ -27,6 +28,7 @@ interface GetColumnsParams {
   onCetakTugas: (row: SiswaPkl) => void;
   onCetakKolektif: (mitraId: string) => void;
   onHapus: (row: SiswaPkl) => void;
+  onEdit?: (row: SiswaPkl) => void;
 }
 
 export const getPenempatanColumns = ({
@@ -39,6 +41,7 @@ export const getPenempatanColumns = ({
   onCetakTugas,
   onCetakKolektif,
   onHapus,
+  onEdit,
 }: GetColumnsParams) => [
   {
     key: 'siswa',
@@ -254,12 +257,25 @@ export const getPenempatanColumns = ({
           </Button>
         )}
 
+        {/* Edit Plotting Penempatan */}
+        {canManage && onEdit && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1.5 text-xs text-indigo-650 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 bg-indigo-50/20 dark:bg-indigo-950/10 hover:bg-indigo-100 px-3 py-1.5 rounded-lg"
+            onClick={() => onEdit(row)}
+          >
+            <Edit size={14} />
+            Edit
+          </Button>
+        )}
+
         {/* Hapus Plotting Penempatan */}
         {canManage && (
           <Button
             size="sm"
             variant="outline"
-            className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-450 border-rose-200 dark:border-rose-950 bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-100 dark:hover:bg-rose-950/30 px-3 py-1.5 rounded-lg"
+            className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-455 border-rose-200 dark:border-rose-955 bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-100 dark:hover:bg-rose-950/30 px-3 py-1.5 rounded-lg"
             onClick={() => onHapus(row)}
           >
             <Trash2 size={14} />

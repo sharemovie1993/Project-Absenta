@@ -1,30 +1,44 @@
-import React from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Ban, Home, LifeBuoy, Mail, Slash } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
 import { motion } from 'framer-motion';
-import { Navbar } from '@/components/layout/Navbar';
-import { Footer } from '@/components/layout/Footer';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_SUPPORT_EMAIL, MAIN_DOMAIN } from '@/config/env-config';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
-export default function CancelledPage() {
+function CancelledContent() {
   const navigate = useNavigate();
 
-  const containerVariants = {
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: "easeOut" as any } }
-  };
+  }), []);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Sistem', path: '/home' },
+    { label: 'Status Layanan' }
+  ], []);
+
+  const handleGoHome = useCallback(() => navigate('/home'), [navigate]);
+  const handleContactSupport = useCallback(() => { window.location.href = `mailto:${DEFAULT_SUPPORT_EMAIL}`; }, []);
+  const handleNewSubscription = useCallback(() => { window.open(`https://${MAIN_DOMAIN}/pricing`, '_blank'); }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-100">
-      <Navbar />
-      
-      <main className="flex-grow flex items-center justify-center p-6 pt-24 pb-20 relative overflow-hidden">
-        {/* Decorative background */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-mesh rounded-full blur-3xl" />
-        </div>
-
+    <AcademicPageLayout
+      title="Status Langganan: Berhenti"
+      description="Layanan institusi Anda telah dibatalkan secara permanen atau berakhir masa aktifnya."
+      hardeningModuleKey="system_cancelled"
+      instruction={{
+        title: "Informasi Layanan",
+        description: "Layanan institusi Anda telah dibatalkan secara permanen atau berakhir masa aktifnya.",
+        items: [
+          { text: "Akses Anda ke fitur sistem telah dibatasi." },
+          { text: "Silakan hubungi tim kami atau pilih paket langganan baru untuk memulihkan akses." }
+        ]
+      }}
+      breadcrumbs={breadcrumbs}
+    >
+      <div className="flex items-center justify-center p-6 relative min-h-[50vh]">
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -48,20 +62,20 @@ export default function CancelledPage() {
                    </div>
                 </motion.div>
 
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight uppercase">Layanan Berhenti</h1>
-                <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 max-w-xs mx-auto leading-relaxed">
+                <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-4 tracking-tight uppercase">Layanan Berhenti</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-10 max-w-xs mx-auto leading-relaxed">
                    Langganan institusi Anda untuk sistem Absenta telah dibatalkan secara permanen atau telah berakhir masa aktifnya.
                 </p>
 
                 <div className="space-y-4">
-                   <Button onClick={() => navigate('/home')} className="w-full h-14 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black shadow-xl active:scale-95 transition-all gap-2">
+                   <Button onClick={handleGoHome} className="w-full h-14 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black shadow-xl active:scale-95 transition-all gap-2">
                       <Home className="w-5 h-5" /> Kembali ke Beranda
                    </Button>
-                   <div className="flex gap-3">
-                      <Button variant="ghost" onClick={() => window.location.href = `mailto:${DEFAULT_SUPPORT_EMAIL}`} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
+                   <div className="flex flex-col sm:flex-row gap-3">
+                      <Button variant="ghost" onClick={handleContactSupport} className="flex-1 h-14 rounded-xl font-bold text-slate-500 hover:text-slate-900 gap-2 border-2 border-transparent hover:border-slate-100 transition-all">
                          <Mail className="w-4 h-4" /> Hubungi Support
                       </Button>
-                      <Button variant="ghost" onClick={() => window.open(`https://${MAIN_DOMAIN}/pricing`, '_blank')} className="flex-1 h-14 rounded-xl font-bold text-blue-600 hover:bg-blue-50 gap-2 border-2 border-transparent hover:border-blue-100 transition-all">
+                      <Button variant="ghost" onClick={handleNewSubscription} className="flex-1 h-14 rounded-xl font-bold text-blue-600 hover:bg-blue-50 gap-2 border-2 border-transparent hover:border-blue-100 transition-all">
                          <LifeBuoy className="w-4 h-4" /> Langganan Baru
                       </Button>
                    </div>
@@ -73,9 +87,13 @@ export default function CancelledPage() {
              </div>
           </Card>
         </motion.div>
-      </main>
+      </div>
+    </AcademicPageLayout>
+  );
+}
 
-      <Footer />
-    </div>
+export default function CancelledPage() {
+  return (
+    <CancelledContent />
   );
 }

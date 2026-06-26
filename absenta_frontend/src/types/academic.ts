@@ -329,6 +329,7 @@ export interface Tenant {
   updated_at: string;
   kepala_sekolah?: string | null;
   nip_kepala?: string | null;
+  allow_manual_hadir_gate?: boolean;
 }
 
 

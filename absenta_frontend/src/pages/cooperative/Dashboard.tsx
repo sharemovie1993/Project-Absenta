@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserX, UserCheck, Award, ShoppingCart, Eye, Printer, Check, Copy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { printCoopReceipt, fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
+import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; subtext?: string }> = ({ title, value, icon, color, subtext }) => {
@@ -84,37 +84,45 @@ const Dashboard: React.FC = () => {
     totalLoans: 0,
     dueInstallments: 0
   });
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+interface Announcement { id: string; title: string; content: string; createdAt: string; }
+interface SaleItem { product?: { name?: string }; quantity: number; price: number; }
+interface Sale { id: string; date: string; paymentMethod: string; items: SaleItem[]; discount: number; total: number; voucherCode?: string; cashAmount?: number; changeAmount?: number; }
+interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
+
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [memberStatus, setMemberStatus] = useState<'loading' | 'member' | 'non-member'>('loading');
   const [mySavingsSum, setMySavingsSum] = useState<number>(0);
   const [myShuSum, setMyShuSum] = useState<number>(0);
-  const [salesHistory, setSalesHistory] = useState<any[]>([]);
+  const [salesHistory, setSalesHistory] = useState<Sale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
-  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [memberInfo, setMemberInfo] = useState<any>(null);
-  const [coopSettings, setCoopSettings] = useState<any>(null);
+  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
+  const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
+  const [salesPage, setSalesPage] = useState(1);
+  const salesPageLimit = 10;
 
   // Identifikasi role pengguna
-  const roleName: string = (user as any)?.roleName || (user as any)?.Role?.name || (user as any)?.role?.name || '';
+  const userRecord = user as unknown as Record<string, unknown>;
+  const roleName: string = (userRecord?.roleName as string) || ((userRecord?.Role as Record<string, unknown>)?.name as string) || ((userRecord?.role as Record<string, unknown>)?.name as string) || '';
   const isGuruOrSiswa = (roleName === 'GURU' || roleName === 'SISWA') && !isSuperAdmin();
 
   // Gating Logic
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
+  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
 
   // Dummy data for chart - in production, fetch this from API
-  const chartData = [
+  const chartData = useMemo(() => [
     { name: 'Jan', simpanan: 4000000, pinjaman: 2400000 },
     { name: 'Feb', simpanan: 3000000, pinjaman: 1398000 },
     { name: 'Mar', simpanan: 2000000, pinjaman: 9800000 },
     { name: 'Apr', simpanan: 2780000, pinjaman: 3908000 },
     { name: 'May', simpanan: 1890000, pinjaman: 4800000 },
     { name: 'Jun', simpanan: 2390000, pinjaman: 3800000 },
-  ];
+  ], []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     // SECURITY: Do not fetch data if the module is locked for CORE_PLATFORM
     if (isLocked) {
       setLoading(false);
@@ -131,7 +139,7 @@ const Dashboard: React.FC = () => {
         totalLoans: Number(raw.totalLoans) || 0,
         dueInstallments: Number(raw.dueInstallments) || 0,
       });
-      
+
       try {
         const annRes = await api.get('/cooperative/announcements');
         const annList = annRes.data.data;
@@ -145,14 +153,14 @@ const Dashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isLocked]);
 
   useEffect(() => {
     if (subscription === undefined) return;
     fetchData();
-  }, [subscription, isLocked]);
+  }, [subscription, fetchData]);
 
-  const fetchSalesHistory = async () => {
+  const fetchSalesHistory = useCallback(async () => {
     try {
       setSalesLoading(true);
       const res = await api.get('/cooperative/toko/history');
@@ -163,19 +171,19 @@ const Dashboard: React.FC = () => {
     } finally {
       setSalesLoading(false);
     }
-  };
+  }, []);
 
-  const loadCoopSettings = async () => {
+  const loadCoopSettings = useCallback(async () => {
     const data = await fetchCoopSettings();
     setCoopSettings(data);
-  };
+  }, []);
 
-  const printReceipt = (sale: any) => {
+  const printReceipt = useCallback((sale: Sale) => {
     if (!sale || !coopSettings) return;
     const rawName = memberInfo?.User?.full_name || user?.full_name || 'Tamu';
     const rawMemberNo = memberInfo?.memberNo || '';
     printCoopReceipt(sale, coopSettings, rawName, rawMemberNo, 'Mandiri');
-  };
+  }, [coopSettings, memberInfo, user]);
 
   // Cek status keanggotaan koperasi untuk GURU/SISWA
   useEffect(() => {
@@ -208,7 +216,7 @@ const Dashboard: React.FC = () => {
       const fetchPersonalData = async () => {
         try {
           const savingsRes = await api.get('/cooperative/savings');
-          const totalMySavings = (savingsRes.data || []).reduce((sum: number, s: any) => sum + Number(s.amount || 0), 0);
+          const totalMySavings = (savingsRes.data || []).reduce((sum: number, s: { amount?: number | string }) => sum + Number(s.amount || 0), 0);
           setMySavingsSum(totalMySavings);
         } catch (err) {
           console.error('Failed to fetch personal savings:', err);
@@ -217,7 +225,7 @@ const Dashboard: React.FC = () => {
         try {
           const shuRes = await api.get('/cooperative/shu/my-history');
           if (shuRes.data?.success) {
-            const totalMyShu = (shuRes.data.data || []).reduce((sum: number, h: any) => sum + Number(h.totalShu || 0), 0);
+            const totalMyShu = (shuRes.data.data || []).reduce((sum: number, h: { totalShu?: number | string }) => sum + Number(h.totalShu || 0), 0);
             setMyShuSum(totalMyShu);
           }
         } catch (err) {
@@ -349,8 +357,8 @@ const Dashboard: React.FC = () => {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" axisLine={false} tickLine={false} />
                         <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `${val / 1000000}M`} />
-                        <Tooltip 
-                          formatter={(value: any) => `Rp ${Number(value).toLocaleString('id-ID')}`} 
+                        <Tooltip
+                          formatter={(value: number) => `Rp ${Number(value).toLocaleString('id-ID')}`}
                           contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                         />
                         <Bar dataKey="simpanan" name="Simpanan" fill="#10B981" radius={[4, 4, 0, 0]} />
@@ -417,64 +425,73 @@ const Dashboard: React.FC = () => {
               {memberStatus === 'member' && (
                 <SectionCard title="Riwayat Belanja Saya" fullWidth noPadding>
                   <div className="p-6">
-                    <Table 
-                        data={salesHistory}
+                    <Table
+                        data={(salesHistory ?? []).slice((salesPage - 1) * salesPageLimit, salesPage * salesPageLimit)}
                         loading={salesLoading}
                         emptyMessage="Anda belum memiliki riwayat transaksi belanja."
+                        pagination={{
+                          currentPage: salesPage,
+                          totalPages: Math.max(1, Math.ceil((salesHistory ?? []).length / salesPageLimit)),
+                          totalItems: (salesHistory ?? []).length,
+                          itemsPerPage: salesPageLimit,
+                          onPageChange: setSalesPage
+                        }}
                         columns={[
                           {
-                            title: 'Tanggal',
+                            label: 'Tanggal',
                             key: 'date',
+                            sortable: true,
                             render: (date: string) => format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: id }),
-                          } as any,
+                          },
                           {
-                            title: 'ID Struk',
+                            label: 'ID Struk',
                             key: 'id',
                             render: (id: string) => <StrukBadge id={id} />,
-                          } as any,
+                          },
                           {
-                            title: 'Metode Pembayaran',
+                            label: 'Metode Pembayaran',
                             key: 'paymentMethod',
                             render: (m: string) => (
                               <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
                                 {m}
                               </span>
                             ),
-                          } as any,
+                          },
                           {
-                            title: 'Items',
+                            label: 'Items',
                             key: 'items',
-                            render: (items: any[]) => `${items.length} Item`,
-                          } as any,
+                            render: (items: SaleItem[]) => `${(items ?? []).length} Item`,
+                          },
                           {
-                            title: 'Diskon',
+                            label: 'Diskon',
                             key: 'discount',
                             render: (val: number) => val > 0 ? `Rp ${val.toLocaleString('id-ID')}` : '-',
-                          } as any,
+                          },
                           {
-                            title: 'Total Belanja',
+                            label: 'Total Belanja',
                             key: 'total',
+                            sortable: true,
                             render: (val: number) => (
                               <span className="font-bold text-blue-600 dark:text-blue-400">
                                 Rp {val.toLocaleString('id-ID')}
                               </span>
                             ),
-                          } as any,
+                          },
                           {
-                            title: 'Aksi',
+                            label: 'Aksi',
                             key: 'action',
-                            render: (_: any, record: any) => (
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
+                            render: (_: unknown, record: Sale) => (
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 className="h-7 text-[10px] gap-1"
-                                 onClick={() => printReceipt(record)}
-                               >
-                                 <Printer size={13} />
-                                 Cetak
-                               </Button>
+                                onClick={() => printReceipt(record)}
+                              >
+                                <Printer size={13} />
+                                Cetak
+                              </Button>
                             ),
-                          } as any
+                          }
                         ]}
                     />
                   </div>
@@ -542,7 +559,7 @@ const Dashboard: React.FC = () => {
 
               {/* Items List */}
               <div className="space-y-3">
-                {selectedSale.items?.map((item: any, idx: number) => (
+                {(selectedSale.items ?? []).map((item: SaleItem, idx: number) => (
                   <div key={idx} className="flex justify-between text-xs">
                     <div className="flex-1 pr-4">
                       <p className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[180px]">

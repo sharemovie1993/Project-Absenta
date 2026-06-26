@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import GuruList from '../../components/academic/guru/GuruList';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { Guru } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { Users, UserCheck, School, Download } from 'lucide-react';
@@ -15,7 +15,7 @@ import {
   downloadGuruImportTemplate 
 } from '../../api/academic/guru.api';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { lazy, Suspense } from 'react';
 
@@ -33,7 +33,7 @@ interface ModalState {
 
 export const GuruPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
+
   const navigate = useNavigate();
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
@@ -107,21 +107,21 @@ export const GuruPage: React.FC = () => {
           { header: 'Status Kepegawaian', accessor: (row: Guru) => row.status_kepegawaian || '-', width: 20 },
           { header: 'JK', accessor: (row: Guru) => row.jenis_kelamin || '-', width: 5 }
         ], 'Laporan_Guru', 'DAFTAR TENAGA PENDIDIK & KEPENDIDIKAN');
-        showToast('Data guru berhasil diekspor.', 'success');
+        toast.success('Data guru berhasil diekspor.');
       } else {
-        showToast('Tidak ada data untuk diekspor.', 'warning');
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
       }
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan template cerdas...', 'info');
+      toast('Menyiapkan template cerdas...', { icon: 'ℹ️' });
       await generateAdvancedTemplate(
         [
           { header: 'Nama Lengkap', key: 'nama_guru', width: 35, required: true },
@@ -145,12 +145,12 @@ export const GuruPage: React.FC = () => {
           }
         }
       );
-      showToast('Template cerdas berhasil diunduh.', 'success');
-    } catch (e: unknown) {
-      const errorMsg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
-      showToast(errorMsg, 'error');
+      toast.success('Template cerdas berhasil diunduh.');
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Gagal mengunduh template';
+      toast.error(errorMsg);
     }
-  }, [showToast]);
+  }, []);
 
   const handleOpenImport = useCallback(() => setImportOpen(true), []);
   const handleCloseImport = useCallback(() => setImportOpen(false), []);

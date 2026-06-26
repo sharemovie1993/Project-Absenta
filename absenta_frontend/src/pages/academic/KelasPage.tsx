@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import type { Kelas } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { School, Users, Download } from 'lucide-react';
@@ -15,7 +15,7 @@ import {
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
-import { exportDataToExcel } from '../../utils/export.utils';
+import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { jurusanApi, guruApi } from '../../api/academic.api';
 
@@ -32,7 +32,7 @@ interface ModalState {
 
 export const KelasPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
-  const { showToast } = useToast();
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const guruIdFromUrl = searchParams.get('guru_id') || '';
@@ -107,21 +107,21 @@ export const KelasPage: React.FC = () => {
           { header: 'Wali Kelas', accessor: (row: Kelas) => row.WaliKelas?.[0]?.Guru?.nama_guru || '-', width: 25 },
           { header: 'Siswa', accessor: (row: Kelas) => row._count?.Siswa || 0, width: 10 }
         ], 'Laporan_Kelas', 'DATA MASTER KELAS & WALI KELAS');
-        showToast('Data kelas berhasil diekspor.', 'success');
+        toast.success('Data kelas berhasil diekspor.');
       } else {
-        showToast('Tidak ada data untuk diekspor.', 'warning');
+        toast('Tidak ada data untuk diekspor.', { icon: '⚠️' });
       }
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengekspor data.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     } finally {
       setIsExporting(false);
     }
-  }, [showToast]);
+  }, []);
 
   const handleTemplateDownload = useCallback(async () => {
     try {
-      showToast('Menyiapkan referensi data...', 'info');
+      toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [jurusanRes, guruRes] = await Promise.all([
         jurusanApi.getAll({ limit: 200 }),
         guruApi.getAll({ limit: 1000 })
@@ -152,12 +152,12 @@ export const KelasPage: React.FC = () => {
           }
         }
       );
-      showToast('Template cerdas berhasil diunduh.', 'success');
+      toast.success('Template cerdas berhasil diunduh.');
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
-      showToast(errorMsg, 'error');
+      toast.error(errorMsg);
     }
-  }, [showToast]);
+  }, []);
 
   return (
     <AcademicPageLayout

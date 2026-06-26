@@ -62,7 +62,7 @@ export const MyAttendancePage: React.FC = () => {
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['my-attendance-rekap', bulanKey, tenantId],
     queryFn: () => getRekapBulananGuruMe({ bulan: bulanKey }),
-    enabled: !!tenantId && !isLocked
+    enabled: !!tenantId
   });
 
   const rekap = attendanceData?.data;

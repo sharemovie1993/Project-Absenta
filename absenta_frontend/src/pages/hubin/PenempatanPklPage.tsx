@@ -16,7 +16,8 @@ import {
   Printer,
   FileText,
   MessageCircle,
-  Trash2
+  Trash2,
+  Users
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -113,6 +114,7 @@ export interface KunjunganPayload {
 }
 
 const HubinPklPlottingModal = lazy(() => import('../../components/hubin/HubinPklPlottingModal').then(m => ({ default: m.HubinPklPlottingModal })));
+const HubinPklBulkPlottingModal = lazy(() => import('../../components/hubin/HubinPklBulkPlottingModal').then(m => ({ default: m.HubinPklBulkPlottingModal })));
 const HubinPklNilaiModal = lazy(() => import('../../components/hubin/HubinPklNilaiModal').then(m => ({ default: m.HubinPklNilaiModal })));
 const HubinPklKunjunganModal = lazy(() => import('../../components/hubin/HubinPklKunjunganModal').then(m => ({ default: m.HubinPklKunjunganModal })));
 const HubinPklReviewJurnalModal = lazy(() => import('../../components/hubin/HubinPklReviewJurnalModal').then(m => ({ default: m.HubinPklReviewJurnalModal })));
@@ -135,7 +137,8 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     return !!(user?.role?.name?.toUpperCase() === 'ADMIN' || 
            user?.role?.name?.toUpperCase() === 'SUPERADMIN' ||
            user?.position_codes?.includes('HUBIN') ||
-           user?.capabilities?.includes('hubin.partners.manage'));
+           user?.capabilities?.includes('hubin.partners.manage') ||
+           user?.capabilities?.includes('hubin.pkl.manage'));
   }, [user]);
 
   const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>(canManage ? 'ALL' : 'MY_GUIDANCE');
@@ -147,6 +150,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   
   // Modals Open State
   const [isPlottingOpen, setIsPlottingOpen] = useState(false);
+  const [isBulkPlottingOpen, setIsBulkPlottingOpen] = useState(false);
   const [isNilaiOpen, setIsNilaiOpen] = useState(false);
   const [isKunjunganOpen, setIsKunjunganOpen] = useState(false);
   const [visitLat, setVisitLat] = useState('');
@@ -175,7 +179,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   // Gating Logic
   const features = (subscription as { features?: string[] })?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('HUBIN');
-  const isEnabled = subscription !== undefined && !isLocked;
+  const isEnabled = subscription !== undefined;
 
   // Queries
   const { data: tenantData } = useQuery({
@@ -187,6 +191,12 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   const { data: penempatanData, isLoading } = useQuery({
     queryKey: ['penempatan-pkl', { search: searchTerm, page, limit }],
     queryFn: () => hubinApi.getPenempatan({ search: searchTerm, page, limit }),
+    enabled: isEnabled
+  });
+
+  const { data: allActivePenempatan } = useQuery({
+    queryKey: ['penempatan-pkl', 'all-active'],
+    queryFn: () => hubinApi.getPenempatan({ limit: 1000 }),
     enabled: isEnabled
   });
 
@@ -227,6 +237,36 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     },
     onError: (error: unknown) => {
       const errorMsg = error instanceof Error ? error.message : 'Gagal membuat penempatan';
+      toast.error(errorMsg);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => hubinApi.updatePenempatan(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      toast.success('Perubahan penempatan berhasil disimpan');
+      setIsPlottingOpen(false);
+      setSelectedPkl(null);
+      setSelectedSiswaId('');
+      setSelectedMitraId('');
+      setSelectedPembimbingId('');
+    },
+    onError: (error: unknown) => {
+      const errorMsg = error instanceof Error ? error.message : 'Gagal mengubah penempatan';
+      toast.error(errorMsg);
+    },
+  });
+
+  const bulkCreateMutation = useMutation({
+    mutationFn: (payload: any) => hubinApi.bulkCreatePenempatan(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      toast.success('Plotting penempatan kolektif berhasil dibuat');
+      setIsBulkPlottingOpen(false);
+    },
+    onError: (error: unknown) => {
+      const errorMsg = error instanceof Error ? error.message : 'Gagal membuat penempatan kolektif';
       toast.error(errorMsg);
     },
   });
@@ -300,17 +340,39 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       return;
     }
 
+    const isFlexible = formData.get('is_flexible_location') === 'on';
+    const latOverride = formData.get('lat_override') ? parseFloat(formData.get('lat_override') as string) : null;
+    const lonOverride = formData.get('lon_override') ? parseFloat(formData.get('lon_override') as string) : null;
+    const radiusOverride = formData.get('radius_override') ? parseInt(formData.get('radius_override') as string) : null;
+
     const data = {
       siswa_id: selectedSiswaId,
       mitra_id: selectedMitraId,
       pembimbing_id: selectedPembimbingId || null,
       tanggal_mulai: new Date(formData.get('tanggal_mulai') as string).toISOString(),
       tanggal_selesai: formData.get('tanggal_selesai') ? new Date(formData.get('tanggal_selesai') as string).toISOString() : null,
-      status: 'AKTIF'
+      status: selectedPkl ? selectedPkl.status : 'AKTIF',
+      is_flexible_location: isFlexible,
+      lat_override: latOverride,
+      lon_override: lonOverride,
+      radius_override: radiusOverride
     };
 
-    createMutation.mutate(data);
-  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, createMutation]);
+    if (selectedPkl) {
+      updateMutation.mutate({ id: selectedPkl.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
+  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, createMutation, updateMutation]);
+
+  const handleBulkPlottingSubmit = useCallback((payload: any) => {
+    bulkCreateMutation.mutate(payload);
+  }, [bulkCreateMutation]);
+
+  const placedStudentIds = useMemo(() => {
+    const list = Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as any)?.data || [];
+    return new Set<string>(list.filter((p: SiswaPkl) => p.status === 'AKTIF').map((p: SiswaPkl) => p.siswa_id));
+  }, [allActivePenempatan]);
 
   // Penilaian Submit Handler
   const handleNilaiSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
@@ -429,14 +491,32 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   ];
 
   const toolbar = canManage ? (
-    <Button
-      onClick={() => setIsPlottingOpen(true)}
-      variant="toolbarPrimary"
-      size="toolbar"
-    >
-      <UserPlus size={16} className="mr-1.5" />
-      Plotting Baru
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button
+        onClick={() => setIsBulkPlottingOpen(true)}
+        variant="toolbarOutline"
+        size="toolbar"
+        className="rounded-xl h-9 px-4 flex items-center gap-1.5"
+      >
+        <Users size={16} />
+        Plotting Kolektif
+      </Button>
+      <Button
+        onClick={() => {
+          setSelectedPkl(null);
+          setSelectedSiswaId('');
+          setSelectedMitraId('');
+          setSelectedPembimbingId('');
+          setIsPlottingOpen(true);
+        }}
+        variant="toolbarPrimary"
+        size="toolbar"
+        className="h-9 px-4 rounded-xl flex items-center gap-1.5"
+      >
+        <UserPlus size={16} />
+        Plotting Baru
+      </Button>
+    </div>
   ) : null;
 
   const mitraOptions = useMemo(() => {
@@ -497,6 +577,13 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       if (isConfirmed) {
         deleteMutation.mutate(row.id);
       }
+    },
+    onEdit: (row) => {
+      setSelectedPkl(row);
+      setSelectedSiswaId(row.siswa_id);
+      setSelectedMitraId(row.mitra_id);
+      setSelectedPembimbingId(row.pembimbing_id || '');
+      setIsPlottingOpen(true);
     }
   }), [rawMitra, canManage, hasKolektif, deleteMutation, confirm]);
 
@@ -608,7 +695,13 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm"><Loader size="lg" /></div>}>
         <HubinPklPlottingModal
           isOpen={isPlottingOpen}
-          onClose={() => setIsPlottingOpen(false)}
+          onClose={() => {
+            setIsPlottingOpen(false);
+            setSelectedPkl(null);
+            setSelectedSiswaId('');
+            setSelectedMitraId('');
+            setSelectedPembimbingId('');
+          }}
           mitraOptions={mitraOptions}
           guruOptions={guruOptions}
           selectedSiswaId={selectedSiswaId}
@@ -618,7 +711,24 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
           selectedPembimbingId={selectedPembimbingId}
           setSelectedPembimbingId={setSelectedPembimbingId}
           handlePlottingSubmit={handlePlottingSubmit}
-          isPending={createMutation.isPending}
+          isPending={createMutation.isPending || updateMutation.isPending}
+          onGuruSearch={setGuruSearch}
+          onMitraSearch={setMitraSearch}
+          isLoadingGuru={isLoadingGuru}
+          isLoadingMitra={isLoadingMitra}
+          editingPkl={selectedPkl}
+        />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <HubinPklBulkPlottingModal
+          isOpen={isBulkPlottingOpen}
+          onClose={() => setIsBulkPlottingOpen(false)}
+          mitraOptions={mitraOptions}
+          guruOptions={guruOptions}
+          placedStudentIds={placedStudentIds}
+          onSubmit={handleBulkPlottingSubmit}
+          isPending={bulkCreateMutation.isPending}
           onGuruSearch={setGuruSearch}
           onMitraSearch={setMitraSearch}
           isLoadingGuru={isLoadingGuru}

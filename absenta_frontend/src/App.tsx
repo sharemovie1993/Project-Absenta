@@ -77,6 +77,7 @@ const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEma
 const WhatsAppHealthPage = lazy(() => import('./pages/notifications/WhatsAppHealthPage'));
 const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
+const PrepChecklistPage = lazy(() => import('./pages/academic/PrepChecklistPage'));
 const BackupPage = lazy(() => import('./pages/academic/BackupPage'));
 const StaffActivityLogPage = lazy(() => import('./pages/academic/StaffActivityLogPage'));
 
@@ -137,13 +138,14 @@ const CoopTicketDetail = lazy(() => import('./pages/cooperative/TicketDetail'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
 const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
+const AttendanceDashboardPage = lazy(() => import('./pages/attendance/AttendanceDashboardPage'));
 // Removed KegiatanPage and ManualPage per deprecation request
 const JadwalTemplatePage = lazy(() => import('./pages/attendance/jadwal-template/JadwalTemplatePage'));
 const StudentCardPage = lazy(() => import('./pages/academic/StudentCardPage'));
 const HomePage = lazy(() => import('./pages/public/HomePage'));
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
-const LearnMorePage = lazy(() => import('./pages/public/LearnMorePage').then(module => ({ default: module.LearnMorePage })));
-const AboutUsPage = lazy(() => import('./pages/public/AboutUsPage').then(module => ({ default: module.AboutUsPage })));
+const LearnMorePage = lazy(() => import('./pages/public/LearnMorePage'));
+const AboutUsPage = lazy(() => import('./pages/public/AboutUsPage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/public/PrivacyPolicyPage'));
 const TermsOfServicePage = lazy(() => import('./pages/public/TermsOfServicePage'));
 const DataProcessingAgreementPage = lazy(() => import('./pages/public/DataProcessingAgreementPage'));
@@ -162,7 +164,18 @@ const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggar
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
 const PrestasiPage = lazy(() => import('./pages/kesiswaan/PrestasiPage'));
+const KesiswaanSettingsPage = lazy(() => import('./pages/kesiswaan/SettingsPage'));
 const BpbkWorkspacePage = lazy(() => import('./pages/bpbk/BpbkWorkspacePage'));
+const BpbkBkDashboardPage = lazy(() => import('./pages/bpbk/DashboardPage'));
+const BpbkSiswaPage = lazy(() => import('./pages/bpbk/SiswaKasusPage'));
+const BpbkCasesPage = lazy(() => import('./pages/bpbk/CasesPage'));
+const BpbkKonselingPage = lazy(() => import('./pages/bpbk/KonselingPage'));
+const BpbkPemanggilanPage = lazy(() => import('./pages/bpbk/PemanggilanPage'));
+const BpbkHomeVisitPage = lazy(() => import('./pages/bpbk/HomeVisitPage'));
+const BpbkAsesmenPage = lazy(() => import('./pages/bpbk/AsesmenPage'));
+const BpbkRujukanPage = lazy(() => import('./pages/bpbk/RujukanPage'));
+const BpbkReportsPage = lazy(() => import('./pages/bpbk/ReportsPage'));
+const BpbkAuditPage = lazy(() => import('./pages/bpbk/AuditPage'));
 const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
@@ -179,10 +192,14 @@ const ServerErrorPage = lazy(() => import('./pages/error/ServerErrorPage'));
 
 // Hubin Module
 const HubinWorkspacePage = lazy(() => import('./pages/hubin/HubinWorkspacePage'));
+const HubinDashboardPage = lazy(() => import('./pages/hubin/HubinDashboardPage'));
 const MitraIndustriPage = lazy(() => import('./pages/hubin/MitraIndustriPage'));
 const PenempatanPklPage = lazy(() => import('./pages/hubin/PenempatanPklPage'));
 const AbsensiPklPage = lazy(() => import('./pages/hubin/AbsensiPklPage'));
 const MonitoringPklPage = lazy(() => import('./pages/hubin/MonitoringPklPage'));
+const BkkPage = lazy(() => import('./pages/hubin/BkkPage'));
+const TracerStudyPage = lazy(() => import('./pages/hubin/TracerStudyPage'));
+const TefaPage = lazy(() => import('./pages/hubin/TefaPage'));
 
 // Parent App Pages
 const ParentApp = lazy(() => import('./apps/parent/App'));
@@ -457,6 +474,11 @@ function App() {
                         <AcademicTransitionPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/academic/prep-checklist" element={
+                      <ProtectedRoute requiredCapability="academic.years.view.list">
+                        <PrepChecklistPage />
+                      </ProtectedRoute>
+                    } />
                     {/* Alias for menu item 'Kenaikan Kelas' */}
                     <Route path="/academic/kenaikan-kelas" element={<Navigate to="/academic/transition" replace />} />
                     <Route path="/academic/siswa-cards" element={
@@ -508,6 +530,11 @@ function App() {
                         <PrestasiPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/kesiswaan/settings" element={
+                      <ProtectedRoute requiredCapability="affairs.violation.types.view.list">
+                        <KesiswaanSettingsPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/bpbk" element={
                       <ProtectedRoute requiredCapability="bk.cases.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
@@ -515,19 +542,138 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/bpbk/dashboard" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkBkDashboardPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/siswa" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkSiswaPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/cases" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkCasesPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/konseling" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkKonselingPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/pemanggilan" element={
+                      <ProtectedRoute requiredCapability="bk.summons.manage">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkPemanggilanPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/homevisit" element={
+                      <ProtectedRoute requiredCapability="bk.homevisit.manage">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkHomeVisitPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/asesmen" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkAsesmenPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/rujukan" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkRujukanPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/reports" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkReportsPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/bpbk/audit" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BpbkAuditPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
 
                     {/* Hubin Module */}
                     <Route path="/hubin" element={
-                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list']}>
+                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list', 'hubin.tefa.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <HubinWorkspacePage />
                         </Suspense>
                       </ProtectedRoute>
                     } />
-                    <Route path="/hubin/:tab" element={
-                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.view.pkl', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list']}>
+                    <Route path="/hubin/dashboard" element={
+                      <ProtectedRoute requiredCapability="dashboard.view.hubin">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
-                          <HubinWorkspacePage />
+                          <HubinDashboardPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/mitra" element={
+                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.mou.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <MitraIndustriPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/penempatan" element={
+                      <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.pkl.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <PenempatanPklPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/absensi" element={
+                      <ProtectedRoute requiredCapability={['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AbsensiPklPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/monitoring" element={
+                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.logbook.manage']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <MonitoringPklPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/bkk" element={
+                      <ProtectedRoute requiredCapability={['hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.partners.manage', 'hubin.pkl.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <BkkPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/tracer" element={
+                      <ProtectedRoute requiredCapability={['hubin.self.tracer', 'hubin.tracer.view', 'hubin.partners.manage']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <TracerStudyPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/tefa" element={
+                      <ProtectedRoute requiredCapability="hubin.tefa.manage">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <TefaPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />
@@ -570,7 +716,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/sarpras/loans" element={
-                      <ProtectedRoute requiredCapability="sarpras.loans.view.list">
+                      <ProtectedRoute requiredCapability={['sarpras.loans.view.list', 'sarpras.loans.request']}>
                         <SarprasLoansPage />
                       </ProtectedRoute>
                     } />
@@ -593,7 +739,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/savings" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredCapability="cooperative.savings.view.history">
                         <CoopSavings />
                       </ProtectedRoute>
                     } />
@@ -618,12 +764,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/pos" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredCapability={['cooperative.store.view.catalog', 'cooperative.store.orders.manage', 'cooperative.store.transactions.view']}>
                         <CoopPOS />
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/vouchers" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredCapability={['cooperative.points.view', 'cooperative.vouchers.view.list']}>
                         <CoopVouchers />
                       </ProtectedRoute>
                     } />
@@ -633,7 +779,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/ppob" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredCapability="cooperative.ppob.manage.products">
                         <CoopPPOB />
                       </ProtectedRoute>
                     } />
@@ -658,7 +804,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/shu" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredCapability="cooperative.savings.view.history">
                         <CoopSHU />
                       </ProtectedRoute>
                     } />
@@ -925,7 +1071,15 @@ function App() {
                       </ProtectedRoute>
                     } />
                     {/* Attendance routes */}
-                    <Route path="/attendance" element={<Navigate to="/attendance/ops" replace />} />
+                    <Route path="/attendance" element={<Navigate to="/attendance/dashboard" replace />} />
+                    
+                    <Route path="/attendance/dashboard" element={
+                      <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AttendanceDashboardPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Restricted to Active Petugas & Admin */}
                     <Route element={<PetugasRoute />}>

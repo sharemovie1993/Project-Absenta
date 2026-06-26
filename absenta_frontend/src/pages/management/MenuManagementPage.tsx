@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
 import { MenuPermissionMatrix } from '@/components/management/MenuPermissionMatrix';
@@ -8,6 +8,7 @@ import { getRoles, getTenants, type TenantItem } from '@/api/user.api';
 import { getStrukturList } from '@/api/academic/strukturOrganisasi.api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Card } from '@/components/ui/Card';
 import { Info, FolderTree, ShieldAlert, Award, Globe } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -53,7 +54,7 @@ export default function MenuManagementPage() {
   const structuresQuery = useQuery({
     queryKey: ['structures', selectedTenantFilter],
     queryFn: async () => {
-      const params: any = { is_active: true };
+      const params: Record<string, unknown> = { is_active: true };
       if (selectedTenantFilter && selectedTenantFilter !== 'ALL') {
         params.tenant_id = selectedTenantFilter;
       }
@@ -109,11 +110,12 @@ export default function MenuManagementPage() {
     return (
       <div className="w-[240px] shrink-0">
         <SearchableSelect
+          id="tenant-filter"
           value={selectedTenantFilter}
           onValueChange={setSelectedTenantFilter}
           options={[
             { label: 'Semua Tenant', value: '' },
-            ...tenants.map(t => ({ label: t.name, value: t.id }))
+            ...(tenants ?? [])?.map(t => ({ label: t.name, value: t.id }))
           ]}
           placeholder="Pilih Tenant..."
           searchPlaceholder="Cari tenant..."
@@ -122,6 +124,9 @@ export default function MenuManagementPage() {
       </div>
     );
   }, [activeTab, tenants, selectedTenantFilter]);
+
+  const handleRefreshTree = useCallback(() => treeQuery.refetch(), [treeQuery]);
+  const handleRefreshStructures = useCallback(() => structuresQuery.refetch(), [structuresQuery]);
 
   return (
     <SuperAdminPageLayout
@@ -134,6 +139,16 @@ export default function MenuManagementPage() {
       stats={statsList}
       isLoading={isLoading && !treeQuery.data}
       toolbar={toolbarSlot}
+      hardeningModuleKey="menumanagementpage"
+      instruction={{
+        title: 'Panduan Manajemen Menu',
+        description: 'Gunakan halaman ini untuk mengatur visibilitas menu berdasarkan Role (Peran) atau Struktur Organisasi (Jabatan).',
+        items: [
+          { text: 'Tab "Akses per Peran" mengatur akses menu secara global untuk tipe pengguna tertentu.' },
+          { text: 'Tab "Akses per Struktur Sekolah" mengatur visibilitas menu melalui pemetaan Capability pada jabatan.' },
+          { text: 'Gunakan fitur Pencarian Tenant (khusus Superadmin) untuk memfilter struktur organisasi tenant tertentu.' }
+        ]
+      }}
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -155,12 +170,12 @@ export default function MenuManagementPage() {
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6">
+          <Card className="p-6 border-none shadow-sm overflow-hidden">
             <TabsContent value="role" className="outline-none m-0">
               <MenuPermissionMatrix 
                 menus={treeQuery.data || []} 
                 roles={rolesQuery.data || []} 
-                onRefresh={() => treeQuery.refetch()}
+                onRefresh={handleRefreshTree}
               />
             </TabsContent>
             
@@ -168,10 +183,10 @@ export default function MenuManagementPage() {
               <StrukturMenuMatrix 
                 menus={treeQuery.data || []} 
                 structures={structuresQuery.data || []}
-                onRefresh={() => structuresQuery.refetch()}
+                onRefresh={handleRefreshStructures}
               />
             </TabsContent>
-          </div>
+          </Card>
         </Tabs>
       </div>
     </SuperAdminPageLayout>

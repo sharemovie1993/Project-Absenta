@@ -284,14 +284,14 @@ export async function gerbangRoutes(fastify: any) {
     ],
     handler: gerbangController.markGateAbsence.bind(gerbangController),
     schema: {
-      description: 'Create manual gate absence record with status SAKIT/IZIN/ALPA/DISPEN',
+      description: 'Create manual gate absence record with status HADIR/SAKIT/IZIN/ALPA/DISPEN',
       tags: ['Gerbang'],
       body: {
         type: 'object',
         required: ['siswa_id', 'status'],
         properties: {
           siswa_id: { type: 'string' },
-          status: { type: 'string', enum: ['SAKIT', 'IZIN', 'ALPA', 'DISPEN'] }
+          status: { type: 'string', enum: ['HADIR', 'SAKIT', 'IZIN', 'ALPA', 'DISPEN'] }
         }
       }
     }

@@ -92,6 +92,7 @@ export interface UpdateTenantRequest {
   toleransi_keterlambatan_menit?: number;
   kepala_sekolah?: string;
   nip_kepala?: string;
+  allow_manual_hadir_gate?: boolean;
 }
 
 export interface PaginationInfo {

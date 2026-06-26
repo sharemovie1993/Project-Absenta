@@ -6,6 +6,7 @@ import { cacheService } from '../../../utils/cache.service';
 import { CACHE_KEYS } from '../../../constants/cache-keys';
 import { randomBytes } from 'crypto';
 import { tenantEntitlementService } from '@/modules/billing/services/tenant-entitlement.service';
+import { waGatewayService } from '../../../services/wa-gateway.service';
 
 
 
@@ -178,14 +179,50 @@ export class WhatsAppService {
           where: { tenant_id: options.tenantId! }
         });
 
-        if (customConfig && customConfig.is_active && customConfig.api_url && customConfig.api_token) {
-          currentApiUrl = customConfig.api_url;
-          currentApiKey = customConfig.api_token;
-          currentDeviceId = undefined; // BYOG usually doesn't need platform device id
+        if (customConfig && customConfig.is_active) {
+          if (customConfig.provider_name === 'LOCAL') {
+            try {
+              const success = await waGatewayService.sendMessage(options.tenantId!, options.phoneNumber, options.message);
+              if (success) {
+                await this.logNotification({
+                  tenantId: options.tenantId!,
+                  type: 'WHATSAPP',
+                  recipient: options.phoneNumber,
+                  message: this.redactSensitive(options.message),
+                  status: 'SENT',
+                  relatedId: options.relatedId,
+                  subject: options.subject,
+                  event: options.event,
+                });
+                return true;
+              }
+            } catch (error: any) {
+              console.error(`[WhatsAppService] Failed to send via local gateway for tenant ${options.tenantId!}:`, error.message);
+              await this.logNotification({
+                tenantId: options.tenantId!,
+                type: 'WHATSAPP',
+                recipient: options.phoneNumber,
+                message: this.redactSensitive(options.message),
+                status: 'FAILED',
+                relatedId: options.relatedId,
+                subject: options.subject,
+              });
+              if (options.throwOnError) {
+                throw error;
+              }
+              return false;
+            }
+          } else if (customConfig.api_url && customConfig.api_token) {
+            currentApiUrl = customConfig.api_url;
+            currentApiKey = customConfig.api_token;
+            currentDeviceId = undefined; // BYOG usually doesn't need platform device id
+          }
         }
       }
 
-      if (!currentApiKey) {
+      // If local gateway was processed, we already returned. Otherwise, we verify external api key.
+      const isLocalProvider = hasTenant && (await this.prisma.whatsappConfig.findUnique({ where: { tenant_id: options.tenantId! } }))?.provider_name === 'LOCAL';
+      if (!isLocalProvider && !currentApiKey) {
         throw new Error('WhatsApp API key not configured');
       }
 

@@ -9,7 +9,7 @@ import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, Plus, Edit2, Trash2, Trophy } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -40,7 +40,7 @@ export const PrestasiSection: React.FC = () => {
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const { success, error } = useToast();
+
   const confirm = useConfirm();
 
   // Form states
@@ -129,46 +129,46 @@ export const PrestasiSection: React.FC = () => {
     try {
       const res = await kesiswaanApi.deletePrestasiSiswa(id);
       if (res.success) {
-        success('Catatan prestasi berhasil dihapus');
+        toast.success('Catatan prestasi berhasil dihapus');
         fetchData();
       } else {
-        error(res.message || 'Gagal menghapus catatan');
+        toast.error(res.message || 'Gagal menghapus catatan');
       }
     } catch (err: any) {
-      error(err.message || 'Koneksi bermasalah');
+      toast.error(err.message || 'Koneksi bermasalah');
     }
-  }, [confirm, success, error, fetchData]);
+  }, [confirm, fetchData]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.siswa_id) {
-      error('Harap pilih siswa terlebih dahulu');
+      toast.error('Harap pilih siswa terlebih dahulu');
       return;
     }
     if (!formData.nama_prestasi.trim()) {
-      error('Harap isi nama prestasi');
+      toast.error('Harap isi nama prestasi');
       return;
     }
     if (formData.poin <= 0) {
-      error('Poin penghargaan harus lebih besar dari 0');
+      toast.error('Poin penghargaan harus lebih besar dari 0');
       return;
     }
 
     try {
       if (selectedId) {
         await kesiswaanApi.updatePrestasiSiswa(selectedId, formData);
-        success('Catatan prestasi berhasil diperbarui');
+        toast.success('Catatan prestasi berhasil diperbarui');
       } else {
         await kesiswaanApi.createPrestasiSiswa(formData);
-        success('Catatan prestasi baru berhasil disimpan');
+        toast.success('Catatan prestasi baru berhasil disimpan');
       }
       setModalOpen(false);
       resetForm();
       fetchData();
     } catch (err: any) {
-      error(err.message || 'Gagal menyimpan catatan prestasi');
+      toast.error(err.message || 'Gagal menyimpan catatan prestasi');
     }
-  }, [selectedId, formData, error, success, fetchData, resetForm]);
+  }, [selectedId, formData, fetchData, resetForm]);
 
   const handleCategoryChange = useCallback((catId: string) => {
     const matched = categories.find(c => c.id === catId);

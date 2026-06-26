@@ -17,6 +17,7 @@ interface MitraFormModalProps {
   editingMitra: MitraIndustri | null;
   isPending: boolean;
   isEditKontakOnly?: boolean;
+  jurusanList?: any[];
 }
 
 
@@ -27,8 +28,25 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
   onSubmit,
   editingMitra,
   isPending,
-  isEditKontakOnly = false
+  isEditKontakOnly = false,
+  jurusanList = []
 }) => {
+  const uniqueJurusanAbbreviations = React.useMemo(() => {
+    if (!jurusanList || !Array.isArray(jurusanList)) return [];
+    const set = new Set<string>();
+    jurusanList.forEach((j: any) => {
+      const abb = (j.singkatan || j.kode || j.nama || '').trim();
+      if (abb) {
+        set.add(abb);
+      }
+    });
+    return Array.from(set).sort();
+  }, [jurusanList]);
+
+  const selectedKeahlian = React.useMemo(() => {
+    if (!editingMitra?.kompetensi_keahlian) return [];
+    return editingMitra.kompetensi_keahlian.split(',').map((s: string) => s.trim()).filter(Boolean);
+  }, [editingMitra?.kompetensi_keahlian]);
   const [gpsConfirmation, setGpsConfirmation] = React.useState<{
     lat: number;
     lon: number;
@@ -157,6 +175,16 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
               <input type="hidden" name="bidang" value={editingMitra.bidang || ''} />
               <input type="hidden" name="mou_url" value={editingMitra.mou_url || ''} />
               <input type="hidden" name="radius" value={editingMitra.radius || HUBIN_CONFIG.DEFAULT_RADIUS_METERS} />
+              <input type="hidden" name="pic_nama" value={editingMitra.pic_nama || ''} />
+              <input type="hidden" name="pic_jabatan" value={editingMitra.pic_jabatan || ''} />
+              <input type="hidden" name="pic_telepon" value={editingMitra.pic_telepon || ''} />
+              <input type="hidden" name="pic_email" value={editingMitra.pic_email || ''} />
+              <input type="hidden" name="mou_nomor" value={editingMitra.mou_nomor || ''} />
+              <input type="hidden" name="mou_tanggal_mulai" value={editingMitra.mou_tanggal_mulai || ''} />
+              <input type="hidden" name="mou_tanggal_berakhir" value={editingMitra.mou_tanggal_berakhir || ''} />
+              <input type="hidden" name="mou_status" value={editingMitra.mou_status || 'AKTIF'} />
+              <input type="hidden" name="kuota_pkl" value={editingMitra.kuota_pkl || 0} />
+              <input type="hidden" name="kompetensi_keahlian" value={editingMitra.kompetensi_keahlian || ''} />
             </>
           )}
 
@@ -229,6 +257,152 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = ({
               placeholder="Contoh: https://drive.google.com/..."
             />
           </SimpleFormField>
+
+          {/* Section: PIC Detail (Only editable by Hubin Staff) */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl space-y-3 border border-slate-150/50 dark:border-slate-800/40">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">DETAIL PIC INDUSTRI (HUBIN ONLY)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <SimpleFormField htmlFor="mitra-pic-nama" label="Nama PIC">
+                <Input
+                  id="mitra-pic-nama"
+                  name="pic_nama"
+                  defaultValue={editingMitra?.pic_nama || ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: Budi Santoso"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-pic-jabatan" label="Jabatan PIC">
+                <Input
+                  id="mitra-pic-jabatan"
+                  name="pic_jabatan"
+                  defaultValue={editingMitra?.pic_jabatan || ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: HR Manager"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-pic-telepon" label="No. Telepon/WhatsApp PIC">
+                <Input
+                  id="mitra-pic-telepon"
+                  name="pic_telepon"
+                  defaultValue={editingMitra?.pic_telepon || ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: 0812XXXXXXXX"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-pic-email" label="Email PIC">
+                <Input
+                  id="mitra-pic-email"
+                  name="pic_email"
+                  type="email"
+                  defaultValue={editingMitra?.pic_email || ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: budi@company.com"
+                />
+              </SimpleFormField>
+            </div>
+          </div>
+
+          {/* Section: MoU & PKL Capacity (Only editable by Hubin Staff) */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl space-y-3 border border-slate-150/50 dark:border-slate-800/40">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">ADMINISTRASI MoU & PKL (HUBIN ONLY)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <SimpleFormField htmlFor="mitra-mou-nomor" label="Nomor Kerja Sama / MoU">
+                <Input
+                  id="mitra-mou-nomor"
+                  name="mou_nomor"
+                  defaultValue={editingMitra?.mou_nomor || ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: 002/MOU/SMK/2026"
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-mou-status" label="Status MoU">
+                <select
+                  id="mitra-mou-status"
+                  name="mou_status"
+                  defaultValue={editingMitra?.mou_status || 'AKTIF'}
+                  disabled={isEditKontakOnly}
+                  className={`w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-2.5 text-xs outline-hidden ${isEditKontakOnly ? lockedInputClass : ''}`}
+                >
+                  <option value="AKTIF">AKTIF</option>
+                  <option value="EXPIRED">EXPIRED</option>
+                  <option value="TIDAK_AKTIF">TIDAK AKTIF</option>
+                </select>
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-mou-mulai" label="Tanggal Mulai MoU">
+                <Input
+                  id="mitra-mou-mulai"
+                  name="mou_tanggal_mulai"
+                  type="date"
+                  defaultValue={editingMitra?.mou_tanggal_mulai ? new Date(editingMitra.mou_tanggal_mulai).toISOString().substring(0, 10) : ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-mou-berakhir" label="Tanggal Berakhir MoU">
+                <Input
+                  id="mitra-mou-berakhir"
+                  name="mou_tanggal_berakhir"
+                  type="date"
+                  defaultValue={editingMitra?.mou_tanggal_berakhir ? new Date(editingMitra.mou_tanggal_berakhir).toISOString().substring(0, 10) : ''}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                />
+              </SimpleFormField>
+              <SimpleFormField htmlFor="mitra-kuota" label="Kuota Penerimaan PKL (Siswa)">
+                <Input
+                  id="mitra-kuota"
+                  name="kuota_pkl"
+                  type="number"
+                  defaultValue={editingMitra?.kuota_pkl || 0}
+                  disabled={isEditKontakOnly}
+                  className={isEditKontakOnly ? lockedInputClass : ""}
+                  placeholder="Contoh: 5"
+                />
+              </SimpleFormField>
+              <SimpleFormField label="Kesesuaian Kompetensi Keahlian / Jurusan (Pilih dari Jurusan Aktif)">
+                {uniqueJurusanAbbreviations.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-2.5 border border-slate-150 dark:border-slate-800/80 rounded-xl bg-slate-50/50 dark:bg-slate-950/20">
+                    {uniqueJurusanAbbreviations.map((abb) => {
+                      const isChecked = selectedKeahlian.includes(abb);
+                      return (
+                        <label
+                          key={abb}
+                          className={`flex items-center gap-2.5 px-3 py-2 border rounded-xl cursor-pointer select-none transition-all duration-150 hover:bg-white dark:hover:bg-slate-900 ${
+                            isEditKontakOnly
+                              ? 'border-slate-100 dark:border-slate-800/60 bg-slate-50/40 dark:bg-slate-900/10 opacity-70 cursor-not-allowed'
+                              : isChecked
+                                ? 'border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-650 dark:text-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20'
+                                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus-within:ring-2 focus-within:ring-indigo-500/20'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            name={isEditKontakOnly ? undefined : "kompetensi_keahlian"}
+                            value={abb}
+                            defaultChecked={isChecked}
+                            disabled={isEditKontakOnly}
+                            className="rounded border-slate-350 text-indigo-650 focus:ring-indigo-500/20 h-4.5 w-4.5 cursor-pointer disabled:cursor-not-allowed dark:bg-slate-900 dark:border-slate-700"
+                          />
+                          <span className="text-[11px] font-bold tracking-wide uppercase text-slate-750 dark:text-slate-350">
+                            {abb}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 text-xs text-slate-400 dark:text-slate-550 italic bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-150 dark:border-slate-800/60 text-center">
+                    Tidak ada data jurusan terdaftar pada tenant ini. Silakan daftarkan jurusan terlebih dahulu di menu akademik.
+                  </div>
+                )}
+              </SimpleFormField>
+            </div>
+          </div>
 
           <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl space-y-3 border border-slate-100 dark:border-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-2">

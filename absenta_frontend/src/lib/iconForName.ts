@@ -80,6 +80,8 @@ import {
   TestTube,
   ClipboardCheck,
   Sparkles,
+  Building2,
+  Hammer,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -159,6 +161,8 @@ const iconMap: Record<string, LucideIcon> = {
   TestTube,
   ClipboardCheck,
   Sparkles,
+  Building2,
+  Hammer,
 
   // Action Icons
   CheckCircle,

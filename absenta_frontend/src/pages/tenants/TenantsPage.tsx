@@ -1,15 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Card from "../../components/ui/Card";
-import Button from "../../components/ui/Button";
-import { Eye, Edit, Trash2, MoreVertical, Calendar, CheckCircle, XCircle, Clock, Search, Plus, ShieldCheck } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, Calendar, CheckCircle, Clock, Search, Plus, ShieldCheck, XCircle } from 'lucide-react';
+import { Button } from '../../components/ui';
 import { getAllTenants, deleteTenant, requestDeletion, cancelDeletion, type Tenant } from '../../api/tenants.api';
 import { getTenantDetail } from '../../api/tenant-detail.api';
 import { getSubscriptionsByTenant } from '../../api/subscription.api';
 import type { Subscription } from '../../types/subscription';
 import { toast } from 'sonner';
-import TenantForm from '../../components/tenant/TenantForm';
-import { DeleteTenantModal } from '../../components/tenant/DeleteTenantModal';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
 import { Loader, Table } from '../../components/ui';
@@ -17,7 +14,9 @@ import type { Column } from '../../components/ui/Table';
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import axiosInstance from '../../lib/axiosInstance';
-import { useAuthStore } from '../../store/authStore';
+
+const TenantForm = lazy(() => import('../../components/tenant/TenantForm').then(m => ({ default: m.default })));
+const DeleteTenantModal = lazy(() => import('../../components/tenant/DeleteTenantModal').then(m => ({ default: m.DeleteTenantModal })));
 
 export default function TenantsPage() {
   const confirm = useConfirm();
@@ -61,7 +60,7 @@ export default function TenantsPage() {
     totalUsers: 0
   });
 
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchStatistics = useCallback(async () => {
     try {
@@ -91,7 +90,7 @@ export default function TenantsPage() {
     }
   }, [user]);
 
-  const fetchTenants = useCallback(async (page: number = currentPage, search: string = searchTerm) => {
+  const fetchTenants = useCallback(async (page: number = currentPage, search: string = searchTerm, limit: number = itemsPerPage) => {
     try {
       setLoading(true);
       setError(null);
@@ -99,7 +98,7 @@ export default function TenantsPage() {
       const response = await getAllTenants(
         {
           page,
-          limit: itemsPerPage,
+          limit,
           search: search || undefined
         },
         { skipTenantHeader: isSystemSuperAdmin(user?.role?.name || user?.role, user?.tenant_id) }
@@ -107,7 +106,7 @@ export default function TenantsPage() {
 
       if (response.success) {
         const baseTenants = response.data;
-        const enriched = await Promise.all(baseTenants.map(async (t) => {
+        const enriched = await Promise.all((baseTenants ?? [])?.map(async (t) => {
           try {
             const [detailRes, subsRes] = await Promise.all([
               getTenantDetail(t.id).catch(() => null),
@@ -214,9 +213,9 @@ export default function TenantsPage() {
       } else {
         toast.error(response.message || 'Gagal menghapus tenant');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error deleting tenant:', err);
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Gagal menghapus tenant');
+      const message = err instanceof Error ? err.message : 'Gagal menghapus tenant';
       toast.error(message);
     } finally {
       setIsDeleting(false);
@@ -613,6 +612,16 @@ export default function TenantsPage() {
       ]}
       stats={statsList}
       isLoading={loading && tenants.length === 0}
+      hardeningModuleKey="tenantspage"
+      instruction={{
+        title: 'Panduan Manajemen Tenant',
+        description: 'Halaman ini digunakan untuk mengelola seluruh institusi (sekolah) yang terdaftar di platform.',
+        items: [
+          { text: 'Gunakan fitur Assist Login untuk masuk ke sistem sebagai Admin sekolah tertentu tanpa password.' },
+          { text: 'Mode "Multi Sesi" memberikan fitur jadwal pelajaran dan rekap yang lebih kompleks.' },
+          { text: 'Tenant yang diajukan penghapusan akan tetap berada di database selama 30 hari sebelum dihapus permanen.' }
+        ]
+      }}
     >
       <div className="flex-1 bg-transparent">
         <Table
@@ -629,7 +638,12 @@ export default function TenantsPage() {
             itemsPerPage,
             onPageChange: (page) => {
               setCurrentPage(page);
-              fetchTenants(page);
+              fetchTenants(page, searchTerm, itemsPerPage);
+            },
+            onLimitChange: (limit) => {
+              setItemsPerPage(limit);
+              setCurrentPage(1);
+              fetchTenants(1, searchTerm, limit);
             }
           }}
           toolbarLeft={
@@ -648,6 +662,7 @@ export default function TenantsPage() {
                     placeholder="Cari nama atau domain..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    aria-label="Cari tenant berdasarkan nama atau domain"
                     className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
                   />
                 </div>
@@ -672,25 +687,29 @@ export default function TenantsPage() {
 
       {/* Tenant Form Modal */}
       {showForm && (
-        <TenantForm
-          tenantId={editingTenantId}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
+        <Suspense fallback={<Loader />}>
+          <TenantForm
+            tenantId={editingTenantId}
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormCancel}
+          />
+        </Suspense>
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && deleteTarget && (
-        <DeleteTenantModal
-          isOpen={deleteModalOpen}
-          onClose={() => {
-            setDeleteModalOpen(false);
-            setDeleteTarget(null);
-          }}
-          onConfirm={handleConfirmDelete}
-          tenantName={deleteTarget.name}
-          isLoading={isDeleting}
-        />
+        <Suspense fallback={<Loader />}>
+          <DeleteTenantModal
+            isOpen={deleteModalOpen}
+            onClose={() => {
+              setDeleteModalOpen(false);
+              setDeleteTarget(null);
+            }}
+            onConfirm={handleConfirmDelete}
+            tenantName={deleteTarget.name}
+            isLoading={isDeleting}
+          />
+        </Suspense>
       )}
     </SuperAdminPageLayout>
   );

@@ -7,7 +7,7 @@ import {
   type AdminRoleJobdeskItem,
   type AdminPositionJobdeskItem
 } from '../../../api/jobdesk.api';
-import { useToast } from '@/hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getTenants, type TenantItem } from '@/api/user.api';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
@@ -26,7 +26,7 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/compo
 import { cn } from '@/lib/utils';
 
 export const JobdeskSettingsPanel: React.FC = () => {
-  const { showToast } = useToast();
+
   const { isSuperAdmin } = useAuth();
   
   // Tenants state (for Superadmin)
@@ -62,7 +62,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
           }
         }
       } catch (e) {
-        showToast('Gagal memuat daftar tenant', 'error');
+        toast.error('Gagal memuat daftar tenant');
       }
     };
     fetchTenants();
@@ -104,7 +104,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
         }
       }
     } catch (err: any) {
-      showToast(err?.message || 'Gagal memuat data jobdesk', 'error');
+      toast.error(err?.message || 'Gagal memuat data jobdesk');
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
     const trimmed = newTaskInput.trim();
     if (!trimmed) return;
     if (tasks.includes(trimmed)) {
-      showToast('Butir tugas tersebut sudah ada di daftar', 'warning');
+      toast('Butir tugas tersebut sudah ada di daftar', { icon: '⚠️' });
       return;
     }
     setTasks(prev => [...prev, trimmed]);
@@ -162,7 +162,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
       if (subTab === 'role') {
         if (!selectedRoleId) return;
         await updateRoleJobdesk(selectedRoleId, description.trim() || null, tasks);
-        showToast('Berhasil memperbarui jobdesk peran utama', 'success');
+        toast.success('Berhasil memperbarui jobdesk peran utama');
         
         // Refresh local roles data to reflect changes
         setRoles(prev => prev.map(r => {
@@ -182,7 +182,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
       } else {
         if (!selectedPositionId) return;
         await updatePositionJobdesk(selectedPositionId, description.trim() || null, tasks);
-        showToast('Berhasil memperbarui jobdesk jabatan tambahan', 'success');
+        toast.success('Berhasil memperbarui jobdesk jabatan tambahan');
         
         // Refresh local positions data to reflect changes
         setPositions(prev => prev.map(p => {
@@ -201,7 +201,7 @@ export const JobdeskSettingsPanel: React.FC = () => {
         }));
       }
     } catch (err: any) {
-      showToast(err?.message || 'Gagal menyimpan perubahan jobdesk', 'error');
+      toast.error(err?.message || 'Gagal menyimpan perubahan jobdesk');
     } finally {
       setIsSaving(false);
     }

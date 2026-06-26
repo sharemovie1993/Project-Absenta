@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useLocation, useInRouterContext } from 'react-router-dom';
 import { getSidebarMenu, MENU_QUERY_KEY, type SidebarMenuItem } from '@/api/menu.api';
 import { useAuthStore } from '@/store/authStore';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, QueryClientContext, QueryClient } from '@tanstack/react-query';
+
+const fallbackQueryClient = new QueryClient();
 
 /**
  * Hook to check if the current page is in locked/preview mode based on sidebar menu data.
@@ -13,13 +15,14 @@ export function usePreviewMode() {
   const inRouterContext = useInRouterContext();
   const location = inRouterContext ? useLocation() : { pathname: '' };
   const { token } = useAuthStore();
+  const queryClientContext = useContext(QueryClientContext);
 
   const { data: menuData } = useQuery<SidebarMenuItem[], Error>({
     queryKey: MENU_QUERY_KEY,
-    enabled: !!token && inRouterContext,
+    enabled: !!token && inRouterContext && !!queryClientContext,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => (await getSidebarMenu()).sidebar,
-  });
+  }, queryClientContext || fallbackQueryClient);
 
   useEffect(() => {
     if (!menuData) return;

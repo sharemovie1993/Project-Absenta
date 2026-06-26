@@ -23,7 +23,7 @@ import {
 import { getAllTenants, getTenantById } from '../../api/tenants.api';
 import { createTenantUser, getTenantUsers, updateTenantUser } from '../../api/tenant-detail.api';
 import { siswaApi } from '../../api/academic.api';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { createUserSchema, updateUserSchema } from '../../schemas/management/user.schema';
@@ -80,7 +80,7 @@ const UserForm: React.FC<UserFormProps> = ({
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [loadingDropdowns, setLoadingDropdowns] = useState(true);
 
-  const { showToast } = useToast();
+
   const { user: currentUser, can, isAdmin, isSuperAdmin, isLoading: isAuthLoading } = useAuth();
   
   const isSuperAdminUser = useMemo(() => isSuperAdmin(), [isSuperAdmin]);
@@ -133,13 +133,13 @@ const UserForm: React.FC<UserFormProps> = ({
         }
       } catch (error) {
         console.error('Error loading dropdown data:', error);
-        showToast('Gagal memuat data dropdown', 'error');
+        toast.error('Gagal memuat data dropdown');
       } finally {
         setLoadingDropdowns(false);
       }
     };
     loadDropdownData();
-  }, [isSuperAdminUser, currentTenantId, isCreateMode, showToast]);
+  }, [isSuperAdminUser, currentTenantId, isCreateMode]);
 
   // Initialize form data
   useEffect(() => {
@@ -222,8 +222,8 @@ const UserForm: React.FC<UserFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isViewMode) return;
-    if (!validateForm()) { showToast('Mohon perbaiki kesalahan pada form', 'error'); return; }
-    if (emailAvailable === false) { showToast('Email sudah digunakan pada tenant ini', 'error'); return; }
+    if (!validateForm()) { toast.error('Mohon perbaiki kesalahan pada form'); return; }
+    if (emailAvailable === false) { toast.error('Email sudah digunakan pada tenant ini'); return; }
 
     try {
       setLoading(true);
@@ -278,13 +278,13 @@ const UserForm: React.FC<UserFormProps> = ({
       }
 
       if (response?.success) {
-        showToast(isCreateMode ? 'Pengguna berhasil dibuat' : 'Pengguna berhasil diperbarui', 'success');
+        toast.success(isCreateMode ? 'Pengguna berhasil dibuat' : 'Pengguna berhasil diperbarui');
         onSuccess?.();
       } else {
-        showToast(response?.message || 'Terjadi kesalahan', 'error');
+        toast.error(response?.message || 'Terjadi kesalahan');
       }
     } catch (error: any) {
-      showToast(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data', 'error');
+      toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menyimpan data');
     } finally {
       setLoading(false);
     }

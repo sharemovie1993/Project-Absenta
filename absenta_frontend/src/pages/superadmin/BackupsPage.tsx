@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { 
   Database, 
   RefreshCw, 
@@ -14,40 +14,43 @@ import {
   Input,
   Label,
   Button,
-  Badge
+  Badge,
+  PageLoader
 } from '../../components/ui';
-import { useToast } from '../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { backupApi, type Backup } from '../../api/superadmin-backups.api';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
-import { BackupList } from '../../components/superadmin/backups/BackupList';
 
-export default function BackupsPage() {
+// Lazy load BackupList
+const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
+
+function BackupsPageContent() {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(false);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
-  const { success, error, warning } = useToast();
 
-  useEffect(() => {
-    loadBackups();
-  }, []);
 
-  const loadBackups = async () => {
+  const loadBackups = useCallback(async () => {
     setLoading(true);
     try {
       const res = await backupApi.list();
       if (res.success) {
         setBackups(res.data || []);
       }
-    } catch (e) {
-      error('Gagal memuat arsip cadangan');
+    } catch (e: unknown) {
+      toast.error('Gagal memuat arsip cadangan');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleDownload = async (backup: Backup) => {
+  useEffect(() => {
+    loadBackups();
+  }, [loadBackups]);
+
+  const handleDownload = useCallback(async (backup: Backup) => {
     try {
       const blob = await backupApi.downloadBlob(backup.id);
       const url = window.URL.createObjectURL(blob);
@@ -57,77 +60,94 @@ export default function BackupsPage() {
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      success('File cadangan berhasil diunduh');
-    } catch (e) {
-      error('Download gagal');
+      toast.success('File cadangan berhasil diunduh');
+    } catch (e: unknown) {
+      toast.error('Download gagal');
     }
-  };
+  }, []);
 
-  const handleRestoreClick = (backup: Backup) => {
+  const handleRestoreClick = useCallback((backup: Backup) => {
     setSelectedBackup(backup);
     setNewTenantId('');
     setRestoreModalOpen(true);
-  };
+  }, []);
 
-  const confirmRestore = async () => {
+  const confirmRestore = useCallback(async () => {
     if (!selectedBackup || !newTenantId) return;
     
     setLoading(true);
     try {
       const res = await backupApi.restore(selectedBackup.id, newTenantId);
       if (res.success) {
-        success('Proses pemulihan data telah dimulai');
+        toast.success('Proses pemulihan data telah dimulai');
         setRestoreModalOpen(false);
         loadBackups();
       } else {
-        error(res.message || 'Proses pemulihan gagal');
+        toast.error(res.message || 'Proses pemulihan gagal');
       }
-    } catch (e: any) {
-      error(e.message || 'Pemulihan data gagal');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      toast.error(err?.message || 'Pemulihan data gagal');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedBackup, newTenantId, loadBackups]);
 
   const headerStats = useMemo(() => [
     {
       title: "Arsip Dingin",
       value: backups.length,
-      icon: <Archive size={14} />,
-      gradient: "from-slate-600 to-slate-800"
+      icon: <Archive size={14} className="text-white" />,
+      gradient: "from-slate-600 to-slate-800",
+      subtitle: "Snapshot cadangan aktif"
     },
     {
       title: "Total Size",
-      value: `${(backups.reduce((acc, b) => acc + parseInt(b.file_size_bytes), 0) / 1024 / 1024).toFixed(1)} MB`,
-      icon: <Database size={14} />,
-      gradient: "from-blue-500 to-indigo-600"
+      value: `${(backups.reduce((acc, b) => acc + (parseInt(b.file_size_bytes) || 0), 0) / 1024 / 1024).toFixed(1)} MB`,
+      icon: <Database size={14} className="text-white" />,
+      gradient: "from-blue-500 to-indigo-600",
+      subtitle: "Beban penyimpanan cloud"
     }
   ], [backups]);
 
-  const toolbarSlot = (
+  const toolbarSlot = useMemo(() => (
     <div className="flex items-center justify-end">
       <Button 
-        variant="toolbarOutline" 
+        variant="outline" 
         onClick={loadBackups}
         disabled={loading}
-        className="h-9 px-4 rounded-xl font-bold uppercase tracking-widest text-[10px] gap-2 border-slate-200 dark:border-slate-800"
+        className="h-9 px-4 rounded-xl font-bold uppercase tracking-widest text-[10px] gap-2 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
       >
         <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
         Refresh Arsip
       </Button>
     </div>
-  );
+  ), [loading, loadBackups]);
+
+  const breadcrumbs = useMemo(() => [
+    { label: 'Sistem', path: '/menu/system' },
+    { label: 'Arsip & Cadangan Data' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Panduan Arsip & Cadangan',
+    description: 'Kelola cadangan database dan arsip data sekolah untuk keamanan dan pemulihan bencana.',
+    items: [
+      { text: 'Daftar arsip menampilkan cadangan yang siap diunduh atau dipulihkan.' },
+      { text: 'Anda dapat memulihkan cadangan ke tenant kosong untuk keperluan audit atau migrasi.' },
+      { text: 'Pastikan untuk mengunduh cadangan penting secara berkala ke penyimpanan eksternal.' },
+      { text: 'Status READY menandakan snapshot siap digunakan untuk pemulihan instan.' }
+    ]
+  }), []);
 
   return (
     <SuperAdminPageLayout
-      title="Global Cold Archive"
-      description="Manajemen arsip cadangan sistem di seluruh tenant platform Absenta."
-      breadcrumbs={[
-        { label: 'Infrastruktur & Server', path: '/menu/infrastructure' },
-        { label: 'Arsip & Cadangan Sistem' }
-      ]}
+      hardeningModuleKey="superadmin_backups"
+      title="Manajemen Arsip & Cadangan"
+      description="Pusat kendali untuk pembuatan, pengunduhan, dan pemulihan cadangan data (Backup & Restore) seluruh ekosistem sekolah."
+      breadcrumbs={breadcrumbs}
+      instruction={instruction}
       stats={headerStats}
-      isLoadingStats={loading}
       toolbar={toolbarSlot}
     >
       <SectionCard
@@ -136,13 +156,15 @@ export default function BackupsPage() {
         fullWidth
         noPadding
       >
-        <BackupList 
-          items={backups}
-          loading={loading}
-          onRefresh={loadBackups}
-          onDownload={handleDownload}
-          onRestore={handleRestoreClick}
-        />
+        <Suspense fallback={<PageLoader />}>
+          <BackupList 
+            items={backups}
+            loading={loading}
+            onRefresh={loadBackups}
+            onDownload={handleDownload}
+            onRestore={handleRestoreClick}
+          />
+        </Suspense>
       </SectionCard>
 
       <Modal 
@@ -162,7 +184,7 @@ export default function BackupsPage() {
         size="lg"
       >
         <div className="space-y-6">
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-start gap-4">
+          <div className="p-4 bg-amber-50 dark:bg-amber-955/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-start gap-4">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <h5 className="text-sm font-black text-amber-900 dark:text-amber-400 uppercase tracking-tight">Peringatan Kritis</h5>
@@ -188,8 +210,9 @@ export default function BackupsPage() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Target Tenant ID (UUID)</Label>
+            <Label htmlFor="targetTenantIdInput" className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Target Tenant ID (UUID)</Label>
             <Input 
+              id="targetTenantIdInput"
               value={newTenantId} 
               onChange={(e) => setNewTenantId(e.target.value)} 
               placeholder="Masukkan UUID tenant target..."
@@ -206,14 +229,13 @@ export default function BackupsPage() {
 
           <div className="flex justify-end gap-3 pt-4">
             <Button 
-              variant="toolbarOutline" 
+              variant="outline" 
               onClick={() => setRestoreModalOpen(false)}
               className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-[10px]"
             >
               Batalkan
             </Button>
             <Button 
-              variant="toolbarPrimary"
               onClick={confirmRestore} 
               disabled={!newTenantId || loading}
               className="h-12 px-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest text-[10px] shadow-xl shadow-amber-500/20"
@@ -225,5 +247,11 @@ export default function BackupsPage() {
         </div>
       </Modal>
     </SuperAdminPageLayout>
+  );
+}
+
+export default function BackupsPage() {
+  return (
+    <BackupsPageContent />
   );
 }

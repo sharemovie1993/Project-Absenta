@@ -36,12 +36,15 @@ export const BackupList: React.FC<BackupListProps> = ({
     { 
       label: 'Tenant / Source', 
       key: 'tenant', 
-      render: (_: any, item: Backup) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-bold text-slate-900 dark:text-slate-100">{item.Tenant?.name || 'Unknown'}</span>
-          <span className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">{item.tenant_id}</span>
-        </div>
-      ) 
+      render: (_: unknown, item: unknown) => {
+        const b = item as Backup;
+        return (
+          <div className="flex flex-col gap-1">
+            <span className="font-bold text-slate-900 dark:text-slate-100">{b.Tenant?.name || 'Unknown'}</span>
+            <span className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">{b.tenant_id}</span>
+          </div>
+        );
+      } 
     },
     { 
       label: 'Snapshot Info', 
@@ -66,15 +69,16 @@ export const BackupList: React.FC<BackupListProps> = ({
     { 
       label: 'Status Archive', 
       key: 'status', 
-      render: (v: string) => {
-        const variants: Record<string, any> = {
+      render: (v: unknown) => {
+        const status = String(v);
+        const variants: Record<string, 'success' | 'destructive' | 'secondary' | 'outline' | 'default' | 'info' | 'warning' | 'error'> = {
           'READY': 'success',
-          'RESTORED': 'primary',
+          'RESTORED': 'info',
           'FAILED': 'destructive'
         };
         return (
-          <Badge variant={variants[v] || 'secondary'}>
-            {v}
+          <Badge variant={variants[status] || 'secondary'}>
+            {status}
           </Badge>
         );
       } 
@@ -92,40 +96,43 @@ export const BackupList: React.FC<BackupListProps> = ({
     { 
       label: 'Aksi', 
       key: 'actions', 
-      render: (_: any, item: Backup) => (
-        <div className="flex items-center gap-1">
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => onDownload(item)}
-            className="w-8 h-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-            title="Download Archive"
-          >
-            <Download className="w-4 h-4" />
-          </Button>
-          
-          {item.status === 'READY' && (
+      render: (_: unknown, item: unknown) => {
+        const b = item as Backup;
+        return (
+          <div className="flex items-center gap-1">
             <Button 
               size="sm" 
               variant="ghost" 
-              onClick={() => onRestore(item)}
-              className="w-8 h-8 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-              title="Restore to Empty Tenant"
+              onClick={() => onDownload(b)}
+              className="w-8 h-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              title="Download Archive"
             >
-              <RefreshCw className="w-4 h-4" />
+              <Download className="w-4 h-4" />
             </Button>
-          )}
-          
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            className="w-8 h-8 p-0 text-slate-300 hover:text-slate-900"
-            title="View Raw Metadata"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      ) 
+            
+            {b.status === 'READY' && (
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => onRestore(b)}
+                className="w-8 h-8 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                title="Restore to Empty Tenant"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            )}
+            
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="w-8 h-8 p-0 text-slate-300 hover:text-slate-900"
+              title="View Raw Metadata"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        );
+      } 
     }
   ];
 

@@ -7,7 +7,7 @@ import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
 import { assignGuruMapel } from '../../../api/academic/guru-mapel.api';
 import type { Guru, Mapel } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { guruMapelSchema, type GuruMapelFormValues } from '../../../schemas/academic/guru-mapel.schema';
 
 // Modular Sections
@@ -25,7 +25,7 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { showToast } = useToast();
+
 
   const {
     control,
@@ -64,7 +64,7 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
       setError(null);
       const res = await assignGuruMapel(data);
       if (res.success) {
-        showToast('Penugasan berhasil disimpan', 'success');
+        toast.success('Penugasan berhasil disimpan');
         onSuccess?.();
       } else {
         setError(res.message || 'Gagal menyimpan');

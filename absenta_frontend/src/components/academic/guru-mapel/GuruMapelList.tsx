@@ -8,7 +8,7 @@ import { SectionCard } from '../../ui/SectionCard';
 import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download } from 'lucide-react';
 import { listGuruMapel, removeGuruMapel } from '../../../api/academic/guru-mapel.api';
 import type { GuruMapel } from '../../../types/academic';
-import { useToast } from '../../../hooks/useToast';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
@@ -23,7 +23,7 @@ interface Props {
 }
 
 const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
-  const { showToast } = useToast();
+
   const { user } = useAuthStore();
   const confirm = useConfirm();
   const [items, setItems] = useState<GuruMapel[]>([]);
@@ -81,14 +81,14 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
         });
         setItems(filtered);
       } else {
-        showToast(res.message || 'Gagal memuat data', 'error');
+        toast.error(res.message || 'Gagal memuat data');
       }
     } catch (e) {
-      showToast('Terjadi kesalahan saat memuat data', 'error');
+      toast.error('Terjadi kesalahan saat memuat data');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, showToast, selectedGuruId, selectedMapelId]);
+  }, [debouncedSearch, selectedGuruId, selectedMapelId]);
 
   useEffect(() => {
     fetchData();
@@ -141,16 +141,16 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
 
       const res = await removeGuruMapel(gm.id);
       if (!res.success) {
-        showToast(res.message || 'Gagal menghapus pengampu', 'error');
+        toast.error(res.message || 'Gagal menghapus pengampu');
         return;
       }
-      showToast(res.message || 'Pengampu berhasil dihapus', 'success');
+      toast.success(res.message || 'Pengampu berhasil dihapus');
       fetchData();
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menghapus pengampu';
-      showToast(msg, 'error');
+      toast.error(msg);
     }
-  }, [showToast, fetchData, confirm]);
+  }, [fetchData, confirm]);
 
   const columns = useMemo(() => [
     {
@@ -204,9 +204,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
         { header: 'Mata Pelajaran', accessor: (row) => row.Mapel?.nama_mapel || '', width: 25 }
       ], 'Laporan_Guru_Mapel', 'DATA PENGAMPU MATA PELAJARAN');
     } catch (error: any) {
-      showToast(error.message || 'Gagal mengekspor data', 'warning');
+      toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });
     }
-  }, [items, showToast]);
+  }, [items]);
 
   return (
     <div className="flex flex-col">
