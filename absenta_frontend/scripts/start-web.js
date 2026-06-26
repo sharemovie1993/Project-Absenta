@@ -1,20 +1,31 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-// Set process title for Task Manager (limited on Windows but helpful for tools)
+// Set process title
 process.title = 'absenta-web';
 
 const frontendPort = process.env.PORT || '5175';
-const servePath = path.join(__dirname, '..', 'node_modules', 'serve', 'build', 'main.js');
+const distPath = path.join(__dirname, '..', 'dist');
 
-console.log(`[Frontend] Starting web server on port ${frontendPort} with title 'absenta-web'...`);
+// 1. Check if dist folder exists
+if (!fs.existsSync(distPath)) {
+  console.error('\x1b[31m[Frontend] ERROR: Folder "dist" tidak ditemukan!\x1b[0m');
+  console.error('\x1b[33m[Frontend] Silakan jalankan "npm run build" terlebih dahulu di mesin baru.\x1b[0m');
+  process.exit(1);
+}
 
-const child = spawn('node', [servePath, '-s', 'dist', '-l', frontendPort], {
+console.log(`[Frontend] Starting web server on port ${frontendPort}...`);
+
+// 2. Use npx to run serve - more robust across different machines/installations
+const child = spawn('npx', ['serve', '-s', 'dist', '-l', frontendPort], {
   cwd: path.join(__dirname, '..'),
   stdio: 'inherit',
-  windowsHide: true // Total silence
+  shell: true, // Required for npx on Windows
+  windowsHide: true
 });
 
 child.on('exit', (code) => {
   process.exit(code);
 });
+
