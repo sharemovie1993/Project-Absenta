@@ -29,6 +29,61 @@ function Show-Header {
     }
 }
 
+function Install-CaddyLocal {
+    param (
+        [string]$Domain,
+        [string]$FPort,
+        [string]$BPort
+    )
+    
+    Show-Header "Setup Reverse Proxy Lokal (Caddy)"
+    Write-Host "Memeriksa Caddy... " -NoNewline
+    $caddyPath = Get-Command caddy -ErrorAction SilentlyContinue
+    
+    if (-not $caddyPath) {
+        Write-Host "TIDAK DITEMUKAN" -ForegroundColor Yellow
+        Write-Host "Mengunduh Caddy untuk Windows..." -ForegroundColor Cyan
+        $url = "https://caddyserver.com/api/download?os=windows&arch=amd64"
+        $dest = "$PSScriptRoot\caddy.exe"
+        Invoke-WebRequest -Uri $url -OutFile $dest
+        $caddyPath = $dest
+        Write-Host "Caddy berhasil diunduh ke $dest" -ForegroundColor Green
+    } else {
+        Write-Host "OK" -ForegroundColor Green
+    }
+
+    # Buat Caddyfile
+    Write-Host "Membuat konfigurasi Caddyfile..." -ForegroundColor Cyan
+    $caddyfileContent = @"
+$Domain {
+    # Forward API requests to Backend
+    reverse_proxy /api/* localhost:$BPort
+
+    # Forward everything else to Frontend
+    reverse_proxy /* localhost:$FPort
+
+    # Optimization
+    encode gzip zstd
+    
+    # Internal SSL for Split DNS
+    tls internal
+}
+"@
+    $caddyfileContent | Set-Content "$PSScriptRoot\Caddyfile" -Encoding utf8
+
+    # Install as Service
+    Write-Host "Mendaftarkan Caddy sebagai Windows Service..." -ForegroundColor Cyan
+    try {
+        & $caddyPath stop 2>&1 | Out-Null
+        & $caddyPath service uninstall 2>&1 | Out-Null
+        & $caddyPath service install --config "$PSScriptRoot\Caddyfile"
+        & $caddyPath service start
+        Write-Host "Caddy Service berhasil dijalankan!" -ForegroundColor Green
+    } catch {
+        Write-Host "Peringatan: Gagal mengotomatisasi service Caddy. Anda mungkin perlu menjalankannya manual dengan perintah: caddy run" -ForegroundColor Yellow
+    }
+}
+
 # ----------------------------------------------------
 # LANGKAH 0: Selamat Datang / Welcome Screen
 # ----------------------------------------------------
@@ -88,12 +143,31 @@ if (-not $Silent) { Read-Host "Tekan [ENTER] untuk melanjutkan ke konfigurasi sk
 # ----------------------------------------------------
 $finalDomain = "api.absenta.id"
 $finalScheme = "https"
+$deployScenario = "saas" # default
 
 if (-not $Silent) {
     $confirmed = $false
     while (-not $confirmed) {
         Show-Header "2 / 5 - Konfigurasi Skenario & Port"
-        Write-Host "Konfigurasi Target Server:" -ForegroundColor White
+        Write-Host "Pilih Skenario Deployment:" -ForegroundColor White
+        Write-Host " 1. SaaS / Cloud (Akses via Domain Publik, e.g. https://app.absenta.id)"
+        Write-Host " 2. Lokal Sekolah (Akses via IP LAN/Localhost, e.g. http://192.168.1.10:5175)"
+        Write-Host " 3. Hybrid (Lokal Sekolah + Reverse Proxy VPS via Caddy/Nginx)"
+        $scenarioChoice = Read-Host "Pilih [1/2/3] (Default: 1)"
+        
+        if ($scenarioChoice -eq "2") { 
+            $deployScenario = "local"
+            $finalScheme = "http"
+            $finalDomain = "localhost"
+        }
+        elseif ($scenarioChoice -eq "3") { 
+            $deployScenario = "hybrid"
+            $finalScheme = "https" # Biasanya VPS pakai SSL
+        }
+        else { $deployScenario = "saas" }
+
+        Write-Host ""
+        Write-Host "Konfigurasi Target Server ($deployScenario):" -ForegroundColor White
         
         # 0. Redis Mode
         Write-Host "Pilih Mode Redis:" -ForegroundColor Gray
@@ -110,16 +184,25 @@ if (-not $Silent) {
         }
 
         # 1. Domain / Host
-        $inputDomain = Read-Host "1. Masukkan Domain Tunggal (misal: sekolah.absenta.id) [$finalDomain]"
+        if ($deployScenario -eq "local") {
+            $inputDomain = Read-Host "1. Masukkan IP LAN Server (misal: 192.168.1.10 atau localhost) [$finalDomain]"
+        } else {
+            $inputDomain = Read-Host "1. Masukkan Domain Utama (misal: sekolah.absenta.id) [$finalDomain]"
+        }
         if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
 
         # 2. Protokol
+        if ($deployScenario -eq "local") { $finalScheme = "http" }
         $inputScheme = Read-Host "2. Gunakan Protokol (http/https) [$finalScheme]"
         if (-not [string]::IsNullOrWhiteSpace($inputScheme)) { $finalScheme = $inputScheme }
         
-        # 3. LAN IP (Optional for Split DNS Helper)
-        $lanIp = Read-Host "3. Masukkan IP LAN Server (untuk akses lokal tanpa DNS) [127.0.0.1]"
-        if ([string]::IsNullOrWhiteSpace($lanIp)) { $lanIp = "127.0.0.1" }
+        # 3. LAN IP (Untuk akses lokal di skenario Hybrid)
+        if ($deployScenario -eq "hybrid") {
+            $lanIp = Read-Host "3. Masukkan IP LAN Server (untuk akses lokal bypass VPS) [192.168.1.10]"
+            if ([string]::IsNullOrWhiteSpace($lanIp)) { $lanIp = "192.168.1.10" }
+        } else {
+            $lanIp = $finalDomain
+        }
 
         # 4. Ports
         $inputBPort = Read-Host "4. Port Backend [$BackendPort]"
@@ -170,15 +253,20 @@ if (-not $Silent) {
             }
         }
 
-        Write-Host "--- RINGKASAN KONFIGURASI SPLIT DNS ---" -ForegroundColor Yellow
-        Write-Host " - Domain Utama   : $finalDomain"
+        Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
+        Write-Host " - Skenario       : $deployScenario"
+        Write-Host " - Domain/Host    : $finalDomain"
         Write-Host " - Protokol       : $finalScheme"
-        Write-Host " - IP LAN         : $lanIp"
+        Write-Host " - IP LAN (Local) : $lanIp"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"
         Write-Host " - License Key    : $(if($licenseKey){$licenseKey}else{'Tidak Ada'})"
-        Write-Host "---------------------------------------" -ForegroundColor Yellow
-        Write-Host " Catatan: Pastikan DNS Lokal & Cloudflare/VPS Anda mengarah ke domain ini." -ForegroundColor Gray
+        Write-Host "-----------------------------" -ForegroundColor Yellow
+        if ($deployScenario -eq "hybrid") {
+            Write-Host " INFO: Frontend akan dikonfigurasi menggunakan domain VPS ($finalDomain)" -ForegroundColor Cyan
+            Write-Host "       Backend akan mengizinkan akses dari domain VPS DAN IP Lokal ($lanIp)" -ForegroundColor Cyan
+            $setupCaddy = Read-Host " Apakah Anda ingin memasang/update Reverse Proxy (Caddy) lokal? [Y/n]"
+        }
         Write-Host ""
         $confKey = Read-Host "Apakah sudah benar? [Y/n]"
         if ($confKey -eq 'n' -or $confKey -eq 'N') { } else { $confirmed = $true }
@@ -186,6 +274,13 @@ if (-not $Silent) {
 } else {
     # Logic for Silent mode parameters
     if (-not [string]::IsNullOrWhiteSpace($ServerDomain)) { $finalDomain = $ServerDomain }
+}
+
+# ----------------------------------------------------
+# LANGKAH Tambahan: Setup Caddy (Hybrid Only)
+# ----------------------------------------------------
+if ($deployScenario -eq "hybrid" -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
+    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort
 }
 
 # Update .env files
@@ -216,14 +311,23 @@ if ($newBackendEnv -notmatch "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
-# Frontend is flexible, just ensure VITE_API_BASE_URL is /api for auto-detection
+# Frontend VITE_API_BASE_URL must be absolute for local deployments without a proxy like Caddy/Nginx
 $frontendEnv = Get-Content "absenta_frontend/.env"
 $newFrontendEnv = @()
 $fPortFound = $false
 $proxyTargetFound = $false
 
 foreach ($line in $frontendEnv) {
-    if ($line -match "^VITE_API_BASE_URL=") { $newFrontendEnv += "VITE_API_BASE_URL=/api" }
+    if ($line -match "^VITE_API_BASE_URL=") { 
+        # Hybrid scenario: Always use public domain if provided
+        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
+            $newFrontendEnv += "VITE_API_BASE_URL=${finalScheme}://$finalDomain/api"
+        } 
+        # Pure Local scenario: Use IP/Localhost + Port
+        else {
+            $newFrontendEnv += "VITE_API_BASE_URL=${finalScheme}://$finalDomain`:$BackendPort/api"
+        }
+    }
     elseif ($line -match "^VITE_PROXY_TARGET=") { 
         $newFrontendEnv += "VITE_PROXY_TARGET=http://localhost:$BackendPort"
         $proxyTargetFound = $true
@@ -265,6 +369,7 @@ $buildFailed = $false
 
 Write-Host "1. Membangun Backend (TSC)..." -ForegroundColor Cyan
 Push-Location absenta_backend
+$env:NODE_OPTIONS = "--max-old-space-size=4096"
 npm run build
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
@@ -280,6 +385,7 @@ Pop-Location
 
 Write-Host "2. Membangun Frontend (Vite)..." -ForegroundColor Cyan
 Push-Location absenta_frontend
+$env:NODE_OPTIONS = "--max-old-space-size=4096"
 npm run build
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
