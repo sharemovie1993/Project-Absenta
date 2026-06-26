@@ -6,10 +6,14 @@ async function startServer() {
     const redisServer = new RedisMemoryServer({
       instance: {
         port: 6379,
-        // Remove explicit IP to allow more flexibility
+      },
+      binary: {
+        version: '6.2.6', // Explicit version for predictability
+        skipMD5: true,   // Speed up startup on slower machines
       },
     });
 
+    console.log('[Embedded Redis] Checking binary and starting...');
     await redisServer.start();
     const host = await redisServer.getHost();
     const port = await redisServer.getPort();

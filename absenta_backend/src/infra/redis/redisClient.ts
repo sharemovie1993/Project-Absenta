@@ -113,13 +113,36 @@ async function createClient(): Promise<RedisClient> {
 
 export async function initRedis(): Promise<RedisClient> {
   if (sharedClient) return sharedClient;
+  
+  const mode = getRedisMode();
   if (!loggedMode) {
     loggedMode = true;
-    const mode = getRedisMode();
     console.log(`[Redis] Initializing in mode: ${mode}`);
   }
+
   sharedClient = await createClient();
-  return sharedClient;
+
+  // Ensure we wait for the connection to be ready before proceeding
+  // This prevents race conditions where workers start before Redis is up
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.error(`[Redis] Connection timeout after 15s in mode: ${mode}`);
+      reject(new Error(`Redis connection timeout (${mode})`));
+    }, 15000);
+
+    sharedClient!.once('ready', () => {
+      clearTimeout(timeout);
+      console.log(`[Redis] SUCCESS: Connected and ready in mode: ${mode}`);
+      resolve(sharedClient!);
+    });
+
+    sharedClient!.once('error', (err) => {
+      if (!sharedClient?.status || sharedClient.status === 'connecting') {
+        // Only reject if it's the initial connection error and we haven't reached 'ready'
+        console.error(`[Redis] Initial connection error:`, err.message);
+      }
+    });
+  });
 }
 
 export function getRedisConnection(): any {

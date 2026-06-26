@@ -65,7 +65,9 @@ module.exports = {
       cwd: path.join(__dirname, 'absenta_backend'),
       instances: 'max', 
       exec_mode: 'cluster',
-      windowsHide: true, // Prevent terminal popup on Windows
+      windowsHide: true,
+      restart_delay: 3000, // Wait 3s before restarting if it fails
+      listen_timeout: 10000, // Give it 10s to start listening
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
