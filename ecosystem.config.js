@@ -54,6 +54,7 @@ module.exports = {
       instances: 1,
       exec_mode: 'fork',
       watch: false,
+      windowsHide: true, // Prevent terminal popup on Windows
       env: {
         NODE_ENV: 'production'
       }
@@ -62,12 +63,13 @@ module.exports = {
       name: `absenta-backend:${backendPort}`,
       script: 'dist/main.js',
       cwd: path.join(__dirname, 'absenta_backend'),
-      instances: 'max', // Adaptive: Uses all CPU cores
-      exec_mode: 'cluster', // Cluster mode for high performance
+      instances: 'max', 
+      exec_mode: 'cluster',
+      windowsHide: true, // Prevent terminal popup on Windows
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
-        EMBEDDED_WORKERS: 'true', // Each instance can run workers (safe due to distributed locks)
+        EMBEDDED_WORKERS: 'true',
         AUTOSCALER_MAX_WORKERS: '10',
         ...backendEnv
       },
@@ -76,11 +78,12 @@ module.exports = {
     },
     {
       name: `absenta-frontend:${frontendPort}`,
-      script: 'node_modules/vite/bin/vite.js',
-      args: `preview --port ${frontendPort} --host 0.0.0.0`,
+      script: 'node_modules/serve/build/main.js', // Using 'serve' package directly
+      args: `-s dist -l ${frontendPort}`,
       cwd: path.join(__dirname, 'absenta_frontend'),
       instances: 1, 
       exec_mode: 'fork',
+      windowsHide: true, // Prevent terminal popup on Windows
       env: {
         NODE_ENV: 'production',
         ...frontendEnv

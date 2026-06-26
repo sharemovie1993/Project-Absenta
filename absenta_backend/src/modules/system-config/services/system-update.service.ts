@@ -69,7 +69,7 @@ function execCmd(cmd: string, cwd: string): Promise<string> {
     const originalPath = process.env[pathKey] || '';
     const newEnv = { ...process.env, [pathKey]: `${localBin}${path.delimiter}${originalPath}` };
 
-    exec(cmd, { cwd, timeout: 360_000, env: newEnv }, (error, stdout, stderr) => {
+    exec(cmd, { cwd, timeout: 360_000, env: newEnv, windowsHide: true }, (error, stdout, stderr) => {
       if (error) reject({ error, stderr, stdout });
       else resolve(stdout);
     });
