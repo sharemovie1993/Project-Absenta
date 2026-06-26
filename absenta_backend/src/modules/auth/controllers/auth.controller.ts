@@ -1057,9 +1057,6 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
                  if (u.tenant_id) {
                    const tenant = await prisma.tenant.findUnique({ where: { id: u.tenant_id } });
                    if (tenant && tenant.domain) {
-                      const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
-                      const domainBaseResolved = authController.resolveTenantDomainBase(request.headers);
-                      
                       let tenantLoginUrl = '';
                       // FIX: Gunakan helper getSmartParentAppUrl agar logika pembentukan URL konsisten dan tidak duplikat
                       tenantLoginUrl = `${getSmartParentAppUrl(tenant.domain, tenant.id)}/login`;
