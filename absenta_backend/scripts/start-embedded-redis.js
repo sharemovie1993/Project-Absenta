@@ -8,12 +8,24 @@ async function startServer() {
         port: 6379,
       },
       binary: {
-        version: '6.2.6', // Explicit version for predictability
-        skipMD5: true,   // Speed up startup on slower machines
+        version: '6.2.6',
+        skipMD5: true,
       },
+      autoStart: false,
     });
 
-    console.log('[Embedded Redis] Checking binary and starting...');
+    console.log('[Embedded Redis] Checking binary and starting (silent mode)...');
+    
+    // Patch to prevent terminal popup on Windows for Memurai/Redis binary
+    if (process.platform === 'win32') {
+      const originalSpawn = require('child_process').spawn;
+      const patchedSpawn = function(command, args, options) {
+        const opts = { ...options, windowsHide: true };
+        return originalSpawn.call(this, command, args, opts);
+      };
+      require('child_process').spawn = patchedSpawn;
+    }
+
     await redisServer.start();
     const host = await redisServer.getHost();
     const port = await redisServer.getPort();
