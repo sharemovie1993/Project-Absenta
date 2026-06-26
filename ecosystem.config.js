@@ -87,7 +87,7 @@ module.exports = {
     },
     {
       name: `absenta-web:${frontendPort}`,
-      script: 'scripts/start-web.js',
+      script: 'scripts/start-web.cjs',
       cwd: path.join(__dirname, 'absenta_frontend'),
       instances: 1, 
       exec_mode: 'fork',
