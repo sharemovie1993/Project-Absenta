@@ -1061,13 +1061,8 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
                       const domainBaseResolved = authController.resolveTenantDomainBase(request.headers);
                       
                       let tenantLoginUrl = '';
-                      if (tenant.domain.includes('.')) {
-                          // Custom domain
-                          tenantLoginUrl = `${scheme}://${tenant.domain}/login`;
-                      } else {
-                          // Subdomain
-                          tenantLoginUrl = `${scheme}://${tenant.domain}.${domainBaseResolved}/login`;
-                      }
+                      // FIX: Gunakan helper getSmartParentAppUrl agar logika pembentukan URL konsisten dan tidak duplikat
+                      tenantLoginUrl = `${getSmartParentAppUrl(tenant.domain, tenant.id)}/login`;
 
                       if (isProd && !allowLocalDevLogin) {
                         reply.status(403); // Forbidden on this domain, but with redirect info

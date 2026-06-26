@@ -166,6 +166,10 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
   const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
 
   if (tenantDomain && !isIp) {
+    // FIX: Jika tenantDomain sudah mengandung domain lengkap (misal: app.absenta.id), jangan tempelkan lagi mainDomain
+    if (tenantDomain.includes('.') && (tenantDomain.endsWith(`.${mainDomain}`) || tenantDomain === mainDomain)) {
+      return `${scheme}://${tenantDomain}${portStr}`;
+    }
     const hostname = tenantDomain.includes('.') ? tenantDomain : `${tenantDomain}.${mainDomain}`;
     return `${scheme}://${hostname}${portStr}`;
   }
