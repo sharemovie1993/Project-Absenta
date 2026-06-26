@@ -33,7 +33,8 @@ function Install-CaddyLocal {
     param (
         [string]$Domain,
         [string]$FPort,
-        [string]$BPort
+        [string]$BPort,
+        [string]$SSLEmail = ""
     )
     
     Show-Header "Setup Reverse Proxy Lokal (Caddy)"
@@ -43,7 +44,7 @@ function Install-CaddyLocal {
     $conflictingService = Get-Service -Name "Apache24", "W3SVC" -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "Running" }
     if ($conflictingService) {
         foreach ($svc in $conflictingService) {
-            Write-Host "Menemukan layanan konflik: $($svc.DisplayName). Menghentikan otomatis..." -ForegroundColor Yellow
+            Write-Host "Menentukan layanan konflik: $($svc.DisplayName). Menghentikan otomatis..." -ForegroundColor Yellow
             Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
             Set-Service -Name $svc.Name -StartupType Disabled -ErrorAction SilentlyContinue
         }
@@ -71,8 +72,13 @@ function Install-CaddyLocal {
         Write-Host "OK" -ForegroundColor Green
     }
 
-    # Buat Caddyfile
+    # Buat Caddyfile cerdas
     Write-Host "Membuat konfigurasi Caddyfile..." -ForegroundColor Cyan
+    $tlsConfig = "tls internal"
+    if (-not [string]::IsNullOrWhiteSpace($SSLEmail)) {
+        $tlsConfig = "email $SSLEmail"
+    }
+
     $caddyfileContent = @"
 $Domain {
     # Forward API requests to Backend
@@ -84,8 +90,8 @@ $Domain {
     # Optimization
     encode gzip zstd
     
-    # Internal SSL for Split DNS
-    tls internal
+    # SSL Configuration
+    $tlsConfig
 }
 "@
     $caddyfileContent | Set-Content "$PSScriptRoot\Caddyfile" -Encoding utf8
@@ -93,18 +99,17 @@ $Domain {
     # Install as Service (Windows Native approach)
     Write-Host "Mendaftarkan Caddy sebagai Windows Service..." -ForegroundColor Cyan
     try {
-        # Check if sc.exe (Service Control) can handle it
         $binPath = "`"$caddyPath`" run --config `"$PSScriptRoot\Caddyfile`""
-        
-        # Stop and Delete if exists
         sc.exe stop Caddy 2>&1 | Out-Null
         sc.exe delete Caddy 2>&1 | Out-Null
-        
-        # Create new service
         sc.exe create Caddy binPath= $binPath start= auto DisplayName= "Absenta Reverse Proxy (Caddy)"
         sc.exe start Caddy
         
-        Write-Host "Caddy Service berhasil didaftarkan dan dijalankan!" -ForegroundColor Green
+        # ZERO TOUCH SSL: Perintahkan Caddy untuk menginstal Root CA ke Windows Trusted Store
+        Write-Host "Menginstal Sertifikat Root Caddy ke Windows Trusted Store..." -ForegroundColor Cyan
+        Start-Process "$caddyPath" -ArgumentList "trust" -Verb RunAs -Wait
+        
+        Write-Host "Caddy Service & SSL Trust berhasil dikonfigurasi!" -ForegroundColor Green
     } catch {
         Write-Host "Peringatan: Gagal mengotomatisasi service Caddy. Silakan jalankan manual: .\caddy.exe run" -ForegroundColor Yellow
     }
@@ -237,8 +242,15 @@ if (-not $Silent) {
         $inputFPort = Read-Host "5. Port Frontend [$FrontendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
-        # 6. License Key
-        $inputLic = Read-Host "6. Masukkan Kunci Lisensi (Kosongkan jika ingin registrasi baru)"
+        # 6. SSL Configuration (New)
+        $sslEmail = ""
+        if ($deployScenario -eq "hybrid") {
+            $inputEmail = Read-Host "6. Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Lokal/Internal)"
+            if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+        }
+
+        # 7. License Key
+        $inputLic = Read-Host "7. Masukkan Kunci Lisensi (Kosongkan jika ingin registrasi baru)"
         if (-not [string]::IsNullOrWhiteSpace($inputLic)) { 
             $licenseKey = $inputLic.Trim() 
         } else { 
@@ -306,7 +318,7 @@ if (-not $Silent) {
 # LANGKAH Tambahan: Setup Caddy (Hybrid Only)
 # ----------------------------------------------------
 if ($deployScenario -eq "hybrid" -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
-    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort
+    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail
 }
 
 # Update .env files
