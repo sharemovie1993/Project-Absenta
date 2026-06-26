@@ -25,6 +25,14 @@ const child = spawn('npx', ['serve', '-s', 'dist', '-l', frontendPort], {
   windowsHide: true
 });
 
+// Signal PM2 that the frontend is ready after a short delay
+// Ideally, we would check if the port is actually open
+setTimeout(() => {
+  if (process.send) {
+    process.send('ready');
+  }
+}, 3000);
+
 child.on('exit', (code) => {
   process.exit(code);
 });

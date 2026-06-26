@@ -249,6 +249,11 @@ async function start() {
     await fastify.listen({ port, host });
     registerService('Fastify HTTP Server', 'server', 'online');
 
+    // Signal PM2 that the server is ready
+    if (process.send) {
+      process.send('ready');
+    }
+
     // ─── Print PM2-style startup table ───
     printStartupTable(port, host);
     

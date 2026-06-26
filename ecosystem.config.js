@@ -56,6 +56,10 @@ module.exports = {
       watch: false,
       windowsHide: true,
       kill_timeout: 5000,
+      wait_ready: true, // PM2 will wait for process.send('ready')
+      listen_timeout: 30000, // Wait up to 30s for Redis binary to download/start
+      max_restarts: 10,
+      restart_delay: 4000,
       env: {
         NODE_ENV: 'production'
       }
@@ -67,8 +71,10 @@ module.exports = {
       instances: 'max', 
       exec_mode: 'cluster',
       windowsHide: true,
-      restart_delay: 3000,
-      listen_timeout: 10000,
+      wait_ready: true, // PM2 will wait for process.send('ready')
+      listen_timeout: 20000, // Wait up to 20s for NestJS/Fastify to boot
+      restart_delay: 5000,
+      max_restarts: 10,
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
@@ -86,6 +92,9 @@ module.exports = {
       instances: 1, 
       exec_mode: 'fork',
       windowsHide: true,
+      wait_ready: true, // PM2 will wait for process.send('ready')
+      listen_timeout: 15000,
+      restart_delay: 5000,
       env: {
         NODE_ENV: 'production',
         PORT: frontendPort,

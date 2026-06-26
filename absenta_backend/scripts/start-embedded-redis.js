@@ -46,6 +46,11 @@ async function startServer() {
 
     console.log(`[Embedded Redis] SUCCESS: Server is running at ${host}:${port}`);
     
+    // Signal PM2 that Redis is ready
+    if (process.send) {
+      process.send('ready');
+    }
+    
     // Explicitly keep the process alive
     setInterval(() => {}, 60000);
 
