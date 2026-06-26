@@ -81,14 +81,14 @@ module.exports = {
     },
     {
       name: `absenta-web:${frontendPort}`,
-      script: 'node_modules/serve/build/main.js',
-      args: `-s dist -l ${frontendPort}`,
+      script: 'scripts/start-web.js',
       cwd: path.join(__dirname, 'absenta_frontend'),
       instances: 1, 
       exec_mode: 'fork',
       windowsHide: true,
       env: {
         NODE_ENV: 'production',
+        PORT: frontendPort,
         ...frontendEnv
       },
       watch: false
