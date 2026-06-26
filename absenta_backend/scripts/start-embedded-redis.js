@@ -11,15 +11,21 @@ async function startServer() {
       const originalSpawn = child_process.spawn;
       const originalSpawnSync = child_process.spawnSync;
       
+      // We must preserve the context and ensure options object exists
       child_process.spawn = function(command, args, options) {
-        return originalSpawn.call(this, command, args, { ...options, windowsHide: true });
+        const opts = typeof args === 'object' && !Array.isArray(args) ? args : options;
+        const actualArgs = Array.isArray(args) ? args : [];
+        return originalSpawn.call(this, command, actualArgs, { ...opts, windowsHide: true });
       };
       
       child_process.spawnSync = function(command, args, options) {
-        return originalSpawnSync.call(this, command, args, { ...options, windowsHide: true });
+        const opts = typeof args === 'object' && !Array.isArray(args) ? args : options;
+        const actualArgs = Array.isArray(args) ? args : [];
+        return originalSpawnSync.call(this, command, actualArgs, { ...opts, windowsHide: true });
       };
     }
 
+    const os = require('os');
     const redisServer = new RedisMemoryServer({
       instance: {
         port: 6379,
@@ -27,8 +33,8 @@ async function startServer() {
       binary: {
         version: '6.2.6',
         skipMD5: true,
-        // Use a more stable directory outside node_modules to avoid permission issues on some Windows setups
-        downloadDir: path.join(process.cwd(), '.redis-bin'),
+        // Use the OS temp directory which usually has better execution permissions on Windows
+        downloadDir: path.join(os.tmpdir(), 'absenta-redis-bin'),
       },
       autoStart: false,
     });

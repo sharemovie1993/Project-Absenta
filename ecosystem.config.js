@@ -55,7 +55,7 @@ module.exports = {
       exec_mode: 'fork',
       watch: false,
       windowsHide: true,
-      kill_timeout: 5000, // Give more time to cleanup Redis binary on stop
+      kill_timeout: 5000,
       env: {
         NODE_ENV: 'production'
       }
