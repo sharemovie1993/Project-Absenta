@@ -37,6 +37,25 @@ function Install-CaddyLocal {
     )
     
     Show-Header "Setup Reverse Proxy Lokal (Caddy)"
+    
+    # ZERO TOUCH: Otomatis deteksi dan hentikan konflik port 80/443
+    Write-Host "Memeriksa konflik port 80/443..." -ForegroundColor Cyan
+    $conflictingService = Get-Service -Name "Apache24", "W3SVC" -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "Running" }
+    if ($conflictingService) {
+        foreach ($svc in $conflictingService) {
+            Write-Host "Menemukan layanan konflik: $($svc.DisplayName). Menghentikan otomatis..." -ForegroundColor Yellow
+            Stop-Service -Name $svc.Name -Force -ErrorAction SilentlyContinue
+            Set-Service -Name $svc.Name -StartupType Disabled -ErrorAction SilentlyContinue
+        }
+    }
+
+    # Jika port 80 masih terpakai oleh proses lain (bukan service)
+    $port80Owner = Get-NetTCPConnection -LocalPort 80 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -ErrorAction SilentlyContinue
+    if ($port80Owner) {
+        Write-Host "Port 80 dikuasai oleh PID $port80Owner. Menghentikan proses..." -ForegroundColor Yellow
+        Stop-Process -Id $port80Owner -Force -ErrorAction SilentlyContinue
+    }
+
     Write-Host "Memeriksa Caddy... " -NoNewline
     $caddyPath = Get-Command caddy -ErrorAction SilentlyContinue
     
