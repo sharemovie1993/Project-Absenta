@@ -53,8 +53,11 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     const isVertical = config.template === 'vertical';
     const isCenteredCircle = isVertical && config.photo_shape === 'circle';
     const resolvedDataY = isCenteredCircle 
-        ? Math.max(config.data_y || 0, 410) 
+        ? Math.max(config.data_y || 0, 395) 
         : (config.data_y || 0);
+
+    const resolvedQrX = isCenteredCircle ? 147 : config.qrcode_x;
+    const resolvedQrY = isCenteredCircle ? 520 : config.qrcode_y;
 
     const cardW = config.card_width || 85.6;
     const cardH = config.card_height || 54;
@@ -350,8 +353,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               dragMomentum={false}
               onDragEnd={(e, info) => onDragEnd('qrcode', info)}
               style={{
-                x: config.qrcode_x,
-                y: config.qrcode_y,
+                x: resolvedQrX,
+                y: resolvedQrY,
                 position: 'absolute',
                 top: 0,
                 left: 0,

@@ -60,16 +60,19 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const qrW = config.qrcode_width || 20;
     const qrH = config.qrcode_height || 20;
 
-    // We need to scale the saved coordinates (which were in EDITOR_SCALE) back to 1x
     const photoX = config.photo_x / EDITOR_SCALE;
     const photoY = config.photo_y / EDITOR_SCALE;
-    const qrX = config.qrcode_x / EDITOR_SCALE;
-    const qrY = config.qrcode_y / EDITOR_SCALE;
+
     const isCenteredCircle = isVertical && config.photo_shape === 'circle';
     const resolvedDataY = isCenteredCircle 
-        ? Math.max(config.data_y || 0, 410) 
+        ? Math.max(config.data_y || 0, 395) 
         : (config.data_y || 0);
 
+    const resolvedQrX = isCenteredCircle ? 147 : config.qrcode_x;
+    const resolvedQrY = isCenteredCircle ? 520 : config.qrcode_y;
+
+    const qrX = resolvedQrX / EDITOR_SCALE;
+    const qrY = resolvedQrY / EDITOR_SCALE;
     const dataX = (config.data_x || 0) / EDITOR_SCALE;
     const dataY = resolvedDataY / EDITOR_SCALE;
 
