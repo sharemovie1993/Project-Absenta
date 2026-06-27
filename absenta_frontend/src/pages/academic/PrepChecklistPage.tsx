@@ -199,17 +199,27 @@ const PrepChecklistPage: React.FC = () => {
       const loadStudents = async () => {
         try {
           setLoadingStudents(true);
+          let rawStudents: Siswa[] = [];
           if (selectedClassId === 'all') {
             const res = await siswaApi.getAll({ limit: 1000 });
-            setStudents(res.data || []);
+            rawStudents = res.data || [];
           } else if (selectedClassId.startsWith('all_tingkat_')) {
             const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
             const res = await siswaApi.getAll({ tingkat: tingkatNum, limit: 500 });
-            setStudents(res.data || []);
+            rawStudents = res.data || [];
           } else {
             const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
-            setStudents(res.data || []);
+            rawStudents = res.data || [];
           }
+          
+          // Sort alphabetically A to Z
+          const sorted = [...rawStudents].sort((a, b) => {
+            const nameA = (a.nama_siswa || '').toUpperCase();
+            const nameB = (b.nama_siswa || '').toUpperCase();
+            return nameA.localeCompare(nameB);
+          });
+          
+          setStudents(sorted);
         } catch (err) {
           console.error(err);
           toast.error('Gagal memuat data siswa');
@@ -336,7 +346,12 @@ const PrepChecklistPage: React.FC = () => {
         if (c && ['attendance', 'journal', 'roster'].includes(selectedPrintType)) {
           try {
             const res = await siswaApi.getAll({ kelas_id: c.id, limit: 150 });
-            classStudents = res.data || [];
+            // Sort students alphabetically A to Z
+            classStudents = (res.data || []).sort((a, b) => {
+              const nameA = (a.nama_siswa || '').toUpperCase();
+              const nameB = (b.nama_siswa || '').toUpperCase();
+              return nameA.localeCompare(nameB);
+            });
           } catch (err) {
             console.error(`Gagal memuat siswa untuk kelas ${c.nama_kelas}:`, err);
           }
