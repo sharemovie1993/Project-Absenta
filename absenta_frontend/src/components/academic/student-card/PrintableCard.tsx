@@ -55,21 +55,26 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const widthMM = isVertical ? cardH : cardW;
     const heightMM = isVertical ? cardW : cardH;
     
+    const isCenteredCircle = isVertical && config.photo_shape === 'circle';
+
     const photoW = config.photo_width || 24;
     const photoH = config.photo_height || 32;
-    const qrW = config.qrcode_width || 20;
-    const qrH = config.qrcode_height || 20;
+    const qrW = isCenteredCircle ? 15 : (config.qrcode_width || 20);
+    const qrH = isCenteredCircle ? 15 : (config.qrcode_height || 20);
 
     const photoX = config.photo_x / EDITOR_SCALE;
     const photoY = config.photo_y / EDITOR_SCALE;
 
-    const isCenteredCircle = isVertical && config.photo_shape === 'circle';
     const resolvedDataY = isCenteredCircle 
         ? Math.max(config.data_y || 0, 370) 
         : (config.data_y || 0);
 
-    const resolvedQrX = isCenteredCircle ? 147 : config.qrcode_x;
-    const resolvedQrY = isCenteredCircle ? 520 : config.qrcode_y;
+    const resolvedQrX = isCenteredCircle 
+        ? ((widthMM - qrW) * MM_TO_PX * EDITOR_SCALE) / 2 
+        : config.qrcode_x;
+    const resolvedQrY = isCenteredCircle 
+        ? ((heightMM - qrH) * MM_TO_PX * EDITOR_SCALE) - 15 
+        : config.qrcode_y;
 
     const qrX = resolvedQrX / EDITOR_SCALE;
     const qrY = resolvedQrY / EDITOR_SCALE;

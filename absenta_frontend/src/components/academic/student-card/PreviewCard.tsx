@@ -56,14 +56,18 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
         ? Math.max(config.data_y || 0, 370) 
         : (config.data_y || 0);
 
-    const resolvedQrX = isCenteredCircle ? 147 : config.qrcode_x;
-    const resolvedQrY = isCenteredCircle ? 520 : config.qrcode_y;
-
     const cardW = config.card_width || 85.6;
     const cardH = config.card_height || 54;
     
     const width = (isVertical ? cardH : cardW) * MM_TO_PX * EDITOR_SCALE;
     const height = (isVertical ? cardW : cardH) * MM_TO_PX * EDITOR_SCALE;
+
+    const resolvedQrX = isCenteredCircle 
+        ? (width - (15 * MM_TO_PX * EDITOR_SCALE)) / 2 
+        : config.qrcode_x;
+    const resolvedQrY = isCenteredCircle 
+        ? (height - (15 * MM_TO_PX * EDITOR_SCALE) - 15) 
+        : config.qrcode_y;
 
     // Strip tingkat prefix (X, XI, XII) from class name
     const stripTingkat = (nama: string) =>
@@ -107,8 +111,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     // Dimensions for Photo and QR (in mm)
     const PHOTO_WIDTH_MM = config.photo_width || 24;
     const PHOTO_HEIGHT_MM = config.photo_height || 32;
-    const QR_WIDTH_MM = config.qrcode_width || 20;
-    const QR_HEIGHT_MM = config.qrcode_height || 20;
+    const QR_WIDTH_MM = isCenteredCircle ? 15 : (config.qrcode_width || 20);
+    const QR_HEIGHT_MM = isCenteredCircle ? 15 : (config.qrcode_height || 20);
 
     const photoW = PHOTO_WIDTH_MM * MM_TO_PX * EDITOR_SCALE;
     const photoH = PHOTO_HEIGHT_MM * MM_TO_PX * EDITOR_SCALE;
