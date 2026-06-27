@@ -237,6 +237,12 @@ model StudentCardConfig {
   card_width  Float @default(85.6)
   card_height Float @default(54)
 
+  // Extra style options
+  card_pattern         String @default("solid")
+  card_pattern_opacity Float  @default(100)
+  header_style         String @default("solid")
+  footer_style         String @default("solid")
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 

@@ -45,6 +45,12 @@ export class StudentCardConfigService {
         border_color: '#000000',
         border_width: 1,
 
+        // Extra style options defaults
+        card_pattern: 'solid',
+        card_pattern_opacity: 100,
+        header_style: 'solid',
+        footer_style: 'solid',
+
         // Default Print Config
         print_paper_size: 'A4',
         print_orientation: 'portrait',
@@ -95,6 +101,9 @@ export class StudentCardConfigService {
 
     // Border Config
     if (updateData.border_width) updateData.border_width = parseFloat(updateData.border_width);
+
+    // Extra style options parsing
+    if (updateData.card_pattern_opacity) updateData.card_pattern_opacity = parseFloat(updateData.card_pattern_opacity);
 
     // Font Sizes parsing
     if (updateData.header_font_size) updateData.header_font_size = parseFloat(updateData.header_font_size);
