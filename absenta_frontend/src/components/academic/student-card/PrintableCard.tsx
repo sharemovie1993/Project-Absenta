@@ -65,7 +65,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
 
     const isCenteredCircle = isVertical && config.photo_shape === 'circle';
     const resolvedDataY = isCenteredCircle 
-        ? Math.max(config.data_y || 0, 395) 
+        ? Math.max(config.data_y || 0, 370) 
         : (config.data_y || 0);
 
     const resolvedQrX = isCenteredCircle ? 147 : config.qrcode_x;
@@ -189,11 +189,22 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     ) : (
                          <img src="/logo.png" alt="Absenta Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
                     )}
-                    <div className="text-center" style={{ color: 'inherit' }}>
-                        <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>
-                        <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>
+                     <div className="text-center" style={{ color: 'inherit' }}>
+                        {config.card_title && (
+                          <h1 
+                            className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
+                            style={{ 
+                              fontSize: `${(config.card_title_font_size || 14) * 0.45}pt`,
+                              color: config.header_style === 'minimal' ? config.primary_color : undefined
+                            }}
+                          >
+                            {config.card_title}
+                          </h1>
+                        )}
+                        {config.header_text && <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>}
+                        {config.subheader_text && <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>}
                         <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
-                        <p className="opacity-90 font-medium" style={{ fontSize: `${config.school_address_font_size}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat'}</p>
+                        <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat'}</p>
                     </div>
                 </div>
             </div>
@@ -209,21 +220,6 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                   }}
                 />
             )}
-
-            {/* Title — exactly below header */}
-            <div
-              className="absolute w-full text-center pointer-events-none z-10"
-              style={{ 
-                  top: `${isCenteredCircle
-                      ? (photoY + (config.photo_width || 22) * MM_TO_PX + 4)
-                      : ((config.header_height || 18) * MM_TO_PX + 
-                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 8 : 3))}px` 
-              }}
-            >
-                 <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
-                    {config.card_title}
-                 </h1>
-            </div>
 
             {/* Content — absolute from top:0 left:0 matching PreviewCard */}
             <div 
