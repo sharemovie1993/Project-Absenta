@@ -346,10 +346,14 @@ export class AuthService {
     let result: { tenant: any; user: any; subscription: any };
     try {
       result = await prisma.$transaction(async (tx) => {
+        // Resolve subdomain: if input is FQDN, take the first part. Otherwise use as is.
+        const subdomainSlug = tenant_domain.includes('.') ? tenant_domain.split('.')[0] : tenant_domain;
+        
         const newTenant = await tx.tenant.create({
           data: {
             name: tenant_name,
             domain: tenant_domain,
+            subdomain: subdomainSlug,
             status: 'ACTIVE',
           },
         });

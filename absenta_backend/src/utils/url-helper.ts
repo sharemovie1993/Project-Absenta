@@ -146,13 +146,13 @@ export function getDomainBases(): string[] {
 }
 
 /**
- * Mendapatkan URL Parent App secara cerdas berdasarkan tenant domain.
+ * Mendapatkan URL Parent App secara cerdas berdasarkan tenant data.
  */
-export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): string {
+export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custom_domain?: string | null, domain?: string | null }, tenantId?: string): string {
   const parentAppBase = (process.env.PARENT_APP_URL || process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
   const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
   
-  // Ambil domain utama dari beberapa variabel fallback
+  // Ambil domain utama
   const mainDomain = (
     process.env.MAIN_DOMAIN || 
     process.env.PUBLIC_DOMAIN_BASE || 
@@ -160,7 +160,6 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
     ''
   ).trim().toLowerCase();
   
-  // Get port from FRONTEND_URL if it's not standard
   let portStr = '';
   try {
     const feUrl = new URL(process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL);
@@ -169,33 +168,27 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
     }
   } catch {}
 
-  // IP Detection: If mainDomain is an IP, we don't use subdomains (invalid FQDN)
-  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
-
-  if (tenantDomain && mainDomain && !isIp) {
-    // 1. Normalisasi domain untuk perbandingan
-    const normTenant = tenantDomain.toLowerCase().trim();
-    const normMain = mainDomain.toLowerCase().trim();
-
-    // 2. Jika tenantDomain sudah mengandung domain lengkap, langsung gunakan
-    if (normTenant.includes('.') && (normTenant.endsWith(`.${normMain}`) || normTenant === normMain)) {
-      return `${scheme}://${normTenant}${portStr}`;
-    }
-
-    // 3. CEK REDUNDANSI: Jika tenantDomain adalah bagian awal dari mainDomain
-    // Misal: tenantDomain = 'app', mainDomain = 'app.absenta.id' -> Jangan jadi app.app.absenta.id
-    const mainParts = normMain.split('.');
-    if (mainParts[0] === normTenant && mainParts.length > 1) {
-       // Jika tenant sama dengan label pertama domain utama, gunakan domain utama langsung
-       return `${scheme}://${normMain}${portStr}`;
-    }
-
-    // 4. Default: Tempelkan subdomain
-    const hostname = normTenant.includes('.') ? normTenant : `${normTenant}.${normMain}`;
-    return `${scheme}://${hostname}${portStr}`;
+  // 1. Prioritas: Custom Domain (FQDN)
+  if (tenant?.custom_domain) {
+    return `${scheme}://${tenant.custom_domain}${portStr}`;
   }
 
-  // If no mainDomain or it's an IP, return base URL with port and optional tenantId param
+  // 2. Kedua: Subdomain (Slug) + Main Domain
+  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
+  if (tenant?.subdomain && mainDomain && !isIp) {
+    return `${scheme}://${tenant.subdomain}.${mainDomain}${portStr}`;
+  }
+
+  // 3. Fallback: Kolom domain lama (Legacy)
+  if (tenant?.domain) {
+    const d = tenant.domain.toLowerCase().trim();
+    if (d.includes('.') && (d.endsWith(`.${mainDomain}`) || d === mainDomain)) {
+      return `${scheme}://${d}${portStr}`;
+    }
+    return `${scheme}://${d}.${mainDomain}${portStr}`;
+  }
+
+  // 4. Ultimate Fallback: Base URL + tenantId
   const baseUrl = mainDomain ? `${scheme}://${mainDomain}${portStr}` : parentAppBase;
   if (isIp && tenantId) {
     return `${baseUrl}/login?tenantId=${tenantId}`;

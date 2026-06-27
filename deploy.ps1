@@ -456,7 +456,12 @@ Show-Header "3 / 5 - Instalasi Dependensi & Database"
 Write-Host "Menginstal dependensi dan sinkronisasi database... (Mungkin memakan waktu)" -ForegroundColor Yellow
 Push-Location absenta_backend
 npm install --quiet
+Write-Host "Sinkronisasi skema database..." -ForegroundColor Cyan
 npx prisma generate
+npx prisma db push --accept-data-loss
+
+Write-Host "Migrasi data tenant (subdomain)..." -ForegroundColor Cyan
+node -e "const { PrismaClient } = require('@prisma/client'); const p = new PrismaClient(); p.tenant.findMany({ where: { subdomain: null, domain: { not: null } } }).then(ts => Promise.all(ts.map(t => p.tenant.update({ where: { id: t.id }, data: { subdomain: t.domain.includes('.') ? t.domain.split('.')?.[0] : t.domain } })))).then(() => { console.log('Migrasi selesai.'); process.exit(0); }).catch(e => { console.error(e); process.exit(1); })"
 Pop-Location
 
 Push-Location absenta_frontend

@@ -101,46 +101,33 @@ export const authController = {
     const hostNoPort = String(host || '').split('/')[0].split(':')[0].toLowerCase();
     if (!hostNoPort) return null;
 
-    const sanitize = (h: string) => h.replace(/^https?:\/\//, '').split('/')[0].split(':')[0].toLowerCase();
-    const h = sanitize(hostNoPort);
-    const hNoWww = h.replace(/^www\./, '');
-    const hNoApi = hNoWww.replace(/^api\./, '');
-    
-    // Jangan langsung hapus app. karena app bisa jadi adalah subdomain tenant (e.g. app.absenta.id)
-    const hNoApp = hNoApi.replace(/^app\./, '');
-
-    const baseDomains = authController.resolveBaseDomains();
-    
-    // Candidates for exact match (full domain)
-    const exactCandidates = Array.from(new Set([h, hNoWww, hNoApi, hNoApp].filter(Boolean)));
-    const exact = await prisma.tenant.findFirst({ where: { domain: { in: exactCandidates as any } } });
+    // 1. Exact Match on custom_domain or legacy domain
+    const exact = await prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { custom_domain: hostNoPort },
+          { domain: hostNoPort }
+        ]
+      }
+    });
     if (exact) return exact;
 
-    // Candidates for subdomain match
+    // 2. Subdomain Match (e.g. smk1.absenta.id -> subdomain: smk1)
+    const baseDomains = authController.resolveBaseDomains();
     for (const base of baseDomains) {
-      // Check if current host is exactly the base domain
-      if (hNoWww === base || hNoApi === base || hNoApp === base) {
-        const direct = await prisma.tenant.findFirst({ where: { domain: base as any } });
-        if (direct) return direct;
-      }
-
-      // Check for subdomains (e.g., smk1.absenta.id -> smk1)
-      // We check hNoWww and hNoApi to preserve 'app' if it's the subdomain
-      const checkHosts = [hNoWww, hNoApi].filter(host => host.endsWith(`.${base}`));
-      
-      for (const host of checkHosts) {
-        const left = host.slice(0, -(base.length + 1));
-        if (!left) continue;
-        
-        // Remove common prefixes but keep the first label
-        const stripped = left.replace(/^(api|www)\./, '');
-        if (!stripped) continue;
-        
-        const firstLabel = stripped.split('.')[0];
-        const candidates = Array.from(new Set([firstLabel, stripped].filter(Boolean)));
-        
-        const t = await prisma.tenant.findFirst({ where: { domain: { in: candidates as any } } });
-        if (t) return t;
+      if (hostNoPort.endsWith(`.${base}`)) {
+        const sub = hostNoPort.slice(0, -(base.length + 1)).replace(/^(api|www)\./, '');
+        if (sub) {
+          const t = await prisma.tenant.findFirst({
+            where: {
+              OR: [
+                { subdomain: sub },
+                { domain: sub } // legacy fallback
+              ]
+            }
+          });
+          if (t) return t;
+        }
       }
     }
     return null;
@@ -1071,10 +1058,10 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
                  // Check if we need to redirect user to their tenant subdomain
                  if (u.tenant_id) {
                    const tenant = await prisma.tenant.findUnique({ where: { id: u.tenant_id } });
-                   if (tenant && tenant.domain) {
+                   if (tenant) {
                       let tenantLoginUrl = '';
                       // FIX: Gunakan helper getSmartParentAppUrl agar logika pembentukan URL konsisten dan tidak duplikat
-                      tenantLoginUrl = `${getSmartParentAppUrl(tenant.domain, tenant.id)}/login`;
+                      tenantLoginUrl = `${getSmartParentAppUrl(tenant, tenant.id)}/login`;
 
                       if (isProd && !allowLocalDevLogin) {
                         reply.status(403); // Forbidden on this domain, but with redirect info
