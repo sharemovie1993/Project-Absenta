@@ -996,7 +996,7 @@ const PrepChecklistPage: React.FC = () => {
                         onChange={(e) => setSelectedPrintType(e.target.value as any)}
                         className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="attendance">1. Presensi Bulanan Kelas (Kosong)</option>
+                        <option value="attendance">1. DAFTAR HADIR HARIAN SISWA</option>
                         <option value="journal">2. Buku Jurnal KBM Kelas (Kosong)</option>
                         <option value="roster">3. Daftar Kelas & Lembar Nilai</option>
                         <option value="sk_load">4. Lampiran SK Beban Mengajar</option>
