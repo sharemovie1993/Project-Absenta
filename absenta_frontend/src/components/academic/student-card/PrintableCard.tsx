@@ -54,13 +54,15 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
         nama.replace(/^(XII|XI|X)\s*/i, '').trim() || nama;
 
     const kelasNama = student.Kelas?.nama_kelas || student.kelas?.nama || student.kelas?.nama_kelas || '-';
-    const jurusanNama = (student.Kelas as any)?.Jurusan?.nama || (student as any)?.Jurusan?.nama || '';
+    const kelasStripped = stripTingkat(kelasNama);
+    const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
+    const jurusanNama = (student.Kelas as any)?.Jurusan?.nama || (student as any)?.Jurusan?.nama || fallbackJurusan;
 
     const displayStudent = {
         ...student,
         nama: student.nama_siswa || student.nama,
         kelasNama,
-        kelasStripped: stripTingkat(kelasNama),
+        kelasStripped,
         jurusanNama,
     };
 

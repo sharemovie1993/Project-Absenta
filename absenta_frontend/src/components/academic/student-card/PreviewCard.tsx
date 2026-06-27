@@ -55,13 +55,15 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     } as NonNullable<PreviewCardProps['student']>);
 
     const kelasNama = rawStudent.Kelas?.nama_kelas || rawStudent.kelas?.nama || rawStudent.kelas?.nama_kelas || '-';
-    const jurusanNama = (rawStudent.Kelas as any)?.Jurusan?.nama || (rawStudent as any)?.Jurusan?.nama || '';
+    const kelasStripped = stripTingkat(kelasNama);
+    const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
+    const jurusanNama = (rawStudent.Kelas as any)?.Jurusan?.nama || (rawStudent as any)?.Jurusan?.nama || fallbackJurusan;
 
     const displayStudent = {
         ...rawStudent,
         nama: rawStudent.nama_siswa || rawStudent.nama,
         kelasNama,
-        kelasStripped: stripTingkat(kelasNama),
+        kelasStripped,
         jurusanNama,
     };
 
