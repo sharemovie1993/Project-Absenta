@@ -49,12 +49,19 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const dataX = (config.data_x || 0) / EDITOR_SCALE;
     const dataY = (config.data_y || 0) / EDITOR_SCALE;
 
+    // Strip tingkat prefix (X, XI, XII) from class name
+    const stripTingkat = (nama: string) =>
+        nama.replace(/^(XII|XI|X)\s*/i, '').trim() || nama;
+
+    const kelasNama = student.Kelas?.nama_kelas || student.kelas?.nama || student.kelas?.nama_kelas || '-';
+    const jurusanNama = (student.Kelas as any)?.Jurusan?.nama || (student as any)?.Jurusan?.nama || '';
+
     const displayStudent = {
         ...student,
         nama: student.nama_siswa || student.nama,
-        kelas: {
-            nama: student.Kelas?.nama_kelas || student.kelas?.nama || student.kelas?.nama_kelas || '-'
-        }
+        kelasNama,
+        kelasStripped: stripTingkat(kelasNama),
+        jurusanNama,
     };
 
     const [qrUrl, setQrUrl] = useState('');
@@ -143,30 +150,55 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                  </h1>
             </div>
 
-            {/* Content */}
+            {/* Content — absolute from top:0 left:0 matching PreviewCard */}
             <div 
-                className="absolute inset-0 p-3"
                 style={{
-                    top: '30%',
-                    left: '1rem', // Match PreviewCard logic
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
                     transform: `translate(${dataX}px, ${dataY}px)`,
-                    zIndex: 15
+                    zIndex: 15,
+                    padding: '4px 6px'
                 }}
             >
-                 <div className={`mt-0 space-y-1 ${isDarkBg ? 'text-slate-200' : 'text-slate-700'}`}>
-                    <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_name_font_size}pt` }}>
-                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Nama:</span>
-                      <span className={`font-extrabold ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>{displayStudent.nama}</span>
+                <div style={{ marginBottom: '2px', fontSize: `${config.student_name_font_size}pt` }}>
+                    <div style={{ fontSize: '5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1 }}>
+                        Nama Siswa
                     </div>
-                    <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
-                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">NIS/N:</span>
-                      <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.nis} / {displayStudent.nisn || '-'}</span>
+                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.2 }}>
+                        {displayStudent.nama}
                     </div>
-                     <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
-                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Kelas:</span>
-                      <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.kelas?.nama}</span>
+                </div>
+
+                <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
+
+                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, marginBottom: '2px' }}>
+                    <div>
+                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>NIS</div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nis || '-'}</div>
                     </div>
-                 </div>
+                    <div style={{ width: '0.3mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }} />
+                    <div>
+                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>NISN</div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nisn || '-'}</div>
+                    </div>
+                </div>
+
+                <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
+
+                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt` }}>
+                    {displayStudent.jurusanNama && (
+                        <div>
+                            <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>Jurusan</div>
+                            <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
+                        </div>
+                    )}
+                    {displayStudent.jurusanNama && <div style={{ width: '0.3mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }} />}
+                    <div>
+                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>Kelas</div>
+                        <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
+                    </div>
+                </div>
             </div>
 
             {/* Photo */}

@@ -38,6 +38,10 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     const width = (isVertical ? cardH : cardW) * MM_TO_PX * EDITOR_SCALE;
     const height = (isVertical ? cardW : cardH) * MM_TO_PX * EDITOR_SCALE;
 
+    // Strip tingkat prefix (X, XI, XII) from class name
+    const stripTingkat = (nama: string) =>
+        nama.replace(/^(XII|XI|X)\s*/i, '').trim() || nama;
+
     // Use passed student or dummy fallback
     const rawStudent = student || ({
       id: 'dummy-student-id',
@@ -45,17 +49,20 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
       nama_siswa: 'John Doe',
       nis: '12345678',
       nisn: '0012345678',
-      Kelas: { nama_kelas: 'XII IPA 1' } as unknown as Siswa['Kelas'],
-      kelas: { nama: 'XII IPA 1', nama_kelas: 'XII IPA 1' },
+      Kelas: { nama_kelas: 'XII RPL 1', tingkat: 12, Jurusan: { id: '', nama: 'Rekayasa Perangkat Lunak' } } as unknown as Siswa['Kelas'],
+      kelas: { nama: 'XII RPL 1', nama_kelas: 'XII RPL 1' },
       foto: null 
     } as NonNullable<PreviewCardProps['student']>);
+
+    const kelasNama = rawStudent.Kelas?.nama_kelas || rawStudent.kelas?.nama || rawStudent.kelas?.nama_kelas || '-';
+    const jurusanNama = (rawStudent.Kelas as any)?.Jurusan?.nama || (rawStudent as any)?.Jurusan?.nama || '';
 
     const displayStudent = {
         ...rawStudent,
         nama: rawStudent.nama_siswa || rawStudent.nama,
-        kelas: {
-            nama: rawStudent.Kelas?.nama_kelas || rawStudent.kelas?.nama || rawStudent.kelas?.nama_kelas || '-'
-        }
+        kelasNama,
+        kelasStripped: stripTingkat(kelasNama),
+        jurusanNama,
     };
 
     const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -168,19 +175,71 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 cursor: 'move',
                 zIndex: 15
             }}
-            className={`mt-0 space-y-2 p-2.5 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200 ${isDarkBg ? 'text-slate-200' : 'text-slate-700'}`}
+            className={`mt-0 space-y-1.5 p-2 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200`}
           >
-            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Nama:</span>
-                <span className={`font-extrabold ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>{displayStudent.nama}</span>
+            {/* NAMA — larger, bold */}
+            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
+                <div className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5`}
+                    style={{ color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b' }}>
+                    Nama Siswa
+                </div>
+                <div className={`font-extrabold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>
+                    {displayStudent.nama}
+                </div>
             </div>
-            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">NIS/N:</span>
-                <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.nis} / {displayStudent.nisn}</span>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+
+            {/* NIS / NISN — pill style */}
+            <div className="flex gap-3" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+                <div>
+                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
+                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
+                        NIS
+                    </div>
+                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {displayStudent.nis || '-'}
+                    </div>
+                </div>
+                <div style={{ width: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+                <div>
+                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
+                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
+                        NISN
+                    </div>
+                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {displayStudent.nisn || '-'}
+                    </div>
+                </div>
             </div>
-            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Kelas:</span>
-                <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.kelas?.nama}</span>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+
+            {/* Jurusan + Kelas — two-column */}
+            <div className="flex gap-3" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+                {displayStudent.jurusanNama && (
+                    <div>
+                        <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
+                            style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
+                            Jurusan
+                        </div>
+                        <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
+                            {displayStudent.jurusanNama}
+                        </div>
+                    </div>
+                )}
+                {displayStudent.jurusanNama && <div style={{ width: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
+                <div>
+                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
+                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
+                        Kelas
+                    </div>
+                    <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
+                        {displayStudent.kelasStripped}
+                    </div>
+                </div>
             </div>
           </motion.div>
 
