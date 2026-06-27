@@ -14,6 +14,52 @@ interface KelasTreeDiagramProps {
   canManage?: boolean;
 }
 
+const getTingkatTheme = (tingkatNum: number) => {
+  switch (tingkatNum) {
+    case 10:
+      return {
+        lineColor: "bg-sky-300 dark:bg-sky-900/60",
+        borderLightColor: "border-sky-200/60 dark:border-sky-900/30",
+        bgLightColor: "bg-sky-50/20 dark:bg-sky-950/10",
+        pillBg: "bg-sky-500 text-white shadow-sm shadow-sky-500/20",
+        boxBg: "bg-sky-600 dark:bg-sky-600/80 shadow-sky-600/20",
+        cardHoverBorder: "hover:border-sky-300 dark:hover:border-sky-800",
+        verticalLine: "bg-sky-200 dark:bg-sky-900/40"
+      };
+    case 11:
+      return {
+        lineColor: "bg-violet-300 dark:bg-violet-900/60",
+        borderLightColor: "border-violet-200/60 dark:border-violet-900/30",
+        bgLightColor: "bg-violet-50/20 dark:bg-violet-950/10",
+        pillBg: "bg-violet-500 text-white shadow-sm shadow-violet-500/20",
+        boxBg: "bg-violet-600 dark:bg-violet-600/80 shadow-violet-600/20",
+        cardHoverBorder: "hover:border-violet-300 dark:hover:border-violet-800",
+        verticalLine: "bg-violet-200 dark:bg-violet-900/40"
+      };
+    case 12:
+      return {
+        lineColor: "bg-rose-300 dark:bg-rose-900/60",
+        borderLightColor: "border-rose-200/60 dark:border-rose-900/30",
+        bgLightColor: "bg-rose-50/20 dark:bg-rose-950/10",
+        pillBg: "bg-rose-500 text-white shadow-sm shadow-rose-500/20",
+        boxBg: "bg-rose-600 dark:bg-rose-600/80 shadow-rose-600/20",
+        cardHoverBorder: "hover:border-rose-300 dark:hover:border-rose-800",
+        verticalLine: "bg-rose-200 dark:bg-rose-900/40"
+      };
+    default:
+      // Emerald as fallback for Tingkat 13 or others
+      return {
+        lineColor: "bg-emerald-300 dark:bg-emerald-900/60",
+        borderLightColor: "border-emerald-200/60 dark:border-emerald-900/30",
+        bgLightColor: "bg-emerald-50/20 dark:bg-emerald-950/10",
+        pillBg: "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20",
+        boxBg: "bg-emerald-600 dark:bg-emerald-600/80 shadow-emerald-600/20",
+        cardHoverBorder: "hover:border-emerald-300 dark:hover:border-emerald-800",
+        verticalLine: "bg-emerald-200 dark:bg-emerald-900/40"
+      };
+  }
+};
+
 export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
   data,
   onAdd,
@@ -52,12 +98,12 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
         {/* ROOT NODE: ROMBONGAN BELAJAR */}
         <div className="relative flex flex-col items-center mb-8">
           <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-900/60 dark:to-slate-950 text-white px-10 py-4 rounded-2xl shadow-lg border border-slate-800 dark:border-indigo-800/30 flex flex-col items-center justify-center min-w-[260px]">
-            <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase">Master Data</span>
+            <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase font-mono">Master Data</span>
             <h3 className="font-extrabold text-sm tracking-wide uppercase mt-0.5">ROMBONGAN BELAJAR</h3>
           </div>
           {/* Vertical line down from Root */}
           {tingkatList.length > 0 && (
-            <div className="w-[2px] h-8 bg-indigo-300 dark:bg-indigo-900/60"></div>
+            <div className="w-[2px] h-8 bg-slate-350 dark:bg-slate-700"></div>
           )}
         </div>
 
@@ -66,40 +112,40 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
           
           {/* Horizontal Line Connecting Tingkat Columns */}
           {tingkatList.length > 1 && (
-            <div className="absolute top-0 left-[16.6%] right-[16.6%] h-[2px] bg-indigo-200 dark:bg-indigo-900/40"></div>
+            <div className="absolute top-0 left-[16.6%] right-[16.6%] h-[2px] bg-slate-300 dark:bg-slate-750"></div>
           )}
 
           {tingkatList.map((tingkat) => {
             const list = classesByTingkat[tingkat] || [];
+            const theme = getTingkatTheme(tingkat);
             
             return (
               <div key={tingkat} className="relative flex flex-col items-center flex-1 max-w-[280px]">
                 
                 {/* Vertical Line down from horizontal connector to each Tingkat Box */}
                 {tingkatList.length > 1 && (
-                  <div className="w-[2px] h-6 bg-indigo-200 dark:bg-indigo-900/40 mb-0"></div>
+                  <div className={cn("w-[2px] h-6 mb-0", theme.verticalLine)}></div>
                 )}
 
                 {/* TINGKAT BOX */}
-                <div className="bg-indigo-600 dark:bg-indigo-600/80 text-white py-3 px-6 rounded-xl shadow-md border border-indigo-500/30 min-w-[180px] text-center mb-6">
-                  <h4 className="font-bold text-xs uppercase tracking-widest">TINGKAT {tingkat}</h4>
+                <div className={cn("text-white py-3 px-8 rounded-2xl shadow-lg border border-transparent font-black tracking-wider text-center mb-6 min-w-[180px]", theme.boxBg)}>
+                  <h4 className="text-xs uppercase font-extrabold font-sans">TINGKAT {tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : tingkat}</h4>
                 </div>
 
                 {/* Vertical Connector Line from Tingkat Box to Class Cards */}
                 {list.length > 0 && (
-                  <div className="w-[2px] h-6 bg-indigo-200 dark:bg-indigo-900/40 mb-0"></div>
+                  <div className={cn("w-[2px] h-6 mb-0", theme.verticalLine)}></div>
                 )}
 
                 {/* CLASS CARDS STACK */}
-                <div className="flex flex-col gap-4 w-full items-center relative">
+                <div className="flex flex-col gap-3 w-full items-center relative">
                   
                   {/* Subtle Background vertical connector line behind cards */}
                   {list.length > 1 && (
-                    <div className="absolute top-0 bottom-6 w-[2px] bg-slate-200 dark:bg-slate-800/60 z-0"></div>
+                    <div className={cn("absolute top-0 bottom-6 w-[2px] z-0", theme.verticalLine)}></div>
                   )}
 
                   {list.map((kelas) => {
-                    const waliKelas = kelas.WaliKelas?.[0]?.Guru?.nama_guru;
                     const isToggling = togglingId === kelas.id;
                     const siswaCount = kelas._count?.Siswa || 0;
 
@@ -108,97 +154,72 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
                         key={kelas.id}
                         layout
                         className={cn(
-                          "w-full bg-white dark:bg-slate-900 rounded-2xl shadow-sm border transition-all hover:shadow-md hover:border-indigo-205 dark:hover:border-indigo-900/50 flex flex-col overflow-hidden group z-10 relative",
+                          "w-full rounded-xl shadow-sm border p-3 flex items-center justify-between gap-3 group z-10 relative transition-all duration-200",
                           kelas.is_active 
-                            ? "border-slate-100 dark:border-slate-800" 
-                            : "border-slate-100 dark:border-slate-850 opacity-60 hover:opacity-100"
+                            ? cn("bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800", theme.cardHoverBorder) 
+                            : "bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60 hover:opacity-100"
                         )}
                       >
-                        {/* Class Header Banner */}
-                        <div className={cn(
-                          "px-4 py-2 flex items-center justify-between transition-colors",
-                          kelas.is_active 
-                            ? "bg-indigo-600 text-white" 
-                            : "bg-slate-400 dark:bg-slate-750 text-slate-100"
-                        )}>
-                          <span className="font-black text-xs uppercase tracking-wide">{kelas.nama_kelas}</span>
-                          
-                          {/* Class Jurusan Tag */}
-                          <span className={cn(
-                            "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider",
+                        {/* Left: Class Name Pill */}
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide flex-shrink-0 text-center min-w-[70px]",
                             kelas.is_active 
-                              ? "bg-indigo-700/50 text-indigo-100" 
-                              : "bg-slate-500/40 text-slate-200"
+                              ? theme.pillBg 
+                              : "bg-slate-400 dark:bg-slate-650 text-slate-100"
                           )}>
-                            {kelas.Jurusan?.nama || 'Umum'}
-                          </span>
+                            {kelas.nama_kelas}
+                          </div>
+                          
+                          {/* Student Count */}
+                          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 dark:text-slate-550">
+                            <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>{siswaCount}</span>
+                          </div>
                         </div>
 
-                        {/* Class Content (Wali Kelas) */}
-                        <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                          <div className="space-y-0.5">
-                            <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Wali Kelas</p>
-                            <p className={cn(
-                              "text-xs font-bold leading-snug",
-                              waliKelas 
-                                ? "text-slate-700 dark:text-slate-200" 
-                                : "text-rose-500 italic font-medium"
-                            )}>
-                              {waliKelas || 'BELUM DIISI'}
-                            </p>
-                          </div>
-
-                          {/* Footer stats and controls */}
-                          <div className="flex items-center justify-between border-t border-slate-50 dark:border-slate-800/60 pt-3">
-                            <div className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
-                              <Users className="w-3.5 h-3.5" />
-                              <span>{siswaCount} siswa</span>
-                            </div>
-
-                            {/* Toggle & Buttons */}
-                            <div className="flex items-center gap-2">
-                              {canManage && (
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleActive?.(kelas)}
-                                  disabled={isToggling}
-                                  className={cn(
-                                    "relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                                    kelas.is_active ? "bg-emerald-500" : "bg-slate-250 dark:bg-slate-750",
-                                    isToggling && "opacity-50 cursor-not-allowed"
-                                  )}
-                                >
-                                  <span
-                                    className={cn(
-                                      "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
-                                      kelas.is_active ? "translate-x-3" : "translate-x-0"
-                                    )}
-                                  />
-                                </button>
+                        {/* Right: Toggle Switch & Status */}
+                        <div className="flex items-center gap-2">
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => onToggleActive?.(kelas)}
+                              disabled={isToggling}
+                              className={cn(
+                                "relative inline-flex h-4.5 w-8 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                                kelas.is_active ? "bg-emerald-500" : "bg-slate-200 dark:bg-slate-750",
+                                isToggling && "opacity-50 cursor-not-allowed"
                               )}
-                            </div>
-                          </div>
+                            >
+                              <span
+                                className={cn(
+                                  "pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out mt-0.5 ml-0.5",
+                                  kelas.is_active ? "translate-x-3.5" : "translate-x-0"
+                                )}
+                              />
+                            </button>
+                          )}
                         </div>
 
                         {/* Top-Right Hover Action Buttons (Edit & Delete) */}
                         {canManage && (
-                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                          <div className="absolute -top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                             {onEdit && (
                               <button
                                 onClick={() => onEdit(kelas)}
-                                className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-55 dark:hover:bg-indigo-950 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 transition-all"
+                                className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-indigo-650 flex items-center justify-center shadow border border-slate-200 dark:border-slate-700 transition-all"
                                 title="Edit Kelas"
                               >
-                                <Edit size={12} />
+                                <Edit size={11} />
                               </button>
                             )}
                             {onDelete && (
                               <button
                                 onClick={() => onDelete(kelas)}
-                                className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center shadow-sm border border-slate-100 dark:border-slate-700 transition-all"
+                                className="w-6 h-6 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 flex items-center justify-center shadow border border-slate-200 dark:border-slate-700 transition-all"
                                 title="Hapus Kelas"
                               >
-                                <Trash2 size={12} />
+                                <Trash2 size={11} />
                               </button>
                             )}
                           </div>
@@ -211,7 +232,12 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
                   {canManage && onAdd && (
                     <button
                       onClick={() => onAdd(tingkat)}
-                      className="w-full py-2.5 px-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-900/60 bg-white/20 dark:bg-slate-900/10 flex items-center justify-center gap-1.5 transition-all text-xs font-bold hover:shadow-sm"
+                      className={cn(
+                        "w-full py-2 px-4 rounded-xl border border-dashed text-slate-400 flex items-center justify-center gap-1.5 transition-all text-xs font-bold hover:shadow-sm bg-white/20 dark:bg-slate-900/10",
+                        tingkat === 10 ? "border-sky-300/40 hover:text-sky-600 dark:hover:text-sky-400 hover:border-sky-400" :
+                        tingkat === 11 ? "border-violet-300/40 hover:text-violet-600 dark:hover:text-violet-400 hover:border-violet-400" :
+                        "border-rose-300/40 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-400"
+                      )}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Tambah Kelas</span>
