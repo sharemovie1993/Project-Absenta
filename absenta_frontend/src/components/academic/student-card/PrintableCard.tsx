@@ -158,7 +158,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     left: 0,
                     transform: `translate(${dataX}px, ${dataY}px)`,
                     zIndex: 15,
-                    padding: '4px 6px'
+                    padding: '4px 6px',
+                    maxWidth: isVertical ? '110px' : '160px'
                 }}
             >
                 <div style={{ marginBottom: '2px', fontSize: `${config.student_name_font_size}pt` }}>

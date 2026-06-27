@@ -173,7 +173,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 top: 0,
                 left: 0,
                 cursor: 'move',
-                zIndex: 15
+                zIndex: 15,
+                maxWidth: isVertical ? '220px' : '320px'
             }}
             className={`mt-0 space-y-1.5 p-2 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200`}
           >

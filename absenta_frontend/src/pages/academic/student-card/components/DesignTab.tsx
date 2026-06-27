@@ -39,9 +39,9 @@ const HCOORDS = {
 };
 const VCOORDS = {
     photo_width: 24, photo_height: 32, qrcode_width: 18, qrcode_height: 18,
-    photo_x: 114, photo_y: 178,
-    data_x:  14,  data_y:  435,
-    qrcode_x: 245, qrcode_y: 430,
+    photo_x: 114, photo_y: 220,
+    data_x:  14,  data_y:  485,
+    qrcode_x: 245, qrcode_y: 480,
 };
 
 const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
