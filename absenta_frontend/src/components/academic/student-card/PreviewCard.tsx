@@ -51,6 +51,10 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     onDragEnd
 }) => {
     const isVertical = config.template === 'vertical';
+    const resolvedHeaderHeight = config.template === 'horizontal'
+        ? Math.min(config.header_height || 18, 20)
+        : (config.header_height || 18);
+
     const isCenteredCircle = isVertical && config.photo_shape === 'circle';
     const resolvedDataY = isCenteredCircle 
         ? Math.max(config.data_y || 0, 370) 
@@ -154,7 +158,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 (config.header_style || 'solid') === 'glass' ? 'backdrop-blur-md border-b border-white/20' : ''
             }`}
             style={{ 
-                height: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
+                height: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
                 color: config.header_style === 'minimal' 
                     ? (config.header_bg_color || config.primary_color)
                     : (config.header_text_color || '#ffffff'),
@@ -192,7 +196,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <CardPatternLayer 
               config={config} 
               width={width} 
-              height={(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE} 
+              height={resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE} 
               scale={EDITOR_SCALE} 
               isHeader 
             />
@@ -228,7 +232,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <div 
               className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
               style={{
-                top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
+                top: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
                 height: '14px',
                 background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
               }}

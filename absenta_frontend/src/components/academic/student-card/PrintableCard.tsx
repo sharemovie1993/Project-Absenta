@@ -48,6 +48,9 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     sekolah 
 }) => {
     const isVertical = config.template === 'vertical';
+    const resolvedHeaderHeight = config.template === 'horizontal'
+        ? Math.min(config.header_height || 18, 20)
+        : (config.header_height || 18);
     const cardW = config.card_width || 85.6;
     const cardH = config.card_height || 54;
     
@@ -141,7 +144,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
             <div 
                 className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 shadow-sm animate-in fade-in z-10 overflow-hidden"
                 style={{ 
-                    height: `${config.header_height || 18}mm`,
+                    height: `${resolvedHeaderHeight}mm`,
                     color: config.header_style === 'minimal' 
                         ? (config.header_bg_color || config.primary_color)
                         : (config.header_text_color || '#ffffff'),
@@ -183,7 +186,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <CardPatternLayer 
                   config={config} 
                   width={widthMM} 
-                  height={config.header_height || 18} 
+                  height={resolvedHeaderHeight} 
                   scale={1} 
                   isHeader 
                 />
@@ -219,7 +222,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <div 
                   className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
                   style={{
-                    top: `${config.header_height || 18}mm`,
+                    top: `${resolvedHeaderHeight}mm`,
                     height: '3mm',
                     background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
                   }}
