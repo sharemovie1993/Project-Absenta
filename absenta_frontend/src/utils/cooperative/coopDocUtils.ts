@@ -64,8 +64,22 @@ export const fetchCoopSettings = async (): Promise<CoopSettingsData> => {
 export const getBase64ImageFromUrl = async (imageUrl: string): Promise<string | null> => {
   try {
     let blob: Blob;
-    if (imageUrl.startsWith('/')) {
-      const res = await fetch(window.location.origin + imageUrl);
+    const isSameOrigin =
+      imageUrl.startsWith('/') ||
+      imageUrl.startsWith(window.location.origin) ||
+      (imageUrl.includes(window.location.host));
+
+    if (isSameOrigin) {
+      let relativePath = imageUrl;
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        try {
+          const urlObj = new URL(imageUrl);
+          relativePath = urlObj.pathname + urlObj.search;
+        } catch {
+          relativePath = imageUrl;
+        }
+      }
+      const res = await fetch(window.location.origin + relativePath);
       blob = await res.blob();
     } else {
       const response = await api.get(`/cooperative/settings/logo-proxy?url=${encodeURIComponent(imageUrl)}`, {
