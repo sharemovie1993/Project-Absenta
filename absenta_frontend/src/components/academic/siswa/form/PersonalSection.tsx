@@ -20,6 +20,7 @@ interface PersonalSectionProps {
     isViewMode: boolean;
     watch: UseFormWatch<SiswaFormValues>;
     setValue: any;
+    siswaId?: string;
 }
 
 export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
@@ -28,7 +29,8 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
     errors,
     isViewMode,
     watch,
-    setValue
+    setValue,
+    siswaId
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isWebcamOpen, setIsWebcamOpen] = useState(false);
@@ -71,6 +73,18 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
             if (res.success && res.data?.url) {
                 setValue('foto', res.data.url);
                 toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
+
+                if (isViewMode && siswaId) {
+                    try {
+                        toast.loading('Menyimpan ke database...', { id: 'save-photo' });
+                        const { updateSiswa } = await import('../../../../api/academic/siswa.api');
+                        await updateSiswa(siswaId, { foto: res.data.url });
+                        toast.success('Foto berhasil disimpan', { id: 'save-photo' });
+                    } catch (dbErr) {
+                        console.error('Failed to save photo to DB:', dbErr);
+                        toast.error('Gagal menyimpan foto', { id: 'save-photo' });
+                    }
+                }
             } else {
                 toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
             }
@@ -156,9 +170,21 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
         }
     };
 
-    const handleRemovePhoto = () => {
+    const handleRemovePhoto = async () => {
         setValue('foto', '');
         toast.success('Foto dihapus');
+
+        if (isViewMode && siswaId) {
+            try {
+                toast.loading('Menghapus dari database...', { id: 'save-photo' });
+                const { updateSiswa } = await import('../../../../api/academic/siswa.api');
+                await updateSiswa(siswaId, { foto: '' });
+                toast.success('Foto berhasil dihapus dari database', { id: 'save-photo' });
+            } catch (dbErr) {
+                console.error('Failed to remove photo from DB:', dbErr);
+                toast.error('Gagal menghapus foto dari database', { id: 'save-photo' });
+            }
+        }
     };
 
     if (isViewMode) {
@@ -176,18 +202,96 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                             </div>
                         )}
                     </div>
-                    <div className="flex-1 space-y-2 text-center md:text-left">
+                    <div className="flex-1 space-y-3 text-center md:text-left">
                         <h4 className="text-xs font-black text-slate-950 dark:text-slate-100 uppercase tracking-widest">Foto Resmi Siswa</h4>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter leading-relaxed max-w-md">
                             Foto ini terintegrasi penuh ke semua modul, termasuk kartu identitas elektronik dan verifikasi absensi gerbang otomatis.
                         </p>
-                        <div className="pt-2">
+                        <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start pt-1">
                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${watch('foto') ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
                                 {watch('foto') ? 'Terverifikasi' : 'Belum Terunggah'}
                             </span>
+                            <Button
+                                type="button"
+                                onClick={handleUploadTrigger}
+                                className="rounded-xl h-9 px-3.5 text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center gap-1.5"
+                            >
+                                <Upload size={12} />
+                                Upload Foto
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleWebcamTrigger}
+                                className="rounded-xl h-9 px-3.5 text-[10px] font-black uppercase tracking-widest border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 bg-white dark:bg-slate-900"
+                            >
+                                <Camera size={12} />
+                                Ambil dari Kamera
+                            </Button>
+                            {watch('foto') && (
+                                <Button
+                                    type="button"
+                                    onClick={handleRemovePhoto}
+                                    className="rounded-xl h-9 px-3.5 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center gap-1.5"
+                                >
+                                    <Trash2 size={12} />
+                                    Hapus
+                                </Button>
+                            )}
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/*"
+                                className="hidden"
+                            />
                         </div>
                     </div>
                 </div>
+
+                {/* Webcam Camera Capture Modal Overlay */}
+                <Modal
+                    isOpen={isWebcamOpen}
+                    onClose={handleCloseWebcam}
+                    title="Ambil Foto Siswa"
+                    size="md"
+                >
+                    <div className="space-y-6 pt-4 text-center">
+                        <div className="relative aspect-[3/4] max-w-[300px] mx-auto bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-200 dark:border-slate-800">
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                className="w-full h-full object-cover scale-x-[-1]"
+                            />
+                            <div className="absolute inset-0 border-2 border-dashed border-white/60 pointer-events-none rounded-xl m-4 flex items-center justify-center">
+                                <div className="text-[9px] font-black text-white/50 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full">
+                                    Posisikan Wajah di Tengah
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <canvas ref={canvasRef} className="hidden" />
+
+                        <div className="flex gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <Button
+                                type="button"
+                                onClick={handleCloseWebcam}
+                                variant="outline"
+                                className="flex-1 h-12 rounded-xl text-[11px] font-black uppercase tracking-widest border-slate-200 dark:border-slate-800"
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={capturePhoto}
+                                className="flex-1 h-12 rounded-xl text-[11px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/15 flex items-center justify-center gap-2"
+                            >
+                                <Camera size={14} />
+                                Ambil Foto
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
 
                 <SectionCard title="Informasi Pribadi Siswa" icon={UserIcon}>
                     <DetailRow icon={<Hash size={16} />} label="NIS" value={watch('nis')} />

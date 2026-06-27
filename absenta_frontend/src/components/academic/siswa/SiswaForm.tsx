@@ -369,6 +369,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
               isViewMode={isViewMode}
               watch={watch}
               setValue={setValue}
+              siswaId={siswaId}
             />
           </TabsContent>
 
