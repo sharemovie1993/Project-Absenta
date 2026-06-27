@@ -52,10 +52,10 @@ export async function sendParentAccessCommand(
 
   const tenant = await siswaDb.tenant.findUnique({
     where: { id: targetTenantId },
-    select: { domain: true },
+    select: { domain: true, subdomain: true, custom_domain: true },
   });
 
-  const appUrl = getSmartParentAppUrl((tenant as any)?.domain);
+  const appUrl = getSmartParentAppUrl(tenant as any);
 
   const loginLink = `${appUrl}/parent-app/access?token=${tokenRecord.token}`;
 

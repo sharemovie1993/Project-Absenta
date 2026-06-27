@@ -441,7 +441,7 @@ export const authController = {
         if (wantsJson) {
           reply.status(200);
           const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-          const tenantBaseUrl = tenant?.domain ? getSmartParentAppUrl(tenant.domain, tenant.id) : null;
+          const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
           const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
           const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl() + '/login');
           return { success: true, message: 'Email already verified', status: 'VERIFIED', tenantDomain, loginUrl };
@@ -454,7 +454,7 @@ export const authController = {
         if (wantsJson) {
           reply.status(400);
           const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-          const tenantBaseUrl = tenant?.domain ? getSmartParentAppUrl(tenant.domain, tenant.id) : null;
+          const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
           const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
           const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl() + '/login');
           return { success: false, message: 'Token kedaluwarsa', status: 'EXPIRED', tenantDomain, loginUrl };
@@ -466,7 +466,7 @@ export const authController = {
       if (wantsJson) {
         reply.status(200);
         const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-        const tenantBaseUrl = tenant?.domain ? getSmartParentAppUrl(tenant.domain, tenant.id) : null;
+        const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
         const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
         const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl() + '/login');
         return {
@@ -545,10 +545,7 @@ export const authController = {
         if (wantsJson) {
           reply.status(400);
           const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-          const d = String(tenant?.domain || '').trim().toLowerCase();
-          const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
-          const domainBase = authController.resolveTenantDomainBase(request.headers);
-          const tenantBaseUrl = d ? (d.includes('.') ? `${scheme}://${d}` : `${scheme}://${d}.${domainBase}`) : null;
+          const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
           const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
           const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl() + '/login');
           return { success: false, message: 'Token kedaluwarsa', status: 'EXPIRED', tenantDomain, loginUrl };
@@ -561,10 +558,7 @@ export const authController = {
         if (wantsJson) {
           reply.status(200);
           const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-          const d = String(tenant?.domain || '').trim().toLowerCase();
-          const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
-          const domainBase = authController.resolveTenantDomainBase(request.headers);
-          const tenantBaseUrl = d ? (d.includes('.') ? `${scheme}://${d}` : `${scheme}://${d}.${domainBase}`) : null;
+          const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
           const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
           const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl() + '/login');
           return { success: true, message: 'Email already verified', status: 'VERIFIED', tenantDomain, loginUrl };
@@ -577,7 +571,7 @@ export const authController = {
       
       // Fetch tenant for email and response
       const tenant = user.tenant_id ? await prisma.tenant.findUnique({ where: { id: user.tenant_id } }) : null;
-      const tenantBaseUrl = tenant?.domain ? getSmartParentAppUrl(tenant.domain, tenant.id) : null;
+      const tenantBaseUrl = tenant ? getSmartParentAppUrl(tenant, tenant.id) : null;
       const tenantDomain = tenantBaseUrl ? tenantBaseUrl.replace(/^https?:\/\//, '') : null;
       const loginUrl = tenantBaseUrl ? `${tenantBaseUrl}/login` : (getSmartFrontendBaseUrl().replace(/\/$/, '') + '/login');
 
