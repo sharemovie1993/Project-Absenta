@@ -227,7 +227,10 @@ const PrepChecklistPage: React.FC = () => {
   }, [waliKelasObj]);
 
   const waliKelasNip = useMemo(() => {
-    return waliKelasObj?.nip ? `NIP. ${waliKelasObj.nip}` : 'NIP. ..............................';
+    if (!waliKelasObj?.nip) return 'NIP/NUPTK. ..............................';
+    const cleanNip = String(waliKelasObj.nip).replace(/\s/g, '');
+    const isNuptk = cleanNip.length === 16;
+    return isNuptk ? `NUPTK. ${waliKelasObj.nip}` : `NIP. ${waliKelasObj.nip}`;
   }, [waliKelasObj]);
 
   const principalName = useMemo(() => {
@@ -295,49 +298,67 @@ const PrepChecklistPage: React.FC = () => {
       // 3. Draw Document Content
       if (selectedPrintType === 'attendance') {
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.text('DAFTAR HADIR / PRESENSI BULANAN SISWA', pageWidth / 2, 34, { align: 'center' });
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text(`BULAN: ${monthNames[selectedMonth - 1]?.toUpperCase()} ${selectedYear}  |  KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}`, pageWidth / 2, 39, { align: 'center' });
+        doc.setFontSize(11);
+        doc.text('DAFTAR HADIR HARIAN SISWA', pageWidth / 2, 33, { align: 'center' });
+        doc.setFontSize(9.5);
+        doc.text(`TAHUN PELAJARAN ${checklistData?.current_year?.tahun || '2025/2026'}`, pageWidth / 2, 37, { align: 'center' });
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(8.5);
+        // Left info labels
+        doc.text(`Program Keahlian`, 15, 43);
+        doc.text(`Tingkat/Konsentrasi Keahlian`, 15, 47);
+        doc.text(`: ${(selectedClassObj?.Jurusan as any)?.nama || (selectedClassObj?.Jurusan as any)?.nama_jurusan || 'Teknik Elektronika'}`, 58, 43);
+        doc.text(`: ${selectedClassObj?.nama_kelas || 'X TE 1'}`, 58, 47);
+
+        // Right info labels
+        doc.text('Hari / Tanggal :', 160, 43);
+        doc.text('...........................................................................', 183, 43);
+        doc.text('Hari / Tanggal :', 230, 43);
+        doc.text('...........................................................................', 253, 43);
 
         const head = [
           [
             { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NIS/NISN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NAMA LENGKAP SISWA', rowSpan: 2, styles: { valign: 'middle' } },
-            { content: 'L/P', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'TANGGAL KEGIATAN BULANAN', colSpan: daysInMonth.length, styles: { halign: 'center' } },
-            { content: 'ABS', colSpan: 3, styles: { halign: 'center' } }
+            { content: 'NIS', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NISN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NAMA SISWA', rowSpan: 2, styles: { valign: 'middle' } },
+            { content: 'JAM KE-', colSpan: 12, styles: { halign: 'center' } },
+            { content: 'JAM KE-', colSpan: 12, styles: { halign: 'center' } }
           ],
           [
-            ...daysInMonth.map(d => ({ content: String(d), styles: { halign: 'center' } })),
-            { content: 'S', styles: { halign: 'center' } },
-            { content: 'I', styles: { halign: 'center' } },
-            { content: 'A', styles: { halign: 'center' } }
+            ...Array.from({ length: 12 }).map((_, i) => ({ content: String(i + 1), styles: { halign: 'center' } })),
+            ...Array.from({ length: 12 }).map((_, i) => ({ content: String(i + 1), styles: { halign: 'center' } }))
           ]
         ];
         const body = students.map((s, idx) => [
           idx + 1,
           s.nis || '-',
+          s.nisn || '-',
           s.nama_siswa?.toUpperCase() || '',
-          String(s.jenis_kelamin).startsWith('L') ? 'L' : 'P',
-          ...daysInMonth.map(() => ''),
-          '', '', ''
+          ...Array.from({ length: 24 }).map(() => '')
         ]);
+        body.push([
+          '',
+          '',
+          '',
+          { content: '+++', styles: { halign: 'center' } } as any,
+          ...Array.from({ length: 24 }).map(() => '')
+        ]);
+
         autoTable(doc, {
-          startY: 44,
+          startY: 51,
           head: head as any,
           body: body as any,
           theme: 'grid',
           styles: { fontSize: 6.5, font: 'Helvetica', cellPadding: 0.8 },
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0] },
-          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
+          headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [0, 0, 0] },
+          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [0, 0, 0] },
           columnStyles: {
             0: { cellWidth: 7, halign: 'center' },
             1: { cellWidth: 18, halign: 'center' },
-            2: { cellWidth: 42 },
-            3: { cellWidth: 7, halign: 'center' },
+            2: { cellWidth: 18, halign: 'center' },
+            3: { cellWidth: 46 },
           }
         });
       } else if (selectedPrintType === 'journal') {
@@ -465,30 +486,42 @@ const PrepChecklistPage: React.FC = () => {
       }
       const sigY = finalY + 8;
 
-      if (['attendance', 'journal', 'roster'].includes(selectedPrintType)) {
+      if (selectedPrintType === 'attendance') {
         doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(8);
-        doc.text('Mengetahui,', 40, sigY, { align: 'center' });
-        doc.text(`Wali Kelas ${selectedClassObj?.nama_kelas || '---'}`, 40, sigY + 4, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.text('Wali Kelas,', pageWidth - 60, sigY + 4, { align: 'center' });
 
         doc.setFont('Helvetica', 'bold');
-        doc.text(waliKelasName, 40, sigY + 22, { align: 'center' });
+        doc.text(waliKelasName, pageWidth - 60, sigY + 24, { align: 'center' });
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(7.5);
-        doc.text(waliKelasNip, 40, sigY + 26, { align: 'center' });
+        doc.text(waliKelasNip, pageWidth - 60, sigY + 28, { align: 'center' });
+      } else {
+        if (['journal', 'roster'].includes(selectedPrintType)) {
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.text('Mengetahui,', 40, sigY, { align: 'center' });
+          doc.text(`Wali Kelas ${selectedClassObj?.nama_kelas || '---'}`, 40, sigY + 4, { align: 'center' });
+
+          doc.setFont('Helvetica', 'bold');
+          doc.text(waliKelasName, 40, sigY + 22, { align: 'center' });
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.text(waliKelasNip, 40, sigY + 26, { align: 'center' });
+        }
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        const dateText = `${sekolah?.alamat?.split(',')[0]?.split(' ')[0] || 'Purwakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+        doc.text(dateText, pageWidth - 60, sigY - 4, { align: 'center' });
+        doc.text('Kepala Sekolah,', pageWidth - 60, sigY, { align: 'center' });
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text(principalName, pageWidth - 60, sigY + 22, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(principalNip.startsWith('NIP') ? principalNip : `NIP. ${principalNip}`, pageWidth - 60, sigY + 26, { align: 'center' });
       }
-
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(8);
-      const dateText = `${sekolah?.alamat?.split(',')[0]?.split(' ')[0] || 'Purwakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-      doc.text(dateText, pageWidth - 60, sigY - 4, { align: 'center' });
-      doc.text('Kepala Sekolah,', pageWidth - 60, sigY, { align: 'center' });
-
-      doc.setFont('Helvetica', 'bold');
-      doc.text(principalName, pageWidth - 60, sigY + 22, { align: 'center' });
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.text(principalNip.startsWith('NIP') ? principalNip : `NIP. ${principalNip}`, pageWidth - 60, sigY + 26, { align: 'center' });
 
       // 5. Output Blob URL and set state
       const pdfBlob = doc.output('blob');
@@ -881,7 +914,7 @@ const PrepChecklistPage: React.FC = () => {
                     <div className="w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white">
                       <iframe
                         id="pdf-preview-iframe"
-                        src={pdfUrl}
+                        src={`${pdfUrl}#toolbar=1&navpanes=0&pagemode=none`}
                         className="w-full h-[680px] border-none"
                         title="Pratinjau PDF Dokumen TU"
                       />
