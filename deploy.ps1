@@ -107,19 +107,31 @@ $Domain {
         
         # ZERO TOUCH SSL: Import Root CA secara native ke Windows Store
         Write-Host "Menginstal Sertifikat Root Caddy ke Windows Trusted Store..." -ForegroundColor Cyan
+        
+        # Lokasi sertifikat root Caddy (default Windows)
         $caddyDataDir = "$env:AppData\Caddy"
         $rootCertPath = "$caddyDataDir\pki\authorities\local\root.crt"
         
-        if (Test-Path $rootCertPath) {
-            Write-Host "Menemukan sertifikat di $rootCertPath. Mengimpor..." -ForegroundColor Yellow
-            # Import ke LocalMachine agar berlaku untuk semua user di server
-            Import-Certificate -FilePath $rootCertPath -CertStoreLocation Cert:\LocalMachine\Root -ErrorAction SilentlyContinue
-            # Juga import ke CurrentUser untuk memastikan browser langsung mengenali
-            Import-Certificate -FilePath $rootCertPath -CertStoreLocation Cert:\CurrentUser\Root -ErrorAction SilentlyContinue
+        # Jika Caddy berjalan sebagai SYSTEM service, lokasinya berbeda
+        $systemCertPath = "C:\Windows\System32\config\systemprofile\AppData\Roaming\Caddy\pki\authorities\local\root.crt"
+        
+        $finalCertPath = ""
+        if (Test-Path $rootCertPath) { $finalCertPath = $rootCertPath }
+        elseif (Test-Path $systemCertPath) { $finalCertPath = $systemCertPath }
+
+        if (-not [string]::IsNullOrWhiteSpace($finalCertPath)) {
+            Write-Host "Menemukan sertifikat di $finalCertPath. Mengimpor..." -ForegroundColor Yellow
+            # Import ke LocalMachine agar berlaku untuk semua user dan sistem
+            Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\LocalMachine\Root -ErrorAction SilentlyContinue
+            # Juga import ke CurrentUser untuk memastikan browser (Chrome/Edge) langsung mengenali
+            Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\CurrentUser\Root -ErrorAction SilentlyContinue
+            
+            # Paksa Windows untuk menyegarkan cache sertifikat
+            certutil.exe -user -pulse | Out-Null
+            
             Write-Host "Sertifikat berhasil diimpor ke Trusted Root Store!" -ForegroundColor Green
         } else {
-            Write-Host "Peringatan: File sertifikat root tidak ditemukan di $rootCertPath" -ForegroundColor Red
-            # Fallback terakhir
+            Write-Host "Peringatan: File sertifikat root tidak ditemukan. Menjalankan fallback 'caddy trust'..." -ForegroundColor Yellow
             Start-Process "$caddyPath" -ArgumentList "trust" -Verb RunAs -Wait
         }
         
