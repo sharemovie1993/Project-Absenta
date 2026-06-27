@@ -32,6 +32,9 @@ import { getTenantById, type Tenant } from '../../api/tenants.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
 import { PrintHeader } from '../../components/ui/PrintHeader';
 import { useAuth } from '../../hooks/useAuth';
+import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 
 const PrepChecklistPage: React.FC = () => {
@@ -61,6 +64,33 @@ const PrepChecklistPage: React.FC = () => {
   const { user } = useAuth();
   const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
   const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
+
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+
+  // Load logo Base64 on school change
+  useEffect(() => {
+    if (sekolah?.logo_url) {
+      getBase64ImageFromUrl(sekolah.logo_url).then(res => {
+        setLogoBase64(res);
+      }).catch(err => {
+        console.warn('Gagal memuat base64 logo sekolah:', err);
+        setLogoBase64(null);
+      });
+    } else {
+      setLogoBase64(null);
+    }
+  }, [sekolah?.logo_url]);
+
+  // Clean up blob url on unmount
+  useEffect(() => {
+    return () => {
+      setPdfUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    };
+  }, []);
 
   // Load Checklist data
   const loadChecklist = useCallback(async () => {
@@ -225,6 +255,274 @@ const PrepChecklistPage: React.FC = () => {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
+  // Dynamic PDF Preview Generation Effect
+  useEffect(() => {
+    if (activeTab !== 'print') return;
+
+    const generatePreviewPdf = async () => {
+      // 1. Create jsPDF instance
+      const orientation = isLandscape ? 'l' : 'p';
+      const doc = new jsPDF({
+        orientation: orientation,
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // 2. Draw Kop Surat
+      const pageWidth = isLandscape ? 297 : 210;
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'PNG', 15, 10, 18, 18);
+        } catch (e) {
+          console.warn('Failed to add logo to PDF', e);
+        }
+      }
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.text('PEMERINTAH PROVINSI DINAS PENDIDIKAN', pageWidth / 2, 14, { align: 'center' });
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text(sekolah?.nama?.toUpperCase() || 'SMK NEGERI CONTOH ABSENTA', pageWidth / 2, 19, { align: 'center' });
+      doc.setFont('Helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.text(sekolah?.alamat || 'Jl. Raya Plered KM. 5 Purwakarta', pageWidth / 2, 23, { align: 'center' });
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.6);
+      doc.line(15, 26, pageWidth - 15, 26);
+      doc.setLineWidth(0.2);
+      doc.line(15, 27, pageWidth - 15, 27);
+
+      // 3. Draw Document Content
+      if (selectedPrintType === 'attendance') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('DAFTAR HADIR / PRESENSI BULANAN SISWA', pageWidth / 2, 34, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`BULAN: ${monthNames[selectedMonth - 1]?.toUpperCase()} ${selectedYear}  |  KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}`, pageWidth / 2, 39, { align: 'center' });
+
+        const head = [
+          [
+            { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NIS/NISN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NAMA LENGKAP SISWA', rowSpan: 2, styles: { valign: 'middle' } },
+            { content: 'L/P', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'TANGGAL KEGIATAN BULANAN', colSpan: daysInMonth.length, styles: { halign: 'center' } },
+            { content: 'ABS', colSpan: 3, styles: { halign: 'center' } }
+          ],
+          [
+            ...daysInMonth.map(d => ({ content: String(d), styles: { halign: 'center' } })),
+            { content: 'S', styles: { halign: 'center' } },
+            { content: 'I', styles: { halign: 'center' } },
+            { content: 'A', styles: { halign: 'center' } }
+          ]
+        ];
+        const body = students.map((s, idx) => [
+          idx + 1,
+          s.nis || '-',
+          s.nama_siswa?.toUpperCase() || '',
+          String(s.jenis_kelamin).startsWith('L') ? 'L' : 'P',
+          ...daysInMonth.map(() => ''),
+          '', '', ''
+        ]);
+        autoTable(doc, {
+          startY: 44,
+          head: head as any,
+          body: body as any,
+          theme: 'grid',
+          styles: { fontSize: 6.5, font: 'Helvetica', cellPadding: 0.8 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0] },
+          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
+          columnStyles: {
+            0: { cellWidth: 7, halign: 'center' },
+            1: { cellWidth: 18, halign: 'center' },
+            2: { cellWidth: 42 },
+            3: { cellWidth: 7, halign: 'center' },
+          }
+        });
+      } else if (selectedPrintType === 'journal') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('BUKU JURNAL HARIAN KEGIATAN BELAJAR MENGAJAR (KBM)', pageWidth / 2, 34, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 39, { align: 'center' });
+
+        const head = [[
+          { content: 'NO', styles: { halign: 'center' } },
+          { content: 'HARI / TANGGAL', styles: { halign: 'center' } },
+          { content: 'JAM KE-', styles: { halign: 'center' } },
+          { content: 'MATA PELAJARAN' },
+          { content: 'URAIAN MATERI / KD YANG DIAJARKAN' },
+          { content: 'SISWA TIDAK HADIR (NAMA & ALASAN)' },
+          { content: 'PARAF GURU', styles: { halign: 'center' } }
+        ]];
+        const body = Array.from({ length: 8 }).map((_, idx) => [
+          idx + 1, '', '', '', '', '', ''
+        ]);
+        autoTable(doc, {
+          startY: 44,
+          head: head as any,
+          body: body as any,
+          theme: 'grid',
+          styles: { fontSize: 8, font: 'Helvetica', cellPadding: 2, minCellHeight: 12 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0], minCellHeight: 6 },
+          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
+          columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 25 },
+            2: { cellWidth: 12, halign: 'center' },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 60 },
+            5: { cellWidth: 25 },
+            6: { cellWidth: 15 }
+          }
+        });
+      } else if (selectedPrintType === 'roster') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('DAFTAR KELAS & DAFTAR FORMAT PENILAIAN GURU', pageWidth / 2, 34, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 39, { align: 'center' });
+
+        const head = [[
+          { content: 'NO', styles: { halign: 'center' } },
+          { content: 'NIS / NISN', styles: { halign: 'center' } },
+          { content: 'NAMA LENGKAP SISWA' },
+          { content: 'L/P', styles: { halign: 'center' } },
+          ...Array.from({ length: 10 }).map((_, i) => ({ content: `COL ${i+1}`, styles: { halign: 'center' } }))
+        ]];
+        const body = students.map((s, idx) => [
+          idx + 1,
+          s.nis || '-',
+          s.nama_siswa?.toUpperCase() || '',
+          String(s.jenis_kelamin).startsWith('L') ? 'L' : 'P',
+          ...Array.from({ length: 10 }).map(() => '')
+        ]);
+        autoTable(doc, {
+          startY: 44,
+          head: head as any,
+          body: body as any,
+          theme: 'grid',
+          styles: { fontSize: 7.5, font: 'Helvetica', cellPadding: 1.2 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0] },
+          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
+          columnStyles: {
+            0: { cellWidth: 7, halign: 'center' },
+            1: { cellWidth: 18, halign: 'center' },
+            2: { cellWidth: 50 },
+            3: { cellWidth: 7, halign: 'center' },
+          }
+        });
+      } else if (selectedPrintType === 'sk_load') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text(`LAMPIRAN SURAT KEPUTUSAN KEPALA ${sekolah?.nama?.toUpperCase() || 'SMK NEGERI CONTOH ABSENTA'}`, pageWidth / 2, 32, { align: 'center' });
+        doc.text(`NOMOR: 421.3 / 088 / TU-CADISDIK / VI / ${new Date().getFullYear()}`, pageWidth / 2, 36, { align: 'center' });
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('DISTRIBUSI GURU PENGAMPU BEBAN TUGAS MENGAJAR', pageWidth / 2, 42, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 46, { align: 'center' });
+
+        const head = [[
+          { content: 'NO', styles: { halign: 'center' } },
+          { content: 'NAMA GURU / NIP' },
+          { content: 'MATA PELAJARAN YANG DIAMPU' },
+          { content: 'KODE MAPEL', styles: { halign: 'center' } }
+        ]];
+        const body = guruMapelList.map((gm, idx) => [
+          idx + 1,
+          `${gm.Guru?.nama_guru || ''}\nNIP: ${gm.Guru?.nip || '---'}`,
+          gm.Mapel?.nama_mapel?.toUpperCase() || '',
+          gm.Mapel?.kode_mapel || '---'
+        ]);
+        autoTable(doc, {
+          startY: 51,
+          head: head as any,
+          body: body as any,
+          theme: 'grid',
+          styles: { fontSize: 8, font: 'Helvetica', cellPadding: 2 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0] },
+          bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
+          columnStyles: {
+            0: { cellWidth: 8, halign: 'center' },
+            1: { cellWidth: 62 },
+            2: { cellWidth: 70 },
+            3: { cellWidth: 30, halign: 'center' }
+          }
+        });
+      }
+
+      // 4. Draw Signatures
+      let finalY = (doc as any).lastAutoTable?.finalY ?? 60;
+      const pageHeight = isLandscape ? 210 : 297;
+      if (finalY + 35 > pageHeight) {
+        doc.addPage();
+        finalY = 20;
+      }
+      const sigY = finalY + 8;
+
+      if (['attendance', 'journal', 'roster'].includes(selectedPrintType)) {
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Mengetahui,', 40, sigY, { align: 'center' });
+        doc.text(`Wali Kelas ${selectedClassObj?.nama_kelas || '---'}`, 40, sigY + 4, { align: 'center' });
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text(waliKelasName, 40, sigY + 22, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.text(waliKelasNip, 40, sigY + 26, { align: 'center' });
+      }
+
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      const dateText = `${sekolah?.alamat?.split(',')[0]?.split(' ')[0] || 'Purwakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      doc.text(dateText, pageWidth - 60, sigY - 4, { align: 'center' });
+      doc.text('Kepala Sekolah,', pageWidth - 60, sigY, { align: 'center' });
+
+      doc.setFont('Helvetica', 'bold');
+      doc.text(principalName, pageWidth - 60, sigY + 22, { align: 'center' });
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(principalNip.startsWith('NIP') ? principalNip : `NIP. ${principalNip}`, pageWidth - 60, sigY + 26, { align: 'center' });
+
+      // 5. Output Blob URL and set state
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      setPdfUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev);
+        return blobUrl;
+      });
+    };
+
+    generatePreviewPdf();
+  }, [
+    activeTab,
+    selectedPrintType,
+    selectedClassId,
+    selectedMonth,
+    selectedYear,
+    students,
+    guruMapelList,
+    sekolah,
+    logoBase64,
+    tenantInfo,
+    strukturList,
+    daysInMonth,
+    selectedClassObj,
+    waliKelasName,
+    waliKelasNip,
+    principalName,
+    principalNip,
+    isLandscape,
+    checklistData
+  ]);
+
   // Map icon helper for checklist items
   const getChecklistItemIcon = (key: string) => {
     switch (key) {
@@ -241,7 +539,13 @@ const PrepChecklistPage: React.FC = () => {
   };
 
   const handlePrint = useCallback(() => {
-    window.print();
+    const iframe = document.getElementById('pdf-preview-iframe') as HTMLIFrameElement;
+    if (iframe) {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } else {
+      toast.error('Pratinjau PDF belum siap.');
+    }
   }, []);
 
   return (
@@ -562,290 +866,35 @@ const PrepChecklistPage: React.FC = () => {
               </div>
 
               {/* Preview Area */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pratinjau Lembar Fisik</h3>
-                  <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500">
-                    Format Kertas Standard
-                  </span>
-                </div>
-
-                <div className="bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 overflow-x-auto max-h-[70vh]">
-                  
-                  {/* Local Print Area Styling */}
-                  <style>{`
-                    @media print {
-                      body * { visibility: hidden; }
-                      #print-tu-area, #print-tu-area * { visibility: visible; }
-                      #print-tu-area { position: absolute; left: 0; top: 0; width: 100%; padding: 0; background: white; margin: 0; color: black !important; }
-                      .print-page-break { page-break-inside: avoid; }
-                      .print-no-border { border: none !important; }
-                    }
-                  `}</style>
-
-                  {/* Wrapper printable element */}
-                  {/* Dynamic Page Orientation CSS for Printing */}
-                  <style dangerouslySetInnerHTML={{__html: `
-                    @media print {
-                      @page {
-                        size: ${isLandscape ? 'landscape' : 'portrait'};
-                        margin: 15mm 15mm 15mm 15mm;
-                      }
-                      body {
-                        background: #fff !important;
-                        color: #000 !important;
-                      }
-                      #print-tu-area {
-                        border: none !important;
-                        box-shadow: none !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        min-width: 100% !important;
-                      }
-                    }
-                  `}} />
-
-                  <div 
-                    id="print-tu-area" 
-                    className={`bg-white text-slate-900 border border-slate-300 rounded-2xl shadow p-8 mx-auto text-xs font-mono font-medium leading-relaxed transition-all duration-300 ${
-                      isLandscape ? 'w-full max-w-[1100px] min-w-[900px]' : 'w-full max-w-[850px] min-w-[650px]'
-                    }`}
-                  >
-                    
-                    {/* --- REPORT HEADER (KOP SURAT) --- */}
-                    <div className="mb-6">
-                      <PrintHeader variant={isLandscape ? 'landscape' : 'portrait'} tenantInfo={tenantInfo} />
+              <div className="lg:col-span-3">
+                <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
+                    <h3 className="text-xs font-black uppercase text-slate-500 flex items-center gap-1.5">
+                      <Eye size={14} className="text-blue-500" /> Pratinjau Dokumen Fisik (PDF Resmi)
+                    </h3>
+                    <div className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold uppercase px-2 py-0.5 rounded-full">
+                      Format A4 {isLandscape ? 'Landscape' : 'Portrait'}
                     </div>
-
-                    {/* --- RENDER 1: BLANK ATTENDANCE SHEET --- */}
-                    {selectedPrintType === 'attendance' && (
-                      <div className="space-y-4">
-                        <div className="text-center space-y-1 mb-6">
-                          <h3 className="text-sm font-bold uppercase underline">DAFTAR HADIR / PRESENSI BULANAN SISWA</h3>
-                          <p className="text-xs">
-                            BULAN: <span className="font-bold uppercase">{monthNames[selectedMonth - 1]} {selectedYear}</span> &nbsp;|&nbsp; 
-                            KELAS: <span className="font-bold uppercase">{selectedClassObj?.nama_kelas || '---'}</span>
-                          </p>
-                        </div>
-
-                        {loadingStudents ? (
-                          <div className="text-center py-10 flex justify-center items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Memuat data siswa...
-                          </div>
-                        ) : students.length === 0 ? (
-                          <div className="text-center py-10 text-slate-400">Tidak ada siswa terdaftar pada kelas ini.</div>
-                        ) : (
-                          <table className="w-full border-collapse border border-black text-[9px]">
-                            <thead>
-                              <tr className="bg-slate-100">
-                                <th className="border border-black px-1.5 py-2 text-center w-6" rowSpan={2}>NO</th>
-                                <th className="border border-black px-2 py-2 text-center w-16" rowSpan={2}>NIS/NISN</th>
-                                <th className="border border-black px-2 py-2 text-left" rowSpan={2}>NAMA LENGKAP SISWA</th>
-                                <th className="border border-black px-1.5 py-2 text-center w-6" rowSpan={2}>L/P</th>
-                                <th className="border border-black py-1 text-center" colSpan={daysInMonth.length}>TANGGAL KEGIATAN BULANAN</th>
-                                <th className="border border-black px-1 py-1 text-center w-12" colSpan={3}>ABS</th>
-                              </tr>
-                              <tr className="bg-slate-50">
-                                {daysInMonth.map(day => (
-                                  <th key={day} className="border border-black p-0.5 text-center text-[7px] w-4">{day}</th>
-                                ))}
-                                <th className="border border-black p-0.5 text-center text-[7px] w-4">S</th>
-                                <th className="border border-black p-0.5 text-center text-[7px] w-4">I</th>
-                                <th className="border border-black p-0.5 text-center text-[7px] w-4">A</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {students.map((student, idx) => (
-                                <tr key={student.id} className="hover:bg-slate-50">
-                                  <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
-                                  <td className="border border-black p-1 text-center">{student.nis}</td>
-                                  <td className="border border-black p-1 text-left uppercase truncate max-w-[150px]">{student.nama_siswa}</td>
-                                  <td className="border border-black p-1 text-center">{String(student.jenis_kelamin).startsWith('L') ? 'L' : 'P'}</td>
-                                  {daysInMonth.map(day => (
-                                    <td key={day} className="border border-black p-0"></td>
-                                  ))}
-                                  <td className="border border-black p-0"></td>
-                                  <td className="border border-black p-0"></td>
-                                  <td className="border border-black p-0"></td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    )}
-
-                    {/* --- RENDER 2: BLANK LESSON LOG (JURNAL) --- */}
-                    {selectedPrintType === 'journal' && (
-                      <div className="space-y-4">
-                        <div className="text-center space-y-1 mb-6">
-                          <h3 className="text-sm font-bold uppercase underline">BUKU JURNAL HARIAN KEGIATAN BELAJAR MENGAJAR (KBM)</h3>
-                          <p className="text-xs">
-                            KELAS: <span className="font-bold uppercase">{selectedClassObj?.nama_kelas || '---'}</span> &nbsp;|&nbsp; 
-                            TAHUN PELAJARAN: <span className="font-bold uppercase">{checklistData?.current_year?.tahun || '---'}</span>
-                          </p>
-                        </div>
-
-                        <table className="w-full border-collapse border border-black text-[9px]">
-                          <thead>
-                            <tr className="bg-slate-100">
-                              <th className="border border-black px-2 py-3 text-center w-8">NO</th>
-                              <th className="border border-black px-2 py-3 text-center w-24">HARI / TANGGAL</th>
-                              <th className="border border-black px-2 py-3 text-center w-14">JAM KE-</th>
-                              <th className="border border-black px-2 py-3 text-left w-36">MATA PELAJARAN</th>
-                              <th className="border border-black px-2 py-3 text-left">URAIAN MATERI / KD YANG DIAJARKAN</th>
-                              <th className="border border-black px-2 py-3 text-left w-36">SISWA TIDAK HADIR (NAMA & ALASAN)</th>
-                              <th className="border border-black px-2 py-3 text-center w-20">PARAF GURU</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Array.from({ length: 10 }).map((_, idx) => (
-                              <tr key={idx} className="h-16">
-                                <td className="border border-black p-2 text-center font-bold">{idx + 1}</td>
-                                <td className="border border-black p-2"></td>
-                                <td className="border border-black p-2"></td>
-                                <td className="border border-black p-2"></td>
-                                <td className="border border-black p-2"></td>
-                                <td className="border border-black p-2"></td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* --- RENDER 3: CLASS ROSTER & GRADE SHEET --- */}
-                    {selectedPrintType === 'roster' && (
-                      <div className="space-y-4">
-                        <div className="text-center space-y-1 mb-6">
-                          <h3 className="text-sm font-bold uppercase underline">DAFTAR KELAS & DAFTAR FORMAT PENILAIAN GURU</h3>
-                          <p className="text-xs">
-                            KELAS: <span className="font-bold uppercase">{selectedClassObj?.nama_kelas || '---'}</span> &nbsp;|&nbsp; 
-                            TAHUN PELAJARAN: <span className="font-bold uppercase">{checklistData?.current_year?.tahun || '---'}</span>
-                          </p>
-                        </div>
-
-                        {loadingStudents ? (
-                          <div className="text-center py-10 flex justify-center items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Memuat data siswa...
-                          </div>
-                        ) : students.length === 0 ? (
-                          <div className="text-center py-10 text-slate-400">Tidak ada siswa terdaftar pada kelas ini.</div>
-                        ) : (
-                          <table className="w-full border-collapse border border-black text-[9px]">
-                            <thead>
-                              <tr className="bg-slate-100">
-                                <th className="border border-black px-2 py-2 text-center w-8">NO</th>
-                                <th className="border border-black px-2 py-2 text-center w-20">NIS / NISN</th>
-                                <th className="border border-black px-2 py-2 text-left">NAMA LENGKAP SISWA</th>
-                                <th className="border border-black px-2 py-2 text-center w-6">L/P</th>
-                                {Array.from({ length: 10 }).map((_, i) => (
-                                  <th key={i} className="border border-black p-1 text-center w-8 text-[7px] vertical-text">COL {i+1}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {students.map((student, idx) => (
-                                <tr key={student.id} className="hover:bg-slate-50 h-6">
-                                  <td className="border border-black p-1 text-center font-bold">{idx + 1}</td>
-                                  <td className="border border-black p-1 text-center">{student.nis}</td>
-                                  <td className="border border-black p-1 text-left uppercase truncate max-w-[200px]">{student.nama_siswa}</td>
-                                  <td className="border border-black p-1 text-center">{String(student.jenis_kelamin).startsWith('L') ? 'L' : 'P'}</td>
-                                  {Array.from({ length: 10 }).map((_, i) => (
-                                    <td key={i} className="border border-black p-0"></td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    )}
-
-                    {/* --- RENDER 4: TEACHER WORKLOAD (SK ATTACHMENT) --- */}
-                    {selectedPrintType === 'sk_load' && (
-                      <div className="space-y-4">
-                        <div className="text-center space-y-1 mb-6">
-                          <h3 className="text-xs font-bold uppercase">LAMPIRAN SURAT KEPUTUSAN KEPALA {sekolah?.nama || 'SMK NEGERI CONTOH ABSENTA'}</h3>
-                          <p className="text-[10px] font-bold">NOMOR: 421.3 / 088 / TU-CADISDIK / VI / {new Date().getFullYear()}</p>
-                          <h3 className="text-sm font-bold uppercase underline mt-4">DISTRIBUSI GURU PENGAMPU BEBAN TUGAS MENGAJAR</h3>
-                          <p className="text-xs">
-                            TAHUN PELAJARAN: <span className="font-bold uppercase">{checklistData?.current_year?.tahun || '---'}</span>
-                          </p>
-                        </div>
-
-                        {loadingGuruMapel ? (
-                          <div className="text-center py-10 flex justify-center items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Memuat beban mengajar...
-                          </div>
-                        ) : guruMapelList.length === 0 ? (
-                          <div className="text-center py-10 text-slate-400">Belum ada data penugasan Guru Pengampu Mata Pelajaran.</div>
-                        ) : (
-                          <table className="w-full border-collapse border border-black text-[9px]">
-                            <thead>
-                              <tr className="bg-slate-100">
-                                <th className="border border-black px-2 py-2 text-center w-10">NO</th>
-                                <th className="border border-black px-2 py-2 text-left w-64">NAMA GURU / NIP</th>
-                                <th className="border border-black px-2 py-2 text-left">MATA PELAJARAN YANG DIAMPU</th>
-                                <th className="border border-black px-2 py-2 text-center w-24">KODE MAPEL</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {guruMapelList.map((gm, idx) => (
-                                <tr key={gm.id} className="hover:bg-slate-50">
-                                  <td className="border border-black p-2 text-center font-bold">{idx + 1}</td>
-                                  <td className="border border-black p-2 text-left font-semibold">
-                                    {gm.Guru?.nama_guru} <br />
-                                    <span className="text-[8px] text-slate-500 font-mono font-medium">NIP: {gm.Guru?.nip || '---'}</span>
-                                  </td>
-                                  <td className="border border-black p-2 text-left uppercase">{gm.Mapel?.nama_mapel}</td>
-                                  <td className="border border-black p-2 text-center font-mono">{gm.Mapel?.kode_mapel || '---'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    )}
-
-                    {/* --- SIGNATURES BOTTOM SECTION --- */}
-                    <div className="mt-12 grid grid-cols-2 gap-12 print:page-break">
-                      <div>
-                        {['attendance', 'journal', 'roster'].includes(selectedPrintType) && (
-                          <div className="text-center space-y-16">
-                            <div>
-                              <p>Mengetahui,</p>
-                              <p className="font-bold">Wali Kelas {selectedClassObj?.nama_kelas || '---'}</p>
-                            </div>
-                            <div className="space-y-0.5">
-                              <p className="font-bold underline uppercase">{waliKelasName}</p>
-                              <p className="text-[10px] text-slate-500">{waliKelasNip}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center space-y-16">
-                        <div>
-                          <p>Purwakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                          <p className="font-bold">Kepala Sekolah,</p>
-                        </div>
-                        <div className="space-y-0.5">
-                          <p className="font-bold underline uppercase">{principalName}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">
-                            {principalNip ? `NIP. ${principalNip}` : 'NIP. ..............................'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
                   </div>
+                  
+                  {pdfUrl ? (
+                    <div className="w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white">
+                      <iframe
+                        id="pdf-preview-iframe"
+                        src={pdfUrl}
+                        className="w-full h-[680px] border-none"
+                        title="Pratinjau PDF Dokumen TU"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-[680px] flex flex-col items-center justify-center bg-white dark:bg-slate-950 border rounded-xl border-dashed border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
+                      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                      <p className="text-xs font-semibold text-slate-500">Mempersiapkan pratinjau dokumen...</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-
           </div>
         )}
 
