@@ -18,6 +18,14 @@ Write-Host "[1/4] Menarik kode terbaru dari GitHub..." -ForegroundColor Yellow
 git fetch origin main
 git reset --hard origin/main
 
+# Hentikan Layanan PM2 sementara untuk melepaskan file lock (Prisma DLL & node_modules)
+Write-Host "Menghentikan layanan PM2 sementara untuk membebaskan file lock..." -ForegroundColor Yellow
+try {
+    pm2 stop ecosystem.config.js
+} catch {
+    # Abaikan jika PM2 belum jalan/belum terdaftar
+}
+
 # 2. Sinkronisasi Skema Database (Kritikal untuk SaaS)
 Write-Host "[2/4] Sinkronisasi skema database (Prisma)..." -ForegroundColor Yellow
 cd "$appRoot\absenta_backend"
@@ -66,9 +74,9 @@ if (Test-Path "dist_old") { Remove-Item -Path "dist_old" -Recurse -Force -ErrorA
 if (Test-Path "dist") { Rename-Item -Path "dist" -NewName "dist_old" -ErrorAction SilentlyContinue }
 Rename-Item -Path $shadowDist -NewName "dist" -ErrorAction SilentlyContinue
 
-# Reload PM2
+# Start PM2 kembali
 cd $appRoot
-pm2 reload ecosystem.config.js --update-env
+pm2 start ecosystem.config.js --update-env
 
 # Cleanup
 Remove-Item -Path "$appRoot\absenta_backend\dist_old" -Recurse -Force -ErrorAction SilentlyContinue
