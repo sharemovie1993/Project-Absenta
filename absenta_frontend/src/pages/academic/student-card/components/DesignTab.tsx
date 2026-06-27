@@ -178,9 +178,9 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                         onClick={() => setConfig({
                                             ...config,
                                             ...preset,
-                                            school_name: sekolah?.nama || preset.school_name || config.school_name || '',
-                                            school_address: sekolah?.alamat || preset.school_address || config.school_address || '',
-                                            logo_url: sekolah?.logo_url || preset.logo_url || config.logo_url || ''
+                                            school_name: config.school_name || sekolah?.nama || preset.school_name || '',
+                                            school_address: config.school_address || sekolah?.alamat || preset.school_address || '',
+                                            logo_url: config.logo_url || sekolah?.logo_url || preset.logo_url || ''
                                         })}
                                         className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${
                                             config.primary_color === preset.primary_color && config.template === preset.template
