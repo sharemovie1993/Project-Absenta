@@ -205,15 +205,23 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                         type="button"
                                         onClick={() => {
                                             // Consistent with kopsurat: tenantInfo.name > sekolah.nama
-                                            const resolvedNama = sekolah?.name || sekolah?.nama || sekolah?.data?.name || sekolah?.data?.nama || '';
-                                            const resolvedAlamat = sekolah?.address || sekolah?.alamat || sekolah?.data?.address || sekolah?.data?.alamat || '';
-                                            const resolvedLogo = sekolah?.logo_url || sekolah?.data?.logo_url || '';
+                                            const resolvedNama    = sekolah?.name    || sekolah?.nama    || sekolah?.data?.name    || sekolah?.data?.nama    || '';
+                                            const resolvedAlamat  = sekolah?.address || sekolah?.alamat  || sekolah?.data?.address || sekolah?.data?.alamat  || '';
+                                            const resolvedLogo    = sekolah?.logo_url || sekolah?.data?.logo_url || '';
+
+                                            // Preset hanya mengubah GAYA VISUAL — bukan identitas sekolah
+                                            // school_name, school_address, logo_url, header_text, subheader_text
+                                            // selalu diambil dari tenant/config yang sudah ada
                                             setConfig({
                                                 ...config,
                                                 ...preset,
+                                                // Identitas sekolah: selalu dari tenantInfo, jangan dari preset
                                                 school_name:    resolvedNama    || config.school_name    || '',
                                                 school_address: resolvedAlamat  || config.school_address || '',
                                                 logo_url:       resolvedLogo    || config.logo_url       || '',
+                                                header_text:    config.header_text    || '',
+                                                subheader_text: config.subheader_text || '',
+                                                card_title:     config.card_title     || preset.card_title || '',
                                             });
                                         }}
                                         className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${
