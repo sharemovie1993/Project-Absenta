@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../lib/axiosInstance';
 import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBoundary';
+import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState({
@@ -11,6 +12,7 @@ const Login: React.FC = () => {
   });
   const [localError, setLocalError] = useState('');
   const [tenantName, setTenantName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
   const location = useLocation();
@@ -38,14 +40,14 @@ const Login: React.FC = () => {
     setLocalError('');
 
     if (!credentials.email || !credentials.password) {
-      setLocalError('Email dan password harus diisi');
+      setLocalError('Email/NISN dan password harus diisi');
       return;
     }
 
     try {
       await loginAction(credentials.email, credentials.password);
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || error || 'Login gagal. Periksa email, password, dan tenant ID Anda.';
+      const errorMessage = err?.response?.data?.message || error || 'Login gagal. Periksa kembali NISN/Email dan Password Anda.';
       setLocalError(errorMessage);
     }
   };
@@ -60,76 +62,111 @@ const Login: React.FC = () => {
 
   return (
     <InfraErrorBoundary>
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-              {tenantName ? `Sistem Absensi - ${tenantName}` : 'Sistem Absensi Multitenant'}
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-              Masuk ke akun Anda
-            </p>
-          </div>
-          
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label htmlFor="email" className="sr-only">
+      <div className="min-h-screen relative flex items-center justify-center bg-slate-50 dark:bg-slate-950 overflow-hidden py-12 px-4 sm:px-6 lg:px-8">
+        {/* Glow Spheres for Background Decoration */}
+        <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-400 dark:bg-blue-600 rounded-full filter blur-[80px] opacity-30 dark:opacity-20 animate-pulse" />
+        <div className="absolute bottom-0 -right-4 w-80 h-80 bg-indigo-400 dark:bg-indigo-600 rounded-full filter blur-[100px] opacity-35 dark:opacity-25 animate-pulse" />
+        
+        <div className="max-w-md w-full relative z-10">
+          {/* Glass Card */}
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-3xl p-8 shadow-[0_20px_50px_rgba(8,_112,_184,_0.07)] dark:shadow-[0_20px_50px_rgba(0,_0,_0,_0.3)]">
+            
+            {/* Header / Brand */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 mb-4 transform hover:rotate-12 transition-transform duration-300">
+                <LogIn className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-center bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 dark:from-white dark:via-sky-100 dark:to-white bg-clip-text text-transparent">
+                {tenantName ? tenantName : 'Absenta Portal'}
+              </h2>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 text-center font-medium">
+                Masuk untuk mengakses sistem presensi sekolah
+              </p>
+            </div>
+            
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              {/* Email / NISN Input */}
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="text-xs font-semibold text-slate-600 dark:text-slate-400 tracking-wide uppercase">
                   NISN atau Email
                 </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="text"
-                  required
-                  className="appearance-none rounded-t-md rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="NISN atau Email"
-                  value={credentials.email}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                />
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-200" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="text"
+                    required
+                    className="block w-full pl-10 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 sm:text-sm"
+                    placeholder="Masukkan NISN atau Email Anda"
+                    value={credentials.email}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-              <div>
-                <label htmlFor="password" className="sr-only">
+
+              {/* Password Input */}
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="text-xs font-semibold text-slate-600 dark:text-slate-400 tracking-wide uppercase">
                   Password
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
-                  value={credentials.password}
-                  onChange={handleInputChange}
-                  disabled={isLoading}
-                />
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-200" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 sm:text-sm"
+                    placeholder="••••••••"
+                    value={credentials.password}
+                    onChange={handleInputChange}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {(localError || error) && (
-              <div className="text-red-600 text-sm text-center">
-                {localError || error}
-              </div>
-            )}
+              {/* Error Alert */}
+              {(localError || error) && (
+                <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/30 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium leading-relaxed">
+                  {localError || error}
+                </div>
+              )}
 
-            <div>
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-md shadow-blue-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Memproses...
+                    Memproses masuk...
                   </div>
                 ) : (
-                  'Masuk'
+                  'Masuk ke Akun'
                 )}
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </InfraErrorBoundary>
