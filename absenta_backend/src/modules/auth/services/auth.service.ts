@@ -90,12 +90,40 @@ export class AuthService {
     const { email, password, tenant_id } = input;
 
     // Log login attempt (safe)
-    console.info(`[AUTH] Login Attempt | Email: ${email} | Tenant: ${tenant_id}`);
+    console.info(`[AUTH] Login Attempt | Input: ${email} | Tenant: ${tenant_id}`);
+
+    // Resolve NISN/NIS to Email if the input does not look like an email address
+    let targetEmail = email;
+    if (email && !email.includes('@')) {
+      const siswa = await prisma.siswa.findFirst({
+        where: {
+          nisn: email,
+          tenant_id,
+        },
+        include: { User: true }
+      });
+      if (siswa && siswa.User?.email) {
+        targetEmail = siswa.User.email;
+        console.info(`[AUTH] Resolved NISN ${email} to Email: ${targetEmail}`);
+      } else {
+        const siswaByNis = await prisma.siswa.findFirst({
+          where: {
+            nis: email,
+            tenant_id,
+          },
+          include: { User: true }
+        });
+        if (siswaByNis && siswaByNis.User?.email) {
+          targetEmail = siswaByNis.User.email;
+          console.info(`[AUTH] Resolved NIS ${email} to Email: ${targetEmail}`);
+        }
+      }
+    }
 
     // First, check if there is a SUPERADMIN user with this email (role-based, not by email substring)
     let user = await prisma.user.findFirst({
       where: {
-        email,
+        email: targetEmail,
         Role: { is: { name: 'SUPERADMIN' } }
       },
       include: { 
@@ -115,7 +143,7 @@ export class AuthService {
       // For regular users, enforce tenant membership by using tenant_id resolved from domain
       const regularUser = await prisma.user.findFirst({
         where: {
-          email,
+          email: targetEmail,
           tenant_id,
         },
         include: { 
@@ -136,7 +164,7 @@ export class AuthService {
       if (regularUser?.Tenant) {
         const status = regularUser.Tenant.status;
         if (status === 'SUSPENDED' || status === 'DELETED') {
-          console.warn(`[AUTH] Login Rejected | Tenant ${status} | Email: ${email} | Tenant: ${tenant_id}`);
+          console.warn(`[AUTH] Login Rejected | Tenant ${status} | Email: ${targetEmail} | Tenant: ${tenant_id}`);
           throw new Error('Tenant is suspended');
         }
       }
@@ -145,11 +173,11 @@ export class AuthService {
     }
 
     if (!user) {
-      const anyUser = await prisma.user.findFirst({ where: { email }, include: { Role: true } });
+      const anyUser = await prisma.user.findFirst({ where: { email: targetEmail }, include: { Role: true } });
       if (anyUser && anyUser.Role?.name !== 'SUPERADMIN' && anyUser.tenant_id && anyUser.tenant_id !== tenant_id) {
-        console.warn(`[AUTH] Login Tenant Mismatch | Email: ${email} | ReqTenant: ${tenant_id} | ActualTenant: ${anyUser.tenant_id}`);
+        console.warn(`[AUTH] Login Tenant Mismatch | Email: ${targetEmail} | ReqTenant: ${tenant_id} | ActualTenant: ${anyUser.tenant_id}`);
       }
-      console.warn(`[AUTH] User Not Found | Email: ${email}`);
+      console.warn(`[AUTH] User Not Found | Email: ${targetEmail}`);
       throw new Error('Invalid credentials');
     }
 
@@ -157,7 +185,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     if (!isPasswordValid) {
-      console.warn(`[AUTH] Invalid Password | Email: ${email}`);
+      console.warn(`[AUTH] Invalid Password | Email: ${targetEmail}`);
       throw new Error('Invalid credentials');
     }
 
