@@ -72,19 +72,20 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       const configObj = configRes || DEFAULT_CONFIG;
       const sekolahObj = sekolahRes || { nama: '', alamat: '' };
       
+      const isRfid = configObj.print_paper_size === 'RFID';
       const prConfig = {
         paperSize: (configObj.print_paper_size as any) || 'A4',
-        orientation: (configObj.print_orientation as any) || 'portrait',
-        marginTop: configObj.print_margin_top ?? 10,
-        marginBottom: configObj.print_margin_bottom ?? 10,
-        marginLeft: configObj.print_margin_left ?? 10,
-        marginRight: configObj.print_margin_right ?? 10,
-        gapX: configObj.print_gap_x ?? 5,
-        gapY: configObj.print_gap_y ?? 5,
+        orientation: isRfid ? (configObj.template === 'horizontal' ? 'landscape' : 'portrait') : ((configObj.print_orientation as any) || 'portrait'),
+        marginTop: isRfid ? 0 : (configObj.print_margin_top ?? 10),
+        marginBottom: isRfid ? 0 : (configObj.print_margin_bottom ?? 10),
+        marginLeft: isRfid ? 0 : (configObj.print_margin_left ?? 10),
+        marginRight: isRfid ? 0 : (configObj.print_margin_right ?? 10),
+        gapX: isRfid ? 0 : (configObj.print_gap_x ?? 5),
+        gapY: isRfid ? 0 : (configObj.print_gap_y ?? 5),
         customWidth: configObj.print_custom_width ?? 210,
         customHeight: configObj.print_custom_height ?? 297,
-        autoCenterX: configObj.print_auto_center_x ?? false,
-        autoCenterY: configObj.print_auto_center_y ?? false,
+        autoCenterX: isRfid ? false : (configObj.print_auto_center_x ?? false),
+        autoCenterY: isRfid ? false : (configObj.print_auto_center_y ?? false),
       };
       
       const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize].width;
@@ -93,8 +94,8 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       const finalW = prConfig.orientation === 'portrait' ? paperW : paperH;
       const finalH = prConfig.orientation === 'portrait' ? paperH : paperW;
 
-      const cardW = configObj.template === 'vertical' ? 54 : 86;
-      const cardH = configObj.template === 'vertical' ? 86 : 54;
+      const cardW = configObj.template === 'vertical' ? 54 : 85.6;
+      const cardH = configObj.template === 'vertical' ? 85.6 : 54;
 
       const availW = finalW - prConfig.marginLeft - prConfig.marginRight;
       const availH = finalH - prConfig.marginTop - prConfig.marginBottom;
