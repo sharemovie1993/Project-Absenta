@@ -19,20 +19,30 @@ import { PreviewCard } from '@/components/academic/student-card/PreviewCard';
 import type { StudentCardConfig } from '@/components/academic/student-card/types';
 
 // Coordinate Reference (EDITOR_SCALE=2, MM_TO_PX=3.78):
-// Horizontal card: 647px wide × 408px tall. Header=136px. Content starts ~175px.
-//   Photo(20×26mm)=151×196px → x=14, y=170
-//   Data block ~180px wide    → x=180, y=175
-//   QR(18×18mm)=136×136px    → x=497, y=185
+// Horizontal card: 647px wide × 408px tall
+//   Header=136px, Card title strip ~32px → content starts ~170px
+//   Photo(20×26mm)=151×196px → x=14, y=170  (photo bottom = 366px)
+//   Data block (3 rows ~84px, centered at photo mid=268) → x=180, y=220
+//   QR(18×18mm)=136×136px → x=497, y=200
 //
-// Vertical card: 408px wide × 647px tall. Header=136px. Content starts ~175px.
-//   Photo(24×32mm)=181×242px, centered → x=114, y=178
-//   Data block                         → x=14, y=440
-//   QR(18×18mm)=136×136px             → x=245, y=438
+// Vertical card: 408px wide × 647px tall
+//   Header=136px, content starts ~170px
+//   Photo(24×32mm)=181×242px centered → x=114, y=178 (photo bottom = 420px)
+//   Data block below photo → x=14, y=435
+//   QR beside data → x=245, y=430
 
-const HCOORDS = { photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
-    photo_x: 14, photo_y: 170, data_x: 180, data_y: 175, qrcode_x: 497, qrcode_y: 185 };
-const VCOORDS = { photo_width: 24, photo_height: 32, qrcode_width: 18, qrcode_height: 18,
-    photo_x: 114, photo_y: 178, data_x: 14, data_y: 440, qrcode_x: 245, qrcode_y: 438 };
+const HCOORDS = {
+    photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
+    photo_x: 14,  photo_y: 170,
+    data_x:  180, data_y:  220,
+    qrcode_x: 497, qrcode_y: 200,
+};
+const VCOORDS = {
+    photo_width: 24, photo_height: 32, qrcode_width: 18, qrcode_height: 18,
+    photo_x: 114, photo_y: 178,
+    data_x:  14,  data_y:  435,
+    qrcode_x: 245, qrcode_y: 430,
+};
 
 const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
     {

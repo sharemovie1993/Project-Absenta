@@ -154,7 +154,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           </div>
 
           {/* Content Area */}
-          {/* Draggable Student Info */}
+          {/* Draggable Student Info — position is absolute from top:0 left:0 */}
           <motion.div 
             drag
             dragMomentum={false}
@@ -163,8 +163,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 x: config.data_x || 0,
                 y: config.data_y || 0,
                 position: 'absolute', 
-                top: '30%', // Initial relative position
-                left: '1rem', // Initial relative position
+                top: 0,
+                left: 0,
                 cursor: 'move',
                 zIndex: 15
             }}
