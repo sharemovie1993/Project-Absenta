@@ -204,16 +204,16 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                         key={preset.name}
                                         type="button"
                                         onClick={() => {
-                                            const sekolahNama = sekolah?.nama || sekolah?.data?.nama || '';
-                                            const sekolahAlamat = sekolah?.alamat || sekolah?.data?.alamat || '';
-                                            const sekolahLogo = sekolah?.logo_url || sekolah?.data?.logo_url || '';
+                                            // Consistent with kopsurat: tenantInfo.name > sekolah.nama
+                                            const resolvedNama = sekolah?.name || sekolah?.nama || sekolah?.data?.name || sekolah?.data?.nama || '';
+                                            const resolvedAlamat = sekolah?.address || sekolah?.alamat || sekolah?.data?.address || sekolah?.data?.alamat || '';
+                                            const resolvedLogo = sekolah?.logo_url || sekolah?.data?.logo_url || '';
                                             setConfig({
                                                 ...config,
                                                 ...preset,
-                                                // Always populate from sekolah profile first, fallback to manual config edit
-                                                school_name: sekolahNama || config.school_name || '',
-                                                school_address: sekolahAlamat || config.school_address || '',
-                                                logo_url: sekolahLogo || config.logo_url || '',
+                                                school_name:    resolvedNama    || config.school_name    || '',
+                                                school_address: resolvedAlamat  || config.school_address || '',
+                                                logo_url:       resolvedLogo    || config.logo_url       || '',
                                             });
                                         }}
                                         className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${

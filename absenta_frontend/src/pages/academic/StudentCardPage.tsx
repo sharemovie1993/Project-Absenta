@@ -12,6 +12,7 @@ import {
 import { getSiswaList } from '../../api/academic/siswa.api';
 import { getKelasList } from '../../api/academic/kelas.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getTenantById } from '../../api/tenants.api';
 import { studentCardConfigApi } from '../../api/academic/student-card-config.api';
 import { RefreshCw, Layout, Printer as PrinterIcon } from 'lucide-react';
 import {
@@ -95,8 +96,15 @@ const StudentCardPage = () => {
         queryKey: ['sekolah-profile'],
         queryFn: sekolahApi.getProfile
     });
-    
     const sekolah = sekolahResponse || null;
+
+    // Fetch tenant info — same source as kopsurat (letterhead)
+    const { data: tenantResponse } = useQuery({
+        queryKey: ['tenant-info', user?.tenant_id],
+        queryFn: () => getTenantById(user!.tenant_id),
+        enabled: !!user?.tenant_id,
+    });
+    const tenantInfo = tenantResponse?.data || tenantResponse || null;
 
     const { data: remoteConfigResponse, isLoading: isLoadingConfig, error: configError } = useQuery({
         queryKey: ['student-card-config'],
@@ -144,21 +152,28 @@ const StudentCardPage = () => {
         }
     }, [siswaData, previewStudentId]);
 
-    // Normalize sekolah: handle both { nama } and { data: { nama } } shapes
+    // Consistent with kopsurat: tenantInfo is the primary source, sekolah is a fallback
+    // tenantInfo.name       → school name
+    // tenantInfo.address    → school address
+    // tenantInfo.logo_url   → school logo
+    // tenantInfo.nama_dinas_atas    → header line 1
+    // tenantInfo.nama_dinas_bawah   → header line 2 / subheader
     const sekolahData = (sekolah as any)?.data || sekolah;
-    const sekolahNama: string = sekolahData?.nama || '';
-    const sekolahAlamat: string = sekolahData?.alamat || '';
-    const sekolahLogo: string = sekolahData?.logo_url || '';
+    const resolvedName: string    = (tenantInfo as any)?.name    || sekolahData?.nama    || '';
+    const resolvedAddress: string = (tenantInfo as any)?.address || sekolahData?.alamat  || '';
+    const resolvedLogo: string    = (tenantInfo as any)?.logo_url || sekolahData?.logo_url || '';
+    const resolvedHeader: string  = (tenantInfo as any)?.nama_dinas_atas   || '';
+    const resolvedSubheader: string = (tenantInfo as any)?.nama_dinas_bawah || '';
 
     useEffect(() => {
         if (remoteConfig) {
             setConfig(prev => ({
                 ...prev,
                 ...remoteConfig,
-                // sekolah profile takes priority over stored config for school identity
-                school_name: sekolahNama || remoteConfig.school_name || prev.school_name || '',
-                school_address: sekolahAlamat || remoteConfig.school_address || prev.school_address || '',
-                logo_url: sekolahLogo || remoteConfig.logo_url || prev.logo_url || '',
+                // tenantInfo (kopsurat source) takes priority
+                school_name: resolvedName    || remoteConfig.school_name    || prev.school_name    || '',
+                school_address: resolvedAddress || remoteConfig.school_address || prev.school_address || '',
+                logo_url:    resolvedLogo    || remoteConfig.logo_url       || prev.logo_url       || '',
             }));
 
             setPrintConfig(prev => ({
@@ -177,18 +192,21 @@ const StudentCardPage = () => {
                 autoCenterY: remoteConfig.print_auto_center_y ?? prev.autoCenterY,
             }));
         }
-    }, [remoteConfig, sekolahNama, sekolahAlamat, sekolahLogo]);
+    }, [remoteConfig, resolvedName, resolvedAddress, resolvedLogo]);
 
     useEffect(() => {
-        if (sekolahNama && !remoteConfig) {
+        if (resolvedName && !remoteConfig) {
             setConfig(prev => ({
                 ...prev,
-                school_name: sekolahNama,
-                school_address: sekolahAlamat,
-                logo_url: sekolahLogo || prev.logo_url || '',
+                school_name:    resolvedName,
+                school_address: resolvedAddress,
+                logo_url:       resolvedLogo || prev.logo_url || '',
+                // Also fill header lines if not yet customized
+                header_text:    prev.header_text    || resolvedHeader,
+                subheader_text: prev.subheader_text || resolvedSubheader,
             }));
         }
-    }, [sekolahNama, sekolahAlamat, sekolahLogo, remoteConfig]);
+    }, [resolvedName, resolvedAddress, resolvedLogo, resolvedHeader, resolvedSubheader, remoteConfig]);
 
     const saveConfigMutation = useMutation({
         mutationFn: studentCardConfigApi.updateConfig,
@@ -499,7 +517,7 @@ const StudentCardPage = () => {
                                     setConfig={setConfig}
                                     handleDragEnd={handleDragEnd}
                                     previewStudent={previewStudent}
-                                    sekolah={sekolahData}
+                                    sekolah={tenantInfo || sekolahData}
                                 />
                             </TabsContent>
                         )}
