@@ -28,6 +28,10 @@ import { kelasApi, siswaApi } from '../../api/academic.api';
 import { listGuruMapel } from '../../api/academic/guru-mapel.api';
 import type { Kelas, Siswa, GuruMapel } from '../../types/academic';
 import { sekolahApi, type Sekolah } from '../../api/academic/sekolah.api';
+import { getTenantById, type Tenant } from '../../api/tenants.api';
+import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
+import { PrintHeader } from '../../components/ui/PrintHeader';
+import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 
 const PrepChecklistPage: React.FC = () => {
@@ -53,6 +57,10 @@ const PrepChecklistPage: React.FC = () => {
   const [loadingGuruMapel, setLoadingGuruMapel] = useState<boolean>(false);
   
   const [sekolah, setSekolah] = useState<Sekolah | null>(null);
+  
+  const { user } = useAuth();
+  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
+  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
 
   // Load Checklist data
   const loadChecklist = useCallback(async () => {
@@ -77,6 +85,29 @@ const PrepChecklistPage: React.FC = () => {
     }
   }, []);
 
+  const loadTenantInfo = useCallback(async () => {
+    if (!user?.tenant_id) return;
+    try {
+      const res = await getTenantById(user.tenant_id);
+      if (res.success && res.data) {
+        setTenantInfo(res.data);
+      }
+    } catch (err) {
+      console.error('Gagal memuat informasi tenant:', err);
+    }
+  }, [user?.tenant_id]);
+
+  const loadStruktur = useCallback(async () => {
+    try {
+      const res = await getStrukturList({ is_active: true });
+      if (res.success && res.data) {
+        setStrukturList(res.data);
+      }
+    } catch (err) {
+      console.error('Gagal memuat struktur organisasi:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadChecklist();
   }, [loadChecklist]);
@@ -84,8 +115,10 @@ const PrepChecklistPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'print') {
       loadSekolah();
+      loadTenantInfo();
+      loadStruktur();
     }
-  }, [activeTab, loadSekolah]);
+  }, [activeTab, loadSekolah, loadTenantInfo, loadStruktur]);
 
   // Load Classes for Printing tab
   const loadClasses = useCallback(async () => {
@@ -152,6 +185,32 @@ const PrepChecklistPage: React.FC = () => {
   const selectedClassObj = useMemo(() => {
     return classes.find(c => c.id === selectedClassId);
   }, [classes, selectedClassId]);
+
+  const isLandscape = ['attendance', 'roster'].includes(selectedPrintType);
+
+  const waliKelasObj = useMemo(() => {
+    return selectedClassObj?.WaliKelas?.[0]?.Guru as any;
+  }, [selectedClassObj]);
+
+  const waliKelasName = useMemo(() => {
+    return waliKelasObj?.nama_guru || '_______________________';
+  }, [waliKelasObj]);
+
+  const waliKelasNip = useMemo(() => {
+    return waliKelasObj?.nip ? `NIP. ${waliKelasObj.nip}` : 'NIP. ..............................';
+  }, [waliKelasObj]);
+
+  const principalName = useMemo(() => {
+    const principalAssign = strukturList?.find(s => s.kode === 'KEPALA_SEKOLAH');
+    const principalGuru = principalAssign?.organizationalAssigns?.[0]?.User?.Guru;
+    return principalGuru?.nama_guru || sekolah?.kepala_sekolah || 'DRS. H. CONTOH KEPSEK, M.Pd.';
+  }, [strukturList, sekolah]);
+
+  const principalNip = useMemo(() => {
+    const principalAssign = strukturList?.find(s => s.kode === 'KEPALA_SEKOLAH');
+    const principalGuru = principalAssign?.organizationalAssigns?.[0]?.User?.Guru;
+    return principalGuru?.nip || sekolah?.nip_kepala || '19720512 199803 1 002';
+  }, [strukturList, sekolah]);
 
   // Get dynamic dates list for attendance printing
   const daysInMonth = useMemo(() => {
@@ -525,44 +584,39 @@ const PrepChecklistPage: React.FC = () => {
                   `}</style>
 
                   {/* Wrapper printable element */}
+                  {/* Dynamic Page Orientation CSS for Printing */}
+                  <style dangerouslySetInnerHTML={{__html: `
+                    @media print {
+                      @page {
+                        size: ${isLandscape ? 'landscape' : 'portrait'};
+                        margin: 15mm 15mm 15mm 15mm;
+                      }
+                      body {
+                        background: #fff !important;
+                        color: #000 !important;
+                      }
+                      #print-tu-area {
+                        border: none !important;
+                        box-shadow: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        min-width: 100% !important;
+                      }
+                    }
+                  `}} />
+
                   <div 
                     id="print-tu-area" 
-                    className="bg-white text-slate-900 border border-slate-300 rounded-2xl shadow p-8 mx-auto min-w-[700px] max-w-[900px] text-xs font-mono font-medium leading-relaxed"
+                    className={`bg-white text-slate-900 border border-slate-300 rounded-2xl shadow p-8 mx-auto text-xs font-mono font-medium leading-relaxed transition-all duration-300 ${
+                      isLandscape ? 'w-full max-w-[1100px] min-w-[900px]' : 'w-full max-w-[850px] min-w-[650px]'
+                    }`}
                   >
                     
                     {/* --- REPORT HEADER (KOP SURAT) --- */}
-                    <div className="border-b-4 border-double border-black pb-4 mb-6 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {sekolah?.logo_url ? (
-                          <div className="w-16 h-16 flex items-center justify-center overflow-hidden">
-                            <img 
-                              src={sekolah.logo_url} 
-                              alt="Logo Sekolah" 
-                              className="max-h-full max-w-full object-contain"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/logo.png';
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-center text-xs p-1 leading-none">
-                            SMK <br /> NEGERI
-                          </div>
-                        )}
-                        <div>
-                          <h2 className="text-sm font-bold uppercase tracking-wide">Pemerintah Provinsi Dinas Pendidikan</h2>
-                          <h1 className="text-lg font-black uppercase tracking-wider leading-tight">
-                            {sekolah?.nama || 'SMK NEGERI CONTOH ABSENTA'}
-                          </h1>
-                          <p className="text-[10px] italic">
-                            {sekolah?.alamat || 'Jl. Raya Plered KM. 5 Purwakarta'}{sekolah?.telepon && `, Telp: ${sekolah.telepon}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right text-[10px] border-l border-slate-400 pl-4">
-                        <span className="font-bold block">ABSENTA PLATFORM</span>
-                        <span>TU ADMIN MODULE</span>
-                      </div>
+                    <div className="mb-6">
+                      <PrintHeader variant={isLandscape ? 'landscape' : 'portrait'} tenantInfo={tenantInfo} />
                     </div>
 
                     {/* --- RENDER 1: BLANK ATTENDANCE SHEET --- */}
@@ -767,8 +821,8 @@ const PrepChecklistPage: React.FC = () => {
                               <p className="font-bold">Wali Kelas {selectedClassObj?.nama_kelas || '---'}</p>
                             </div>
                             <div className="space-y-0.5">
-                              <p className="font-bold underline uppercase">_______________________</p>
-                              <p className="text-[10px] text-slate-500">NIP. ..............................</p>
+                              <p className="font-bold underline uppercase">{waliKelasName}</p>
+                              <p className="text-[10px] text-slate-500">{waliKelasNip}</p>
                             </div>
                           </div>
                         )}
@@ -779,9 +833,9 @@ const PrepChecklistPage: React.FC = () => {
                           <p className="font-bold">Kepala Sekolah,</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="font-bold underline uppercase">{sekolah?.kepala_sekolah || 'DRS. H. CONTOH KEPSEK, M.Pd.'}</p>
+                          <p className="font-bold underline uppercase">{principalName}</p>
                           <p className="text-[10px] text-slate-500 font-mono">
-                            {sekolah?.nip_kepala ? `NIP. ${sekolah.nip_kepala}` : 'NIP. 19720512 199803 1 002'}
+                            {principalNip ? `NIP. ${principalNip}` : 'NIP. ..............................'}
                           </p>
                         </div>
                       </div>
