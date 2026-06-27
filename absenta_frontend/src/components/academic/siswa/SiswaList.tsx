@@ -23,7 +23,7 @@ import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils'
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess } from '../../../api/academic/siswa.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
-import { resetUserPassword } from '../../../api/user.api';
+import { resetUserPassword, updateUser } from '../../../api/user.api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -68,6 +68,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [selectedSiswaForReset, setSelectedSiswaForReset] = useState<Siswa | null>(null);
+  const [emailForReset, setEmailForReset] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
@@ -306,32 +307,63 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const handleResetPassword = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSiswaForReset?.user_id) return;
-    if (newPassword.length < 6) {
-      toast.error('Password minimal 6 karakter');
+
+    const originalEmail = selectedSiswaForReset.User?.email || '';
+    const isEmailChanged = emailForReset.trim().toLowerCase() !== originalEmail.toLowerCase();
+    const isPasswordEntered = newPassword.length > 0;
+
+    if (!isEmailChanged && !isPasswordEntered) {
+      toast.error('Tidak ada data yang diubah');
       return;
     }
-    if (newPassword !== confirmPassword) {
-      toast.error('Konfirmasi password tidak cocok');
-      return;
+
+    if (isPasswordEntered) {
+      if (newPassword.length < 6) {
+        toast.error('Password baru minimal 6 karakter');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error('Konfirmasi password tidak cocok');
+        return;
+      }
     }
 
     try {
       setResettingPassword(true);
-      const res = await resetUserPassword(selectedSiswaForReset.user_id, newPassword);
-      if (res.success) {
-        toast.success(`Password untuk siswa ${selectedSiswaForReset.nama_siswa} berhasil direset`);
-        setResetModalOpen(false);
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        toast.error(res.message || 'Gagal mereset password');
+
+      // 1. Update Email if changed
+      if (isEmailChanged) {
+        const emailRes = await updateUser(selectedSiswaForReset.user_id, {
+          email: emailForReset.trim().toLowerCase()
+        });
+        if (!emailRes.success) {
+          toast.error(emailRes.message || 'Gagal memperbarui email');
+          setResettingPassword(false);
+          return;
+        }
       }
+
+      // 2. Reset Password if entered
+      if (isPasswordEntered) {
+        const pwdRes = await resetUserPassword(selectedSiswaForReset.user_id, newPassword);
+        if (!pwdRes.success) {
+          toast.error(pwdRes.message || 'Gagal mereset password');
+          setResettingPassword(false);
+          return;
+        }
+      }
+
+      toast.success(`Kredensial siswa ${selectedSiswaForReset.nama_siswa} berhasil diperbarui`);
+      setResetModalOpen(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      fetchSiswas(currentPage, searchTerm);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat mereset password');
+      toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat memperbarui kredensial');
     } finally {
       setResettingPassword(false);
     }
-  }, [selectedSiswaForReset, newPassword, confirmPassword]);
+  }, [selectedSiswaForReset, emailForReset, newPassword, confirmPassword, currentPage, searchTerm, fetchSiswas]);
 
   // Reset selected class if it does not belong to the selected tingkat
   useEffect(() => {
@@ -565,6 +597,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedSiswaForReset(siswa);
+                setEmailForReset(siswa.User?.email || '');
                 setNewPassword('');
                 setConfirmPassword('');
                 setResetModalOpen(true);
@@ -972,8 +1005,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       <Modal
         isOpen={resetModalOpen}
         onClose={() => setResetModalOpen(false)}
-        title="Reset Password Siswa"
-        description={`Masukkan password baru untuk siswa ${selectedSiswaForReset?.nama_siswa || ''}`}
+        title="Edit Kredensial Siswa"
+        description={`Kelola email akses login dan reset password untuk siswa ${selectedSiswaForReset?.nama_siswa || ''}`}
       >
         <form onSubmit={handleResetPassword} className="space-y-6">
           <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
@@ -989,21 +1022,28 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
             <div className="space-y-4">
               <Input
-                label="Password Baru"
-                type="password"
+                label="Email Pengguna (Akses Log In)"
+                type="email"
                 required
+                value={emailForReset}
+                onChange={(e) => setEmailForReset(e.target.value)}
+                placeholder="nama@sekolah.sch.id"
+                disabled={resettingPassword}
+              />
+              <Input
+                label="Password Baru (Kosongkan jika tidak diubah)"
+                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimal 6 karakter"
                 disabled={resettingPassword}
               />
               <Input
-                label="Konfirmasi Password"
+                label="Konfirmasi Password Baru"
                 type="password"
-                required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Masukkan ulang password"
+                placeholder="Masukkan ulang password baru"
                 disabled={resettingPassword}
               />
             </div>
