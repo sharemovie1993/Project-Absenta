@@ -165,6 +165,8 @@ model StudentCardConfig {
 
   // Design Config
   template        String  @default("vertical") // vertical | horizontal
+  selected_preset String? @default("Vertical - Versi 1")
+  layout_presets  String? @db.Text // stores stringified JSON of all customized preset overrides
   card_title      String  @default("KARTU PELAJAR")
   header_text     String?
   subheader_text  String?

@@ -10,6 +10,8 @@ export class StudentCardConfigService {
       // Return defaults if not found, but don't save yet to avoid junk data
       return {
         template: 'vertical',
+        selected_preset: 'Vertical - Versi 1',
+        layout_presets: '{}',
         card_title: 'KARTU PELAJAR',
         header_text: '',
         subheader_text: '',

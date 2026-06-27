@@ -222,6 +222,61 @@ const StudentCardPage = () => {
     const handleSaveConfig = useCallback(() => {
         const cleanConfig = { ...config };
         
+        // Parse current presets overrides
+        let currentPresets: Record<string, any> = {};
+        try {
+            currentPresets = config.layout_presets ? JSON.parse(config.layout_presets) : {};
+        } catch (e) {
+            console.error('Error parsing layout presets:', e);
+        }
+
+        // Save current active config values under the active preset name
+        const presetName = config.selected_preset || 'Vertical - Versi 1';
+        currentPresets[presetName] = {
+            template: config.template,
+            primary_color: config.primary_color,
+            secondary_color: config.secondary_color,
+            header_bg_color: config.header_bg_color,
+            header_text_color: config.header_text_color,
+            header_style: config.header_style,
+            header_pattern: config.header_pattern,
+            header_pattern_opacity: config.header_pattern_opacity,
+            footer_height: config.footer_height,
+            footer_bg_color: config.footer_bg_color,
+            footer_style: config.footer_style,
+            show_photo: config.show_photo,
+            photo_shape: config.photo_shape,
+            show_qrcode: config.show_qrcode,
+            photo_x: config.photo_x,
+            photo_y: config.photo_y,
+            photo_scale: config.photo_scale,
+            photo_width: config.photo_width,
+            photo_height: config.photo_height,
+            qrcode_x: config.qrcode_x,
+            qrcode_y: config.qrcode_y,
+            qrcode_scale: config.qrcode_scale,
+            qrcode_width: config.qrcode_width,
+            qrcode_height: config.qrcode_height,
+            data_x: config.data_x,
+            data_y: config.data_y,
+            card_title: config.card_title,
+            card_pattern: config.card_pattern,
+            card_pattern_opacity: config.card_pattern_opacity,
+            header_height: config.header_height,
+            header_font_size: config.header_font_size,
+            subheader_font_size: config.subheader_font_size,
+            school_name_font_size: config.school_name_font_size,
+            school_address_font_size: config.school_address_font_size,
+            card_title_font_size: config.card_title_font_size,
+            student_name_font_size: config.student_name_font_size,
+            student_details_font_size: config.student_details_font_size,
+            show_border: config.show_border,
+            border_color: config.border_color,
+            border_width: config.border_width,
+        };
+
+        cleanConfig.layout_presets = JSON.stringify(currentPresets);
+
         // Merge Print Config
         cleanConfig.print_paper_size = printConfig.paperSize;
         cleanConfig.print_orientation = printConfig.orientation;

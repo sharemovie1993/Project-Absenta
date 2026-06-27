@@ -1,6 +1,8 @@
 export interface StudentCardConfig {
   id?: string;
   template: 'vertical' | 'horizontal';
+  selected_preset?: string;
+  layout_presets?: string; // stringified JSON
   card_title: string;
   header_text?: string;
   subheader_text?: string;
