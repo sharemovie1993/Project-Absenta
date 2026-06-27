@@ -339,12 +339,20 @@ const KelasList = React.memo<KelasListProps>(({
       key: 'jumlah_siswa', 
       label: 'Jumlah Siswa',
       sortable: true,
-      render: (jumlahSiswa: number) => (
-        <div className="flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{jumlahSiswa || 0} siswa</span>
-        </div>
-      )
+      render: (jumlahSiswa: number) => {
+        const count = jumlahSiswa || 0;
+        return (
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg w-fit transition-all",
+            count === 0 
+              ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 font-extrabold animate-pulse"
+              : "text-gray-600 dark:text-gray-400"
+          )}>
+            <Users className={cn("w-3.5 h-3.5", count === 0 ? "text-rose-500" : "text-gray-400")} />
+            <span className="text-xs">{count} siswa</span>
+          </div>
+        );
+      }
     },
     {
       key: 'is_active',

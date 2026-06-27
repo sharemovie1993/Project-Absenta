@@ -172,8 +172,13 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
                           </div>
                           
                           {/* Student Count */}
-                          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400 dark:text-slate-550">
-                            <Users className="w-3.5 h-3.5 flex-shrink-0" />
+                          <div className={cn(
+                            "flex items-center gap-1 text-[11px] font-bold rounded px-1.5 py-0.5 transition-all",
+                            siswaCount === 0 
+                              ? "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 font-black animate-pulse"
+                              : "text-slate-400 dark:text-slate-550"
+                          )}>
+                            <Users className={cn("w-3.5 h-3.5 flex-shrink-0", siswaCount === 0 ? "text-rose-500" : "text-slate-400")} />
                             <span>{siswaCount}</span>
                           </div>
                         </div>
