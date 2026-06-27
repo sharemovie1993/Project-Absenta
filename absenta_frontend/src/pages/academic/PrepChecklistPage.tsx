@@ -330,9 +330,15 @@ const PrepChecklistPage: React.FC = () => {
 
       for (let classIndex = 0; classIndex < targetClasses.length; classIndex++) {
         const c = targetClasses[classIndex];
-        const classStudents = (selectedClassId === 'all' || selectedClassId.startsWith('all_tingkat_')) && c
-          ? students.filter(s => s.kelas_id === c.id)
-          : students;
+        let classStudents: Siswa[] = [];
+        if (c && ['attendance', 'journal', 'roster'].includes(selectedPrintType)) {
+          try {
+            const res = await siswaApi.getAll({ kelas_id: c.id, limit: 150 });
+            classStudents = res.data || [];
+          } catch (err) {
+            console.error(`Gagal memuat siswa untuk kelas ${c.nama_kelas}:`, err);
+          }
+        }
 
         const classWaliKelasObj = c?.WaliKelas?.[0]?.Guru as any;
         const classWaliKelasName = classWaliKelasObj?.nama_guru || '_______________________';
