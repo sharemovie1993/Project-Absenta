@@ -713,7 +713,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     </div>
                     
                     <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                      <div className="w-full md:w-36">
+                      <div className="w-full md:w-44">
                         <SearchableSelect
                           value={filterTingkat}
                           onValueChange={setFilterTingkat}
@@ -730,7 +730,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         />
                       </div>
 
-                      <div className="w-full md:w-44">
+                      <div className="w-full md:w-48">
                         <SearchableSelect
                           value={filterKelas}
                           onValueChange={setFilterKelas}
@@ -742,7 +742,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         />
                       </div>
 
-                      <div className="w-full md:w-36">
+                      <div className="w-full md:w-44">
                         <SearchableSelect
                           value={filterStatus}
                           onValueChange={setFilterStatus}
@@ -761,7 +761,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         />
                       </div>
 
-                      <div className="w-full md:w-36">
+                      <div className="w-full md:w-44">
                         <SearchableSelect
                           value={filterGender}
                           onValueChange={setFilterGender}
