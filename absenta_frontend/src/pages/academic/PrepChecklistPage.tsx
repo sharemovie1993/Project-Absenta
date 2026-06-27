@@ -66,21 +66,38 @@ const PrepChecklistPage: React.FC = () => {
   const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
+  const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
 
-  // Load logo Base64 on school change
+  // Load logo Daerah (Kiri)
   useEffect(() => {
-    if (sekolah?.logo_url) {
-      getBase64ImageFromUrl(sekolah.logo_url).then(res => {
-        setLogoBase64(res);
+    const leftLogo = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url;
+    if (leftLogo) {
+      getBase64ImageFromUrl(leftLogo).then(res => {
+        setLogoDaerahBase64(res);
       }).catch(err => {
-        console.warn('Gagal memuat base64 logo sekolah:', err);
-        setLogoBase64(null);
+        console.warn('Gagal memuat logo daerah base64:', err);
+        setLogoDaerahBase64(null);
       });
     } else {
-      setLogoBase64(null);
+      setLogoDaerahBase64(null);
     }
-  }, [sekolah?.logo_url]);
+  }, [tenantInfo?.logo_daerah_url, (sekolah as any)?.logo_daerah_url]);
+
+  // Load logo Sekolah (Kanan)
+  useEffect(() => {
+    const rightLogo = tenantInfo?.logo_url || sekolah?.logo_url;
+    if (rightLogo) {
+      getBase64ImageFromUrl(rightLogo).then(res => {
+        setLogoSekolahBase64(res);
+      }).catch(err => {
+        console.warn('Gagal memuat logo sekolah base64:', err);
+        setLogoSekolahBase64(null);
+      });
+    } else {
+      setLogoSekolahBase64(null);
+    }
+  }, [tenantInfo?.logo_url, sekolah?.logo_url]);
 
   // Clean up blob url on unmount
   useEffect(() => {
@@ -271,45 +288,128 @@ const PrepChecklistPage: React.FC = () => {
         format: 'a4'
       });
 
-      // 2. Draw Kop Surat
-      const pageWidth = isLandscape ? 297 : 210;
-      if (logoBase64) {
+      // 2. Draw Dynamic Kop Surat (PrintHeader)
+      const pageWidth = 210; // Portrait A4
+      
+      // Draw Logo Daerah (Kiri)
+      if (logoDaerahBase64) {
         try {
-          doc.addImage(logoBase64, 'PNG', 15, 10, 18, 18);
+          doc.addImage(logoDaerahBase64, 'PNG', 15, 10, 16, 16);
         } catch (e) {
-          console.warn('Failed to add logo to PDF', e);
+          console.warn('Failed to add logo daerah to PDF', e);
         }
       }
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(9.5);
-      doc.text('PEMERINTAH PROVINSI DINAS PENDIDIKAN', pageWidth / 2, 14, { align: 'center' });
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text(sekolah?.nama?.toUpperCase() || 'SMK NEGERI CONTOH ABSENTA', pageWidth / 2, 19, { align: 'center' });
-      doc.setFont('Helvetica', 'italic');
-      doc.setFontSize(7.5);
-      doc.text(sekolah?.alamat || 'Jl. Raya Plered KM. 5 Purwakarta', pageWidth / 2, 23, { align: 'center' });
+      
+      // Draw Logo Sekolah (Kanan)
+      if (logoSekolahBase64) {
+        try {
+          doc.addImage(logoSekolahBase64, 'PNG', pageWidth - 31, 10, 16, 16);
+        } catch (e) {
+          console.warn('Failed to add logo sekolah to PDF', e);
+        }
+      }
+      
+      // Parse print header lines from tenantInfo / fallbacks
+      const rawLines = tenantInfo?.print_header_lines && tenantInfo.print_header_lines.length > 0
+        ? tenantInfo.print_header_lines
+        : [
+            tenantInfo?.nama_dinas_atas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
+            tenantInfo?.nama_dinas_bawah || 'DINAS PENDIDIKAN',
+            tenantInfo?.nama_cabang_dinas || 'KANTOR CABANG DINAS PENDIDIKAN WILAYAH IV',
+            tenantInfo?.name || sekolah?.nama || 'SMK NEGERI 1 PLERED'
+          ];
+          
+      const parsedLines = rawLines.map(line => {
+        if (typeof line === 'object' && line !== null) {
+          return line as any;
+        }
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed && typeof parsed === 'object' && 'text' in parsed) {
+            return parsed;
+          }
+        } catch (e) {}
+        return { text: line };
+      });
+      
+      // Draw official lines
+      let currentY = 13;
+      parsedLines.forEach((line, index) => {
+        const isLast = index === parsedLines.length - 1;
+        const isSecondLast = index === parsedLines.length - 2 && parsedLines.length > 1;
+        
+        let fontSize = 7.5;
+        let isBold = false;
+        
+        if (line.fontSize) {
+          fontSize = line.fontSize * 0.7;
+        } else {
+          if (isLast) fontSize = 11;
+          else if (isSecondLast) fontSize = 8.5;
+          else fontSize = 7.5;
+        }
+        
+        if (line.bold !== undefined) {
+          isBold = line.bold;
+        } else {
+          if (isLast || isSecondLast) isBold = true;
+        }
+        
+        doc.setFont('Helvetica', isBold ? 'bold' : 'normal');
+        doc.setFontSize(fontSize);
+        
+        const textToDraw = String(line.text).toUpperCase();
+        doc.text(textToDraw, pageWidth / 2, currentY, { align: 'center' });
+        
+        currentY += (fontSize * 0.35) + 1.2;
+      });
+      
+      // Draw Address and Contact Info
+      const address = tenantInfo?.address || sekolah?.alamat || '';
+      const phone = tenantInfo?.phone || sekolah?.telepon || '';
+      const email = tenantInfo?.email || sekolah?.email || '';
+      const website = tenantInfo?.website || sekolah?.website || '';
+      
+      if (address) {
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(7.5);
+        const contactText = `${address}${phone ? ` | Telp: ${phone}` : ''}`;
+        doc.text(contactText, pageWidth / 2, currentY, { align: 'center' });
+        currentY += 3.2;
+      }
+      
+      if (website || email) {
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(6.5);
+        const webText = `${website ? `Website: ${website}` : ''}${email ? ` | Email: ${email}` : ''}`;
+        doc.text(webText, pageWidth / 2, currentY, { align: 'center' });
+        currentY += 3;
+      }
+      
+      // Draw double lines under header
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.6);
-      doc.line(15, 26, pageWidth - 15, 26);
-      doc.setLineWidth(0.2);
-      doc.line(15, 27, pageWidth - 15, 27);
+      doc.line(15, currentY, pageWidth - 15, currentY);
+      doc.setLineWidth(0.18);
+      doc.line(15, currentY + 0.6, pageWidth - 15, currentY + 0.6);
+
+      const headerEndY = currentY + 2.5; // End of Kop Surat line
 
       // 3. Draw Document Content
       if (selectedPrintType === 'attendance') {
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(11);
-        doc.text('DAFTAR HADIR HARIAN SISWA', pageWidth / 2, 33, { align: 'center' });
+        doc.text('DAFTAR HADIR HARIAN SISWA', pageWidth / 2, headerEndY + 6, { align: 'center' });
         doc.setFontSize(9.5);
-        doc.text(`TAHUN PELAJARAN ${checklistData?.current_year?.tahun || '2025/2026'}`, pageWidth / 2, 37, { align: 'center' });
+        doc.text(`TAHUN PELAJARAN ${checklistData?.current_year?.tahun || '2025/2026'}`, pageWidth / 2, headerEndY + 10, { align: 'center' });
 
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(8.5);
         // Left info labels
-        doc.text(`Program Keahlian`, 15, 43);
-        doc.text(`Tingkat/Konsentrasi Keahlian`, 15, 47);
-        doc.text(`: ${(selectedClassObj?.Jurusan as any)?.nama || (selectedClassObj?.Jurusan as any)?.nama_jurusan || 'Teknik Elektronika'}`, 58, 43);
-        doc.text(`: ${selectedClassObj?.nama_kelas || 'X TE 1'}`, 58, 47);
+        doc.text(`Program Keahlian`, 15, headerEndY + 16);
+        doc.text(`Tingkat/Konsentrasi Keahlian`, 15, headerEndY + 20);
+        doc.text(`: ${(selectedClassObj?.Jurusan as any)?.nama || (selectedClassObj?.Jurusan as any)?.nama_jurusan || 'Teknik Elektronika'}`, 58, headerEndY + 16);
+        doc.text(`: ${selectedClassObj?.nama_kelas || 'X TE 1'}`, 58, headerEndY + 20);
 
         const head = [
           [
@@ -345,7 +445,7 @@ const PrepChecklistPage: React.FC = () => {
         ]);
 
         autoTable(doc, {
-          startY: 51,
+          startY: headerEndY + 24,
           head: head as any,
           body: body as any,
           theme: 'grid',
@@ -362,10 +462,10 @@ const PrepChecklistPage: React.FC = () => {
       } else if (selectedPrintType === 'journal') {
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('BUKU JURNAL HARIAN KEGIATAN BELAJAR MENGAJAR (KBM)', pageWidth / 2, 34, { align: 'center' });
+        doc.text('BUKU JURNAL HARIAN KEGIATAN BELAJAR MENGAJAR (KBM)', pageWidth / 2, headerEndY + 6, { align: 'center' });
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 39, { align: 'center' });
+        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
         const head = [[
           { content: 'NO', styles: { halign: 'center' } },
@@ -380,7 +480,7 @@ const PrepChecklistPage: React.FC = () => {
           idx + 1, '', '', '', '', '', ''
         ]);
         autoTable(doc, {
-          startY: 44,
+          startY: headerEndY + 16,
           head: head as any,
           body: body as any,
           theme: 'grid',
@@ -400,10 +500,10 @@ const PrepChecklistPage: React.FC = () => {
       } else if (selectedPrintType === 'roster') {
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('DAFTAR KELAS & DAFTAR FORMAT PENILAIAN GURU', pageWidth / 2, 34, { align: 'center' });
+        doc.text('DAFTAR KELAS & DAFTAR FORMAT PENILAIAN GURU', pageWidth / 2, headerEndY + 6, { align: 'center' });
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 39, { align: 'center' });
+        doc.text(`KELAS: ${selectedClassObj?.nama_kelas?.toUpperCase() || '---'}  |  TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
         const head = [[
           { content: 'NO', styles: { halign: 'center' } },
@@ -420,7 +520,7 @@ const PrepChecklistPage: React.FC = () => {
           ...Array.from({ length: 10 }).map(() => '')
         ]);
         autoTable(doc, {
-          startY: 44,
+          startY: headerEndY + 16,
           head: head as any,
           body: body as any,
           theme: 'grid',
@@ -436,15 +536,15 @@ const PrepChecklistPage: React.FC = () => {
         });
       } else if (selectedPrintType === 'sk_load') {
         doc.setFont('Helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.text(`LAMPIRAN SURAT KEPUTUSAN KEPALA ${sekolah?.nama?.toUpperCase() || 'SMK NEGERI CONTOH ABSENTA'}`, pageWidth / 2, 32, { align: 'center' });
-        doc.text(`NOMOR: 421.3 / 088 / TU-CADISDIK / VI / ${new Date().getFullYear()}`, pageWidth / 2, 36, { align: 'center' });
+        doc.setFontSize(9.5);
+        doc.text(`LAMPIRAN SURAT KEPUTUSAN KEPALA ${sekolah?.nama?.toUpperCase() || 'SMK NEGERI CONTOH ABSENTA'}`, pageWidth / 2, headerEndY + 5, { align: 'center' });
+        doc.text(`NOMOR: 421.3 / 088 / TU-CADISDIK / VI / ${new Date().getFullYear()}`, pageWidth / 2, headerEndY + 9, { align: 'center' });
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('DISTRIBUSI GURU PENGAMPU BEBAN TUGAS MENGAJAR', pageWidth / 2, 42, { align: 'center' });
+        doc.text('DISTRIBUSI GURU PENGAMPU BEBAN TUGAS MENGAJAR', pageWidth / 2, headerEndY + 15, { align: 'center' });
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, 46, { align: 'center' });
+        doc.text(`TAHUN PELAJARAN: ${checklistData?.current_year?.tahun || '---'}`, pageWidth / 2, headerEndY + 19, { align: 'center' });
 
         const head = [[
           { content: 'NO', styles: { halign: 'center' } },
@@ -459,7 +559,7 @@ const PrepChecklistPage: React.FC = () => {
           gm.Mapel?.kode_mapel || '---'
         ]);
         autoTable(doc, {
-          startY: 51,
+          startY: headerEndY + 23,
           head: head as any,
           body: body as any,
           theme: 'grid',
@@ -540,8 +640,8 @@ const PrepChecklistPage: React.FC = () => {
     selectedYear,
     students,
     guruMapelList,
-    sekolah,
-    logoBase64,
+    logoDaerahBase64,
+    logoSekolahBase64,
     tenantInfo,
     strukturList,
     daysInMonth,
@@ -551,7 +651,8 @@ const PrepChecklistPage: React.FC = () => {
     principalName,
     principalNip,
     isLandscape,
-    checklistData
+    checklistData,
+    sekolah
   ]);
 
   // Map icon helper for checklist items
