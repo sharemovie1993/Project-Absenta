@@ -11,7 +11,8 @@ import {
     Settings, 
     RotateCcw, 
     CreditCard,
-    Printer as PrinterIcon
+    Printer as PrinterIcon,
+    Sparkles
 } from 'lucide-react';
 import { SettingsGroup } from '@/components/academic/student-card/SettingsGroup';
 import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput';
@@ -247,6 +248,18 @@ const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
     },
 ];
 
+const hslToHex = (h: number, s: number, l: number): string => {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+};
+
 interface DesignTabProps {
     config: StudentCardConfig;
     setConfig: React.Dispatch<React.SetStateAction<StudentCardConfig>>;
@@ -292,6 +305,47 @@ export const DesignTab: React.FC<DesignTabProps> = ({
         });
     };
 
+    const handleRandomStyle = () => {
+        const h = Math.floor(Math.random() * 360);
+        
+        // Primary (Vibrant & saturated color)
+        const sPrim = Math.floor(Math.random() * 20) + 70; // 70-90%
+        const lPrim = Math.floor(Math.random() * 15) + 35; // 35-50%
+        const primary = hslToHex(h, sPrim, lPrim);
+        
+        // Secondary (Matching light pastel background tint or clean white)
+        const sSec = Math.floor(Math.random() * 15) + 15;  // 15-30%
+        const lSec = Math.floor(Math.random() * 3) + 95;   // 95-98%
+        const secondary = Math.random() > 0.4 ? hslToHex(h, sSec, lSec) : '#ffffff';
+        
+        // Header Bg (slightly darker HSL shade of primary)
+        const headerBg = hslToHex(h, Math.min(100, sPrim + 5), Math.floor(Math.random() * 10) + 20); // 20-30%
+        
+        const patternOpts = [
+            'solid', 'gradient-diagonal', 'gradient-radial', 'wave-bottom', 'wave-top', 
+            'diagonal-stripe', 'dots', 'circuit', 'diamond', 'split-color', 'arc-overlay', 'hexagon'
+        ];
+        const randomPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
+        
+        const headerStyles = ['solid', 'gradient', 'glass', 'wave', 'slanted'];
+        const footerStyles = ['solid', 'gradient', 'glass', 'accent-line'];
+        const randomHeaderStyle = headerStyles[Math.floor(Math.random() * headerStyles.length)] as any;
+        const randomFooterStyle = footerStyles[Math.floor(Math.random() * footerStyles.length)] as any;
+        
+        setConfig({
+            ...config,
+            primary_color: primary,
+            secondary_color: secondary,
+            header_bg_color: headerBg,
+            header_text_color: '#ffffff',
+            footer_bg_color: headerBg,
+            card_pattern: randomPattern,
+            card_pattern_opacity: Math.floor(Math.random() * 40) + 60, // 60-100%
+            header_style: randomHeaderStyle,
+            footer_style: randomFooterStyle
+        });
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Control Sidebar */}
@@ -329,6 +383,15 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     </optgroup>
                                 </select>
                             </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleRandomStyle}
+                                className="w-full flex items-center justify-center gap-2 border-dashed border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-xl mt-2"
+                            >
+                                <Sparkles className="w-4 h-4 text-blue-500 animate-pulse" />
+                                Acak Warna & Gaya Desain
+                            </Button>
                         </div>
                     </SettingsGroup>
 
