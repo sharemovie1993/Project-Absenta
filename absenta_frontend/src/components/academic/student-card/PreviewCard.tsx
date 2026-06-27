@@ -25,6 +25,25 @@ interface PreviewCardProps {
     onDragEnd: (field: 'photo' | 'qrcode' | 'data', info: PanInfo) => void;
 }
 
+const adjustColorBrightness = (hex: string, percent: number) => {
+    if (!hex) return hex;
+    const cleanHex = hex.replace('#', '');
+    if (cleanHex.length !== 6) return hex;
+    let r = parseInt(cleanHex.substring(0, 2), 16);
+    let g = parseInt(cleanHex.substring(2, 4), 16);
+    let b = parseInt(cleanHex.substring(4, 6), 16);
+
+    r = Math.min(255, Math.max(0, r + (r * percent) / 100));
+    g = Math.min(255, Math.max(0, g + (g * percent) / 100));
+    b = Math.min(255, Math.max(0, b + (b * percent) / 100));
+
+    const rr = Math.round(r).toString(16).padStart(2, '0');
+    const gg = Math.round(g).toString(16).padStart(2, '0');
+    const bb = Math.round(b).toString(16).padStart(2, '0');
+
+    return `#${rr}${gg}${bb}`;
+};
+
 export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({ 
     student, 
     config, 
@@ -119,11 +138,29 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
 
           {/* Header */}
           <div 
-            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 border-b border-white/10 shadow-sm"
+            className={`absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm ${
+                (config.header_style || 'solid') === 'glass' ? 'backdrop-blur-md border-b border-white/20' : 'border-b border-white/10'
+            }`}
             style={{ 
-                backgroundColor: config.header_bg_color || config.primary_color, 
                 height: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
-                color: config.header_text_color || '#ffffff'
+                color: config.header_text_color || '#ffffff',
+                ...(() => {
+                    const headerBg = config.header_bg_color || config.primary_color;
+                    const style = config.header_style || 'solid';
+                    if (style === 'gradient') {
+                        return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)` };
+                    }
+                    if (style === 'glass') {
+                        return { backgroundColor: 'rgba(255, 255, 255, 0.12)' };
+                    }
+                    if (style === 'wave') {
+                        return { backgroundColor: headerBg, clipPath: 'ellipse(85% 100% at 50% 0%)' };
+                    }
+                    if (style === 'slanted') {
+                        return { backgroundColor: headerBg, clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' };
+                    }
+                    return { backgroundColor: headerBg }; // solid
+                })()
             }}
           >
             <div className="flex items-center gap-3 px-4 w-full justify-center">
@@ -143,19 +180,24 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           </div>
 
           {/* Elegant header wave decoration */}
-          <div 
-            className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
-            style={{
-              top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
-              height: '14px',
-              background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
-            }}
-          />
+          {(!config.header_style || config.header_style === 'solid' || config.header_style === 'gradient') && (
+            <div 
+              className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
+              style={{
+                top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
+                height: '14px',
+                background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
+              }}
+            />
+          )}
 
           {/* Card Title — sits exactly below header */}
           <div
             className="absolute w-full text-center pointer-events-none z-10"
-            style={{ top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 6}px` }}
+            style={{ 
+                top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 
+                    ((config.header_style === 'wave' || config.header_style === 'slanted') ? 16 : 6)}px` 
+            }}
           >
              <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
                 {config.card_title}
@@ -293,10 +335,42 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           )}
 
           {/* Footer Decoration */}
-          <div 
-            className="absolute bottom-0 left-0 right-0 h-4 shadow-inner"
-            style={{ backgroundColor: config.primary_color }}
-          />
+          {(() => {
+              const footerStyle = config.footer_style || 'solid';
+              if (footerStyle === 'hidden') return null;
+              
+              const footerBg = config.footer_bg_color || config.primary_color;
+              const heightPx = (config.footer_height || 4) * EDITOR_SCALE;
+              
+              if (footerStyle === 'accent-line') {
+                  return (
+                      <div 
+                        className="absolute bottom-1.5 left-4 right-4 rounded-full shadow-sm"
+                        style={{ height: '3px', backgroundColor: footerBg }}
+                      />
+                  );
+              }
+              
+              return (
+                  <div 
+                    className={`absolute bottom-0 left-0 right-0 shadow-inner ${
+                        footerStyle === 'glass' ? 'backdrop-blur-sm border-t border-white/10' : ''
+                    }`}
+                    style={{ 
+                        height: `${heightPx}px`,
+                        ...(() => {
+                            if (footerStyle === 'gradient') {
+                                return { background: `linear-gradient(90deg, ${footerBg} 0%, ${adjustColorBrightness(footerBg, -20)} 100%)` };
+                            }
+                            if (footerStyle === 'glass') {
+                                return { backgroundColor: 'rgba(255, 255, 255, 0.15)' };
+                            }
+                            return { backgroundColor: footerBg }; // solid
+                        })()
+                    }}
+                  />
+              );
+          })()}
         </div>
       </div>
     );

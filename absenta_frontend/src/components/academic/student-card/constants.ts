@@ -36,8 +36,10 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   header_height: 18,
   header_bg_color: '',
   header_text_color: '#ffffff',
+  header_style: 'solid',
   footer_height: 5,
   footer_bg_color: '',
+  footer_style: 'solid',
 
   // Border Defaults
   show_border: false,
@@ -55,7 +57,7 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
 
   // Data block position
   data_x: 14,
-  data_y: 450,
+  data_y: 420,
 
   // Pattern
   card_pattern: 'solid',

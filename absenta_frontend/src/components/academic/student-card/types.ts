@@ -34,8 +34,10 @@ export interface StudentCardConfig {
   header_height: number;
   header_bg_color: string;
   header_text_color: string;
+  header_style?: 'solid' | 'gradient' | 'glass' | 'wave' | 'slanted';
   footer_height: number;
   footer_bg_color: string;
+  footer_style?: 'solid' | 'gradient' | 'glass' | 'accent-line' | 'hidden';
 
   // Border Defaults
   show_border: boolean;

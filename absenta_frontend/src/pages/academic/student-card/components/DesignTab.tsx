@@ -40,7 +40,7 @@ const HCOORDS = {
 const VCOORDS = {
     photo_width: 24, photo_height: 32, qrcode_width: 15, qrcode_height: 15,
     photo_x: 114, photo_y: 200,
-    data_x:  14,  data_y:  450,
+    data_x:  14,  data_y:  420,
     qrcode_x: 270, qrcode_y: 420,
 };
 
@@ -309,6 +309,62 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             className="h-10 text-xs font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                                         />
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Header Style */}
+                            <div>
+                                <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Gaya Header</Label>
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {([
+                                        { id: 'solid',    label: 'Solid',   icon: '▬' },
+                                        { id: 'gradient', label: 'Gradasi', icon: '◐' },
+                                        { id: 'glass',    label: 'Glass',   icon: '◻' },
+                                        { id: 'wave',     label: 'Lengkung',icon: '⌒' },
+                                        { id: 'slanted',  label: 'Miring',  icon: '◤' },
+                                    ] as const).map((s) => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setConfig({ ...config, header_style: s.id })}
+                                            className={`h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[9px] font-black uppercase tracking-tight border transition-all duration-200 ${
+                                                (config.header_style || 'solid') === s.id
+                                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 ring-2 ring-blue-500/30 scale-105'
+                                                    : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-blue-300'
+                                            }`}
+                                        >
+                                            <span className="text-base leading-none">{s.icon}</span>
+                                            <span>{s.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer Style */}
+                            <div>
+                                <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Gaya Footer</Label>
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {([
+                                        { id: 'solid',       label: 'Solid',  icon: '▬' },
+                                        { id: 'gradient',    label: 'Gradasi',icon: '◐' },
+                                        { id: 'glass',       label: 'Glass',  icon: '◻' },
+                                        { id: 'accent-line', label: 'Garis',  icon: '—' },
+                                        { id: 'hidden',      label: 'Sembunyikan', icon: '✕' },
+                                    ] as const).map((s) => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => setConfig({ ...config, footer_style: s.id })}
+                                            className={`h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[9px] font-black uppercase tracking-tight border transition-all duration-200 ${
+                                                (config.footer_style || 'solid') === s.id
+                                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 ring-2 ring-blue-500/30 scale-105'
+                                                    : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-blue-300'
+                                            }`}
+                                        >
+                                            <span className="text-base leading-none">{s.icon}</span>
+                                            <span>{s.label}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
