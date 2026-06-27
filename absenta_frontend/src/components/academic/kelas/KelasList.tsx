@@ -37,12 +37,13 @@ import { useDebounce } from '../../../hooks/useDebounce';
 interface KelasListProps {
   onEdit?: (kelas: Kelas) => void;
   onView?: (kelas: Kelas) => void;
-  onAdd?: () => void;
+  onAdd?: (tingkat?: number) => void;
   onImport?: () => void;
   onExport?: () => void;
   isExporting?: boolean;
   refreshTrigger?: number;
   guruId?: string;
+  activeTahunPelajaran?: string;
 }
 
 const KelasList = React.memo<KelasListProps>(({ 
@@ -53,7 +54,8 @@ const KelasList = React.memo<KelasListProps>(({
   onExport,
   isExporting = false,
   refreshTrigger = 0,
-  guruId = ''
+  guruId = '',
+  activeTahunPelajaran
 }) => {
   const confirm = useConfirm();
   const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
@@ -525,7 +527,7 @@ const KelasList = React.memo<KelasListProps>(({
 
                {canManage && onAdd && (
                   <Button 
-                    onClick={onAdd}
+                    onClick={() => onAdd()}
                     variant="toolbarPrimary"
                     size="toolbar"
                   >
@@ -593,12 +595,13 @@ const KelasList = React.memo<KelasListProps>(({
             <div className="p-6">
               <KelasTreeDiagram
                 data={mappedKelasList}
-                onAdd={canManage && onAdd ? () => onAdd() : undefined}
+                onAdd={canManage && onAdd ? (tingkat) => onAdd(tingkat) : undefined}
                 onEdit={canManage && onEdit ? onEdit : undefined}
                 onDelete={canManage ? handleDelete : undefined}
                 onToggleActive={canManage ? handleToggleActive : undefined}
                 togglingId={togglingId}
                 canManage={canManage}
+                activeTahunPelajaran={activeTahunPelajaran}
               />
             </div>
           )}
@@ -660,7 +663,7 @@ const KelasList = React.memo<KelasListProps>(({
 
                  {canManage && onAdd && (
                     <Button 
-                      onClick={onAdd}
+                      onClick={() => onAdd()}
                       variant="toolbarPrimary"
                       size="toolbar"
                     >

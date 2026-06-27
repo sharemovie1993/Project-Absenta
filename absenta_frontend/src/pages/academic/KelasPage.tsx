@@ -28,6 +28,7 @@ interface ModalState {
   mode: ModalMode;
   kelasId?: string;
   isOpen: boolean;
+  initialTingkat?: number;
 }
 
 export const KelasPage: React.FC = () => {
@@ -84,7 +85,7 @@ export const KelasPage: React.FC = () => {
     }
   ], [stats, navigate]);
 
-  const handleCreateKelas = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
+  const handleCreateKelas = useCallback((tingkat?: number) => setModalState({ mode: 'create', isOpen: true, initialTingkat: tingkat }), []);
   const handleEditKelas = useCallback((k: Kelas) => setModalState({ mode: 'edit', kelasId: k.id, isOpen: true }), []);
   const handleViewKelas = useCallback((k: Kelas) => setModalState({ mode: 'view', kelasId: k.id, isOpen: true }), []);
   const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
@@ -199,6 +200,7 @@ export const KelasPage: React.FC = () => {
             isExporting={isExporting}
             refreshTrigger={refreshTrigger}
             guruId={guruIdFromUrl}
+            activeTahunPelajaran={stats?.tahun_pelajaran?.tahun || undefined}
           />
         </SectionCard>
       </div>
@@ -226,6 +228,7 @@ export const KelasPage: React.FC = () => {
             <KelasForm
               kelasId={modalState.kelasId}
               mode={modalState.mode}
+              initialTingkat={modalState.initialTingkat}
               onSuccess={handleFormSuccess}
               onCancel={handleCloseModal}
             />

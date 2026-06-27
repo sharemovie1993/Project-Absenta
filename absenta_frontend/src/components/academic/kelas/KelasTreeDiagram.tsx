@@ -12,6 +12,7 @@ interface KelasTreeDiagramProps {
   onToggleActive?: (kelas: Kelas) => void;
   togglingId?: string | null;
   canManage?: boolean;
+  activeTahunPelajaran?: string;
 }
 
 const getTingkatTheme = (tingkatNum: number) => {
@@ -67,7 +68,8 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
   onDelete,
   onToggleActive,
   togglingId,
-  canManage = false
+  canManage = false,
+  activeTahunPelajaran
 }) => {
   // Group classes by tingkat
   const classesByTingkat = useMemo(() => {
@@ -97,9 +99,14 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
         
         {/* ROOT NODE: ROMBONGAN BELAJAR */}
         <div className="relative flex flex-col items-center mb-8">
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-900/60 dark:to-slate-950 text-white px-10 py-4 rounded-2xl shadow-lg border border-slate-800 dark:border-indigo-800/30 flex flex-col items-center justify-center min-w-[260px]">
-            <span className="text-[10px] font-black tracking-widest text-indigo-400 uppercase font-mono">Master Data</span>
-            <h3 className="font-extrabold text-sm tracking-wide uppercase mt-0.5">ROMBONGAN BELAJAR</h3>
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-950 dark:via-indigo-900/60 dark:to-slate-950 text-white px-10 py-5 rounded-2xl shadow-lg border border-slate-800 dark:border-indigo-800/30 flex flex-col items-center justify-center min-w-[280px]">
+            <span className="text-[9px] font-black tracking-widest text-indigo-400 uppercase font-mono mb-1">Master Data</span>
+            <h3 className="font-extrabold text-sm tracking-wide uppercase">ROMBONGAN BELAJAR</h3>
+            {activeTahunPelajaran && (
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-350 mt-2 px-3 py-0.5 rounded-full bg-slate-850 dark:bg-slate-800/80 border border-slate-750/30 dark:border-slate-700/30">
+                Tahun Pelajaran: {activeTahunPelajaran}
+              </span>
+            )}
           </div>
           {/* Vertical line down from Root */}
           {tingkatList.length > 0 && (

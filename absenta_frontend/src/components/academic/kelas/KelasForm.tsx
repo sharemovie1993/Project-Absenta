@@ -22,6 +22,7 @@ interface KelasFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   mode?: 'create' | 'edit' | 'view';
+  initialTingkat?: number;
 }
 
 const TINGKAT_OPTIONS = [
@@ -34,7 +35,8 @@ export const KelasForm = React.memo<KelasFormProps>(({
   kelasId,
   onSuccess,
   onCancel,
-  mode = 'create'
+  mode = 'create',
+  initialTingkat
 }) => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -81,6 +83,19 @@ export const KelasForm = React.memo<KelasFormProps>(({
 
     loadDropdownData();
   }, []);
+
+  // Load initial tingkat for create mode
+  useEffect(() => {
+    if (mode === 'create' && initialTingkat !== undefined) {
+      reset({
+        nama_kelas: '',
+        tingkat: initialTingkat,
+        jurusan_id: '',
+        device_id: '',
+        is_active: true,
+      });
+    }
+  }, [mode, initialTingkat, reset]);
 
   // Load kelas data for edit/view mode
   useEffect(() => {
