@@ -207,6 +207,7 @@ export async function registerPlugins(fastify: any) {
       void reply.send('File not found');
     });
     reply.type(contentType);
+    return reply.send(stream);
   };
 
   fastify.get('/uploads/*', handleUploadRequest);
