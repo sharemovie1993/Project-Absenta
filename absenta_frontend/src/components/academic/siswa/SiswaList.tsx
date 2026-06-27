@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -23,6 +23,7 @@ import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils'
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess } from '../../../api/academic/siswa.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
+import { resetUserPassword } from '../../../api/user.api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -62,6 +63,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
+
+  // Reset Password states
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [selectedSiswaForReset, setSelectedSiswaForReset] = useState<Siswa | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
   // Menu states
@@ -295,6 +303,36 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     }
   }, [confirm]);
 
+  const handleResetPassword = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSiswaForReset?.user_id) return;
+    if (newPassword.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Konfirmasi password tidak cocok');
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      const res = await resetUserPassword(selectedSiswaForReset.user_id, newPassword);
+      if (res.success) {
+        toast.success(`Password untuk siswa ${selectedSiswaForReset.nama_siswa} berhasil direset`);
+        setResetModalOpen(false);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        toast.error(res.message || 'Gagal mereset password');
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Terjadi kesalahan saat mereset password');
+    } finally {
+      setResettingPassword(false);
+    }
+  }, [selectedSiswaForReset, newPassword, confirmPassword]);
+
   // Reset selected class if it does not belong to the selected tingkat
   useEffect(() => {
     if (filterTingkat && filterKelas) {
@@ -518,6 +556,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
             >
               <Key className="w-4 h-4" />
+            </Button>
+          )}
+          {canManage && siswa.user_id && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedSiswaForReset(siswa);
+                setNewPassword('');
+                setConfirmPassword('');
+                setResetModalOpen(true);
+              }}
+              aria-label="Reset Password Siswa"
+              className="h-8 w-8 p-0 text-slate-600 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+            >
+              <KeyRound className="w-4 h-4" />
             </Button>
           )}
           {canManage && (
@@ -912,6 +967,79 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             </Button>
           </ModalFooter>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        title="Reset Password Siswa"
+        description={`Masukkan password baru untuk siswa ${selectedSiswaForReset?.nama_siswa || ''}`}
+      >
+        <form onSubmit={handleResetPassword} className="space-y-6">
+          <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="w-10 h-10 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Kredensial Akun</h3>
+                <p className="text-[10px] text-slate-600 dark:text-slate-500 font-bold uppercase tracking-tighter">Email: {selectedSiswaForReset?.User?.email || '-'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Input
+                label="Password Baru"
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimal 6 karakter"
+                disabled={resettingPassword}
+              />
+              <Input
+                label="Konfirmasi Password"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Masukkan ulang password"
+                disabled={resettingPassword}
+              />
+            </div>
+          </div>
+
+          <ModalFooter className="pt-6 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              type="button"
+              onClick={() => setResetModalOpen(false)}
+              disabled={resettingPassword}
+            >
+              <X className="w-3.5 h-3.5 mr-2" />
+              Batal
+            </Button>
+            <Button
+              variant="toolbarPrimary"
+              size="toolbar"
+              type="submit"
+              disabled={resettingPassword}
+            >
+              {resettingPassword ? (
+                <div className="flex items-center">
+                  <Loader size="sm" className="mr-2 text-white" />
+                  Mereset...
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <KeyRound className="w-3.5 h-3.5 mr-2" />
+                  Reset Password
+                </div>
+              )}
+            </Button>
+          </ModalFooter>
+        </form>
       </Modal>
     </div>
   );
