@@ -97,10 +97,27 @@ export const PrintTab: React.FC<PrintTabProps> = ({
                                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-tight">Ukuran Kertas</Label>
                                         <SearchableSelect
                                             value={printConfig.paperSize}
-                                            onValueChange={(v: any) => setPrintConfig({ ...printConfig, paperSize: v })}
+                                            onValueChange={(v: any) => {
+                                                if (v === 'RFID') {
+                                                    setPrintConfig({
+                                                        ...printConfig,
+                                                        paperSize: v,
+                                                        orientation: config.template === 'horizontal' ? 'landscape' : 'portrait',
+                                                        marginTop: 0,
+                                                        marginBottom: 0,
+                                                        marginLeft: 0,
+                                                        marginRight: 0,
+                                                        gapX: 0,
+                                                        gapY: 0
+                                                    });
+                                                } else {
+                                                    setPrintConfig({ ...printConfig, paperSize: v });
+                                                }
+                                            }}
                                             options={[
                                                 { value: 'A4', label: 'A4 Standard' },
                                                 { value: 'F4', label: 'F4 / Folio' },
+                                                { value: 'RFID', label: 'RFID / ATM Card (CR-80)' },
                                                 { value: 'Custom', label: 'Custom' }
                                             ]}
                                             placeholder="Pilih Kertas"

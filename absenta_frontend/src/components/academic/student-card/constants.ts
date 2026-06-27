@@ -80,5 +80,6 @@ export const DEFAULT_PRINT_CONFIG: PrintConfig = {
 export const PAPER_SIZES = {
     A4: { width: 210, height: 297 },
     F4: { width: 210, height: 330 },
+    RFID: { width: 85.6, height: 54 },
     Custom: { width: 210, height: 297 }
 };

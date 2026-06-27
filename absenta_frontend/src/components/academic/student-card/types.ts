@@ -78,7 +78,7 @@ export interface StudentCardConfig {
 }
 
 export interface PrintConfig {
-    paperSize: 'A4' | 'F4' | 'Custom';
+    paperSize: 'A4' | 'F4' | 'RFID' | 'Custom';
     orientation: 'portrait' | 'landscape';
     marginTop: number;
     marginBottom: number;

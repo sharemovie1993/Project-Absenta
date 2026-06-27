@@ -250,20 +250,20 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     left: 0,
                     transform: `translate(${dataX_MM}mm, ${dataY_MM}mm)`,
                     zIndex: 15,
-                    padding: '4px 4px',
+                    padding: '3px 3px',
                     maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
                     textAlign: isCenteredCircle ? 'center' : undefined,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '3px'
+                    gap: '2px'
                 }}
             >
                 {/* NAMA SISWA */}
                 <div style={{ fontSize: `${config.student_name_font_size}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                    <div style={{ fontSize: '4px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                         Nama Siswa
                     </div>
-                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.2, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.1, textAlign: isCenteredCircle ? 'center' : undefined }}>
                         {displayStudent.nama}
                     </div>
                 </div>

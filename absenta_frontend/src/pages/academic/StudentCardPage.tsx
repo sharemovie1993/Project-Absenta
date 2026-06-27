@@ -333,8 +333,8 @@ const StudentCardPage = () => {
         const finalW = printConfig.orientation === 'portrait' ? paperW : paperH;
         const finalH = printConfig.orientation === 'portrait' ? paperH : paperW;
 
-        const cardW = config.template === 'vertical' ? 54 : 86;
-        const cardH = config.template === 'vertical' ? 86 : 54;
+        const cardW = config.template === 'vertical' ? 54 : 85.6;
+        const cardH = config.template === 'vertical' ? 85.6 : 54;
 
         const availW = finalW - printConfig.marginLeft - printConfig.marginRight;
         const availH = finalH - printConfig.marginTop - printConfig.marginBottom;

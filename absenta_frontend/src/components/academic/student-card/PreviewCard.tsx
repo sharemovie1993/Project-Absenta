@@ -263,21 +263,21 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 left: 0,
                 cursor: 'move',
                 zIndex: 15,
-                padding: `${4 * EDITOR_SCALE}px ${4 * EDITOR_SCALE}px`,
+                padding: `${3 * EDITOR_SCALE}px ${3 * EDITOR_SCALE}px`,
                 maxWidth: isCenteredCircle ? `${190 * EDITOR_SCALE}px` : (isVertical ? `${110 * EDITOR_SCALE}px` : `${160 * EDITOR_SCALE}px`),
                 textAlign: isCenteredCircle ? 'center' : undefined,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: `${3 * EDITOR_SCALE}px`
+                gap: `${2 * EDITOR_SCALE}px`
             }}
             className="mt-0 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200"
           >
             {/* NAMA SISWA */}
             <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                <div style={{ fontSize: `${4 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: `${1 * EDITOR_SCALE}px`, color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
+                <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: `${0.5 * EDITOR_SCALE}px`, color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                     Nama Siswa
                 </div>
-                <div className={`font-extrabold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}>
+                <div className={`font-extrabold leading-[1.1] ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}>
                     {displayStudent.nama}
                 </div>
             </div>

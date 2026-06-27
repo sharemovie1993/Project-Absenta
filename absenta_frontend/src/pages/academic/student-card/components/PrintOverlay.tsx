@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { PrintableCard } from '@/components/academic/student-card/PrintableCard';
 import type { StudentCardConfig, PrintConfig } from '@/components/academic/student-card/types';
 
@@ -21,13 +22,15 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
 }) => {
     if (!isPrinting) return null;
 
-    return (
+    return createPortal(
         <>
             <style>
                 {`
                 @media print {
                     @page {
-                        size: ${printConfig.paperSize === 'Custom' ? 'auto' : printConfig.paperSize} ${printConfig.orientation};
+                        size: ${printConfig.paperSize === 'RFID' 
+                            ? (printConfig.orientation === 'portrait' ? '54mm 85.6mm' : '85.6mm 54mm') 
+                            : (printConfig.paperSize === 'Custom' ? 'auto' : printConfig.paperSize)} ${printConfig.paperSize === 'RFID' ? '' : printConfig.orientation};
                         margin: 0;
                     }
                     body {
@@ -35,11 +38,21 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
                         padding: 0 !important;
                         -webkit-print-color-adjust: exact;
                     }
+                    body > * {
+                        display: none !important;
+                    }
+                    body > #print-card-overlay-portal {
+                        display: block !important;
+                        position: fixed !important;
+                        inset: 0 !important;
+                        background: white !important;
+                        z-index: 99999 !important;
+                    }
                 }
                 `}
             </style>
 
-            <div className="fixed inset-0 bg-white z-[9999] print:block hidden">
+            <div id="print-card-overlay-portal" className="fixed inset-0 bg-white z-[9999] print:block hidden">
                 {pages.map((pageStudents, pageIdx) => (
                     <div
                         key={pageIdx}
@@ -74,6 +87,7 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
                     </div>
                 ))}
             </div>
-        </>
+        </>,
+        document.body
     );
 };

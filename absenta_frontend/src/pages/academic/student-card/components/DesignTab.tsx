@@ -35,7 +35,7 @@ import type { StudentCardConfig } from '@/components/academic/student-card/types
 const HCOORDS = {
     photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
     photo_x: 14,  photo_y: 170,
-    data_x:  180, data_y:  220,
+    data_x:  180, data_y:  190,
     qrcode_x: 497, qrcode_y: 200,
 };
 const VCOORDS = {
@@ -49,7 +49,7 @@ const VCOORDS = {
 const V2_HCOORDS = {
     photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
     photo_x: 490, photo_y: 170,
-    data_x:  14,  data_y:  220,
+    data_x:  14,  data_y:  190,
     qrcode_x: 350, qrcode_y: 200,
 };
 
