@@ -262,6 +262,36 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     previewStudent,
     sekolah
 }) => {
+    const activePreset = CARD_PRESETS.find(p => 
+        p.template === config.template &&
+        p.primary_color === config.primary_color &&
+        p.secondary_color === config.secondary_color &&
+        p.header_style === config.header_style &&
+        p.footer_style === config.footer_style &&
+        p.card_pattern === config.card_pattern
+    );
+    const activePresetName = activePreset ? activePreset.name : '';
+
+    const applyPreset = (presetName: string) => {
+        const preset = CARD_PRESETS.find(p => p.name === presetName);
+        if (!preset) return;
+
+        const resolvedNama    = sekolah?.name    || sekolah?.nama    || sekolah?.data?.name    || sekolah?.data?.nama    || '';
+        const resolvedAlamat  = sekolah?.address || sekolah?.alamat  || sekolah?.data?.address || sekolah?.data?.alamat  || '';
+        const resolvedLogo    = sekolah?.logo_url || sekolah?.data?.logo_url || '';
+
+        setConfig({
+            ...config,
+            ...preset,
+            school_name:    resolvedNama    || config.school_name    || '',
+            school_address: resolvedAlamat  || config.school_address || '',
+            logo_url:       resolvedLogo    || config.logo_url       || '',
+            header_text:    config.header_text    || '',
+            subheader_text: config.subheader_text || '',
+            card_title:     config.card_title     || preset.card_title || '',
+        });
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Control Sidebar */}
@@ -276,49 +306,28 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                     <SettingsGroup title="Pustaka Preset Kartu" defaultOpen={true}>
                         <div className="space-y-3">
                             <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pilih Preset Template:</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {CARD_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset.name}
-                                        type="button"
-                                        onClick={() => {
-                                            // Consistent with kopsurat: tenantInfo.name > sekolah.nama
-                                            const resolvedNama    = sekolah?.name    || sekolah?.nama    || sekolah?.data?.name    || sekolah?.data?.nama    || '';
-                                            const resolvedAlamat  = sekolah?.address || sekolah?.alamat  || sekolah?.data?.address || sekolah?.data?.alamat  || '';
-                                            const resolvedLogo    = sekolah?.logo_url || sekolah?.data?.logo_url || '';
-
-                                            // Preset hanya mengubah GAYA VISUAL — bukan identitas sekolah
-                                            // school_name, school_address, logo_url, header_text, subheader_text
-                                            // selalu diambil dari tenant/config yang sudah ada
-                                            setConfig({
-                                                ...config,
-                                                ...preset,
-                                                // Identitas sekolah: selalu dari tenantInfo, jangan dari preset
-                                                school_name:    resolvedNama    || config.school_name    || '',
-                                                school_address: resolvedAlamat  || config.school_address || '',
-                                                logo_url:       resolvedLogo    || config.logo_url       || '',
-                                                header_text:    config.header_text    || '',
-                                                subheader_text: config.subheader_text || '',
-                                                card_title:     config.card_title     || preset.card_title || '',
-                                            });
-                                        }}
-                                        className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${
-                                            config.primary_color === preset.primary_color && config.template === preset.template
-                                                ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-900/10 ring-2 ring-blue-500/20'
-                                                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-1.5 z-10">
-                                            <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: preset.primary_color }} />
-                                            <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: preset.header_bg_color }} />
-                                        </div>
-                                        <div className="z-10">
-                                            <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 block truncate leading-snug uppercase tracking-tight">{preset.name}</span>
-                                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{preset.template}</span>
-                                        </div>
-                                        <div className="absolute right-[-10px] bottom-[-10px] w-8 h-8 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform duration-500" style={{ backgroundColor: preset.primary_color }} />
-                                    </button>
-                                ))}
+                            <div className="relative">
+                                <select
+                                    value={activePresetName}
+                                    onChange={(e) => applyPreset(e.target.value)}
+                                    className="w-full h-11 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-semibold text-slate-700 dark:text-slate-200 cursor-pointer shadow-sm"
+                                >
+                                    <option value="" disabled>-- Pilih Preset Desain --</option>
+                                    <optgroup label="Layout Horizontal (Lanskap)" className="font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
+                                        {CARD_PRESETS.filter(p => p.template === 'horizontal').map(p => (
+                                            <option key={p.name} value={p.name} className="font-semibold text-slate-800 dark:text-slate-200">
+                                                {p.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="Layout Vertikal (Potret)" className="font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
+                                        {CARD_PRESETS.filter(p => p.template === 'vertical').map(p => (
+                                            <option key={p.name} value={p.name} className="font-semibold text-slate-800 dark:text-slate-200">
+                                                {p.name}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                </select>
                             </div>
                         </div>
                     </SettingsGroup>
