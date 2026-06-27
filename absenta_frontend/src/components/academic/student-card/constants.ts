@@ -15,18 +15,18 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   show_photo: true,
   show_qrcode: true,
   photo_x: 114,
-  photo_y: 220,
+  photo_y: 200,
   photo_scale: 1,
-  qrcode_x: 245,
-  qrcode_y: 480,
+  qrcode_x: 270,
+  qrcode_y: 420,
   qrcode_scale: 1,
   logo_url: '',
   
   // Element Dimensions (mm)
   photo_width: 24,
   photo_height: 32,
-  qrcode_width: 18,
-  qrcode_height: 18,
+  qrcode_width: 15,
+  qrcode_height: 15,
   
   // Card Dimensions (mm)
   card_width: 85.6,
@@ -55,7 +55,7 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
 
   // Data block position
   data_x: 14,
-  data_y: 485,
+  data_y: 475,
 
   // Pattern
   card_pattern: 'solid',

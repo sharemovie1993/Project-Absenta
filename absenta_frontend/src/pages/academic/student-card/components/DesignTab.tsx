@@ -38,10 +38,10 @@ const HCOORDS = {
     qrcode_x: 497, qrcode_y: 200,
 };
 const VCOORDS = {
-    photo_width: 24, photo_height: 32, qrcode_width: 18, qrcode_height: 18,
-    photo_x: 114, photo_y: 220,
-    data_x:  14,  data_y:  485,
-    qrcode_x: 245, qrcode_y: 480,
+    photo_width: 24, photo_height: 32, qrcode_width: 15, qrcode_height: 15,
+    photo_x: 114, photo_y: 200,
+    data_x:  14,  data_y:  475,
+    qrcode_x: 270, qrcode_y: 420,
 };
 
 const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
