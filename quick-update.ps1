@@ -22,14 +22,14 @@ git reset --hard origin/main
 Write-Host "[2/4] Sinkronisasi skema database (Prisma)..." -ForegroundColor Yellow
 cd "$appRoot\absenta_backend"
 npx prisma generate
-npx prisma db push --accept-data-loss
+npx prisma migrate deploy
 
 # 3. Cek & Install Dependensi
 Write-Host "[3/4] Memperbarui dependensi..." -ForegroundColor Yellow
 cd "$appRoot\absenta_backend"
-npm install --omit=dev --no-audit
+npm install --omit=dev --no-audit --no-fund --prefer-offline
 cd "$appRoot\absenta_frontend"
-npm install --no-audit
+npm install --no-audit --no-fund --prefer-offline
 
 # 4. Shadow Build Strategy (Untuk menghindari File Lock di Windows)
 Write-Host "[4/4] Melakukan kompilasi (Shadow Build)..." -ForegroundColor Yellow
