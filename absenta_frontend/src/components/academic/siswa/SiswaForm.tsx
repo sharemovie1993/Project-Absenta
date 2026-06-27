@@ -124,6 +124,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         reset({
           nis: siswa.nis || '',
           nama_siswa: siswa.nama_siswa || '',
+          email: siswa.User?.email || '',
           no_hp: siswa.no_hp || '',
           alamat: siswa.alamat || '',
           tanggal_lahir: siswa.tanggal_lahir ? siswa.tanggal_lahir.split('T')[0] : '',

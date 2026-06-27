@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hash, User as UserIcon, Phone, MapPin, Calendar, Users, Bus, Radio, Home } from 'lucide-react';
+import { Hash, User as UserIcon, Phone, MapPin, Calendar, Users, Bus, Radio, Home, Mail } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Textarea } from '../../../ui/Textarea';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
@@ -30,6 +30,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 <DetailRow icon={<Hash size={16} />} label="NIS" value={watch('nis')} />
                 <DetailRow icon={<Hash size={16} />} label="NISN" value={watch('nisn') || '-'} />
                 <DetailRow icon={<UserIcon size={16} />} label="Nama Lengkap" value={watch('nama_siswa')} />
+                <DetailRow icon={<Mail size={16} />} label="Email Pengguna (User)" value={watch('email') || '-'} />
                 <DetailRow icon={<Phone size={16} />} label="Nomor HP" value={watch('no_hp')} />
                 <DetailRow icon={<MapPin size={16} />} label="Tempat Lahir" value={watch('tempat_lahir')} />
                 <DetailRow icon={<Calendar size={16} />} label="Tanggal Lahir" value={watch('tanggal_lahir')} />
@@ -94,6 +95,25 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 />
                 {errors.nama_siswa && (
                     <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama_siswa.message}</p>
+                )}
+            </div>
+
+            <div className="space-y-2 group">
+                <div className="flex items-center justify-between px-1">
+                    <Label htmlFor="email" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                        Email Pengguna (Akses Log In)
+                    </Label>
+                </div>
+                <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="nama@sekolah.sch.id"
+                    disabled={isViewMode}
+                    className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.email ? 'border-red-500' : ''}`}
+                />
+                {errors.email && (
+                    <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.email.message}</p>
                 )}
             </div>
 

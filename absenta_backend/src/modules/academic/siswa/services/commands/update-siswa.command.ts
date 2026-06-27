@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { parentAuthService } from '@/modules/parent-app/services/parent-auth.service';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { siswaDb } from '../repositories/siswa.db';
@@ -74,6 +75,65 @@ export async function updateSiswaCommand(
     }
 
     dataToUpdate.user_id = input.user_id;
+  }
+
+  // Handle email synchronization with User record
+  if (input.email && input.email.trim() !== '') {
+    const targetEmail = input.email.trim().toLowerCase();
+    
+    if (existingSiswa.user_id) {
+      const linkedUser = await siswaDb.user.findUnique({
+        where: { id: existingSiswa.user_id },
+      });
+      if (linkedUser && targetEmail !== linkedUser.email.toLowerCase()) {
+        const existingUserWithEmail = await siswaDb.user.findFirst({
+          where: {
+            email: targetEmail,
+            id: { not: existingSiswa.user_id }
+          }
+        });
+        if (existingUserWithEmail) {
+          throw new Error('Email sudah digunakan oleh pengguna lain');
+        }
+        await siswaDb.user.update({
+          where: { id: existingSiswa.user_id },
+          data: { email: targetEmail }
+        });
+        console.log(`[SYNC-USER] Successfully updated linked User email to: ${targetEmail}`);
+      }
+    } else {
+      // Create user account if it doesn't exist
+      const existingUserWithEmail = await siswaDb.user.findFirst({
+        where: { email: targetEmail }
+      });
+      if (existingUserWithEmail) {
+        throw new Error('Email sudah digunakan oleh pengguna lain');
+      }
+      
+      const siswaRole = await siswaDb.role.findFirst({
+        where: { name: 'SISWA' }
+      });
+      if (!siswaRole) {
+        throw new Error('Role SISWA tidak ditemukan');
+      }
+      
+      const defaultPass = input.nisn || input.nis || existingSiswa.nisn || existingSiswa.nis || '123456';
+      const hashedPassword = await bcrypt.hash(defaultPass, 12);
+      
+      const newUser = await siswaDb.user.create({
+        data: {
+          email: targetEmail,
+          password: hashedPassword,
+          full_name: input.nama_siswa || existingSiswa.nama_siswa,
+          role_id: siswaRole.id,
+          tenant_id: existingSiswa.tenant_id,
+          email_verified: false,
+        }
+      });
+      
+      dataToUpdate.user_id = newUser.id;
+      console.log(`[SYNC-USER] Created new linked User account for student with email: ${targetEmail}`);
+    }
   }
 
   // Sanitize data: don't overwrite with null/empty for important fields

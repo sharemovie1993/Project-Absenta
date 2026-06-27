@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const siswaSchema = z.object({
   nis: z.string().max(20, 'NIS maksimal 20 karakter').optional().or(z.literal('')),
   nama_siswa: z.string().min(1, 'Nama siswa wajib diisi'),
+  email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
   no_hp: z.string().optional().or(z.literal('')),
   alamat: z.string().optional().or(z.literal('')),
   tanggal_lahir: z.string().optional().or(z.literal('')),
