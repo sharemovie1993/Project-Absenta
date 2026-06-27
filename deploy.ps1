@@ -112,6 +112,12 @@ $Domain {
     # Forward API requests to Backend
     reverse_proxy /api/* localhost:$BPort
 
+    # WebSocket Support (socket.io)
+    reverse_proxy /socket.io/* localhost:$BPort {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+
     # Forward everything else to Frontend
     reverse_proxy /* localhost:$FPort
 
