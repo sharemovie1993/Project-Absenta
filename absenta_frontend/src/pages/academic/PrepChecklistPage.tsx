@@ -216,7 +216,7 @@ const PrepChecklistPage: React.FC = () => {
     return classes.find(c => c.id === selectedClassId);
   }, [classes, selectedClassId]);
 
-  const isLandscape = ['attendance', 'roster'].includes(selectedPrintType);
+  const isLandscape = false;
 
   const waliKelasObj = useMemo(() => {
     return selectedClassObj?.WaliKelas?.[0]?.Guru as any;
@@ -311,11 +311,11 @@ const PrepChecklistPage: React.FC = () => {
         doc.text(`: ${(selectedClassObj?.Jurusan as any)?.nama || (selectedClassObj?.Jurusan as any)?.nama_jurusan || 'Teknik Elektronika'}`, 58, 43);
         doc.text(`: ${selectedClassObj?.nama_kelas || 'X TE 1'}`, 58, 47);
 
-        // Right info labels
-        doc.text('Hari / Tanggal :', 160, 43);
-        doc.text('...........................................................................', 183, 43);
-        doc.text('Hari / Tanggal :', 230, 43);
-        doc.text('...........................................................................', 253, 43);
+        // Right info labels stacked vertically for Portrait A4
+        doc.text('Hari / Tanggal 1 :', 110, 43);
+        doc.text('................................................................', 138, 43);
+        doc.text('Hari / Tanggal 2 :', 110, 47);
+        doc.text('................................................................', 138, 47);
 
         const head = [
           [
@@ -351,14 +351,14 @@ const PrepChecklistPage: React.FC = () => {
           head: head as any,
           body: body as any,
           theme: 'grid',
-          styles: { fontSize: 6.5, font: 'Helvetica', cellPadding: 0.8 },
+          styles: { fontSize: 5.5, font: 'Helvetica', cellPadding: 0.8 },
           headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineWidth: 0.15, lineColor: [0, 0, 0] },
           bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [0, 0, 0] },
           columnStyles: {
-            0: { cellWidth: 7, halign: 'center' },
-            1: { cellWidth: 18, halign: 'center' },
-            2: { cellWidth: 18, halign: 'center' },
-            3: { cellWidth: 46 },
+            0: { cellWidth: 6, halign: 'center' },
+            1: { cellWidth: 15, halign: 'center' },
+            2: { cellWidth: 15, halign: 'center' },
+            3: { cellWidth: 38 },
           }
         });
       } else if (selectedPrintType === 'journal') {
@@ -430,10 +430,10 @@ const PrepChecklistPage: React.FC = () => {
           headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [0, 0, 0] },
           bodyStyles: { lineWidth: 0.15, lineColor: [0, 0, 0], textColor: [15, 23, 42] },
           columnStyles: {
-            0: { cellWidth: 7, halign: 'center' },
-            1: { cellWidth: 18, halign: 'center' },
-            2: { cellWidth: 50 },
-            3: { cellWidth: 7, halign: 'center' },
+            0: { cellWidth: 6, halign: 'center' },
+            1: { cellWidth: 16, halign: 'center' },
+            2: { cellWidth: 48 },
+            3: { cellWidth: 6, halign: 'center' },
           }
         });
       } else if (selectedPrintType === 'sk_load') {
