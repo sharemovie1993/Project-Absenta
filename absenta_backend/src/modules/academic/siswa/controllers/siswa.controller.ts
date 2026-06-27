@@ -29,6 +29,8 @@ export const siswaController = {
       const kelas_id = request.query.kelas_id as string | undefined;
       const status = request.query.status as string | undefined;
       const context = request.query.context as string | undefined;
+      const tingkat = request.query.tingkat as string | undefined;
+      const gender = request.query.gender as string | undefined;
       
       const search_fields_param = request.query.search_fields as string | undefined;
       const searchFields = search_fields_param ? search_fields_param.split(',').map(f => f.trim()) : undefined;
@@ -42,6 +44,8 @@ export const siswaController = {
         status,
         searchFields,
         context,
+        tingkat,
+        gender,
       });
 
       return reply.status(200).send({

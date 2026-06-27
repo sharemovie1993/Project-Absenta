@@ -9,6 +9,8 @@ export interface PaginationParams {
   status?: string;
   searchFields?: string[];
   context?: string;
+  tingkat?: string | number;
+  gender?: string;
 }
 
 export interface SiswaResponse {

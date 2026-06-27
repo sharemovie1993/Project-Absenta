@@ -52,6 +52,19 @@ export async function getAllSiswaQuery(
     whereClause.status = safeStatus;
   }
 
+  const safeGender = typeof params?.gender === 'string' && params.gender.trim() !== '' ? params.gender.trim() : undefined;
+  if (safeGender) {
+    whereClause.jenis_kelamin = safeGender;
+  }
+
+  const safeTingkat = params?.tingkat !== undefined && String(params.tingkat).trim() !== '' ? Number(params.tingkat) : undefined;
+  if (safeTingkat !== undefined && !isNaN(safeTingkat)) {
+    if (!whereClause.Kelas) {
+      whereClause.Kelas = {};
+    }
+    whereClause.Kelas.tingkat = safeTingkat;
+  }
+
   // Apply Isolate/Scope filter from Organization Engine
   const isElevatedContext = params?.context === 'elevated' && org?.is_elevated_context === true;
 

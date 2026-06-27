@@ -75,10 +75,20 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   };
   
   // Filter states
+  const [filterTingkat, setFilterTingkat] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterGender, setFilterGender] = useState('');
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
+
+  // Filtered class list options based on selected tingkat
+  const filteredKelasOptions = useMemo(() => {
+    let list = kelasList;
+    if (filterTingkat) {
+      list = list.filter(k => String(k.tingkat) === filterTingkat);
+    }
+    return [{ label: 'Semua Kelas', value: '' }, ...list.map(k => ({ label: k.nama_kelas, value: k.id }))];
+  }, [kelasList, filterTingkat]);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -160,7 +170,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const fetchSiswas = useCallback(async (page = 1, search = '') => {
     try {
       setLoading(true);
-      const response = await getSiswaList(page, itemsPerPage, search, filterKelas, filterStatus, filterGender);
+      const response = await getSiswaList(page, itemsPerPage, search, filterKelas, filterStatus, filterGender, '', filterTingkat);
       
       if (response.success) {
         setSiswas(response.data);
@@ -176,7 +186,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [itemsPerPage, filterKelas, filterStatus, filterGender]);
+  }, [itemsPerPage, filterKelas, filterStatus, filterGender, filterTingkat]);
 
   const handleDeleteAll = useCallback(async () => {
     const ok = await confirm({
@@ -284,6 +294,16 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       toast.error(msg);
     }
   }, [confirm]);
+
+  // Reset selected class if it does not belong to the selected tingkat
+  useEffect(() => {
+    if (filterTingkat && filterKelas) {
+      const selectedKelasObj = kelasList.find(k => k.id === filterKelas);
+      if (selectedKelasObj && String(selectedKelasObj.tingkat) !== filterTingkat) {
+        setFilterKelas('');
+      }
+    }
+  }, [filterTingkat, filterKelas, kelasList]);
 
   // Effect for search and filters
   useEffect(() => {
@@ -693,11 +713,28 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                     </div>
                     
                     <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                      <div className="w-full md:w-36">
+                        <SearchableSelect
+                          value={filterTingkat}
+                          onValueChange={setFilterTingkat}
+                          options={[
+                            { label: 'Semua Tingkat', value: '' },
+                            { label: 'Tingkat X', value: '10' },
+                            { label: 'Tingkat XI', value: '11' },
+                            { label: 'Tingkat XII', value: '12' }
+                          ]}
+                          placeholder="Semua Tingkat"
+                          searchPlaceholder="Cari Tingkat..."
+                          className="w-full"
+                          triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                        />
+                      </div>
+
                       <div className="w-full md:w-44">
                         <SearchableSelect
                           value={filterKelas}
                           onValueChange={setFilterKelas}
-                          options={[{ label: 'Semua Kelas', value: '' }, ...kelasList.map(k => ({ label: k.nama_kelas, value: k.id }))]}
+                          options={filteredKelasOptions}
                           placeholder="Semua Kelas"
                           searchPlaceholder="Cari Kelas..."
                           className="w-full"

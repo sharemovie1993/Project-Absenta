@@ -47,7 +47,8 @@ export const getSiswaList = async (
   kelas_id = '', 
   status = '', 
   gender = '',
-  user_id = ''
+  user_id = '',
+  tingkat = ''
 ): Promise<PaginatedResponse<Siswa>> => {
   const params: any = { page, limit };
   if (search) params.search = search;
@@ -55,6 +56,7 @@ export const getSiswaList = async (
   if (status) params.status = status;
   if (gender) params.gender = gender;
   if (user_id) params.user_id = user_id;
+  if (tingkat) params.tingkat = tingkat;
 
   return requestWithFallback<PaginatedResponse<Siswa>>('get', '/academic/siswa', { params });
 };
