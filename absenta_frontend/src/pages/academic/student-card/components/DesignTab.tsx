@@ -203,13 +203,19 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     <button
                                         key={preset.name}
                                         type="button"
-                                        onClick={() => setConfig({
-                                            ...config,
-                                            ...preset,
-                                            school_name: config.school_name || sekolah?.nama || preset.school_name || '',
-                                            school_address: config.school_address || sekolah?.alamat || preset.school_address || '',
-                                            logo_url: config.logo_url || sekolah?.logo_url || preset.logo_url || ''
-                                        })}
+                                        onClick={() => {
+                                            const sekolahNama = sekolah?.nama || sekolah?.data?.nama || '';
+                                            const sekolahAlamat = sekolah?.alamat || sekolah?.data?.alamat || '';
+                                            const sekolahLogo = sekolah?.logo_url || sekolah?.data?.logo_url || '';
+                                            setConfig({
+                                                ...config,
+                                                ...preset,
+                                                // Always populate from sekolah profile first, fallback to manual config edit
+                                                school_name: sekolahNama || config.school_name || '',
+                                                school_address: sekolahAlamat || config.school_address || '',
+                                                logo_url: sekolahLogo || config.logo_url || '',
+                                            });
+                                        }}
                                         className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${
                                             config.primary_color === preset.primary_color && config.template === preset.template
                                                 ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-900/10 ring-2 ring-blue-500/20'

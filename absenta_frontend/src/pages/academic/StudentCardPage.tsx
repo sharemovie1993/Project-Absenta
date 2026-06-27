@@ -144,16 +144,21 @@ const StudentCardPage = () => {
         }
     }, [siswaData, previewStudentId]);
 
+    // Normalize sekolah: handle both { nama } and { data: { nama } } shapes
+    const sekolahData = (sekolah as any)?.data || sekolah;
+    const sekolahNama: string = sekolahData?.nama || '';
+    const sekolahAlamat: string = sekolahData?.alamat || '';
+    const sekolahLogo: string = sekolahData?.logo_url || '';
+
     useEffect(() => {
         if (remoteConfig) {
-            const namaSekolah = sekolah?.nama || '';
-            const alamatSekolah = sekolah?.alamat || '';
-
             setConfig(prev => ({
                 ...prev,
                 ...remoteConfig,
-                school_name: remoteConfig.school_name || namaSekolah,
-                school_address: remoteConfig.school_address || alamatSekolah,
+                // sekolah profile takes priority over stored config for school identity
+                school_name: sekolahNama || remoteConfig.school_name || prev.school_name || '',
+                school_address: sekolahAlamat || remoteConfig.school_address || prev.school_address || '',
+                logo_url: sekolahLogo || remoteConfig.logo_url || prev.logo_url || '',
             }));
 
             setPrintConfig(prev => ({
@@ -172,17 +177,18 @@ const StudentCardPage = () => {
                 autoCenterY: remoteConfig.print_auto_center_y ?? prev.autoCenterY,
             }));
         }
-    }, [remoteConfig, sekolah]);
+    }, [remoteConfig, sekolahNama, sekolahAlamat, sekolahLogo]);
 
     useEffect(() => {
-        if (sekolah && !remoteConfig) {
+        if (sekolahNama && !remoteConfig) {
             setConfig(prev => ({
                 ...prev,
-                school_name: prev.school_name || sekolah.nama,
-                school_address: prev.school_address || sekolah.alamat || ''
+                school_name: sekolahNama,
+                school_address: sekolahAlamat,
+                logo_url: sekolahLogo || prev.logo_url || '',
             }));
         }
-    }, [sekolah, remoteConfig]);
+    }, [sekolahNama, sekolahAlamat, sekolahLogo, remoteConfig]);
 
     const saveConfigMutation = useMutation({
         mutationFn: studentCardConfigApi.updateConfig,
@@ -493,7 +499,7 @@ const StudentCardPage = () => {
                                     setConfig={setConfig}
                                     handleDragEnd={handleDragEnd}
                                     previewStudent={previewStudent}
-                                    sekolah={sekolah}
+                                    sekolah={sekolahData}
                                 />
                             </TabsContent>
                         )}
