@@ -153,6 +153,12 @@ const KelasList = React.memo<KelasListProps>(({
 
   // Toggle active status handler
   const handleToggleActive = async (kelas: Kelas) => {
+    // Protection: Only allow deactivation if class has zero students
+    if (kelas.is_active && (kelas._count?.Siswa || 0) > 0) {
+      toast.error(`Kelas ${kelas.nama_kelas} tidak dapat dinonaktifkan karena masih memiliki siswa terdaftar.`);
+      return;
+    }
+
     try {
       setTogglingId(kelas.id);
       const targetState = !kelas.is_active;
