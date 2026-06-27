@@ -40,7 +40,7 @@ const HCOORDS = {
 const VCOORDS = {
     photo_width: 24, photo_height: 32, qrcode_width: 15, qrcode_height: 15,
     photo_x: 114, photo_y: 200,
-    data_x:  14,  data_y:  475,
+    data_x:  14,  data_y:  450,
     qrcode_x: 270, qrcode_y: 420,
 };
 

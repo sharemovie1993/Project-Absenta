@@ -55,7 +55,7 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
 
   // Data block position
   data_x: 14,
-  data_y: 475,
+  data_y: 450,
 
   // Pattern
   card_pattern: 'solid',
