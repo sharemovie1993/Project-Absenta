@@ -311,18 +311,16 @@ const PrepChecklistPage: React.FC = () => {
         doc.text(`: ${(selectedClassObj?.Jurusan as any)?.nama || (selectedClassObj?.Jurusan as any)?.nama_jurusan || 'Teknik Elektronika'}`, 58, 43);
         doc.text(`: ${selectedClassObj?.nama_kelas || 'X TE 1'}`, 58, 47);
 
-        // Right info labels stacked vertically for Portrait A4
-        doc.text('Hari / Tanggal 1 :', 110, 43);
-        doc.text('................................................................', 138, 43);
-        doc.text('Hari / Tanggal 2 :', 110, 47);
-        doc.text('................................................................', 138, 47);
-
         const head = [
           [
-            { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NIS', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NISN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-            { content: 'NAMA SISWA', rowSpan: 2, styles: { valign: 'middle' } },
+            { content: 'NO', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NIS', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NISN', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'NAMA SISWA', rowSpan: 3, styles: { valign: 'middle' } },
+            { content: 'Hari / Tanggal :\n....................................................', colSpan: 12, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'Hari / Tanggal :\n....................................................', colSpan: 12, styles: { halign: 'center', valign: 'middle' } }
+          ],
+          [
             { content: 'JAM KE-', colSpan: 12, styles: { halign: 'center' } },
             { content: 'JAM KE-', colSpan: 12, styles: { halign: 'center' } }
           ],
