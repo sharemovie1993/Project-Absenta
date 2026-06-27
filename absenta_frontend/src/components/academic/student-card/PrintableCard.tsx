@@ -67,7 +67,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
 
     return (
         <div 
-            className={`relative bg-white overflow-hidden break-inside-avoid page-break-inside-avoid ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
+            className={`relative bg-white overflow-hidden break-inside-avoid page-break-inside-avoid rounded-2xl ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
             style={{
                 width: `${widthMM}mm`,
                 height: `${heightMM}mm`,
@@ -79,9 +79,18 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 borderStyle: config.show_border ? 'solid' : undefined
             }}
         >
+            {/* Subtle Decorative Background Lines */}
+            <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
+                 style={{
+                   backgroundImage: 'radial-gradient(circle at 100% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%), radial-gradient(circle at 0% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%)',
+                   backgroundSize: '24px 24px'
+                 }}
+            />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+
             {/* Header */}
             <div 
-                className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2"
+                className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 border-b border-white/10 shadow-sm animate-in fade-in"
                 style={{ 
                     backgroundColor: config.header_bg_color || config.primary_color, 
                     height: `${config.header_height || 18}mm`,
@@ -93,22 +102,32 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <div className="flex items-center gap-2 px-2 w-full justify-center">
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
-                         <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-6 h-6 object-contain" />
+                         <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
                     ) : (
-                        <img src="/logo.png" alt="Absenta Logo" className="w-6 h-6 object-contain" />
+                         <img src="/logo.png" alt="Absenta Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
                     )}
                     <div className="text-center" style={{ color: 'inherit' }}>
-                        <h3 className="font-bold uppercase" style={{ fontSize: `${config.header_font_size}pt` }}>{config.header_text}</h3>
-                        <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size}pt` }}>{config.subheader_text}</h4>
-                        <h2 className="font-bold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size}pt` }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
-                        <p className="opacity-90" style={{ fontSize: `${config.school_address_font_size}pt` }}>{config.school_address || 'Alamat'}</p>
+                        <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>
+                        <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>
+                        <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
+                        <p className="opacity-90 font-medium" style={{ fontSize: `${config.school_address_font_size}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat'}</p>
                     </div>
                 </div>
             </div>
 
+            {/* Elegant header wave decoration */}
+            <div 
+              className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
+              style={{
+                top: `${config.header_height || 18}mm`,
+                height: '3mm',
+                background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
+              }}
+            />
+
             {/* Title */}
-            <div className="absolute top-[22%] w-full text-center">
-                 <h1 className="font-bold uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
+            <div className="absolute top-[22%] w-full text-center pointer-events-none">
+                 <h1 className="font-black uppercase tracking-widest text-slate-800" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
                     {config.card_title}
                  </h1>
             </div>
@@ -123,18 +142,18 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     zIndex: 15
                 }}
             >
-                 <div className="mt-0 space-y-1 text-black">
-                    <div className="flex" style={{ fontSize: `${config.student_name_font_size}pt` }}>
-                      <span className="w-12 font-bold">Nama</span>
-                      <span>: {displayStudent.nama}</span>
+                 <div className="mt-0 space-y-1 text-slate-700">
+                    <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_name_font_size}pt` }}>
+                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Nama:</span>
+                      <span className="font-extrabold text-slate-900">{displayStudent.nama}</span>
                     </div>
-                    <div className="flex" style={{ fontSize: `${config.student_details_font_size}pt` }}>
-                      <span className="w-12 font-bold">NIS</span>
-                      <span>: {displayStudent.nis}</span>
+                    <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
+                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">NIS/N:</span>
+                      <span className="font-bold text-slate-700">{displayStudent.nis} / {displayStudent.nisn || '-'}</span>
                     </div>
-                     <div className="flex" style={{ fontSize: `${config.student_details_font_size}pt` }}>
-                      <span className="w-12 font-bold">Kelas</span>
-                      <span>: {displayStudent.kelas?.nama}</span>
+                     <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
+                      <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Kelas:</span>
+                      <span className="font-bold text-slate-700">{displayStudent.kelas?.nama}</span>
                     </div>
                  </div>
             </div>
@@ -151,7 +170,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         height: `${photoH}mm`,
                         zIndex: 20
                     }}
-                    className="bg-slate-100 border border-slate-300 flex items-center justify-center overflow-hidden"
+                    className="bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shadow-md"
                 >
                     {student.foto ? (
                         <img src={student.foto} className="w-full h-full object-cover" />
@@ -171,14 +190,15 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         transform: `translate(${qrX}px, ${qrY}px)`,
                         zIndex: 20
                     }}
+                    className="bg-white p-1 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center"
                 >
-                    <img src={qrUrl} alt="QR" style={{ width: `${qrW}mm`, height: `${qrH}mm` }} />
+                    <img src={qrUrl} alt="QR" style={{ width: `${qrW}mm`, height: `${qrH}mm` }} className="object-contain" />
                 </div>
             )}
 
              {/* Footer Decoration */}
             <div 
-                className="absolute bottom-0 left-0 right-0 h-2"
+                className="absolute bottom-0 left-0 right-0 h-2 shadow-inner"
                 style={{ backgroundColor: config.primary_color }}
             />
         </div>

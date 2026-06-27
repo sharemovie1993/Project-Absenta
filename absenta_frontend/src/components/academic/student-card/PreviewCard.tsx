@@ -82,7 +82,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     return (
       <div className="flex justify-center items-center p-8 bg-slate-100 rounded-lg overflow-auto">
         <div 
-          className="relative bg-white shadow-2xl overflow-hidden"
+          className="relative bg-white shadow-2xl overflow-hidden rounded-2xl"
           style={{
             width: `${width}px`,
             height: `${height}px`,
@@ -92,9 +92,18 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             boxShadow: config.show_border ? 'none' : '0 25px 50px -12px rgb(0 0 0 / 0.25)' 
           }}
         >
+          {/* Subtle Decorative Background Lines */}
+          <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
+               style={{
+                 backgroundImage: 'radial-gradient(circle at 100% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%), radial-gradient(circle at 0% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%)',
+                 backgroundSize: '24px 24px'
+               }}
+          />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+
           {/* Header */}
           <div 
-            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4"
+            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 border-b border-white/10 shadow-sm"
             style={{ 
                 backgroundColor: config.header_bg_color || config.primary_color, 
                 height: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
@@ -104,22 +113,32 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <div className="flex items-center gap-3 px-4 w-full justify-center">
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
-                <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-10 h-10 object-contain" />
+                <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
               ) : (
-                <img src="/logo.png" alt="Absenta Logo" className="w-10 h-10 object-contain" />
+                <img src="/logo.png" alt="Absenta Logo" className="w-10 h-10 object-contain drop-shadow-md" />
               )}
               <div className="text-center" style={{ color: 'inherit' }}>
                 <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>
                 <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>
-                <h2 className="font-bold leading-tight mt-1" style={{ fontSize: `${config.school_name_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
-                <p className="opacity-90" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>
+                <h2 className="font-extrabold leading-tight mt-1" style={{ fontSize: `${config.school_name_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
+                <p className="opacity-90 font-medium" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>
               </div>
             </div>
           </div>
 
+          {/* Elegant header wave decoration */}
+          <div 
+            className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
+            style={{
+              top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
+              height: '14px',
+              background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
+            }}
+          />
+
           {/* Card Title */}
-          <div className="absolute top-[22%] w-full text-center">
-             <h1 className="font-bold uppercase tracking-widest text-slate-800" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
+          <div className="absolute top-[22%] w-full text-center pointer-events-none">
+             <h1 className="font-black uppercase tracking-widest text-slate-800" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
                 {config.card_title}
              </h1>
           </div>
@@ -139,19 +158,19 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 cursor: 'move',
                 zIndex: 15
             }}
-            className="mt-0 space-y-2 text-slate-700 p-2 border border-transparent hover:border-dashed hover:border-slate-300 rounded transition-colors"
+            className="mt-0 space-y-2 text-slate-700 p-2.5 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200"
           >
-            <div className="flex" style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
-                <span className="w-24 font-semibold">Nama</span>
-                <span>: {displayStudent.nama}</span>
+            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Nama:</span>
+                <span className="font-extrabold text-slate-900 dark:text-slate-100">{displayStudent.nama}</span>
             </div>
-            <div className="flex" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
-                <span className="w-24 font-semibold">NIS/NISN</span>
-                <span>: {displayStudent.nis} / {displayStudent.nisn}</span>
+            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">NIS/N:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">{displayStudent.nis} / {displayStudent.nisn}</span>
             </div>
-            <div className="flex" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
-                <span className="w-24 font-semibold">Kelas</span>
-                <span>: {displayStudent.kelas?.nama}</span>
+            <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Kelas:</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">{displayStudent.kelas?.nama}</span>
             </div>
           </motion.div>
 
@@ -172,7 +191,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 zIndex: 20,
                 cursor: 'move'
               }}
-              className="bg-slate-200 border-2 border-dashed border-slate-400 flex items-center justify-center text-xs text-slate-500 shadow-sm"
+              className="bg-slate-50 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-[10px] font-black text-slate-400 shadow-md uppercase tracking-wider"
             >
               FOTO 3x4
             </motion.div>
@@ -195,15 +214,15 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 zIndex: 20,
                 cursor: 'move'
               }}
-              className="bg-white shadow-sm flex items-center justify-center"
+              className="bg-white p-1 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center"
             >
-              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full h-full" draggable={false} />}
+              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full h-full object-contain" draggable={false} />}
             </motion.div>
           )}
 
           {/* Footer Decoration */}
           <div 
-            className="absolute bottom-0 left-0 right-0 h-4"
+            className="absolute bottom-0 left-0 right-0 h-4 shadow-inner"
             style={{ backgroundColor: config.primary_color }}
           />
         </div>
