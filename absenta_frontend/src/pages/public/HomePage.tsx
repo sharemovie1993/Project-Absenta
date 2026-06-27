@@ -24,6 +24,9 @@ export default function HomePage() {
     queryFn: fetchActiveSystemConfig,
   });
 
+  const appName = systemConfig?.app_name || 'Sistem Absensi';
+  const primaryColor = systemConfig?.primary_color || '#2563EB';
+
   const breadcrumbs = useMemo(() => [
     { label: 'Beranda' }
   ], []);
@@ -36,10 +39,7 @@ export default function HomePage() {
       { text: 'Klik "Pelajari Lebih Lanjut" untuk melihat detail teknis platform.' },
       { text: 'Hubungi tim sales kami jika Anda membutuhkan demo khusus untuk sekolah Anda.' }
     ]
-  }), []);
-
-  const appName = systemConfig?.app_name || 'Sistem Absensi';
-  const primaryColor = systemConfig?.primary_color || '#2563EB';
+  }), [appName]);
 
   if (!configLoading && !systemConfig) {
     return (
