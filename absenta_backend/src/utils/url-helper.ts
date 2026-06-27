@@ -176,7 +176,18 @@ export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custo
   // 2. Kedua: Subdomain (Slug) + Main Domain
   const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
   if (tenant?.subdomain && mainDomain && !isIp) {
-    return `${scheme}://${tenant.subdomain}.${mainDomain}${portStr}`;
+    const sub = tenant.subdomain.toLowerCase().trim();
+    // Jika subdomain sudah mengandung mainDomain (misal data input salah), jangan tempel lagi
+    if (sub.endsWith(`.${mainDomain}`) || sub === mainDomain) {
+      return `${scheme}://${sub}${portStr}`;
+    }
+    // CEK REDUNDANSI: Jika subdomain adalah bagian awal dari mainDomain
+    // Misal: subdomain = 'app', mainDomain = 'app.absenta.id' -> Jangan jadi app.app.absenta.id
+    const mainParts = mainDomain.split('.');
+    if (mainParts[0] === sub && mainParts.length > 1) {
+       return `${scheme}://${mainDomain}${portStr}`;
+    }
+    return `${scheme}://${sub}.${mainDomain}${portStr}`;
   }
 
   // 3. Fallback: Kolom domain lama (Legacy)
