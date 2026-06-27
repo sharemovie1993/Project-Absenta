@@ -169,7 +169,7 @@ const StudentCardPage = () => {
         if (remoteConfig) {
             setConfig(prev => ({
                 ...prev,
-                ...remoteConfig,
+                ...(remoteConfig as any),
                 // tenantInfo (kopsurat source) takes priority
                 school_name: resolvedName    || remoteConfig.school_name    || prev.school_name    || '',
                 school_address: resolvedAddress || remoteConfig.school_address || prev.school_address || '',

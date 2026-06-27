@@ -7,13 +7,26 @@ interface CardPatternLayerProps {
     width: number;
     height: number;
     scale?: number; // 1 for print, EDITOR_SCALE for preview
+    isHeader?: boolean;
 }
 
-export const CardPatternLayer: React.FC<CardPatternLayerProps> = ({ config, width, height, scale = 1 }) => {
-    const p = config.primary_color || '#2563eb';
+export const CardPatternLayer: React.FC<CardPatternLayerProps> = ({ config, width, height, scale = 1, isHeader = false }) => {
+    const isMinimalHeader = isHeader && config.header_style === 'minimal';
+    
+    let p = isHeader 
+        ? (isMinimalHeader ? (config.primary_color || '#2563eb') : (config.header_text_color || '#ffffff'))
+        : (config.primary_color || '#2563eb');
+    
+    // Ensure p starts with #
+    if (!p.startsWith('#')) {
+        p = '#ffffff';
+    }
+
     const s = config.secondary_color || '#ffffff';
-    const pattern = config.card_pattern || 'solid';
-    const opacity = (config.card_pattern_opacity ?? 100) / 100;
+    const pattern = isHeader ? (config.header_pattern || 'solid') : (config.card_pattern || 'solid');
+    const opacity = isHeader 
+        ? ((config.header_pattern_opacity ?? 20) / 100)
+        : ((config.card_pattern_opacity ?? 100) / 100);
 
     const renderPattern = () => {
         switch (pattern) {

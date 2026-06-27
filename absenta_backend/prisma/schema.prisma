@@ -175,9 +175,11 @@ model StudentCardConfig {
   school_address  String?
 
   // Header & Footer Config (Dimensions in mm)
-  header_height     Float   @default(18)
-  header_bg_color   String? // overrides primary_color if set
-  header_text_color String  @default("#ffffff")
+  header_height          Float   @default(18)
+  header_bg_color        String? // overrides primary_color if set
+  header_text_color      String  @default("#ffffff")
+  header_pattern         String  @default("solid")
+  header_pattern_opacity Float   @default(20)
 
   footer_height   Float   @default(5)
   footer_bg_color String? // overrides primary_color if set

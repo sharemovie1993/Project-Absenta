@@ -50,6 +50,8 @@ export class StudentCardConfigService {
         card_pattern: 'solid',
         card_pattern_opacity: 100,
         header_style: 'solid',
+        header_pattern: 'solid',
+        header_pattern_opacity: 20,
         footer_style: 'solid',
 
         // Default Print Config
@@ -105,6 +107,7 @@ export class StudentCardConfigService {
 
     // Extra style options parsing
     if (updateData.card_pattern_opacity) updateData.card_pattern_opacity = parseFloat(updateData.card_pattern_opacity);
+    if (updateData.header_pattern_opacity) updateData.header_pattern_opacity = parseFloat(updateData.header_pattern_opacity);
 
     // Font Sizes parsing
     if (updateData.header_font_size) updateData.header_font_size = parseFloat(updateData.header_font_size);
