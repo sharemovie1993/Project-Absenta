@@ -98,8 +98,10 @@ function Install-CaddyLocal {
     $tlsConfig = "tls internal"
     
     if (-not [string]::IsNullOrWhiteSpace($CFToken)) {
+        # Bersihkan token dari karakter yang tidak diinginkan (seperti titik dua di depan)
+        $cleanToken = $CFToken.Trim().TrimStart(':').Trim()
         $tlsConfig = "tls {
-        dns cloudflare $CFToken
+        dns cloudflare $cleanToken
     }"
     } elseif (-not [string]::IsNullOrWhiteSpace($SSLEmail)) {
         $tlsConfig = "email $SSLEmail"
