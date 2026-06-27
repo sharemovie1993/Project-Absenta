@@ -173,11 +173,25 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
   const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
 
   if (tenantDomain && mainDomain && !isIp) {
-    // FIX: Jika tenantDomain sudah mengandung domain lengkap (misal: app.absenta.id), jangan tempelkan lagi mainDomain
-    if (tenantDomain.includes('.') && (tenantDomain.endsWith(`.${mainDomain}`) || tenantDomain === mainDomain)) {
-      return `${scheme}://${tenantDomain}${portStr}`;
+    // 1. Normalisasi domain untuk perbandingan
+    const normTenant = tenantDomain.toLowerCase().trim();
+    const normMain = mainDomain.toLowerCase().trim();
+
+    // 2. Jika tenantDomain sudah mengandung domain lengkap, langsung gunakan
+    if (normTenant.includes('.') && (normTenant.endsWith(`.${normMain}`) || normTenant === normMain)) {
+      return `${scheme}://${normTenant}${portStr}`;
     }
-    const hostname = tenantDomain.includes('.') ? tenantDomain : `${tenantDomain}.${mainDomain}`;
+
+    // 3. CEK REDUNDANSI: Jika tenantDomain adalah bagian awal dari mainDomain
+    // Misal: tenantDomain = 'app', mainDomain = 'app.absenta.id' -> Jangan jadi app.app.absenta.id
+    const mainParts = normMain.split('.');
+    if (mainParts[0] === normTenant && mainParts.length > 1) {
+       // Jika tenant sama dengan label pertama domain utama, gunakan domain utama langsung
+       return `${scheme}://${normMain}${portStr}`;
+    }
+
+    // 4. Default: Tempelkan subdomain
+    const hostname = normTenant.includes('.') ? normTenant : `${normTenant}.${normMain}`;
     return `${scheme}://${hostname}${portStr}`;
   }
 

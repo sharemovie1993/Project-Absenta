@@ -375,8 +375,18 @@ if ($deployScenario -eq "hybrid" -and ($setupCaddy -eq 'y' -or $setupCaddy -eq '
     Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken
 }
 
-# Update .env files
+# ----------------------------------------------------
+# LANGKAH 3: Tulis Konfigurasi ke .env
+# ----------------------------------------------------
 Write-Host "Menulis konfigurasi ke file .env..." -ForegroundColor Cyan
+
+# Hitung Main Domain (misal: app.absenta.id -> absenta.id)
+$calculatedMainDomain = $finalDomain
+$domainParts = $finalDomain.Split('.')
+if ($domainParts.Count -ge 3) {
+    # Jika ada 3 bagian atau lebih (misal app.absenta.id), ambil 2 bagian terakhir sebagai main domain
+    $calculatedMainDomain = "$($domainParts[-2]).$($domainParts[-1])"
+}
 
 if (-not (Test-Path "absenta_backend/.env")) { Copy-Item "absenta_backend/.env.example" "absenta_backend/.env" }
 $backendEnv = Get-Content "absenta_backend/.env"
@@ -386,14 +396,14 @@ foreach ($line in $backendEnv) {
     if ($line -match "^PORT=") { $newBackendEnv += "PORT=$BackendPort" }
     elseif ($line -match "^REDIS_MODE=") { $newBackendEnv += "REDIS_MODE=$redisMode" }
     elseif ($line -match "^REDIS_URL=") { $newBackendEnv += "REDIS_URL=$redisUrl" }
-    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain" }
+    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain/api" }
     elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
     elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
-    elseif ($line -match "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$finalDomain" }
-    elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$finalDomain" }
+    elseif ($line -match "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
+    elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$calculatedMainDomain" }
     elseif ($line -match "^FRONTEND_URL=") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
     elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
