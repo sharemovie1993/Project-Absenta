@@ -1,7 +1,8 @@
-import React from 'react';
-import { Building, Phone, Mail, Globe, MapPin, FileText, Percent, Save } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Building, Phone, Mail, Globe, MapPin, FileText, Percent, Save, Upload, Loader2 } from 'lucide-react';
 import { Button, SectionCard } from '../../ui';
 import type { CooperativeSettings } from './types';
+import axiosInstance from '@/lib/axiosInstance';
 
 interface CooperativeProfileFormProps {
   formData: CooperativeSettings;
@@ -20,6 +21,34 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
   effectiveLogoUrl,
   canEditProfile
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
+      if (fileUrl) {
+        onInputChange({
+          target: { name: 'cooperative_logo_url', value: fileUrl }
+        } as React.ChangeEvent<HTMLInputElement>);
+      }
+    } catch (err) {
+      console.error('Failed to upload cooperative logo:', err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-center gap-3 mb-6">
@@ -51,16 +80,40 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
             <label htmlFor="cooperative_logo_url" className="text-xs font-bold text-slate-500 dark:text-slate-400">
               URL Logo Koperasi
             </label>
-            <input
-              type="text"
-              id="cooperative_logo_url"
-              name="cooperative_logo_url"
-              value={formData.cooperative_logo_url || ''}
-              onChange={onInputChange}
-              placeholder="https://alamat-logo.png/gambar.png"
-              disabled={!canEditProfile}
-              className="w-full h-8 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="cooperative_logo_url"
+                name="cooperative_logo_url"
+                value={formData.cooperative_logo_url || ''}
+                onChange={onInputChange}
+                placeholder="https://alamat-logo.png/gambar.png"
+                disabled={!canEditProfile}
+                className="w-full h-8 px-3 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-855 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleUpload}
+                accept="image/*"
+                className="hidden"
+                disabled={!canEditProfile}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!canEditProfile || isUploading}
+                className="shrink-0 h-8 px-3 text-xs flex items-center gap-1.5 border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
+              >
+                {isUploading ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Upload size={12} />
+                )}
+                <span>Unggah</span>
+              </Button>
+            </div>
             <p className="text-[9px] text-slate-400">
               {formData.cooperative_logo_url ? 'Menggunakan logo khusus koperasi.' : 'Menggunakan logo sekolah utama (default).'}
             </p>
