@@ -269,10 +269,15 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         top: 0,
                         transform: `translate(${photoX}px, ${photoY}px)`,
                         width: `${photoW}mm`,
-                        height: `${photoH}mm`,
-                        zIndex: 20
+                        height: `${config.photo_shape === 'circle' ? photoW : photoH}mm`,
+                        zIndex: 20,
+                        borderColor: config.photo_shape === 'circle' ? (config.primary_color || '#3b82f6') : undefined,
+                        borderWidth: config.photo_shape === 'circle' ? '0.8mm' : undefined,
+                        borderStyle: config.photo_shape === 'circle' ? 'solid' : undefined
                     }}
-                    className="bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shadow-md"
+                    className={`bg-slate-50 flex items-center justify-center overflow-hidden shadow-md ${
+                        config.photo_shape === 'circle' ? 'rounded-full' : 'border border-slate-200 rounded-xl'
+                    }`}
                 >
                     {student.foto ? (
                         <img src={student.foto} className="w-full h-full object-cover" />

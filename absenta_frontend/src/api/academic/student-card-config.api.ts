@@ -22,6 +22,7 @@ export interface StudentCardConfig {
   secondary_color: string;
   logo_url?: string;
   show_photo: boolean;
+  photo_shape?: 'square' | 'circle';
   show_qrcode: boolean;
   photo_x: number;
   photo_y: number;

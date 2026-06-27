@@ -193,6 +193,7 @@ model StudentCardConfig {
 
   // Toggles
   show_photo  Boolean @default(true)
+  photo_shape String  @default("square")
   show_qrcode Boolean @default(true)
 
   // Positioning

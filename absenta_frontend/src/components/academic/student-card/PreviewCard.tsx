@@ -315,13 +315,17 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 top: 0, 
                 left: 0,
                 width: `${photoW}px`,
-                height: `${photoH}px`,
+                height: `${config.photo_shape === 'circle' ? photoW : photoH}px`,
                 zIndex: 20,
-                cursor: 'move'
+                cursor: 'move',
+                borderColor: config.photo_shape === 'circle' ? (config.primary_color || '#3b82f6') : undefined,
+                borderWidth: config.photo_shape === 'circle' ? '3px' : undefined
               }}
-              className="bg-slate-50 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-[10px] font-black text-slate-400 shadow-md uppercase tracking-wider"
+              className={`bg-slate-50 flex items-center justify-center text-[10px] font-black text-slate-400 shadow-md uppercase tracking-wider overflow-hidden ${
+                config.photo_shape === 'circle' ? 'rounded-full' : 'border border-slate-200 dark:border-slate-800 rounded-xl'
+              }`}
             >
-              FOTO 3x4
+              FOTO
             </motion.div>
           )}
 

@@ -17,6 +17,7 @@ export class StudentCardConfigService {
         primary_color: '#2563eb',
         secondary_color: '#ffffff',
         show_photo: true,
+        photo_shape: 'square',
         show_qrcode: true,
         photo_x: 0,
         photo_y: 0,

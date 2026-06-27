@@ -45,6 +45,22 @@ const VCOORDS = {
     qrcode_x: 270, qrcode_y: 420,
 };
 
+// Mirror layout (photo on the right, data on the left)
+const V2_HCOORDS = {
+    photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
+    photo_x: 490, photo_y: 170,
+    data_x:  14,  data_y:  220,
+    qrcode_x: 350, qrcode_y: 200,
+};
+
+// Centered layout with circular photo overlapping header (as in sample image)
+const V2_VCOORDS = {
+    photo_width: 22, photo_height: 22, qrcode_width: 15, qrcode_height: 15,
+    photo_x: 120, photo_y: 190,
+    data_x:  14,  data_y:  325,
+    qrcode_x: 270, qrcode_y: 480,
+};
+
 const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
     {
         name: 'Horizontal - Versi 1',
@@ -54,8 +70,21 @@ const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
         header_style: 'solid', footer_style: 'solid',
         card_pattern: 'arc-overlay', card_pattern_opacity: 80,
         show_photo: true, show_qrcode: true,
+        photo_shape: 'square',
         card_title: 'KARTU IDENTITAS SISWA',
         ...HCOORDS,
+    },
+    {
+        name: 'Horizontal - Versi 2 (Mirrored)',
+        template: 'horizontal',
+        primary_color: '#7c3aed', secondary_color: '#faf5ff',
+        header_bg_color: '#4c1d95', header_text_color: '#ffffff',
+        header_style: 'slanted', footer_style: 'gradient',
+        card_pattern: 'diagonal-stripe', card_pattern_opacity: 70,
+        show_photo: true, show_qrcode: true,
+        photo_shape: 'square',
+        card_title: 'KARTU PELAJAR',
+        ...V2_HCOORDS,
     },
     {
         name: 'Vertical - Versi 1',
@@ -65,8 +94,22 @@ const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
         header_style: 'solid', footer_style: 'solid',
         card_pattern: 'gradient-radial', card_pattern_opacity: 100,
         show_photo: true, show_qrcode: true,
+        photo_shape: 'square',
         card_title: 'STUDENT PASS',
         ...VCOORDS,
+    },
+    {
+        name: 'Vertical - Versi 2 (Centered Circle)',
+        template: 'vertical',
+        primary_color: '#0284c7', secondary_color: '#ffffff',
+        header_bg_color: '#0369a1', header_text_color: '#ffffff',
+        header_style: 'double-wave', footer_style: 'accent-line',
+        card_pattern: 'solid', card_pattern_opacity: 100,
+        show_photo: true, show_qrcode: true,
+        photo_shape: 'circle',
+        header_height: 38,
+        card_title: 'KARTU IDENTITAS',
+        ...V2_VCOORDS,
     },
 ];
 
@@ -544,6 +587,27 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, photo_height: parseFloat(e.target.value) })}
                                                 className="h-9 text-xs rounded-lg"
                                             />
+                                        </div>
+                                        <div className="col-span-2 pt-1">
+                                            <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1.5 block">Bentuk Bingkai Foto</Label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant={(config.photo_shape || 'square') === 'square' ? 'primary' : 'outline'}
+                                                    onClick={() => setConfig({ ...config, photo_shape: 'square' })}
+                                                    className="h-8 text-[10px] font-bold rounded-lg"
+                                                >
+                                                    Kotak (Standard)
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant={config.photo_shape === 'circle' ? 'primary' : 'outline'}
+                                                    onClick={() => setConfig({ ...config, photo_shape: 'circle' })}
+                                                    className="h-8 text-[10px] font-bold rounded-lg"
+                                                >
+                                                    Bulat (Versi 2)
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
