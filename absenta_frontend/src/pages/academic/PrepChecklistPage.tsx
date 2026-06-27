@@ -172,10 +172,12 @@ const PrepChecklistPage: React.FC = () => {
   const loadClasses = useCallback(async () => {
     try {
       setLoadingClasses(true);
-      const res = await kelasApi.getAll({ limit: 100 });
-      setClasses(res.data || []);
-      if (res.data && res.data.length > 0) {
-        setSelectedClassId(res.data[0].id);
+      const res = await kelasApi.getAll({ limit: 150 });
+      // Filter classes to only include those that are active (is_active === true)
+      const activeClasses = (res.data || []).filter((c: any) => c.is_active === true);
+      setClasses(activeClasses);
+      if (activeClasses.length > 0) {
+        setSelectedClassId(activeClasses[0].id);
       }
     } catch (err) {
       console.error(err);
