@@ -65,8 +65,13 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const photoY = config.photo_y / EDITOR_SCALE;
     const qrX = config.qrcode_x / EDITOR_SCALE;
     const qrY = config.qrcode_y / EDITOR_SCALE;
+    const isCenteredCircle = isVertical && config.photo_shape === 'circle';
+    const resolvedDataY = isCenteredCircle 
+        ? Math.max(config.data_y || 0, 410) 
+        : (config.data_y || 0);
+
     const dataX = (config.data_x || 0) / EDITOR_SCALE;
-    const dataY = (config.data_y || 0) / EDITOR_SCALE;
+    const dataY = resolvedDataY / EDITOR_SCALE;
 
     // Strip tingkat prefix (X, XI, XII) from class name
     const stripTingkat = (nama: string) =>
@@ -167,6 +172,13 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                       style={{ clipPath: 'polygon(0 0, 55% 0, 35% 100%, 0 100%)' }}
                     />
                 )}
+                <CardPatternLayer 
+                  config={config} 
+                  width={widthMM} 
+                  height={config.header_height || 18} 
+                  scale={1} 
+                  isHeader 
+                />
                 <div className="flex items-center gap-2 px-2 w-full justify-center z-10">
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
@@ -199,8 +211,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
             <div
               className="absolute w-full text-center pointer-events-none z-10"
               style={{ 
-                  top: `${(config.header_height || 18) * MM_TO_PX + 
-                      ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 4 : 1.5)}mm` 
+                  top: `${isCenteredCircle
+                      ? (photoY + (config.photo_width || 22) * MM_TO_PX + 4)
+                      : ((config.header_height || 18) * MM_TO_PX + 
+                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 8 : 3))}px` 
               }}
             >
                  <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
@@ -217,21 +231,22 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     transform: `translate(${dataX}px, ${dataY}px)`,
                     zIndex: 15,
                     padding: '4px 6px',
-                    maxWidth: isVertical ? '110px' : '160px'
+                    maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
+                    textAlign: isCenteredCircle ? 'center' : undefined
                 }}
             >
-                <div style={{ marginBottom: '2px', fontSize: `${config.student_name_font_size}pt` }}>
-                    <div style={{ fontSize: '5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1 }}>
+                <div style={{ marginBottom: '2px', fontSize: `${config.student_name_font_size}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontSize: '5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
                         Nama Siswa
                     </div>
-                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.2 }}>
+                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.2, textAlign: isCenteredCircle ? 'center' : undefined }}>
                         {displayStudent.nama}
                     </div>
                 </div>
 
                 <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
 
-                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, marginBottom: '2px' }}>
+                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, marginBottom: '2px', justifyContent: isCenteredCircle ? 'center' : undefined }}>
                     <div>
                         <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>NIS</div>
                         <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nis || '-'}</div>
@@ -245,7 +260,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
 
                 <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
 
-                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt` }}>
+                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                     {displayStudent.jurusanNama && (
                         <div>
                             <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>Jurusan</div>

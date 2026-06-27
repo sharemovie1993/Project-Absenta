@@ -57,7 +57,7 @@ const V2_HCOORDS = {
 const V2_VCOORDS = {
     photo_width: 22, photo_height: 22, qrcode_width: 15, qrcode_height: 15,
     photo_x: 120, photo_y: 190,
-    data_x:  14,  data_y:  325,
+    data_x:  14,  data_y:  420,
     qrcode_x: 270, qrcode_y: 480,
 };
 
@@ -191,6 +191,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
             'diagonal-stripe', 'dots', 'circuit', 'diamond', 'split-color', 'arc-overlay', 'hexagon'
         ];
         const randomPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
+        const randomHeaderPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
         
         const headerStyles = ['solid', 'gradient', 'glass', 'wave', 'slanted', 'double-wave', 'two-tone', 'minimal'];
         const footerStyles = ['solid', 'gradient', 'glass', 'accent-line'];
@@ -207,6 +208,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
             card_pattern: randomPattern,
             card_pattern_opacity: Math.floor(Math.random() * 40) + 60, // 60-100%
             header_style: randomHeaderStyle,
+            header_pattern: randomHeaderPattern,
+            header_pattern_opacity: Math.floor(Math.random() * 25) + 5, // 5-30% for subtle pattern in header
             footer_style: randomFooterStyle
         });
     };
@@ -345,6 +348,53 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             <span>{s.label}</span>
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* Header Background Pattern */}
+                            <div className="pt-1">
+                                <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Pola Latar Header</Label>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {([
+                                        { id: 'solid',             label: 'Solid',       preview: 'bg-white border border-slate-200' },
+                                        { id: 'gradient-diagonal', label: 'Gradasi /',   preview: 'bg-gradient-to-br from-blue-50 to-white border border-blue-100' },
+                                        { id: 'gradient-radial',   label: 'Radial',      preview: 'bg-[radial-gradient(ellipse_at_80%_20%,#bfdbfe_0%,transparent_70%)] border border-blue-100' },
+                                        { id: 'wave-bottom',       label: 'Ombak ↓',    preview: 'border border-slate-200 bg-white' },
+                                        { id: 'wave-top',          label: 'Ombak ↑',    preview: 'border border-slate-200 bg-white' },
+                                        { id: 'diagonal-stripe',   label: 'Garis',       preview: 'bg-[repeating-linear-gradient(45deg,#e0e7ff_0px,#e0e7ff_2px,white_2px,white_12px)] border border-blue-100' },
+                                        { id: 'dots',              label: 'Titik',       preview: 'bg-[radial-gradient(circle,#3b82f6_1px,transparent_1px)] bg-[length:10px_10px] border border-blue-100 bg-white' },
+                                        { id: 'circuit',           label: 'Sirkuit',     preview: 'border border-slate-200 bg-slate-50' },
+                                        { id: 'diamond',           label: 'Berlian',     preview: 'border border-slate-200 bg-white' },
+                                        { id: 'split-color',       label: 'Split',       preview: 'bg-[linear-gradient(160deg,#bfdbfe_0%,#bfdbfe_45%,white_45%)] border border-blue-100' },
+                                        { id: 'arc-overlay',       label: 'Busur',       preview: 'border border-slate-200 bg-white' },
+                                        { id: 'hexagon',           label: 'Hexagon',     preview: 'border border-slate-200 bg-white' },
+                                    ] as const).map((pat) => (
+                                        <button
+                                            key={pat.id}
+                                            type="button"
+                                            onClick={() => setConfig({ ...config, header_pattern: pat.id })}
+                                            className={`h-11 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${pat.preview} ${
+                                                (config.header_pattern || 'solid') === pat.id
+                                                    ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md scale-105'
+                                                    : 'hover:scale-102 hover:shadow-sm'
+                                            }`}
+                                        >
+                                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-tight leading-none">{pat.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Header Pattern Opacity */}
+                                <div className="mt-2.5 flex items-center gap-3">
+                                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight whitespace-nowrap">Intensitas Pola Header</Label>
+                                    <input
+                                        type="range"
+                                        min={5}
+                                        max={100}
+                                        value={config.header_pattern_opacity ?? 20}
+                                        onChange={(e) => setConfig({ ...config, header_pattern_opacity: Number(e.target.value) })}
+                                        className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                    <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400">{config.header_pattern_opacity ?? 20}%</span>
                                 </div>
                             </div>
 

@@ -51,6 +51,11 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     onDragEnd
 }) => {
     const isVertical = config.template === 'vertical';
+    const isCenteredCircle = isVertical && config.photo_shape === 'circle';
+    const resolvedDataY = isCenteredCircle 
+        ? Math.max(config.data_y || 0, 410) 
+        : (config.data_y || 0);
+
     const cardW = config.card_width || 85.6;
     const cardH = config.card_height || 54;
     
@@ -177,7 +182,14 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                   style={{ clipPath: 'polygon(0 0, 55% 0, 35% 100%, 0 100%)' }}
                 />
             )}
-            <div className="flex items-center gap-3 px-4 w-full justify-center">
+            <CardPatternLayer 
+              config={config} 
+              width={width} 
+              height={(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE} 
+              scale={EDITOR_SCALE} 
+              isHeader 
+            />
+            <div className="flex items-center gap-3 px-4 w-full justify-center z-10">
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                 <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
@@ -205,12 +217,14 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             />
           )}
 
-          {/* Card Title — sits exactly below header */}
+           {/* Card Title — sits exactly below header */}
           <div
             className="absolute w-full text-center pointer-events-none z-10"
             style={{ 
-                top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 
-                    ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 16 : 6)}px` 
+                top: `${isCenteredCircle
+                    ? (config.photo_y + (config.photo_width || 22) * MM_TO_PX * EDITOR_SCALE + 8)
+                    : ((config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 
+                        ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 16 : 6))}px` 
             }}
           >
              <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
@@ -226,23 +240,23 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             onDragEnd={(e, info) => onDragEnd('data', info)}
             style={{ 
                 x: config.data_x || 0,
-                y: config.data_y || 0,
+                y: resolvedDataY,
                 position: 'absolute', 
                 top: 0,
                 left: 0,
                 cursor: 'move',
                 zIndex: 15,
-                maxWidth: isVertical ? '220px' : '320px'
+                maxWidth: isCenteredCircle ? '380px' : (isVertical ? '220px' : '320px')
             }}
-            className={`mt-0 space-y-1.5 p-2 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200`}
+            className={`mt-0 space-y-1.5 p-2 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200 ${isCenteredCircle ? 'text-center' : ''}`}
           >
             {/* NAMA — larger, bold */}
-            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
-                <div className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5`}
+            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }} className={isCenteredCircle ? 'text-center' : ''}>
+                <div className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${isCenteredCircle ? 'text-center' : ''}`}
                     style={{ color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b' }}>
                     Nama Siswa
                 </div>
-                <div className={`font-extrabold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`font-extrabold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}>
                     {displayStudent.nama}
                 </div>
             </div>
@@ -251,7 +265,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
             {/* NIS / NISN — pill style */}
-            <div className="flex gap-3" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+            <div className={`flex gap-3 ${isCenteredCircle ? 'justify-center text-center' : ''}`} style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
                 <div>
                     <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
                         style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
@@ -277,7 +291,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
             {/* Jurusan + Kelas — two-column */}
-            <div className="flex gap-3" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+            <div className={`flex gap-3 ${isCenteredCircle ? 'justify-center text-center' : ''}`} style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
                 {displayStudent.jurusanNama && (
                     <div>
                         <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
