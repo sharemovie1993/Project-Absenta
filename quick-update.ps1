@@ -18,32 +18,48 @@ Write-Host "[1/4] Menarik kode terbaru dari GitHub..." -ForegroundColor Yellow
 git fetch origin main
 git reset --hard origin/main
 
-# 2. Sinkronisasi Kode (Pull)
-Write-Host "[2/5] Menarik kode terbaru dari GitHub..." -ForegroundColor Yellow
-git fetch origin main
-git reset --hard origin/main
-
-# 3. Cek & Install Dependensi Backend
+# 2. Sinkronisasi Skema Database (Kritikal untuk SaaS)
+Write-Host "[2/4] Sinkronisasi skema database (Prisma)..." -ForegroundColor Yellow
 cd "$appRoot\absenta_backend"
-Write-Host "[3/5] Memeriksa dependensi backend..." -ForegroundColor Yellow
-npm install --omit=dev --no-audit
+npx prisma generate
+npx prisma db push --accept-data-loss
 
-# 4. Build Backend dengan Trik Renaming (Agar tidak kena file locked di Windows)
-Write-Host "[4/5] Melakukan kompilasi (Build)..." -ForegroundColor Yellow
+# 3. Cek & Install Dependensi
+Write-Host "[3/4] Memperbarui dependensi..." -ForegroundColor Yellow
+cd "$appRoot\absenta_backend"
+npm install --omit=dev --no-audit
+cd "$appRoot\absenta_frontend"
+npm install --no-audit
+
+# 4. Build dengan Zero-Downtime Strategy
+Write-Host "[4/4] Melakukan kompilasi (Build)..." -ForegroundColor Yellow
+
+# Build Backend
 cd "$appRoot\absenta_backend"
 if (Test-Path "dist_old") { Remove-Item -Path "dist_old" -Recurse -Force -ErrorAction SilentlyContinue }
 if (Test-Path "dist") { Rename-Item -Path "dist" -NewName "dist_old" -ErrorAction SilentlyContinue }
+$env:NODE_OPTIONS = "--max-old-space-size=4096"
 npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Build Backend Gagal! Mengembalikan folder dist..." -ForegroundColor Red
+    Rename-Item -Path "dist_old" -NewName "dist" -ErrorAction SilentlyContinue
+    exit 1
+}
 
+# Build Frontend
 cd "$appRoot\absenta_frontend"
 npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Build Frontend Gagal!" -ForegroundColor Red
+    exit 1
+}
 
 # 5. Reload PM2 (Zero-Downtime)
 cd $appRoot
-Write-Host "[5/5] Memuat ulang layanan PM2..." -ForegroundColor Yellow
+Write-Host "Memuat ulang layanan PM2..." -ForegroundColor Yellow
 pm2 reload ecosystem.config.js --update-env
 
-# Hapus dist lama setelah reload sukses
+# Cleanup
 Remove-Item -Path "$appRoot\absenta_backend\dist_old" -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "=== UPDATE BERHASIL SELESAI! ===" -ForegroundColor Green
