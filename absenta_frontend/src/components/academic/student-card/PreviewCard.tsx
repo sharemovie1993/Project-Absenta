@@ -77,6 +77,14 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     const stripTingkat = (nama: string) =>
         nama.replace(/^(XII|XI|X)\s*/i, '').trim() || nama;
 
+    const getDynamicNameFontSize = (name: string, baseSizePt: number) => {
+        const len = name.length;
+        if (len <= 16) return baseSizePt;
+        if (len <= 22) return baseSizePt * 0.8;
+        if (len <= 28) return baseSizePt * 0.7;
+        return baseSizePt * 0.55;
+    };
+
     // Use passed student or dummy fallback
     const rawStudent = student || ({
       id: 'dummy-student-id',
@@ -273,11 +281,14 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             className="mt-0 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200"
           >
             {/* NAMA SISWA */}
-            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+            <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size) * EDITOR_SCALE}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
                 <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: `${0.5 * EDITOR_SCALE}px`, color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                     Nama Siswa
                 </div>
-                <div className={`font-extrabold leading-[1.1] ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}>
+                <div 
+                    style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1 }}
+                    className={`font-extrabold ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}
+                >
                     {displayStudent.nama}
                 </div>
             </div>

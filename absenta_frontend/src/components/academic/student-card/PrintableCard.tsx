@@ -90,6 +90,14 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const stripTingkat = (nama: string) =>
         nama.replace(/^(XII|XI|X)\s*/i, '').trim() || nama;
 
+    const getDynamicNameFontSize = (name: string, baseSizePt: number) => {
+        const len = name.length;
+        if (len <= 16) return baseSizePt;
+        if (len <= 22) return baseSizePt * 0.8;
+        if (len <= 28) return baseSizePt * 0.7;
+        return baseSizePt * 0.55;
+    };
+
     const kelasNama = student.Kelas?.nama_kelas || student.kelas?.nama || student.kelas?.nama_kelas || '-';
     const kelasStripped = stripTingkat(kelasNama);
     const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
@@ -259,11 +267,11 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 }}
             >
                 {/* NAMA SISWA */}
-                <div style={{ fontSize: `${config.student_name_font_size}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size)}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
                     <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                         Nama Siswa
                     </div>
-                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.1, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
                         {displayStudent.nama}
                     </div>
                 </div>
