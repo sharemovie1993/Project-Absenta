@@ -31,32 +31,43 @@ npm install --omit=dev --no-audit
 cd "$appRoot\absenta_frontend"
 npm install --no-audit
 
-# 4. Build dengan Zero-Downtime Strategy
-Write-Host "[4/4] Melakukan kompilasi (Build)..." -ForegroundColor Yellow
+# 4. Shadow Build Strategy (Untuk menghindari File Lock di Windows)
+Write-Host "[4/4] Melakukan kompilasi (Shadow Build)..." -ForegroundColor Yellow
 
-# Build Backend
+# Shadow Build Backend
 cd "$appRoot\absenta_backend"
-if (Test-Path "dist_old") { Remove-Item -Path "dist_old" -Recurse -Force -ErrorAction SilentlyContinue }
-if (Test-Path "dist") { Rename-Item -Path "dist" -NewName "dist_old" -ErrorAction SilentlyContinue }
+$shadowDist = "dist_new_$(Get-Date -Format 'yyyyMMddHHmmss')"
+
+Write-Host "-> Membangun Backend di folder bayangan..." -ForegroundColor Gray
 $env:NODE_OPTIONS = "--max-old-space-size=4096"
-npm run build
+# Kita gunakan flag --outDir untuk mengalihkan hasil build ke folder sementara
+npx tsc -p tsconfig.json --outDir $shadowDist
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Build Backend Gagal! Mengembalikan folder dist..." -ForegroundColor Red
-    Rename-Item -Path "dist_old" -NewName "dist" -ErrorAction SilentlyContinue
+    Write-Host "Build Backend Gagal! Folder produksi tetap aman." -ForegroundColor Red
+    Remove-Item -Path $shadowDist -Recurse -Force -ErrorAction SilentlyContinue
     exit 1
 }
+npx tsc-alias -p tsconfig.json --dir $shadowDist
 
-# Build Frontend
+# Shadow Build Frontend
 cd "$appRoot\absenta_frontend"
-npm run build
+npm run build # Frontend biasanya aman karena Vite membangun ke folder 'dist' yang tidak dikunci Node
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build Frontend Gagal!" -ForegroundColor Red
     exit 1
 }
 
-# 5. Reload PM2 (Zero-Downtime)
+# 5. Atomic Swap & Reload (Zero-Downtime)
+Write-Host "[5/5] Melakukan Atomic Swap & Reload PM2..." -ForegroundColor Yellow
+
+# Backend Swap
+cd "$appRoot\absenta_backend"
+if (Test-Path "dist_old") { Remove-Item -Path "dist_old" -Recurse -Force -ErrorAction SilentlyContinue }
+if (Test-Path "dist") { Rename-Item -Path "dist" -NewName "dist_old" -ErrorAction SilentlyContinue }
+Rename-Item -Path $shadowDist -NewName "dist" -ErrorAction SilentlyContinue
+
+# Reload PM2
 cd $appRoot
-Write-Host "Memuat ulang layanan PM2..." -ForegroundColor Yellow
 pm2 reload ecosystem.config.js --update-env
 
 # Cleanup
