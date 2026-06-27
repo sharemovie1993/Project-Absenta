@@ -73,19 +73,30 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     const QR_WIDTH_MM = config.qrcode_width || 20;
     const QR_HEIGHT_MM = config.qrcode_height || 20;
 
-    // Calculate pixel sizes for Editor (scaled)
     const photoW = PHOTO_WIDTH_MM * MM_TO_PX * EDITOR_SCALE;
     const photoH = PHOTO_HEIGHT_MM * MM_TO_PX * EDITOR_SCALE;
     const qrW = QR_WIDTH_MM * MM_TO_PX * EDITOR_SCALE;
     const qrH = QR_HEIGHT_MM * MM_TO_PX * EDITOR_SCALE;
 
+    const getLuminance = (hex: string) => {
+        if (!hex) return 255;
+        const cleanHex = hex.replace('#', '');
+        if (cleanHex.length !== 6) return 255;
+        const r = parseInt(cleanHex.substring(0, 2), 16);
+        const g = parseInt(cleanHex.substring(2, 4), 16);
+        const b = parseInt(cleanHex.substring(4, 6), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000;
+    };
+    const isDarkBg = getLuminance(config.secondary_color || '#ffffff') < 128;
+
     return (
       <div className="flex justify-center items-center p-8 bg-slate-100 rounded-lg overflow-auto">
         <div 
-          className="relative bg-white shadow-2xl overflow-hidden rounded-2xl"
+          className="relative shadow-2xl overflow-hidden rounded-2xl"
           style={{
             width: `${width}px`,
             height: `${height}px`,
+            backgroundColor: config.secondary_color || '#ffffff',
             borderColor: config.show_border ? config.border_color : config.primary_color,
             borderWidth: config.show_border ? `${(config.border_width || 1) * EDITOR_SCALE}px` : `${1 * EDITOR_SCALE}px`,
             borderStyle: config.show_border ? 'solid' : 'none',
@@ -158,19 +169,19 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 cursor: 'move',
                 zIndex: 15
             }}
-            className="mt-0 space-y-2 text-slate-700 p-2.5 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200"
+            className={`mt-0 space-y-2 p-2.5 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200 ${isDarkBg ? 'text-slate-200' : 'text-slate-700'}`}
           >
             <div className="flex items-center gap-2" style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }}>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Nama:</span>
-                <span className="font-extrabold text-slate-900 dark:text-slate-100">{displayStudent.nama}</span>
+                <span className={`font-extrabold ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>{displayStudent.nama}</span>
             </div>
             <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">NIS/N:</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{displayStudent.nis} / {displayStudent.nisn}</span>
+                <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.nis} / {displayStudent.nisn}</span>
             </div>
             <div className="flex items-center gap-2" style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider min-w-[50px]">Kelas:</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{displayStudent.kelas?.nama}</span>
+                <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.kelas?.nama}</span>
             </div>
           </motion.div>
 

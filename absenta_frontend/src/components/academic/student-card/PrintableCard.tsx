@@ -65,12 +65,24 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
         }
     }, [student.id]);
 
+    const getLuminance = (hex: string) => {
+        if (!hex) return 255;
+        const cleanHex = hex.replace('#', '');
+        if (cleanHex.length !== 6) return 255;
+        const r = parseInt(cleanHex.substring(0, 2), 16);
+        const g = parseInt(cleanHex.substring(2, 4), 16);
+        const b = parseInt(cleanHex.substring(4, 6), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000;
+    };
+    const isDarkBg = getLuminance(config.secondary_color || '#ffffff') < 128;
+
     return (
         <div 
-            className={`relative bg-white overflow-hidden break-inside-avoid page-break-inside-avoid rounded-2xl ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
+            className={`relative overflow-hidden break-inside-avoid page-break-inside-avoid rounded-2xl ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
             style={{
                 width: `${widthMM}mm`,
                 height: `${heightMM}mm`,
+                backgroundColor: config.secondary_color || '#ffffff',
                 // Force background print
                 printColorAdjust: 'exact',
                 WebkitPrintColorAdjust: 'exact',
@@ -142,18 +154,18 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     zIndex: 15
                 }}
             >
-                 <div className="mt-0 space-y-1 text-slate-700">
+                 <div className={`mt-0 space-y-1 ${isDarkBg ? 'text-slate-200' : 'text-slate-700'}`}>
                     <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_name_font_size}pt` }}>
                       <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Nama:</span>
-                      <span className="font-extrabold text-slate-900">{displayStudent.nama}</span>
+                      <span className={`font-extrabold ${isDarkBg ? 'text-white' : 'text-slate-900'}`}>{displayStudent.nama}</span>
                     </div>
                     <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
                       <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">NIS/N:</span>
-                      <span className="font-bold text-slate-700">{displayStudent.nis} / {displayStudent.nisn || '-'}</span>
+                      <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.nis} / {displayStudent.nisn || '-'}</span>
                     </div>
                      <div className="flex items-center gap-1.5" style={{ fontSize: `${config.student_details_font_size}pt` }}>
                       <span className="text-[7pt] font-bold text-slate-400 uppercase tracking-wider min-w-[32pt]">Kelas:</span>
-                      <span className="font-bold text-slate-700">{displayStudent.kelas?.nama}</span>
+                      <span className={`font-bold ${isDarkBg ? 'text-slate-300' : 'text-slate-700'}`}>{displayStudent.kelas?.nama}</span>
                     </div>
                  </div>
             </div>
