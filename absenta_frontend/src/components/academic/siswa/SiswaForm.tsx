@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../../ui/Button';
@@ -8,8 +9,12 @@ import { Loader } from '../../ui/Loader';
 import { Alert } from '../../ui/Alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/Tabs';
 import { ModalFooter } from '../../ui/Modal';
-import { Save, X, RefreshCw } from 'lucide-react';
+import { Save, X, RefreshCw, Printer, Users } from 'lucide-react';
 import { createSiswa, updateSiswa, getSiswaDetail, type CreateSiswaPayload, type UpdateSiswaPayload, type Siswa } from '../../../api/academic/siswa.api';
+import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
+import { DEFAULT_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
+import { PrintOverlay } from '@/pages/academic/student-card/components/PrintOverlay';
 import { SiswaTimelineAndExitTab } from './SiswaTimelineAndExitTab';
 import {
   getKelasForDropdown,
@@ -46,6 +51,94 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   const [siswaData, setSiswaData] = useState<Siswa | null>(null);
+
+  const [printingCard, setPrintingCard] = useState(false);
+  const [printOverlayData, setPrintOverlayData] = useState<{
+    config: any;
+    printConfig: any;
+    printLayout: any;
+    sekolah: any;
+  } | null>(null);
+
+  const handlePrintStudentCard = async () => {
+    if (!siswaId || !siswaData) return;
+    try {
+      setPrintingCard(true);
+      const [sekolahRes, configRes] = await Promise.all([
+        sekolahApi.getProfile(),
+        studentCardConfigApi.getConfig()
+      ]);
+      
+      const configObj = configRes || DEFAULT_CONFIG;
+      const sekolahObj = sekolahRes || { nama: '', alamat: '' };
+      
+      const prConfig = {
+        paperSize: (configObj.print_paper_size as any) || 'A4',
+        orientation: (configObj.print_orientation as any) || 'portrait',
+        marginTop: configObj.print_margin_top ?? 10,
+        marginBottom: configObj.print_margin_bottom ?? 10,
+        marginLeft: configObj.print_margin_left ?? 10,
+        marginRight: configObj.print_margin_right ?? 10,
+        gapX: configObj.print_gap_x ?? 5,
+        gapY: configObj.print_gap_y ?? 5,
+        customWidth: configObj.print_custom_width ?? 210,
+        customHeight: configObj.print_custom_height ?? 297,
+        autoCenterX: configObj.print_auto_center_x ?? false,
+        autoCenterY: configObj.print_auto_center_y ?? false,
+      };
+      
+      const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize].width;
+      const paperH = prConfig.paperSize === 'Custom' ? (prConfig.customHeight || 297) : PAPER_SIZES[prConfig.paperSize].height;
+
+      const finalW = prConfig.orientation === 'portrait' ? paperW : paperH;
+      const finalH = prConfig.orientation === 'portrait' ? paperH : paperW;
+
+      const cardW = configObj.template === 'vertical' ? 54 : 86;
+      const cardH = configObj.template === 'vertical' ? 86 : 54;
+
+      const availW = finalW - prConfig.marginLeft - prConfig.marginRight;
+      const availH = finalH - prConfig.marginTop - prConfig.marginBottom;
+
+      const cols = Math.max(1, Math.floor((availW + prConfig.gapX) / (cardW + prConfig.gapX)));
+      const rows = Math.max(1, Math.floor((availH + prConfig.gapY) / (cardH + prConfig.gapY)));
+
+      const contentW = cols * cardW + (cols - 1) * prConfig.gapX;
+      const contentH = rows * cardH + (rows - 1) * prConfig.gapY;
+
+      let effectiveMarginLeft = prConfig.marginLeft;
+      let effectiveMarginTop = prConfig.marginTop;
+
+      if (prConfig.autoCenterX) {
+          effectiveMarginLeft = (finalW - contentW) / 2;
+      }
+
+      if (prConfig.autoCenterY) {
+          effectiveMarginTop = (finalH - contentH) / 2;
+      }
+
+      const itemsPerPage = cols * rows;
+
+      const printLayout = { finalW, finalH, cardW, cardH, cols, rows, itemsPerPage, effectiveMarginLeft, effectiveMarginTop };
+      
+      setPrintOverlayData({
+        config: configObj,
+        printConfig: prConfig,
+        printLayout,
+        sekolah: sekolahObj
+      });
+      
+      setTimeout(() => {
+        window.print();
+        setPrintingCard(false);
+        setPrintOverlayData(null);
+      }, 600);
+      
+    } catch (err: any) {
+      console.error('Failed to print student card:', err);
+      toast.error('Gagal memuat konfigurasi cetak kartu');
+      setPrintingCard(false);
+    }
+  };
   
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranOptions, setTahunPelajaranOptions] = useState<DropdownOption[]>([]);
@@ -224,6 +317,38 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
           </Alert>
         )}
 
+        {isViewMode && siswaData && (
+          <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
+                <Users size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Aksi Cepat Siswa</h3>
+                <p className="text-[10px] text-slate-600 dark:text-slate-500 font-bold uppercase tracking-tighter">Proses data & cetak kartu pelajar siswa secara instan</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={handlePrintStudentCard}
+                disabled={printingCard}
+                className="hover:border-blue-200 dark:hover:border-blue-900 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 text-blue-600 dark:text-blue-400 rounded-xl"
+              >
+                {printingCard ? (
+                  <RefreshCw size={14} className="mr-2 animate-spin" />
+                ) : (
+                  <Printer className="w-3.5 h-3.5 mr-2" />
+                )}
+                Cetak Kartu Siswa
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="data-pribadi" className="w-full">
           <TabsList className={`grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 ${isViewMode ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="data-pribadi" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Data Pribadi</TabsTrigger>
@@ -304,6 +429,18 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
           )}
         </ModalFooter>
       </form>
+
+      {printOverlayData && createPortal(
+        <PrintOverlay
+          isPrinting={printingCard}
+          pages={[[siswaData]]}
+          printLayout={printOverlayData.printLayout}
+          printConfig={printOverlayData.printConfig}
+          config={printOverlayData.config}
+          sekolah={printOverlayData.sekolah}
+        />,
+        document.body
+      )}
     </div>
   );
 });
