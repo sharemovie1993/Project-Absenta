@@ -105,25 +105,40 @@ export const authController = {
     const h = sanitize(hostNoPort);
     const hNoWww = h.replace(/^www\./, '');
     const hNoApi = hNoWww.replace(/^api\./, '');
+    
+    // Jangan langsung hapus app. karena app bisa jadi adalah subdomain tenant (e.g. app.absenta.id)
     const hNoApp = hNoApi.replace(/^app\./, '');
 
     const baseDomains = authController.resolveBaseDomains();
+    
+    // Candidates for exact match (full domain)
     const exactCandidates = Array.from(new Set([h, hNoWww, hNoApi, hNoApp].filter(Boolean)));
     const exact = await prisma.tenant.findFirst({ where: { domain: { in: exactCandidates as any } } });
     if (exact) return exact;
 
+    // Candidates for subdomain match
     for (const base of baseDomains) {
-      if (hNoApp === base) {
+      // Check if current host is exactly the base domain
+      if (hNoWww === base || hNoApi === base || hNoApp === base) {
         const direct = await prisma.tenant.findFirst({ where: { domain: base as any } });
         if (direct) return direct;
       }
-      if (hNoApp.endsWith(`.${base}`)) {
-        const left = hNoApp.slice(0, -(base.length + 1));
+
+      // Check for subdomains (e.g., smk1.absenta.id -> smk1)
+      // We check hNoWww and hNoApi to preserve 'app' if it's the subdomain
+      const checkHosts = [hNoWww, hNoApi].filter(host => host.endsWith(`.${base}`));
+      
+      for (const host of checkHosts) {
+        const left = host.slice(0, -(base.length + 1));
         if (!left) continue;
-        const stripped = left.replace(/^(api|app|www)\./, '');
+        
+        // Remove common prefixes but keep the first label
+        const stripped = left.replace(/^(api|www)\./, '');
         if (!stripped) continue;
+        
         const firstLabel = stripped.split('.')[0];
         const candidates = Array.from(new Set([firstLabel, stripped].filter(Boolean)));
+        
         const t = await prisma.tenant.findFirst({ where: { domain: { in: candidates as any } } });
         if (t) return t;
       }

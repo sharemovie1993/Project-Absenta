@@ -151,7 +151,14 @@ export function getDomainBases(): string[] {
 export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): string {
   const parentAppBase = (process.env.PARENT_APP_URL || process.env.FRONTEND_URL || '').trim().replace(/\/$/, '');
   const scheme = (process.env.PUBLIC_APP_SCHEME || 'https').trim();
-  const mainDomain = (process.env.MAIN_DOMAIN || '').trim().toLowerCase();
+  
+  // Ambil domain utama dari beberapa variabel fallback
+  const mainDomain = (
+    process.env.MAIN_DOMAIN || 
+    process.env.PUBLIC_DOMAIN_BASE || 
+    process.env.TENANT_BASE_DOMAIN || 
+    ''
+  ).trim().toLowerCase();
   
   // Get port from FRONTEND_URL if it's not standard
   let portStr = '';
@@ -162,10 +169,10 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
     }
   } catch {}
 
-  // IP Detection: If MAIN_DOMAIN is an IP, we don't use subdomains (invalid FQDN)
+  // IP Detection: If mainDomain is an IP, we don't use subdomains (invalid FQDN)
   const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(mainDomain);
 
-  if (tenantDomain && !isIp) {
+  if (tenantDomain && mainDomain && !isIp) {
     // FIX: Jika tenantDomain sudah mengandung domain lengkap (misal: app.absenta.id), jangan tempelkan lagi mainDomain
     if (tenantDomain.includes('.') && (tenantDomain.endsWith(`.${mainDomain}`) || tenantDomain === mainDomain)) {
       return `${scheme}://${tenantDomain}${portStr}`;
@@ -174,13 +181,13 @@ export function getSmartParentAppUrl(tenantDomain?: string, tenantId?: string): 
     return `${scheme}://${hostname}${portStr}`;
   }
 
-  // If IP, return base URL with port and optional tenantId param
-  const baseUrl = `${scheme}://${mainDomain}${portStr}`;
+  // If no mainDomain or it's an IP, return base URL with port and optional tenantId param
+  const baseUrl = mainDomain ? `${scheme}://${mainDomain}${portStr}` : parentAppBase;
   if (isIp && tenantId) {
     return `${baseUrl}/login?tenantId=${tenantId}`;
   }
 
-  return parentAppBase || DEFAULT_FRONTEND_URL;
+  return baseUrl || DEFAULT_FRONTEND_URL;
 }
 
 

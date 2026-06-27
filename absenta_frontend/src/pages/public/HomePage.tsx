@@ -29,7 +29,7 @@ export default function HomePage() {
   ], []);
 
   const instruction = useMemo(() => ({
-    title: 'Selamat Datang di Absenta',
+    title: `Selamat Datang di ${appName}`,
     description: 'Platform manajemen kehadiran dan akademik sekolah yang modern, aman, dan mudah digunakan.',
     items: [
       { text: 'Gunakan navigasi di atas untuk melihat fitur dan harga layanan.' },

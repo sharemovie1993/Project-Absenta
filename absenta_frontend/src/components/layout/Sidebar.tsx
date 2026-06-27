@@ -824,7 +824,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         {isOpen && (
           <div className="p-4 border-t border-slate-200 dark:border-slate-800 mt-auto">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400 text-center truncate">
-              {systemConfig?.app_name || 'Absenta.id'}
+              {systemConfig?.app_name || 'Sistem Absensi'}
             </div>
           </div>
         )}

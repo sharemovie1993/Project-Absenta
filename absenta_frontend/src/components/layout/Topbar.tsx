@@ -106,7 +106,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                 )}
                 <div className="flex flex-col">
                   <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-none uppercase">
-                    {systemConfig?.app_name || 'Absenta.id'}
+                    {systemConfig?.app_name || 'Sistem Absensi'}
                   </span>
                   {(() => {
                     const raw = String((tenantMode || '') || (subscription?.Plan?.absensi_mode));

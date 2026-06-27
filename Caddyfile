@@ -1,0 +1,15 @@
+app.absenta.id {
+    # Forward API requests to Backend
+    reverse_proxy /api/* localhost:3003
+
+    # Forward everything else to Frontend
+    reverse_proxy /* localhost:5175
+
+    # Optimization
+    encode gzip zstd
+    
+    # SSL Configuration
+    tls {
+        dns cloudflare {env.CLOUDFLARE_AUTH_TOKEN}
+    }
+}

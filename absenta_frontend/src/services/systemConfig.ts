@@ -83,7 +83,7 @@ export const fetchActiveSystemConfig = async (): Promise<SystemConfig | null> =>
     const tz = cfg?.timezone;
     if (tz) localStorage.setItem('active_timezone', String(tz));
     const appName = cfg?.app_name;
-    document.title = String(appName || 'Absenta.id');
+    document.title = String(appName || 'Sistem Absensi');
     if (cfg) localStorage.setItem('active_system_config', JSON.stringify(cfg));
   } catch {}
   return cfg;

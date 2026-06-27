@@ -83,7 +83,7 @@ const RegisterTenant = () => {
     queryFn: fetchActiveSystemConfig,
   });
 
-  const appName = systemConfig?.app_name || 'Absenta.id';
+  const appName = systemConfig?.app_name || 'Sistem Absensi';
   
   const [formData, setFormData] = useState({
     tenant_name: '',
@@ -258,7 +258,7 @@ const RegisterTenant = () => {
                     Transformasi <span className="text-blue-400">Digital</span> Institusi Anda.
                  </h1>
                  <p className="text-lg text-slate-400 leading-relaxed mb-10">
-                    Bawa sekolah Anda ke ekosistem Absenta yang transparan, aman, dan memudahkan manajemen akademik harian.
+                    Bawa sekolah Anda ke ekosistem yang transparan, aman, dan memudahkan manajemen akademik harian.
                  </p>
 
                  <div className="space-y-6 hidden sm:block">

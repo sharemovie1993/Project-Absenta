@@ -213,9 +213,10 @@ Write-Host "Pemeriksaan prasyarat selesai!" -ForegroundColor Green
 if (-not $Silent) { Read-Host "Tekan [ENTER] untuk melanjutkan ke konfigurasi skenario..." }
 
 # ----------------------------------------------------
-# LANGKAH 2: Konfigurasi Skenario & Port
+# LANGKAH 2: Konfigurasi SkenARIO & Port
 # ----------------------------------------------------
-$finalDomain = "api.absenta.id"
+$LicenseServer = "https://api.absenta.id"
+$finalDomain = "your-domain.id"
 $finalScheme = "https"
 $deployScenario = "saas" # default
 
@@ -325,7 +326,7 @@ if (-not $Silent) {
                             payment_method = "manual"
                         } | ConvertTo-Json
                         
-                        $resp = Invoke-RestMethod -Method Post -Uri "https://api.absenta.id/api/license/request" -Body $body -ContentType "application/json"
+                        $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
                         if ($resp.success) {
                             $licenseKey = $resp.data.license_key
                             Write-Host "----------------------------------------------------------" -ForegroundColor Green
@@ -391,14 +392,16 @@ foreach ($line in $backendEnv) {
     elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
     elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
+    elseif ($line -match "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$finalDomain" }
     elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$finalDomain" }
     elseif ($line -match "^FRONTEND_URL=") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
     elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
     else { $newBackendEnv += $line }
 }
-# Pastikan LICENSE_KEY tertulis jika tidak ada di example
+# Pastikan variabel kritikal tertulis jika tidak ada di example
 if ($newBackendEnv -notmatch "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+if ($newBackendEnv -notmatch "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$finalDomain" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
