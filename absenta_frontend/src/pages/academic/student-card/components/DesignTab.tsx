@@ -18,6 +18,129 @@ import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput'
 import { PreviewCard } from '@/components/academic/student-card/PreviewCard';
 import type { StudentCardConfig } from '@/components/academic/student-card/types';
 
+const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
+    {
+        name: 'Modern Blue Pass',
+        template: 'horizontal',
+        primary_color: '#2563eb',
+        header_bg_color: '#1e3a8a',
+        header_text_color: '#ffffff',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'PEMERINTAH KABUPATEN',
+        subheader_text: 'DINAS PENDIDIKAN',
+        school_name: 'SMA NEGERI 1 ABSENTA',
+        school_address: 'Jl. Pendidikan No. 45, Absenta',
+        card_title: 'KARTU IDENTITAS SISWA',
+        photo_x: 25,
+        photo_y: 155,
+        data_x: 160,
+        data_y: 155,
+        qrcode_x: 480,
+        qrcode_y: 165
+    },
+    {
+        name: 'Islamic Emerald',
+        template: 'horizontal',
+        primary_color: '#059669',
+        header_bg_color: '#064e3b',
+        header_text_color: '#fef08a',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'YAYASAN ISLAM AL-IKHLAS',
+        subheader_text: 'MADRASAH ALIYAH',
+        school_name: 'MA UNGGULAN AL-IKHLAS',
+        school_address: 'Jl. Masjid Raya No. 12, Absenta',
+        card_title: 'KARTU TANDA ANGGOTA',
+        photo_x: 25,
+        photo_y: 155,
+        data_x: 160,
+        data_y: 155,
+        qrcode_x: 480,
+        qrcode_y: 165
+    },
+    {
+        name: 'Active Red Tech',
+        template: 'horizontal',
+        primary_color: '#dc2626',
+        header_bg_color: '#7f1d1d',
+        header_text_color: '#ffffff',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'KEMENTERIAN PENDIDIKAN',
+        subheader_text: 'SEKOLAH MENENGAH KEJURUAN',
+        school_name: 'SMK TEKNOLOGI ABSENTA',
+        school_address: 'Jl. Industri Kreatif No. 7, Absenta',
+        card_title: 'KARTU SISWA PRAKERIN',
+        photo_x: 25,
+        photo_y: 155,
+        data_x: 160,
+        data_y: 155,
+        qrcode_x: 480,
+        qrcode_y: 165
+    },
+    {
+        name: 'Vertical Modern Blue',
+        template: 'vertical',
+        primary_color: '#2563eb',
+        header_bg_color: '#1e3a8a',
+        header_text_color: '#ffffff',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'KARTU IDENTITAS',
+        subheader_text: 'SMA NEGERI 1 ABSENTA',
+        school_name: 'SMAN 1 ABSENTA',
+        school_address: 'Jl. Pendidikan No. 45',
+        card_title: 'STUDENT PASS',
+        photo_x: 110,
+        photo_y: 155,
+        data_x: 25,
+        data_y: 350,
+        qrcode_x: 250,
+        qrcode_y: 350
+    },
+    {
+        name: 'Vertical Islamic Green',
+        template: 'vertical',
+        primary_color: '#059669',
+        header_bg_color: '#064e3b',
+        header_text_color: '#ffffff',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'MADRASAH ALIYAH',
+        subheader_text: 'MA UNGGULAN AL-IKHLAS',
+        school_name: 'MA AL-IKHLAS',
+        school_address: 'Jl. Masjid Raya No. 12',
+        card_title: 'KARTU ANGGOTA',
+        photo_x: 110,
+        photo_y: 155,
+        data_x: 25,
+        data_y: 350,
+        qrcode_x: 250,
+        qrcode_y: 350
+    },
+    {
+        name: 'Vertical Dark Slate',
+        template: 'vertical',
+        primary_color: '#374151',
+        header_bg_color: '#111827',
+        header_text_color: '#f3f4f6',
+        show_photo: true,
+        show_qrcode: true,
+        header_text: 'ACADEMY PASS',
+        subheader_text: 'EXCLUSIVE HIGH SCHOOL',
+        school_name: 'ABSENTA HIGH SCHOOL',
+        school_address: 'Downtown Street No. 9',
+        card_title: 'STUDENT IDENTITY',
+        photo_x: 110,
+        photo_y: 155,
+        data_x: 25,
+        data_y: 350,
+        qrcode_x: 250,
+        qrcode_y: 350
+    }
+];
+
 interface DesignTabProps {
     config: StudentCardConfig;
     setConfig: React.Dispatch<React.SetStateAction<StudentCardConfig>>;
@@ -44,6 +167,36 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 noPadding
             >
                 <div className="p-4 space-y-4">
+                    <SettingsGroup title="Pustaka Preset Kartu" defaultOpen={true}>
+                        <div className="space-y-3">
+                            <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pilih Preset Template:</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {CARD_PRESETS.map((preset) => (
+                                    <button
+                                        key={preset.name}
+                                        type="button"
+                                        onClick={() => setConfig({ ...config, ...preset })}
+                                        className={`p-2 rounded-xl text-left border transition-all duration-300 hover:border-blue-400 group relative overflow-hidden flex flex-col justify-between h-20 ${
+                                            config.primary_color === preset.primary_color && config.template === preset.template
+                                                ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-900/10 ring-2 ring-blue-500/20'
+                                                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-1.5 z-10">
+                                            <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: preset.primary_color }} />
+                                            <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: preset.header_bg_color }} />
+                                        </div>
+                                        <div className="z-10">
+                                            <span className="text-[10px] font-black text-slate-800 dark:text-slate-200 block truncate leading-snug uppercase tracking-tight">{preset.name}</span>
+                                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{preset.template}</span>
+                                        </div>
+                                        <div className="absolute right-[-10px] bottom-[-10px] w-8 h-8 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform duration-500" style={{ backgroundColor: preset.primary_color }} />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </SettingsGroup>
+
                     <SettingsGroup title="Template & Warna" defaultOpen={true}>
                         <div className="space-y-4">
                             <div>
