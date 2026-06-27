@@ -18,6 +18,7 @@ export const siswaSchema = z.object({
   alasan_keluar: z.string().optional().or(z.literal('')),
   transportasi: z.string().optional().or(z.literal('')),
   no_rfid: z.string().optional().or(z.literal('')),
+  foto: z.string().optional().or(z.literal('')),
   
   // Data Ayah
   nama_ayah: z.string().optional().or(z.literal('')),

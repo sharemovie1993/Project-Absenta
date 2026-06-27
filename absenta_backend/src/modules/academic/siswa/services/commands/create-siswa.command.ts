@@ -240,6 +240,7 @@ export async function createSiswaCommand(
       tanggal_masuk: input.tanggal_masuk || new Date(),
       status: input.status || 'AKTIF',
       no_rfid: rfid,
+      foto: input.foto || null,
     } as any,
   });
 

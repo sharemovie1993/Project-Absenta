@@ -39,7 +39,7 @@ export async function updateSiswaCommand(
     'no_hp', 'transportasi', 'nama_ayah', 'nik_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah',
     'nama_ibu', 'nik_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu', 'nama_wali', 'hubungan_wali',
     'pekerjaan_wali', 'penghasilan_wali', 'anak_ke', 'kebutuhan_khusus', 'penerima_kps', 'penerima_kip', 'no_kip', 'kelas_id',
-    'tahun_pelajaran_id', 'semester_id', 'tanggal_masuk', 'tanggal_keluar', 'alasan_keluar', 'status', 'no_rfid'
+    'tahun_pelajaran_id', 'semester_id', 'tanggal_masuk', 'tanggal_keluar', 'alasan_keluar', 'status', 'no_rfid', 'foto'
   ];
 
   const dataToUpdate: any = {};

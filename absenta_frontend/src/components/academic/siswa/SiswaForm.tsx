@@ -159,7 +159,8 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
       jenis_kelamin: '' as any,
       status: 'AKTIF',
       transportasi: 'KENDARAAN_PRIBADI',
-      orang_tua: []
+      orang_tua: [],
+      foto: ''
     }
   });
 
@@ -232,6 +233,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
           transportasi: siswa.transportasi || '',
           no_rfid: siswa.no_rfid || '',
           nisn: siswa.nisn || '',
+          foto: siswa.foto || '',
           nama_ayah: siswa.nama_ayah || '',
           pekerjaan_ayah: siswa.pekerjaan_ayah || '',
           pendidikan_ayah: siswa.pendidikan_ayah || '',
@@ -366,6 +368,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
               errors={errors}
               isViewMode={isViewMode}
               watch={watch}
+              setValue={setValue}
             />
           </TabsContent>
 
@@ -430,7 +433,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         </ModalFooter>
       </form>
 
-      {printOverlayData && createPortal(
+      {printOverlayData && (
         <PrintOverlay
           isPrinting={printingCard}
           pages={[[siswaData]]}
@@ -438,8 +441,7 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
           printConfig={printOverlayData.printConfig}
           config={printOverlayData.config}
           sekolah={printOverlayData.sekolah}
-        />,
-        document.body
+        />
       )}
     </div>
   );

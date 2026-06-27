@@ -998,6 +998,7 @@ model Siswa {
   alasan_keluar      String?
   status             String              @default("AKTIF")
   no_rfid            String?
+  foto               String?
   created_at         DateTime            @default(now())
   updated_at         DateTime            @updatedAt
   AbsenGerbangSiswa  AbsenGerbangSiswa[]

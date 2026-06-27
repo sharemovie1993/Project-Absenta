@@ -87,6 +87,7 @@ export interface CreateSiswaInput {
   tanggal_masuk?: Date | string;
   status?: string;
   no_rfid?: string;
+  foto?: string;
   orang_tua?: any[];
   skipQuotaCheck?: boolean;
   [key: string]: any;
