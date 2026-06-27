@@ -192,8 +192,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     ) : (
                          <img src="/logo.png" alt="Absenta Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
                     )}
-                     <div className="text-center" style={{ color: 'inherit' }}>
-                        {config.card_title && (
+                      <div className="text-center" style={{ color: 'inherit' }}>
+                        {isCenteredCircle && config.card_title && (
                           <h1 
                             className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
                             style={{ 
@@ -222,6 +222,21 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
                   }}
                 />
+            )}
+
+            {/* Card Title — sits exactly below header for non-centered layouts */}
+            {!isCenteredCircle && config.card_title && (
+              <div
+                className="absolute w-full text-center pointer-events-none z-10"
+                style={{ 
+                    top: `${resolvedHeaderHeight * MM_TO_PX + 
+                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 8 : 3)}px` 
+                }}
+              >
+                   <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
+                      {config.card_title}
+                   </h1>
+              </div>
             )}
 
             {/* Content — absolute from top:0 left:0 matching PreviewCard */}
