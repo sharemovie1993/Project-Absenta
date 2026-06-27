@@ -327,7 +327,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
         ];
         const randomPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
         
-        const headerStyles = ['solid', 'gradient', 'glass', 'wave', 'slanted'];
+        const headerStyles = ['solid', 'gradient', 'glass', 'wave', 'slanted', 'double-wave', 'two-tone', 'minimal'];
         const footerStyles = ['solid', 'gradient', 'glass', 'accent-line'];
         const randomHeaderStyle = headerStyles[Math.floor(Math.random() * headerStyles.length)] as any;
         const randomFooterStyle = footerStyles[Math.floor(Math.random() * footerStyles.length)] as any;
@@ -455,13 +455,16 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             {/* Header Style */}
                             <div>
                                 <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Gaya Header</Label>
-                                <div className="grid grid-cols-5 gap-1.5">
+                                <div className="grid grid-cols-4 gap-1.5">
                                     {([
-                                        { id: 'solid',    label: 'Solid',   icon: '▬' },
-                                        { id: 'gradient', label: 'Gradasi', icon: '◐' },
-                                        { id: 'glass',    label: 'Glass',   icon: '◻' },
-                                        { id: 'wave',     label: 'Lengkung',icon: '⌒' },
-                                        { id: 'slanted',  label: 'Miring',  icon: '◤' },
+                                        { id: 'solid',       label: 'Solid',       icon: '▬' },
+                                        { id: 'gradient',    label: 'Gradasi',     icon: '◐' },
+                                        { id: 'glass',       label: 'Glass',       icon: '◻' },
+                                        { id: 'wave',        label: 'Lengkung',    icon: '⌒' },
+                                        { id: 'slanted',     label: 'Miring',      icon: '◤' },
+                                        { id: 'double-wave', label: 'Gelombang',   icon: '≈' },
+                                        { id: 'two-tone',    label: 'Split',       icon: '◧' },
+                                        { id: 'minimal',     label: 'Minimal',     icon: '—' },
                                     ] as const).map((s) => (
                                         <button
                                             key={s.id}

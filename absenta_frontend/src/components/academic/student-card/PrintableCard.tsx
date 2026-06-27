@@ -126,17 +126,19 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
 
             {/* Header */}
             <div 
-                className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 shadow-sm animate-in fade-in z-10"
+                className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 shadow-sm animate-in fade-in z-10 overflow-hidden"
                 style={{ 
                     height: `${config.header_height || 18}mm`,
-                    color: config.header_text_color || '#ffffff',
+                    color: config.header_style === 'minimal' 
+                        ? (config.header_bg_color || config.primary_color)
+                        : (config.header_text_color || '#ffffff'),
                     printColorAdjust: 'exact',
                     WebkitPrintColorAdjust: 'exact',
                     ...(() => {
                         const headerBg = config.header_bg_color || config.primary_color;
                         const style = config.header_style || 'solid';
                         if (style === 'gradient') {
-                            return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)` };
+                            return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' };
                         }
                         if (style === 'glass') {
                             // Note: Print media doesn't render backdrop-filter well in all browsers.
@@ -149,11 +151,23 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         if (style === 'slanted') {
                             return { backgroundColor: headerBg, clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' };
                         }
+                        if (style === 'double-wave') {
+                            return { backgroundColor: headerBg, clipPath: 'polygon(0 0, 100% 0, 100% 80%, 75% 95%, 45% 82%, 0 95%)' };
+                        }
+                        if (style === 'minimal') {
+                            return { backgroundColor: 'transparent', borderBottom: `0.8mm solid ${headerBg}` };
+                        }
                         return { backgroundColor: headerBg, borderBottom: '1px solid rgba(255,255,255,0.1)' }; // solid
                     })()
                 }}
             >
-                <div className="flex items-center gap-2 px-2 w-full justify-center">
+                {config.header_style === 'two-tone' && (
+                    <div 
+                      className="absolute inset-0 z-0 bg-black/15 pointer-events-none"
+                      style={{ clipPath: 'polygon(0 0, 55% 0, 35% 100%, 0 100%)' }}
+                    />
+                )}
+                <div className="flex items-center gap-2 px-2 w-full justify-center z-10">
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                          <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
@@ -186,7 +200,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
               className="absolute w-full text-center pointer-events-none z-10"
               style={{ 
                   top: `${(config.header_height || 18) * MM_TO_PX + 
-                      ((config.header_style === 'wave' || config.header_style === 'slanted') ? 4 : 1.5)}mm` 
+                      ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 4 : 1.5)}mm` 
               }}
             >
                  <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>

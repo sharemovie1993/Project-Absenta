@@ -138,17 +138,19 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
 
           {/* Header */}
           <div 
-            className={`absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm ${
-                (config.header_style || 'solid') === 'glass' ? 'backdrop-blur-md border-b border-white/20' : 'border-b border-white/10'
+            className={`absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden ${
+                (config.header_style || 'solid') === 'glass' ? 'backdrop-blur-md border-b border-white/20' : ''
             }`}
             style={{ 
                 height: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE}px`,
-                color: config.header_text_color || '#ffffff',
+                color: config.header_style === 'minimal' 
+                    ? (config.header_bg_color || config.primary_color)
+                    : (config.header_text_color || '#ffffff'),
                 ...(() => {
                     const headerBg = config.header_bg_color || config.primary_color;
                     const style = config.header_style || 'solid';
                     if (style === 'gradient') {
-                        return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)` };
+                        return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' };
                     }
                     if (style === 'glass') {
                         return { backgroundColor: 'rgba(255, 255, 255, 0.12)' };
@@ -159,10 +161,22 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                     if (style === 'slanted') {
                         return { backgroundColor: headerBg, clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' };
                     }
-                    return { backgroundColor: headerBg }; // solid
+                    if (style === 'double-wave') {
+                        return { backgroundColor: headerBg, clipPath: 'polygon(0 0, 100% 0, 100% 80%, 75% 95%, 45% 82%, 0 95%)' };
+                    }
+                    if (style === 'minimal') {
+                        return { backgroundColor: 'transparent', borderBottom: `3px solid ${headerBg}` };
+                    }
+                    return { backgroundColor: headerBg, borderBottom: '1px solid rgba(255,255,255,0.1)' }; // solid
                 })()
             }}
           >
+            {config.header_style === 'two-tone' && (
+                <div 
+                  className="absolute inset-0 z-0 bg-black/15 pointer-events-none"
+                  style={{ clipPath: 'polygon(0 0, 55% 0, 35% 100%, 0 100%)' }}
+                />
+            )}
             <div className="flex items-center gap-3 px-4 w-full justify-center">
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
@@ -196,7 +210,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             className="absolute w-full text-center pointer-events-none z-10"
             style={{ 
                 top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 
-                    ((config.header_style === 'wave' || config.header_style === 'slanted') ? 16 : 6)}px` 
+                    ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 16 : 6)}px` 
             }}
           >
              <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
