@@ -220,14 +220,23 @@ async function runUpdateInBackground(): Promise<void> {
 
     // Step 3 — Install backend deps (Hanya jika berubah)
     if (backendDepsChanged) {
-      writeProgress({ status: 'running', step: 'installing_backend', message: 'Memperbarui dependensi backend (npm ci)...' });
+      const useCi = process.platform !== 'win32';
+      const cmd = useCi 
+        ? 'npm ci --omit=dev --no-audit' 
+        : 'npm install --omit=dev --no-audit --no-fund --prefer-offline';
+      const msg = useCi 
+        ? 'Memperbarui dependensi backend (npm ci)...' 
+        : 'Memperbarui dependensi backend (npm install)...';
+      
+      writeProgress({ status: 'running', step: 'installing_backend', message: msg });
+      
       try {
-        await execCmd('npm ci --omit=dev --no-audit', BACKEND_ROOT);
+        await execCmd(cmd, BACKEND_ROOT);
       } catch (err: any) {
-        // Jika EPERM di Windows, coba npm install biasa (kadangkala lebih forgiving)
-        if (err.stderr?.includes('EPERM')) {
+        // Fallback jika terjadi error
+        if (useCi && (err.stderr?.includes('EPERM') || err.message?.includes('EPERM'))) {
           writeProgress({ status: 'running', step: 'installing_backend', message: 'npm ci gagal (file locked), mencoba npm install...' });
-          await execCmd('npm install --omit=dev --no-audit', BACKEND_ROOT);
+          await execCmd('npm install --omit=dev --no-audit --no-fund --prefer-offline', BACKEND_ROOT);
         } else {
           throw err;
         }
@@ -239,9 +248,17 @@ async function runUpdateInBackground(): Promise<void> {
 
     // Step 4 — Install frontend deps (Hanya jika berubah)
     if (frontendDepsChanged) {
-      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm ci)...' });
+      const useCi = process.platform !== 'win32';
+      const cmd = useCi 
+        ? 'npm ci --no-audit' 
+        : 'npm install --no-audit --no-fund --prefer-offline';
+      const msg = useCi 
+        ? 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm ci)...' 
+        : 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm install)...';
+
+      writeProgress({ status: 'running', step: 'installing_frontend', message: msg });
       
-      // Matikan frontend sementara jika dijalankan via pm2 agar file .node (misal lightningcss) tidak terlock (EPERM di Windows)
+      // Matikan frontend sementara jika dijalankan via pm2 agar file .node tidak terlock
       try {
         await execCmd('npx pm2 stop /absenta-frontend/', BACKEND_ROOT);
       } catch (e) {
@@ -249,11 +266,11 @@ async function runUpdateInBackground(): Promise<void> {
       }
 
       try {
-        await execCmd('npm ci --no-audit', FRONTEND_ROOT);
+        await execCmd(cmd, FRONTEND_ROOT);
       } catch (err: any) {
-        if (err.stderr?.includes('EPERM') || err.message?.includes('EPERM')) {
+        if (useCi && (err.stderr?.includes('EPERM') || err.message?.includes('EPERM'))) {
           writeProgress({ status: 'running', step: 'installing_frontend', message: 'npm ci gagal (file locked), mencoba npm install...' });
-          await execCmd('npm install --no-audit', FRONTEND_ROOT);
+          await execCmd('npm install --no-audit --no-fund --prefer-offline', FRONTEND_ROOT);
         } else {
           throw err;
         }
