@@ -466,9 +466,9 @@ const PrepChecklistPage: React.FC = () => {
           <div className="space-y-6">
             
             {/* Control Panel (Selector) */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 print:hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start print:hidden">
               <div className="lg:col-span-1">
-                <SectionCard title="Pengaturan Cetak" icon={Printer}>
+                <SectionCard title="Pengaturan Cetak" icon={Printer} fullWidth>
                   <div className="space-y-4 py-2">
                     
                     {/* Document Type Dropdown */}
