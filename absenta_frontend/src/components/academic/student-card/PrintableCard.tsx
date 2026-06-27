@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
-import { EDITOR_SCALE } from './constants';
+import { EDITOR_SCALE, MM_TO_PX } from './constants';
 import { Siswa } from '../../../types/academic';
+import { CardPatternLayer } from './CardPatternLayer';
 
 interface SekolahData {
     logo_url?: string;
@@ -91,13 +92,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 borderStyle: config.show_border ? 'solid' : undefined
             }}
         >
-            {/* Subtle Decorative Background Lines */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
-                 style={{
-                   backgroundImage: 'radial-gradient(circle at 100% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%), radial-gradient(circle at 0% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%)',
-                   backgroundSize: '24px 24px'
-                 }}
-            />
+            {/* Card Pattern Layer */}
+            <CardPatternLayer config={config} width={widthMM} height={heightMM} scale={1} />
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
             {/* Header */}
@@ -137,9 +133,12 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
               }}
             />
 
-            {/* Title */}
-            <div className="absolute top-[22%] w-full text-center pointer-events-none">
-                 <h1 className="font-black uppercase tracking-widest text-slate-800" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
+            {/* Title — exactly below header */}
+            <div
+              className="absolute w-full text-center pointer-events-none z-10"
+              style={{ top: `${(config.header_height || 18) * MM_TO_PX + 1.5}mm` }}
+            >
+                 <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size}pt` }}>
                     {config.card_title}
                  </h1>
             </div>

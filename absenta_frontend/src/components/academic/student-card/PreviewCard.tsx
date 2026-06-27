@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
 import { MM_TO_PX, EDITOR_SCALE } from './constants';
 import { Siswa } from '../../../types/academic';
+import { CardPatternLayer } from './CardPatternLayer';
 
 interface SekolahData {
     logo_url?: string;
@@ -103,13 +104,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             boxShadow: config.show_border ? 'none' : '0 25px 50px -12px rgb(0 0 0 / 0.25)' 
           }}
         >
-          {/* Subtle Decorative Background Lines */}
-          <div className="absolute inset-0 pointer-events-none opacity-[0.05]"
-               style={{
-                 backgroundImage: 'radial-gradient(circle at 100% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%), radial-gradient(circle at 0% 150%, #000 24%, white 25%, white 28%, #000 29%, #000 36%, white 36%, white 40%, transparent 40%)',
-                 backgroundSize: '24px 24px'
-               }}
-          />
+          {/* Card Pattern Layer */}
+          <CardPatternLayer config={config} width={width} height={height} scale={EDITOR_SCALE} />
           <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
           {/* Header */}
@@ -147,9 +143,12 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             }}
           />
 
-          {/* Card Title */}
-          <div className="absolute top-[22%] w-full text-center pointer-events-none">
-             <h1 className="font-black uppercase tracking-widest text-slate-800" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
+          {/* Card Title — sits exactly below header */}
+          <div
+            className="absolute w-full text-center pointer-events-none z-10"
+            style={{ top: `${(config.header_height || 18) * MM_TO_PX * EDITOR_SCALE + 6}px` }}
+          >
+             <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
                 {config.card_title}
              </h1>
           </div>

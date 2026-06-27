@@ -18,127 +18,155 @@ import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput'
 import { PreviewCard } from '@/components/academic/student-card/PreviewCard';
 import type { StudentCardConfig } from '@/components/academic/student-card/types';
 
+// Coordinate Reference (EDITOR_SCALE=2, MM_TO_PX=3.78):
+// Horizontal card: 647px wide × 408px tall. Header=136px. Content starts ~175px.
+//   Photo(20×26mm)=151×196px → x=14, y=170
+//   Data block ~180px wide    → x=180, y=175
+//   QR(18×18mm)=136×136px    → x=497, y=185
+//
+// Vertical card: 408px wide × 647px tall. Header=136px. Content starts ~175px.
+//   Photo(24×32mm)=181×242px, centered → x=114, y=178
+//   Data block                         → x=14, y=440
+//   QR(18×18mm)=136×136px             → x=245, y=438
+
+const HCOORDS = { photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
+    photo_x: 14, photo_y: 170, data_x: 180, data_y: 175, qrcode_x: 497, qrcode_y: 185 };
+const VCOORDS = { photo_width: 24, photo_height: 32, qrcode_width: 18, qrcode_height: 18,
+    photo_x: 114, photo_y: 178, data_x: 14, data_y: 440, qrcode_x: 245, qrcode_y: 438 };
+
 const CARD_PRESETS: (Partial<StudentCardConfig> & { name: string })[] = [
     {
         name: 'Modern Blue Pass',
         template: 'horizontal',
-        primary_color: '#2563eb',
-        header_bg_color: '#1e3a8a',
-        header_text_color: '#ffffff',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'PEMERINTAH KABUPATEN',
-        subheader_text: 'DINAS PENDIDIKAN',
-        school_name: 'SMA NEGERI 1 ABSENTA',
-        school_address: 'Jl. Pendidikan No. 45, Absenta',
+        primary_color: '#2563eb', secondary_color: '#ffffff',
+        header_bg_color: '#1e3a8a', header_text_color: '#ffffff',
+        card_pattern: 'arc-overlay', card_pattern_opacity: 80,
+        show_photo: true, show_qrcode: true,
+        header_text: 'PEMERINTAH KABUPATEN', subheader_text: 'DINAS PENDIDIKAN',
         card_title: 'KARTU IDENTITAS SISWA',
-        photo_x: 25,
-        photo_y: 155,
-        data_x: 160,
-        data_y: 155,
-        qrcode_x: 480,
-        qrcode_y: 165
+        ...HCOORDS,
     },
     {
         name: 'Islamic Emerald',
         template: 'horizontal',
-        primary_color: '#059669',
-        header_bg_color: '#064e3b',
-        header_text_color: '#fef08a',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'YAYASAN ISLAM AL-IKHLAS',
-        subheader_text: 'MADRASAH ALIYAH',
-        school_name: 'MA UNGGULAN AL-IKHLAS',
-        school_address: 'Jl. Masjid Raya No. 12, Absenta',
+        primary_color: '#059669', secondary_color: '#f0fdf4',
+        header_bg_color: '#064e3b', header_text_color: '#fef08a',
+        card_pattern: 'wave-bottom', card_pattern_opacity: 90,
+        show_photo: true, show_qrcode: true,
+        header_text: 'YAYASAN ISLAM AL-IKHLAS', subheader_text: 'MADRASAH ALIYAH',
         card_title: 'KARTU TANDA ANGGOTA',
-        photo_x: 25,
-        photo_y: 155,
-        data_x: 160,
-        data_y: 155,
-        qrcode_x: 480,
-        qrcode_y: 165
+        ...HCOORDS,
     },
     {
         name: 'Active Red Tech',
         template: 'horizontal',
-        primary_color: '#dc2626',
-        header_bg_color: '#7f1d1d',
-        header_text_color: '#ffffff',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'KEMENTERIAN PENDIDIKAN',
-        subheader_text: 'SEKOLAH MENENGAH KEJURUAN',
-        school_name: 'SMK TEKNOLOGI ABSENTA',
-        school_address: 'Jl. Industri Kreatif No. 7, Absenta',
+        primary_color: '#dc2626', secondary_color: '#ffffff',
+        header_bg_color: '#7f1d1d', header_text_color: '#ffffff',
+        card_pattern: 'circuit', card_pattern_opacity: 70,
+        show_photo: true, show_qrcode: true,
+        header_text: 'KEMENTERIAN PENDIDIKAN', subheader_text: 'SEKOLAH MENENGAH KEJURUAN',
         card_title: 'KARTU SISWA PRAKERIN',
-        photo_x: 25,
-        photo_y: 155,
-        data_x: 160,
-        data_y: 155,
-        qrcode_x: 480,
-        qrcode_y: 165
+        ...HCOORDS,
+    },
+    {
+        name: 'Golden Gradient',
+        template: 'horizontal',
+        primary_color: '#b45309', secondary_color: '#fffbeb',
+        header_bg_color: '#78350f', header_text_color: '#fef9c3',
+        card_pattern: 'gradient-diagonal', card_pattern_opacity: 100,
+        show_photo: true, show_qrcode: true,
+        header_text: 'DINAS PENDIDIKAN', subheader_text: 'SEKOLAH DASAR NEGERI',
+        card_title: 'KARTU SISWA',
+        ...HCOORDS,
+    },
+    {
+        name: 'Navy Split',
+        template: 'horizontal',
+        primary_color: '#1d4ed8', secondary_color: '#f8faff',
+        header_bg_color: '#0f172a', header_text_color: '#e2e8f0',
+        card_pattern: 'split-color', card_pattern_opacity: 90,
+        show_photo: true, show_qrcode: true,
+        header_text: 'SEKOLAH MENENGAH ATAS', subheader_text: 'BOARDING SCHOOL',
+        card_title: 'STUDENT IDENTITY CARD',
+        ...HCOORDS,
+    },
+    {
+        name: 'Purple Dots',
+        template: 'horizontal',
+        primary_color: '#7c3aed', secondary_color: '#faf5ff',
+        header_bg_color: '#4c1d95', header_text_color: '#e9d5ff',
+        card_pattern: 'dots', card_pattern_opacity: 80,
+        show_photo: true, show_qrcode: true,
+        header_text: 'UNIVERSITAS ABSENTA', subheader_text: 'KARTU TANDA MAHASISWA',
+        card_title: 'KTM MAHASISWA',
+        ...HCOORDS,
+    },
+    {
+        name: 'Teal Arc Clean',
+        template: 'horizontal',
+        primary_color: '#0d9488', secondary_color: '#f0fdfa',
+        header_bg_color: '#134e4a', header_text_color: '#ccfbf1',
+        card_pattern: 'arc-overlay', card_pattern_opacity: 100,
+        show_photo: true, show_qrcode: true,
+        header_text: 'PEMERINTAH KOTA', subheader_text: 'DINAS KESEHATAN',
+        card_title: 'KARTU IDENTITAS PEGAWAI',
+        ...HCOORDS,
     },
     {
         name: 'Vertical Modern Blue',
         template: 'vertical',
-        primary_color: '#2563eb',
-        header_bg_color: '#1e3a8a',
-        header_text_color: '#ffffff',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'KARTU IDENTITAS',
-        subheader_text: 'SMA NEGERI 1 ABSENTA',
-        school_name: 'SMAN 1 ABSENTA',
-        school_address: 'Jl. Pendidikan No. 45',
+        primary_color: '#2563eb', secondary_color: '#ffffff',
+        header_bg_color: '#1e3a8a', header_text_color: '#ffffff',
+        card_pattern: 'gradient-radial', card_pattern_opacity: 100,
+        show_photo: true, show_qrcode: true,
+        header_text: 'KARTU IDENTITAS', subheader_text: 'SMA NEGERI 1 ABSENTA',
         card_title: 'STUDENT PASS',
-        photo_x: 110,
-        photo_y: 155,
-        data_x: 25,
-        data_y: 350,
-        qrcode_x: 250,
-        qrcode_y: 350
+        ...VCOORDS,
     },
     {
         name: 'Vertical Islamic Green',
         template: 'vertical',
-        primary_color: '#059669',
-        header_bg_color: '#064e3b',
-        header_text_color: '#ffffff',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'MADRASAH ALIYAH',
-        subheader_text: 'MA UNGGULAN AL-IKHLAS',
-        school_name: 'MA AL-IKHLAS',
-        school_address: 'Jl. Masjid Raya No. 12',
+        primary_color: '#059669', secondary_color: '#f0fdf4',
+        header_bg_color: '#064e3b', header_text_color: '#ffffff',
+        card_pattern: 'hexagon', card_pattern_opacity: 80,
+        show_photo: true, show_qrcode: true,
+        header_text: 'MADRASAH ALIYAH', subheader_text: 'MA UNGGULAN AL-IKHLAS',
         card_title: 'KARTU ANGGOTA',
-        photo_x: 110,
-        photo_y: 155,
-        data_x: 25,
-        data_y: 350,
-        qrcode_x: 250,
-        qrcode_y: 350
+        ...VCOORDS,
     },
     {
         name: 'Vertical Dark Slate',
         template: 'vertical',
-        primary_color: '#374151',
-        header_bg_color: '#111827',
-        header_text_color: '#f3f4f6',
-        show_photo: true,
-        show_qrcode: true,
-        header_text: 'ACADEMY PASS',
-        subheader_text: 'EXCLUSIVE HIGH SCHOOL',
-        school_name: 'ABSENTA HIGH SCHOOL',
-        school_address: 'Downtown Street No. 9',
+        primary_color: '#374151', secondary_color: '#f8fafc',
+        header_bg_color: '#111827', header_text_color: '#f3f4f6',
+        card_pattern: 'diagonal-stripe', card_pattern_opacity: 60,
+        show_photo: true, show_qrcode: true,
+        header_text: 'ACADEMY PASS', subheader_text: 'EXCLUSIVE HIGH SCHOOL',
         card_title: 'STUDENT IDENTITY',
-        photo_x: 110,
-        photo_y: 155,
-        data_x: 25,
-        data_y: 350,
-        qrcode_x: 250,
-        qrcode_y: 350
-    }
+        ...VCOORDS,
+    },
+    {
+        name: 'Vertical Crimson Wave',
+        template: 'vertical',
+        primary_color: '#dc2626', secondary_color: '#fff5f5',
+        header_bg_color: '#991b1b', header_text_color: '#fecaca',
+        card_pattern: 'wave-top', card_pattern_opacity: 100,
+        show_photo: true, show_qrcode: true,
+        header_text: 'SMK MERAH PUTIH', subheader_text: 'JURUSAN TEKNIK KOMPUTER',
+        card_title: 'KARTU PELAJAR',
+        ...VCOORDS,
+    },
+    {
+        name: 'Vertical Gold Diamond',
+        template: 'vertical',
+        primary_color: '#d97706', secondary_color: '#fffbeb',
+        header_bg_color: '#92400e', header_text_color: '#fef9c3',
+        card_pattern: 'diamond', card_pattern_opacity: 90,
+        show_photo: true, show_qrcode: true,
+        header_text: 'PONDOK PESANTREN', subheader_text: 'MADRASAH IBTIDAIYAH',
+        card_title: 'KARTU SANTRI',
+        ...VCOORDS,
+    },
 ];
 
 interface DesignTabProps {
@@ -257,6 +285,53 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             className="h-10 text-xs font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                                         />
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Card Background Pattern */}
+                            <div className="pt-2">
+                                <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-3 block">Pola Latar Kartu</Label>
+                                <div className="grid grid-cols-4 gap-1.5">
+                                    {([
+                                        { id: 'solid',             label: 'Solid',       preview: 'bg-white border border-slate-200' },
+                                        { id: 'gradient-diagonal', label: 'Gradasi /',   preview: 'bg-gradient-to-br from-blue-50 to-white border border-blue-100' },
+                                        { id: 'gradient-radial',   label: 'Radial',      preview: 'bg-[radial-gradient(ellipse_at_80%_20%,#bfdbfe_0%,transparent_70%)] border border-blue-100' },
+                                        { id: 'wave-bottom',       label: 'Ombak ↓',    preview: 'border border-slate-200 bg-white' },
+                                        { id: 'wave-top',          label: 'Ombak ↑',    preview: 'border border-slate-200 bg-white' },
+                                        { id: 'diagonal-stripe',   label: 'Garis',       preview: 'bg-[repeating-linear-gradient(45deg,#e0e7ff_0px,#e0e7ff_2px,white_2px,white_12px)] border border-blue-100' },
+                                        { id: 'dots',              label: 'Titik',       preview: 'bg-[radial-gradient(circle,#3b82f6_1px,transparent_1px)] bg-[length:10px_10px] border border-blue-100 bg-white' },
+                                        { id: 'circuit',           label: 'Sirkuit',     preview: 'border border-slate-200 bg-slate-50' },
+                                        { id: 'diamond',           label: 'Berlian',     preview: 'border border-slate-200 bg-white' },
+                                        { id: 'split-color',       label: 'Split',       preview: 'bg-[linear-gradient(160deg,#bfdbfe_0%,#bfdbfe_45%,white_45%)] border border-blue-100' },
+                                        { id: 'arc-overlay',       label: 'Busur',       preview: 'border border-slate-200 bg-white' },
+                                        { id: 'hexagon',           label: 'Hexagon',     preview: 'border border-slate-200 bg-white' },
+                                    ] as const).map((pat) => (
+                                        <button
+                                            key={pat.id}
+                                            type="button"
+                                            onClick={() => setConfig({ ...config, card_pattern: pat.id })}
+                                            className={`h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${pat.preview} ${
+                                                config.card_pattern === pat.id || (!config.card_pattern && pat.id === 'solid')
+                                                    ? 'ring-2 ring-blue-500 ring-offset-1 shadow-md scale-105'
+                                                    : 'hover:scale-102 hover:shadow-sm'
+                                            }`}
+                                        >
+                                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-tight leading-none">{pat.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Pattern Opacity */}
+                                <div className="mt-3 flex items-center gap-3">
+                                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-tight whitespace-nowrap">Intensitas Pola</Label>
+                                    <input
+                                        type="range"
+                                        min={10}
+                                        max={100}
+                                        value={config.card_pattern_opacity ?? 100}
+                                        onChange={(e) => setConfig({ ...config, card_pattern_opacity: Number(e.target.value) })}
+                                        className="flex-1 h-1.5 rounded-full accent-blue-600"
+                                    />
+                                    <span className="text-[10px] font-black text-slate-400 w-8 text-right">{config.card_pattern_opacity ?? 100}%</span>
                                 </div>
                             </div>
                         </div>

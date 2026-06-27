@@ -8,6 +8,8 @@ export interface StudentCardConfig {
   school_address?: string;
   primary_color: string;
   secondary_color: string;
+  card_pattern?: 'solid' | 'gradient-diagonal' | 'gradient-radial' | 'wave-bottom' | 'wave-top' | 'diagonal-stripe' | 'dots' | 'circuit' | 'diamond' | 'split-color' | 'arc-overlay' | 'hexagon';
+  card_pattern_opacity?: number;
   show_photo: boolean;
   show_qrcode: boolean;
   photo_x: number;
