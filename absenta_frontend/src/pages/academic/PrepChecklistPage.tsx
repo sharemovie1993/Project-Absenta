@@ -197,11 +197,20 @@ const PrepChecklistPage: React.FC = () => {
       const loadStudents = async () => {
         try {
           setLoadingStudents(true);
-          const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
-          setStudents(res.data || []);
+          if (selectedClassId === 'all') {
+            const res = await siswaApi.getAll({ limit: 1000 });
+            setStudents(res.data || []);
+          } else if (selectedClassId.startsWith('all_tingkat_')) {
+            const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
+            const res = await siswaApi.getAll({ tingkat: tingkatNum, limit: 500 });
+            setStudents(res.data || []);
+          } else {
+            const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
+            setStudents(res.data || []);
+          }
         } catch (err) {
           console.error(err);
-          toast.error('Gagal memuat siswa kelas');
+          toast.error('Gagal memuat data siswa');
         } finally {
           setLoadingStudents(false);
         }
@@ -233,6 +242,12 @@ const PrepChecklistPage: React.FC = () => {
   const selectedClassObj = useMemo(() => {
     return classes.find(c => c.id === selectedClassId);
   }, [classes, selectedClassId]);
+
+  // Extract unique grade levels (tingkat) from loaded classes list
+  const uniqueTingkatList = useMemo(() => {
+    const list = classes.map(c => Number(c.tingkat)).filter(t => !isNaN(t) && t > 0);
+    return Array.from(new Set(list)).sort((a, b) => a - b);
+  }, [classes]);
 
   const isLandscape = false;
 
@@ -296,7 +311,12 @@ const PrepChecklistPage: React.FC = () => {
         ? [null]
         : selectedClassId === 'all'
           ? classes
-          : classes.filter(c => c.id === selectedClassId);
+          : selectedClassId.startsWith('all_tingkat_')
+            ? (() => {
+                const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
+                return classes.filter(c => Number(c.tingkat) === tingkatNum);
+              })()
+            : classes.filter(c => c.id === selectedClassId);
 
       if (targetClasses.length === 0) {
         const pdfBlob = doc.output('blob');
@@ -310,7 +330,7 @@ const PrepChecklistPage: React.FC = () => {
 
       for (let classIndex = 0; classIndex < targetClasses.length; classIndex++) {
         const c = targetClasses[classIndex];
-        const classStudents = selectedClassId === 'all' && c
+        const classStudents = (selectedClassId === 'all' || selectedClassId.startsWith('all_tingkat_')) && c
           ? students.filter(s => s.kelas_id === c.id)
           : students;
 
@@ -974,7 +994,12 @@ const PrepChecklistPage: React.FC = () => {
                             onChange={(e) => setSelectedClassId(e.target.value)}
                             className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
                           >
-                            <option value="all">-- CETAK SEMUA KELAS (MASAL) --</option>
+                            {uniqueTingkatList.map(t => (
+                              <option key={`all_tingkat_${t}`} value={`all_tingkat_${t}`}>
+                                🖨️ CETAK TINGKAT {t} (MASAL)
+                              </option>
+                            ))}
+                            <option value="all">🖨️ CETAK SEMUA KELAS (SELURUH SEKOLAH)</option>
                             {classes.map(c => (
                               <option key={c.id} value={c.id}>{c.nama_kelas} (Tingkat {c.tingkat})</option>
                             ))}
