@@ -27,6 +27,7 @@ import { getPrepChecklist, type PrepChecklistData, type ChecklistItem } from '..
 import { kelasApi, siswaApi } from '../../api/academic.api';
 import { listGuruMapel } from '../../api/academic/guru-mapel.api';
 import type { Kelas, Siswa, GuruMapel } from '../../types/academic';
+import { sekolahApi, type Sekolah } from '../../api/academic/sekolah.api';
 import toast from 'react-hot-toast';
 
 const PrepChecklistPage: React.FC = () => {
@@ -50,6 +51,8 @@ const PrepChecklistPage: React.FC = () => {
   
   const [guruMapelList, setGuruMapelList] = useState<GuruMapel[]>([]);
   const [loadingGuruMapel, setLoadingGuruMapel] = useState<boolean>(false);
+  
+  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
 
   // Load Checklist data
   const loadChecklist = useCallback(async () => {
@@ -65,9 +68,24 @@ const PrepChecklistPage: React.FC = () => {
     }
   }, []);
 
+  const loadSekolah = useCallback(async () => {
+    try {
+      const res = await sekolahApi.getProfile();
+      setSekolah(res);
+    } catch (err) {
+      console.error('Gagal memuat profil sekolah:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadChecklist();
   }, [loadChecklist]);
+
+  useEffect(() => {
+    if (activeTab === 'print') {
+      loadSekolah();
+    }
+  }, [activeTab, loadSekolah]);
 
   // Load Classes for Printing tab
   const loadClasses = useCallback(async () => {
@@ -515,14 +533,30 @@ const PrepChecklistPage: React.FC = () => {
                     {/* --- REPORT HEADER (KOP SURAT) --- */}
                     <div className="border-b-4 border-double border-black pb-4 mb-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        {/* Mock Logo */}
-                        <div className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-center text-sm p-1 leading-none">
-                          SMK <br /> NEGERI
-                        </div>
+                        {sekolah?.logo_url ? (
+                          <div className="w-16 h-16 flex items-center justify-center overflow-hidden">
+                            <img 
+                              src={sekolah.logo_url} 
+                              alt="Logo Sekolah" 
+                              className="max-h-full max-w-full object-contain"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/logo.png';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-center text-xs p-1 leading-none">
+                            SMK <br /> NEGERI
+                          </div>
+                        )}
                         <div>
                           <h2 className="text-sm font-bold uppercase tracking-wide">Pemerintah Provinsi Dinas Pendidikan</h2>
-                          <h1 className="text-lg font-black uppercase tracking-wider leading-tight">SMK NEGERI CONTOH ABSENTA</h1>
-                          <p className="text-[10px] italic">Jl. Raya Plered KM. 5 Purwakarta, Telp: (0264) 123456</p>
+                          <h1 className="text-lg font-black uppercase tracking-wider leading-tight">
+                            {sekolah?.nama || 'SMK NEGERI CONTOH ABSENTA'}
+                          </h1>
+                          <p className="text-[10px] italic">
+                            {sekolah?.alamat || 'Jl. Raya Plered KM. 5 Purwakarta'}{sekolah?.telepon && `, Telp: ${sekolah.telepon}`}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right text-[10px] border-l border-slate-400 pl-4">
@@ -681,7 +715,7 @@ const PrepChecklistPage: React.FC = () => {
                     {selectedPrintType === 'sk_load' && (
                       <div className="space-y-4">
                         <div className="text-center space-y-1 mb-6">
-                          <h3 className="text-xs font-bold uppercase">LAMPIRAN SURAT KEPUTUSAN KEPALA SMK NEGERI CONTOH ABSENTA</h3>
+                          <h3 className="text-xs font-bold uppercase">LAMPIRAN SURAT KEPUTUSAN KEPALA {sekolah?.nama || 'SMK NEGERI CONTOH ABSENTA'}</h3>
                           <p className="text-[10px] font-bold">NOMOR: 421.3 / 088 / TU-CADISDIK / VI / {new Date().getFullYear()}</p>
                           <h3 className="text-sm font-bold uppercase underline mt-4">DISTRIBUSI GURU PENGAMPU BEBAN TUGAS MENGAJAR</h3>
                           <p className="text-xs">
@@ -745,8 +779,10 @@ const PrepChecklistPage: React.FC = () => {
                           <p className="font-bold">Kepala Sekolah,</p>
                         </div>
                         <div className="space-y-0.5">
-                          <p className="font-bold underline uppercase">DRS. H. CONTOH KEPSEK, M.Pd.</p>
-                          <p className="text-[10px] text-slate-500 font-mono">NIP. 19720512 199803 1 002</p>
+                          <p className="font-bold underline uppercase">{sekolah?.kepala_sekolah || 'DRS. H. CONTOH KEPSEK, M.Pd.'}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {sekolah?.nip_kepala ? `NIP. ${sekolah.nip_kepala}` : 'NIP. 19720512 199803 1 002'}
+                          </p>
                         </div>
                       </div>
                     </div>
