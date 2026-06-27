@@ -250,8 +250,10 @@ export const handleExportPdf = async (members: Member[], subscription: any) => {
     doc.text('Pimpinan Sekolah', colCenterX, sigY + 28, { align: 'center' });
     doc.text('Pimpinan Koperasi', colRightX, sigY + 28, { align: 'center' });
 
-    doc.save(`Laporan_Anggota_Koperasi_${new Date().toISOString().split('T')[0]}.pdf`);
-    toast.success('Laporan keanggotaan berhasil di-ekspor ke PDF!');
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+    toast.success('Laporan keanggotaan berhasil dimuat ke tab baru!');
   } catch (err) {
     console.error('Error exporting PDF:', err);
     toast.error('Gagal mengekspor data laporan ke PDF.');
@@ -418,8 +420,10 @@ export const handleExportSinglePdf = async (m: Member, subscription: any) => {
     doc.text('Pimpinan Sekolah', colCenterX, sigY + 28, { align: 'center' });
     doc.text('Pimpinan Koperasi', colRightX, sigY + 28, { align: 'center' });
 
-    doc.save(`Laporan_Anggota_${m.memberNo}_${m.name.replace(/\s+/g, '_')}.pdf`);
-    toast.success(`Laporan saldo untuk ${m.name} berhasil di-ekspor ke PDF!`);
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+    toast.success(`Laporan saldo untuk ${m.name} berhasil dimuat ke tab baru!`);
   } catch (err) {
     console.error('Error exporting single member PDF:', err);
     toast.error('Gagal mengekspor data laporan anggota ke PDF.');
@@ -756,8 +760,10 @@ export const handleDownloadCardPdf = async (m: Member, coopName: string, coopPro
     doc.setFillColor(16, 185, 129);
     doc.rect(0, 52, 85.6, 2, 'F');
 
-    doc.save(`Kartu_Anggota_${m.memberNo}.pdf`);
-    toast.success('Kartu anggota (2 Sisi) berhasil diunduh!');
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+    toast.success('Kartu anggota (2 Sisi) berhasil dimuat ke tab baru!');
   } catch (err) {
     console.error(err);
     toast.error('Gagal mengunduh kartu anggota.');
@@ -916,11 +922,13 @@ export const handleDownloadBulkCardsPdf = async (params: {
     }
 
     if (checkMounted()) {
-      doc.save(`Kartu_Anggota_Massal_${new Date().toISOString().split('T')[0]}.pdf`);
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      window.open(blobUrl, '_blank');
       if (onSuccess) {
         onSuccess(filteredMembers.length, toastId);
       } else {
-        toast.success(`Berhasil mencetak ${filteredMembers.length} kartu anggota (2 sisi)!`, { id: toastId });
+        toast.success(`Berhasil memuat ${filteredMembers.length} kartu anggota (2 sisi) ke tab baru!`, { id: toastId });
       }
     }
   } catch (err) {
