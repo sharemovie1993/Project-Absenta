@@ -216,14 +216,14 @@ export default function LoginPage() {
                 <motion.div variants={itemVariants} transition={{ delay: 0.1 }}>
                    <Input 
                       id="loginEmail"
-                      label="Email Sekolah"
-                      type="email"
+                      label="NISN atau Email Sekolah"
+                      type="text"
                       required
                       size="auth"
                       leftIcon={<Mail />}
                       value={credentials.email}
                       onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                      placeholder="nama@sekolah.sch.id"
+                      placeholder="Masukkan NISN atau Email Anda"
                    />
                 </motion.div>
   
