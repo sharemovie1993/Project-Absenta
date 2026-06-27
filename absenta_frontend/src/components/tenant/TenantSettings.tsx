@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label } from '@/components/ui';
-import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye } from 'lucide-react';
+import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2 } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
+import axiosInstance from '@/lib/axiosInstance';
 
 /**
  * TenantSettings - Halaman Pengaturan & Profil Sekolah (Khusus Tenant Admin)
@@ -33,6 +34,61 @@ export const TenantSettings: React.FC = () => {
   const [logoDaerahUrl, setLogoDaerahUrl] = useState('');
   const [kepalaSekolah, setKepalaSekolah] = useState('');
   const [nipKepala, setNipKepala] = useState('');
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const logoDaerahInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingLogoDaerah, setIsUploadingLogoDaerah] = useState(false);
+
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
+      if (fileUrl) {
+        setLogoUrl(fileUrl);
+        toast.success('Logo sekolah berhasil diunggah!');
+      }
+    } catch (err) {
+      console.error('Failed to upload logo:', err);
+      toast.error('Gagal mengunggah logo sekolah.');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handleUploadLogoDaerah = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogoDaerah(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
+      if (fileUrl) {
+        setLogoDaerahUrl(fileUrl);
+        toast.success('Logo daerah berhasil diunggah!');
+      }
+    } catch (err) {
+      console.error('Failed to upload logo daerah:', err);
+      toast.error('Gagal mengunggah logo daerah.');
+    } finally {
+      setIsUploadingLogoDaerah(false);
+    }
+  };
   
   // Rich lines state
   const [headerLines, setHeaderLines] = useState<PrintHeaderLine[]>([]);
@@ -454,22 +510,74 @@ export const TenantSettings: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4 border-slate-100 dark:border-slate-800">
                 <div className="grid gap-2">
                   <Label htmlFor="logo_daerah" className="text-xs font-bold text-slate-500 uppercase">URL Logo Kiri (Logo Pemerintah / Yayasan)</Label>
-                  <Input
-                    id="logo_daerah"
-                    value={logoDaerahUrl}
-                    onChange={(e) => setLogoDaerahUrl(e.target.value)}
-                    placeholder="https://upload.wikimedia.org/wikipedia/.../Logo.svg"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="logo_daerah"
+                      value={logoDaerahUrl}
+                      onChange={(e) => setLogoDaerahUrl(e.target.value)}
+                      placeholder="https://upload.wikimedia.org/wikipedia/.../Logo.svg"
+                      disabled={!isEditing}
+                      className="flex-1"
+                    />
+                    <input
+                      type="file"
+                      ref={logoDaerahInputRef}
+                      onChange={handleUploadLogoDaerah}
+                      accept="image/*"
+                      className="hidden"
+                      disabled={!isEditing}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => logoDaerahInputRef.current?.click()}
+                      disabled={!isEditing || isUploadingLogoDaerah}
+                      className="shrink-0 flex items-center gap-1.5 h-10 px-3 text-xs"
+                    >
+                      {isUploadingLogoDaerah ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      Unggah
+                    </Button>
+                  </div>
                   <p className="text-[10px] text-slate-400">Gunakan tautan logo daerah (PNG/SVG) untuk sisi kiri Kop.</p>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="logo_sekolah" className="text-xs font-bold text-slate-500 uppercase">URL Logo Kanan (Logo Sekolah)</Label>
-                  <Input
-                    id="logo_sekolah"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://..."
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="logo_sekolah"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                      placeholder="https://..."
+                      disabled={!isEditing}
+                      className="flex-1"
+                    />
+                    <input
+                      type="file"
+                      ref={logoInputRef}
+                      onChange={handleUploadLogo}
+                      accept="image/*"
+                      className="hidden"
+                      disabled={!isEditing}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={!isEditing || isUploadingLogo}
+                      className="shrink-0 flex items-center gap-1.5 h-10 px-3 text-xs"
+                    >
+                      {isUploadingLogo ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      Unggah
+                    </Button>
+                  </div>
                   <p className="text-[10px] text-slate-400">Gunakan tautan logo resmi sekolah Anda untuk sisi kanan Kop.</p>
                 </div>
               </div>
