@@ -7,6 +7,9 @@ import axios from 'axios';
 
 const prisma = new PrismaClient();
 
+/**
+ * @deprecated Google Drive Upload integration is deprecated in favor of centralized platform storageService.
+ */
 export class GoogleDriveService {
   /**
    * Extracts folder ID from a standard Google Drive folder URL

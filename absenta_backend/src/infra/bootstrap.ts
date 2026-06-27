@@ -158,7 +158,7 @@ export async function registerPlugins(fastify: any) {
     runFirst: true
   });
 
-  fastify.get('/uploads/*', async (request: any, reply: any) => {
+  const handleUploadRequest = async (request: any, reply: any) => {
     const raw = String((request.params && (request.params as any)['*']) || '');
     const subPath = raw.replace(/^\/+/, '');
     const key = `uploads/${subPath}`;
@@ -180,6 +180,20 @@ export async function registerPlugins(fastify: any) {
                     ? 'application/pdf'
                     : 'application/octet-stream';
 
+    if (
+      String(process.env.STORAGE_USE_DIRECT_URL || '').trim().toLowerCase() === 'true' &&
+      storageService.getDriverName() === 's3'
+    ) {
+      try {
+        const directUrl = await storageService.getSignedDownloadUrl(key);
+        if (directUrl) {
+          return reply.redirect(302, directUrl);
+        }
+      } catch (err) {
+        console.warn(`[StorageService] Failed to generate direct URL for key: ${key}, falling back to streaming`, err);
+      }
+    }
+
     const stream = storageService.createReadStream(key);
     stream.on('error', () => {
       if (reply.sent || reply.raw.headersSent) {
@@ -193,8 +207,10 @@ export async function registerPlugins(fastify: any) {
       void reply.send('File not found');
     });
     reply.type(contentType);
-    return reply.send(stream);
-  });
+  };
+
+  fastify.get('/uploads/*', handleUploadRequest);
+  fastify.get('/api/uploads/*', handleUploadRequest);
 
 
 

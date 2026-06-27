@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen, Trash2, Plus, ExternalLink, History, ArrowRight } from 'lucide-react';
 import { Button } from '../ui';
-import { getDriveThumbnailUrl } from '../../utils/hubinUtils';
+import { getDriveThumbnailUrl, resolveAttachmentUrl } from '../../utils/hubinUtils';
 
 interface LogbookTimelineItem {
   time: string;
@@ -90,16 +90,17 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
                     </button>
                   </div>
                   {item.image_url && (() => {
-                    const thumbUrl = getDriveThumbnailUrl(item.image_url);
+                    const resolvedUrl = resolveAttachmentUrl(item.image_url);
+                    const thumbUrl = getDriveThumbnailUrl(resolvedUrl);
                     return (
                       <a 
-                        href={item.image_url} 
+                        href={resolvedUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="mt-3 block w-full h-32 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group/img relative"
                       >
                         <img 
-                          src={thumbUrl || item.image_url} 
+                          src={thumbUrl || resolvedUrl} 
                           alt="Dokumentasi" 
                           referrerPolicy="no-referrer"
                           className="w-full h-full object-cover group-hover/img:scale-105 transition-transform" 

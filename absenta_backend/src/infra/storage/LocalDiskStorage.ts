@@ -11,7 +11,10 @@ export class LocalDiskStorage implements BackupStorage {
   private baseDir: string;
 
   constructor(baseDir: string = 'backups') {
-    this.baseDir = path.resolve(process.cwd(), baseDir);
+    const storageBase = process.env.STORAGE_LOCAL_DIR
+      ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+      : process.cwd();
+    this.baseDir = path.resolve(storageBase, baseDir);
     if (!fs.existsSync(this.baseDir)) {
       fs.mkdirSync(this.baseDir, { recursive: true });
     }
@@ -19,7 +22,10 @@ export class LocalDiskStorage implements BackupStorage {
 
   async save(stream: Readable, filename: string): Promise<{ path: string, size: number, checksum: string }> {
     const safeFilename = filename.replace(/^(\.\.(\/|\\|$))+/, '');
-    const baseRel = path.relative(process.cwd(), this.baseDir);
+    const storageBase = process.env.STORAGE_LOCAL_DIR
+      ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+      : process.cwd();
+    const baseRel = path.relative(storageBase, this.baseDir);
     const storageKey = path.join(baseRel, safeFilename).replace(/\\/g, '/');
 
     const gzip = zlib.createGzip({ level: 9 });
@@ -48,30 +54,36 @@ export class LocalDiskStorage implements BackupStorage {
   }
 
   read(filePath: string): Readable {
+      const storageBase = process.env.STORAGE_LOCAL_DIR
+        ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+        : process.cwd();
       if (path.isAbsolute(filePath)) {
         const resolvedPath = path.resolve(filePath);
         if (!resolvedPath.toLowerCase().startsWith(this.baseDir.toLowerCase())) {
           throw new Error('Invalid path: Access denied');
         }
-        const key = path.relative(process.cwd(), resolvedPath).replace(/\\/g, '/');
+        const key = path.relative(storageBase, resolvedPath).replace(/\\/g, '/');
         return storageService.createReadStream(key);
       }
-      const baseRel = path.relative(process.cwd(), this.baseDir);
+      const baseRel = path.relative(storageBase, this.baseDir);
       const key = path.join(baseRel, filePath).replace(/\\/g, '/');
       return storageService.createReadStream(key);
   }
 
   async delete(filePath: string): Promise<void> {
+      const storageBase = process.env.STORAGE_LOCAL_DIR
+        ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+        : process.cwd();
       if (path.isAbsolute(filePath)) {
         const resolvedPath = path.resolve(filePath);
         if (!resolvedPath.toLowerCase().startsWith(this.baseDir.toLowerCase())) {
           throw new Error('Invalid path: Access denied');
         }
-        const key = path.relative(process.cwd(), resolvedPath).replace(/\\/g, '/');
+        const key = path.relative(storageBase, resolvedPath).replace(/\\/g, '/');
         await storageService.delete(key);
         return;
       }
-      const baseRel = path.relative(process.cwd(), this.baseDir);
+      const baseRel = path.relative(storageBase, this.baseDir);
       const key = path.join(baseRel, filePath).replace(/\\/g, '/');
       await storageService.delete(key);
   }

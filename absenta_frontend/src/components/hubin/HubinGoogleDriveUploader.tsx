@@ -4,7 +4,6 @@ import axiosInstance from '../../lib/axiosInstance';
 import { Button } from '../ui';
 import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'react-hot-toast';
-import { getDriveThumbnailUrl } from '../../utils/hubinUtils';
 
 interface HubinGoogleDriveUploaderProps {
   value: string;
@@ -13,21 +12,12 @@ interface HubinGoogleDriveUploaderProps {
   label?: string;
   customFileName?: string;
   compact?: boolean;
-  folderName?: string; // New prop for subfolder (class name)
+  folderName?: string;
 }
-
-export const GoogleDriveIcon: React.FC<{ className?: string }> = ({ className = 'w-5 h-5' }) => (
-  <svg className={className} viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-    <path fill="#0066da" d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l18.55-32.1-25.7-44.5c-1.35.8-2.5 1.9-3.3 3.3l-16.7 28.9c-.8 1.4-1.2 3-1.2 4.65s.4 3.25 1.2 4.65z"/>
-    <path fill="#00ac47" d="m44.3 50.3 12.85 22.25c1.35-.8 2.5-1.9 3.3-3.3l16.7-28.9c.8-1.4 1.2-3 1.2-4.65s-.4-3.25-1.2-4.65l-16.7-28.9c-.8-1.4-1.95-2.5-3.3-3.3z"/>
-    <path fill="#ffba00" d="m60.45 15.6-12.85-22.25c-.8-1.4-1.95-2.5-3.3-3.3h-37.1c-1.35.8-2.5 1.9-3.3 3.3l12.85 22.25z"/>
-  </svg>
-);
 
 export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> = ({
   value,
   onChange,
-  studentEmail = 'siswa@absenta.id',
   label = 'Foto Bukti Kegiatan',
   customFileName,
   compact = false,
@@ -35,7 +25,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMounted = useRef(true);
-  const [status, setStatus] = useState<'idle' | 'auth' | 'uploading' | 'syncing' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -56,19 +46,11 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
     setErrorMsg('');
     
     try {
-      // Step 1: Mocking Student Google Drive OAuth Authentication
-      setStatus('auth');
-      setProgress(20);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (!isMounted.current) return;
-
-      // Step 2: Uploading File to Absenta storage
       setStatus('uploading');
-      setProgress(50);
+      setProgress(10);
 
       const formData = new FormData();
       
-      // KUNCI PERBAIKAN: Tambahkan folder_name SEBELUM file agar terbaca oleh parser server
       if (folderName) {
         formData.append('folder_name', folderName);
       }
@@ -83,8 +65,8 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           if (isMounted.current && progressEvent.total) {
-            const pct = Math.round((progressEvent.loaded * 40) / progressEvent.total) + 50;
-            setProgress(Math.min(90, pct));
+            const pct = Math.round((progressEvent.loaded * 90) / progressEvent.total);
+            setProgress(Math.max(10, pct));
           }
         }
       });
@@ -95,13 +77,6 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
         throw new Error('Gagal mengunggah foto. Server tidak mengembalikan URL berkas.');
       }
 
-      // Step 3: Syncing to Google Drive reference
-      setStatus('syncing');
-      setProgress(95);
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      if (!isMounted.current) return;
-
-      // Done
       setProgress(100);
       setStatus('success');
       onChange(uploadedUrl);
@@ -118,14 +93,14 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
   const handleReset = useCallback(async () => {
     if (value) {
       setIsDeleting(true);
-      const deleteToast = toast.loading('Menghapus file permanen dari Google Drive...');
+      const deleteToast = toast.loading('Menghapus file permanen...');
       try {
         await hubinApi.deletePhoto(value);
-        toast.success('File berhasil dihapus permanen.', { id: deleteToast });
+        toast.success('File berhasil dihapus.', { id: deleteToast });
       } catch (err: unknown) {
         const error = err as Error;
-        console.error('Failed to delete file from Drive:', error);
-        toast.error('Gagal menghapus file dari Drive, tapi tautan dilepas.', { id: deleteToast });
+        console.error('Failed to delete file:', error);
+        toast.error('Gagal menghapus file dari penyimpanan, tapi tautan dilepas.', { id: deleteToast });
       } finally {
         if (isMounted.current) {
           setIsDeleting(false);
@@ -151,7 +126,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
           </label>
           {value && (
             <span className="flex items-center gap-1 text-[9px] font-black text-emerald-650 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-100/50">
-              <CheckCircle size={10} /> Terkoneksi Drive
+              <CheckCircle size={10} /> Tersimpan
             </span>
           )}
         </div>
@@ -173,7 +148,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
         >
           <div className="flex items-center gap-3">
             <div className={`${compact ? 'p-1.5' : 'p-3'} bg-white dark:bg-slate-950 rounded-xl shadow-sm border border-slate-100 dark:border-slate-850 flex items-center justify-center`}>
-              <GoogleDriveIcon className={`${compact ? 'w-4 h-4' : 'w-6 h-6'} animate-pulse`} />
+              <Cloud className={`${compact ? 'w-4 h-4' : 'w-6 h-6'} text-indigo-500`} />
             </div>
             {!compact && (
               <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded-xl text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
@@ -187,14 +162,14 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
             </p>
             {!compact && (
               <p className="text-[10px] text-slate-400 font-semibold mt-1">
-                Menyimpan otomatis ke Google Drive Siswa ({studentEmail})
+                Menyimpan otomatis ke penyimpanan sistem
               </p>
             )}
           </div>
         </button>
       )}
 
-      {(status === 'auth' || status === 'uploading' || status === 'syncing') && (
+      {status === 'uploading' && (
         <div className={`w-full ${compact ? 'p-3' : 'p-5'} border border-slate-100 dark:border-slate-850 rounded-xl bg-white dark:bg-slate-900 shadow-sm space-y-4`}>
           <div className="flex items-center gap-3">
             <div className={`${compact ? 'w-7 h-7' : 'w-9 h-9'} rounded-lg bg-slate-50 dark:bg-slate-950 flex items-center justify-center animate-spin`}>
@@ -206,9 +181,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
               </p>
               {!compact && (
                 <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-wider mt-0.5">
-                  {status === 'auth' && '🔑 Mengautentikasi Google Drive Siswa...'}
-                  {status === 'uploading' && '☁️ Mengunggah ke Google Drive...'}
-                  {status === 'syncing' && '🔄 Sinkronisasi Tautan Absenta...'}
+                  ☁️ Mengunggah ke penyimpanan...
                 </p>
               )}
             </div>
@@ -225,20 +198,15 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
       )}
 
       {value && (() => {
-        const thumbUrl = getDriveThumbnailUrl(value);
         return (
           <div className={`w-full ${compact ? 'p-2' : 'p-4'} border border-indigo-100/50 dark:border-indigo-950/30 rounded-xl bg-indigo-50/10 dark:bg-slate-900/20 shadow-sm flex items-center gap-4 animate-fadeIn`}>
             <div className={`${compact ? 'w-10 h-10' : 'w-14 h-14'} relative group overflow-hidden rounded-xl border border-indigo-100/50 dark:border-slate-850 flex items-center justify-center shrink-0 bg-white dark:bg-slate-950 shadow-sm`}>
-              {thumbUrl ? (
-                <img 
-                  src={thumbUrl} 
-                  alt="Preview" 
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                />
-              ) : (
-                <GoogleDriveIcon className={compact ? "w-5 h-5" : "w-8 h-8"} />
-              )}
+              <img 
+                src={value} 
+                alt="Preview" 
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover transition-transform group-hover:scale-110"
+              />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate flex items-center gap-1.5">
@@ -251,16 +219,8 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-650 dark:text-indigo-400 hover:underline"
                 >
-                  <ExternalLink size={10} /> Lihat
+                  <ExternalLink size={10} /> Lihat Foto
                 </a>
-                {!compact && (
-                  <>
-                    <span className="text-slate-300 dark:text-slate-800 text-[10px]">•</span>
-                    <span className="text-[10px] text-slate-400 font-semibold">
-                      Google Drive Siswa
-                    </span>
-                  </>
-                )}
               </div>
             </div>
             <button

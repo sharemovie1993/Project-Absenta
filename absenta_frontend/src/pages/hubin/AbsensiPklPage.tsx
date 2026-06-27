@@ -153,18 +153,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
 
   const visibleTabsCount = useMemo(() => {
     if (isStudent) return 3; // Presensi, Riwayat, Portofolio
-    let count = 1; // Monitoring is always there for teachers
-    if (isGlobalHubin) count++; // Settings
-    return count;
-  }, [isStudent, isGlobalHubin]);
-
-  const { data: gdriveSettings, refetch: refetchSettings } = useQuery({
-    queryKey: ['hubin-settings'],
-    queryFn: () => hubinApi.getSettings(),
-    enabled: !isStudent && isEnabled && isGlobalHubin
-  });
-
-  const settingsData = useMemo(() => (gdriveSettings as { data?: { folderUrl: string; driveMode: string } })?.data || gdriveSettings || { folderUrl: '', driveMode: 'simulated' }, [gdriveSettings]);
+    return 1; // Monitoring is always there for teachers
+  }, [isStudent]);
 
   // -- Mutations --
 
@@ -202,18 +192,6 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       toast.success('Absensi Berhasil Diverifikasi');
     },
-  });
-
-  const updateSettingsMutation = useMutation({
-    mutationFn: (data: { folderUrl: string; driveMode: string }) => hubinApi.updateSettings(data),
-    onSuccess: () => {
-      toast.success('Pengaturan Google Drive berhasil disimpan!');
-      refetchSettings();
-    },
-    onError: (err: unknown) => {
-      const errorMsg = err && typeof err === 'object' && 'response' in err ? ((err as ApiErrorResponse).response?.data?.message || (err as ApiErrorResponse).message) : 'Gagal menyimpan pengaturan';
-      toast.error('Gagal menyimpan pengaturan: ' + errorMsg);
-    }
   });
 
   const submitJurnalMutation = useMutation({
@@ -466,11 +444,6 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
                         <TabsTrigger value="management" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
                           <ShieldCheck size={12} className="mr-2" /> Monitoring
                         </TabsTrigger>
-                        {isGlobalHubin && (
-                          <TabsTrigger value="settings" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                            <RefreshCw size={12} className="mr-2" /> Settings
-                          </TabsTrigger>
-                        )}
                       </>
                     )}
                   </MenuTabs>
@@ -546,7 +519,6 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
                       updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
                     }}
                     onEditLogbook={setEditingAbsensi} quickAddTexts={quickAddTexts} setQuickAddTexts={setQuickAddTexts}
-                    settingsData={settingsData} updateSettingsMutation={updateSettingsMutation}
                     renderActivityText={renderActivityText} getDriveThumbnailUrl={getDriveThumbnailUrl}
                     isGlobalHubin={isGlobalHubin}
                   />

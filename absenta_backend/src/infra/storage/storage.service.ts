@@ -39,18 +39,20 @@ function ensureSafeRelativeKey(key: string): string {
 
 function resolveLocalPath(key: string): { absolutePath: string; absoluteDir: string } {
   const safeKey = ensureSafeRelativeKey(key);
-  const abs = path.resolve(process.cwd(), safeKey);
-  const cwd = path.resolve(process.cwd());
-  if (!abs.toLowerCase().startsWith(cwd.toLowerCase() + path.sep) && abs.toLowerCase() !== cwd.toLowerCase()) {
+  const baseDir = process.env.STORAGE_LOCAL_DIR
+    ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+    : path.resolve(process.cwd());
+  const abs = path.resolve(baseDir, safeKey);
+  if (!abs.toLowerCase().startsWith(baseDir.toLowerCase() + path.sep) && abs.toLowerCase() !== baseDir.toLowerCase()) {
     throw new Error('Invalid storage key');
   }
   return { absolutePath: abs, absoluteDir: path.dirname(abs) };
 }
 
 function buildS3Config(): S3Config | null {
-  const enabled =
-    String(process.env.STORAGE_DRIVER || '').trim().toLowerCase() === 's3' ||
-    String(process.env.INVOICE_PDF_STORAGE || '').trim().toLowerCase() === 's3';
+  const driver = String(process.env.STORAGE_DRIVER || '').trim().toLowerCase();
+  const invoicePdfStorage = String(process.env.INVOICE_PDF_STORAGE || '').trim().toLowerCase();
+  const enabled = driver === 's3' || invoicePdfStorage === 's3';
   if (!enabled) return null;
 
   const bucket = String(process.env.S3_BUCKET || '').trim();
@@ -69,7 +71,15 @@ function buildS3Config(): S3Config | null {
     return Number.isFinite(raw) && raw > 0 ? raw : 3600;
   })();
 
-  if (!bucket || !accessKeyId || !secretAccessKey) return null;
+  if (!bucket || !accessKeyId || !secretAccessKey) {
+    throw new Error(
+      `Storage driver is set to S3, but configuration is incomplete. Missing: ${
+        !bucket ? 'S3_BUCKET ' : ''
+      }${!accessKeyId ? 'S3_ACCESS_KEY/S3_ACCESS_KEY_ID ' : ''}${
+        !secretAccessKey ? 'S3_SECRET_KEY/S3_SECRET_ACCESS_KEY' : ''
+      }`
+    );
+  }
   return {
     bucket,
     region,

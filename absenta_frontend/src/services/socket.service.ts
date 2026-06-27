@@ -43,27 +43,7 @@ export class SocketService {
     const useApiPath = /\/api$/.test(base) || base.includes('/api/');
     let socketUrl = useApiPath ? base.split('/api')[0] : base;
 
-    // Dev port mapper: Automatically map frontend port 5173 to backend port 3001 in dev environment
-    // Jika frontend berjalan di HTTPS (misal via basic-ssl), direct connection ke 3001 (HTTP) 
-    // akan menyebabkan ERR_SSL_PROTOCOL_ERROR. Dalam hal ini, lebih baik gunakan proxy Vite (tetap di port 5173).
     const isHttps = window.location.protocol === 'https:';
-    
-    if (socketUrl.includes(':5173')) {
-      if (isHttps) {
-        // Tetap gunakan port 5173 agar lewat proxy Vite (yang menangani SSL termination)
-        socketUrl = socketUrl.replace(':5173', ':5173'); 
-      } else {
-        socketUrl = socketUrl.replace(':5173', ':3001');
-      }
-    } else if (socketUrl === window.location.origin && window.location.port === '5173') {
-      if (isHttps) {
-        socketUrl = window.location.origin; // Tetap di 5173
-      } else {
-        socketUrl = window.location.origin.replace(':5173', ':3001');
-      }
-    }
-
-    // Force secure protocol if frontend is loaded over HTTPS to avoid Insecure Mixed Content blocking
     if (isHttps && socketUrl.startsWith('http://')) {
       socketUrl = socketUrl.replace('http://', 'https://');
     }

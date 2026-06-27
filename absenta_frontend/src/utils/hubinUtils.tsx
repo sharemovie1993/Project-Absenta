@@ -89,6 +89,18 @@ export const getDriveThumbnailUrl = (url: string | undefined): string | null => 
 };
 
 /**
+ * Resolves attachment URL for local development by rewriting app.absenta.id to localhost
+ */
+export const resolveAttachmentUrl = (url: string | undefined): string => {
+  if (!url) return '';
+  // If in development mode, rewrite app.absenta.id URLs to relative path to load from local backend
+  if (import.meta.env.DEV && url.includes('app.absenta.id/api/uploads/')) {
+    return url.replace(/^https?:\/\/app\.absenta\.id/, '');
+  }
+  return url;
+};
+
+/**
  * Merender seluruh timeline harian termasuk jam masuk, jurnal, dan jam pulang
  */
 export const renderDailyTimeline = (abs: any) => {
@@ -186,18 +198,20 @@ export const renderDailyTimeline = (abs: any) => {
                 </div>
 
                 {item.image_url && (() => {
-                  const thumbUrl = getDriveThumbnailUrl(item.image_url);
+                  const resolvedUrl = resolveAttachmentUrl(item.image_url);
+                  const thumbUrl = getDriveThumbnailUrl(resolvedUrl);
+                  const isDrive = resolvedUrl.includes('drive.google.com');
                   return (
                     <div className="shrink-0 ml-1 mt-0.5">
-                      {thumbUrl ? (
+                      {thumbUrl || (!isDrive && resolvedUrl) ? (
                         <a 
-                          href={item.image_url} 
+                          href={resolvedUrl} 
                           target="_blank" 
                           rel="noreferrer" 
                           className="block w-8 h-8 relative group/img overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm hover:ring-2 hover:ring-indigo-650 transition-all"
                         >
                           <img 
-                            src={thumbUrl} 
+                            src={thumbUrl || resolvedUrl} 
                             alt="Foto Bukti" 
                             referrerPolicy="no-referrer"
                             className="w-full h-full object-cover transition-transform group-hover/img:scale-110"
@@ -208,7 +222,7 @@ export const renderDailyTimeline = (abs: any) => {
                         </a>
                       ) : (
                         <a 
-                          href={item.image_url} 
+                          href={resolvedUrl} 
                           target="_blank" 
                           rel="noreferrer"
                           className="inline-flex items-center justify-center w-8 h-8 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-indigo-600 hover:bg-indigo-50 transition-all"

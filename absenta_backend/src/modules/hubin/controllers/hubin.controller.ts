@@ -1,7 +1,9 @@
 import { HubinService } from '../services/hubin.service';
-import { googleDriveService } from '../services/google-drive.service';
 import { studentResolverService } from '../../../services/student-resolver.service';
 import { authorizationService } from '../../auth/services/authorization.service';
+import { storageService } from '../../../infra/storage/storage.service';
+import crypto from 'crypto';
+import path from 'path';
 
 
 interface AuthenticatedRequest {
@@ -371,31 +373,26 @@ export class HubinController {
         return reply.status(400).send({ success: false, message: 'Tipe file tidak didukung. Harap upload gambar.' });
       }
 
-      // Extract folder_name (class name) from fields - Be more permissive with class names
-      // We check both fileData.fields and direct field access for robustness
+      // Extract folder_name (class name) from fields
       const rawFolderName = fileData.fields?.folder_name?.value || (fileData as any).folder_name;
       const folderName = rawFolderName ? String(rawFolderName).trim() : undefined;
 
-      console.log(`[HubinController] Upload request for folder: "${folderName || 'ROOT'}"`);
+      const fileExtension = path.extname(fileData.filename);
+      const randomName = crypto.randomBytes(16).toString('hex');
+      const fileName = `${randomName}${fileExtension}`;
 
-      const buffer = await fileData.toBuffer();
+      const tenantSegment = request.tenantId || 'global';
+      const sanitizeFolderName = (name: string) => name.replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, ' ').trim();
+      const folderSegment = folderName ? sanitizeFolderName(folderName) : 'root';
+      const storageKey = `uploads/hubin/${tenantSegment}/${folderSegment}/${fileName}`;
 
-      // Sanitasi nama file: Ganti spasi dengan underscore dan hapus karakter non-alphanumeric
-      const cleanFileName = fileData.filename
-        .replace(/\s+/g, '_')
-        .replace(/[^a-zA-Z0-9._-]/g, '');
-      
-      const fileUrl = await googleDriveService.uploadToDrive(
-        request.tenantId!,
-        buffer,
-        cleanFileName,
-        fileData.mimetype,
-        folderName // Pass folder name (class) to service
-      );
+      await storageService.uploadStream(storageKey, fileData.file, { contentType: fileData.mimetype });
+
+      const fileUrl = `/api/uploads/hubin/${tenantSegment}/${folderSegment}/${fileName}`;
 
       return reply.status(200).send({
         success: true,
-        message: 'File berhasil disimpan di Google Drive',
+        message: 'File berhasil disimpan',
         data: {
           url: fileUrl,
           filename: fileData.filename,
@@ -415,11 +412,16 @@ export class HubinController {
         return reply.status(400).send({ success: false, message: 'URL file tidak ditemukan' });
       }
 
-      const success = await googleDriveService.deleteFromDrive(request.tenantId!, url);
+      const marker = '/uploads/';
+      const index = url.indexOf(marker);
+      if (index !== -1) {
+        const key = url.substring(index + 1);
+        await storageService.delete(key);
+      }
       
       return reply.status(200).send({
-        success: success,
-        message: success ? 'File berhasil dihapus permanen dari Google Drive' : 'Gagal menghapus file dari Google Drive'
+        success: true,
+        message: 'File berhasil dihapus permanen'
       });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

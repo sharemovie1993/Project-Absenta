@@ -46,8 +46,6 @@ interface HubinManagementViewProps {
   onEditLogbook: (absensi: AbsensiPkl) => void;
   quickAddTexts: Record<string, string>;
   setQuickAddTexts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  settingsData: any;
-  updateSettingsMutation: any;
   renderActivityText: (str: string | undefined) => React.ReactNode;
   getDriveThumbnailUrl: (url: string | undefined) => string | null;
   isGlobalHubin?: boolean;
@@ -61,8 +59,6 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
   onEditLogbook,
   quickAddTexts,
   setQuickAddTexts,
-  settingsData,
-  updateSettingsMutation,
   renderActivityText,
   getDriveThumbnailUrl,
   isGlobalHubin = false
@@ -366,86 +362,6 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = ({
         </div>
       </SectionCard>
     </TabsContent>
-
-      {isGlobalHubin && (
-        <TabsContent value="settings" className="mt-0">
-          <SectionCard title="Pengaturan Integrasi Google Drive" icon={RefreshCw}>
-            <div className="space-y-8 p-4">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900/40 dark:to-indigo-950/20 p-6 rounded-xl border border-blue-100 dark:border-indigo-900/30 flex gap-5 text-blue-800 dark:text-indigo-350 shadow-sm leading-relaxed">
-                <div className="shrink-0 p-3 bg-white dark:bg-slate-900 rounded-xl shadow-sm h-fit">
-                  <RefreshCw className="text-indigo-500" size={24} />
-                </div>
-                <div className="text-xs space-y-1.5 leading-relaxed">
-                  <p className="font-black text-sm text-indigo-900 dark:text-indigo-350 uppercase tracking-tight">Koneksi Google Drive PKL</p>
-                  <p className="font-medium">Atur folder utama tempat seluruh foto bukti presensi dan jurnal siswa akan disimpan secara otomatis.</p>
-                  <div className="pt-2 flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-blue-100/50 dark:border-slate-700 font-bold text-[9px]">SaaS Ready</span>
-                    <span className="px-2 py-1 bg-white/50 dark:bg-slate-800/50 rounded-lg border border-blue-100/50 dark:border-slate-700 font-bold text-[9px]">Automatic Folder Creation</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <SimpleFormField 
-                  label="Mode Integrasi Drive" 
-                  description="Pilih bagaimana sistem menangani upload file."
-                >
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={() => updateSettingsMutation.mutate({ ...settingsData, driveMode: 'direct' })}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${settingsData.driveMode === 'direct' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <ShieldCheck className={settingsData.driveMode === 'direct' ? 'text-indigo-600' : 'text-slate-400'} size={20} />
-                        {settingsData.driveMode === 'direct' && <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />}
-                      </div>
-                      <p className="text-[11px] font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">Google Drive API</p>
-                      <p className="text-[9px] text-slate-500 font-medium mt-1">Upload langsung ke akun institusi Anda.</p>
-                    </button>
-                    <button 
-                      onClick={() => updateSettingsMutation.mutate({ ...settingsData, driveMode: 'simulated' })}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${settingsData.driveMode === 'simulated' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200'}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <RefreshCw className={settingsData.driveMode === 'simulated' ? 'text-indigo-600' : 'text-slate-400'} size={20} />
-                        {settingsData.driveMode === 'simulated' && <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />}
-                      </div>
-                      <p className="text-[11px] font-black uppercase tracking-tight text-slate-800 dark:text-slate-200">Simulasi Cloud</p>
-                      <p className="text-[9px] text-slate-500 font-medium mt-1">Gunakan penyimpanan cloud Absenta (Default).</p>
-                    </button>
-                  </div>
-                </SimpleFormField>
-
-                <div className="space-y-4">
-                  <SimpleFormField 
-                    htmlFor="gdrive-folder-url"
-                    label="Tautan Folder Root (Google Drive)" 
-                    description="Salin URL folder Google Drive tempat penyimpanan pusat."
-                    required
-                  >
-                    <Input 
-                      id="gdrive-folder-url"
-                      placeholder="https://drive.google.com/drive/folders/..."
-                      value={settingsData.folderUrl || ''}
-                      onChange={(e) => updateSettingsMutation.mutate({ ...settingsData, folderUrl: e.target.value })}
-                      className="rounded-xl border-slate-200 dark:border-slate-800"
-                    />
-                  </SimpleFormField>
-                  
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Panduan Folder</h5>
-                    <ul className="text-[9px] text-slate-500 space-y-1.5 font-medium list-disc list-inside">
-                      <li>Sistem akan membuat sub-folder otomatis per Kelas.</li>
-                      <li>Pastikan folder Root memiliki izin "Editor" untuk akun sistem.</li>
-                      <li>Siswa tidak perlu memiliki akun Google untuk upload.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        </TabsContent>
-      )}
     </>
   );
 };
