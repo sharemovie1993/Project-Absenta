@@ -75,7 +75,7 @@ export class StudentCardConfigService {
   async upsertConfig(tenantId: string, data: any) {
     // Remove fields that shouldn't be updated directly or don't exist in schema
     // Now school_name and school_address are valid fields
-    const { id, tenant_id, created_at, updated_at, Tenant, ...updateData } = data;
+    const { id, tenant_id, created_at, updated_at, Tenant, name, ...updateData } = data;
     
     // Ensure numeric fields are floats
     if (updateData.photo_x) updateData.photo_x = parseFloat(updateData.photo_x);

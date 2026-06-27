@@ -193,7 +193,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
         const randomPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
         const randomHeaderPattern = patternOpts[Math.floor(Math.random() * patternOpts.length)] as any;
         
-        const headerStyles = ['solid', 'gradient', 'glass', 'wave', 'slanted', 'double-wave', 'two-tone', 'minimal'];
+        const headerStyles = ['solid', 'gradient', 'wave', 'slanted', 'double-wave', 'two-tone', 'minimal'];
         const footerStyles = ['solid', 'gradient', 'glass', 'accent-line'];
         const randomHeaderStyle = headerStyles[Math.floor(Math.random() * headerStyles.length)] as any;
         const randomFooterStyle = footerStyles[Math.floor(Math.random() * footerStyles.length)] as any;
@@ -327,7 +327,6 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     {([
                                         { id: 'solid',       label: 'Solid',       icon: '▬' },
                                         { id: 'gradient',    label: 'Gradasi',     icon: '◐' },
-                                        { id: 'glass',       label: 'Glass',       icon: '◻' },
                                         { id: 'wave',        label: 'Lengkung',    icon: '⌒' },
                                         { id: 'slanted',     label: 'Miring',      icon: '◤' },
                                         { id: 'double-wave', label: 'Gelombang',   icon: '≈' },

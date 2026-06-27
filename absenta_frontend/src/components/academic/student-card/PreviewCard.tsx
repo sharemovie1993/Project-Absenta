@@ -154,9 +154,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
 
           {/* Header */}
           <div 
-            className={`absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden ${
-                (config.header_style || 'solid') === 'glass' ? 'backdrop-blur-md border-b border-white/20' : ''
-            }`}
+            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden"
             style={{ 
                 height: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
                 color: config.header_style === 'minimal' 
@@ -167,9 +165,6 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                     const style = config.header_style || 'solid';
                     if (style === 'gradient') {
                         return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' };
-                    }
-                    if (style === 'glass') {
-                        return { backgroundColor: 'rgba(255, 255, 255, 0.12)' };
                     }
                     if (style === 'wave') {
                         return { backgroundColor: headerBg, clipPath: 'ellipse(85% 100% at 50% 0%)' };

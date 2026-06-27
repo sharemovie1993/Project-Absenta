@@ -156,11 +156,6 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         if (style === 'gradient') {
                             return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' };
                         }
-                        if (style === 'glass') {
-                            // Note: Print media doesn't render backdrop-filter well in all browsers.
-                            // We use a semi-transparent solid background to simulate glass.
-                            return { backgroundColor: 'rgba(255, 255, 255, 0.25)', borderBottom: '1px solid rgba(255,255,255,0.3)' };
-                        }
                         if (style === 'wave') {
                             return { backgroundColor: headerBg, clipPath: 'ellipse(85% 100% at 50% 0%)' };
                         }

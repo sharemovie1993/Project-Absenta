@@ -35,7 +35,9 @@ export interface StudentCardConfig {
   header_height: number;
   header_bg_color: string;
   header_text_color: string;
-  header_style?: 'solid' | 'gradient' | 'glass' | 'wave' | 'slanted' | 'double-wave' | 'two-tone' | 'minimal';
+  header_style?: 'solid' | 'gradient' | 'wave' | 'slanted' | 'double-wave' | 'two-tone' | 'minimal';
+  header_pattern?: 'solid' | 'gradient-diagonal' | 'gradient-radial' | 'wave-bottom' | 'wave-top' | 'diagonal-stripe' | 'dots' | 'circuit' | 'diamond' | 'split-color' | 'arc-overlay' | 'hexagon';
+  header_pattern_opacity?: number;
   footer_height: number;
   footer_bg_color: string;
   footer_style?: 'solid' | 'gradient' | 'glass' | 'accent-line' | 'hidden';
