@@ -1020,8 +1020,23 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
       let resolutionMethod: 'DOMAIN' | 'BODY' | 'EMAIL_FALLBACK' = 'DOMAIN';
       if (allowLocalDevLogin && !resolvedTenantId) {
         try {
+          let resolvedEmailForDev = email;
+          if (email && !email.includes('@')) {
+            const siswa = await prisma.siswa.findFirst({
+              where: {
+                OR: [
+                  { nisn: email },
+                  { nis: email }
+                ]
+              },
+              select: { User: { select: { email: true } } }
+            });
+            if (siswa && siswa.User?.email) {
+              resolvedEmailForDev = siswa.User.email;
+            }
+          }
           const devUser = await prisma.user.findFirst({
-            where: { email },
+            where: { email: resolvedEmailForDev },
             select: { tenant_id: true, Role: { select: { name: true } } }
           });
           if (devUser) {
