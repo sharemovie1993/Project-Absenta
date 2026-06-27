@@ -240,6 +240,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
             )}
 
             {/* Content — absolute from top:0 left:0 matching PreviewCard */}
+            {/* Content — absolute from top:0 left:0 matching PreviewCard */}
             <div 
                 style={{
                     position: 'absolute',
@@ -247,13 +248,17 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     left: 0,
                     transform: `translate(${dataX}px, ${dataY}px)`,
                     zIndex: 15,
-                    padding: '4px 6px',
+                    padding: '4px 4px',
                     maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
-                    textAlign: isCenteredCircle ? 'center' : undefined
+                    textAlign: isCenteredCircle ? 'center' : undefined,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px'
                 }}
             >
-                <div style={{ marginBottom: '2px', fontSize: `${config.student_name_font_size}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                    <div style={{ fontSize: '5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                {/* NAMA SISWA */}
+                <div style={{ fontSize: `${config.student_name_font_size}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontSize: '4px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '1px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                         Nama Siswa
                     </div>
                     <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', lineHeight: 1.2, textAlign: isCenteredCircle ? 'center' : undefined }}>
@@ -261,32 +266,36 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     </div>
                 </div>
 
-                <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
+                {/* Divider */}
+                <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, marginBottom: '2px', justifyContent: isCenteredCircle ? 'center' : undefined }}>
+                {/* NIS / NISN */}
+                <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                     <div>
-                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>NIS</div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>NIS</div>
                         <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nis || '-'}</div>
                     </div>
-                    <div style={{ width: '0.3mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }} />
+                    <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
                     <div>
-                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>NISN</div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>NISN</div>
                         <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nisn || '-'}</div>
                     </div>
                 </div>
 
-                <div style={{ height: '0.4mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)', margin: '2px 0' }} />
+                {/* Divider */}
+                <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-                <div style={{ display: 'flex', gap: '8px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
+                {/* JURUSAN / KELAS */}
+                <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                     {displayStudent.jurusanNama && (
                         <div>
-                            <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>Jurusan</div>
+                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
                             <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
                         </div>
                     )}
-                    {displayStudent.jurusanNama && <div style={{ width: '0.3mm', background: isDarkBg ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }} />}
+                    {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
                     <div>
-                        <div style={{ fontSize: '4.5pt', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: config.primary_color || '#64748b', opacity: isDarkBg ? 0.6 : 1, marginBottom: '1px' }}>Kelas</div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
                         <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
                     </div>
                 </div>

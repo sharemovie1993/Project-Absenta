@@ -263,14 +263,18 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 left: 0,
                 cursor: 'move',
                 zIndex: 15,
-                maxWidth: isCenteredCircle ? '380px' : (isVertical ? '220px' : '320px')
+                padding: `${4 * EDITOR_SCALE}px ${4 * EDITOR_SCALE}px`,
+                maxWidth: isCenteredCircle ? `${190 * EDITOR_SCALE}px` : (isVertical ? `${110 * EDITOR_SCALE}px` : `${160 * EDITOR_SCALE}px`),
+                textAlign: isCenteredCircle ? 'center' : undefined,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: `${3 * EDITOR_SCALE}px`
             }}
-            className={`mt-0 space-y-1.5 p-2 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200 ${isCenteredCircle ? 'text-center' : ''}`}
+            className="mt-0 border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 rounded-xl transition-all duration-200"
           >
-            {/* NAMA — larger, bold */}
-            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt` }} className={isCenteredCircle ? 'text-center' : ''}>
-                <div className={`text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 ${isCenteredCircle ? 'text-center' : ''}`}
-                    style={{ color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b' }}>
+            {/* NAMA SISWA */}
+            <div style={{ fontSize: `${config.student_name_font_size * EDITOR_SCALE}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                <div style={{ fontSize: `${4 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: `${1 * EDITOR_SCALE}px`, color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
                     Nama Siswa
                 </div>
                 <div className={`font-extrabold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-900'} ${isCenteredCircle ? 'text-center' : ''}`}>
@@ -279,56 +283,36 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             </div>
 
             {/* Divider */}
-            <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+            <div style={{ height: `${0.5 * EDITOR_SCALE}px`, background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-            {/* NIS / NISN — pill style */}
-            <div className={`flex gap-3 ${isCenteredCircle ? 'justify-center text-center' : ''}`} style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+            {/* NIS / NISN */}
+            <div style={{ display: 'flex', gap: `${6 * EDITOR_SCALE}px`, fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                 <div>
-                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
-                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
-                        NIS
-                    </div>
-                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
-                        {displayStudent.nis || '-'}
-                    </div>
+                    <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: `${1 * EDITOR_SCALE}px` }}>NIS</div>
+                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>{displayStudent.nis || '-'}</div>
                 </div>
-                <div style={{ width: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+                <div style={{ width: `${0.5 * EDITOR_SCALE}px`, background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
                 <div>
-                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
-                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
-                        NISN
-                    </div>
-                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
-                        {displayStudent.nisn || '-'}
-                    </div>
+                    <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: `${1 * EDITOR_SCALE}px` }}>NISN</div>
+                    <div className={`font-bold tabular-nums ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>{displayStudent.nisn || '-'}</div>
                 </div>
             </div>
 
             {/* Divider */}
-            <div style={{ height: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+            <div style={{ height: `${0.5 * EDITOR_SCALE}px`, background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-            {/* Jurusan + Kelas — two-column */}
-            <div className={`flex gap-3 ${isCenteredCircle ? 'justify-center text-center' : ''}`} style={{ fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt` }}>
+            {/* JURUSAN / KELAS */}
+            <div style={{ display: 'flex', gap: `${6 * EDITOR_SCALE}px`, fontSize: `${config.student_details_font_size * EDITOR_SCALE}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                 {displayStudent.jurusanNama && (
                     <div>
-                        <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
-                            style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
-                            Jurusan
-                        </div>
-                        <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
-                            {displayStudent.jurusanNama}
-                        </div>
+                        <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: `${1 * EDITOR_SCALE}px` }}>Jurusan</div>
+                        <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>{displayStudent.jurusanNama}</div>
                     </div>
                 )}
-                {displayStudent.jurusanNama && <div style={{ width: '1px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
+                {displayStudent.jurusanNama && <div style={{ width: `${0.5 * EDITOR_SCALE}px`, background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
                 <div>
-                    <div className={`text-[7px] font-black uppercase tracking-widest mb-0.5`}
-                        style={{ color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b' }}>
-                        Kelas
-                    </div>
-                    <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>
-                        {displayStudent.kelasStripped}
-                    </div>
+                    <div style={{ fontSize: `${3.5 * EDITOR_SCALE}px`, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: `${1 * EDITOR_SCALE}px` }}>Kelas</div>
+                    <div className={`font-bold ${isDarkBg ? 'text-slate-200' : 'text-slate-800'}`}>{displayStudent.kelasStripped}</div>
                 </div>
             </div>
           </motion.div>
