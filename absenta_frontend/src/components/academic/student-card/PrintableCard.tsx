@@ -65,8 +65,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const qrW = isCenteredCircle ? 15 : (config.qrcode_width || 20);
     const qrH = isCenteredCircle ? 15 : (config.qrcode_height || 20);
 
-    const photoX = config.photo_x / EDITOR_SCALE;
-    const photoY = config.photo_y / EDITOR_SCALE;
+    const PX_TO_MM_SCALE = MM_TO_PX * EDITOR_SCALE;
+
+    const photoX_MM = (config.photo_x || 0) / PX_TO_MM_SCALE;
+    const photoY_MM = (config.photo_y || 0) / PX_TO_MM_SCALE;
 
     const resolvedDataY = isCenteredCircle 
         ? Math.max(config.data_y || 0, 370) 
@@ -79,10 +81,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
         ? ((heightMM - qrH) * MM_TO_PX * EDITOR_SCALE) - 15 
         : config.qrcode_y;
 
-    const qrX = resolvedQrX / EDITOR_SCALE;
-    const qrY = resolvedQrY / EDITOR_SCALE;
-    const dataX = (config.data_x || 0) / EDITOR_SCALE;
-    const dataY = resolvedDataY / EDITOR_SCALE;
+    const qrX_MM = resolvedQrX / PX_TO_MM_SCALE;
+    const qrY_MM = resolvedQrY / PX_TO_MM_SCALE;
+    const dataX_MM = (config.data_x || 0) / PX_TO_MM_SCALE;
+    const dataY_MM = resolvedDataY / PX_TO_MM_SCALE;
 
     // Strip tingkat prefix (X, XI, XII) from class name
     const stripTingkat = (nama: string) =>
@@ -246,7 +248,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    transform: `translate(${dataX}px, ${dataY}px)`,
+                    transform: `translate(${dataX_MM}mm, ${dataY_MM}mm)`,
                     zIndex: 15,
                     padding: '4px 4px',
                     maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
@@ -308,7 +310,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         position: 'absolute',
                         left: 0,
                         top: 0,
-                        transform: `translate(${photoX}px, ${photoY}px)`,
+                        transform: `translate(${photoX_MM}mm, ${photoY_MM}mm)`,
                         width: `${photoW}mm`,
                         height: `${config.photo_shape === 'circle' ? photoW : photoH}mm`,
                         zIndex: 20,
@@ -335,7 +337,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         position: 'absolute',
                         left: 0,
                         top: 0,
-                        transform: `translate(${qrX}px, ${qrY}px)`,
+                        transform: `translate(${qrX_MM}mm, ${qrY_MM}mm)`,
                         zIndex: 20
                     }}
                     className="bg-white p-1 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center"
