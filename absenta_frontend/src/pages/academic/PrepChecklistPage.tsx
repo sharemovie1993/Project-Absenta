@@ -68,6 +68,7 @@ const PrepChecklistPage: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
   const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
+  const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 
   // Load logo Daerah (Kiri)
   useEffect(() => {
@@ -301,7 +302,7 @@ const PrepChecklistPage: React.FC = () => {
       }
       
       // Draw Logo Sekolah (Kanan)
-      if (logoSekolahBase64) {
+      if (includeSchoolLogo && logoSekolahBase64) {
         try {
           doc.addImage(logoSekolahBase64, 'PNG', pageWidth - 31, 10, 16, 16);
         } catch (e) {
@@ -652,7 +653,8 @@ const PrepChecklistPage: React.FC = () => {
     principalNip,
     isLandscape,
     checklistData,
-    sekolah
+    sekolah,
+    includeSchoolLogo
   ]);
 
   // Map icon helper for checklist items
@@ -973,6 +975,20 @@ const PrepChecklistPage: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* Checkbox to Toggle Right Logo (Sekolah) */}
+                    <div className="flex items-center gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="toggle-school-logo"
+                        checked={includeSchoolLogo}
+                        onChange={(e) => setIncludeSchoolLogo(e.target.checked)}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 dark:border-slate-800 focus:ring-blue-500 bg-white dark:bg-slate-900"
+                      />
+                      <label htmlFor="toggle-school-logo" className="text-xs font-bold text-slate-700 dark:text-slate-300 select-none cursor-pointer">
+                        Sertakan Logo Sekolah (Kanan)
+                      </label>
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
