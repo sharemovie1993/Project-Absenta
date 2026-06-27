@@ -34,7 +34,8 @@ function Install-CaddyLocal {
         [string]$Domain,
         [string]$FPort,
         [string]$BPort,
-        [string]$SSLEmail = ""
+        [string]$SSLEmail = "",
+        [string]$CFToken = ""
     )
     
     Show-Header "Setup Reverse Proxy Lokal (Caddy)"
@@ -59,10 +60,30 @@ function Install-CaddyLocal {
 
     Write-Host "Memeriksa Caddy... " -NoNewline
     $caddyPath = Get-Command caddy -ErrorAction SilentlyContinue
+    $isCustomCaddy = $false
     
-    if (-not $caddyPath) {
+    # Cek apakah caddy yang ada mendukung cloudflare
+    if ($caddyPath) {
+        $modules = & $caddyPath list-modules
+        if ($modules -match "dns.providers.cloudflare") { $isCustomCaddy = $true }
+    }
+
+    if (-not $isCustomCaddy -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
+        Write-Host "BUTUH VERSI CLOUDFLARE" -ForegroundColor Yellow
+        Write-Host "Mengunduh Caddy with Cloudflare Plugin..." -ForegroundColor Cyan
+        # URL untuk download caddy dengan plugin cloudflare
+        $url = "https://caddyserver.com/api/download?os=windows&arch=amd64&p=github.com%2Fcaddy-dns%2Fcloudflare"
+        $dest = "$PSScriptRoot\caddy.exe"
+        
+        # Stop service if running before overwrite
+        sc.exe stop Caddy 2>&1 | Out-Null
+        
+        Invoke-WebRequest -Uri $url -OutFile $dest
+        $caddyPath = $dest
+        Write-Host "Caddy Custom berhasil diunduh ke $dest" -ForegroundColor Green
+    } elseif (-not $caddyPath) {
         Write-Host "TIDAK DITEMUKAN" -ForegroundColor Yellow
-        Write-Host "Mengunduh Caddy untuk Windows..." -ForegroundColor Cyan
+        Write-Host "Mengunduh Caddy standar..." -ForegroundColor Cyan
         $url = "https://caddyserver.com/api/download?os=windows&arch=amd64"
         $dest = "$PSScriptRoot\caddy.exe"
         Invoke-WebRequest -Uri $url -OutFile $dest
@@ -75,7 +96,12 @@ function Install-CaddyLocal {
     # Buat Caddyfile cerdas
     Write-Host "Membuat konfigurasi Caddyfile..." -ForegroundColor Cyan
     $tlsConfig = "tls internal"
-    if (-not [string]::IsNullOrWhiteSpace($SSLEmail)) {
+    
+    if (-not [string]::IsNullOrWhiteSpace($CFToken)) {
+        $tlsConfig = "tls {
+        dns cloudflare $CFToken
+    }"
+    } elseif (-not [string]::IsNullOrWhiteSpace($SSLEmail)) {
         $tlsConfig = "email $SSLEmail"
     }
 
@@ -105,39 +131,30 @@ $Domain {
         sc.exe create Caddy binPath= $binPath start= auto DisplayName= "Absenta Reverse Proxy (Caddy)"
         sc.exe start Caddy
         
-        # ZERO TOUCH SSL: Import Root CA secara native ke Windows Store
-        Write-Host "Menginstal Sertifikat Root Caddy ke Windows Trusted Store..." -ForegroundColor Cyan
-        
-        # Lokasi sertifikat root Caddy (default Windows)
-        $caddyDataDir = "$env:AppData\Caddy"
-        $rootCertPath = "$caddyDataDir\pki\authorities\local\root.crt"
-        
-        # Jika Caddy berjalan sebagai SYSTEM service, lokasinya berbeda
-        $systemCertPath = "C:\Windows\System32\config\systemprofile\AppData\Roaming\Caddy\pki\authorities\local\root.crt"
-        
-        $finalCertPath = ""
-        if (Test-Path $rootCertPath) { $finalCertPath = $rootCertPath }
-        elseif (Test-Path $systemCertPath) { $finalCertPath = $systemCertPath }
+        if ([string]::IsNullOrWhiteSpace($CFToken)) {
+            # ZERO TOUCH SSL: Import Root CA secara native ke Windows Store (Hanya untuk Internal SSL)
+            Write-Host "Menginstal Sertifikat Root Caddy ke Windows Trusted Store..." -ForegroundColor Cyan
+            $caddyDataDir = "$env:AppData\Caddy"
+            $systemCertPath = "C:\Windows\System32\config\systemprofile\AppData\Roaming\Caddy\pki\authorities\local\root.crt"
+            $userCertPath = "$caddyDataDir\pki\authorities\local\root.crt"
+            
+            $finalCertPath = ""
+            if (Test-Path $userCertPath) { $finalCertPath = $userCertPath }
+            elseif (Test-Path $systemCertPath) { $finalCertPath = $systemCertPath }
 
-        if (-not [string]::IsNullOrWhiteSpace($finalCertPath)) {
-            Write-Host "Menemukan sertifikat di $finalCertPath. Mengimpor..." -ForegroundColor Yellow
-            # Import ke LocalMachine agar berlaku untuk semua user dan sistem
-            Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\LocalMachine\Root -ErrorAction SilentlyContinue
-            # Juga import ke CurrentUser untuk memastikan browser (Chrome/Edge) langsung mengenali
-            Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\CurrentUser\Root -ErrorAction SilentlyContinue
-            
-            # Paksa Windows untuk menyegarkan cache sertifikat
-            certutil.exe -user -pulse | Out-Null
-            
-            Write-Host "Sertifikat berhasil diimpor ke Trusted Root Store!" -ForegroundColor Green
+            if (-not [string]::IsNullOrWhiteSpace($finalCertPath)) {
+                Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\LocalMachine\Root -ErrorAction SilentlyContinue
+                Import-Certificate -FilePath $finalCertPath -CertStoreLocation Cert:\CurrentUser\Root -ErrorAction SilentlyContinue
+                certutil.exe -user -pulse | Out-Null
+                Write-Host "Sertifikat berhasil diimpor!" -ForegroundColor Green
+            }
         } else {
-            Write-Host "Peringatan: File sertifikat root tidak ditemukan. Menjalankan fallback 'caddy trust'..." -ForegroundColor Yellow
-            Start-Process "$caddyPath" -ArgumentList "trust" -Verb RunAs -Wait
+            Write-Host "Menggunakan Cloudflare DNS Challenge. Sertifikat resmi akan segera terbit otomatis." -ForegroundColor Green
         }
         
-        Write-Host "Caddy Service & SSL Trust berhasil dikonfigurasi!" -ForegroundColor Green
+        Write-Host "Caddy Service & SSL berhasil dikonfigurasi!" -ForegroundColor Green
     } catch {
-        Write-Host "Peringatan: Gagal mengotomatisasi service Caddy. Silakan jalankan manual: .\caddy.exe run" -ForegroundColor Yellow
+        Write-Host "Peringatan: Gagal mengotomatisasi service Caddy." -ForegroundColor Yellow
     }
 }
 
@@ -268,11 +285,21 @@ if (-not $Silent) {
         $inputFPort = Read-Host "5. Port Frontend [$FrontendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
-        # 6. SSL Configuration (New)
+        # 6. SSL Configuration
         $sslEmail = ""
+        $cfToken = ""
         if ($deployScenario -eq "hybrid") {
-            $inputEmail = Read-Host "6. Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Lokal/Internal)"
-            if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+            Write-Host "Opsi SSL Lokal (Hybrid):" -ForegroundColor Gray
+            Write-Host " 1. SSL Internal (Bawaan Caddy - Butu Trust Manual)"
+            Write-Host " 2. Cloudflare DNS Challenge (Sertifikat Resmi - Seamless di HP)"
+            $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
+            
+            if ($sslChoice -eq "2") {
+                $cfToken = Read-Host "Masukkan Cloudflare API Token Anda"
+            } else {
+                $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
+                if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+            }
         }
 
         # 7. License Key
@@ -344,7 +371,7 @@ if (-not $Silent) {
 # LANGKAH Tambahan: Setup Caddy (Hybrid Only)
 # ----------------------------------------------------
 if ($deployScenario -eq "hybrid" -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
-    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail
+    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken
 }
 
 # Update .env files
