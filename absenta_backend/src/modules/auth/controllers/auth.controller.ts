@@ -98,15 +98,16 @@ export const authController = {
 
   async resolveTenantByHost(headers: any): Promise<any | null> {
     const host = authController.pickHostForTenant(headers);
-    const hostNoPort = String(host || '').split('/')[0].split(':')[0].toLowerCase();
+    const hostNoPort = String(host || '').split('/')[0].split(':')[0].toLowerCase().trim();
     if (!hostNoPort) return null;
 
-    // 1. Exact Match on custom_domain or legacy domain
+    // 1. Exact Match on custom_domain or legacy domain (Case Insensitive)
     const exact = await prisma.tenant.findFirst({
       where: {
         OR: [
-          { custom_domain: hostNoPort },
-          { domain: hostNoPort }
+          { custom_domain: { equals: hostNoPort, mode: 'insensitive' } },
+          { domain: { equals: hostNoPort, mode: 'insensitive' } },
+          { subdomain: { equals: hostNoPort, mode: 'insensitive' } }
         ]
       }
     });
@@ -114,15 +115,30 @@ export const authController = {
 
     // 2. Subdomain Match (e.g. smk1.absenta.id -> subdomain: smk1)
     const baseDomains = authController.resolveBaseDomains();
+    
+    // Jika tidak ada base domain, coba tebak dari host (ambil 2 part terakhir)
+    const hostParts = hostNoPort.split('.');
+    if (baseDomains.length === 0 && hostParts.length >= 3) {
+      baseDomains.push(`${hostParts[hostParts.length - 2]}.${hostParts[hostParts.length - 1]}`);
+    }
+
     for (const base of baseDomains) {
+      if (hostNoPort === base) {
+        // Jika host sama persis dengan base domain, mungkin ada tenant 'default' atau 'app'
+        const rootTenant = await prisma.tenant.findFirst({
+          where: { subdomain: { equals: 'app', mode: 'insensitive' } }
+        });
+        if (rootTenant) return rootTenant;
+      }
+
       if (hostNoPort.endsWith(`.${base}`)) {
         const sub = hostNoPort.slice(0, -(base.length + 1)).replace(/^(api|www)\./, '');
         if (sub) {
           const t = await prisma.tenant.findFirst({
             where: {
               OR: [
-                { subdomain: sub },
-                { domain: sub } // legacy fallback
+                { subdomain: { equals: sub, mode: 'insensitive' } },
+                { domain: { equals: sub, mode: 'insensitive' } }
               ]
             }
           });
@@ -130,6 +146,15 @@ export const authController = {
         }
       }
     }
+
+    // 3. Fallback Terakhir: Jika masih tidak ketemu, dan ini adalah domain utama Bapak
+    // kita asumsikan ini adalah tenant 'app' (untuk testing/landing)
+    if (hostNoPort.includes('absenta.id')) {
+       return await prisma.tenant.findFirst({
+         where: { subdomain: { equals: 'app', mode: 'insensitive' } }
+       });
+    }
+
     return null;
   },
 
