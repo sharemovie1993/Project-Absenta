@@ -221,7 +221,7 @@ async function main() {
       label: 'DATA MASTER', icon: 'Database', path: null, required_features: ['CORE'], order: 10, children: [
         { label: 'Dashboard Akademik', icon: 'LayoutDashboard', path: '/academic', required_capability: 'academic.students.view.list' },
         {
-          label: 'Kelompok Master', icon: 'Database', path: null, children: [
+          label: 'Data Master', icon: 'Database', path: null, children: [
             { label: 'Tahun Pelajaran', icon: 'Calendar', path: '/academic/tahun-pelajaran', required_capability: 'academic.years.view.list' },
             { label: 'Semester', icon: 'Clock', path: '/academic/semester', required_capability: 'academic.semesters.view.list' },
             { label: 'Jurusan', icon: 'Briefcase', path: '/academic/jurusan', required_capability: 'academic.structures.view.list' },
@@ -232,15 +232,15 @@ async function main() {
           ]
         },
         {
-          label: 'Kelompok Setup', icon: 'Settings', path: null, children: [
-            { label: 'Registrasi Siswa', icon: 'UserPlus', path: '/academic/registrasi-siswa', required_capability: 'academic.students.create' },
+          label: 'Persiapan Akademik', icon: 'Settings', path: null, children: [
+            { label: 'Pembagian Kelas', icon: 'UserPlus', path: '/academic/registrasi-siswa', required_capability: 'academic.students.create' },
             { label: 'Wali Kelas', icon: 'UserCheck', path: '/academic/wali-kelas', required_capability: 'academic.homeroom.manage' },
             { label: 'Guru Mapel', icon: 'ListChecks', path: '/academic/guru-mapel', required_capability: 'academic.teaching.manage' },
             { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
-            { label: 'Transition', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
+            { label: 'Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
             { label: 'Persiapan & Cetak TU', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
-            { label: 'Siswa Cards', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
-            { label: 'Mutation', icon: 'UserMinus', path: '/academic/mutation', required_capability: 'academic.manage.siswa' },
+            { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
+            { label: 'Mutasi Siswa', icon: 'UserMinus', path: '/academic/mutation', required_capability: 'academic.manage.siswa' },
             { label: 'Struktur Organisasi', icon: 'Network', path: '/academic/struktur-organisasi', required_capability: 'academic.structures.view.list' },
             { label: 'Backup', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
           ]
