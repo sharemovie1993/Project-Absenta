@@ -58,39 +58,73 @@ function Install-CaddyLocal {
         Stop-Process -Id $port80Owner -Force -ErrorAction SilentlyContinue
     }
 
+    # Pastikan protokol TLS 1.2 diaktifkan agar proses download tidak diblokir oleh TLS versi lama
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
     Write-Host "Memeriksa Caddy... " -NoNewline
+    # Cari di PATH global sistem terlebih dahulu
     $caddyPath = Get-Command caddy -ErrorAction SilentlyContinue
-    $isCustomCaddy = $false
-    
-    # Cek apakah caddy yang ada mendukung cloudflare
-    if ($caddyPath) {
-        $modules = & $caddyPath list-modules
-        if ($modules -match "dns.providers.cloudflare") { $isCustomCaddy = $true }
+    # Jika tidak ada di PATH, cari di folder instalasi lokal ($PSScriptRoot\caddy.exe)
+    if (-not $caddyPath -and (Test-Path "$PSScriptRoot\caddy.exe")) {
+        $caddyPath = "$PSScriptRoot\caddy.exe"
     }
 
-    if (-not $isCustomCaddy -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
-        Write-Host "BUTUH VERSI CLOUDFLARE" -ForegroundColor Yellow
-        Write-Host "Mengunduh Caddy with Cloudflare Plugin..." -ForegroundColor Cyan
-        # URL untuk download caddy dengan plugin cloudflare
-        $url = "https://caddyserver.com/api/download?os=windows&arch=amd64&p=github.com%2Fcaddy-dns%2Fcloudflare"
-        $dest = "$PSScriptRoot\caddy.exe"
-        
-        # Stop service if running before overwrite
-        sc.exe stop Caddy 2>&1 | Out-Null
-        
-        Invoke-WebRequest -Uri $url -OutFile $dest
-        $caddyPath = $dest
-        Write-Host "Caddy Custom berhasil diunduh ke $dest" -ForegroundColor Green
-    } elseif (-not $caddyPath) {
-        Write-Host "TIDAK DITEMUKAN" -ForegroundColor Yellow
-        Write-Host "Mengunduh Caddy standar..." -ForegroundColor Cyan
-        $url = "https://caddyserver.com/api/download?os=windows&arch=amd64"
-        $dest = "$PSScriptRoot\caddy.exe"
-        Invoke-WebRequest -Uri $url -OutFile $dest
-        $caddyPath = $dest
-        Write-Host "Caddy berhasil diunduh ke $dest" -ForegroundColor Green
+    $isCustomCaddy = $false
+    if ($caddyPath) {
+        try {
+            $modules = & $caddyPath list-modules
+            if ($modules -match "dns.providers.cloudflare") { $isCustomCaddy = $true }
+        } catch {
+            $caddyPath = $null
+        }
+    }
+
+    $dest = "$PSScriptRoot\caddy.exe"
+    $needCloudflare = -not [string]::IsNullOrWhiteSpace($CFToken)
+
+    if ($needCloudflare) {
+        if ($isCustomCaddy) {
+            Write-Host "OK (Menggunakan Caddy + Cloudflare yang sudah ada)" -ForegroundColor Green
+        } else {
+            # Periksa apakah file caddy.exe lokal sebenarnya sudah ada dan mendukung cloudflare
+            if (Test-Path $dest) {
+                try {
+                    $localModules = & $dest list-modules
+                    if ($localModules -match "dns.providers.cloudflare") {
+                        $isCustomCaddy = $true
+                        $caddyPath = $dest
+                    }
+                } catch {}
+            }
+
+            if ($isCustomCaddy) {
+                Write-Host "OK (Menggunakan Caddy + Cloudflare lokal)" -ForegroundColor Green
+            } else {
+                Write-Host "BUTUH VERSI CLOUDFLARE" -ForegroundColor Yellow
+                Write-Host "Mengunduh Caddy dengan Cloudflare Plugin..." -ForegroundColor Cyan
+                $url = "https://caddyserver.com/api/download?os=windows&arch=amd64&p=github.com%2Fcaddy-dns%2Fcloudflare"
+                
+                # Hentikan service Caddy terlebih dahulu agar file caddy.exe tidak terkunci saat ditimpa
+                sc.exe stop Caddy 2>&1 | Out-Null
+                Start-Sleep -Seconds 1
+                
+                Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $dest
+                $caddyPath = $dest
+                Write-Host "Caddy Custom berhasil diunduh ke $dest" -ForegroundColor Green
+            }
+        }
     } else {
-        Write-Host "OK" -ForegroundColor Green
+        if ($caddyPath) {
+            Write-Host "OK (Menggunakan Caddy yang sudah ada)" -ForegroundColor Green
+        } else {
+            Write-Host "TIDAK DITEMUKAN" -ForegroundColor Yellow
+            Write-Host "Mengunduh Caddy standar..." -ForegroundColor Cyan
+            $url = "https://caddyserver.com/api/download?os=windows&arch=amd64"
+            
+            Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $dest
+            $caddyPath = $dest
+            Write-Host "Caddy standar berhasil diunduh ke $dest" -ForegroundColor Green
+        }
     }
 
     # Buat Caddyfile cerdas
