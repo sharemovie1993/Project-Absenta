@@ -16,11 +16,12 @@ import auditReport from '../../config/hardeningAuditReport.json';
 
 interface AcademicStat {
   title: string;
-  value: string | number;
+  value?: React.ReactNode;
   icon: React.ReactNode;
   gradient: string;
   subtitle?: string;
   onClick?: () => void;
+  subCards?: { label: string; value: string | number }[];
 }
 
 interface AcademicPageLayoutProps {
@@ -229,6 +230,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
                 gradient={stat.gradient}
                 subtitle={stat.subtitle}
                 onClick={stat.onClick}
+                subCards={stat.subCards}
               />
             ))
           )}

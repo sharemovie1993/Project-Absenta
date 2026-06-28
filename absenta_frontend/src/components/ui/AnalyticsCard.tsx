@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 interface AnalyticsCardProps {
   title: string;
-  value: string | number;
+  value?: React.ReactNode;
   icon?: React.ReactNode;
   isLoading?: boolean;
   gradient?: string;
@@ -15,6 +15,7 @@ interface AnalyticsCardProps {
   compact?: boolean;
   extraCompact?: boolean;
   variant?: 'card' | 'ghost';
+  subCards?: { label: string; value: string | number }[];
 }
 
 export function AnalyticsCard({ 
@@ -29,7 +30,8 @@ export function AnalyticsCard({
   className,
   compact = false,
   extraCompact = false,
-  variant = 'card'
+  variant = 'card',
+  subCards
 }: AnalyticsCardProps) {
   const isCompact = compact || extraCompact;
 
@@ -82,29 +84,48 @@ export function AnalyticsCard({
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className={cn("uppercase font-black tracking-widest text-slate-700 dark:text-slate-400 mb-0.5", isCompact ? "text-[8px]" : "text-[9px]")}>{title}</p>
-                <div className="flex items-baseline gap-2 max-w-full">
-                  <div 
-                    title={String(value)}
-                    className={cn(
-                      "font-black tracking-tight text-gray-900 dark:text-gray-100 truncate", 
-                      isCompact 
-                        ? (typeof value === 'string' && value.length > 10 ? "text-[13px]" : "text-lg") 
-                        : "text-xl"
-                    )}
-                  >
-                    {value}
+                 {subCards && subCards.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1.5 w-full">
+                    {subCards.map((card, index) => (
+                      <div 
+                        key={index} 
+                        className="bg-slate-50/50 dark:bg-slate-800/40 border border-slate-150 dark:border-slate-800/80 rounded-xl px-2 py-1.5 flex flex-col items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex-1 min-w-[60px] hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-200"
+                      >
+                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">
+                          {card.label}
+                        </span>
+                        <span className="text-xs font-black text-slate-850 dark:text-slate-100 leading-none">
+                          {card.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  {growth !== undefined && (
-                    <span className={cn(
-                      "text-[9px] font-black px-1.5 py-0.5 rounded-full",
-                      growth >= 0 
-                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" 
-                        : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                    )}>
-                      {growth >= 0 ? '↑' : '↓'} {Math.abs(growth)}%
-                    </span>
-                  )}
-                </div>
+                ) : (
+                  <div className="flex items-baseline gap-2 max-w-full">
+                    <div 
+                      title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
+                      className={cn(
+                        "font-black tracking-tight text-gray-900 dark:text-gray-100", 
+                        (typeof value === 'string' || typeof value === 'number') && "truncate",
+                        isCompact 
+                          ? (typeof value === 'string' && value.length > 10 ? "text-[13px]" : "text-lg") 
+                          : "text-xl"
+                      )}
+                    >
+                      {value}
+                    </div>
+                    {growth !== undefined && (
+                      <span className={cn(
+                        "text-[9px] font-black px-1.5 py-0.5 rounded-full",
+                        growth >= 0 
+                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400" 
+                          : "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                      )}>
+                        {growth >= 0 ? '↑' : '↓'} {Math.abs(growth)}%
+                      </span>
+                    )}
+                  </div>
+                )}
                 
                 {/* Clickable Indicator */}
                 {onClick && (
