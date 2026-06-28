@@ -2,10 +2,11 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { sarprasApi } from '../../api/sarpras.api';
 
 export const CetakBerkasSarprasPage: React.FC = () => {
   const docOptions: DocOption[] = [
-    { value: 'room_inventory', label: '1. DAFTAR INVENTARIS BARANG & ASET RUANGAN', requireClass: false }
+    { value: 'room_inventory', label: '1. DAFTAR INVENTARIS BARANG & ASET RUANGAN', requireClass: true }
   ];
 
   return (
@@ -68,6 +69,21 @@ export const CetakBerkasSarprasPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
+        let assets = [];
+        let locationName = '';
+
+        if (selectedPrintType === 'room_inventory' && selectedClassId) {
+          try {
+            const params = selectedClassId === 'all' ? { limit: 200 } : { location_id: selectedClassId, limit: 100 };
+            const res = await sarprasApi.getAssets(params);
+            if (res.success && res.data) {
+              assets = res.data.list || res.data || [];
+            }
+          } catch (e) {
+            console.error('Failed to fetch sarpras assets:', e);
+          }
+        }
+
         return generateGenericPdf({
           module: 'sarpras',
           printType: selectedPrintType,
@@ -77,7 +93,8 @@ export const CetakBerkasSarprasPage: React.FC = () => {
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { assets }
         });
       }}
     />

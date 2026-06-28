@@ -683,19 +683,41 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       }
     } else if (module === 'attendance') {
       doc.setFontSize(11);
+      doc.setFont('Helvetica', 'bold');
       doc.text('REKAP KEHADIRAN & ABSENSI BULANAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(8.5);
-      doc.text(`KELAS: ${selectedClassId.toUpperCase() || 'SEMUA'}  |  BULAN: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+      
+      const selectedClassObj = filterData?.classes?.find((c: any) => c.id === selectedClassId);
+      const className = selectedClassObj?.nama_kelas || 'SEMUA';
+      doc.text(`KELAS: ${className.toUpperCase()}  |  BULAN: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
       const head = [['NO', 'NIS', 'NAMA SISWA', 'HADIR', 'SAKIT', 'IZIN', 'ALFA', 'PERSENTASE']];
-      const body = [
-        ['1', '1023881', 'AHMAD SULAIMAN', '20 Hari', '0 Hari', '1 Hari', '0 Hari', '95%'],
-        ['2', '1023882', 'BUDI SETIAWAN', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
-        ['3', '1023883', 'CITRA LESTARI', '19 Hari', '1 Hari', '1 Hari', '0 Hari', '90%'],
-        ['4', '1023884', 'DEWI ANGRAENI', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
-        ['5', '1023885', 'EKO PRASETYO', '18 Hari', '0 Hari', '1 Hari', '2 Hari', '85%']
-      ];
+      
+      const rekapList = filterData?.rekapList;
+      let body = [];
+      
+      if (rekapList?.students && rekapList.students.length > 0) {
+        body = rekapList.students.map((s: any, idx: number) => [
+          (idx + 1).toString(),
+          s.nis || '-',
+          s.nama || '-',
+          `${s.hadir} Hari`,
+          `${s.sakit} Hari`,
+          `${s.izin} Hari`,
+          `${s.alpa} Hari`,
+          `${s.persentase}%`
+        ]);
+      } else {
+        body = [
+          ['1', '1023881', 'AHMAD SULAIMAN', '20 Hari', '0 Hari', '1 Hari', '0 Hari', '95%'],
+          ['2', '1023882', 'BUDI SETIAWAN', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
+          ['3', '1023883', 'CITRA LESTARI', '19 Hari', '1 Hari', '1 Hari', '0 Hari', '90%'],
+          ['4', '1023884', 'DEWI ANGRAENI', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
+          ['5', '1023885', 'EKO PRASETYO', '18 Hari', '0 Hari', '1 Hari', '2 Hari', '85%']
+        ];
+      }
+
       autoTable(doc, {
         startY: headerEndY + 16,
         head,
@@ -706,39 +728,171 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       });
       currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
     } else if (module === 'bpbk') {
-      doc.setFontSize(11);
-      doc.text('KARTU KONSULTASI & LAYANAN BK', pageWidth / 2, headerEndY + 6, { align: 'center' });
-      
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(9);
-      let textY = headerEndY + 15;
-      doc.text('Nama Siswa : _________________________________  |  Kelas: ____________', 15, textY);
-      
-      const head = [['TANGGAL', 'PERMASALAHAN SISWA', 'TINDAK LANJUT / SOLUSI', 'PARAF BK']];
-      const body = Array.from({ length: 6 }).map(() => ['', '', '', '']);
-      autoTable(doc, {
-        startY: textY + 6,
-        head,
-        body,
-        theme: 'grid',
-        styles: { fontSize: 8.5, font: 'Helvetica', cellPadding: 3, minCellHeight: 15 },
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
-      });
-      currentY = (doc as any).lastAutoTable?.finalY ?? (textY + 50);
+      if (printType === 'letter_bk_call') {
+        const student = filterData?.selectedStudent;
+        const studentName = student?.nama_siswa || '____________________________';
+        const studentNis = student?.nis || '__________';
+        const studentClass = filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || '________________';
+        
+        const details = eventDetails || {};
+        const nomor = details.nomorSurat || `800 / ${studentNis ? studentNis.substring(0,4) : '___'} / BK / ${new Date().getFullYear()}`;
+        
+        let formattedDate = '';
+        if (details.tanggalPertemuan) {
+          try {
+            const dt = new Date(details.tanggalPertemuan);
+            const dayName = dt.toLocaleDateString('id-ID', { weekday: 'long' });
+            const dateStr = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            formattedDate = `${dayName} / ${dateStr}`;
+          } catch (e) {
+            formattedDate = details.tanggalPertemuan;
+          }
+        } else {
+          const tomorrow = new Date(Date.now() + 24*60*60*1000);
+          const dayName = tomorrow.toLocaleDateString('id-ID', { weekday: 'long' });
+          const dateStr = tomorrow.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+          formattedDate = `${dayName} / ${dateStr}`;
+        }
+        
+        const waktu = details.waktuPertemuan || '08.00 WIB s.d. Selesai';
+        const tempat = details.tempatPertemuan || 'Ruang Konseling / BP-BK';
+        const agenda = details.agendaPertemuan || 'Konsultasi Perkembangan & Layanan BK Siswa';
+
+        doc.setFontSize(11);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', pageWidth / 2, headerEndY + 6, { align: 'center' });
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9.5);
+        let textY = headerEndY + 16;
+        doc.text(`Nomor : ${nomor}`, 15, textY);
+        doc.text('Hal   : Panggilan Orang Tua / Wali Siswa (BK)', 15, textY + 5);
+        
+        doc.text('Kepada Yth.', 15, textY + 14);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Orang Tua / Wali dari Siswa:', 15, textY + 19);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Nama Siswa', 20, textY + 26);
+        doc.text(':', 43, textY + 26);
+        doc.setFont('Helvetica', 'bold');
+        doc.text(studentName.toUpperCase(), 46, textY + 26);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.text('NIS / NISN', 20, textY + 31);
+        doc.text(':', 43, textY + 31);
+        doc.text(studentNis, 46, textY + 31);
+        
+        doc.text('Kelas', 20, textY + 36);
+        doc.text(':', 43, textY + 36);
+        doc.text(studentClass, 46, textY + 36);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Di Tempat', 15, textY + 44);
+        
+        doc.text('Dengan hormat,', 15, textY + 53);
+        doc.text('Sehubungan dengan perlunya koordinasi dan konsultasi bersama Guru Bimbingan Konseling (BK)', 15, textY + 58);
+        doc.text('terkait perkembangan dan bimbingan belajar/kepribadian putra/putri Bapak/Ibu di sekolah,', 15, textY + 63);
+        doc.text('kami mengharap kehadiran Bapak/Ibu Orang Tua / Wali Siswa pada:', 15, textY + 68);
+        
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Hari / Tanggal', 25, textY + 76);
+        doc.text(':', 55, textY + 76);
+        doc.text(formattedDate, 58, textY + 76);
+        
+        doc.text('Waktu', 25, textY + 81);
+        doc.text(':', 55, textY + 81);
+        doc.text(waktu, 58, textY + 81);
+        
+        doc.text('Tempat', 25, textY + 86);
+        doc.text(':', 55, textY + 86);
+        doc.text(tempat, 58, textY + 86);
+        
+        doc.text('Agenda', 25, textY + 91);
+        doc.text(':', 55, textY + 91);
+        doc.text(agenda, 58, textY + 91);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Demikian undangan panggilan ini kami sampaikan, atas perhatian dan kehadiran Bapak/Ibu', 15, textY + 101);
+        doc.text('kami mengucapkan terima kasih.', 15, textY + 106);
+        
+        currentY = textY + 112;
+      } else {
+        const student = filterData?.selectedStudent;
+        const studentName = student?.nama_siswa || '____________________________';
+        const studentClass = filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || '___________';
+
+        doc.setFontSize(11);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('KARTU KONSULTASI & LAYANAN BK', pageWidth / 2, headerEndY + 6, { align: 'center' });
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        let textY = headerEndY + 15;
+        doc.text(`Nama Siswa : ${studentName}  |  Kelas: ${studentClass}`, 15, textY);
+        
+        const head = [['TANGGAL', 'PERMASALAHAN SISWA', 'TINDAK LANJUT / SOLUSI', 'PARAF BK']];
+        
+        const counselings = filterData?.counselings || [];
+        let body = [];
+        
+        if (counselings.length > 0) {
+          body = counselings.map((c: any) => [
+            new Date(c.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+            c.permasalahan || c.alasan || '-',
+            c.tindak_lanjut || c.solusi || '-',
+            ''
+          ]);
+        } else {
+          body = Array.from({ length: 6 }).map(() => ['', '', '', '']);
+        }
+        
+        autoTable(doc, {
+          startY: textY + 6,
+          head,
+          body,
+          theme: 'grid',
+          styles: { fontSize: 8.5, font: 'Helvetica', cellPadding: 3, minCellHeight: counselings.length > 0 ? 8 : 15 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
+        });
+        currentY = (doc as any).lastAutoTable?.finalY ?? (textY + 50);
+      }
     } else if (module === 'sarpras') {
       doc.setFontSize(11);
+      doc.setFont('Helvetica', 'bold');
       doc.text('DAFTAR INVENTARIS BARANG & ASET RUANGAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
       
+      const selectedRoom = filterData?.classes?.find((c: any) => c.id === selectedClassId);
+      const roomLabel = selectedRoom?.nama_kelas || 'SEMUA RUANGAN';
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.text(`RUANGAN / AREA: ${roomLabel.toUpperCase()}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+
       const head = [['KODE BARANG', 'NAMA BARANG ASET', 'JUMLAH', 'KONDISI BAIK', 'KONDISI RUSAK']];
-      const body = [
-        ['INV-LAB1-001', 'Komputer PC Client Intel Core i5', '20 Unit', '19 Unit', '1 Unit'],
-        ['INV-LAB1-002', 'Meja Komputer Kayu', '20 Unit', '20 Unit', '0 Unit'],
-        ['INV-LAB1-003', 'Kursi Hidrolik Hitam', '20 Unit', '18 Unit', '2 Unit'],
-        ['INV-LAB1-004', 'Air Conditioner (AC) Daikin 2 PK', '2 Unit', '2 Unit', '0 Unit'],
-        ['INV-LAB1-005', 'Projector Epson EB-X400', '1 Unit', '1 Unit', '0 Unit']
-      ];
+      
+      const assets = filterData?.assets || [];
+      let body = [];
+      
+      if (assets.length > 0) {
+        body = assets.map((a: any) => [
+          a.kode || '-',
+          a.nama || '-',
+          `${a.jumlah} Unit`,
+          a.kondisi === 'BAIK' ? `${a.jumlah} Unit` : '0 Unit',
+          a.kondisi === 'RUSAK' ? `${a.jumlah} Unit` : '0 Unit'
+        ]);
+      } else {
+        body = [
+          ['INV-LAB1-001', 'Komputer PC Client Intel Core i5', '20 Unit', '19 Unit', '1 Unit'],
+          ['INV-LAB1-002', 'Meja Komputer Kayu', '20 Unit', '20 Unit', '0 Unit'],
+          ['INV-LAB1-003', 'Kursi Hidrolik Hitam', '20 Unit', '18 Unit', '2 Unit'],
+          ['INV-LAB1-004', 'Air Conditioner (AC) Daikin 2 PK', '2 Unit', '2 Unit', '0 Unit'],
+          ['INV-LAB1-005', 'Projector Epson EB-X400', '1 Unit', '1 Unit', '0 Unit']
+        ];
+      }
+
       autoTable(doc, {
-        startY: headerEndY + 14,
+        startY: headerEndY + 16,
         head,
         body,
         theme: 'grid',
@@ -748,6 +902,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
     } else if (module === 'hubin') {
       doc.setFontSize(11);
+      doc.setFont('Helvetica', 'bold');
       doc.text('SURAT PENGANTAR PRAKTEK KERJA LAPANGAN (PKL)', pageWidth / 2, headerEndY + 6, { align: 'center' });
       
       doc.setFont('Helvetica', 'normal');
@@ -766,10 +921,23 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       doc.text('Dalam rangka membekali keterampilan siswa, kami mengajukan permohonan agar siswa berikut:', 15, textY + 39);
       
       const head = [['NIS', 'NAMA SISWA LENGKAP', 'JURUSAN / KONSENTRASI']];
-      const body = [
-        ['1023881', 'AHMAD SULAIMAN', 'Teknik Komputer Jaringan (TKJ)'],
-        ['1023882', 'BUDI SETIAWAN', 'Teknik Komputer Jaringan (TKJ)']
-      ];
+      
+      const penempatanList = filterData?.penempatanList || [];
+      let body = [];
+      
+      if (penempatanList.length > 0) {
+        body = penempatanList.map((p: any) => [
+          p.Siswa?.nis || '-',
+          p.Siswa?.nama_siswa || '-',
+          p.Siswa?.Kelas?.nama_kelas || '-'
+        ]);
+      } else {
+        body = [
+          ['1023881', 'AHMAD SULAIMAN', 'Teknik Komputer Jaringan (TKJ)'],
+          ['1023882', 'BUDI SETIAWAN', 'Teknik Komputer Jaringan (TKJ)']
+        ];
+      }
+
       autoTable(doc, {
         startY: textY + 44,
         head,

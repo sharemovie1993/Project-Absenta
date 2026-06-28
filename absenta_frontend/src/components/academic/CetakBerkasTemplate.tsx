@@ -25,6 +25,8 @@ import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/str
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
 import { kelasApi, siswaApi } from '../../api/academic.api';
+import { sarprasApi } from '../../api/sarpras.api';
+import { correspondenceApi } from '../../api/correspondence.api';
 import { getGuruList } from '../../api/academic/guru.api';
 import type { Kelas, Guru, Siswa } from '../../types/academic';
 import toast from 'react-hot-toast';
@@ -191,23 +193,34 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     };
   }, []);
 
-  // Load classes list
+  // Load classes or locations list
   const loadClasses = useCallback(async () => {
     try {
       setLoadingClasses(true);
-      const res = await kelasApi.getAll({ limit: 150 });
-      const activeClasses = (res.data || []).filter((c: any) => c.is_active === true);
-      setClasses(activeClasses);
-      if (activeClasses.length > 0) {
-        setSelectedClassId(activeClasses[0].id);
+      let list = [];
+      if (module === 'sarpras') {
+        const res = await sarprasApi.getLocations();
+        list = (res.data || []).map((l: any) => ({
+          id: l.id,
+          nama_kelas: l.nama,
+          tingkat: 1,
+          is_active: true
+        }));
+      } else {
+        const res = await kelasApi.getAll({ limit: 150 });
+        list = (res.data || []).filter((c: any) => c.is_active === true);
+      }
+      setClasses(list);
+      if (list.length > 0) {
+        setSelectedClassId(list[0].id);
       }
     } catch (err) {
       console.error(err);
-      toast.error('Gagal memuat daftar kelas');
+      toast.error(module === 'sarpras' ? 'Gagal memuat daftar ruangan' : 'Gagal memuat daftar kelas');
     } finally {
       setLoadingClasses(false);
     }
-  }, []);
+  }, [module]);
 
   const loadGurus = useCallback(async () => {
     try {
@@ -337,9 +350,50 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     }
   }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, selectedStudentId, eventDetails, includeSchoolLogo, classes, gurus, students, generatePreview]);
 
+  const recordSuratKeluar = async () => {
+    const isLetter = ['letter_summons', 'letter_bk_call', 'pkl_intro'].includes(selectedPrintType);
+    if (!isLetter) return;
+
+    try {
+      const studentId = selectedStudentId || undefined;
+      const details = eventDetails || {};
+      const nomor = details.nomorSurat || `800 / OUT / ${module.toUpperCase()} / ${new Date().getFullYear()}`;
+      
+      let perihal = '';
+      let kategori = 'Dinas';
+      let tujuan = 'Orang Tua / Wali Siswa';
+
+      if (selectedPrintType === 'letter_summons') {
+        perihal = `Surat Panggilan Orang Tua: ${details.agendaPertemuan || 'Klarifikasi & Pembinaan'}`;
+        kategori = 'Panggilan';
+      } else if (selectedPrintType === 'letter_bk_call') {
+        perihal = `Surat Panggilan Konseling BK: ${details.agendaPertemuan || 'Layanan BK'}`;
+        kategori = 'Panggilan';
+      } else if (selectedPrintType === 'pkl_intro') {
+        perihal = 'Surat Pengantar Praktik Kerja Lapangan (PKL)';
+        kategori = 'Dinas';
+        tujuan = 'Pimpinan / HRD DUDI Mitra';
+      }
+
+      await correspondenceApi.createSuratKeluar({
+        nomor_surat: nomor,
+        judul: perihal,
+        tujuan_surat: tujuan,
+        tanggal_surat: new Date().toISOString().split('T')[0],
+        isi_ringkas: `Digenerasikan dari modul Cetak Berkas (${module}). Agenda: ${details.agendaPertemuan || '-'}`,
+        kategori_surat: kategori,
+        siswa_id: studentId
+      });
+      console.log('Surat Keluar successfully recorded in database!');
+    } catch (e) {
+      console.error('Failed to auto-record Surat Keluar:', e);
+    }
+  };
+
   // Handlers
   const handlePrint = () => {
     if (pdfUrl) {
+      recordSuratKeluar();
       const printWindow = window.open(pdfUrl);
       if (printWindow) {
         printWindow.addEventListener('load', () => {
@@ -351,6 +405,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
 
   const handleDownload = () => {
     if (pdfUrl) {
+      recordSuratKeluar();
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = `${module}_cetak_berkas_${selectedPrintType}.pdf`;

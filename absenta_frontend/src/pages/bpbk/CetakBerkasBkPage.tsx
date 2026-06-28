@@ -2,10 +2,12 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { bpbkApi } from '../../api/bpbk.api';
 
 export const CetakBerkasBkPage: React.FC = () => {
   const docOptions: DocOption[] = [
-    { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true }
+    { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
+    { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true }
   ];
 
   return (
@@ -30,7 +32,7 @@ export const CetakBerkasBkPage: React.FC = () => {
         ),
         items: [
           { text: "Pilih jenis berkas BK yang ingin dicetak." },
-          { text: "Pilih kelas untuk mempermudah pencarian rekam jejak siswa." },
+          { text: "Pilih kelas dan siswa untuk mempermudah pencarian rekam jejak siswa." },
           { text: "Pratinjau visual PDF akan langsung diperbarui saat pengaturan diubah." }
         ]
       }}
@@ -41,26 +43,42 @@ export const CetakBerkasBkPage: React.FC = () => {
         setSelectedPrintType,
         selectedClassId,
         setSelectedClassId,
+        selectedStudentId,
+        setSelectedStudentId,
+        eventDetails,
+        setEventDetails,
         includeSchoolLogo,
         setIncludeSchoolLogo,
         classes,
-        loadingClasses
+        loadingClasses,
+        students,
+        loadingStudents
       }) => (
         <CetakFormGeneric
           selectedPrintType={selectedPrintType}
           setSelectedPrintType={setSelectedPrintType}
           selectedClassId={selectedClassId}
           setSelectedClassId={setSelectedClassId}
+          selectedStudentId={selectedStudentId}
+          setSelectedStudentId={setSelectedStudentId}
+          eventDetails={eventDetails}
+          setEventDetails={setEventDetails}
           includeSchoolLogo={includeSchoolLogo}
           setIncludeSchoolLogo={setIncludeSchoolLogo}
           classes={classes}
           loadingClasses={loadingClasses}
+          students={students}
+          loadingStudents={loadingStudents}
           docOptions={docOptions}
         />
       )}
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        selectedStudentId,
+        eventDetails,
+        classes,
+        students,
         sekolah,
         tenantInfo,
         strukturList,
@@ -68,16 +86,36 @@ export const CetakBerkasBkPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
+        let counselings = [];
+        let selectedStudent = null;
+
+        try {
+          if (selectedStudentId) {
+            selectedStudent = students?.find(s => s.id === selectedStudentId);
+            
+            // Get their counseling records
+            const res = await bpbkApi.getKonseling({ siswa_id: selectedStudentId, limit: 100 });
+            if (res.success && res.data) {
+              counselings = res.data.list || [];
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load counseling data:', e);
+        }
+
         return generateGenericPdf({
           module: 'bpbk',
           printType: selectedPrintType,
           selectedClassId,
+          selectedStudentId,
+          eventDetails,
           sekolah,
           tenantInfo,
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { counselings, selectedStudent, classes, students }
         });
       }}
     />

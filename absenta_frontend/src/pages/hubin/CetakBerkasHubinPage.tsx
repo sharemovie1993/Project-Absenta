@@ -2,6 +2,7 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { hubinApi } from '../../api/hubin.api';
 
 export const CetakBerkasHubinPage: React.FC = () => {
   const docOptions: DocOption[] = [
@@ -61,6 +62,7 @@ export const CetakBerkasHubinPage: React.FC = () => {
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        classes,
         sekolah,
         tenantInfo,
         strukturList,
@@ -68,6 +70,27 @@ export const CetakBerkasHubinPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
+        let penempatanList = [];
+
+        if (selectedPrintType === 'pkl_intro' && selectedClassId) {
+          try {
+            const res = await hubinApi.getPenempatan({ limit: 200 });
+            if (res.success && res.data) {
+              const allPenempatan = res.data.list || res.data || [];
+              const selectedClassObj = classes?.find(c => c.id === selectedClassId);
+              if (selectedClassId === 'all') {
+                penempatanList = allPenempatan;
+              } else if (selectedClassObj) {
+                penempatanList = allPenempatan.filter((p: any) => 
+                  p.Siswa?.Kelas?.nama_kelas === selectedClassObj.nama_kelas
+                );
+              }
+            }
+          } catch (e) {
+            console.error('Failed to load PKL placements:', e);
+          }
+        }
+
         return generateGenericPdf({
           module: 'hubin',
           printType: selectedPrintType,
@@ -77,7 +100,8 @@ export const CetakBerkasHubinPage: React.FC = () => {
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { penempatanList }
         });
       }}
     />

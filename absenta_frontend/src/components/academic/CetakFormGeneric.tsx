@@ -78,13 +78,15 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
         </select>
       </div>
 
-      {/* Class Selector */}
+      {/* Class/Room Selector */}
       {showClassSelector && (
         <div className="space-y-1">
-          <label className="text-xs font-black uppercase text-slate-400 block">Pilih Kelas</label>
+          <label className="text-xs font-black uppercase text-slate-400 block">
+            {selectedPrintType === 'room_inventory' ? 'Pilih Ruangan / Area' : 'Pilih Kelas'}
+          </label>
           {loadingClasses ? (
             <div className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 py-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memuat kelas...
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> {selectedPrintType === 'room_inventory' ? 'Memuat ruangan...' : 'Memuat kelas...'}
             </div>
           ) : (
             <select
@@ -92,9 +94,13 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
             >
-              <option value="all">🖨️ CETAK SEMUA KELAS</option>
+              <option value="all">
+                {selectedPrintType === 'room_inventory' ? '🖨️ CETAK SEMUA RUANGAN' : '🖨️ CETAK SEMUA KELAS'}
+              </option>
               {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.nama_kelas} (Tingkat {c.tingkat})</option>
+                <option key={c.id} value={c.id}>
+                  {selectedPrintType === 'room_inventory' ? c.nama_kelas : `${c.nama_kelas} (Tingkat ${c.tingkat})`}
+                </option>
               ))}
             </select>
           )}

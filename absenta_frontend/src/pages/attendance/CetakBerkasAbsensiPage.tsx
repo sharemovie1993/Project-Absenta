@@ -2,6 +2,7 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { getRekapKelasBulanan } from '../../api/attendance/rekap.api';
 
 export const CetakBerkasAbsensiPage: React.FC = () => {
   const docOptions: DocOption[] = [
@@ -12,7 +13,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
     <CetakBerkasTemplate
       module="attendance"
       title="Cetak Berkas Absensi"
-      description="Buat dan cetak rekapitulasi kehadiran siswa dan guru secara otomatis — menggantikan rekap manual Excel."
+      description="Buat dan cetak rekapitulasi kehadiran siswa secara otomatis — menggantikan rekap manual Excel."
       breadcrumbs={[
         { label: 'Absensi', path: '/attendance/dashboard' },
         { label: 'Cetak Berkas' }
@@ -21,16 +22,16 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         title: "Panduan Cetak Berkas Absensi",
         description: (
           <div className="space-y-2">
-            <p>Halaman ini mengotomasi pembuatan berkas rekapitulasi presensi bulanan siswa dan guru.</p>
+            <p>Halaman ini mengotomasi pembuatan berkas rekapitulasi presensi bulanan siswa.</p>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
-              <p><strong>Fungsi:</strong> Mencetak laporan bulanan kehadiran per kelas atau seluruh sekolah.</p>
+              <p><strong>Fungsi:</strong> Mencetak laporan bulanan kehadiran per kelas.</p>
               <p><strong>Waktu Penggunaan:</strong> Setiap akhir bulan atau akhir periode pelaporan nilai.</p>
             </div>
           </div>
         ),
         items: [
           { text: "Pilih kelas sasaran yang ingin dicetak rekap absensinya." },
-          { text: "Gunakan filter bulan dan tahun untuk menarik data absensi yang sesuai." },
+          { text: "Gunakan filter bulan untuk menarik data absensi yang sesuai." },
           { text: "Pratinjau PDF akan digenerasikan otomatis untuk mempermudah pemeriksaan awal." }
         ]
       }}
@@ -68,6 +69,19 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
+        let rekapList = null;
+        if (selectedPrintType === 'monthly_recap' && selectedClassId) {
+          try {
+            const currentMonth = new Date().toISOString().substring(0, 7);
+            const res = await getRekapKelasBulanan(selectedClassId, currentMonth);
+            if (res.success && res.data) {
+              rekapList = res.data;
+            }
+          } catch (e) {
+            console.error('Failed to fetch monthly attendance recap:', e);
+          }
+        }
+
         return generateGenericPdf({
           module: 'attendance',
           printType: selectedPrintType,
@@ -77,7 +91,8 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { rekapList }
         });
       }}
     />
