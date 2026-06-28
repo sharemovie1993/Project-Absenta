@@ -520,16 +520,19 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         
         // Student Info Block
         doc.setFont('Helvetica', 'normal');
-        doc.text('Nama Siswa  :', 20, textY + 26);
+        doc.text('Nama Siswa', 20, textY + 26);
+        doc.text(':', 43, textY + 26);
         doc.setFont('Helvetica', 'bold');
-        doc.text(studentName.toUpperCase(), 48, textY + 26);
+        doc.text(studentName.toUpperCase(), 46, textY + 26);
         
         doc.setFont('Helvetica', 'normal');
-        doc.text('NIS / NISN   :', 20, textY + 31);
-        doc.text(studentNis, 48, textY + 31);
+        doc.text('NIS / NISN', 20, textY + 31);
+        doc.text(':', 43, textY + 31);
+        doc.text(studentNis, 46, textY + 31);
         
-        doc.text('Kelas        :', 20, textY + 36);
-        doc.text(studentClass, 48, textY + 36);
+        doc.text('Kelas', 20, textY + 36);
+        doc.text(':', 43, textY + 36);
+        doc.text(studentClass, 46, textY + 36);
         
         doc.setFont('Helvetica', 'normal');
         doc.text('Di Tempat', 15, textY + 44);
@@ -541,17 +544,21 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         
         // Meeting details
         doc.setFont('Helvetica', 'bold');
-        doc.text('Hari / Tanggal  :', 25, textY + 76);
-        doc.text(formattedDate, 60, textY + 76);
+        doc.text('Hari / Tanggal', 25, textY + 76);
+        doc.text(':', 55, textY + 76);
+        doc.text(formattedDate, 58, textY + 76);
         
-        doc.text('Waktu           :', 25, textY + 81);
-        doc.text(waktu, 60, textY + 81);
+        doc.text('Waktu', 25, textY + 81);
+        doc.text(':', 55, textY + 81);
+        doc.text(waktu, 58, textY + 81);
         
-        doc.text('Tempat          :', 25, textY + 86);
-        doc.text(tempat, 60, textY + 86);
+        doc.text('Tempat', 25, textY + 86);
+        doc.text(':', 55, textY + 86);
+        doc.text(tempat, 58, textY + 86);
         
-        doc.text('Agenda          :', 25, textY + 91);
-        doc.text(agenda, 60, textY + 91);
+        doc.text('Agenda', 25, textY + 91);
+        doc.text(':', 55, textY + 91);
+        doc.text(agenda, 58, textY + 91);
         
         doc.setFont('Helvetica', 'normal');
         doc.text('Demikian undangan ini kami sampaikan. Mengingat pentingnya agenda tersebut, kehadiran', 15, textY + 99);
