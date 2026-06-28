@@ -155,8 +155,6 @@ const GuruMapelPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Pengampu Mata Pelajaran"
-          icon={BookOpen}
           fullWidth
           noPadding
           actions={

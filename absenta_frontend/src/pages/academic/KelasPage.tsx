@@ -254,8 +254,6 @@ export const KelasPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Database Master Kelas"
-          icon={School}
           fullWidth
           noPadding
         >

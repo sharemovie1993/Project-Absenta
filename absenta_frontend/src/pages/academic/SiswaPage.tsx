@@ -293,8 +293,6 @@ const SiswaPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard 
-          title="Database Master Siswa" 
-          icon={Users} 
           fullWidth 
           noPadding
         >

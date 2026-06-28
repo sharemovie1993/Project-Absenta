@@ -189,8 +189,6 @@ export const GuruPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Database Tenaga Pendidik"
-          icon={Users}
           fullWidth
           noPadding
         >

@@ -132,8 +132,6 @@ export const SemesterPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Manajemen Semester"
-          icon={Calendar}
           fullWidth
           noPadding
         >

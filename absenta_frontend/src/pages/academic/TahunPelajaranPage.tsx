@@ -134,8 +134,6 @@ export const TahunPelajaranPage: React.FC = () => {
           </div>
         )}
         <SectionCard
-          title="Database Tahun Pelajaran"
-          icon={Calendar}
           fullWidth
           noPadding
         >

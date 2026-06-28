@@ -194,8 +194,6 @@ export const JurusanPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard 
-          title="Database Master Jurusan" 
-          icon={School} 
           fullWidth 
           noPadding
         >

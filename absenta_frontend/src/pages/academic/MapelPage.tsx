@@ -180,8 +180,6 @@ export const MapelPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Database Master Mata Pelajaran"
-          icon={BookOpen}
           fullWidth
           noPadding
         >

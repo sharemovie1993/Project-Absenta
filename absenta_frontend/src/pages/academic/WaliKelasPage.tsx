@@ -71,8 +71,6 @@ const WaliKelasPage: React.FC = () => {
     >
       <div className="space-y-6">
         <SectionCard
-          title="Daftar Penugasan Wali Kelas"
-          icon={User}
           fullWidth
           noPadding
         >

@@ -144,8 +144,6 @@ export default function JenisKegiatanMasterPage() {
       hardeningModuleKey="jeniskegiatanmasterpage"
     >
       <SectionCard
-        title="Master Kategori Kegiatan"
-        icon={ListChecks}
         fullWidth
         noPadding
       >
