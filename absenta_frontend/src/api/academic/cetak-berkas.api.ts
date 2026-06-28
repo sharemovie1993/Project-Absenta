@@ -31,3 +31,7 @@ export const getPrepChecklist = async (): Promise<PrepChecklistResponse> => {
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 };
+export const getCetakBerkasChecklist = getPrepChecklist;
+export type CetakBerkasChecklistItem = ChecklistItem;
+export type CetakBerkasData = PrepChecklistData;
+export type CetakBerkasResponse = PrepChecklistResponse;

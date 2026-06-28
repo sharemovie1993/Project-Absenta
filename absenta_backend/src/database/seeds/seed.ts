@@ -254,6 +254,7 @@ async function main() {
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.view.schedule' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'curriculum.structure.manage' },
         { label: 'Jadwal Pelajaran', icon: 'CalendarDays', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.structures.view.list' },
       ]
     },
 
@@ -266,6 +267,7 @@ async function main() {
         { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.view.list' },
         { label: 'Pengaturan Poin', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.view.list' },
         { label: 'Monitoring Kesiswaan', icon: 'Activity', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.violation.stats' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'affairs.violations.view.list' },
       ]
     },
 
@@ -284,7 +286,8 @@ async function main() {
         { label: 'Kehadiran Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.monitoring.view.live.status' },
         { label: 'Kehadiran Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list' },
         { label: 'Rekap Kehadiran', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
-        { label: 'Tracking Lokasi', icon: 'MapPin', path: '/attendance/tracking-siswa', required_capability: 'attendance.recap.view.global' }
+        { label: 'Tracking Lokasi', icon: 'MapPin', path: '/attendance/tracking-siswa', required_capability: 'attendance.recap.view.global' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/attendance/cetak-berkas', required_capability: 'attendance.sessions.view.list' }
       ]
     },
 
@@ -301,6 +304,7 @@ async function main() {
         { label: 'Rujukan Kasus', icon: 'Send', path: '/bpbk/rujukan', required_capability: 'bk.cases.view.list' },
         { label: 'Laporan & Statistik', icon: 'BarChart3', path: '/bpbk/reports', required_capability: 'bk.cases.view.list' },
         { label: 'Log Audit BK', icon: 'History', path: '/bpbk/audit', required_capability: 'bk.cases.view.list' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/bpbk/cetak-berkas', required_capability: 'bk.cases.view.list' },
       ]
     },
 
@@ -315,6 +319,7 @@ async function main() {
         { label: 'BKK & Lowongan Kerja', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
         { label: 'Tracer Study (Alumni)', icon: 'GraduationCap', path: '/hubin/tracer', required_capability: 'hubin.self.tracer, hubin.tracer.view, hubin.partners.manage' },
         { label: 'Teaching Factory (TEFA)', icon: 'Hammer', path: '/hubin/tefa', required_capability: 'hubin.tefa.manage' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/hubin/cetak-berkas', required_capability: 'hubin.pkl.view.list' },
       ]
     },
 
@@ -324,6 +329,7 @@ async function main() {
         { label: 'Inventory Aset', icon: 'Archive', path: '/sarpras/inventory', required_capability: 'sarpras.inventory.view.list' },
         { label: 'Peminjaman', icon: 'ArrowUpCircle', path: '/sarpras/loans', required_capability: 'sarpras.loans.view.list' },
         { label: 'Pemeliharaan', icon: 'Tool', path: '/sarpras/maintenance', required_capability: 'sarpras.repairs.view.list' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/sarpras/cetak-berkas', required_capability: 'sarpras.inventory.view.list' },
       ]
     },
 

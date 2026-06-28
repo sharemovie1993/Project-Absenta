@@ -77,7 +77,13 @@ const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEma
 const WhatsAppHealthPage = lazy(() => import('./pages/notifications/WhatsAppHealthPage'));
 const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
-const PrepChecklistPage = lazy(() => import('./pages/academic/PrepChecklistPage'));
+const CetakBerkasPage = lazy(() => import('./pages/academic/CetakBerkasPage').then(m => ({ default: m.CetakBerkasPage })));
+const CetakBerkasKurikulumPage = lazy(() => import('./pages/kurikulum/CetakBerkasKurikulumPage').then(m => ({ default: m.CetakBerkasKurikulumPage })));
+const CetakBerkasKesiswaanPage = lazy(() => import('./pages/kesiswaan/CetakBerkasKesiswaanPage').then(m => ({ default: m.CetakBerkasKesiswaanPage })));
+const CetakBerkasAbsensiPage = lazy(() => import('./pages/attendance/CetakBerkasAbsensiPage').then(m => ({ default: m.CetakBerkasAbsensiPage })));
+const CetakBerkasBkPage = lazy(() => import('./pages/bpbk/CetakBerkasBkPage').then(m => ({ default: m.CetakBerkasBkPage })));
+const CetakBerkasSarprasPage = lazy(() => import('./pages/sarpras/CetakBerkasSarprasPage').then(m => ({ default: m.CetakBerkasSarprasPage })));
+const CetakBerkasHubinPage = lazy(() => import('./pages/hubin/CetakBerkasHubinPage').then(m => ({ default: m.CetakBerkasHubinPage })));
 const BackupPage = lazy(() => import('./pages/academic/BackupPage'));
 const StaffActivityLogPage = lazy(() => import('./pages/academic/StaffActivityLogPage'));
 
@@ -474,11 +480,12 @@ function App() {
                         <AcademicTransitionPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/academic/prep-checklist" element={
+                    <Route path="/academic/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="academic.years.view.list">
-                        <PrepChecklistPage />
+                        <CetakBerkasPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/academic/prep-checklist" element={<Navigate to="/academic/cetak-berkas" replace />} />
                     {/* Alias for menu item 'Kenaikan Kelas' */}
                     <Route path="/academic/kenaikan-kelas" element={<Navigate to="/academic/transition" replace />} />
                     <Route path="/academic/siswa-cards" element={
@@ -533,6 +540,11 @@ function App() {
                     <Route path="/kesiswaan/settings" element={
                       <ProtectedRoute requiredCapability="affairs.violation.types.view.list">
                         <KesiswaanSettingsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="affairs.violations.view.list">
+                        <CetakBerkasKesiswaanPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/bpbk" element={
@@ -612,6 +624,13 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/bpbk/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="bk.cases.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <CetakBerkasBkPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
 
                     {/* Hubin Module */}
                     <Route path="/hubin" element={
@@ -677,6 +696,13 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/hubin/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="hubin.pkl.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <CetakBerkasHubinPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
 
                     {/* Kurikulum Module */}
                     <Route path="/kesiswaan/monitoring" element={
@@ -703,6 +729,11 @@ function App() {
                     } />
                     {/* Jadwal Pelajaran consolidated into /attendance/jadwal-template */}
                     <Route path="/kurikulum/jadwal" element={<Navigate to="/attendance/jadwal-template" replace />} />
+                    <Route path="/kurikulum/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="academic.structures.view.list">
+                        <CetakBerkasKurikulumPage />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Sarpras Routes */}
                     <Route path="/sarpras/dashboard" element={
@@ -723,6 +754,11 @@ function App() {
                     <Route path="/sarpras/maintenance" element={
                       <ProtectedRoute requiredCapability="sarpras.repairs.view.list">
                         <SarprasMaintenancePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/sarpras/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="sarpras.inventory.view.list">
+                        <CetakBerkasSarprasPage />
                       </ProtectedRoute>
                     } />
                     
@@ -1172,6 +1208,11 @@ function App() {
                     <Route path="/attendance/riwayat-ajar" element={
                       <ProtectedRoute requiredCapability="attendance.reports.view">
                         <RiwayatAjarPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/attendance/cetak-berkas" element={
+                      <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                        <CetakBerkasAbsensiPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/settings" element={

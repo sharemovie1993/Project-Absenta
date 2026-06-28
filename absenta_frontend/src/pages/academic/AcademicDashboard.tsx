@@ -24,7 +24,7 @@ import {
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/prep-checklist.api';
+import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 
 const AcademicDashboard: React.FC = () => {
   const navigate = useNavigate();
