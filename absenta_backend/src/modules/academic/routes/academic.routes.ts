@@ -83,7 +83,17 @@ export async function academicRoutes(fastify: any) {
                   total_guru: { type: 'number' },
                   total_mapel: { type: 'number' },
                   total_semester: { type: 'number' },
-                  total_tahun_pelajaran: { type: 'number' }
+                  total_tahun_pelajaran: { type: 'number' },
+                  active_kelas_by_tingkat: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        tingkat: { type: 'number' },
+                        count: { type: 'number' }
+                      }
+                    }
+                  }
                 }
               }
             }

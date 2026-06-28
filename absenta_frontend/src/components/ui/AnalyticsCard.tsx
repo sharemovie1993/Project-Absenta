@@ -14,7 +14,7 @@ interface AnalyticsCardProps {
   className?: string;
   compact?: boolean;
   extraCompact?: boolean;
-  variant?: 'card' | 'ghost';
+  variant?: 'card' | 'ghost' | 'sub-cards';
   subCards?: { label: string; value: string | number }[];
 }
 
@@ -84,7 +84,7 @@ export function AnalyticsCard({
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <p className={cn("uppercase font-black tracking-widest text-slate-700 dark:text-slate-400 mb-0.5", isCompact ? "text-[8px]" : "text-[9px]")}>{title}</p>
-                 {subCards && subCards.length > 0 ? (
+                 {variant === 'sub-cards' && subCards && subCards.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mt-1.5 w-full">
                     {subCards.map((card, index) => (
                       <div 

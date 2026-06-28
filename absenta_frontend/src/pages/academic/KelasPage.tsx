@@ -103,6 +103,7 @@ export const KelasPage: React.FC = () => {
     },
     {
       title: "Jumlah Rombel",
+      variant: "sub-cards" as const,
       value: sortedTingkatStats.length === 0 ? "Tidak ada rombel aktif" : undefined,
       subCards: sortedTingkatStats.map((item) => ({
         label: `Tingkat ${toRoman(item.tingkat)}`,

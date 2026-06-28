@@ -22,6 +22,7 @@ interface AcademicStat {
   subtitle?: string;
   onClick?: () => void;
   subCards?: { label: string; value: string | number }[];
+  variant?: 'card' | 'ghost' | 'sub-cards';
 }
 
 interface AcademicPageLayoutProps {
@@ -231,6 +232,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
                 subtitle={stat.subtitle}
                 onClick={stat.onClick}
                 subCards={stat.subCards}
+                variant={stat.variant}
               />
             ))
           )}
