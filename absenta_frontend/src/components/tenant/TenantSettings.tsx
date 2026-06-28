@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
 import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2 } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
 import axiosInstance from '@/lib/axiosInstance';
+import { fetchActiveSystemConfig, saveSystemConfig } from '@/services/systemConfig';
 
 /**
  * TenantSettings - Halaman Pengaturan & Profil Sekolah (Khusus Tenant Admin)
@@ -23,6 +24,9 @@ export const TenantSettings: React.FC = () => {
   // Mode edit & status saving
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // BPBK Settings state
+  const [requireApproval, setRequireApproval] = useState(true);
 
   // Form states untuk Profil & Kop Surat
   const [name, setName] = useState('');
@@ -153,6 +157,12 @@ export const TenantSettings: React.FC = () => {
         });
 
         setHeaderLines(parsed);
+
+        // Fetch BPBK configuration
+        const configData = await fetchActiveSystemConfig();
+        if (configData) {
+          setRequireApproval(configData.bpbk_summons_require_principal_approval ?? true);
+        }
       }
     } catch (error) {
       console.error('Error fetching tenant:', error);
@@ -168,37 +178,7 @@ export const TenantSettings: React.FC = () => {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    if (tenant) {
-      setName(tenant.name || '');
-      setAddress(tenant.address || '');
-      setPhone(tenant.phone || '');
-      setEmail(tenant.email || '');
-      setWebsite(tenant.website || '');
-      setLogoUrl(tenant.logo_url || '');
-      setLogoDaerahUrl(tenant.logo_daerah_url || '');
-      setKepalaSekolah(tenant.kepala_sekolah || '');
-      setNipKepala(tenant.nip_kepala || '');
-      
-      const rawLines = tenant.print_header_lines && tenant.print_header_lines.length > 0
-        ? tenant.print_header_lines
-        : [];
-      
-      const parsed: PrintHeaderLine[] = rawLines.map(line => {
-        if (typeof line === 'object' && line !== null) {
-          return line as PrintHeaderLine;
-        }
-        try {
-          const parsedObj = JSON.parse(line);
-          if (parsedObj && typeof parsedObj === 'object' && 'text' in parsedObj) {
-            return parsedObj;
-          }
-        } catch (e) {
-          // ignore
-        }
-        return { text: line };
-      });
-      setHeaderLines(parsed);
-    }
+    fetchTenant();
   };
 
   const handleSaveProfile = async () => {
@@ -234,6 +214,12 @@ export const TenantSettings: React.FC = () => {
       };
 
       const response = await updateTenant(tenant.id, payload);
+      
+      // Save BPBK configuration
+      await saveSystemConfig({
+        bpbk_summons_require_principal_approval: requireApproval
+      });
+
       if (response.success) {
         toast.success('Profil sekolah & Kop Surat berhasil disimpan!');
         setIsEditing(false);
@@ -881,6 +867,46 @@ export const TenantSettings: React.FC = () => {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ⚖️ PENGATURAN BIMBINGAN KONSELING (BK) CARD */}
+      <Card className="shadow-sm border border-slate-100 dark:border-slate-800">
+        <CardHeader className="border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4">
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-200">
+            Konfigurasi Modul Bimbingan Konseling (BK)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/20">
+            <div className="space-y-1.5 max-w-lg">
+              <Label className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                Persetujuan Kepala Sekolah untuk Surat Panggilan
+                <Badge variant={requireApproval ? 'warning' : 'success'} className="font-bold text-[9px] uppercase px-2 py-0.5">
+                  {requireApproval ? 'Wajib Persetujuan' : 'Langsung Terbit (Bypass)'}
+                </Badge>
+              </Label>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Jika diaktifkan, draf surat panggilan yang dibuat oleh Guru BK wajib disetujui Kepala Sekolah melalui modul Surat Keluar sebelum aktif. Jika dinonaktifkan, surat langsung aktif/terbit.
+              </p>
+            </div>
+            <Switch
+              checked={requireApproval}
+              onCheckedChange={async (checked) => {
+                setRequireApproval(checked);
+                const toastId = toast.loading('Menyimpan pengaturan BK...');
+                try {
+                  await saveSystemConfig({
+                    bpbk_summons_require_principal_approval: checked
+                  });
+                  toast.success('Pengaturan alur BK berhasil diperbarui!', { id: toastId });
+                } catch (err: any) {
+                  toast.error(err.message || 'Gagal menyimpan pengaturan', { id: toastId });
+                  setRequireApproval(!checked); // rollback
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 

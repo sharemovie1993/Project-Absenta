@@ -2221,6 +2221,9 @@ model SystemConfig {
   parent_app_daily_tracking_enabled     Boolean @default(true)
   parent_app_report_absence_enabled     Boolean @default(true)
 
+  // BPBK Settings
+  bpbk_summons_require_principal_approval Boolean @default(true)
+
   // Audit
   is_active  Boolean  @default(true)
   created_at DateTime @default(now())
@@ -3615,6 +3618,8 @@ model PemanggilanOrangTua {
   surat_dokumen_id    String?      // Relasi opsional ke file scan surat panggilan fisik
   deleted_at          DateTime?
   deleted_by          String?
+  waktu_pertemuan     String?      @db.VarChar(100)
+  tempat_pertemuan    String?      @db.VarChar(255)
   created_at          DateTime     @default(now())
   updated_at          DateTime     @updatedAt
 

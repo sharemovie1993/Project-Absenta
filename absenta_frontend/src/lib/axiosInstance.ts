@@ -75,6 +75,11 @@ export const resolvePublicApiBaseUrl = (): string => {
 // 3. Request Interceptor
 axiosInstance.interceptors.request.use(
   (config) => {
+    // If request data is FormData, remove Content-Type to let browser set boundary
+    if (config.data instanceof FormData && config.headers) {
+      delete (config.headers as any)['Content-Type'];
+    }
+
     // DEFENSIVE FIX: Remove /api prefix if present in the call
     if (config.url && config.url.startsWith('/api/')) {
        LogService.warn(`Detected double /api prefix in request to ${config.url}. Auto-fixing.`);

@@ -186,7 +186,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.assessment.view.list',
     'bk.assessment.view.detail',
     'bk.referrals.view.list',
-    'bk.referrals.view.detail'
+    'bk.referrals.view.detail',
+    'correspondence.inbox.view',
+    'correspondence.outbox.view',
+    'correspondence.outbox.sign'
   ],
   [STRUKTUR_CODES.WALIKELAS]: [
     'organization.scope.unit_restricted',
@@ -390,7 +393,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teachers.view.list',
     'academic.teachers.manage', // Tambahan: TU kelola data induk guru
     'billing.invoices.view.list', // Tambahan: TU pantau tagihan/pembayaran
-    'billing.invoices.generate'
+    'billing.invoices.generate',
+    'correspondence.inbox.view',
+    'correspondence.inbox.manage',
+    'correspondence.outbox.view',
+    'correspondence.outbox.manage'
   ],
   [STRUKTUR_CODES.KAPROG]: [
     'organization.scope.unit_restricted',

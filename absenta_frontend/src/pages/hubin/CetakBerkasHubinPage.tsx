@@ -70,21 +70,27 @@ export const CetakBerkasHubinPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
-        let penempatanList = [];
+        const penempatanMap: Record<string, any[]> = {};
 
         if (selectedPrintType === 'pkl_intro' && selectedClassId) {
           try {
-            const res = await hubinApi.getPenempatan({ limit: 200 });
+            const res = await hubinApi.getPenempatan({ limit: 500 });
             if (res.success && res.data) {
               const allPenempatan = res.data.list || res.data || [];
-              const selectedClassObj = classes?.find(c => c.id === selectedClassId);
-              if (selectedClassId === 'all') {
-                penempatanList = allPenempatan;
-              } else if (selectedClassObj) {
-                penempatanList = allPenempatan.filter((p: any) => 
-                  p.Siswa?.Kelas?.nama_kelas === selectedClassObj.nama_kelas
+              const targetClasses = selectedClassId === 'all'
+                ? classes
+                : selectedClassId.startsWith('all_tingkat_')
+                  ? (() => {
+                      const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
+                      return classes.filter(c => Number(c.tingkat) === tingkatNum);
+                    })()
+                  : classes.filter(c => c.id === selectedClassId);
+
+              targetClasses.forEach(c => {
+                penempatanMap[c.id] = allPenempatan.filter((p: any) => 
+                  p.Siswa?.Kelas?.nama_kelas === c.nama_kelas
                 );
-              }
+              });
             }
           } catch (e) {
             console.error('Failed to load PKL placements:', e);
@@ -101,7 +107,7 @@ export const CetakBerkasHubinPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { penempatanList }
+          filterData: { penempatanMap, classes }
         });
       }}
     />

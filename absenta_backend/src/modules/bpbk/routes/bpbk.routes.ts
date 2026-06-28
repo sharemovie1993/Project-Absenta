@@ -119,6 +119,13 @@ export async function bpbkRoutes(fastify: any) {
     ]
   }, BpbkController.updatePemanggilan);
 
+  fastify.post('/pemanggilan/:id/send-whatsapp-parent', {
+    preHandler: [
+      requireCapability('bk.summons.manage'),
+      organizationalScopeMiddleware
+    ]
+  }, BpbkController.sendWhatsAppParent);
+
   fastify.delete('/pemanggilan/:id', {
     preHandler: [
       requireCapability('bk.summons.manage'),

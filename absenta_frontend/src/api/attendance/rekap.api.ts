@@ -29,3 +29,14 @@ export const getRekapKelasBulanan = async (kelasId: string, bulan?: string) => {
   const params = bulan ? { bulan } : {};
   return requestWithFallback<RekapKelasBulananResponse>('get', `/attendance/rekap/kelas/${kelasId}/bulanan`, { params });
 };
+
+export interface RekapHarianGuruResponse {
+  nama_guru: string;
+  mapel: string;
+  kelas: string;
+  status: string;
+}
+
+export const getRekapHarianGuru = async (tanggal: string) => {
+  return requestWithFallback<RekapHarianGuruResponse[]>('get', `/attendance/rekap/guru/harian`, { params: { tanggal } });
+};

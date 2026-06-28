@@ -250,10 +250,16 @@ const SiswaPage: React.FC = () => {
   // Handle automatic edit modal from URL query
   useEffect(() => {
     const editId = searchParams.get('edit');
+    const viewId = searchParams.get('id');
     if (editId) {
       setModalState({ mode: 'edit', siswaId: editId, isOpen: true });
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('edit');
+      setSearchParams(newParams, { replace: true });
+    } else if (viewId) {
+      setModalState({ mode: 'view', siswaId: viewId, isOpen: true });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('id');
       setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);

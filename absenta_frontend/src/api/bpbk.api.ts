@@ -45,9 +45,16 @@ export interface PemanggilanOrangTua {
     id: string;
     nama_siswa: string;
     nis: string;
+    no_hp?: string;
     Kelas?: {
       nama_kelas: string;
     };
+    OrangTuaSiswa?: Array<{
+      OrangTua?: {
+        nama: string;
+        no_hp?: string;
+      };
+    }>;
   };
   Dokumen?: {
     id: string;
@@ -56,6 +63,8 @@ export interface PemanggilanOrangTua {
   };
   deleted_at?: string | null;
   deleted_by?: string | null;
+  waktu_pertemuan?: string;
+  tempat_pertemuan?: string;
 }
 
 export interface HomeVisit {
@@ -224,6 +233,10 @@ export const bpbkApi = {
   },
   deletePemanggilan: async (id: string) => {
     const response = await api.delete(`/bpbk/pemanggilan/${id}`);
+    return response.data;
+  },
+  sendWhatsAppParent: async (id: string) => {
+    const response = await api.post(`/bpbk/pemanggilan/${id}/send-whatsapp-parent`);
     return response.data;
   },
 

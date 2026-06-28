@@ -62,6 +62,7 @@ export const CetakBerkasSarprasPage: React.FC = () => {
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        classes,
         sekolah,
         tenantInfo,
         strukturList,
@@ -69,15 +70,28 @@ export const CetakBerkasSarprasPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
-        let assets = [];
-        let locationName = '';
+        const assetsMap: Record<string, any[]> = {};
 
         if (selectedPrintType === 'room_inventory' && selectedClassId) {
           try {
-            const params = selectedClassId === 'all' ? { limit: 200 } : { location_id: selectedClassId, limit: 100 };
+            const isBulk = selectedClassId === 'all' || selectedClassId.startsWith('all_tingkat_');
+            const params = isBulk ? { limit: 1000 } : { location_id: selectedClassId, limit: 100 };
             const res = await sarprasApi.getAssets(params);
             if (res.success && res.data) {
-              assets = res.data.list || res.data || [];
+              const list = res.data.list || res.data || [];
+              if (isBulk) {
+                const targetClasses = selectedClassId === 'all'
+                  ? classes
+                  : (() => {
+                      const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
+                      return classes.filter(c => Number(c.tingkat) === tingkatNum);
+                    })();
+                targetClasses.forEach(c => {
+                  assetsMap[c.id] = list.filter((asset: any) => asset.location_id === c.id);
+                });
+              } else {
+                assetsMap[selectedClassId] = list;
+              }
             }
           } catch (e) {
             console.error('Failed to fetch sarpras assets:', e);
@@ -94,7 +108,7 @@ export const CetakBerkasSarprasPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { assets }
+          filterData: { assetsMap, classes }
         });
       }}
     />

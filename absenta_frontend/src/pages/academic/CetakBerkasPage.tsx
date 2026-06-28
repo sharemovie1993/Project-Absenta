@@ -5,6 +5,67 @@ import { generateAcademicPdf } from '../../utils/print/pdfAcademic';
 import { listGuruMapel } from '../../api/academic/guru-mapel.api';
 import type { GuruMapel } from '../../types/academic';
 
+interface AcademicFormWrapperProps {
+  selectedPrintType: string;
+  setSelectedPrintType: (type: string) => void;
+  selectedClassId: string;
+  setSelectedClassId: (id: string) => void;
+  includeSchoolLogo: boolean;
+  setIncludeSchoolLogo: (val: boolean) => void;
+  classes: any[];
+  loadingClasses: boolean;
+  uniqueTingkatList: number[];
+  setUniqueTingkatList: React.Dispatch<React.SetStateAction<number[]>>;
+  setGuruMapelList: React.Dispatch<React.SetStateAction<GuruMapel[]>>;
+}
+
+const AcademicFormWrapper: React.FC<AcademicFormWrapperProps> = ({
+  selectedPrintType,
+  setSelectedPrintType,
+  selectedClassId,
+  setSelectedClassId,
+  includeSchoolLogo,
+  setIncludeSchoolLogo,
+  classes,
+  loadingClasses,
+  uniqueTingkatList,
+  setUniqueTingkatList,
+  setGuruMapelList
+}) => {
+  // Compute unique tingkat list dynamically
+  React.useEffect(() => {
+    const list = classes.map(c => Number(c.tingkat)).filter(t => !isNaN(t) && t > 0);
+    setUniqueTingkatList(Array.from(new Set(list)).sort((a, b) => a - b));
+  }, [classes, setUniqueTingkatList]);
+
+  // Load guru mapel list if sk_load selected
+  React.useEffect(() => {
+    if (selectedPrintType === 'sk_load') {
+      listGuruMapel().then(res => {
+        if (res.success && res.data) setGuruMapelList(res.data);
+      }).catch(console.error);
+    }
+  }, [selectedPrintType, setGuruMapelList]);
+
+  return (
+    <CetakFormAcademic
+      selectedPrintType={selectedPrintType as any}
+      setSelectedPrintType={setSelectedPrintType as any}
+      selectedClassId={selectedClassId}
+      setSelectedClassId={setSelectedClassId}
+      selectedMonth={new Date().getMonth() + 1}
+      setSelectedMonth={() => {}}
+      selectedYear={new Date().getFullYear()}
+      setSelectedYear={() => {}}
+      includeSchoolLogo={includeSchoolLogo}
+      setIncludeSchoolLogo={setIncludeSchoolLogo}
+      classes={classes}
+      loadingClasses={loadingClasses}
+      uniqueTingkatList={uniqueTingkatList}
+    />
+  );
+};
+
 export const CetakBerkasPage: React.FC = () => {
   const [uniqueTingkatList, setUniqueTingkatList] = React.useState<number[]>([]);
   const [guruMapelList, setGuruMapelList] = React.useState<GuruMapel[]>([]);
@@ -37,49 +98,14 @@ export const CetakBerkasPage: React.FC = () => {
       }}
       showChecklist={true}
       defaultPrintType="attendance"
-      docFormRenderer={({
-        selectedPrintType,
-        setSelectedPrintType,
-        selectedClassId,
-        setSelectedClassId,
-        includeSchoolLogo,
-        setIncludeSchoolLogo,
-        classes,
-        loadingClasses
-      }) => {
-        // Compute unique tingkat list dynamically
-        React.useEffect(() => {
-          const list = classes.map(c => Number(c.tingkat)).filter(t => !isNaN(t) && t > 0);
-          setUniqueTingkatList(Array.from(new Set(list)).sort((a, b) => a - b));
-        }, [classes]);
-
-        // Load guru mapel list if sk_load selected
-        React.useEffect(() => {
-          if (selectedPrintType === 'sk_load') {
-            listGuruMapel().then(res => {
-              if (res.success && res.data) setGuruMapelList(res.data);
-            }).catch(console.error);
-          }
-        }, [selectedPrintType]);
-
-        return (
-          <CetakFormAcademic
-            selectedPrintType={selectedPrintType as any}
-            setSelectedPrintType={setSelectedPrintType as any}
-            selectedClassId={selectedClassId}
-            setSelectedClassId={setSelectedClassId}
-            selectedMonth={new Date().getMonth() + 1}
-            setSelectedMonth={() => {}}
-            selectedYear={new Date().getFullYear()}
-            setSelectedYear={() => {}}
-            includeSchoolLogo={includeSchoolLogo}
-            setIncludeSchoolLogo={setIncludeSchoolLogo}
-            classes={classes}
-            loadingClasses={loadingClasses}
-            uniqueTingkatList={uniqueTingkatList}
-          />
-        );
-      }}
+      docFormRenderer={(props) => (
+        <AcademicFormWrapper
+          {...props}
+          uniqueTingkatList={uniqueTingkatList}
+          setUniqueTingkatList={setUniqueTingkatList}
+          setGuruMapelList={setGuruMapelList}
+        />
+      )}
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
@@ -109,3 +135,4 @@ export const CetakBerkasPage: React.FC = () => {
     />
   );
 };
+

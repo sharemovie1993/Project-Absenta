@@ -78,6 +78,7 @@ const SettingsPage: React.FC = () => {
     parent_app_monthly_recap_enabled: true,
     parent_app_daily_tracking_enabled: true,
     parent_app_report_absence_enabled: true,
+    bpbk_summons_require_principal_approval: true,
     company_legal_name: '',
     company_trade_name: '',
     company_npwp: '',

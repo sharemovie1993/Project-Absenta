@@ -9,15 +9,21 @@ import { Label } from '../../components/ui/Label';
 import { Loader } from '../../components/ui/Loader';
 import { Badge } from '../../components/ui/Badge';
 import { correspondenceApi, type SuratKeluar } from '../../api/correspondence.api';
+import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
+import { getTenantById } from '../../api/tenants.api';
+import { useAuth } from '../../hooks/useAuth';
+import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { useDebounce } from '../../hooks/useDebounce';
 import useConfirm from '../../hooks/useConfirm';
 import toast from 'react-hot-toast';
-import { Search, Plus, Edit2, Trash2, Send, CheckSquare, Clock, Award, ShieldAlert } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Send, CheckSquare, Clock, Award, ShieldAlert, Printer, Eye } from 'lucide-react';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
 
 export default function SuratKeluarPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<SuratKeluar[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -160,6 +166,106 @@ export default function SuratKeluarPage() {
     }
   }, [selectedId, fetchData]);
 
+  const handlePrintPdf = useCallback(async (item: SuratKeluar) => {
+    const toastId = toast.loading('Menyiapkan dokumen PDF...');
+    try {
+      const [sekolah, tenantRes] = await Promise.all([
+        sekolahApi.getProfile().catch(() => null),
+        user?.tenant_id ? getTenantById(user.tenant_id).catch(() => null) : Promise.resolve(null)
+      ]);
+
+      const tenantInfo = tenantRes?.success ? tenantRes.data : null;
+
+      const getBase64 = async (url: string) => {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch {
+          return null;
+        }
+      };
+
+      const logoDaerahUrl = sekolah?.logo_url || tenantInfo?.logo_url;
+      const logoSekolahUrl = tenantInfo?.logo_url;
+
+      const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
+        logoDaerahUrl ? getBase64(logoDaerahUrl) : Promise.resolve(null),
+        logoSekolahUrl ? getBase64(logoSekolahUrl) : Promise.resolve(null)
+      ]);
+
+      // Determine module and printType
+      let targetModule: 'bpbk' | 'attendance' | 'kesiswaan' = 'bpbk';
+      let targetPrintType = 'letter_bk_call';
+      
+      // Parse agenda / reasons
+      let agenda = item.isi_ringkas || '';
+      if (agenda.startsWith('Digenerasikan dari modul BP/BK - Pemanggilan Orang Tua. Alasan: ')) {
+        agenda = agenda.replace('Digenerasikan dari modul BP/BK - Pemanggilan Orang Tua. Alasan: ', '');
+      } else if (agenda.startsWith('Digenerasikan dari modul Cetak Berkas (kesiswaan). Agenda: ')) {
+        agenda = agenda.replace('Digenerasikan dari modul Cetak Berkas (kesiswaan). Agenda: ', '');
+        targetModule = 'kesiswaan';
+        targetPrintType = 'letter_summons';
+      } else if (agenda.startsWith('Digenerasikan dari modul Cetak Berkas (attendance). Agenda: ')) {
+        agenda = agenda.replace('Digenerasikan dari modul Cetak Berkas (attendance). Agenda: ', '');
+        targetModule = 'attendance';
+        targetPrintType = 'attendance_warning';
+      }
+
+      const isSummons = item.kategori_surat === 'Panggilan';
+      const isWarning = item.kategori_surat === 'Peringatan';
+
+      if (isWarning) {
+        targetModule = 'attendance';
+        targetPrintType = 'attendance_warning';
+      } else if (isSummons) {
+        if (targetModule !== 'kesiswaan') {
+          targetModule = 'bpbk';
+          targetPrintType = 'letter_bk_call';
+        }
+      }
+
+      const structuresRes = await getStrukturList({ is_active: true }).catch(() => null);
+      const structuresList = structuresRes?.success ? structuresRes.data : [];
+
+      const blob = await generateGenericPdf({
+        module: targetModule,
+        printType: targetPrintType,
+        selectedClassId: (item.Siswa?.Kelas as any)?.id || '',
+        sekolah,
+        tenantInfo,
+        strukturList: structuresList || [],
+        logoDaerahBase64,
+        logoSekolahBase64,
+        includeSchoolLogo: true,
+        selectedStudentId: item.siswa_id || undefined,
+        isSigned: item.status === 'DIKIRIM',
+        eventDetails: {
+          nomorSurat: item.nomor_surat,
+          tanggalPertemuan: item.tanggal_surat,
+          agendaPertemuan: agenda
+        },
+        filterData: {
+          selectedStudent: item.Siswa,
+          classes: item.Siswa?.Kelas ? [item.Siswa.Kelas] : [],
+          students: item.Siswa ? [item.Siswa] : []
+        }
+      });
+
+      const pdfUrl = URL.createObjectURL(blob);
+      window.open(pdfUrl, '_blank');
+      toast.success('Surat berhasil dibuka!', { id: toastId });
+    } catch (e) {
+      console.error('Failed to generate PDF:', e);
+      toast.error('Gagal memuat dokumen surat', { id: toastId });
+    }
+  }, [user]);
+
   const statusBadge = (status: string) => {
     switch (status) {
       case 'DRAFT': return <Badge variant="secondary">Draft</Badge>;
@@ -242,6 +348,15 @@ export default function SuratKeluarPage() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => handlePrintPdf(item)}
+            className="w-7 h-7 text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+            title="Lihat / Cetak PDF Surat"
+          >
+            <Printer size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => handleEdit(item)}
             className="w-7 h-7 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
           >
@@ -258,7 +373,7 @@ export default function SuratKeluarPage() {
         </div>
       )
     }
-  ], [handleEdit, handleDelete, handleOpenSign]);
+  ], [handleEdit, handleDelete, handleOpenSign, handlePrintPdf]);
 
   return (
     <AcademicPageLayout

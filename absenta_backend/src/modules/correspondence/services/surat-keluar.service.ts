@@ -177,12 +177,41 @@ export class SuratKeluarService {
     const existing = await prisma.suratKeluar.findFirst({ where: { id, tenant_id: tenantId } });
     if (!existing) throw new Error('Surat Keluar tidak ditemukan');
 
-    return prisma.suratKeluar.update({
+    const updated = await prisma.suratKeluar.update({
       where: { id },
       data: {
         status: approvedStatus,
         approved_by_id: approvedStatus === 'DIKIRIM' ? approvedById : null
       }
     });
+
+    // Sync status back to PemanggilanOrangTua if this is a summons letter
+    if (approvedStatus === 'DIKIRIM' && existing.kategori_surat === 'Panggilan' && existing.siswa_id) {
+      const latestSummons = await prisma.pemanggilanOrangTua.findFirst({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: existing.siswa_id,
+          status: 'BARU'
+        },
+        orderBy: { created_at: 'desc' }
+      });
+
+      if (latestSummons) {
+        await prisma.pemanggilanOrangTua.update({
+          where: { id: latestSummons.id },
+          data: { status: 'DIKIRIM' }
+        });
+
+        // Trigger WhatsApp notification to parent
+        try {
+          const { BpbkService } = await import('../../bpbk/services/bpbk.service');
+          await BpbkService.sendSummonsToParentWhatsApp(tenantId, latestSummons.id);
+        } catch (e) {
+          console.error('[SuratKeluar Sync] Failed to trigger parent WhatsApp:', e);
+        }
+      }
+    }
+
+    return updated;
   }
 }

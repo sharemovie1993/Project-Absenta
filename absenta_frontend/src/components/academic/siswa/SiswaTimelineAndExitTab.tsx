@@ -14,7 +14,7 @@ import { Loader } from '../../ui/Loader';
 import { Card, CardContent, Timeline, TimelineItem } from '../../ui';
 import { UploadSiswaDocumentModal } from './UploadSiswaDocumentModal';
 import { CompleteSiswaExitModal } from './CompleteSiswaExitModal';
-import { Download, Plus, LogOut, FileText, Trash2, Calendar, ShieldAlert, Paperclip } from 'lucide-react';
+import { Download, Plus, LogOut, FileText, Trash2, Calendar, ShieldAlert, Paperclip, MailOpen } from 'lucide-react';
 import type { Siswa } from '../../../types/academic';
 
 interface SiswaTimelineAndExitTabProps {
@@ -189,15 +189,17 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
             const isAkademik = item.tipe === 'STATUS_AKADEMIK';
             const isPelanggaran = item.tipe === 'PELANGGARAN';
             const isDokumen = item.tipe === 'DOKUMEN';
+            const isPemanggilan = item.tipe === 'PEMANGGILAN';
 
-            const status = isAkademik ? 'success' : isPelanggaran ? 'error' : 'info';
+            const status = isAkademik ? 'success' : isPelanggaran ? 'error' : isPemanggilan ? 'warning' : 'info';
+            const icon = isAkademik ? <Calendar size={12} /> : isPelanggaran ? <ShieldAlert size={12} /> : isPemanggilan ? <MailOpen size={12} /> : <FileText size={12} />;
 
             return (
               <TimelineItem
                 key={item.id}
                 isLast={index === timeline.length - 1}
                 status={status}
-                icon={isAkademik ? <Calendar size={12} /> : isPelanggaran ? <ShieldAlert size={12} /> : <FileText size={12} />}
+                icon={icon}
                 title={
                   <div className="flex-1 flex flex-col space-y-1">
                     <div className="flex items-center justify-between">
@@ -206,25 +208,25 @@ export const SiswaTimelineAndExitTab: React.FC<SiswaTimelineAndExitTabProps> = R
                         {new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal">{item.keterangan}</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal whitespace-pre-wrap">{item.keterangan}</p>
                     
                     {isPelanggaran && item.poin !== undefined && (
                       <span className="text-[10px] font-bold text-red-600 dark:text-red-400">+{item.poin} Poin Pelanggaran</span>
                     )}
 
-                    {isDokumen && item.file_url && (
+                    {item.file_url && (
                       <div className="flex items-center justify-between pt-1">
                         <button
                           type="button"
-                          onClick={() => handleDownloadDoc(item.id, item.file_name || 'dokumen.pdf')}
-                          disabled={downloadingDocId === item.id}
+                          onClick={() => handleDownloadDoc(item.document_id || item.id, item.file_name || 'dokumen.pdf')}
+                          disabled={downloadingDocId === (item.document_id || item.id)}
                           className="flex items-center text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 active:scale-[0.98] transition-all"
                         >
                           <Paperclip className="w-3 h-3 mr-1" />
                           {item.file_name || 'Unduh Lampiran'}
                         </button>
 
-                        {canUpload && (
+                        {canUpload && isDokumen && (
                           <button
                             type="button"
                             onClick={() => handleDeleteDoc(item.id, item.judul)}

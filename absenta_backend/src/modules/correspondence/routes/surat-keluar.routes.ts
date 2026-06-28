@@ -26,4 +26,18 @@ export async function suratKeluarRoutes(fastify: any) {
   fastify.post('/:id/sign', {
     preHandler: [requireCapability('correspondence.outbox.sign'), organizationalScopeMiddleware]
   }, SuratKeluarController.sign);
+
+  // Public Quick Approval (No login required, secure token validated)
+  fastify.get('/quick-approve/:token/detail', {
+    config: { skipAuth: true, public: true }
+  }, SuratKeluarController.getQuickApproveDetail);
+
+  fastify.post('/quick-approve/:token/approve', {
+    config: { skipAuth: true, public: true }
+  }, SuratKeluarController.postQuickApprove);
+
+  // Public Parent Letter View (No login required, secure token validated)
+  fastify.get('/public-view/:token/detail', {
+    config: { skipAuth: true, public: true }
+  }, SuratKeluarController.getParentPublicViewDetail);
 }

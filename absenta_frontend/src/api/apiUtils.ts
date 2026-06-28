@@ -171,13 +171,17 @@ export async function requestWithFallback<T>(
   options?: { params?: Record<string, unknown> | URLSearchParams; data?: unknown; headers?: Record<string, string>; responseType?: 'json' | 'blob' | 'arraybuffer' | 'text'; onUploadProgress?: (e: unknown) => void; unwrapData?: boolean; timeout?: number }
 ): Promise<T> {
   const url = path;
-  const config = { 
+  const config: any = { 
     params: options?.params, 
-    headers: options?.headers, 
+    headers: options?.headers ? { ...options.headers } : {}, 
     responseType: options?.responseType, 
     timeout: options?.timeout,
     onUploadProgress: options?.onUploadProgress
   };
+
+  if (options?.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
 
   let res;
   if (method === 'get') {

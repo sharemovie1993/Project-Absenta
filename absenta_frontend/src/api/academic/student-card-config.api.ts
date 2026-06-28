@@ -48,6 +48,8 @@ export interface StudentCardConfig {
   header_height?: number;
   header_bg_color?: string;
   header_text_color?: string;
+  header_pattern?: string;
+  header_pattern_opacity?: number;
   footer_height?: number;
   footer_bg_color?: string;
 

@@ -87,10 +87,24 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         strukturList,
         logoDaerahBase64,
         logoSekolahBase64,
-        includeSchoolLogo
+        includeSchoolLogo,
+        checklistData
       }) => {
-        let violations = [];
-        let achievements = [];
+        const targetClasses = selectedClassId === 'all'
+          ? classes
+          : selectedClassId.startsWith('all_tingkat_')
+            ? (() => {
+                const tingkatNum = Number(selectedClassId.replace('all_tingkat_', ''));
+                return classes.filter(c => Number(c.tingkat) === tingkatNum);
+              })()
+            : classes.filter(c => c.id === selectedClassId);
+
+        const classesToPrint = ['recap_violations', 'recap_achievements', 'letter_summons'].includes(selectedPrintType)
+          ? targetClasses
+          : [null];
+
+        const violationsMap: Record<string, any[]> = {};
+        const achievementsMap: Record<string, any[]> = {};
         let selectedStudent = null;
 
         try {
@@ -101,24 +115,29 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
             // Get their violations to show context in the letter
             const res = await kesiswaanApi.getPelanggaran({ siswa_id: selectedStudentId, limit: 100 });
             if (res.success && res.data) {
-              violations = res.data.list || [];
+              const list = res.data.list || [];
+              if (selectedStudent?.kelas_id) {
+                violationsMap[selectedStudent.kelas_id] = list;
+              }
             }
           } else if (selectedPrintType === 'recap_violations') {
-            const res = await kesiswaanApi.getPelanggaran({
-              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
-              limit: 200
+            const promises = classesToPrint.map(async (c) => {
+              if (!c) return;
+              const res = await kesiswaanApi.getPelanggaran({ kelas_id: c.id, limit: 200 });
+              if (res.success && res.data) {
+                violationsMap[c.id] = res.data.list || [];
+              }
             });
-            if (res.success && res.data) {
-              violations = res.data.list || [];
-            }
+            await Promise.all(promises);
           } else if (selectedPrintType === 'recap_achievements') {
-            const res = await kesiswaanApi.getPrestasiSiswa({
-              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
-              limit: 200
+            const promises = classesToPrint.map(async (c) => {
+              if (!c) return;
+              const res = await kesiswaanApi.getPrestasiSiswa({ kelas_id: c.id, limit: 200 });
+              if (res.success && res.data) {
+                achievementsMap[c.id] = res.data.list || [];
+              }
             });
-            if (res.success && res.data) {
-              achievements = res.data.list || [];
-            }
+            await Promise.all(promises);
           }
         } catch (e) {
           console.error('Failed to load kesiswaan printing data:', e);
@@ -136,7 +155,8 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { violations, achievements, selectedStudent, classes, students }
+          checklistData,
+          filterData: { violationsMap, achievementsMap, selectedStudent, classes, students }
         });
       }}
     />

@@ -184,6 +184,33 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     }
   }, [tenantInfo?.logo_url, sekolah?.logo_url]);
 
+  // Load query params on mount for cross-module redirect printing
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const qPrintType = params.get('printType');
+    const qClassId = params.get('classId');
+    const qStudentId = params.get('studentId');
+    const qAgenda = params.get('agenda');
+    const qNomor = params.get('nomor');
+
+    if (qPrintType) {
+      setSelectedPrintType(qPrintType as any);
+    }
+    if (qClassId) {
+      setSelectedClassId(qClassId);
+    }
+    if (qStudentId) {
+      setSelectedStudentId(qStudentId);
+    }
+    if (qAgenda || qNomor) {
+      setEventDetails(prev => ({
+        ...prev,
+        agendaPertemuan: qAgenda || prev.agendaPertemuan,
+        nomorSurat: qNomor || prev.nomorSurat
+      }));
+    }
+  }, [setSelectedPrintType, setSelectedClassId, setSelectedStudentId]);
+
   // Clean up blob url on unmount
   useEffect(() => {
     return () => {
@@ -212,7 +239,9 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
         list = (res.data || []).filter((c: any) => c.is_active === true);
       }
       setClasses(list);
-      if (list.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const qClassId = params.get('classId');
+      if (list.length > 0 && !qClassId) {
         setSelectedClassId(list[0].id);
       }
     } catch (err) {
@@ -253,8 +282,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
           const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
           const list = res.data || [];
           setStudents(list);
+          const params = new URLSearchParams(window.location.search);
+          const qStudentId = params.get('studentId');
           if (list.length > 0) {
-            setSelectedStudentId(list[0].id);
+            setSelectedStudentId(qStudentId && list.some((s: any) => s.id === qStudentId) ? qStudentId : list[0].id);
           } else {
             setSelectedStudentId('');
           }
@@ -352,7 +383,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, selectedStudentId, eventDetails, includeSchoolLogo, classes, gurus, students, generatePreview]);
 
   const recordSuratKeluar = async () => {
-    const isLetter = ['letter_summons', 'letter_bk_call', 'pkl_intro'].includes(selectedPrintType);
+    const isLetter = ['letter_summons', 'letter_bk_call', 'pkl_intro', 'attendance_warning'].includes(selectedPrintType);
     if (!isLetter) return;
 
     try {
@@ -374,6 +405,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
         perihal = 'Surat Pengantar Praktik Kerja Lapangan (PKL)';
         kategori = 'Dinas';
         tujuan = 'Pimpinan / HRD DUDI Mitra';
+      } else if (selectedPrintType === 'attendance_warning') {
+        perihal = 'Surat Peringatan Ketidakhadiran Siswa (SP)';
+        kategori = 'Peringatan';
+        tujuan = 'Orang Tua / Wali Siswa';
       }
 
       await correspondenceApi.createSuratKeluar({

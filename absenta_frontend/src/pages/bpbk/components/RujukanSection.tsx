@@ -274,20 +274,38 @@ export const RujukanSection: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
-              {selectedId ? (
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
-                  <div className="font-bold text-xs">{selectedSiswa?.nama_siswa}</div>
-                  <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{selectedSiswa?.nis}</div>
+              {selectedSiswa ? (
+                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
+                  <div>
+                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{selectedSiswa.nama_siswa}</div>
+                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                      {selectedSiswa.Kelas?.nama_kelas || selectedSiswa.kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                    </div>
+                  </div>
+                  {!selectedId && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      onClick={() => {
+                        setSelectedSiswa(null);
+                        setFormData(prev => ({ ...prev, siswa_id: '' }));
+                      }}
+                      className="text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-1.5 rounded-lg"
+                    >
+                      UBAH SISWA
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-xl" />}>
                   <SmartStudentPicker
+                    scope="global"
                     onSelect={(s) => {
                       setSelectedSiswa(s);
                       setFormData(prev => ({ ...prev, siswa_id: s.id }));
                     }}
                     mode="siswa"
-                    placeholder="Cari siswa..."
+                    placeholder="Cari nama atau NIS siswa..."
                   />
                 </Suspense>
               )}

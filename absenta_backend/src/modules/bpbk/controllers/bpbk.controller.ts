@@ -124,6 +124,16 @@ export class BpbkController {
     }
   }
 
+  static async sendWhatsAppParent(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      await BpbkService.sendSummonsToParentWhatsApp(tenant_id, id);
+      return sendResponse(reply, 200, true, 'Surat panggilan berhasil dikirim via WhatsApp ke Orang Tua');
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengirim WhatsApp ke Orang Tua', error);
+    }
+  }
   static async updatePemanggilan(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;

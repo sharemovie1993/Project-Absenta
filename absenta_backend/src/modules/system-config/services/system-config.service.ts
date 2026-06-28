@@ -73,6 +73,8 @@ export interface SystemConfigPayload {
   parent_app_monthly_recap_enabled?: boolean;
   parent_app_daily_tracking_enabled?: boolean;
   parent_app_report_absence_enabled?: boolean;
+  // BPBK Settings
+  bpbk_summons_require_principal_approval?: boolean;
 }
 
 export const systemConfigService = {

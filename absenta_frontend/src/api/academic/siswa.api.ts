@@ -160,13 +160,14 @@ export const exportSiswaToExcel = async (): Promise<Blob> => {
 export interface SiswaTimelineItem {
   id: string;
   tanggal: string;
-  tipe: 'STATUS_AKADEMIK' | 'PELANGGARAN' | 'DOKUMEN';
+  tipe: 'STATUS_AKADEMIK' | 'PELANGGARAN' | 'DOKUMEN' | 'PEMANGGILAN' | 'HOME_VISIT' | 'ASESMEN' | 'KONSELING' | 'RUJUKAN' | string;
   judul: string;
   keterangan: string;
   poin?: number;
   status?: string;
   file_name?: string;
   file_url?: string;
+  document_id?: string;
   kategori_dokumen?: string;
   size_bytes?: number;
   user_name: string;
@@ -184,15 +185,12 @@ export const uploadSiswaDocument = async (
   kategori: string
 ): Promise<{ success: boolean; message: string }> => {
   const formData = new FormData();
-  formData.append('file', file);
   formData.append('judul', judul);
   formData.append('kategori', kategori);
+  formData.append('file', file);
 
   return requestWithFallback<{ success: boolean; message: string }>('post', `/academic/siswa/${id}/documents`, {
-    data: formData,
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+    data: formData
   });
 };
 

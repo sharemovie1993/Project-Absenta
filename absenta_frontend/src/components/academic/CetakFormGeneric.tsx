@@ -59,6 +59,11 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
   // Show teacher selector only if it's roster_teacher
   const showTeacherSelector = selectedPrintType === 'roster_teacher';
 
+  const computedTingkatList = React.useMemo(() => {
+    const list = classes.map(c => Number(c.tingkat)).filter(t => !isNaN(t) && t > 0);
+    return Array.from(new Set(list)).sort((a, b) => a - b);
+  }, [classes]);
+
   return (
     <div className="space-y-4 py-2">
       {/* Document Type Dropdown */}
@@ -94,8 +99,13 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
             >
+              {computedTingkatList.map(t => (
+                <option key={`all_tingkat_${t}`} value={`all_tingkat_${t}`}>
+                  🖨️ CETAK TINGKAT {t} (MASAL)
+                </option>
+              ))}
               <option value="all">
-                {selectedPrintType === 'room_inventory' ? '🖨️ CETAK SEMUA RUANGAN' : '🖨️ CETAK SEMUA KELAS'}
+                {selectedPrintType === 'room_inventory' ? '🖨️ CETAK SEMUA RUANGAN' : '🖨️ CETAK SEMUA KELAS (SELURUH SEKOLAH)'}
               </option>
               {classes.map(c => (
                 <option key={c.id} value={c.id}>
@@ -108,7 +118,7 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
       )}
 
       {/* Student Selector */}
-      {selectedPrintType === 'letter_summons' && selectedClassId !== 'all' && setSelectedStudentId && (
+      {['letter_summons', 'letter_bk_call', 'attendance_warning', 'student_attendance_card', 'bk_consult', 'bk_minutes', 'bk_statement'].includes(selectedPrintType) && selectedClassId !== 'all' && setSelectedStudentId && (
         <div className="space-y-1">
           <label className="text-xs font-black uppercase text-slate-400 block">Pilih Siswa</label>
           {loadingStudents ? (
@@ -156,8 +166,8 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
         </div>
       )}
 
-      {/* Event Details Form (Only for summons) */}
-      {selectedPrintType === 'letter_summons' && setEventDetails && (
+      {/* Event Details Form (Only for summons & minutes) */}
+      {['letter_summons', 'letter_bk_call', 'bk_minutes', 'bk_statement'].includes(selectedPrintType) && setEventDetails && (
         <div className="space-y-3 p-3.5 rounded-xl bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30">
           <div className="flex items-center gap-2 pb-1.5 border-b border-blue-100/60 dark:border-blue-900/20">
             <Edit3 size={13} className="text-blue-600 dark:text-blue-400" />
@@ -219,14 +229,27 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
           </div>
         </div>
       )}
-      {/* Month Selector for Monthly Attendance Recap */}
-      {selectedPrintType === 'monthly_recap' && eventDetails && setEventDetails && (
+      {/* Month Selector for Monthly & Semester Attendance Recap */}
+      {(selectedPrintType === 'monthly_recap' || selectedPrintType === 'semester_recap') && eventDetails && setEventDetails && (
         <div className="space-y-1">
           <label className="text-xs font-black uppercase text-slate-400 block">Pilih Bulan & Tahun</label>
           <input
             type="month"
             value={eventDetails.bulanRekap || new Date().toISOString().substring(0, 7)}
             onChange={(e) => setEventDetails({ ...eventDetails, bulanRekap: e.target.value })}
+            className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
+          />
+        </div>
+      )}
+
+      {/* Date Selector for Teacher Attendance */}
+      {selectedPrintType === 'teacher_attendance' && eventDetails && setEventDetails && (
+        <div className="space-y-1">
+          <label className="text-xs font-black uppercase text-slate-400 block">Pilih Tanggal Laporan</label>
+          <input
+            type="date"
+            value={eventDetails.tanggalLaporan || new Date().toISOString().substring(0, 10)}
+            onChange={(e) => setEventDetails({ ...eventDetails, tanggalLaporan: e.target.value })}
             className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
           />
         </div>

@@ -170,6 +170,7 @@ export async function getSiswaTimelineQuery(params: {
       keterangan: `Alasan: ${s.alasan}\nStatus: ${s.status}`,
       file_name: s.Dokumen?.file_original_name,
       file_url: s.Dokumen ? `/academic/siswa/${siswaId}/documents/${s.Dokumen.id}/download` : undefined,
+      document_id: s.Dokumen?.id,
       user_name: 'Guru BK'
     });
   });
@@ -184,6 +185,7 @@ export async function getSiswaTimelineQuery(params: {
       keterangan: `Alasan: ${h.alasan}\nHasil: ${h.hasil || '-'}`,
       file_name: h.Dokumen?.file_original_name,
       file_url: h.Dokumen ? `/academic/siswa/${siswaId}/documents/${h.Dokumen.id}/download` : undefined,
+      document_id: h.Dokumen?.id,
       user_name: 'Guru BK'
     });
   });
@@ -198,6 +200,7 @@ export async function getSiswaTimelineQuery(params: {
       keterangan: `Skor/Hasil: ${a.hasil_skor || '-'}\nKeterangan: ${a.keterangan || '-'}`,
       file_name: a.Dokumen?.file_original_name,
       file_url: a.Dokumen ? `/academic/siswa/${siswaId}/documents/${a.Dokumen.id}/download` : undefined,
+      document_id: a.Dokumen?.id,
       user_name: 'Guru BK'
     });
   });
@@ -214,8 +217,16 @@ export async function getSiswaTimelineQuery(params: {
     });
   });
 
-  // Add documents
+  // Collect all document IDs that are already linked to prevent duplication
+  const linkedDocIds = new Set<string>();
+  summons.forEach(s => { if (s.Dokumen?.id) linkedDocIds.add(s.Dokumen.id); });
+  homeVisits.forEach(h => { if (h.Dokumen?.id) linkedDocIds.add(h.Dokumen.id); });
+  assessments.forEach(a => { if (a.Dokumen?.id) linkedDocIds.add(a.Dokumen.id); });
+
+  // Add documents (exclude ones already linked to events)
   documents.forEach((d) => {
+    if (linkedDocIds.has(d.id)) return;
+    
     items.push({
       id: d.id,
       tanggal: d.created_at,
@@ -225,6 +236,7 @@ export async function getSiswaTimelineQuery(params: {
       kategori_dokumen: d.kategori,
       file_name: d.file_original_name,
       file_url: `/academic/siswa/${siswaId}/documents/${d.id}/download`,
+      document_id: d.id,
       size_bytes: d.size_bytes,
       user_name: d.UploadedBy?.full_name || 'Staf Sekolah'
     });

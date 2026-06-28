@@ -180,7 +180,7 @@ export default async function siswaRoutes(fastify: any) {
   // POST /siswa/:id/documents - Upload document
   fastify.post('/:id/documents', {
     preHandler: [
-      requireCapability('affairs.violations.report'), // BK, Kesiswaan, Wali Kelas
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign']),
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {
@@ -210,7 +210,7 @@ export default async function siswaRoutes(fastify: any) {
   // DELETE /siswa/:id/documents/:docId - Delete document
   fastify.delete('/:id/documents/:docId', {
     preHandler: [
-      requireCapability('affairs.violations.report'), // BK, Kesiswaan
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign']),
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {

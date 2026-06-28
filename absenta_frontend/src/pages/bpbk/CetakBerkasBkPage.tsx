@@ -7,7 +7,10 @@ import { bpbkApi } from '../../api/bpbk.api';
 export const CetakBerkasBkPage: React.FC = () => {
   const docOptions: DocOption[] = [
     { value: 'bk_consult', label: '1. KARTU KONSULTASI & LAYANAN BK SISWA', requireClass: true },
-    { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true }
+    { value: 'letter_bk_call', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA (BK)', requireClass: true },
+    { value: 'student_attendance_card', label: '3. KARTU KONTROL KEHADIRAN SISWA TERBINA (BK)', requireClass: true },
+    { value: 'bk_minutes', label: '4. BERITA ACARA PERTEMUAN WALI SISWA (BK)', requireClass: true },
+    { value: 'bk_statement', label: '5. SURAT PERNYATAAN / PERJANJIAN WALI SISWA (BK)', requireClass: true }
   ];
 
   return (
