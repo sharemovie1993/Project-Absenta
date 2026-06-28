@@ -16,6 +16,7 @@ export interface GenerateGenericPdfOptions {
   includeSchoolLogo: boolean;
   selectedGuruId?: string;
   selectedStudentId?: string;
+  eventDetails?: Record<string, string>;
   filterData?: Record<string, any>;
 }
 
@@ -477,6 +478,30 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         const studentNis = student?.nis || '__________';
         const studentClass = filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || '________________';
         
+        const details = filterData?.eventDetails || {};
+        const nomor = details.nomorSurat || `800 / ${studentNis ? studentNis.substring(0,4) : '___'} / Kesiswaan / ${new Date().getFullYear()}`;
+        
+        let formattedDate = '';
+        if (details.tanggalPertemuan) {
+          try {
+            const dt = new Date(details.tanggalPertemuan);
+            const dayName = dt.toLocaleDateString('id-ID', { weekday: 'long' });
+            const dateStr = dt.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            formattedDate = `${dayName} / ${dateStr}`;
+          } catch (e) {
+            formattedDate = details.tanggalPertemuan;
+          }
+        } else {
+          const tomorrow = new Date(Date.now() + 24*60*60*1000);
+          const dayName = tomorrow.toLocaleDateString('id-ID', { weekday: 'long' });
+          const dateStr = tomorrow.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+          formattedDate = `${dayName} / ${dateStr}`;
+        }
+        
+        const waktu = details.waktuPertemuan || '08.00 WIB s.d. Selesai';
+        const tempat = details.tempatPertemuan || 'Ruang Piket / Kesiswaan';
+        const agenda = details.agendaPertemuan || 'Klarifikasi & Pembinaan Khusus Siswa';
+
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'bold');
         doc.text('SURAT PANGGILAN ORANG TUA / WALI SISWA', pageWidth / 2, headerEndY + 6, { align: 'center' });
@@ -484,7 +509,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(9.5);
         let textY = headerEndY + 16;
-        doc.text(`Nomor : 800 / ${studentNis ? studentNis.substring(0,4) : '___'} / Kesiswaan / ${new Date().getFullYear()}`, 15, textY);
+        doc.text(`Nomor : ${nomor}`, 15, textY);
         doc.text('Hal   : Panggilan Orang Tua / Wali Siswa', 15, textY + 5);
         
         doc.text('Kepada Yth.', 15, textY + 14);
@@ -515,16 +540,16 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         // Meeting details
         doc.setFont('Helvetica', 'bold');
         doc.text('Hari / Tanggal  :', 25, textY + 76);
-        doc.text('Senin / ' + new Date(Date.now() + 24*60*60*1000).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 60, textY + 76);
+        doc.text(formattedDate, 60, textY + 76);
         
         doc.text('Waktu           :', 25, textY + 81);
-        doc.text('08.00 WIB s.d. Selesai', 60, textY + 81);
+        doc.text(waktu, 60, textY + 81);
         
         doc.text('Tempat          :', 25, textY + 86);
-        doc.text('Ruang Piket / Kesiswaan', 60, textY + 86);
+        doc.text(tempat, 60, textY + 86);
         
         doc.text('Agenda          :', 25, textY + 91);
-        doc.text('Klarifikasi & Pembinaan Khusus Siswa', 60, textY + 91);
+        doc.text(agenda, 60, textY + 91);
         
         doc.setFont('Helvetica', 'normal');
         doc.text('Demikian undangan ini kami sampaikan. Mengingat pentingnya agenda tersebut, kehadiran', 15, textY + 99);

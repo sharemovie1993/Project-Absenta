@@ -17,6 +17,8 @@ interface CetakFormGenericProps {
   setSelectedGuruId?: (val: string) => void;
   selectedStudentId?: string;
   setSelectedStudentId?: (val: string) => void;
+  eventDetails?: Record<string, string>;
+  setEventDetails?: (val: Record<string, string>) => void;
   includeSchoolLogo: boolean;
   setIncludeSchoolLogo: (val: boolean) => void;
   classes: Kelas[];
@@ -37,6 +39,8 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
   setSelectedGuruId,
   selectedStudentId = '',
   setSelectedStudentId,
+  eventDetails = {},
+  setEventDetails,
   includeSchoolLogo,
   setIncludeSchoolLogo,
   classes,
@@ -143,6 +147,67 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
               ))}
             </select>
           )}
+        </div>
+      )}
+
+      {/* Event Details Form (Only for summons) */}
+      {selectedPrintType === 'letter_summons' && setEventDetails && (
+        <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <h4 className="text-xs font-black uppercase text-slate-500">Detail Undangan Pertemuan</h4>
+          
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400 block">Nomor Surat</label>
+            <input
+              type="text"
+              placeholder="Contoh: 800 / 025 / Kesiswaan / 2026"
+              value={eventDetails.nomorSurat || ''}
+              onChange={(e) => setEventDetails({ ...eventDetails, nomorSurat: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400 block">Tanggal Pertemuan</label>
+            <input
+              type="date"
+              value={eventDetails.tanggalPertemuan || ''}
+              onChange={(e) => setEventDetails({ ...eventDetails, tanggalPertemuan: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400 block">Waktu Pertemuan</label>
+            <input
+              type="text"
+              placeholder="Contoh: 08.00 WIB s.d Selesai"
+              value={eventDetails.waktuPertemuan || ''}
+              onChange={(e) => setEventDetails({ ...eventDetails, waktuPertemuan: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400 block">Tempat Pertemuan</label>
+            <input
+              type="text"
+              placeholder="Contoh: Ruang Piket / Kesiswaan"
+              value={eventDetails.tempatPertemuan || ''}
+              onChange={(e) => setEventDetails({ ...eventDetails, tempatPertemuan: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-400 block">Agenda Pertemuan</label>
+            <textarea
+              rows={2}
+              placeholder="Contoh: Klarifikasi & Pembinaan Khusus Siswa"
+              value={eventDetails.agendaPertemuan || ''}
+              onChange={(e) => setEventDetails({ ...eventDetails, agendaPertemuan: e.target.value })}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
         </div>
       )}
 

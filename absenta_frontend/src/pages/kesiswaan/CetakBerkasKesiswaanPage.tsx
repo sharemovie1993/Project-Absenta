@@ -48,6 +48,8 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         setSelectedClassId,
         selectedStudentId,
         setSelectedStudentId,
+        eventDetails,
+        setEventDetails,
         includeSchoolLogo,
         setIncludeSchoolLogo,
         classes,
@@ -62,6 +64,8 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
           setSelectedClassId={setSelectedClassId}
           selectedStudentId={selectedStudentId}
           setSelectedStudentId={setSelectedStudentId}
+          eventDetails={eventDetails}
+          setEventDetails={setEventDetails}
           includeSchoolLogo={includeSchoolLogo}
           setIncludeSchoolLogo={setIncludeSchoolLogo}
           classes={classes}
@@ -75,6 +79,7 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         selectedPrintType,
         selectedClassId,
         selectedStudentId,
+        eventDetails,
         classes,
         students,
         sekolah,
@@ -124,6 +129,7 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
           printType: selectedPrintType,
           selectedClassId,
           selectedStudentId,
+          eventDetails,
           sekolah,
           tenantInfo,
           strukturList,

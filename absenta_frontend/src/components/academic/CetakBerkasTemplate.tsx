@@ -49,6 +49,8 @@ interface CetakBerkasTemplateProps {
     setSelectedGuruId?: (val: string) => void;
     selectedStudentId?: string;
     setSelectedStudentId?: (val: string) => void;
+    eventDetails?: Record<string, string>;
+    setEventDetails?: (val: Record<string, string>) => void;
     includeSchoolLogo: boolean;
     setIncludeSchoolLogo: (val: boolean) => void;
     classes: Kelas[];
@@ -63,6 +65,7 @@ interface CetakBerkasTemplateProps {
     selectedClassId: string;
     selectedGuruId?: string;
     selectedStudentId?: string;
+    eventDetails?: Record<string, string>;
     classes: Kelas[];
     gurus?: Guru[];
     students?: Siswa[];
@@ -97,6 +100,13 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [eventDetails, setEventDetails] = useState<Record<string, string>>({
+    nomorSurat: '',
+    tanggalPertemuan: '',
+    waktuPertemuan: '08.00 WIB s.d. Selesai',
+    tempatPertemuan: 'Ruang Piket / Kesiswaan',
+    agendaPertemuan: 'Klarifikasi & Pembinaan Khusus Siswa'
+  });
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 
   // Common metadata
@@ -278,6 +288,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
         selectedClassId,
         selectedGuruId,
         selectedStudentId,
+        eventDetails,
         classes,
         gurus,
         students,
@@ -306,6 +317,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     selectedClassId,
     selectedGuruId,
     selectedStudentId,
+    eventDetails,
     classes,
     gurus,
     students,
@@ -323,7 +335,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     if (activeTab === 'print' && (classes.length > 0 || gurus.length > 0 || students.length > 0)) {
       generatePreview();
     }
-  }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, selectedStudentId, includeSchoolLogo, classes, gurus, students, generatePreview]);
+  }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, selectedStudentId, eventDetails, includeSchoolLogo, classes, gurus, students, generatePreview]);
 
   // Handlers
   const handlePrint = () => {
@@ -532,6 +544,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
                     setSelectedGuruId,
                     selectedStudentId,
                     setSelectedStudentId,
+                    eventDetails,
+                    setEventDetails,
                     includeSchoolLogo,
                     setIncludeSchoolLogo,
                     classes,
