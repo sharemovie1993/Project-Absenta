@@ -107,7 +107,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     tanggalPertemuan: '',
     waktuPertemuan: '08.00 WIB s.d. Selesai',
     tempatPertemuan: 'Ruang Piket / Kesiswaan',
-    agendaPertemuan: 'Klarifikasi & Pembinaan Khusus Siswa'
+    agendaPertemuan: 'Klarifikasi & Pembinaan Khusus Siswa',
+    bulanRekap: new Date().toISOString().substring(0, 7)
   });
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 

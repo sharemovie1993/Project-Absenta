@@ -219,6 +219,18 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
           </div>
         </div>
       )}
+      {/* Month Selector for Monthly Attendance Recap */}
+      {selectedPrintType === 'monthly_recap' && eventDetails && setEventDetails && (
+        <div className="space-y-1">
+          <label className="text-xs font-black uppercase text-slate-400 block">Pilih Bulan & Tahun</label>
+          <input
+            type="month"
+            value={eventDetails.bulanRekap || new Date().toISOString().substring(0, 7)}
+            onChange={(e) => setEventDetails({ ...eventDetails, bulanRekap: e.target.value })}
+            className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
+          />
+        </div>
+      )}
 
       {/* Checkbox to Toggle Right Logo (Sekolah) */}
       <div className="flex items-center gap-2 pt-2">

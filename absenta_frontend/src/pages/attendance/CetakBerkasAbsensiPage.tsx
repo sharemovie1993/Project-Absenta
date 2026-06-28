@@ -42,6 +42,8 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         setSelectedPrintType,
         selectedClassId,
         setSelectedClassId,
+        eventDetails,
+        setEventDetails,
         includeSchoolLogo,
         setIncludeSchoolLogo,
         classes,
@@ -52,6 +54,8 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
           setSelectedPrintType={setSelectedPrintType}
           selectedClassId={selectedClassId}
           setSelectedClassId={setSelectedClassId}
+          eventDetails={eventDetails}
+          setEventDetails={setEventDetails}
           includeSchoolLogo={includeSchoolLogo}
           setIncludeSchoolLogo={setIncludeSchoolLogo}
           classes={classes}
@@ -62,6 +66,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        eventDetails,
         sekolah,
         tenantInfo,
         strukturList,
@@ -72,8 +77,8 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         let rekapList = null;
         if (selectedPrintType === 'monthly_recap' && selectedClassId) {
           try {
-            const currentMonth = new Date().toISOString().substring(0, 7);
-            const res = await getRekapKelasBulanan(selectedClassId, currentMonth);
+            const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
+            const res = await getRekapKelasBulanan(selectedClassId, selectedMonth);
             if (res.success && res.data) {
               rekapList = res.data;
             }
@@ -86,6 +91,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
           module: 'attendance',
           printType: selectedPrintType,
           selectedClassId,
+          eventDetails,
           sekolah,
           tenantInfo,
           strukturList,
