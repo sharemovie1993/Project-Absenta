@@ -345,6 +345,7 @@ export const PrestasiSection: React.FC = () => {
               ) : (
                 <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-xl" />}>
                   <SmartStudentPicker
+                    scope="piket"
                     onSelect={(s) => {
                       setSelectedSiswa(s);
                       setFormData(prev => ({ ...prev, siswa_id: s.id }));
