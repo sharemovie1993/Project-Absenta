@@ -445,6 +445,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       includeSchoolLogo
     );
 
+    let currentY = headerEndY;
     doc.setFont('Helvetica', 'bold');
     
     if (module === 'kurikulum' && printType === 'calendar') {
@@ -468,6 +469,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         styles: { fontSize: 9, font: 'Helvetica', cellPadding: 3.5 },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
       });
+      currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
     } else if (module === 'kesiswaan') {
       if (printType === 'letter_summons') {
         const student = filterData?.selectedStudent;
@@ -529,6 +531,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         doc.text('Bapak/Ibu sangat kami harapkan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.', 15, textY + 104);
         
         const violationsList = (filterData?.violations || []) as any[];
+        let lastContentY = textY + 106;
         if (violationsList.length > 0) {
           doc.setFont('Helvetica', 'bold');
           doc.text('Catatan Pelanggaran Terakhir Siswa:', 15, textY + 112);
@@ -540,7 +543,9 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             doc.text(`${idx + 1}. [${dateStr}] ${v.jenis_pelanggaran} (${v.keterangan || '-'}) - Poin: ${v.poin}`, 20, listY);
             listY += 5;
           });
+          lastContentY = listY + 5;
         }
+        currentY = lastContentY;
       } else if (printType === 'recap_violations') {
         const violations = (filterData?.violations || []) as any[];
         
@@ -590,6 +595,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             5: { halign: 'left' }
           }
         });
+        currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
       } else if (printType === 'recap_achievements') {
         const achievements = (filterData?.achievements || []) as any[];
         
@@ -639,6 +645,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             5: { halign: 'left' }
           }
         });
+        currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
       }
     } else if (module === 'attendance') {
       doc.setFontSize(11);
@@ -663,6 +670,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         styles: { fontSize: 8.5, font: 'Helvetica', cellPadding: 3 },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
       });
+      currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
     } else if (module === 'bpbk') {
       doc.setFontSize(11);
       doc.text('KARTU KONSULTASI & LAYANAN BK', pageWidth / 2, headerEndY + 6, { align: 'center' });
@@ -682,6 +690,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         styles: { fontSize: 8.5, font: 'Helvetica', cellPadding: 3, minCellHeight: 15 },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
       });
+      currentY = (doc as any).lastAutoTable?.finalY ?? (textY + 50);
     } else if (module === 'sarpras') {
       doc.setFontSize(11);
       doc.text('DAFTAR INVENTARIS BARANG & ASET RUANGAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
@@ -702,6 +711,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         styles: { fontSize: 9, font: 'Helvetica', cellPadding: 3.5 },
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
       });
+      currentY = (doc as any).lastAutoTable?.finalY ?? (headerEndY + 50);
     } else if (module === 'hubin') {
       doc.setFontSize(11);
       doc.text('SURAT PENGANTAR PRAKTEK KERJA LAPANGAN (PKL)', pageWidth / 2, headerEndY + 6, { align: 'center' });
@@ -737,10 +747,11 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       
       let sigY = (doc as any).lastAutoTable?.finalY ?? (textY + 65);
       doc.text('Diperkenankan melaksanakan PKL di perusahaan Bapak/Ibu mulai bulan Juli s.d Desember.', 15, sigY + 8);
+      currentY = sigY + 12;
     }
 
     // Shared Bottom Signature
-    let finalY = (doc as any).lastAutoTable?.finalY ?? 100;
+    let finalY = currentY;
     if (finalY + 35 > pageHeight) {
       doc.addPage();
       finalY = 20;
