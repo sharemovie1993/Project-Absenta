@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type HubType = 'AKADEMIK' | 'KURIKULUM' | 'KESISWAAN' | 'ABSENSI' | 'SARPRAS' | 'HUBIN' | 'KOPERASI' | 'BPBK' | 'RAPOR' | 'CBT';
+export type HubType = 'AKADEMIK' | 'KURIKULUM' | 'KESISWAAN' | 'ABSENSI' | 'SARPRAS' | 'HUBIN' | 'KOPERASI' | 'BPBK' | 'RAPOR' | 'CBT' | 'PERSURATAN';
 
 interface NavState {
   activeHub: HubType;
@@ -33,6 +33,8 @@ export const useNavStore = create<NavState>()(
           set({ activeHub: 'HUBIN' });
         } else if (p.startsWith('/cooperative') || p.includes('koperasi') || p.includes('kantin')) {
           set({ activeHub: 'KOPERASI' });
+        } else if (p.startsWith('/correspondence') || p.includes('persuratan') || p.includes('surat')) {
+          set({ activeHub: 'PERSURATAN' });
         }
         // SISTEM detection removed to keep it persistent at the bottom
       },

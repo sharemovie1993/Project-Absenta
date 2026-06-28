@@ -8,7 +8,8 @@ import {
   BookOpen,
   Users,
   FileText,
-  Laptop
+  Laptop,
+  Mail
 } from 'lucide-react';
 import type { HubType } from '../store/navStore';
 
@@ -123,6 +124,16 @@ export const MASTER_HUBS: HubConfig[] = [
     solidBg: 'bg-violet-600',
     desc: 'Ujian & Bank Soal',
     keywords: ['CBT', 'UJIAN', 'TEST', 'EXAM']
+  },
+  {
+    id: 'PERSURATAN',
+    label: 'Persuratan',
+    icon: Mail,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    solidBg: 'bg-amber-600',
+    desc: 'Surat Menyurat Sekolah',
+    keywords: ['PERSURATAN', 'CORRESPONDENCE', 'SURAT']
   }
 ];
 
