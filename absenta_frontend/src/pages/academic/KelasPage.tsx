@@ -102,7 +102,7 @@ export const KelasPage: React.FC = () => {
       subtitle: "Total semua kelas terdaftar"
     },
     {
-      title: "Jumlah Rombel",
+      title: "Jumlah Rombel Per Tingkat",
       variant: "sub-cards" as const,
       value: sortedTingkatStats.length === 0 ? "Tidak ada rombel aktif" : undefined,
       subCards: sortedTingkatStats.map((item, index) => {
@@ -133,8 +133,7 @@ export const KelasPage: React.FC = () => {
         };
       }),
       icon: <School size={14} />,
-      gradient: "from-indigo-500 to-purple-600",
-      subtitle: "Rincian rombel aktif per tingkat"
+      gradient: "from-indigo-500 to-purple-600"
     },
     {
       title: "Total Siswa",
