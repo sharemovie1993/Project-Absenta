@@ -232,9 +232,14 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     return doc.output('blob');
   }
 
-  // Handle Kurikulum Roster Multi-page printing
   if (module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType)) {
     const jadwalList = (filterData?.jadwalList || []) as any[];
+    const jenisKegiatanList = (filterData?.jenisKegiatanList || []) as any[];
+
+    const getActivityInfo = (id?: string) => {
+      if (!id) return null;
+      return jenisKegiatanList.find(k => k.id === id);
+    };
 
     const groups = new Map<string, any[]>();
     if (printType === 'roster_teacher') {
@@ -309,24 +314,32 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       let body: any[] = [];
       if (slots.length > 0) {
         body = slots.map((slot, index) => {
-          // Check if this slot is a break/istirahat
+          // Check if this slot is a break/istirahat or upacara
           const slotSchedules = groupJadwal.filter(j =>
             `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}` === slot
           );
           
-          const isIstirahat = slotSchedules.length > 0 && slotSchedules.every(j => j.jenis_kegiatan === 'ISTIRAHAT');
-          const isUpacara = slotSchedules.length > 0 && slotSchedules.every(j => j.jenis_kegiatan === 'UPACARA');
+          const slotActivities = slotSchedules.map(j => getActivityInfo(j.jenis_kegiatan));
+          
+          const isIstirahat = slotActivities.length > 0 && slotActivities.every(act => 
+            act?.tipe?.toUpperCase() === 'ISTIRAHAT' || act?.nama?.toUpperCase()?.includes('ISTIRAHAT')
+          );
+          const isUpacara = slotActivities.length > 0 && slotActivities.every(act => 
+            act?.tipe?.toUpperCase() === 'UPACARA' || act?.nama?.toUpperCase()?.includes('UPACARA') || act?.nama?.toUpperCase()?.includes('APEL')
+          );
 
           if (isIstirahat) {
+            const actLabel = slotActivities[0]?.nama || 'ISTIRAHAT';
             return [
               `Jam ${index + 1}\n(${slot})`,
-              { content: 'ISTIRAHAT / BREAK TIME', colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
+              { content: actLabel.toUpperCase(), colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
             ];
           }
           if (isUpacara) {
+            const actLabel = slotActivities[0]?.nama || 'UPACARA';
             return [
               `Jam ${index + 1}\n(${slot})`,
-              { content: 'UPACARA BENDERA / APEL PAGI', colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
+              { content: actLabel.toUpperCase(), colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
             ];
           }
 
@@ -340,19 +353,21 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
               if (printType === 'roster_teacher') {
                 row.push(
                   matches.map(m => {
-                    const subject = m.Mapel?.nama_mapel?.toUpperCase() || 'MAPEL';
+                    const act = getActivityInfo(m.jenis_kegiatan);
+                    const isKbm = !m.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
+                    const subjectName = isKbm && m.Mapel?.nama_mapel ? m.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
                     const targetClass = m.Kelas?.nama_kelas || 'Kelas';
-                    const typeText = m.jenis_kegiatan && m.jenis_kegiatan !== 'KBM' ? ` [${m.jenis_kegiatan}]` : '';
-                    return `${subject}${typeText}\n(Kelas ${targetClass})`;
+                    return `${subjectName.toUpperCase()}\n(Kelas ${targetClass})`;
                   }).join('\n\n')
                 );
               } else {
                 row.push(
                   matches.map(m => {
-                    const subject = m.Mapel?.nama_mapel?.toUpperCase() || 'MAPEL';
+                    const act = getActivityInfo(m.jenis_kegiatan);
+                    const isKbm = !m.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
+                    const subjectName = isKbm && m.Mapel?.nama_mapel ? m.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
                     const teacher = m.Guru?.User?.full_name || 'Guru';
-                    const typeText = m.jenis_kegiatan && m.jenis_kegiatan !== 'KBM' ? ` [${m.jenis_kegiatan}]` : '';
-                    return `${subject}${typeText}\n(${teacher})`;
+                    return `${subjectName.toUpperCase()}\n(${teacher})`;
                   }).join('\n\n')
                 );
               }

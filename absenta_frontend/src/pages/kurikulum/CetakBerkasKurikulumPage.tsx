@@ -3,6 +3,7 @@ import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTempla
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { getJadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
+import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
 
 export const CetakBerkasKurikulumPage: React.FC = () => {
   const docOptions: DocOption[] = [
@@ -87,19 +88,28 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
         checklistData
       }) => {
         let jadwalList = [];
+        let jenisKegiatanList = [];
+        
         if (['roster', 'roster_teacher'].includes(selectedPrintType)) {
           try {
-            const res = await getJadwalTemplate({
-              kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
-              guru_id: selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined,
-              tahun_pelajaran_id: checklistData?.current_year?.id,
-              semester_id: checklistData?.current_semester?.id
-            });
-            if (res.success && res.data) {
-              jadwalList = res.data;
+            const [jadwalRes, jenisRes] = await Promise.all([
+              getJadwalTemplate({
+                kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
+                guru_id: selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined,
+                tahun_pelajaran_id: checklistData?.current_year?.id,
+                semester_id: checklistData?.current_semester?.id
+              }),
+              jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
+            ]);
+            
+            if (jadwalRes.success && jadwalRes.data) {
+              jadwalList = jadwalRes.data;
+            }
+            if (jenisRes.success && jenisRes.data) {
+              jenisKegiatanList = jenisRes.data;
             }
           } catch (e) {
-            console.error('Gagal mengambil jadwal pelajaran:', e);
+            console.error('Gagal mengambil data untuk PDF:', e);
           }
         }
 
@@ -114,7 +124,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { jadwalList, classes, gurus }
+          filterData: { jadwalList, classes, gurus, jenisKegiatanList }
         });
       }}
     />
