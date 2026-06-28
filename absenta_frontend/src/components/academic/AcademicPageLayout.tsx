@@ -21,7 +21,13 @@ interface AcademicStat {
   gradient: string;
   subtitle?: string;
   onClick?: () => void;
-  subCards?: { label: string; value: string | number }[];
+  subCards?: { 
+    label: string; 
+    value: string | number; 
+    bgClass?: string; 
+    textClass?: string; 
+    borderClass?: string;
+  }[];
   variant?: 'card' | 'ghost' | 'sub-cards';
 }
 

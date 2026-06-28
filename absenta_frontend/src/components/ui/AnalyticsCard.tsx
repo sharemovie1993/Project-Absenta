@@ -15,7 +15,13 @@ interface AnalyticsCardProps {
   compact?: boolean;
   extraCompact?: boolean;
   variant?: 'card' | 'ghost' | 'sub-cards';
-  subCards?: { label: string; value: string | number }[];
+  subCards?: { 
+    label: string; 
+    value: string | number; 
+    bgClass?: string; 
+    textClass?: string; 
+    borderClass?: string;
+  }[];
 }
 
 export function AnalyticsCard({ 
@@ -85,16 +91,26 @@ export function AnalyticsCard({
               <div className="flex-1">
                 <p className={cn("uppercase font-black tracking-widest text-slate-700 dark:text-slate-400 mb-0.5", isCompact ? "text-[8px]" : "text-[9px]")}>{title}</p>
                  {variant === 'sub-cards' && subCards && subCards.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 mt-1.5 w-full">
+                  <div className="flex flex-wrap gap-2 mt-2 w-full">
                     {subCards.map((card, index) => (
                       <div 
                         key={index} 
-                        className="bg-slate-50/50 dark:bg-slate-800/40 border border-slate-150 dark:border-slate-800/80 rounded-xl px-2 py-1.5 flex flex-col items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex-1 min-w-[60px] hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-200"
+                        className={cn(
+                          "rounded-xl px-2 py-2 flex flex-col items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex-1 min-w-[50px] border transition-all duration-250 hover:-translate-y-0.5",
+                          card.bgClass || "bg-slate-50/50 dark:bg-slate-800/40",
+                          card.borderClass || "border-slate-150 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
+                        )}
                       >
-                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-wider mb-1",
+                          card.textClass || "text-slate-400 dark:text-slate-500"
+                        )}>
                           {card.label}
                         </span>
-                        <span className="text-xs font-black text-slate-850 dark:text-slate-100 leading-none">
+                        <span className={cn(
+                          "text-sm font-extrabold leading-none",
+                          card.textClass || "text-slate-850 dark:text-slate-100"
+                        )}>
                           {card.value}
                         </span>
                       </div>

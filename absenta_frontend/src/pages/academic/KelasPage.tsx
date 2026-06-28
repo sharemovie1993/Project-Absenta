@@ -105,10 +105,33 @@ export const KelasPage: React.FC = () => {
       title: "Jumlah Rombel",
       variant: "sub-cards" as const,
       value: sortedTingkatStats.length === 0 ? "Tidak ada rombel aktif" : undefined,
-      subCards: sortedTingkatStats.map((item) => ({
-        label: `Tingkat ${toRoman(item.tingkat)}`,
-        value: `${item.count} Rombel`
-      })),
+      subCards: sortedTingkatStats.map((item, index) => {
+        const themes = [
+          {
+            bg: "bg-sky-50/50 dark:bg-sky-950/20",
+            border: "border-sky-100 dark:border-sky-900/40 hover:border-sky-300 dark:hover:border-sky-850",
+            text: "text-sky-600 dark:text-sky-400"
+          },
+          {
+            bg: "bg-violet-50/50 dark:bg-violet-950/20",
+            border: "border-violet-100 dark:border-violet-900/40 hover:border-violet-300 dark:hover:border-violet-850",
+            text: "text-violet-600 dark:text-violet-400"
+          },
+          {
+            bg: "bg-rose-50/50 dark:bg-rose-950/20",
+            border: "border-rose-100 dark:border-rose-900/40 hover:border-rose-300 dark:hover:border-rose-850",
+            text: "text-rose-600 dark:text-rose-400"
+          }
+        ];
+        const theme = themes[index % themes.length];
+        return {
+          label: toRoman(item.tingkat),
+          value: item.count,
+          bgClass: theme.bg,
+          borderClass: theme.border,
+          textClass: theme.text
+        };
+      }),
       icon: <School size={14} />,
       gradient: "from-indigo-500 to-purple-600",
       subtitle: "Rincian rombel aktif per tingkat"
