@@ -106,6 +106,10 @@ export const kesiswaanApi = {
     const response = await api.get('/kesiswaan/jenis-prestasi');
     return response.data;
   },
+  seedJenisPrestasi: async () => {
+    const response = await api.post('/kesiswaan/jenis-prestasi/seed', {});
+    return response.data;
+  },
   createJenisPrestasi: async (data: any) => {
     const response = await api.post('/kesiswaan/jenis-prestasi', data);
     return response.data;

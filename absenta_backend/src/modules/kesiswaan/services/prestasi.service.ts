@@ -1,6 +1,31 @@
 import { prisma } from '../../../utils/prisma';
 import { Prisma } from '@prisma/client';
 
+export const DEFAULT_JENIS_PRESTASI = [
+  { kategori: "Akademik", nama_prestasi: "Juara 1 Kelas / Umum", poin: 30 },
+  { kategori: "Akademik", nama_prestasi: "Juara 2 Kelas / Umum", poin: 20 },
+  { kategori: "Akademik", nama_prestasi: "Juara 3 Kelas / Umum", poin: 15 },
+  { kategori: "Akademik", nama_prestasi: "Juara KSN/OSN Tingkat Kabupaten", poin: 50 },
+  { kategori: "Akademik", nama_prestasi: "Juara KSN/OSN Tingkat Provinsi", poin: 75 },
+  { kategori: "Akademik", nama_prestasi: "Juara KSN/OSN Tingkat Nasional", poin: 100 },
+  
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Olahraga Tingkat Kabupaten", poin: 40 },
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Olahraga Tingkat Provinsi", poin: 60 },
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Olahraga Tingkat Nasional", poin: 80 },
+  
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Seni/Kreativitas Tingkat Kabupaten", poin: 40 },
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Seni/Kreativitas Tingkat Provinsi", poin: 60 },
+  { kategori: "Non-Akademik", nama_prestasi: "Juara Lomba Seni/Kreativitas Tingkat Nasional", poin: 80 },
+  
+  { kategori: "Keorganisasian", nama_prestasi: "Pengurus OSIS / MPK Aktif", poin: 20 },
+  { kategori: "Keorganisasian", nama_prestasi: "Ketua OSIS / MPK", poin: 40 },
+  { kategori: "Keorganisasian", nama_prestasi: "Paskibraka Kabupaten/Provinsi/Nasional", poin: 60 },
+  
+  { kategori: "Karakter & Keagamaan", nama_prestasi: "Hafizh Al-Qur'an Juz 30", poin: 30 },
+  { kategori: "Karakter & Keagamaan", nama_prestasi: "Hafizh Al-Qur'an > 3 Juz", poin: 60 },
+  { kategori: "Karakter & Keagamaan", nama_prestasi: "Siswa Terdisiplin / Teladan Bulanan", poin: 25 }
+];
+
 export class PrestasiService {
   // === Jenis Prestasi ===
   static async createJenisPrestasi(tenantId: string, data: {
@@ -180,6 +205,27 @@ export class PrestasiService {
     });
     if (!record) {
       throw new Error(`Data not found or unauthorized access to model ${modelName}`);
+    }
+  }
+
+  static async countJenisPrestasi(tenantId: string) {
+    return prisma.jenisPrestasi.count({ where: { tenant_id: tenantId } });
+  }
+
+  static async seedDefaultJenisPrestasiForTenant(tenantId: string) {
+    try {
+      const count = await prisma.jenisPrestasi.count({ where: { tenant_id: tenantId } });
+      if (count > 0) return;
+
+      await prisma.jenisPrestasi.createMany({
+        data: DEFAULT_JENIS_PRESTASI.map(d => ({
+          ...d,
+          tenant_id: tenantId
+        }))
+      });
+      console.info(`[SEED] Jenis Prestasi seeded for tenant ${tenantId}`);
+    } catch (error) {
+      console.error(`[SEED] Failed to seed Jenis Prestasi for tenant ${tenantId}:`, error);
     }
   }
 }

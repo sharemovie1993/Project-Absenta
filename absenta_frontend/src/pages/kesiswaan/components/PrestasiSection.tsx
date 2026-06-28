@@ -59,7 +59,15 @@ export const PrestasiSection: React.FC = () => {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await kesiswaanApi.getJenisPrestasi();
+      let res = await kesiswaanApi.getJenisPrestasi();
+      if (!res.data || res.data.length === 0) {
+        try {
+          await kesiswaanApi.seedJenisPrestasi();
+          res = await kesiswaanApi.getJenisPrestasi();
+        } catch (e) {
+          console.error('Failed to seed default jenis prestasi:', e);
+        }
+      }
       setCategories(res.data || []);
     } catch (err) {
       console.error('Error fetching categories:', err);

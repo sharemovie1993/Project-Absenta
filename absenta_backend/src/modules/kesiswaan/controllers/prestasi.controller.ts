@@ -91,4 +91,18 @@ export class PrestasiController {
       return sendError(reply, 500, 'Gagal mengambil data prestasi siswa', error);
     }
   }
+
+  static async seedDefaults(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const count = await PrestasiService.countJenisPrestasi(tenant_id);
+      if (count > 0) {
+        return sendResponse(reply, 400, false, 'Data jenis prestasi is not empty');
+      }
+      await PrestasiService.seedDefaultJenisPrestasiForTenant(tenant_id);
+      return sendResponse(reply, 201, true, 'Default data seeded successfully');
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to seed default data', error);
+    }
+  }
 }

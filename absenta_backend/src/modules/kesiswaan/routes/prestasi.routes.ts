@@ -32,6 +32,13 @@ export async function prestasiRoutes(fastify: any) {
     ]
   }, PrestasiController.getAllJenisPrestasi);
 
+  fastify.post('/jenis-prestasi/seed', {
+    preHandler: [
+      requireCapability('kesiswaan.prestasi.manage'),
+      elevatedScopeMiddleware
+    ]
+  }, PrestasiController.seedDefaults);
+
   // === Catatan Prestasi Siswa ===
   fastify.post('/prestasi', {
     preHandler: [
