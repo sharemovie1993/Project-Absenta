@@ -286,6 +286,11 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       const subTitleText = printType === 'roster_teacher' ? `NAMA GURU: ${groupName.toUpperCase()}` : `KELAS: ${groupName.toUpperCase()}`;
       doc.text(subTitleText, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
+      // Clean separator line below title
+      doc.setDrawColor(203, 213, 225); // slate-300
+      doc.setLineWidth(0.2);
+      doc.line(15, headerEndY + 14, pageWidth - 15, headerEndY + 14);
+
       // 3. Draw Timetable Grid
       const days = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
       const head = [['JAM KE-', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT']];
@@ -299,7 +304,28 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       let body: any[] = [];
       if (slots.length > 0) {
         body = slots.map((slot, index) => {
-          const row = [`Jam ${index + 1}\n(${slot})`];
+          // Check if this slot is a break/istirahat
+          const slotSchedules = groupJadwal.filter(j =>
+            `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}` === slot
+          );
+          
+          const isIstirahat = slotSchedules.length > 0 && slotSchedules.every(j => j.jenis_kegiatan === 'ISTIRAHAT');
+          const isUpacara = slotSchedules.length > 0 && slotSchedules.every(j => j.jenis_kegiatan === 'UPACARA');
+
+          if (isIstirahat) {
+            return [
+              `Jam ${index + 1}\n(${slot})`,
+              { content: 'ISTIRAHAT / BREAK TIME', colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
+            ];
+          }
+          if (isUpacara) {
+            return [
+              `Jam ${index + 1}\n(${slot})`,
+              { content: 'UPACARA BENDERA / APEL PAGI', colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
+            ];
+          }
+
+          const row: any[] = [`Jam ${index + 1}\n(${slot})`];
           days.forEach(day => {
             const matches = groupJadwal.filter(j =>
               j.hari === day &&
@@ -308,40 +334,63 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             if (matches.length > 0) {
               if (printType === 'roster_teacher') {
                 row.push(
-                  matches.map(m => `${m.Mapel?.nama_mapel || 'Mapel'}\n(Kelas ${m.Kelas?.nama_kelas || '---'})`).join('\n\n')
+                  matches.map(m => {
+                    const subject = m.Mapel?.nama_mapel?.toUpperCase() || 'MAPEL';
+                    const targetClass = m.Kelas?.nama_kelas || 'Kelas';
+                    const typeText = m.jenis_kegiatan && m.jenis_kegiatan !== 'KBM' ? ` [${m.jenis_kegiatan}]` : '';
+                    return `${subject}${typeText}\n(Kelas ${targetClass})`;
+                  }).join('\n\n')
                 );
               } else {
                 row.push(
-                  matches.map(m => `${m.Mapel?.nama_mapel || 'Mapel'}\n(${m.Guru?.User?.full_name || 'Guru'})`).join('\n\n')
+                  matches.map(m => {
+                    const subject = m.Mapel?.nama_mapel?.toUpperCase() || 'MAPEL';
+                    const teacher = m.Guru?.User?.full_name || 'Guru';
+                    const typeText = m.jenis_kegiatan && m.jenis_kegiatan !== 'KBM' ? ` [${m.jenis_kegiatan}]` : '';
+                    return `${subject}${typeText}\n(${teacher})`;
+                  }).join('\n\n')
                 );
               }
             } else {
-              row.push('-');
+              row.push('');
             }
           });
           return row;
         });
       } else {
         body = Array.from({ length: 8 }).map((_, i) => [
-          `Jam ${i + 1}`, '-', '-', '-', '-', '-'
+          `Jam ${i + 1}`, '', '', '', '', ''
         ]);
       }
 
       autoTable(doc, {
-        startY: headerEndY + 16,
+        startY: headerEndY + 17,
         head,
         body,
         theme: 'grid',
-        styles: { fontSize: 7, font: 'Helvetica', cellPadding: 2, halign: 'center', valign: 'middle' },
-        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+        styles: { 
+          fontSize: 6.5, 
+          font: 'Helvetica', 
+          cellPadding: 2.2, 
+          halign: 'center', 
+          valign: 'middle',
+          lineColor: [203, 213, 225],
+          lineWidth: 0.15
+        },
+        headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.2 },
         columnStyles: {
-          0: { cellWidth: 25, fontStyle: 'bold' }
+          0: { cellWidth: 25, fontStyle: 'bold', fillColor: [248, 250, 252] },
+          1: { cellWidth: 31 },
+          2: { cellWidth: 31 },
+          3: { cellWidth: 31 },
+          4: { cellWidth: 31 },
+          5: { cellWidth: 31 }
         }
       });
 
       // 4. Draw Signature
       let finalY = (doc as any).lastAutoTable?.finalY ?? 100;
-      if (finalY + 35 > pageHeight) {
+      if (finalY + 38 > pageHeight) {
         doc.addPage();
         finalY = 20;
       }
