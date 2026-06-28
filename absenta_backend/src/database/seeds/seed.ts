@@ -291,6 +291,14 @@ async function main() {
       ]
     },
 
+    // --- PERSURATAN (CORRESPONDENCE) ---
+    {
+      label: 'PERSURATAN', icon: 'Mail', path: null, required_features: ['CORE'], order: 22, children: [
+        { label: 'Surat Masuk', icon: 'Inbox', path: '/correspondence/surat-masuk', required_capability: 'correspondence.inbox.view' },
+        { label: 'Surat Keluar', icon: 'Send', path: '/correspondence/surat-keluar', required_capability: 'correspondence.outbox.view' },
+      ]
+    },
+
     // --- BP/BK ---
     {
       label: 'BP/BK', icon: 'HeartHandshake', path: null, required_features: ['CORE'], order: 25, children: [

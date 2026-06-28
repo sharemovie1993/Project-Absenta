@@ -102,6 +102,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'bk.cases.view.detail',
     'sarpras.loans.view.list',
     'sarpras.loans.request',
+    'correspondence.inbox.view',
+    'correspondence.outbox.view',
   ]);
 
   const siswa = uniqueStrings([
@@ -523,6 +525,11 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'bk.assessment.manage',
     'bk.referrals.manage',
     'bk.reports.view',
+    'correspondence.inbox.view',
+    'correspondence.inbox.manage',
+    'correspondence.outbox.view',
+    'correspondence.outbox.manage',
+    'correspondence.outbox.sign',
   ].concat(allPermissionIds.filter(id => id.startsWith('cooperative.'))));
 
   const ensureNoOrganizationalInBaseline = (role: string, baseline: string[]) => {

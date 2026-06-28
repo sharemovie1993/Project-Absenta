@@ -503,3 +503,12 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - superadmin.tenants.manage
 - superadmin.tenants.impersonate
 - superadmin.upgrade.intelligence.view
+
+## correspondence
+
+- correspondence.inbox.view
+- correspondence.inbox.manage
+- correspondence.outbox.view
+- correspondence.outbox.manage
+- correspondence.outbox.sign
+

@@ -418,6 +418,9 @@ model User {
   createdTickets      SupportTicket[] @relation("TicketCreator")
   assignedTickets     SupportTicket[] @relation("TicketAssignee")
   ticketMessages      SupportTicketMessage[]
+  receivedDispositions SuratMasuk[]
+  createdLetters      SuratKeluar[] @relation("createdLetters")
+  approvedLetters      SuratKeluar[] @relation("approvedLetters")
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -1037,6 +1040,7 @@ model Siswa {
   SiswaPkl SiswaPkl[]
   HubinLamaran HubinLamaran[]
   HubinTracerStudy HubinTracerStudy?
+  SuratKeluar SuratKeluar[]
 
   @@unique([tenant_id, nis])
   @@index([tenant_id])
@@ -3341,36 +3345,51 @@ model SarprasAssetRepair {
 
 // --- MODUL TU (TATA USAHA) ---
 model SuratMasuk {
-  id             String   @id @default(uuid())
-  tenant_id      String
-  nomor_surat    String
-  judul          String
-  asal_surat     String?
-  tanggal_surat  DateTime
-  tanggal_terima DateTime @default(now())
-  dokumen_url    String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  nomor_surat           String
+  judul                 String   // Perihal / Judul Surat
+  asal_surat            String?
+  tanggal_surat         DateTime
+  tanggal_terima        DateTime @default(now())
+  ringkasan             String?  @db.Text
+  dokumen_url           String?  // File scan surat masuk (.pdf / .png / .jpg)
+  disposisi_instruksi   String?  @db.Text // Instruksi disposisi kepala sekolah
+  penerima_disposisi_id String?  // User/Guru yang ditugaskan
+  status                String   @default("BARU") // BARU, DISPOSISI, PROSES, SELESAI
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
 
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Tenant            Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  PenerimaDisposisi User?  @relation(fields: [penerima_disposisi_id], references: [id])
 
   @@index([tenant_id])
 }
 
 model SuratKeluar {
-  id            String   @id @default(uuid())
-  tenant_id     String
-  nomor_surat   String
-  judul         String
-  tujuan_surat  String?
-  tanggal_surat DateTime @default(now())
-  dokumen_url   String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id             String    @id @default(uuid())
+  tenant_id      String
+  nomor_surat    String
+  judul          String    // Perihal / Judul Surat
+  tujuan_surat   String?
+  tanggal_surat  DateTime  @default(now())
+  isi_ringkas    String?   @db.Text
+  dokumen_url    String?   // File draft/final scan surat keluar
+  kategori_surat String    @default("Dinas") // Dinas, Undangan, Panggilan, Keterangan, dll
+  status         String    @default("DRAFT") // DRAFT, MENUNGGU_TTD, DIKIRIM, DITOLAK
+  siswa_id       String?   // Hubungan opsional ke Siswa
+  created_by_id  String?   // Pembuat draft
+  approved_by_id String?   // Penandatangan
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
 
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa      Siswa? @relation(fields: [siswa_id], references: [id], onDelete: SetNull)
+  CreatedBy  User?  @relation("createdLetters", fields: [created_by_id], references: [id])
+  ApprovedBy User?  @relation("approvedLetters", fields: [approved_by_id], references: [id])
 
   @@index([tenant_id])
+  @@index([siswa_id])
 }
 
 model AttendanceDevice {
