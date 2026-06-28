@@ -168,6 +168,9 @@ const SubdomainRedirect = lazy(() => import('./pages/auth/SubdomainRedirect'));
 const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
 const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggaranPage'));
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
+
+const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
+const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
 const PrestasiPage = lazy(() => import('./pages/kesiswaan/PrestasiPage'));
 const KesiswaanSettingsPage = lazy(() => import('./pages/kesiswaan/SettingsPage'));
@@ -547,6 +550,19 @@ function App() {
                         <CetakBerkasKesiswaanPage />
                       </ProtectedRoute>
                     } />
+
+                    {/* Correspondence Routes */}
+                    <Route path="/correspondence/surat-masuk" element={
+                      <ProtectedRoute requiredCapability="correspondence.inbox.view">
+                        <SuratMasukPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/correspondence/surat-keluar" element={
+                      <ProtectedRoute requiredCapability="correspondence.outbox.view">
+                        <SuratKeluarPage />
+                      </ProtectedRoute>
+                    } />
+
                     <Route path="/bpbk" element={
                       <ProtectedRoute requiredCapability="bk.cases.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
