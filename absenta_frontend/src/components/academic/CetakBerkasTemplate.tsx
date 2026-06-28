@@ -24,9 +24,9 @@ import { sekolahApi, type Sekolah } from '../../api/academic/sekolah.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
-import { kelasApi } from '../../api/academic.api';
+import { kelasApi, siswaApi } from '../../api/academic.api';
 import { getGuruList } from '../../api/academic/guru.api';
-import type { Kelas, Guru } from '../../types/academic';
+import type { Kelas, Guru, Siswa } from '../../types/academic';
 import toast from 'react-hot-toast';
 
 interface CetakBerkasTemplateProps {
@@ -47,19 +47,25 @@ interface CetakBerkasTemplateProps {
     setSelectedClassId: (val: string) => void;
     selectedGuruId?: string;
     setSelectedGuruId?: (val: string) => void;
+    selectedStudentId?: string;
+    setSelectedStudentId?: (val: string) => void;
     includeSchoolLogo: boolean;
     setIncludeSchoolLogo: (val: boolean) => void;
     classes: Kelas[];
     loadingClasses: boolean;
     gurus?: Guru[];
     loadingGurus?: boolean;
+    students?: Siswa[];
+    loadingStudents?: boolean;
   }) => React.ReactNode;
   pdfGenerator: (params: {
     selectedPrintType: string;
     selectedClassId: string;
     selectedGuruId?: string;
+    selectedStudentId?: string;
     classes: Kelas[];
     gurus?: Guru[];
+    students?: Siswa[];
     sekolah: Sekolah | null;
     tenantInfo: Tenant | null;
     strukturList: StrukturOrganisasi[];
@@ -90,6 +96,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   const [selectedPrintType, setSelectedPrintType] = useState<string>(defaultPrintType);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 
   // Common metadata
@@ -97,6 +104,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
   const [gurus, setGurus] = useState<Guru[]>([]);
   const [loadingGurus, setLoadingGurus] = useState<boolean>(false);
+  const [students, setStudents] = useState<Siswa[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState<boolean>(false);
   const [sekolah, setSekolah] = useState<Sekolah | null>(null);
   const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
   const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
@@ -212,6 +221,32 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     loadGurus();
   }, [loadClasses, loadGurus]);
 
+  useEffect(() => {
+    if (selectedClassId && selectedClassId !== 'all') {
+      const loadStudents = async () => {
+        try {
+          setLoadingStudents(true);
+          const res = await siswaApi.getAll({ kelas_id: selectedClassId, limit: 150 });
+          const list = res.data || [];
+          setStudents(list);
+          if (list.length > 0) {
+            setSelectedStudentId(list[0].id);
+          } else {
+            setSelectedStudentId('');
+          }
+        } catch (e) {
+          console.error('Gagal memuat siswa kelas:', e);
+        } finally {
+          setLoadingStudents(false);
+        }
+      };
+      loadStudents();
+    } else {
+      setStudents([]);
+      setSelectedStudentId('');
+    }
+  }, [selectedClassId]);
+
   // Load Checklist System Data
   const loadChecklist = useCallback(async () => {
     if (!showChecklist) return;
@@ -242,8 +277,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
         selectedPrintType,
         selectedClassId,
         selectedGuruId,
+        selectedStudentId,
         classes,
         gurus,
+        students,
         sekolah,
         tenantInfo,
         strukturList,
@@ -268,7 +305,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     selectedPrintType,
     selectedClassId,
     selectedGuruId,
+    selectedStudentId,
     classes,
+    gurus,
+    students,
     sekolah,
     tenantInfo,
     strukturList,
@@ -280,10 +320,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   ]);
 
   useEffect(() => {
-    if (activeTab === 'print' && (classes.length > 0 || gurus.length > 0)) {
+    if (activeTab === 'print' && (classes.length > 0 || gurus.length > 0 || students.length > 0)) {
       generatePreview();
     }
-  }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, includeSchoolLogo, classes, gurus, generatePreview]);
+  }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, selectedStudentId, includeSchoolLogo, classes, gurus, students, generatePreview]);
 
   // Handlers
   const handlePrint = () => {
@@ -490,12 +530,16 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
                     setSelectedClassId,
                     selectedGuruId,
                     setSelectedGuruId,
+                    selectedStudentId,
+                    setSelectedStudentId,
                     includeSchoolLogo,
                     setIncludeSchoolLogo,
                     classes,
                     loadingClasses,
                     gurus,
-                    loadingGurus
+                    loadingGurus,
+                    students,
+                    loadingStudents
                   })}
 
                   {/* Action Buttons */}

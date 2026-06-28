@@ -15,6 +15,7 @@ export interface GenerateGenericPdfOptions {
   logoSekolahBase64: string | null;
   includeSchoolLogo: boolean;
   selectedGuruId?: string;
+  selectedStudentId?: string;
   filterData?: Record<string, any>;
 }
 
@@ -469,48 +470,174 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       });
     } else if (module === 'kesiswaan') {
       if (printType === 'letter_summons') {
+        const student = filterData?.selectedStudent;
+        const studentName = student?.nama_siswa || '____________________________';
+        const studentNis = student?.nis || '__________';
+        const studentClass = filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || '________________';
+        
         doc.setFontSize(11);
+        doc.setFont('Helvetica', 'bold');
         doc.text('SURAT PANGGILAN ORANG TUA / WALI SISWA', pageWidth / 2, headerEndY + 6, { align: 'center' });
         
         doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(10);
+        doc.setFontSize(9.5);
         let textY = headerEndY + 16;
-        doc.text('Nomor : 800 / _____ / Kesiswaan', 15, textY);
-        doc.text('Hal   : Panggilan Orang Tua', 15, textY + 5);
+        doc.text(`Nomor : 800 / ${studentNis ? studentNis.substring(0,4) : '___'} / Kesiswaan / ${new Date().getFullYear()}`, 15, textY);
+        doc.text('Hal   : Panggilan Orang Tua / Wali Siswa', 15, textY + 5);
         
-        doc.text('Kepada Yth.', 15, textY + 15);
-        doc.text('Orang Tua / Wali dari Siswa:', 15, textY + 20);
+        doc.text('Kepada Yth.', 15, textY + 14);
         doc.setFont('Helvetica', 'bold');
-        doc.text('Nama Siswa : ____________________________', 15, textY + 26);
-        doc.text('Kelas      : ____________________________', 15, textY + 31);
+        doc.text('Orang Tua / Wali dari Siswa:', 15, textY + 19);
+        
+        // Student Info Block
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Nama Siswa  :', 20, textY + 26);
+        doc.setFont('Helvetica', 'bold');
+        doc.text(studentName.toUpperCase(), 48, textY + 26);
         
         doc.setFont('Helvetica', 'normal');
-        doc.text('Di tempat', 15, textY + 38);
+        doc.text('NIS / NISN   :', 20, textY + 31);
+        doc.text(studentNis, 48, textY + 31);
         
-        doc.text('Dengan hormat, mengharap kehadiran Bapak/Ibu Orang Tua/Wali Siswa pada:', 15, textY + 48);
-        doc.text('Hari/Tanggal : Senin / _____________________', 25, textY + 54);
-        doc.text('Waktu        : 08.00 WIB s.d Selesai', 25, textY + 59);
-        doc.text('Tempat       : Ruang Kesiswaan / BP-BK', 25, textY + 64);
-        doc.text('Agenda       : Klarifikasi & Konsultasi Perkembangan Siswa', 25, textY + 69);
+        doc.text('Kelas        :', 20, textY + 36);
+        doc.text(studentClass, 48, textY + 36);
         
-        doc.text('Demikian surat panggilan ini disampaikan, atas perhatian Bapak/Ibu kami ucapkan terima kasih.', 15, textY + 79);
-      } else {
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Di Tempat', 15, textY + 44);
+        
+        doc.text('Dengan hormat,', 15, textY + 53);
+        doc.text('Sehubungan dengan adanya hal penting yang perlu dikonsultasikan terkait perkembangan', 15, textY + 58);
+        doc.text('dan kedisiplinan putra/putri Bapak/Ibu di sekolah, dengan ini kami mengharap kehadiran', 15, textY + 63);
+        doc.text('Bapak/Ibu Orang Tua / Wali Siswa pada:', 15, textY + 68);
+        
+        // Meeting details
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Hari / Tanggal  :', 25, textY + 76);
+        doc.text('Senin / ' + new Date(Date.now() + 24*60*60*1000).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 60, textY + 76);
+        
+        doc.text('Waktu           :', 25, textY + 81);
+        doc.text('08.00 WIB s.d. Selesai', 60, textY + 81);
+        
+        doc.text('Tempat          :', 25, textY + 86);
+        doc.text('Ruang Piket / Kesiswaan', 60, textY + 86);
+        
+        doc.text('Agenda          :', 25, textY + 91);
+        doc.text('Klarifikasi & Pembinaan Khusus Siswa', 60, textY + 91);
+        
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Demikian undangan ini kami sampaikan. Mengingat pentingnya agenda tersebut, kehadiran', 15, textY + 99);
+        doc.text('Bapak/Ibu sangat kami harapkan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.', 15, textY + 104);
+        
+        const violationsList = (filterData?.violations || []) as any[];
+        if (violationsList.length > 0) {
+          doc.setFont('Helvetica', 'bold');
+          doc.text('Catatan Pelanggaran Terakhir Siswa:', 15, textY + 112);
+          
+          let listY = textY + 117;
+          violationsList.slice(0, 3).forEach((v, idx) => {
+            const dateStr = new Date(v.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            doc.setFont('Helvetica', 'normal');
+            doc.text(`${idx + 1}. [${dateStr}] ${v.jenis_pelanggaran} (${v.keterangan || '-'}) - Poin: ${v.poin}`, 20, listY);
+            listY += 5;
+          });
+        }
+      } else if (printType === 'recap_violations') {
+        const violations = (filterData?.violations || []) as any[];
+        
         doc.setFontSize(11);
-        doc.text('REKAPITULASI DATA KESISWAAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
+        doc.setFont('Helvetica', 'bold');
+        doc.text('LAPORAN REKAPITULASI PELANGGARAN SISWA', pageWidth / 2, headerEndY + 6, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
         
-        const head = [['NO', 'NAMA DOKUMEN DIBUAT', 'FORMAT BERKAS', 'TANGGAL PENGECEKAN']];
-        const body = [
-          ['1', 'Laporan Pelanggaran Harian', 'PDF / Lembar Fisik', new Date().toLocaleDateString('id-ID')],
-          ['2', 'Rekapitulasi Prestasi Siswa', 'PDF / Excel', new Date().toLocaleDateString('id-ID')],
-          ['3', 'SK Pembina & Pengurus OSIS', 'Dokumen Resmi', new Date().toLocaleDateString('id-ID')]
-        ];
+        const className = selectedClassId === 'all' ? 'SEMUA KELAS' : (filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || 'Kelas');
+        doc.text(`KELAS: ${className.toUpperCase()}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+        
+        const head = [['NO', 'NIS', 'NAMA SISWA', 'KELAS', 'TANGGAL', 'PELANGGARAN', 'POIN', 'STATUS']];
+        let body = [];
+        if (violations.length > 0) {
+          body = violations.map((v, idx) => [
+            String(idx + 1),
+            v.Siswa?.nis || '-',
+            v.Siswa?.nama_siswa?.toUpperCase() || 'SISWA',
+            v.Siswa?.Kelas?.nama_kelas || '-',
+            new Date(v.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            v.jenis_pelanggaran || '-',
+            String(v.poin || 0),
+            v.status || 'BARU'
+          ]);
+        } else {
+          body = [['-', '-', 'TIDAK ADA DATA PELANGGARAN', '-', '-', '-', '-', '-']];
+        }
+        
         autoTable(doc, {
-          startY: headerEndY + 14,
+          startY: headerEndY + 16,
           head,
           body,
           theme: 'grid',
-          styles: { fontSize: 9, font: 'Helvetica', cellPadding: 3.5 },
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42] }
+          styles: { 
+            fontSize: 7.5, 
+            font: 'Helvetica', 
+            cellPadding: 2.5, 
+            halign: 'center', 
+            valign: 'middle',
+            lineColor: [203, 213, 225],
+            lineWidth: 0.15
+          },
+          headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold' },
+          columnStyles: {
+            2: { halign: 'left', fontStyle: 'bold' },
+            5: { halign: 'left' }
+          }
+        });
+      } else if (printType === 'recap_achievements') {
+        const achievements = (filterData?.achievements || []) as any[];
+        
+        doc.setFontSize(11);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('LAPORAN REKAPITULASI PRESTASI SISWA', pageWidth / 2, headerEndY + 6, { align: 'center' });
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(8.5);
+        
+        const className = selectedClassId === 'all' ? 'SEMUA KELAS' : (filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || 'Kelas');
+        doc.text(`KELAS: ${className.toUpperCase()}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+        
+        const head = [['NO', 'NIS', 'NAMA SISWA', 'KELAS', 'TANGGAL', 'NAMA PRESTASI', 'POIN', 'KETERANGAN']];
+        let body = [];
+        if (achievements.length > 0) {
+          body = achievements.map((a, idx) => [
+            String(idx + 1),
+            a.Siswa?.nis || '-',
+            a.Siswa?.nama_siswa?.toUpperCase() || 'SISWA',
+            a.Siswa?.Kelas?.nama_kelas || '-',
+            new Date(a.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            a.nama_prestasi || '-',
+            String(a.poin || 0),
+            a.keterangan || '-'
+          ]);
+        } else {
+          body = [['-', '-', 'TIDAK ADA DATA PRESTASI', '-', '-', '-', '-', '-']];
+        }
+        
+        autoTable(doc, {
+          startY: headerEndY + 16,
+          head,
+          body,
+          theme: 'grid',
+          styles: { 
+            fontSize: 7.5, 
+            font: 'Helvetica', 
+            cellPadding: 2.5, 
+            halign: 'center', 
+            valign: 'middle',
+            lineColor: [203, 213, 225],
+            lineWidth: 0.15
+          },
+          headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold' },
+          columnStyles: {
+            2: { halign: 'left', fontStyle: 'bold' },
+            5: { halign: 'left' }
+          }
         });
       }
     } else if (module === 'attendance') {

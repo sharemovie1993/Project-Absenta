@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import type { Kelas, Guru } from '../../types/academic';
+import type { Kelas, Guru, Siswa } from '../../types/academic';
 
 export interface DocOption {
   value: string;
@@ -15,12 +15,16 @@ interface CetakFormGenericProps {
   setSelectedClassId: (val: string) => void;
   selectedGuruId?: string;
   setSelectedGuruId?: (val: string) => void;
+  selectedStudentId?: string;
+  setSelectedStudentId?: (val: string) => void;
   includeSchoolLogo: boolean;
   setIncludeSchoolLogo: (val: boolean) => void;
   classes: Kelas[];
   loadingClasses: boolean;
   gurus?: Guru[];
   loadingGurus?: boolean;
+  students?: Siswa[];
+  loadingStudents?: boolean;
   docOptions: DocOption[];
 }
 
@@ -31,12 +35,16 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
   setSelectedClassId,
   selectedGuruId = '',
   setSelectedGuruId,
+  selectedStudentId = '',
+  setSelectedStudentId,
   includeSchoolLogo,
   setIncludeSchoolLogo,
   classes,
   loadingClasses,
   gurus = [],
   loadingGurus = false,
+  students = [],
+  loadingStudents = false,
   docOptions
 }) => {
   const currentDoc = docOptions.find(o => o.value === selectedPrintType);
@@ -84,6 +92,32 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
               {classes.map(c => (
                 <option key={c.id} value={c.id}>{c.nama_kelas} (Tingkat {c.tingkat})</option>
               ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {/* Student Selector */}
+      {selectedPrintType === 'letter_summons' && selectedClassId !== 'all' && setSelectedStudentId && (
+        <div className="space-y-1">
+          <label className="text-xs font-black uppercase text-slate-400 block">Pilih Siswa</label>
+          {loadingStudents ? (
+            <div className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 py-1">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memuat siswa...
+            </div>
+          ) : (
+            <select
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              className="w-full text-xs font-semibold px-3 py-2 border rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-600 dark:text-blue-400 font-bold"
+            >
+              {students.length === 0 ? (
+                <option value="">(Tidak ada siswa di kelas ini)</option>
+              ) : (
+                students.map(s => (
+                  <option key={s.id} value={s.id}>{s.nama_siswa} (NIS. {s.nis})</option>
+                ))
+              )}
             </select>
           )}
         </div>

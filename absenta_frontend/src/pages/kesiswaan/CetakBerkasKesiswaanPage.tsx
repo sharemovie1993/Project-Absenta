@@ -2,11 +2,14 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { kesiswaanApi } from '../../api/kesiswaan.api';
 
 export const CetakBerkasKesiswaanPage: React.FC = () => {
   const docOptions: DocOption[] = [
     { value: 'letter_summons', label: '1. SURAT PANGGILAN ORANG TUA / WALI SISWA', requireClass: true },
-    { value: 'kesiswaan_recap', label: '2. LAPORAN & REKAPITULASI KESISWAAN', requireClass: false }
+    { value: 'recap_violations', label: '2. REKAPITULASI PELANGGARAN KELAS', requireClass: true },
+    { value: 'recap_achievements', label: '3. REKAPITULASI PRESTASI SISWA KELAS', requireClass: true },
+    { value: 'osis_sk', label: '4. SK KEPENGURUSAN OSIS (COMING SOON)', requireClass: false }
   ];
 
   return (
@@ -32,6 +35,7 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         items: [
           { text: "Pilih jenis berkas kesiswaan yang ingin di-render." },
           { text: "Sesuaikan filter kelas siswa yang ditargetkan." },
+          { text: "Pilih nama siswa jika mencetak Surat Panggilan Orang Tua." },
           { text: "Periksa kembali data pratinjau sebelum melakukan pencetakan fisik." }
         ]
       }}
@@ -42,26 +46,37 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         setSelectedPrintType,
         selectedClassId,
         setSelectedClassId,
+        selectedStudentId,
+        setSelectedStudentId,
         includeSchoolLogo,
         setIncludeSchoolLogo,
         classes,
-        loadingClasses
+        loadingClasses,
+        students,
+        loadingStudents
       }) => (
         <CetakFormGeneric
           selectedPrintType={selectedPrintType}
           setSelectedPrintType={setSelectedPrintType}
           selectedClassId={selectedClassId}
           setSelectedClassId={setSelectedClassId}
+          selectedStudentId={selectedStudentId}
+          setSelectedStudentId={setSelectedStudentId}
           includeSchoolLogo={includeSchoolLogo}
           setIncludeSchoolLogo={setIncludeSchoolLogo}
           classes={classes}
           loadingClasses={loadingClasses}
+          students={students}
+          loadingStudents={loadingStudents}
           docOptions={docOptions}
         />
       )}
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        selectedStudentId,
+        classes,
+        students,
         sekolah,
         tenantInfo,
         strukturList,
@@ -69,16 +84,53 @@ export const CetakBerkasKesiswaanPage: React.FC = () => {
         logoSekolahBase64,
         includeSchoolLogo
       }) => {
+        let violations = [];
+        let achievements = [];
+        let selectedStudent = null;
+
+        try {
+          if (selectedPrintType === 'letter_summons' && selectedStudentId) {
+            // Find selected student details
+            selectedStudent = students?.find(s => s.id === selectedStudentId);
+            
+            // Get their violations to show context in the letter
+            const res = await kesiswaanApi.getPelanggaran({ siswa_id: selectedStudentId, limit: 100 });
+            if (res.success && res.data) {
+              violations = res.data.list || [];
+            }
+          } else if (selectedPrintType === 'recap_violations') {
+            const res = await kesiswaanApi.getPelanggaran({
+              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
+              limit: 200
+            });
+            if (res.success && res.data) {
+              violations = res.data.list || [];
+            }
+          } else if (selectedPrintType === 'recap_achievements') {
+            const res = await kesiswaanApi.getPrestasiSiswa({
+              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
+              limit: 200
+            });
+            if (res.success && res.data) {
+              achievements = res.data.list || [];
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load kesiswaan printing data:', e);
+        }
+
         return generateGenericPdf({
           module: 'kesiswaan',
           printType: selectedPrintType,
           selectedClassId,
+          selectedStudentId,
           sekolah,
           tenantInfo,
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { violations, achievements, selectedStudent, classes, students }
         });
       }}
     />
