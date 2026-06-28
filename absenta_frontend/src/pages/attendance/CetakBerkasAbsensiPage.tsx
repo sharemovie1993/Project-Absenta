@@ -67,6 +67,8 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         selectedPrintType,
         selectedClassId,
         eventDetails,
+        classes,
+        students,
         sekolah,
         tenantInfo,
         strukturList,
@@ -98,7 +100,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { rekapList }
+          filterData: { rekapList, classes, students }
         });
       }}
     />

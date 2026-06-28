@@ -690,24 +690,44 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       
       const selectedClassObj = filterData?.classes?.find((c: any) => c.id === selectedClassId);
       const className = selectedClassObj?.nama_kelas || 'SEMUA';
-      doc.text(`KELAS: ${className.toUpperCase()}  |  BULAN: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+      
+      const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
+      let monthLabel = '';
+      try {
+        const dt = new Date(`${selectedMonth}-02`);
+        monthLabel = dt.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      } catch (e) {
+        monthLabel = selectedMonth;
+      }
+      
+      doc.text(`KELAS: ${className.toUpperCase()}  |  BULAN: ${monthLabel.toUpperCase()}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
       const head = [['NO', 'NIS', 'NAMA SISWA', 'HADIR', 'SAKIT', 'IZIN', 'ALFA', 'PERSENTASE']];
       
       const rekapList = filterData?.rekapList;
+      const studentsList = rekapList?.students || filterData?.students || [];
       let body = [];
       
-      if (rekapList?.students && rekapList.students.length > 0) {
-        body = rekapList.students.map((s: any, idx: number) => [
-          (idx + 1).toString(),
-          s.nis || '-',
-          s.nama || '-',
-          `${s.hadir} Hari`,
-          `${s.sakit} Hari`,
-          `${s.izin} Hari`,
-          `${s.alpa} Hari`,
-          `${s.persentase}%`
-        ]);
+      if (studentsList.length > 0) {
+        body = studentsList.map((s: any, idx: number) => {
+          const name = s.nama || s.nama_siswa || '-';
+          const nis = s.nis || '-';
+          const hadir = s.hadir !== undefined ? `${s.hadir} Hari` : '0 Hari';
+          const sakit = s.sakit !== undefined ? `${s.sakit} Hari` : '0 Hari';
+          const izin = s.izin !== undefined ? `${s.izin} Hari` : '0 Hari';
+          const alpa = s.alpa !== undefined ? `${s.alpa} Hari` : '0 Hari';
+          const persentase = s.persentase !== undefined ? `${s.persentase}%` : '100%';
+          return [
+            (idx + 1).toString(),
+            nis,
+            name,
+            hadir,
+            sakit,
+            izin,
+            alpa,
+            persentase
+          ];
+        });
       } else {
         body = [
           ['1', '1023881', 'AHMAD SULAIMAN', '20 Hari', '0 Hari', '1 Hari', '0 Hari', '95%'],
