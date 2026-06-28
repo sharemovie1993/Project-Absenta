@@ -33,8 +33,8 @@ async function startServer() {
       binary: {
         version: '6.2.6',
         skipMD5: true,
-        // Use the OS temp directory which usually has better execution permissions on Windows
-        downloadDir: path.join(os.tmpdir(), 'absenta-redis-bin'),
+        // Use the local project directory to bypass Group Policy execution blocks on Windows Server temp directories
+        downloadDir: path.join(__dirname, '../.redis-bin'),
       },
       autoStart: false,
     });
