@@ -94,7 +94,7 @@ export const TahunPelajaranPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Tahun Pelajaran"
-      description="Siklus akademik utama yang mendasari seluruh operasional data sekolah."
+      description="Atur tahun ajaran sekolah yang aktif. Digunakan sekali setahun saat menyiapkan tahun ajaran baru."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -103,7 +103,15 @@ export const TahunPelajaranPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Tahun Pelajaran",
-        description: "Tahun Pelajaran adalah periode akademik utama. Semua data absensi dan nilai bergantung pada tahun yang sedang AKTIF.",
+        description: (
+          <div className="space-y-2">
+            <p>Tahun Pelajaran adalah masa belajar utama sekolah. Pastikan hanya ada satu tahun ajaran yang aktif agar absensi dan data siswa berjalan dengan benar.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Menentukan rentang tahun ajaran sekolah.</p>
+              <p><strong>Waktu Penggunaan:</strong> Sekali setahun saat menyambut tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Gunakan format YYYY/YYYY (contoh: 2025/2026)." },
           { text: "Hanya satu tahun yang bisa berstatus AKTIF dalam satu waktu." },

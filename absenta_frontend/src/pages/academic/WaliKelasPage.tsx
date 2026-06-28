@@ -41,7 +41,7 @@ const WaliKelasPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Penugasan Wali Kelas"
-      description="Pemetaan tanggung jawab wali dan pembinaan untuk setiap rombongan belajar aktif."
+      description="Tentukan guru yang menjadi wali kelas di setiap kelas. Digunakan setiap awal semester atau tahun ajaran baru."
       canView={canView}
       isLoading={authLoading}
       stats={academicStats}
@@ -53,7 +53,15 @@ const WaliKelasPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Wali Kelas",
-        description: "Wali kelas bertanggung jawab atas administrasi dan pemantauan siswa di satu kelas tertentu.",
+        description: (
+          <div className="space-y-2">
+            <p>Menentukan guru penanggung jawab untuk setiap kelas. Wali kelas memiliki hak khusus untuk memeriksa dan menyetujui kehadiran siswanya.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Menugaskan wali kelas di setiap kelas.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal semester atau tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Satu guru hanya boleh menjadi wali kelas di satu kelas aktif." },
           { text: "Wali kelas memiliki akses khusus untuk memverifikasi absensi harian siswa." },

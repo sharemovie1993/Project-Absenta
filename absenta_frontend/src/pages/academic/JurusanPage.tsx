@@ -163,7 +163,7 @@ export const JurusanPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Manajemen Jurusan"
-      description="Kelola data jurusan dan program studi yang tersedia di sekolah Anda."
+      description="Kelola daftar jurusan belajar yang ada di sekolah. Digunakan jika ada jurusan baru atau perubahan nama jurusan."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -172,7 +172,15 @@ export const JurusanPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Jurusan",
-        description: "Halaman ini digunakan untuk mengelola data struktur jurusan yang ada di sekolah Anda.",
+        description: (
+          <div className="space-y-2">
+            <p>Daftar bidang keahlian belajar siswa di sekolah. Jurusan ini menjadi wadah pengelompokan kelas dan mata pelajaran.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur daftar jurusan belajar sekolah.</p>
+              <p><strong>Waktu Penggunaan:</strong> Hanya saat pendaftaran awal sekolah atau ketika ada jurusan baru yang dibuka.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Tambah jurusan secara manual atau melalui Impor Excel." },
           { text: "Pastikan Kode Jurusan unik untuk menghindari bentrokan data." },

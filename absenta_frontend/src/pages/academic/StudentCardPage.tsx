@@ -516,14 +516,22 @@ const StudentCardPage = () => {
     return (
         <AcademicPageLayout
             title="Kartu Pelajar Digital"
-            description="Desain kartu identitas siswa dengan QR Code dinamis dan cetak secara massal dengan layout presisi."
+            description="Desain kartu pelajar dan cetak kartu RFID untuk siswa. Digunakan kapan saja saat pembuatan atau penggantian kartu siswa."
             stats={academicStats}
             toolbar={pageToolbar}
             breadcrumbs={breadcrumbs}
             hardeningModuleKey="studentcard"
             instruction={{
                 title: "Panduan Kartu Pelajar",
-                description: "Ikuti langkah berikut untuk menghasilkan kartu pelajar berkualitas tinggi.",
+                description: (
+                  <div className="space-y-2">
+                    <p>Merancang tampilan kartu pelajar sekolah dan mencetak kartu secara massal dengan kode QR.</p>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+                      <p><strong>Fungsi:</strong> Mendesain dan mencetak kartu pelajar siswa.</p>
+                      <p><strong>Waktu Penggunaan:</strong> Kapan saja saat menyambut siswa baru atau mencetak kartu pengganti yang hilang.</p>
+                    </div>
+                  </div>
+                ),
                 items: [
                     { text: "Tab Desain: Geser (drag) elemen Foto, QR, dan Data pada kartu untuk mengatur tata letak." },
                     { text: "Tab Pilih Siswa: Gunakan filter kelas dan centang siswa yang ingin dicetak kartunya." },

@@ -119,13 +119,21 @@ export default function JenisKegiatanMasterPage() {
   return (
     <AcademicPageLayout
       title="Jenis Kegiatan"
-      description="Kelola klasifikasi aktivitas pembelajaran, pembiasaan, dan ekstrakurikuler."
+      description="Atur kategori kegiatan sekolah (seperti KBM, Ekskul, Upacara). Digunakan jika ada jenis kegiatan baru."
       stats={academicStats}
       isLoadingStats={loading}
       breadcrumbs={breadcrumbs}
       instruction={{
         title: "Tentang Kategori Kegiatan",
-        description: "Gunakan master ini untuk menentukan jenis aktivitas yang dapat didaftarkan pada sistem absensi.",
+        description: (
+          <div className="space-y-2">
+            <p>Mengatur kategori aktivitas yang absensinya ingin dicatat oleh sekolah pada sistem presensi harian.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur jenis kegiatan absensi sekolah.</p>
+              <p><strong>Waktu Penggunaan:</strong> Hanya di awal pengaturan sistem sekolah atau ketika ada jenis kegiatan baru yang ingin ditambahkan.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Tipe KBM & ESKUL akan mewajibkan input guru pengampu dan mata pelajaran." },
           { text: "Urutan menentukan posisi prioritas saat pemilihan jenis di form pendaftaran." }

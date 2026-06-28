@@ -129,7 +129,7 @@ const GuruMapelPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Guru Pengampu"
-      description="Distribusi beban mengajar guru berdasarkan referensi mata pelajaran."
+      description="Tentukan guru pengajar untuk setiap pelajaran di kelas. Digunakan setiap awal semester atau tahun ajaran baru."
       breadcrumbs={breadcrumbs}
       canView={canView}
       isLoading={authLoading}
@@ -138,7 +138,15 @@ const GuruMapelPage: React.FC = () => {
       hardeningModuleKey="gurumapelpage"
       instruction={{
         title: "Pemetaan Guru Mapel",
-        description: "Kelola penugasan guru pengampu untuk setiap mata pelajaran.",
+        description: (
+          <div className="space-y-2">
+            <p>Menghubungkan guru pengampu dengan mata pelajaran yang mereka ajar di masing-masing kelas. Data ini penting agar guru dapat mengisi jurnal mengajar.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Menugaskan guru pengajar ke mata pelajaran kelas.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal semester atau tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Tentukan guru mana yang mengajar mata pelajaran tertentu." },
           { text: "Data ini digunakan untuk penentuan jadwal dan pengisian jurnal mengajar." }

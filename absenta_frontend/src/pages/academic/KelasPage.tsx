@@ -163,7 +163,7 @@ export const KelasPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Data Kelas"
-      description="Kelola data rombongan belajar beserta penempatan wali kelasnya."
+      description="Kelola data kelas-kelas belajar siswa. Digunakan setiap akhir tahun ajaran saat bersiap membagi kelas baru."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -172,7 +172,15 @@ export const KelasPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Kelas",
-        description: "Kelola data rombongan belajar (rombel) di sekolah Anda.",
+        description: (
+          <div className="space-y-2">
+            <p>Daftar kelas belajar siswa. Kelas ini nantinya akan dihubungkan dengan wali kelas dan siswa pada tahun ajaran yang aktif.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur kelas belajar siswa.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap akhir tahun ajaran menjelang kenaikan kelas.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Hubungkan kelas dengan Jurusan dan Wali Kelas." },
           { text: "Gunakan fitur Impor untuk migrasi data massal." },

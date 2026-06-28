@@ -261,7 +261,7 @@ const SiswaPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Data Siswa"
-      description="Pusat pengelolaan identitas siswa dan master data akademik."
+      description="Kelola biodata lengkap dan identitas siswa. Digunakan saat menerima siswa baru atau memperbarui biodata mereka."
       breadcrumbs={[
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Akademik', path: '/academic' },
@@ -271,10 +271,18 @@ const SiswaPage: React.FC = () => {
       isLoadingStats={isLoadingStats}
       instruction={{
         title: "Panduan Siswa",
-        description: "Kelola data master dan profil utama siswa.",
+        description: (
+          <div className="space-y-2">
+            <p>Tempat penyimpanan data diri utama siswa secara lengkap. Data di sini wajib diisi sebelum siswa dimasukkan ke dalam kelas.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur biodata utama siswa.</p>
+              <p><strong>Waktu Penggunaan:</strong> Saat penerimaan siswa baru atau pemutakhiran biodata berkala.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Tambahkan data siswa baru melalui tombol Tambah Siswa." },
-          { text: "Lakukan aktivasi akademik berkala di menu Registrasi Siswa." },
+          { text: "Lakukan aktivasi akademik berkala di menu Pembagian Kelas." },
           { text: "Kelola akun login (LMS) siswa melalui tombol Detail/Edit." }
         ]
       }}

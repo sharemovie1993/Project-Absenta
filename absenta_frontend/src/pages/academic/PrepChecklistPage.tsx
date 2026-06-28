@@ -764,14 +764,22 @@ const PrepChecklistPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Pusat Persiapan & Cetak TU"
-      description="Kelola kesiapan sistem menyambut Tahun Ajaran Baru dan cetak lembaran administrasi fisik secara mandiri."
+      description="Periksa kesiapan data sekolah dan cetak dokumen administrasi kelas. Digunakan setiap awal semester atau tahun ajaran baru."
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
         { label: 'Persiapan & Cetak TU' }
       ]}
       instruction={{
         title: "Panduan Administrasi TU SMK",
-        description: "Gunakan menu ini untuk memverifikasi kesiapan data sistem dan mencetak kelengkapan berkas fisik untuk awal tahun ajaran.",
+        description: (
+          <div className="space-y-2">
+            <p>Pusat pemeriksaan kelengkapan data sekolah dan tempat mencetak berkas cetak seperti jurnal mengajar, lembar absensi fisik, serta format nilai kelas.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Memeriksa data sistem sekolah dan mencetak berkas administrasi.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal semester atau tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Tinjau tab 'Checklist Sistem' untuk memastikan data kurikulum & siswa di database sudah siap." },
           { text: "Gunakan tab 'Cetak Dokumen Fisik' untuk mencetak lembar presensi manual, jurnal kelas, atau format nilai." },

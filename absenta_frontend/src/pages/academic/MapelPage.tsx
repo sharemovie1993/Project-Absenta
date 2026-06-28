@@ -149,7 +149,7 @@ export const MapelPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Mata Pelajaran"
-      description="Atur referensi mata pelajaran yang akan digunakan dalam penyusunan jadwal akademik."
+      description="Kelola daftar mata pelajaran yang diajarkan. Digunakan di awal tahun ajaran baru atau saat kurikulum berubah."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -158,7 +158,15 @@ export const MapelPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Mata Pelajaran",
-        description: "Kelola daftar mata pelajaran yang diajarkan di sekolah Anda.",
+        description: (
+          <div className="space-y-2">
+            <p>Daftar pelajaran yang ada di sekolah. Pelajaran ini akan dipakai untuk membuat jadwal mengajar guru dan mengisi jurnal kelas.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur katalog pelajaran sekolah.</p>
+              <p><strong>Waktu Penggunaan:</strong> Di awal tahun pelajaran baru atau jika kurikulum pelajaran diubah.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Daftarkan Mapel wajib dan pilihan sesuai kurikulum." },
           { text: "Gunakan fitur Impor untuk memasukkan banyak data sekaligus." },

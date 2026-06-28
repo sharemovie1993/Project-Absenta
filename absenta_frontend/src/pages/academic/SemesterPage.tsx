@@ -101,7 +101,7 @@ export const SemesterPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Manajemen Semester"
-      description="Atur periode semester aktif untuk keperluan pengolahan nilai dan kehadiran akademik."
+      description="Atur periode belajar Ganjil dan Genap. Digunakan sekali di awal semester baru ketika periode belajar dimulai."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -110,7 +110,15 @@ export const SemesterPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Semester",
-        description: "Halaman ini digunakan untuk mengelola periode semester di sekolah Anda.",
+        description: (
+          <div className="space-y-2">
+            <p>Semester membagi masa belajar menjadi dua bagian (Ganjil & Genap). Pengaturan ini menentukan ke periode mana kehadiran dan nilai siswa akan disimpan.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengaktifkan masa belajar Ganjil atau Genap.</p>
+              <p><strong>Waktu Penggunaan:</strong> Sekali di awal semester baru ketika periode belajar dimulai.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Satu Tahun Pelajaran biasanya terdiri dari 2 Semester (Ganjil & Genap)." },
           { text: "Mengaktifkan Semester akan otomatis mengaktifkan Tahun Pelajaran induknya & menonaktifkan yang lain." },

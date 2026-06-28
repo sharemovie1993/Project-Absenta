@@ -130,8 +130,24 @@ const StrukturOrganisasiList: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Struktur Organisasi"
-      description="Pengelolaan jabatan, hirarki, dan penugasan personel staf kurikulum & siswa."
+      description="Kelola jabatan dan susunan pengurus sekolah. Digunakan setiap awal tahun ajaran baru atau saat ada pergantian jabatan."
       breadcrumbs={breadcrumbs}
+      instruction={{
+        title: "Panduan Struktur Organisasi",
+        description: (
+          <div className="space-y-2">
+            <p>Mengatur pembagian tugas dan jabatan staf sekolah (seperti Kepala Sekolah, Waka Kurikulum, Kepala Program, dll).</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur struktur pengurus dan jabatan staf sekolah.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal tahun ajaran baru atau jika ada perubahan susunan pengurus.</p>
+            </div>
+          </div>
+        ),
+        items: [
+          { text: "Pilih tab Jabatan untuk menambah atau mengubah daftar jabatan." },
+          { text: "Pilih tab Personel untuk menugaskan guru ke jabatan tersebut." }
+        ]
+      }}
       hardeningModuleKey="strukturorganisasilist"
     >
       <div className="space-y-6">

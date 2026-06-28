@@ -158,7 +158,7 @@ export const GuruPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Data Guru"
-      description="Kelola direktori tenaga pendidik beserta hak akses dan riwayat penugasannya."
+      description="Kelola daftar nama dan biodata guru. Digunakan kapan saja jika ada penambahan atau perubahan data guru."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -167,7 +167,15 @@ export const GuruPage: React.FC = () => {
       ]}
       instruction={{
         title: "Panduan Guru",
-        description: "Kelola data tenaga pendidik (Guru) untuk pengaturan jadwal dan pengajaran.",
+        description: (
+          <div className="space-y-2">
+            <p>Direktori lengkap profil guru sekolah. Data guru ini dibutuhkan untuk penugasan wali kelas, guru mengajar, dan hak akses login sistem.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengatur data identitas guru.</p>
+              <p><strong>Waktu Penggunaan:</strong> Kapan saja jika ada guru baru masuk atau datanya berubah.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Daftarkan Guru dengan NUPTK atau NIK yang valid." },
           { text: "Hubungkan Guru dengan Mata Pelajaran yang diampu." },
