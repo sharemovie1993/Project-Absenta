@@ -7,7 +7,11 @@ import { getJadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
 export const CetakBerkasKurikulumPage: React.FC = () => {
   const docOptions: DocOption[] = [
     { value: 'roster', label: '1. JADWAL PELAJARAN MINGGUAN KELAS', requireClass: true },
-    { value: 'calendar', label: '2. KALENDER AKADEMIK & HARI EFEKTIF SEKOLAH', requireClass: false }
+    { value: 'roster_teacher', label: '2. JADWAL MENGAJAR GURU (PER GURU)', requireClass: false },
+    { value: 'calendar', label: '3. KALENDER AKADEMIK & HARI EFEKTIF SEKOLAH', requireClass: false },
+    { value: 'leger', label: '4. LEGER NILAI SEMESTER (Segera Hadir)', requireClass: true },
+    { value: 'kkm', label: '5. KKM / KKTP MATA PELAJARAN (Segera Hadir)', requireClass: false },
+    { value: 'rpp', label: '6. BLANKO FORMAT RPP / MODUL AJAR (Segera Hadir)', requireClass: false }
   ];
 
   return (
@@ -72,10 +76,10 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
         checklistData
       }) => {
         let jadwalList = [];
-        if (selectedPrintType === 'roster') {
+        if (['roster', 'roster_teacher'].includes(selectedPrintType)) {
           try {
             const res = await getJadwalTemplate({
-              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
+              kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
               tahun_pelajaran_id: checklistData?.current_year?.id,
               semester_id: checklistData?.current_semester?.id
             });

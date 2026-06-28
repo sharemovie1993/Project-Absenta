@@ -131,31 +131,137 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     principalNip = `NIP. ${principalNip}`;
   }
 
+  // Handle coming soon documents
+  const comingSoonDocs = ['leger', 'kkm', 'rpp', 'osis_sk', 'attendance_recap_semester', 'bk_case_recap', 'stock_card', 'pkl_certificate'];
+  if (comingSoonDocs.includes(printType)) {
+    const headerEndY = drawKopSurat(
+      doc,
+      pageWidth,
+      sekolah,
+      tenantInfo,
+      logoDaerahBase64,
+      logoSekolahBase64,
+      includeSchoolLogo
+    );
+    
+    const getRequiredModule = (type: string): string => {
+      switch (type) {
+        case 'leger': return 'Rapor & Nilai';
+        case 'kkm': return 'Kriteria Ketuntasan Minimal (KKM)';
+        case 'rpp': return 'Supervisi & Modul Ajar (RPP)';
+        case 'osis_sk': return 'Kesiswaan & Ekstrakurikuler';
+        case 'attendance_recap_semester': return 'Absensi Lanjutan';
+        case 'bk_case_recap': return 'Kasus Lanjutan BP/BK';
+        case 'stock_card': return 'Manajemen Gudang Sarpras';
+        case 'pkl_certificate': return 'Sertifikat & Penilaian DUDI';
+        default: return 'Modul Tambahan';
+      }
+    };
+    
+    const getDocName = (type: string): string => {
+      switch (type) {
+        case 'leger': return 'Leger Nilai Semester';
+        case 'kkm': return 'KKM / KKTP Mata Pelajaran';
+        case 'rpp': return 'Blanko Format RPP / Modul Ajar';
+        case 'osis_sk': return 'SK Kepengurusan OSIS';
+        case 'attendance_recap_semester': return 'Rekapitulasi Kehadiran Semester';
+        case 'bk_case_recap': return 'Laporan & Rekapitulasi Kasus BK';
+        case 'stock_card': return 'Kartu Kontrol Stok Barang';
+        case 'pkl_certificate': return 'Sertifikat Praktik Kerja Lapangan (PKL)';
+        default: return 'Dokumen Fisik';
+      }
+    };
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text(getDocName(printType).toUpperCase(), pageWidth / 2, headerEndY + 12, { align: 'center' });
+
+    // Draw coming soon box
+    doc.setFillColor(254, 243, 199); // light amber
+    doc.setDrawColor(245, 158, 11); // amber border
+    doc.setLineWidth(0.3);
+    doc.rect(20, headerEndY + 22, pageWidth - 40, 24, 'FD');
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 83, 9);
+    doc.text('FITUR SEGERA HADIR (COMING SOON)', pageWidth / 2, headerEndY + 28, { align: 'center' });
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 113, 108);
+    doc.text(`Dokumen ini memerlukan Modul "${getRequiredModule(printType)}" yang saat ini belum aktif di sistem Anda.`, pageWidth / 2, headerEndY + 34, { align: 'center' });
+    doc.text('Hubungi Administrator untuk mengaktifkan modul ini.', pageWidth / 2, headerEndY + 39, { align: 'center' });
+
+    // Draw mockup table placeholder
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('CONTOH PREVIEW DOKUMEN:', 20, headerEndY + 54);
+
+    const head = [['KOLOM A', 'KOLOM B', 'KOLOM C', 'KOLOM D']];
+    const body = Array.from({ length: 4 }).map((_, i) => [
+      `Data Contoh ${i+1}-A`, `Data Contoh ${i+1}-B`, `Data Contoh ${i+1}-C`, `Data Contoh ${i+1}-D`
+    ]);
+    
+    autoTable(doc, {
+      startY: headerEndY + 58,
+      head,
+      body,
+      theme: 'grid',
+      styles: { fontSize: 8, font: 'Helvetica', cellPadding: 3, halign: 'center' },
+      headStyles: { fillColor: [241, 245, 249], textColor: [100, 116, 139] }
+    });
+
+    // Draw Signature
+    let finalY = (doc as any).lastAutoTable?.finalY ?? 100;
+    const sigY = finalY + 12;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8.5);
+    const dateText = `${sekolah?.alamat?.split(',')[0]?.split(' ')[0] || 'Purwakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    doc.text(dateText, pageWidth - 65, sigY - 4, { align: 'center' });
+    doc.text('Kepala Sekolah,', pageWidth - 65, sigY, { align: 'center' });
+
+    doc.setFont('Helvetica', 'bold');
+    doc.text(principalName, pageWidth - 65, sigY + 22, { align: 'center' });
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(principalNip, pageWidth - 65, sigY + 26, { align: 'center' });
+
+    return doc.output('blob');
+  }
+
   // Handle Kurikulum Roster Multi-page printing
-  if (module === 'kurikulum' && printType === 'roster') {
+  if (module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType)) {
     const jadwalList = (filterData?.jadwalList || []) as any[];
 
-    // Group schedules by class
-    const classGroups = new Map<string, any[]>();
-    if (selectedClassId === 'all') {
+    // Group schedules
+    const groups = new Map<string, any[]>();
+    if (printType === 'roster_teacher') {
       jadwalList.forEach(j => {
-        const name = j.Kelas?.nama_kelas || 'Tanpa Kelas';
-        if (!classGroups.has(name)) classGroups.set(name, []);
-        classGroups.get(name)!.push(j);
+        const name = j.Guru?.User?.full_name || 'Guru Tanpa Nama';
+        if (!groups.has(name)) groups.set(name, []);
+        groups.get(name)!.push(j);
       });
     } else {
-      // Find class name from schedules or fall back to selected ID
-      const matchingJadwal = jadwalList.find(j => j.kelas_id === selectedClassId);
-      const name = matchingJadwal?.Kelas?.nama_kelas || 'Kelas';
-      classGroups.set(name, jadwalList);
+      if (selectedClassId === 'all') {
+        jadwalList.forEach(j => {
+          const name = j.Kelas?.nama_kelas || 'Tanpa Kelas';
+          if (!groups.has(name)) groups.set(name, []);
+          groups.get(name)!.push(j);
+        });
+      } else {
+        const matchingJadwal = jadwalList.find(j => j.kelas_id === selectedClassId);
+        const name = matchingJadwal?.Kelas?.nama_kelas || 'Kelas';
+        groups.set(name, jadwalList);
+      }
     }
 
-    const classNamesList = Array.from(classGroups.keys());
-    const totalClasses = classNamesList.length > 0 ? classNamesList.length : 1;
+    const groupNamesList = Array.from(groups.keys());
+    const totalGroups = groupNamesList.length > 0 ? groupNamesList.length : 1;
 
-    for (let classIndex = 0; classIndex < totalClasses; classIndex++) {
-      const className = classNamesList[classIndex] || '---';
-      const classJadwal = classGroups.get(className) || [];
+    for (let groupIndex = 0; groupIndex < totalGroups; groupIndex++) {
+      const groupName = groupNamesList[groupIndex] || '---';
+      const groupJadwal = groups.get(groupName) || [];
 
       // 1. Draw Header
       const headerEndY = drawKopSurat(
@@ -171,10 +277,12 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       // 2. Draw Title
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text('JADWAL PELAJARAN MINGGUAN KELAS', pageWidth / 2, headerEndY + 6, { align: 'center' });
+      const titleText = printType === 'roster_teacher' ? 'JADWAL MENGAJAR GURU' : 'JADWAL PELAJARAN MINGGUAN KELAS';
+      doc.text(titleText, pageWidth / 2, headerEndY + 6, { align: 'center' });
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(8.5);
-      doc.text(`KELAS: ${className.toUpperCase()}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+      const subTitleText = printType === 'roster_teacher' ? `NAMA GURU: ${groupName.toUpperCase()}` : `KELAS: ${groupName.toUpperCase()}`;
+      doc.text(subTitleText, pageWidth / 2, headerEndY + 11, { align: 'center' });
 
       // 3. Draw Timetable Grid
       const days = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
@@ -182,7 +290,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
 
       const slots = Array.from(
         new Set(
-          classJadwal.map(j => `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}`)
+          groupJadwal.map(j => `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}`)
         )
       ).sort();
 
@@ -191,14 +299,20 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         body = slots.map((slot, index) => {
           const row = [`Jam ${index + 1}\n(${slot})`];
           days.forEach(day => {
-            const matches = classJadwal.filter(j =>
+            const matches = groupJadwal.filter(j =>
               j.hari === day &&
               `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}` === slot
             );
             if (matches.length > 0) {
-              row.push(
-                matches.map(m => `${m.Mapel?.nama_mapel || 'Mapel'}\n(${m.Guru?.User?.full_name || 'Guru'})`).join('\n\n')
-              );
+              if (printType === 'roster_teacher') {
+                row.push(
+                  matches.map(m => `${m.Mapel?.nama_mapel || 'Mapel'}\n(Kelas ${m.Kelas?.nama_kelas || '---'})`).join('\n\n')
+                );
+              } else {
+                row.push(
+                  matches.map(m => `${m.Mapel?.nama_mapel || 'Mapel'}\n(${m.Guru?.User?.full_name || 'Guru'})`).join('\n\n')
+                );
+              }
             } else {
               row.push('-');
             }
@@ -243,7 +357,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       doc.setFontSize(7.5);
       doc.text(principalNip, pageWidth - 65, sigY + 26, { align: 'center' });
 
-      if (classIndex < totalClasses - 1) {
+      if (groupIndex < totalGroups - 1) {
         doc.addPage();
       }
     }
