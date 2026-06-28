@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Edit3 } from 'lucide-react';
 import type { Kelas, Guru, Siswa } from '../../types/academic';
 
 export interface DocOption {
@@ -152,8 +152,11 @@ export const CetakFormGeneric: React.FC<CetakFormGenericProps> = ({
 
       {/* Event Details Form (Only for summons) */}
       {selectedPrintType === 'letter_summons' && setEventDetails && (
-        <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <h4 className="text-xs font-black uppercase text-slate-500">Detail Undangan Pertemuan</h4>
+        <div className="space-y-3 p-3.5 rounded-xl bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30">
+          <div className="flex items-center gap-2 pb-1.5 border-b border-blue-100/60 dark:border-blue-900/20">
+            <Edit3 size={13} className="text-blue-600 dark:text-blue-400" />
+            <h4 className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 tracking-wider">Editor Undangan</h4>
+          </div>
           
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-slate-400 block">Nomor Surat</label>
