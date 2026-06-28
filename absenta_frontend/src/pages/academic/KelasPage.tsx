@@ -73,7 +73,9 @@ export const KelasPage: React.FC = () => {
       value: stats?.total_kelas || 0,
       icon: <School size={14} />,
       gradient: "from-blue-500 to-cyan-600",
-      subtitle: "Rombongan belajar aktif"
+      subtitle: stats 
+        ? `Kelas Aktif — X: ${stats.total_kelas_10 || 0} | XI: ${stats.total_kelas_11 || 0} | XII: ${stats.total_kelas_12 || 0}`
+        : "Rombongan belajar aktif"
     },
     {
       title: "Total Siswa",

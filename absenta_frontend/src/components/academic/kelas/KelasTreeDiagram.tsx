@@ -135,9 +135,16 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
                 )}
 
                 {/* TINGKAT BOX */}
-                <div className={cn("text-white py-3 px-8 rounded-2xl shadow-lg border border-transparent font-black tracking-wider text-center mb-6 min-w-[180px]", theme.boxBg)}>
-                  <h4 className="text-xs uppercase font-extrabold font-sans">TINGKAT {tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : tingkat}</h4>
-                </div>
+                {(() => {
+                  const activeListCount = list.filter(k => k.is_active).length;
+                  return (
+                    <div className={cn("text-white py-3 px-8 rounded-2xl shadow-lg border border-transparent font-black tracking-wider text-center mb-6 min-w-[180px]", theme.boxBg)}>
+                      <h4 className="text-xs uppercase font-extrabold font-sans">
+                        TINGKAT {tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : tingkat} ({activeListCount} Rombel)
+                      </h4>
+                    </div>
+                  );
+                })()}
 
                 {/* Vertical Connector Line from Tingkat Box to Class Cards */}
                 {list.length > 0 && (

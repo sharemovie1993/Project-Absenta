@@ -34,6 +34,9 @@ export class AcademicStatsService {
     const [
       totalJurusan,
       totalKelas,
+      totalKelas10,
+      totalKelas11,
+      totalKelas12,
       totalSiswa,
       totalGuru,
       totalMapel,
@@ -45,9 +48,39 @@ export class AcademicStatsService {
         where: whereClause
       }),
       
-      // Total Kelas
+      // Total Kelas (only active)
       prisma.kelas.count({
-        where: kelasWhereClause
+        where: {
+          ...kelasWhereClause,
+          is_active: true
+        }
+      }),
+
+      // Active Kelas Tingkat 10
+      prisma.kelas.count({
+        where: {
+          ...kelasWhereClause,
+          tingkat: 10,
+          is_active: true
+        }
+      }),
+
+      // Active Kelas Tingkat 11
+      prisma.kelas.count({
+        where: {
+          ...kelasWhereClause,
+          tingkat: 11,
+          is_active: true
+        }
+      }),
+
+      // Active Kelas Tingkat 12
+      prisma.kelas.count({
+        where: {
+          ...kelasWhereClause,
+          tingkat: 12,
+          is_active: true
+        }
       }),
       
       // Total Siswa (only active students)
@@ -92,6 +125,9 @@ export class AcademicStatsService {
     return {
       total_jurusan: totalJurusan,
       total_kelas: totalKelas,
+      total_kelas_10: totalKelas10,
+      total_kelas_11: totalKelas11,
+      total_kelas_12: totalKelas12,
       total_siswa: totalSiswa,
       total_guru: totalGuru,
       total_mapel: totalMapel,
