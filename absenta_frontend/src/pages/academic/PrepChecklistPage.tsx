@@ -763,27 +763,27 @@ const PrepChecklistPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Pusat Persiapan & Cetak TU"
-      description="Periksa kesiapan data sekolah dan cetak dokumen administrasi kelas. Digunakan setiap awal semester atau tahun ajaran baru."
+      title="Cetak Berkas"
+      description="Buat dan cetak dokumen administrasi kelas secara otomatis — menggantikan proses manual yang sebelumnya dikerjakan menggunakan Excel oleh Tata Usaha."
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
-        { label: 'Persiapan & Cetak TU' }
+        { label: 'Cetak Berkas' }
       ]}
       instruction={{
-        title: "Panduan Administrasi TU SMK",
+        title: "Panduan Cetak Berkas Akademik",
         description: (
           <div className="space-y-2">
-            <p>Pusat pemeriksaan kelengkapan data sekolah dan tempat mencetak berkas cetak seperti jurnal mengajar, lembar absensi fisik, serta format nilai kelas.</p>
+            <p>Halaman ini mengotomasi pembuatan dokumen fisik yang biasanya disiapkan secara manual oleh Tata Usaha menggunakan Excel sebelum tahun ajaran baru dimulai.</p>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
-              <p><strong>Fungsi:</strong> Memeriksa data sistem sekolah dan mencetak berkas administrasi.</p>
-              <p><strong>Waktu Penggunaan:</strong> Setiap awal semester atau tahun ajaran baru.</p>
+              <p><strong>Fungsi:</strong> Mencetak berkas administrasi kelas — absensi, jurnal KBM, daftar kelas, dan SK Beban Mengajar — langsung dari data sistem.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal tahun ajaran atau semester baru, setelah data kelas dan siswa sudah lengkap.</p>
             </div>
           </div>
         ),
         items: [
-          { text: "Tinjau tab 'Checklist Sistem' untuk memastikan data kurikulum & siswa di database sudah siap." },
-          { text: "Gunakan tab 'Cetak Dokumen Fisik' untuk mencetak lembar presensi manual, jurnal kelas, atau format nilai." },
-          { text: "Pengaturan printer disarankan mengaktifkan opsi 'Background Graphics' agar tabel tercetak sempurna." }
+          { text: "Gunakan tab 'Checklist Sistem' untuk memverifikasi bahwa seluruh data kelas, guru, dan siswa sudah siap sebelum mencetak." },
+          { text: "Pilih jenis berkas yang ingin dicetak: Daftar Hadir, Jurnal KBM, Daftar Kelas & Nilai, atau SK Beban Mengajar." },
+          { text: "Aktifkan opsi 'Background Graphics' di pengaturan printer agar tampilan tabel dan header tercetak dengan sempurna." }
         ]
       }}
       hardeningModuleKey="prepchecklistpage"
