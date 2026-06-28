@@ -357,7 +357,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
                     const isKbm = !m.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
                     const subjectName = isKbm && m.Mapel?.nama_mapel ? m.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
                     const targetClass = m.Kelas?.nama_kelas || 'Kelas';
-                    return `${subjectName.toUpperCase()}\n(Kelas ${targetClass})`;
+                    return `${subjectName.toUpperCase()}\n(${targetClass})`;
                   }).join('\n\n')
                 );
               } else {
