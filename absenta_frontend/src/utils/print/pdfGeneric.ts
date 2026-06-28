@@ -114,6 +114,8 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     logoSekolahBase64,
     includeSchoolLogo,
     selectedGuruId,
+    selectedStudentId,
+    eventDetails,
     filterData
   } = options;
 
@@ -478,7 +480,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         const studentNis = student?.nis || '__________';
         const studentClass = filterData?.classes?.find((c: any) => c.id === selectedClassId)?.nama_kelas || '________________';
         
-        const details = filterData?.eventDetails || {};
+        const details = eventDetails || {};
         const nomor = details.nomorSurat || `800 / ${studentNis ? studentNis.substring(0,4) : '___'} / Kesiswaan / ${new Date().getFullYear()}`;
         
         let formattedDate = '';
