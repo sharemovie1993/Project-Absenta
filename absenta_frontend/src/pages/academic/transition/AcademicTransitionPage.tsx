@@ -219,7 +219,7 @@ const AcademicTransitionPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Kenaikan Kelas"
-      description="Lakukan pemetaan rute kelas lama ke kelas baru, peninjauan kelulusan siswa, dan eksekusi kenaikan kelas massal."
+      description="Proses kenaikan kelas dan kelulusan siswa massal. Digunakan sekali setahun di akhir Semester Genap sebelum tahun ajaran baru."
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
         { label: 'Kenaikan Kelas' }

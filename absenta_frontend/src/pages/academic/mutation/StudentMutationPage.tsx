@@ -231,7 +231,7 @@ const StudentMutationPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Mutasi Siswa"
-      description="Kelola perubahan status akademik siswa seperti mutasi keluar, undur diri, atau mutasi status lainnya."
+      description="Kelola siswa pindah, drop out, atau dinonaktifkan. Digunakan kapan saja (ad-hoc) jika ada siswa keluar dari sekolah."
       canView={canView}
       isLoading={authLoading}
       stats={academicStats}

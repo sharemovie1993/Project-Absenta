@@ -327,7 +327,7 @@ const RegistrasiSiswaPage: React.FC = () => {
   return (
     <AcademicPageLayout
       title="Pembagian Kelas"
-      description="Kelola pembagian kelas dan pendataan akademik siswa setiap awal semester secara massal untuk periode aktif."
+      description="Daftarkan siswa ke kelas untuk Semester/Tahun Pelajaran aktif. Digunakan setiap awal semester atau tahun ajaran baru."
       stats={academicStats}
       isLoadingStats={statsLoading}
       breadcrumbs={breadcrumbs}
