@@ -326,14 +326,22 @@ const RegistrasiSiswaPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Registrasi Siswa Semesteran"
-      description="Kelola aktivasi dan pendataan akademik siswa setiap awal semester secara massal untuk periode aktif."
+      title="Pembagian Kelas"
+      description="Kelola pembagian kelas dan pendataan akademik siswa setiap awal semester secara massal untuk periode aktif."
       stats={academicStats}
       isLoadingStats={statsLoading}
       breadcrumbs={breadcrumbs}
       instruction={{
-        title: "Pusat Aktivasi & Registrasi Siswa",
-        description: "Langkah ini adalah kunci agar data siswa muncul di aplikasi Absensi & Jurnal Kelas. Pastikan semua siswa sudah didaftarkan ke semester aktif saat ini.",
+        title: "Panduan Pembagian Kelas",
+        description: (
+          <div className="space-y-2">
+            <p>Langkah ini adalah kunci agar data siswa muncul di aplikasi Absensi & Jurnal Kelas. Pastikan semua siswa sudah didaftarkan ke semester aktif saat ini.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Menentukan/mendaftarkan siswa ke dalam kelas tertentu untuk Tahun Pelajaran & Semester Aktif saat ini.</p>
+              <p><strong>Waktu Penggunaan:</strong> Setiap awal semester baru atau tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Pilih Tahun Pelajaran dan Semester yang ingin dikelola pada bilah kontrol di bawah." },
           { text: "Klik tombol 'Aktivasi & Daftarkan Siswa' untuk mendaftarkan siswa secara massal ke periode terpilih." },

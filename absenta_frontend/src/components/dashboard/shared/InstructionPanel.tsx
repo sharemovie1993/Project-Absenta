@@ -11,7 +11,7 @@ export interface InstructionItem {
 
 interface InstructionPanelProps {
   title?: string;
-  description?: string;
+  description?: React.ReactNode;
   items?: InstructionItem[];
   tips?: string[];
 }
@@ -40,9 +40,9 @@ export const InstructionPanel: React.FC<InstructionPanelProps> = ({
         </div>
 
         {description && (
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed relative z-10">
+          <div className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed relative z-10">
             {description}
-          </p>
+          </div>
         )}
       </div>
 

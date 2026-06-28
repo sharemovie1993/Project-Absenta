@@ -9,7 +9,7 @@ export interface InstructionItem {
 
 export interface InstructionData {
   title?: string;
-  description?: string;
+  description?: React.ReactNode;
   items?: InstructionItem[];
   tips?: string[];
 }

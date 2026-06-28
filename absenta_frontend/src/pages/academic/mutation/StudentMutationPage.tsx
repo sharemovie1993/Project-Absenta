@@ -160,7 +160,7 @@ const StudentMutationPage: React.FC = () => {
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },
-    { label: 'Mutasi & Kelulusan' },
+    { label: 'Mutasi Siswa' },
   ], []);
 
   const toolbarLeft = (
@@ -230,16 +230,24 @@ const StudentMutationPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Pusat Mutasi & Kelulusan"
-      description="Kelola perubahan status akademik siswa seperti mutasi keluar, undur diri, atau kelulusan massal."
+      title="Mutasi Siswa"
+      description="Kelola perubahan status akademik siswa seperti mutasi keluar, undur diri, atau mutasi status lainnya."
       canView={canView}
       isLoading={authLoading}
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={breadcrumbs}
       instruction={{
-        title: "Panduan Pusat Mutasi",
-        description: "Kelola perubahan status siswa di luar transisi kenaikan kelas reguler.",
+        title: "Panduan Mutasi Siswa",
+        description: (
+          <div className="space-y-2">
+            <p>Kelola perubahan status siswa di luar transisi kenaikan kelas reguler.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Mengelola siswa yang keluar dari sekolah secara individual atau kelompok di tengah-tengah tahun ajaran berjalan.</p>
+              <p><strong>Waktu Penggunaan:</strong> Kapan saja (ad-hoc) ketika ada kasus siswa keluar, pindah, atau drop out.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Pilih satu atau beberapa siswa untuk memulai proses mutasi." },
           { text: "Status LULUS hanya digunakan untuk siswa tingkat akhir." },

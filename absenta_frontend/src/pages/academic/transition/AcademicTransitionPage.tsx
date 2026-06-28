@@ -218,15 +218,23 @@ const AcademicTransitionPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Transisi Akademik (Naik Kelas)"
-      description="Lakukan pemetaan rute kelas lama ke kelas baru, peninjauan kelulusan siswa, dan eksekusi naik kelas masal."
+      title="Kenaikan Kelas"
+      description="Lakukan pemetaan rute kelas lama ke kelas baru, peninjauan kelulusan siswa, dan eksekusi kenaikan kelas massal."
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
-        { label: 'Transisi Akademik' }
+        { label: 'Kenaikan Kelas' }
       ]}
       instruction={{
-        title: "Panduan Transisi Akademik",
-        description: "Proses ini memindahkan data siswa ke periode akademik baru secara massal.",
+        title: "Panduan Kenaikan Kelas",
+        description: (
+          <div className="space-y-2">
+            <p>Proses ini memindahkan data siswa ke periode akademik baru secara massal.</p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
+              <p><strong>Fungsi:</strong> Proses Rollover/Kenaikan Kelas massal pada akhir tahun ajaran (dari Tahun Ajaran Lama ke Tahun Ajaran Baru).</p>
+              <p><strong>Waktu Penggunaan:</strong> Hanya 1 kali dalam setahun, yaitu di akhir Semester Genap ketika sekolah bersiap membuka tahun ajaran baru.</p>
+            </div>
+          </div>
+        ),
         items: [
           { text: "Langkah 1: Pastikan Tahun Pelajaran baru sudah dibuat di menu Setup." },
           { text: "Langkah 2: Hubungkan setiap kelas lama ke kelas tujuan yang sesuai." },
