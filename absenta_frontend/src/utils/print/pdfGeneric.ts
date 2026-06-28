@@ -600,7 +600,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             v.Siswa?.nis || '-',
             v.Siswa?.nama_siswa?.toUpperCase() || 'SISWA',
             v.Siswa?.Kelas?.nama_kelas || '-',
-            new Date(v.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            new Date(v.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
             v.jenis_pelanggaran || '-',
             String(v.poin || 0),
             v.status || 'BARU'
@@ -650,7 +650,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
             a.Siswa?.nis || '-',
             a.Siswa?.nama_siswa?.toUpperCase() || 'SISWA',
             a.Siswa?.Kelas?.nama_kelas || '-',
-            new Date(a.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+            new Date(a.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
             a.nama_prestasi || '-',
             String(a.poin || 0),
             a.keterangan || '-'

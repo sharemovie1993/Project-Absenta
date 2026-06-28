@@ -114,6 +114,10 @@ export class PelanggaranService {
       where.siswa_id = query.siswa_id;
     }
 
+    if ((query as any).kelas_id) {
+      where.kelas_id = (query as any).kelas_id;
+    }
+
     if (query.status) {
       where.status = query.status;
     }

@@ -125,6 +125,10 @@ export class PrestasiService {
       where.siswa_id = query.siswa_id;
     }
 
+    if ((query as any).kelas_id) {
+      where.kelas_id = (query as any).kelas_id;
+    }
+
     if (query.search) {
       where.OR = [
         { nama_prestasi: { contains: query.search, mode: 'insensitive' } },
