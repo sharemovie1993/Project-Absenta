@@ -300,6 +300,21 @@ if (-not $Silent) {
             $redisUrl = "redis://localhost:6379"
         }
 
+        # Membaca konfigurasi yang sudah ada di file .env jika ada (idempotensi)
+        $existingLicense = ""
+        $existingCFToken = ""
+        if (Test-Path "absenta_backend/.env") {
+            $envContent = Get-Content "absenta_backend/.env"
+            foreach ($line in $envContent) {
+                if ($line -match "^LICENSE_KEY=(.*)") {
+                    $existingLicense = $Matches[1].Trim()
+                }
+                elseif ($line -match "^CLOUDFLARE_API_TOKEN=(.*)") {
+                    $existingCFToken = $Matches[1].Trim()
+                }
+            }
+        }
+
         # 1. Domain / Host
         if ($deployScenario -eq "local") {
             $inputDomain = Read-Host "1. Masukkan IP LAN Server (misal: 192.168.1.10 atau localhost) [$finalDomain]"
@@ -338,7 +353,14 @@ if (-not $Silent) {
             $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
             
             if ($sslChoice -eq "2") {
-                $cfToken = Read-Host "Masukkan Cloudflare API Token Anda"
+                $cfPrompt = "Masukkan Cloudflare API Token Anda"
+                if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
+                $inputCF = Read-Host $cfPrompt
+                if ([string]::IsNullOrWhiteSpace($inputCF)) {
+                    $cfToken = $existingCFToken
+                } else {
+                    $cfToken = $inputCF.Trim()
+                }
             } else {
                 $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
                 if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
@@ -346,42 +368,52 @@ if (-not $Silent) {
         }
 
         # 7. License Key
-        $inputLic = Read-Host "7. Masukkan Kunci Lisensi (Kosongkan jika ingin registrasi baru)"
+        $licPrompt = "7. Masukkan Kunci Lisensi"
+        if ($existingLicense) { 
+            $licPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingLicense)" 
+        } else {
+            $licPrompt += " (Kosongkan jika ingin registrasi baru)"
+        }
+        $inputLic = Read-Host $licPrompt
         if (-not [string]::IsNullOrWhiteSpace($inputLic)) { 
             $licenseKey = $inputLic.Trim() 
         } else { 
-            $licenseKey = "" 
-            $requestNew = Read-Host "Belum punya lisensi? Ingin registrasi sekarang? [y/N]"
-            if ($requestNew -eq 'y' -or $requestNew -eq 'Y') {
-                $schoolName = Read-Host "Masukkan Nama Sekolah / Instansi"
-                if ([string]::IsNullOrWhiteSpace($schoolName)) {
-                    Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
-                } else {
-                    Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
-                    try {
-                        $machineId = "server-$([guid]::NewGuid().ToString().Substring(0,8))" # Fallback machine ID for script
-                        $body = @{
-                            school_name = $schoolName
-                            product_id = "platform-absenta"
-                            device_limit = 9999
-                            plan_id = "absenta_on_premise"
-                            payment_method = "manual"
-                        } | ConvertTo-Json
-                        
-                        $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
-                        if ($resp.success) {
-                            $licenseKey = $resp.data.license_key
-                            Write-Host "----------------------------------------------------------" -ForegroundColor Green
-                            Write-Host " REGISTRASI BERHASIL!" -ForegroundColor Green -Bold
-                            Write-Host " Kunci Lisensi Anda: $licenseKey" -ForegroundColor Yellow
-                            Write-Host " Status: Menunggu Persetujuan Admin (Pending Approval)"
-                            Write-Host "----------------------------------------------------------" -ForegroundColor Green
-                            Write-Host "Silakan teruskan proses deploy ini, lalu hubungi owner untuk aktivasi."
-                            Read-Host "Tekan [ENTER] untuk melanjutkan..."
+            if ($existingLicense) {
+                $licenseKey = $existingLicense
+            } else {
+                $licenseKey = "" 
+                $requestNew = Read-Host "Belum punya lisensi? Ingin registrasi sekarang? [y/N]"
+                if ($requestNew -eq 'y' -or $requestNew -eq 'Y') {
+                    $schoolName = Read-Host "Masukkan Nama Sekolah / Instansi"
+                    if ([string]::IsNullOrWhiteSpace($schoolName)) {
+                        Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
+                    } else {
+                        Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
+                        try {
+                            $machineId = "server-$([guid]::NewGuid().ToString().Substring(0,8))" # Fallback machine ID for script
+                            $body = @{
+                                school_name = $schoolName
+                                product_id = "platform-absenta"
+                                device_limit = 9999
+                                plan_id = "absenta_on_premise"
+                                payment_method = "manual"
+                            } | ConvertTo-Json
+                            
+                            $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
+                            if ($resp.success) {
+                                $licenseKey = $resp.data.license_key
+                                Write-Host "----------------------------------------------------------" -ForegroundColor Green
+                                Write-Host " REGISTRASI BERHASIL!" -ForegroundColor Green -Bold
+                                Write-Host " Kunci Lisensi Anda: $licenseKey" -ForegroundColor Yellow
+                                Write-Host " Status: Menunggu Persetujuan Admin (Pending Approval)"
+                                Write-Host "----------------------------------------------------------" -ForegroundColor Green
+                                Write-Host "Silakan teruskan proses deploy ini, lalu hubungi owner untuk aktivasi."
+                                Read-Host "Tekan [ENTER] untuk melanjutkan..."
+                            }
+                        } catch {
+                            Write-Host "Gagal melakukan registrasi otomatis: $($_.Exception.Message)" -ForegroundColor Red
+                            Read-Host "Tekan [ENTER] untuk lanjut deploy tanpa lisensi..."
                         }
-                    } catch {
-                        Write-Host "Gagal melakukan registrasi otomatis: $($_.Exception.Message)" -ForegroundColor Red
-                        Read-Host "Tekan [ENTER] untuk lanjut deploy tanpa lisensi..."
                     }
                 }
             }
@@ -449,10 +481,12 @@ foreach ($line in $backendEnv) {
     elseif ($line -match "^FRONTEND_URL=") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
     elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
     elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+    elseif ($line -match "^CLOUDFLARE_API_TOKEN=") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
     else { $newBackendEnv += $line }
 }
 # Pastikan variabel kritikal tertulis jika tidak ada di example
 if ($newBackendEnv -notmatch "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+if ($newBackendEnv -notmatch "^CLOUDFLARE_API_TOKEN=") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
 if ($newBackendEnv -notmatch "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$finalDomain" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
