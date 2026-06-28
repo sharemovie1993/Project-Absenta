@@ -11,7 +11,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, Plus, Edit2, Trash2, Trophy } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Trophy, X } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -337,10 +337,33 @@ export const PrestasiSection: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
-              {selectedId ? (
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
-                  <div className="font-bold text-xs">{selectedSiswa?.nama_siswa}</div>
-                  <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{selectedSiswa?.nis}</div>
+              {selectedSiswa ? (
+                <div className="flex items-center justify-between p-3.5 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0 text-xs">
+                      {selectedSiswa.nama_siswa?.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 dark:text-white text-xs">{selectedSiswa.nama_siswa}</div>
+                      <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                        {selectedSiswa.Kelas?.nama_kelas || 'Kelas -'} • NIS. {selectedSiswa.nis || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  {!selectedId && (
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => {
+                        setSelectedSiswa(null);
+                        setFormData(prev => ({ ...prev, siswa_id: '' }));
+                      }}
+                      className="w-7 h-7 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center"
+                    >
+                      <X size={14} />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-xl" />}>
