@@ -47,26 +47,35 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
         setSelectedPrintType,
         selectedClassId,
         setSelectedClassId,
+        selectedGuruId,
+        setSelectedGuruId,
         includeSchoolLogo,
         setIncludeSchoolLogo,
         classes,
-        loadingClasses
+        loadingClasses,
+        gurus,
+        loadingGurus
       }) => (
         <CetakFormGeneric
           selectedPrintType={selectedPrintType}
           setSelectedPrintType={setSelectedPrintType}
           selectedClassId={selectedClassId}
           setSelectedClassId={setSelectedClassId}
+          selectedGuruId={selectedGuruId}
+          setSelectedGuruId={setSelectedGuruId}
           includeSchoolLogo={includeSchoolLogo}
           setIncludeSchoolLogo={setIncludeSchoolLogo}
           classes={classes}
           loadingClasses={loadingClasses}
+          gurus={gurus}
+          loadingGurus={loadingGurus}
           docOptions={docOptions}
         />
       )}
       pdfGenerator={async ({
         selectedPrintType,
         selectedClassId,
+        selectedGuruId,
         sekolah,
         tenantInfo,
         strukturList,
@@ -80,6 +89,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           try {
             const res = await getJadwalTemplate({
               kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
+              guru_id: selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined,
               tahun_pelajaran_id: checklistData?.current_year?.id,
               semester_id: checklistData?.current_semester?.id
             });
@@ -95,6 +105,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           module: 'kurikulum',
           printType: selectedPrintType,
           selectedClassId,
+          selectedGuruId: selectedGuruId || 'all',
           sekolah,
           tenantInfo,
           strukturList,

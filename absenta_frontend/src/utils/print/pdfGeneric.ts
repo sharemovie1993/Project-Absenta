@@ -14,6 +14,7 @@ export interface GenerateGenericPdfOptions {
   logoDaerahBase64: string | null;
   logoSekolahBase64: string | null;
   includeSchoolLogo: boolean;
+  selectedGuruId?: string;
   filterData?: Record<string, any>;
 }
 
@@ -110,6 +111,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     logoDaerahBase64,
     logoSekolahBase64,
     includeSchoolLogo,
+    selectedGuruId,
     filterData
   } = options;
 

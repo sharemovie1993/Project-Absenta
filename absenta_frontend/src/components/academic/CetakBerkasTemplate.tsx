@@ -25,7 +25,8 @@ import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/str
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
 import { kelasApi } from '../../api/academic.api';
-import type { Kelas } from '../../types/academic';
+import { getGuruList } from '../../api/academic/guru.api';
+import type { Kelas, Guru } from '../../types/academic';
 import toast from 'react-hot-toast';
 
 interface CetakBerkasTemplateProps {
@@ -44,14 +45,19 @@ interface CetakBerkasTemplateProps {
     setSelectedPrintType: (val: string) => void;
     selectedClassId: string;
     setSelectedClassId: (val: string) => void;
+    selectedGuruId?: string;
+    setSelectedGuruId?: (val: string) => void;
     includeSchoolLogo: boolean;
     setIncludeSchoolLogo: (val: boolean) => void;
     classes: Kelas[];
     loadingClasses: boolean;
+    gurus?: Guru[];
+    loadingGurus?: boolean;
   }) => React.ReactNode;
   pdfGenerator: (params: {
     selectedPrintType: string;
     selectedClassId: string;
+    selectedGuruId?: string;
     classes: Kelas[];
     sekolah: Sekolah | null;
     tenantInfo: Tenant | null;
@@ -82,11 +88,14 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   // Filter & selections
   const [selectedPrintType, setSelectedPrintType] = useState<string>(defaultPrintType);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 
   // Common metadata
   const [classes, setClasses] = useState<Kelas[]>([]);
   const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
+  const [gurus, setGurus] = useState<Guru[]>([]);
+  const [loadingGurus, setLoadingGurus] = useState<boolean>(false);
   const [sekolah, setSekolah] = useState<Sekolah | null>(null);
   const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
   const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
@@ -180,9 +189,27 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     }
   }, []);
 
+  const loadGurus = useCallback(async () => {
+    try {
+      setLoadingGurus(true);
+      const res = await getGuruList(1, 200);
+      const activeGurus = (res.data || []);
+      setGurus(activeGurus);
+      if (activeGurus.length > 0) {
+        setSelectedGuruId(activeGurus[0].id);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memuat daftar guru');
+    } finally {
+      setLoadingGurus(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadClasses();
-  }, [loadClasses]);
+    loadGurus();
+  }, [loadClasses, loadGurus]);
 
   // Load Checklist System Data
   const loadChecklist = useCallback(async () => {
@@ -213,6 +240,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
       const blob = await pdfGenerator({
         selectedPrintType,
         selectedClassId,
+        selectedGuruId,
         classes,
         sekolah,
         tenantInfo,
@@ -237,6 +265,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
     activeTab,
     selectedPrintType,
     selectedClassId,
+    selectedGuruId,
     classes,
     sekolah,
     tenantInfo,
@@ -249,10 +278,10 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   ]);
 
   useEffect(() => {
-    if (activeTab === 'print' && classes.length > 0) {
+    if (activeTab === 'print' && (classes.length > 0 || gurus.length > 0)) {
       generatePreview();
     }
-  }, [activeTab, selectedPrintType, selectedClassId, includeSchoolLogo, classes, generatePreview]);
+  }, [activeTab, selectedPrintType, selectedClassId, selectedGuruId, includeSchoolLogo, classes, gurus, generatePreview]);
 
   // Handlers
   const handlePrint = () => {
@@ -457,10 +486,14 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
                     setSelectedPrintType,
                     selectedClassId,
                     setSelectedClassId,
+                    selectedGuruId,
+                    setSelectedGuruId,
                     includeSchoolLogo,
                     setIncludeSchoolLogo,
                     classes,
-                    loadingClasses
+                    loadingClasses,
+                    gurus,
+                    loadingGurus
                   })}
 
                   {/* Action Buttons */}
