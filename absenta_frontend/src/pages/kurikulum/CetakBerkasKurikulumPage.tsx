@@ -2,6 +2,7 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormGeneric, type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { getJadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
 
 export const CetakBerkasKurikulumPage: React.FC = () => {
   const docOptions: DocOption[] = [
@@ -67,8 +68,25 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
         strukturList,
         logoDaerahBase64,
         logoSekolahBase64,
-        includeSchoolLogo
+        includeSchoolLogo,
+        checklistData
       }) => {
+        let jadwalList = [];
+        if (selectedPrintType === 'roster') {
+          try {
+            const res = await getJadwalTemplate({
+              kelas_id: selectedClassId === 'all' ? undefined : selectedClassId,
+              tahun_pelajaran_id: checklistData?.current_year?.id,
+              semester_id: checklistData?.current_semester?.id
+            });
+            if (res.success && res.data) {
+              jadwalList = res.data;
+            }
+          } catch (e) {
+            console.error('Gagal mengambil jadwal pelajaran:', e);
+          }
+        }
+
         return generateGenericPdf({
           module: 'kurikulum',
           printType: selectedPrintType,
@@ -78,7 +96,8 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           strukturList,
           logoDaerahBase64,
           logoSekolahBase64,
-          includeSchoolLogo
+          includeSchoolLogo,
+          filterData: { jadwalList }
         });
       }}
     />
