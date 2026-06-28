@@ -15,6 +15,25 @@ interface KelasTreeDiagramProps {
   activeTahunPelajaran?: string;
 }
 
+const toRoman = (num: number): string => {
+  const lookup: Array<[string, number]> = [
+    ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+    ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+    ['X', 10], ['IX', 9], ['VIII', 8], ['VII', 7],
+    ['VI', 6], ['V', 5], ['IV', 4], ['III', 3],
+    ['II', 2], ['I', 1]
+  ];
+  let res = '';
+  let val = num;
+  for (const [roman, limit] of lookup) {
+    while (val >= limit) {
+      res += roman;
+      val -= limit;
+    }
+  }
+  return res || String(num);
+};
+
 const getTingkatTheme = (tingkatNum: number) => {
   switch (tingkatNum) {
     case 10:
@@ -138,9 +157,10 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
                 {(() => {
                   const activeListCount = list.filter(k => k.is_active).length;
                   return (
-                    <div className={cn("text-white py-3 px-8 rounded-2xl shadow-lg border border-transparent font-black tracking-wider text-center mb-6 min-w-[180px]", theme.boxBg)}>
-                      <h4 className="text-xs uppercase font-extrabold font-sans">
-                        TINGKAT {tingkat === 10 ? 'X' : tingkat === 11 ? 'XI' : tingkat === 12 ? 'XII' : tingkat} ({activeListCount} Rombel)
+                    <div className={cn("text-white py-2.5 px-6 rounded-2xl shadow-lg border border-transparent font-black tracking-wider text-center mb-6 min-w-[160px]", theme.boxBg)}>
+                      <h4 className="text-xs uppercase font-extrabold font-sans flex flex-col items-center leading-tight">
+                        <span className="mb-0.5">TINGKAT {toRoman(tingkat)}</span>
+                        <span className="text-[10px] opacity-90 font-bold">({activeListCount} ROMBEL)</span>
                       </h4>
                     </div>
                   );

@@ -34,53 +34,21 @@ export class AcademicStatsService {
     const [
       totalJurusan,
       totalKelas,
-      totalKelas10,
-      totalKelas11,
-      totalKelas12,
       totalSiswa,
       totalGuru,
       totalMapel,
       totalSemester,
-      totalTahunPelajaran
+      totalTahunPelajaran,
+      activeKelasByTingkat
     ] = await Promise.all([
       // Total Jurusan
       prisma.jurusan.count({
         where: whereClause
       }),
       
-      // Total Kelas (only active)
+      // Total Kelas (all classes in database)
       prisma.kelas.count({
-        where: {
-          ...kelasWhereClause,
-          is_active: true
-        }
-      }),
-
-      // Active Kelas Tingkat 10
-      prisma.kelas.count({
-        where: {
-          ...kelasWhereClause,
-          tingkat: 10,
-          is_active: true
-        }
-      }),
-
-      // Active Kelas Tingkat 11
-      prisma.kelas.count({
-        where: {
-          ...kelasWhereClause,
-          tingkat: 11,
-          is_active: true
-        }
-      }),
-
-      // Active Kelas Tingkat 12
-      prisma.kelas.count({
-        where: {
-          ...kelasWhereClause,
-          tingkat: 12,
-          is_active: true
-        }
+        where: kelasWhereClause
       }),
       
       // Total Siswa (only active students)
@@ -109,6 +77,18 @@ export class AcademicStatsService {
       // Total Tahun Pelajaran
       prisma.tahunPelajaran.count({
         where: whereClause
+      }),
+
+      // Count active classes grouped by tingkat dynamically
+      prisma.kelas.groupBy({
+        by: ['tingkat'],
+        where: {
+          ...kelasWhereClause,
+          is_active: true
+        },
+        _count: {
+          id: true
+        }
       })
     ]);
 
@@ -125,16 +105,17 @@ export class AcademicStatsService {
     return {
       total_jurusan: totalJurusan,
       total_kelas: totalKelas,
-      total_kelas_10: totalKelas10,
-      total_kelas_11: totalKelas11,
-      total_kelas_12: totalKelas12,
       total_siswa: totalSiswa,
       total_guru: totalGuru,
       total_mapel: totalMapel,
       total_semester: totalSemester,
       total_tahun_pelajaran: totalTahunPelajaran,
       tahun_pelajaran: activeTahunPelajaran,
-      semester: activeSemester
+      semester: activeSemester,
+      active_kelas_by_tingkat: activeKelasByTingkat.map(item => ({
+        tingkat: item.tingkat,
+        count: item._count.id
+      }))
     };
   }
 }

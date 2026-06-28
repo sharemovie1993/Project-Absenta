@@ -18,6 +18,7 @@ import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file
 import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { jurusanApi, guruApi } from '../../api/academic.api';
+import { cn } from '../../lib/utils';
 
 const KelasForm = lazy(() => import('../../components/academic/kelas/KelasForm').then(m => ({ default: m.KelasForm })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(m => ({ default: m.ExcelImportModal })));
@@ -73,9 +74,7 @@ export const KelasPage: React.FC = () => {
       value: stats?.total_kelas || 0,
       icon: <School size={14} />,
       gradient: "from-blue-500 to-cyan-600",
-      subtitle: stats 
-        ? `Kelas Aktif — X: ${stats.total_kelas_10 || 0} | XI: ${stats.total_kelas_11 || 0} | XII: ${stats.total_kelas_12 || 0}`
-        : "Rombongan belajar aktif"
+      subtitle: "Total semua kelas terdaftar"
     },
     {
       title: "Total Siswa",
@@ -86,6 +85,12 @@ export const KelasPage: React.FC = () => {
       onClick: () => navigate('/academic/siswa')
     }
   ], [stats, navigate]);
+
+  const sortedTingkatStats = useMemo(() => {
+    return (stats?.active_kelas_by_tingkat || [])
+      .slice()
+      .sort((a, b) => a.tingkat - b.tingkat);
+  }, [stats]);
 
   const handleCreateKelas = useCallback((tingkat?: number) => setModalState({ mode: 'create', isOpen: true, initialTingkat: tingkat }), []);
   const handleEditKelas = useCallback((k: Kelas) => setModalState({ mode: 'edit', kelasId: k.id, isOpen: true }), []);
@@ -195,6 +200,33 @@ export const KelasPage: React.FC = () => {
       hardeningModuleKey="academic_kelas"
     >
       <div className="space-y-6">
+        {/* Mini Analytics Cards for Active Classes by Grade (Dynamic) */}
+        {sortedTingkatStats.length > 0 && (
+          <div className="flex flex-wrap gap-3 p-1">
+            {sortedTingkatStats.map((item) => (
+              <div 
+                key={item.tingkat}
+                className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl px-4 py-3 shadow-[0_2px_12px_-3px_rgba(0,0,0,0.03)] flex items-center gap-3 min-w-[140px] flex-1 sm:flex-initial hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-300"
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-md",
+                  item.tingkat % 3 === 1 ? "bg-sky-500 shadow-sky-500/20" : item.tingkat % 3 === 2 ? "bg-violet-500 shadow-violet-500/20" : "bg-rose-500 shadow-rose-500/20"
+                )}>
+                  {item.tingkat}
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">
+                    Tingkat {item.tingkat}
+                  </p>
+                  <p className="text-xs font-black text-slate-850 dark:text-slate-100 leading-none">
+                    {item.count} Rombel Aktif
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <SectionCard
           title="Database Master Kelas"
           icon={School}

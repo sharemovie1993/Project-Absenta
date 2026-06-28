@@ -3,9 +3,7 @@ import { requestWithFallback } from './apiUtils';
 export interface AcademicStats {
   total_jurusan: number;
   total_kelas: number;
-  total_kelas_10?: number;
-  total_kelas_11?: number;
-  total_kelas_12?: number;
+  active_kelas_by_tingkat?: { tingkat: number; count: number }[];
   total_siswa: number;
   total_guru: number;
   total_mapel: number;
