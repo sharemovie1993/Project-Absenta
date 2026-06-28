@@ -59,6 +59,7 @@ interface CetakBerkasTemplateProps {
     selectedClassId: string;
     selectedGuruId?: string;
     classes: Kelas[];
+    gurus?: Guru[];
     sekolah: Sekolah | null;
     tenantInfo: Tenant | null;
     strukturList: StrukturOrganisasi[];
@@ -242,6 +243,7 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
         selectedClassId,
         selectedGuruId,
         classes,
+        gurus,
         sekolah,
         tenantInfo,
         strukturList,

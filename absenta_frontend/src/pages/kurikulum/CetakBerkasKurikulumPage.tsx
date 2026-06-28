@@ -76,6 +76,8 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
         selectedPrintType,
         selectedClassId,
         selectedGuruId,
+        classes,
+        gurus,
         sekolah,
         tenantInfo,
         strukturList,
@@ -112,7 +114,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
           logoDaerahBase64,
           logoSekolahBase64,
           includeSchoolLogo,
-          filterData: { jadwalList }
+          filterData: { jadwalList, classes, gurus }
         });
       }}
     />

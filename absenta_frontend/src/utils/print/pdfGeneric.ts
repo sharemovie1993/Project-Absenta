@@ -236,14 +236,19 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
   if (module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType)) {
     const jadwalList = (filterData?.jadwalList || []) as any[];
 
-    // Group schedules
     const groups = new Map<string, any[]>();
     if (printType === 'roster_teacher') {
-      jadwalList.forEach(j => {
-        const name = j.Guru?.User?.full_name || 'Guru Tanpa Nama';
-        if (!groups.has(name)) groups.set(name, []);
-        groups.get(name)!.push(j);
-      });
+      if (selectedGuruId === 'all') {
+        jadwalList.forEach(j => {
+          const name = j.Guru?.User?.full_name || 'Guru Tanpa Nama';
+          if (!groups.has(name)) groups.set(name, []);
+          groups.get(name)!.push(j);
+        });
+      } else {
+        const g = (filterData?.gurus as any[])?.find(x => x.id === selectedGuruId);
+        const name = g?.nama_guru || 'Guru';
+        groups.set(name, jadwalList);
+      }
     } else {
       if (selectedClassId === 'all') {
         jadwalList.forEach(j => {
@@ -252,8 +257,8 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
           groups.get(name)!.push(j);
         });
       } else {
-        const matchingJadwal = jadwalList.find(j => j.kelas_id === selectedClassId);
-        const name = matchingJadwal?.Kelas?.nama_kelas || 'Kelas';
+        const cls = (filterData?.classes as any[])?.find(c => c.id === selectedClassId);
+        const name = cls?.nama_kelas || 'Kelas';
         groups.set(name, jadwalList);
       }
     }
