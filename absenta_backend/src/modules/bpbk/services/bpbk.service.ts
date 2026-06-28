@@ -282,7 +282,8 @@ export class BpbkService {
           message,
           tenantId,
           relatedId: summonsId,
-          event: 'SUMMONS_DELIVERED'
+          event: 'SUMMONS_DELIVERED',
+          force: true
         });
         console.log(`[BK Parent WA] Sent WhatsApp notification to Parent (${noHp}) for summons ${summonsId}`);
       }
