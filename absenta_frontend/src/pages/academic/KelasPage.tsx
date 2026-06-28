@@ -32,6 +32,25 @@ interface ModalState {
   initialTingkat?: number;
 }
 
+const toRoman = (num: number): string => {
+  const lookup: Array<[string, number]> = [
+    ['M', 1000], ['CM', 900], ['D', 500], ['CD', 400],
+    ['C', 100], ['XC', 90], ['L', 50], ['XL', 40],
+    ['X', 10], ['IX', 9], ['VIII', 8], ['VII', 7],
+    ['VI', 6], ['V', 5], ['IV', 4], ['III', 3],
+    ['II', 2], ['I', 1]
+  ];
+  let res = '';
+  let val = num;
+  for (const [roman, limit] of lookup) {
+    while (val >= limit) {
+      res += roman;
+      val -= limit;
+    }
+  }
+  return res || String(num);
+};
+
 export const KelasPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
 
@@ -83,14 +102,15 @@ export const KelasPage: React.FC = () => {
       subtitle: "Total semua kelas terdaftar"
     },
     {
-      title: "Kelas Aktif",
+      title: "Jumlah Rombel",
+      value: sortedTingkatStats.length === 0 ? "Tidak ada rombel aktif" : undefined,
       subCards: sortedTingkatStats.map((item) => ({
-        label: `Tingkat ${item.tingkat}`,
+        label: `Tingkat ${toRoman(item.tingkat)}`,
         value: `${item.count} Rombel`
       })),
       icon: <School size={14} />,
       gradient: "from-indigo-500 to-purple-600",
-      subtitle: "Rincian kelas aktif per tingkat"
+      subtitle: "Rincian rombel aktif per tingkat"
     },
     {
       title: "Total Siswa",
