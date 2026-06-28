@@ -59,9 +59,9 @@ export const generateAcademicPdf = async (options: GeneratePdfOptions): Promise<
   // Helper values for principal
   const principalAssign = strukturList?.find(s => s.kode === 'KEPALA_SEKOLAH');
   const principalGuru = principalAssign?.organizationalAssigns?.[0]?.User?.Guru;
-  const principalName = principalGuru?.nama_guru || sekolah?.kepala_sekolah || 'DRS. H. CONTOH KEPSEK, M.Pd.';
+  const principalName = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || principalGuru?.nama_guru || 'DRS. H. CONTOH KEPSEK, M.Pd.';
   
-  let principalNip = principalGuru?.nip || sekolah?.nip_kepala || '19720512 199803 1 002';
+  let principalNip = sekolah?.nip_kepala || tenantInfo?.nip_kepala || principalGuru?.nip || '19720512 199803 1 002';
   if (principalNip && !principalNip.startsWith('NIP')) {
     principalNip = `NIP. ${principalNip}`;
   }
