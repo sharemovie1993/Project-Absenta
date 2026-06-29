@@ -517,9 +517,9 @@ foreach ($line in $backendEnv) {
     else { $newBackendEnv += $line }
 }
 # Pastikan variabel kritikal tertulis jika tidak ada di example
-if ($newBackendEnv -notmatch "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
-if ($newBackendEnv -notmatch "^CLOUDFLARE_API_TOKEN=") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
-if ($newBackendEnv -notmatch "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$finalDomain" }
+if (-not ($newBackendEnv -match "^LICENSE_KEY=")) { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+if (-not ($newBackendEnv -match "^CLOUDFLARE_API_TOKEN=")) { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
+if (-not ($newBackendEnv -match "^MAIN_DOMAIN=")) { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
@@ -531,9 +531,9 @@ $proxyTargetFound = $false
 
 foreach ($line in $frontendEnv) {
     if ($line -match "^VITE_API_BASE_URL=") { 
-        # Hybrid scenario: Always use public domain if provided
+        # Hybrid/SaaS scenario: Use relative path '/api' to prevent CORS issues and support dynamic subdomains
         if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
-            $newFrontendEnv += "VITE_API_BASE_URL=${finalScheme}://$finalDomain/api"
+            $newFrontendEnv += "VITE_API_BASE_URL=/api"
         } 
         # Pure Local scenario: Use IP/Localhost + Port
         else {
