@@ -217,7 +217,7 @@ export const easyTunnelController = {
         hostname: os.hostname(),
         uptime: os.uptime(),
         wg_installed: WireguardManager.isWireGuardInstalled(),
-        tunnel_base_domain: process.env.EASY_TUNNEL_BASE_DOMAIN || 'tefatjkt.net'
+        tunnel_base_domain: process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id'
       };
       return reply.send({ success: true, data: info });
     } catch (err: any) {
