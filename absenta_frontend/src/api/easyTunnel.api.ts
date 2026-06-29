@@ -23,6 +23,7 @@ export interface SystemInfo {
   hostname: string;
   uptime: number;
   wg_installed: boolean;
+  tunnel_base_domain?: string;
 }
 
 export const easyTunnelApi = {

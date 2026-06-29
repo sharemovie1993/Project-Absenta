@@ -408,7 +408,7 @@ export default function EasyTunnelPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-gray-900 dark:text-white">{t.app_name}</h3>
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{t.slug}.tefatjkt.net</p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{t.slug}.{systemInfo?.tunnel_base_domain || 'tefatjkt.net'}</p>
                 </div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                   t.status === 'active' 
@@ -521,7 +521,7 @@ export default function EasyTunnelPage() {
                     value={subdomainSlug}
                     onChange={e => setSubdomainSlug(e.target.value)}
                   />
-                  <span className="px-3 bg-slate-100 dark:bg-slate-800 text-xs text-gray-500 font-mono">.tefatjkt.net</span>
+                  <span className="px-3 bg-slate-100 dark:bg-slate-800 text-xs text-gray-500 font-mono">.{systemInfo?.tunnel_base_domain || 'tefatjkt.net'}</span>
                 </div>
               </div>
 
