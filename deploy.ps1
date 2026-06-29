@@ -35,7 +35,8 @@ function Install-CaddyLocal {
         [string]$FPort,
         [string]$BPort,
         [string]$SSLEmail = "",
-        [string]$CFToken = ""
+        [string]$CFToken = "",
+        [string]$DeployScenario = "hybrid"
     )
     
     Show-Header "Setup Reverse Proxy Lokal (Caddy)"
@@ -141,8 +142,13 @@ function Install-CaddyLocal {
         $tlsConfig = "email $SSLEmail"
     }
 
+    $hosts = $Domain
+    if ($DeployScenario -eq "saas" -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
+        $hosts = "$Domain, *.$Domain"
+    }
+
     $caddyfileContent = @"
-$Domain {
+$hosts {
     # Forward API requests to Backend
     reverse_proxy /api/* localhost:$BPort
 
@@ -346,24 +352,46 @@ if (-not $Silent) {
         # 6. SSL Configuration
         $sslEmail = ""
         $cfToken = ""
-        if ($deployScenario -eq "hybrid") {
-            Write-Host "Opsi SSL Lokal (Hybrid):" -ForegroundColor Gray
-            Write-Host " 1. SSL Internal (Bawaan Caddy - Butu Trust Manual)"
-            Write-Host " 2. Cloudflare DNS Challenge (Sertifikat Resmi - Seamless di HP)"
-            $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
-            
-            if ($sslChoice -eq "2") {
-                $cfPrompt = "Masukkan Cloudflare API Token Anda"
-                if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
-                $inputCF = Read-Host $cfPrompt
-                if ([string]::IsNullOrWhiteSpace($inputCF)) {
-                    $cfToken = $existingCFToken
+        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
+            if ($deployScenario -eq "saas") {
+                Write-Host "Opsi SSL SaaS (Memerlukan Cloudflare DNS Challenge untuk Wildcard SSL):" -ForegroundColor Gray
+                Write-Host " 1. Cloudflare DNS Challenge (Sertifikat Resmi Wildcard - Rekomendasi)"
+                Write-Host " 2. SSL Let's Encrypt Standar (Hanya Domain Utama - Tanpa Subdomain)"
+                $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
+                
+                if ($sslChoice -eq "2") {
+                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt"
+                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
                 } else {
-                    $cfToken = $inputCF.Trim()
+                    # Cloudflare DNS Challenge
+                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
+                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
+                    $inputCF = Read-Host $cfPrompt
+                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
+                        $cfToken = $existingCFToken
+                    } else {
+                        $cfToken = $inputCF.Trim()
+                    }
                 }
             } else {
-                $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
-                if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+                Write-Host "Opsi SSL Lokal (Hybrid):" -ForegroundColor Gray
+                Write-Host " 1. SSL Internal (Bawaan Caddy - Butuh Trust Manual)"
+                Write-Host " 2. Cloudflare DNS Challenge (Sertifikat Resmi - Seamless di HP)"
+                $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
+                
+                if ($sslChoice -eq "2") {
+                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
+                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
+                    $inputCF = Read-Host $cfPrompt
+                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
+                        $cfToken = $existingCFToken
+                    } else {
+                        $cfToken = $inputCF.Trim()
+                    }
+                } else {
+                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
+                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+                }
             }
         }
 
@@ -428,9 +456,13 @@ if (-not $Silent) {
         Write-Host " - Port Frontend  : $FrontendPort"
         Write-Host " - License Key    : $(if($licenseKey){$licenseKey}else{'Tidak Ada'})"
         Write-Host "-----------------------------" -ForegroundColor Yellow
-        if ($deployScenario -eq "hybrid") {
-            Write-Host " INFO: Frontend akan dikonfigurasi menggunakan domain VPS ($finalDomain)" -ForegroundColor Cyan
-            Write-Host "       Backend akan mengizinkan akses dari domain VPS DAN IP Lokal ($lanIp)" -ForegroundColor Cyan
+        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
+            if ($deployScenario -eq "hybrid") {
+                Write-Host " INFO: Frontend akan dikonfigurasi menggunakan domain VPS ($finalDomain)" -ForegroundColor Cyan
+                Write-Host "       Backend akan mengizinkan akses dari domain VPS DAN IP Lokal ($lanIp)" -ForegroundColor Cyan
+            } else {
+                Write-Host " INFO: Skenario SaaS terpusat. Caddy akan dikonfigurasi untuk melayani domain utama ($finalDomain) dan seluruh subdomain (*.$finalDomain)" -ForegroundColor Cyan
+            }
             $setupCaddy = Read-Host " Apakah Anda ingin memasang/update Reverse Proxy (Caddy) lokal? [Y/n]"
         }
         Write-Host ""
@@ -443,10 +475,10 @@ if (-not $Silent) {
 }
 
 # ----------------------------------------------------
-# LANGKAH Tambahan: Setup Caddy (Hybrid Only)
+# LANGKAH Tambahan: Setup Caddy (Hybrid/SaaS)
 # ----------------------------------------------------
-if ($deployScenario -eq "hybrid" -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
-    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken
+if (($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
+    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken -DeployScenario $deployScenario
 }
 
 # ----------------------------------------------------
