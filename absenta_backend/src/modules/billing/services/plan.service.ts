@@ -1,4 +1,5 @@
 import { prisma } from '@/utils/prisma';
+import axios from 'axios';
 
 export interface CreatePlanInput {
   name: string;
@@ -64,6 +65,47 @@ export class PlanService {
   }
 
   async getAllPlans(includeInactive: boolean = false): Promise<PlanResponse[]> {
+    try {
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        return response.data.data.map((plan: any) => {
+          let features = plan.features_json;
+          if (typeof features === 'string') {
+            try {
+              features = JSON.parse(features);
+            } catch (e) {
+              features = [];
+            }
+          }
+          return {
+            id: plan.id,
+            name: plan.name || plan.title,
+            price_monthly: plan.price_monthly || 0,
+            module_id: plan.module_id || null,
+            module: plan.module_id ? { id: plan.module_id, name: plan.module_id } : null,
+            max_user: plan.device_limit || null,
+            features_json: features || [],
+            description: plan.description ?? null,
+            price_yearly: plan.price_yearly ?? null,
+            trial_days: 0,
+            absensi_mode: plan.module_id === 'ABSENSI' ? 'SIMPLE' : undefined,
+            billing_period: plan.billing_period || 'MONTH',
+            currency: 'IDR',
+            is_active: true,
+            size_label: plan.size_label || 'Standard',
+            tier: plan.size_label || 'Standard',
+            metadata: null,
+            created_at: new Date(plan.created_at || Date.now()),
+            updated_at: new Date(plan.updated_at || Date.now()),
+            _count: { subscriptions: 0 }
+          };
+        });
+      }
+    } catch (err) {
+      console.error('[PLAN SERVICE] Failed to fetch plans from Licensing Server, falling back to local database', err);
+    }
+
     const whereClause: any = {};
     
     if (!includeInactive) {
