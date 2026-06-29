@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { easyTunnelApi, Tunnel, SystemInfo } from '../../api/easyTunnel.api';
 import { requestWithFallback } from '../../api/apiUtils';
+import useConfirm from '../../hooks/useConfirm';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/Toast';
 
 type FilterStatus = 'all' | 'connected' | 'disconnected' | 'expired';
 
@@ -47,6 +50,9 @@ const resolveSmartSlug = (tenant: any): string => {
 };
 
 export default function EasyTunnelPage() {
+  const confirm = useConfirm();
+  const { toasts, error: showErrorToast, success: showSuccessToast, removeToast } = useToast();
+
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,10 +168,10 @@ export default function EasyTunnelPage() {
     setActionLoading(prev => ({ ...prev, install: 'installing' }));
     try {
       const res = await easyTunnelApi.installWireguard();
-      alert(res.message || 'Proses instalasi selesai.');
+      showSuccessToast(res.message || 'Proses instalasi selesai.');
       loadData();
     } catch (err: any) {
-      alert('Gagal menginstal WireGuard: ' + err.message);
+      showErrorToast('Gagal menginstal WireGuard: ' + err.message);
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -177,24 +183,31 @@ export default function EasyTunnelPage() {
 
   const handleTunnelAction = async (id: string, action: 'start' | 'stop' | 'delete') => {
     if (action === 'delete') {
-      if (!window.confirm('Apakah Anda yakin ingin menghapus tunnel ini secara permanen dari server lokal?')) return;
+      const isConfirmed = await confirm({
+        title: 'Hapus Tunnel',
+        description: 'Apakah Anda yakin ingin menghapus tunnel ini secara permanen dari server lokal?',
+        confirmText: 'Ya, Hapus',
+        cancelText: 'Batal',
+        style: 'danger'
+      });
+      if (!isConfirmed) return;
     }
 
     setActionLoading(prev => ({ ...prev, [id]: action }));
     try {
       if (action === 'start') {
         const res = await easyTunnelApi.start(id);
-        alert(res.message);
+        showSuccessToast(res.message || 'Tunnel berhasil diaktifkan');
       } else if (action === 'stop') {
         const res = await easyTunnelApi.stop(id);
-        alert(res.message);
+        showSuccessToast(res.message || 'Tunnel berhasil dinonaktifkan');
       } else {
         const res = await easyTunnelApi.remove(id);
-        alert(res.message);
+        showSuccessToast(res.message || 'Tunnel berhasil dihapus');
       }
       loadData();
     } catch (err: any) {
-      alert(`Gagal ${action} tunnel: ${err.message}`);
+      showErrorToast(`Gagal melakukan aksi ${action}: ${err.message}`);
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -211,10 +224,10 @@ export default function EasyTunnelPage() {
       if (res.success && res.data.details) {
         alert(`🔍 HASIL DIAGNOSA KONEKSI:\n\n${res.data.details.join('\n')}`);
       } else {
-        alert('Gagal mendiagnosa koneksi.');
+        showErrorToast('Gagal mendiagnosa koneksi.');
       }
     } catch (err: any) {
-      alert('Gagal mendiagnosa koneksi: ' + err.message);
+      showErrorToast('Gagal mendiagnosa koneksi: ' + err.message);
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -236,7 +249,7 @@ export default function EasyTunnelPage() {
         app_name: appName
       });
       if (res.success) {
-        alert(res.message || 'Tunnel berhasil dikonfigurasi!');
+        showSuccessToast(res.message || 'Tunnel berhasil dikonfigurasi!');
         setShowSetupModal(false);
         setLicenseKey('');
         setSubdomainSlug('');
@@ -267,7 +280,7 @@ export default function EasyTunnelPage() {
         app_name: editAppName
       });
       if (res.success) {
-        alert(res.message || 'Konfigurasi berhasil diperbarui!');
+        showSuccessToast(res.message || 'Konfigurasi berhasil diperbarui!');
         setShowEditModal(false);
         loadData();
       }
@@ -949,14 +962,14 @@ export default function EasyTunnelPage() {
                       try {
                         const status = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
                         if (status.paid) {
-                          alert(`Pembayaran Sukses!\nLisensi Anda: ${status.license_key}`);
+                          showSuccessToast(`Pembayaran Sukses! Lisensi Anda: ${status.license_key}`);
                           setLicenseKey(status.license_key);
                           setOrderStep(3);
                         } else {
-                          alert('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
+                          showErrorToast('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
                         }
                       } catch (err: any) {
-                        alert('Gagal mengecek status: ' + err.message);
+                        showErrorToast('Gagal mengecek status: ' + err.message);
                       } finally {
                         setOrderLoading(false);
                       }
@@ -995,11 +1008,11 @@ export default function EasyTunnelPage() {
                         local_port: localPort,
                         app_name: appName
                       });
-                      alert(setupRes.message || 'Tunnel berhasil dipasang!');
+                      showSuccessToast(setupRes.message || 'Tunnel berhasil dipasang!');
                       setShowOrderModal(false);
                       loadData();
                     } catch (err: any) {
-                      alert('Gagal memasang tunnel otomatis: ' + err.message);
+                      showErrorToast('Gagal memasang tunnel otomatis: ' + err.message);
                       setShowOrderModal(false);
                       setShowSetupModal(true); // fallback ke manual
                     } finally {
@@ -1014,6 +1027,9 @@ export default function EasyTunnelPage() {
           </div>
         </div>
       )}
+      
+      {/* Toast notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
