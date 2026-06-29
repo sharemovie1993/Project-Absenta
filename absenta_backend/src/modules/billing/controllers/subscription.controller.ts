@@ -41,6 +41,108 @@ async function waitForInvoiceIdByBillingId(billingId: string, timeoutMs: number)
   return null;
 }
 
+async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Promise<void> {
+  try {
+    const licenseKey = process.env.LICENSE_KEY;
+    if (!licenseKey) return;
+
+    const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+    const axios = require('axios');
+    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}`, { timeout: 8000 });
+    if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      const remoteSubs = response.data.data;
+
+      // Get all pricing plans from server to resolve module_id and specifications
+      const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
+      const remotePlans = (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) ? plansResponse.data.data : [];
+
+      for (const rSub of remoteSubs) {
+        // Find matching plan from remote plans
+        const planData = remotePlans.find((p: any) => p.id === rSub.plan_id);
+        if (!planData) continue;
+
+        // Ensure Plan exists locally
+        let plan = await prisma.plan.findUnique({ where: { id: planData.id } });
+        const modId = planData.module_id || 'ABSENSI';
+        if (!plan) {
+          let features = planData.features_json;
+          if (typeof features === 'string') {
+            try { features = JSON.parse(features); } catch (e) { features = []; }
+          }
+          // Ensure Module exists locally
+          let localMod = await prisma.module.findUnique({ where: { id: modId } });
+          if (!localMod) {
+            localMod = await prisma.module.create({
+              data: { id: modId, name: modId, is_active: true }
+            });
+          }
+          plan = await prisma.plan.create({
+            data: {
+              id: planData.id,
+              code: planData.id,
+              service_code: planData.service_code || 'ABSENSI',
+              module_id: modId,
+              name: planData.name || planData.title,
+              price_monthly: planData.price_monthly || 0,
+              price_yearly: planData.price_yearly || 0,
+              max_user: planData.device_limit || null,
+              features_json: features || [],
+              description: planData.description || '',
+              billing_period: planData.billing_period || 'MONTH',
+              absensi_mode: planData.module_id === 'ABSENSI' ? (planData.name.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+              is_active: true,
+              is_public: true,
+              currency: 'IDR'
+            }
+          });
+        }
+
+        const localStatus = rSub.status === 'active' ? 'ACTIVE' : (rSub.status === 'expired' ? 'EXPIRED' : 'TRIAL');
+        const serviceCode = planData.service_code || 'ABSENSI';
+        
+        let localSub = await prisma.subscription.findFirst({
+          where: {
+            tenant_id: tenantId,
+            service_code: serviceCode,
+          }
+        });
+
+        const startDate = rSub.start_date ? new Date(rSub.start_date) : new Date();
+        const endDate = rSub.end_date ? new Date(rSub.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
+
+        if (localSub) {
+          await prisma.subscription.update({
+            where: { id: localSub.id },
+            data: {
+              plan_id: plan.id,
+              status: localStatus as any,
+              start_date: startDate,
+              end_date: endDate,
+              next_billing_date: endDate,
+            }
+          });
+        } else {
+          await prisma.subscription.create({
+            data: {
+              tenant_id: tenantId,
+              plan_id: plan.id,
+              service_code: serviceCode,
+              status: localStatus as any,
+              start_date: startDate,
+              end_date: endDate,
+              next_billing_date: endDate,
+              auto_renew: rSub.auto_renew === 1,
+            }
+          });
+        }
+      }
+    }
+  } catch (e: any) {
+    console.error('[SYNC SUBSCRIPTION] Failed to sync local subscriptions with licensing server:', e.message);
+  }
+}
+
+
 async function resolveSubscriptionForUpgrade(user: any, _planModules: string[], subscriptionId?: string, targetServiceCode?: string) {
   const roleName = user?.roleName;
   const tenantId = String(user?.tenant_id);
@@ -658,6 +760,13 @@ export const subscriptionController = {
       const user = request.user!;
       const tenantId = user.tenant_id!;
 
+      // Automatically sync subscriptions with licensing server
+      try {
+        await syncLocalSubscriptionsWithLicensingServer(tenantId);
+      } catch (err: any) {
+        console.error('[SYNC] getActiveSubscription sync error:', err.message);
+      }
+
       const subscription = await subscriptionService.getActiveSubscriptionByTenant(tenantId);
 
       if (!subscription) {
@@ -689,6 +798,13 @@ export const subscriptionController = {
     try {
       const user = request.user!;
       const tenantId = user.tenant_id!;
+
+      // Automatically sync subscriptions with licensing server
+      try {
+        await syncLocalSubscriptionsWithLicensingServer(tenantId);
+      } catch (err: any) {
+        console.error('[SYNC] getCurrentSubscription sync error:', err.message);
+      }
 
       const subscription = await subscriptionService.getCurrentSubscriptionByTenant(tenantId);
 
