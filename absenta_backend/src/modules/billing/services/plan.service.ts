@@ -69,6 +69,7 @@ export class PlanService {
       const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
       const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        const localModules = await prisma.module.findMany();
         return response.data.data.map((plan: any) => {
           let features = plan.features_json;
           if (typeof features === 'string') {
@@ -78,18 +79,20 @@ export class PlanService {
               features = [];
             }
           }
+          const localMod = localModules.find(m => m.id === plan.module_id || (plan.module_id === 'PAKET_LENGKAP' && m.id.startsWith('PAKET_LENGKAP')));
+          const planName = plan.name || plan.title || '';
           return {
             id: plan.id,
-            name: plan.name || plan.title,
+            name: planName,
             price_monthly: plan.price_monthly || 0,
             module_id: plan.module_id || null,
-            module: plan.module_id ? { id: plan.module_id, name: plan.module_id } : null,
+            module: localMod || (plan.module_id ? { id: plan.module_id, name: plan.module_id } : null),
             max_user: plan.device_limit || null,
             features_json: features || [],
             description: plan.description ?? null,
             price_yearly: plan.price_yearly ?? null,
             trial_days: 0,
-            absensi_mode: plan.module_id === 'ABSENSI' ? 'SIMPLE' : undefined,
+            absensi_mode: plan.module_id === 'ABSENSI' ? (planName.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
             billing_period: plan.billing_period || 'MONTH',
             currency: 'IDR',
             is_active: true,
