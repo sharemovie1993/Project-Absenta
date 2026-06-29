@@ -48,14 +48,32 @@ export class WireguardManager {
     }
   }
 
-  /** Auto-install WireGuard jika belum ada (Windows) */
+  /** Auto-install WireGuard jika belum ada (Windows & Linux) */
   static async installWireGuard(): Promise<{ success: boolean; message: string }> {
-    if (!this.isWindows()) {
-      return { success: false, message: 'Auto-install hanya tersedia di Windows. Install manual: sudo apt install wireguard' };
-    }
-
     if (this.isWireGuardInstalled()) {
       return { success: true, message: 'WireGuard sudah terinstall.' };
+    }
+
+    if (!this.isWindows()) {
+      // Jalankan instalasi otomatis pada Linux (Debian/Ubuntu)
+      return new Promise((resolve) => {
+        console.log('[WG] Installing WireGuard on Linux (apt-get)...');
+        exec(
+          'export DEBIAN_FRONTEND=noninteractive && sudo -n apt-get update -y && sudo -n apt-get install -y wireguard openresolv',
+          { timeout: 180000 },
+          (err) => {
+            if (err) {
+              console.error('[WG] Linux auto-install error:', err);
+              resolve({
+                success: false,
+                message: 'Gagal menginstal WireGuard secara otomatis. Silakan jalankan perintah ini manual di terminal server Anda: sudo apt-get update && sudo apt-get install -y wireguard. Error: ' + err.message
+              });
+              return;
+            }
+            resolve({ success: true, message: 'WireGuard (wg-quick) berhasil diinstal di Linux secara otomatis!' });
+          }
+        );
+      });
     }
 
     const tmpInstaller = path.join(os.tmpdir(), 'wireguard-installer.exe');
