@@ -3762,3 +3762,17 @@ model EwsSnapshot {
   @@index([snapshot_date])
 }
 
+model EasyTunnel {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  license_key String
+  local_port  Int
+  app_name    String
+  status      String    @default("disconnected") // connected, disconnected, error
+  expires_at  DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@map("easy_tunnels")
+}
+

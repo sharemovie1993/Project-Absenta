@@ -20,23 +20,24 @@ const SecuritySettingsForm = lazy(() => import('@/components/settings/SecuritySe
 const NotificationSettingsForm = lazy(() => import('@/components/settings/NotificationSettingsForm').then(m => ({ default: m.NotificationSettingsForm })));
 const AttendanceSettingsForm = lazy(() => import('@/components/settings/AttendanceSettingsForm').then(m => ({ default: m.AttendanceSettingsForm })));
 const ParentAppSettingsForm = lazy(() => import('@/components/settings/ParentAppSettingsForm').then(m => ({ default: m.ParentAppSettingsForm })));
+const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 
 const SettingsPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') || 'general').toLowerCase();
-  const [activeTab, setActiveTab] = useState(initialTab);
   const { user, isLoading, can } = useAuth();
+  const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
+  const isTenantAdmin = user?.role?.name === 'ADMIN' && !isSuperAdminUser;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') || (isTenantAdmin ? 'tenant_profile' : 'general')).toLowerCase();
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Sistem', path: '/settings' },
     { label: 'Pengaturan', path: '/settings' }
   ], []);
 
-  const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  const isTenantAdmin = user?.role?.name === 'ADMIN' && !isSuperAdminUser;
-
   const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.view'), [isSuperAdminUser, isTenantAdmin, can]);
-  const canEdit = useMemo(() => isSuperAdminUser || can('core.system.config.update'), [isSuperAdminUser, can]);
+  const canEdit = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.update'), [isSuperAdminUser, isTenantAdmin, can]);
 
   const [config, setConfig] = useState<SystemConfigPayload>({
     app_name: '',
@@ -192,16 +193,25 @@ const SettingsPage: React.FC = () => {
     setConfig(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const tabs = useMemo(() => [
-    { id: 'general', label: 'Umum' },
-    { id: 'branding', label: 'Branding' },
-    { id: 'payment', label: 'Pembayaran' },
-    { id: 'company', label: 'Perusahaan' },
-    { id: 'security', label: 'Keamanan' },
-    { id: 'notifications', label: 'Notifikasi' },
-    { id: 'attendance', label: 'Absensi' },
-    { id: 'parent_app', label: 'Parent App' },
-  ], []);
+  const tabs = useMemo(() => {
+    if (isTenantAdmin) {
+      return [
+        { id: 'tenant_profile', label: 'Profil Sekolah' },
+        { id: 'easy_tunnel', label: 'Akses Online' }
+      ];
+    }
+    return [
+      { id: 'general', label: 'Umum' },
+      { id: 'branding', label: 'Branding' },
+      { id: 'payment', label: 'Pembayaran' },
+      { id: 'company', label: 'Perusahaan' },
+      { id: 'security', label: 'Keamanan' },
+      { id: 'notifications', label: 'Notifikasi' },
+      { id: 'attendance', label: 'Absensi' },
+      { id: 'parent_app', label: 'Parent App' },
+      { id: 'easy_tunnel', label: 'Akses Online' },
+    ];
+  }, [isTenantAdmin]);
 
   const toolbar = useMemo(() => (
     <div className="flex items-center gap-2">
@@ -210,14 +220,14 @@ const SettingsPage: React.FC = () => {
           {saveMessage}
         </span>
       )}
-      {canEdit && !isTenantAdmin && (
+      {canEdit && !isTenantAdmin && activeTab !== 'easy_tunnel' && (
         <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
             Simpan Perubahan
         </Button>
       )}
     </div>
-  ), [saveMessage, canEdit, isTenantAdmin, handleSave, saving]);
+  ), [saveMessage, canEdit, isTenantAdmin, handleSave, saving, activeTab]);
 
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><Loader size="lg" /></div>;
 
@@ -232,20 +242,7 @@ const SettingsPage: React.FC = () => {
     );
   }
 
-  if (isTenantAdmin) {
-    return (
-      <AcademicPageLayout
-        title="Pengaturan Tenant"
-        description="Kelola pengaturan khusus tenant Anda."
-        hardeningModuleKey="settingspage"
-        breadcrumbs={breadcrumbs}
-      >
-        <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
-          <TenantSettings />
-        </Suspense>
-      </AcademicPageLayout>
-    );
-  }
+
 
   return (
     <AcademicPageLayout
@@ -298,6 +295,8 @@ const SettingsPage: React.FC = () => {
               {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'tenant_profile' && <TenantSettings />}
+              {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
             </Suspense>
           </React.Fragment>
         </div>

@@ -263,6 +263,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(menuRoutes, { prefix: '/menu' });
       const { systemConfigRoutes } = await import('../modules/system-config/routes/system-config.routes');
       await fastify.register(systemConfigRoutes, { prefix: '/system/config' });
+      const { easyTunnelRoutes } = await import('../modules/easy-tunnel/routes/easy-tunnel.routes');
+      await fastify.register(easyTunnelRoutes, { prefix: '/system/easy-tunnel' });
       const { systemUpdateRoutes } = await import('../modules/system-config/routes/system-update.routes');
       await fastify.register(systemUpdateRoutes, { prefix: '/system/update' });
       const { observabilityRoutes } = await import('../modules/observability/routes/observability.routes');

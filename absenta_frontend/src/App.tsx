@@ -104,6 +104,7 @@ const StrukturOrganisasiList = lazy(() => import('./pages/academic/struktur-orga
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WhatsappSettingsPage = lazy(() => import('./pages/settings/WhatsappSettingsPage'));
 const SystemUpdatePage = lazy(() => import('./pages/settings/SystemUpdatePage'));
+const EasyTunnelPage = lazy(() => import('./pages/system/EasyTunnelPage'));
 const ProfilePage = lazy(() => import('./pages/account/ProfilePage'));
 const ComponentsDemo = lazy(() => import('./pages/ComponentsDemo'));
 const MenuManagementPage = lazy(() => import('./pages/management/MenuManagementPage'));
@@ -1248,6 +1249,11 @@ function App() {
                     <Route path="/settings/system-update" element={
                       <ProtectedRoute requiredCapability="core.system.config.update">
                         <SystemUpdatePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/settings/easy-tunnel" element={
+                      <ProtectedRoute requiredCapability="core.system.config.update">
+                        <EasyTunnelPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/profile" element={<ProfilePage />} />
