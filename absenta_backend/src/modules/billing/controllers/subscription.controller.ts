@@ -91,7 +91,56 @@ async function buildUpgradeCheckout(user: any, planId: string, subscriptionId?: 
     }
   }
 
-  const plan = await prisma.plan.findUnique({ where: { id: String(planId) } });
+  let plan = await prisma.plan.findUnique({ where: { id: String(planId) } });
+  if (!plan) {
+    try {
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const axios = require('axios');
+      const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        const planData = response.data.data.find((p: any) => p.id === planId);
+        if (planData) {
+          let features = planData.features_json;
+          if (typeof features === 'string') {
+            try { features = JSON.parse(features); } catch (e) { features = []; }
+          }
+          const modId = planData.module_id || 'ABSENSI';
+          let localMod = await prisma.module.findUnique({ where: { id: modId } });
+          if (!localMod) {
+            localMod = await prisma.module.create({
+              data: {
+                id: modId,
+                name: modId,
+                is_active: true
+              }
+            });
+          }
+          plan = await prisma.plan.create({
+            data: {
+              id: planData.id,
+              code: planData.id,
+              service_code: planData.service_code || 'ABSENSI',
+              module_id: modId,
+              name: planData.name || planData.title,
+              price_monthly: planData.price_monthly || 0,
+              price_yearly: planData.price_yearly || 0,
+              max_user: planData.device_limit || null,
+              features_json: features || [],
+              description: planData.description || '',
+              billing_period: planData.billing_period || 'MONTH',
+              absensi_mode: planData.module_id === 'ABSENSI' ? (planData.name.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+              is_active: true,
+              is_public: true,
+              currency: 'IDR'
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('[BUILD CHECKOUT] Failed to lazily import plan from licensing server:', err.message);
+    }
+  }
+
   if (!plan) throw toHttpError(404, 'Plan not found');
   if (!plan.is_active || !plan.is_public) throw toHttpError(400, 'Plan is not available');
 
