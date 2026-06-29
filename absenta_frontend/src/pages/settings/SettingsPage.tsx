@@ -21,6 +21,7 @@ const NotificationSettingsForm = lazy(() => import('@/components/settings/Notifi
 const AttendanceSettingsForm = lazy(() => import('@/components/settings/AttendanceSettingsForm').then(m => ({ default: m.AttendanceSettingsForm })));
 const ParentAppSettingsForm = lazy(() => import('@/components/settings/ParentAppSettingsForm').then(m => ({ default: m.ParentAppSettingsForm })));
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
+const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 
 const SettingsPage: React.FC = () => {
   const { user, isLoading, can } = useAuth();
@@ -194,24 +195,28 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   const tabs = useMemo(() => {
-    if (isTenantAdmin) {
-      return [
-        { id: 'tenant_profile', label: 'Profil Sekolah' },
-        { id: 'easy_tunnel', label: 'Akses Online' }
-      ];
+    const list = isTenantAdmin
+      ? [
+          { id: 'tenant_profile', label: 'Profil Sekolah' },
+          { id: 'easy_tunnel', label: 'Akses Online' }
+        ]
+      : [
+          { id: 'general', label: 'Umum' },
+          { id: 'branding', label: 'Branding' },
+          { id: 'payment', label: 'Pembayaran' },
+          { id: 'company', label: 'Perusahaan' },
+          { id: 'security', label: 'Keamanan' },
+          { id: 'notifications', label: 'Notifikasi' },
+          { id: 'attendance', label: 'Absensi' },
+          { id: 'parent_app', label: 'Parent App' },
+          { id: 'easy_tunnel', label: 'Akses Online' }
+        ];
+
+    if (can('core.system.config.update')) {
+      list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
     }
-    return [
-      { id: 'general', label: 'Umum' },
-      { id: 'branding', label: 'Branding' },
-      { id: 'payment', label: 'Pembayaran' },
-      { id: 'company', label: 'Perusahaan' },
-      { id: 'security', label: 'Keamanan' },
-      { id: 'notifications', label: 'Notifikasi' },
-      { id: 'attendance', label: 'Absensi' },
-      { id: 'parent_app', label: 'Parent App' },
-      { id: 'easy_tunnel', label: 'Akses Online' },
-    ];
-  }, [isTenantAdmin]);
+    return list;
+  }, [isTenantAdmin, can]);
 
   const toolbar = useMemo(() => (
     <div className="flex items-center gap-2">
@@ -297,6 +302,7 @@ const SettingsPage: React.FC = () => {
               {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'tenant_profile' && <TenantSettings />}
               {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
+              {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
             </Suspense>
           </React.Fragment>
         </div>
