@@ -12,9 +12,6 @@ async function main() {
   const tenants = await prisma.tenant.findMany({
     include: {
       subscriptions: true,
-      billing: true,
-      invoices: true,
-      payments: true,
     }
   });
 
@@ -27,21 +24,11 @@ async function main() {
     console.log('\n========================================');
     console.log(`TENANT: ${tenant.name} (${tenant.id})`);
     console.log(`- Subscriptions: ${tenant.subscriptions.length}`);
-    console.log(`- Billing Records: ${tenant.billing.length}`);
-    console.log(`- Invoices: ${tenant.invoices.length}`);
-    console.log(`- Payments: ${tenant.payments.length}`);
     
     if (tenant.subscriptions.length > 0) {
       console.log('  SUBSCRIPTIONS:');
-      tenant.subscriptions.forEach(s => {
+      tenant.subscriptions.forEach((s: any) => {
         console.log(`    - [${s.id.substring(0,8)}] Service: ${s.service_code} | Status: ${s.status} | End: ${s.end_date}`);
-      });
-    }
-
-    if (tenant.billing.length > 0) {
-      console.log('  BILLING:');
-      tenant.billing.forEach(b => {
-        console.log(`    - [${b.id.substring(0,8)}] Amount: ${b.amount} | Status: ${b.status} | Date: ${b.billing_date}`);
       });
     }
   }

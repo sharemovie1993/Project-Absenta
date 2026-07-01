@@ -1,4 +1,4 @@
-import { PaymentGateway } from '@prisma/client';
+import { PaymentGateway } from '../types/payment.types';
 import crypto from 'crypto';
 import { paymentConfig } from '../config/payment.config';
 

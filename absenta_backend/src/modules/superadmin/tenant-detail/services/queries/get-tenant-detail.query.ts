@@ -34,14 +34,7 @@ export async function getTenantDetailQuery(tenantId: string) {
               take: 10,
               orderBy: { created_at: 'desc' }
             },
-            billing: {
-              take: 5,
-              orderBy: { created_at: 'desc' }
-            },
-            payments: {
-              take: 5,
-              orderBy: { created_at: 'desc' }
-            },
+
             activityLogs: {
               take: 10,
               orderBy: { created_at: 'desc' }

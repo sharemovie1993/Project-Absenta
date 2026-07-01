@@ -2,6 +2,11 @@ import { planController } from '../controllers/plan.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 
 export async function planRoutes(fastify: any) {
+  fastify.get('/academic-tiers', {
+    config: { skipAuth: true },
+    handler: planController.getAcademicTierPlans.bind(planController),
+  });
+
   fastify.get('/public', {
     config: { skipAuth: true },
     handler: planController.getPublicActivePlans.bind(planController),

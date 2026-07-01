@@ -3,15 +3,10 @@ import { RoleName } from '../../../constants/enums';
 import { billingService } from '../services/billing.service';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { billingDb as prisma } from '../services/repositories/billing.db';
-import { cacheService } from '@/utils/cache.service';
-import { CACHE_KEYS } from '@/constants/cache-keys';
 import { emitDomainEvent } from '@/infra/event-bus';
 import { cancelDowngradeCommand, scheduleDowngradeCommand } from '../services/commands/schedule-downgrade.command';
 import { scheduleCancelCommand, undoCancelCommand } from '../services/commands/schedule-cancel.command';
 import { cancelPendingUpgradeCommand } from '../services/commands/cancel-pending-upgrade.command';
-import { resolveBaseUrlFromRequest } from '@/utils/url-helper';
-
-const DUE_DAYS = parseInt(process.env.DUE_DAYS || '3');
 
 // resolvePublicAppBaseUrlFromRequest telah dikonsolidasi ke src/utils/url-helper.ts
 
@@ -28,20 +23,29 @@ function toHttpError(statusCode: number, message: string) {
   return err;
 }
 
-async function waitForInvoiceIdByBillingId(billingId: string, timeoutMs: number): Promise<string | null> {
-  const startedAt = Date.now();
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  const id = String(billingId || '').trim();
-  if (!id) return null;
-  while (Date.now() - startedAt < timeoutMs) {
-    const inv = await prisma.invoice.findFirst({ where: { billing_id: id }, select: { id: true } });
-    if (inv?.id) return String(inv.id);
-    await sleep(75);
-  }
-  return null;
+const TIER_ORDER = ['micro', 'small', 'medium', 'large', 'enterprise'];
+
+function getPlanSizeLabel(plan: any): string {
+  if (plan.size_label) return plan.size_label;
+  
+  const name = String(plan.name || '').toLowerCase();
+  if (name.includes('micro')) return 'Micro';
+  if (name.includes('small')) return 'Small';
+  if (name.includes('medium')) return 'Medium';
+  if (name.includes('large')) return 'Large';
+  if (name.includes('enterprise')) return 'Enterprise';
+
+  const limit = plan.max_user ?? 0;
+  if (limit === 100 || limit === 30) return 'Micro';
+  if (limit === 300) return 'Small';
+  if (limit === 600) return 'Medium';
+  if (limit === 1200) return 'Large';
+  return 'Enterprise';
 }
 
-async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Promise<void> {
+
+
+export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Promise<void> {
   try {
     const licenseKey = process.env.LICENSE_KEY;
     if (!licenseKey) return;
@@ -57,12 +61,21 @@ async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Prom
       const remotePlans = (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) ? plansResponse.data.data : [];
 
       for (const rSub of remoteSubs) {
+        console.log('[DEBUG SYNC] Processing rSub:', JSON.stringify(rSub));
         // Find matching plan from remote plans
         const planData = remotePlans.find((p: any) => p.id === rSub.plan_id);
+        console.log('[DEBUG SYNC] planData:', JSON.stringify(planData));
         if (!planData) continue;
 
         // Ensure Plan exists locally
-        let plan = await prisma.plan.findUnique({ where: { id: planData.id } });
+        let plan = await prisma.plan.findFirst({
+          where: {
+            OR: [
+              { id: planData.id },
+              { code: planData.id }
+            ]
+          }
+        });
         const modId = planData.module_id || 'ABSENSI';
         if (!plan) {
           let features = planData.features_json;
@@ -89,7 +102,7 @@ async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Prom
               features_json: features || [],
               description: planData.description || '',
               billing_period: planData.billing_period || 'MONTH',
-              absensi_mode: planData.module_id === 'ABSENSI' ? (planData.name.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+              absensi_mode: planData.module_id === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
               is_active: true,
               is_public: true,
               currency: 'IDR'
@@ -136,475 +149,35 @@ async function syncLocalSubscriptionsWithLicensingServer(tenantId: string): Prom
           });
         }
       }
+
+      // Save last successful sync time
+      const lastSyncKey = 'license_last_sync_time';
+      const existingConfig = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: lastSyncKey }
+      });
+      if (existingConfig) {
+        await prisma.config.update({
+          where: { id: existingConfig.id },
+          data: { value: new Date().toISOString() }
+        });
+      } else {
+        await prisma.config.create({
+          data: {
+            tenant_id: tenantId,
+            key: lastSyncKey,
+            value: new Date().toISOString(),
+            description: 'Last successful online licensing sync time'
+          }
+        });
+      }
     }
   } catch (e: any) {
-    console.error('[SYNC SUBSCRIPTION] Failed to sync local subscriptions with licensing server:', e.message);
+    console.error('[SYNC SUBSCRIPTION] Failed to sync local subscriptions with licensing server:', e.stack);
   }
 }
 
 
-async function resolveSubscriptionForUpgrade(user: any, _planModules: string[], subscriptionId?: string, targetServiceCode?: string) {
-  const roleName = user?.roleName;
-  const tenantId = String(user?.tenant_id);
 
-  if (subscriptionId) {
-    const sub = await subscriptionService.getSubscriptionById(String(subscriptionId));
-    if (!sub) throw toHttpError(404, 'Subscription not found');
-    if (!isSystemSuperAdmin(roleName, tenantId)) {
-      if (roleName !== RoleName.ADMIN || String(sub.tenant_id) !== tenantId) {
-        throw toHttpError(403, 'Insufficient permissions');
-      }
-    }
-    return sub as any;
-  }
-
-  // MULTI-SERVICE FIX: Match by service_code instead of features_json overlap.
-  // Best practice SaaS: 1 Subscription per Service per Tenant.
-  // Using features_json overlap caused cross-service overwrites because all plans
-  // share the "CORE" feature, making every plan match every existing subscription.
-  const subscriptions = await prisma.subscription.findMany({
-    where: { 
-      tenant_id: tenantId,
-      status: { in: ['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'] as any }
-    },
-    include: { Plan: true }
-  });
-
-  if (targetServiceCode) {
-    // Primary strategy: match by service_code (best practice)
-    for (const sub of subscriptions) {
-      if (sub.service_code === targetServiceCode) {
-        return sub as any;
-      }
-    }
-  }
-
-  // No matching subscription found for this service → will create new one
-  return null;
-}
-
-async function buildUpgradeCheckout(user: any, planId: string, subscriptionId?: string, correlationId?: string) {
-  const roleName = user?.roleName;
-  const tenantId = String(user?.tenant_id);
-
-  if (!isSystemSuperAdmin(roleName, tenantId)) {
-    if (roleName !== RoleName.ADMIN) {
-      throw toHttpError(403, 'Insufficient permissions');
-    }
-  }
-
-  let plan = await prisma.plan.findUnique({ where: { id: String(planId) } });
-  if (!plan) {
-    try {
-      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
-      const axios = require('axios');
-      const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        const planData = response.data.data.find((p: any) => p.id === planId);
-        if (planData) {
-          let features = planData.features_json;
-          if (typeof features === 'string') {
-            try { features = JSON.parse(features); } catch (e) { features = []; }
-          }
-          const modId = planData.module_id || 'ABSENSI';
-          let localMod = await prisma.module.findUnique({ where: { id: modId } });
-          if (!localMod) {
-            localMod = await prisma.module.create({
-              data: {
-                id: modId,
-                name: modId,
-                is_active: true
-              }
-            });
-          }
-          plan = await prisma.plan.create({
-            data: {
-              id: planData.id,
-              code: planData.id,
-              service_code: planData.service_code || 'ABSENSI',
-              module_id: modId,
-              name: planData.name || planData.title,
-              price_monthly: planData.price_monthly || 0,
-              price_yearly: planData.price_yearly || 0,
-              max_user: planData.device_limit || null,
-              features_json: features || [],
-              description: planData.description || '',
-              billing_period: planData.billing_period || 'MONTH',
-              absensi_mode: planData.module_id === 'ABSENSI' ? (planData.name.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
-              is_active: true,
-              is_public: true,
-              currency: 'IDR'
-            }
-          });
-        }
-      }
-    } catch (err: any) {
-      console.error('[BUILD CHECKOUT] Failed to lazily import plan from licensing server:', err.message);
-    }
-  }
-
-  if (!plan) throw toHttpError(404, 'Plan not found');
-  if (!plan.is_active || !plan.is_public) throw toHttpError(400, 'Plan is not available');
-
-  const now = new Date();
-  const normalizeToStartOfDay = (date: Date) => {
-    const d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  };
-  const computePeriodEnd = () => {
-    const end = new Date(now);
-    if (plan.billing_period === 'YEAR') end.setFullYear(end.getFullYear() + 1);
-    else end.setMonth(end.getMonth() + 1);
-    return end;
-  };
-
-  const targetModules = Array.isArray(plan.features_json) ? (plan.features_json as string[]) : [];
-  const targetServiceCode = String((plan as any).service_code || '');
-
-  // Find all subscriptions with pending upgrades
-  const pendingUpgrades = await prisma.subscription.findMany({
-    where: {
-      tenant_id: tenantId,
-      status: 'UPGRADE_PENDING' as any,
-      Billing: {
-        some: {
-          charge_type: 'UPGRADE' as any,
-          Invoice: {
-            status: { in: ['DRAFT', 'SENT', 'VIEWED'] as any },
-          },
-        },
-      },
-    },
-    include: { 
-      Plan: true,
-      PlanChangeRequest: {
-        where: { status: 'SCHEDULED' as any, change_type: 'UPGRADE' as any },
-        orderBy: { created_at: 'desc' },
-        take: 1
-      },
-      Billing: {
-        where: {
-          charge_type: 'UPGRADE' as any,
-          Invoice: {
-            status: { in: ['DRAFT', 'SENT', 'VIEWED'] as any },
-          },
-        },
-        include: { Invoice: true },
-        take: 1,
-        orderBy: { created_at: 'desc' }
-      }
-    }
-  });
-
-  for (const pendingSub of pendingUpgrades) {
-    // MULTI-SERVICE FIX: Match pending upgrade by service_code, not features_json overlap
-    const pendingServiceCode = String(pendingSub.service_code || '');
-    const isSameService = targetServiceCode && pendingServiceCode === targetServiceCode;
-    if (isSameService) {
-      const existingBilling = (pendingSub as any).Billing?.[0];
-      if (existingBilling && existingBilling.Invoice) {
-        return {
-          subscription: pendingSub,
-          checkout: { 
-            billing_id: String(existingBilling.id), 
-            invoice_id: String(existingBilling.Invoice.id) 
-          },
-          reused: true,
-        };
-      }
-      // Graceful recovery with collision handling
-      const pcr = Array.isArray((pendingSub as any).PlanChangeRequest) ? (pendingSub as any).PlanChangeRequest[0] : null;
-      const billingDate = normalizeToStartOfDay(now);
-      const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() + DUE_DAYS);
-
-      // Collision check for unique constraint [subscription_id, billing_date]
-      const collision = await prisma.billing.findFirst({
-        where: {
-          subscription_id: String(pendingSub.id),
-          billing_date: billingDate,
-        },
-        include: { Invoice: { select: { id: true, status: true } }, },
-      });
-      if (collision) {
-        if (collision.upgrade_plan_id_snapshot === String(planId)) {
-          if (collision.Invoice && ['DRAFT', 'SENT', 'VIEWED'].includes(String(collision.Invoice.status))) {
-            const finalInvoiceId = collision.Invoice.id;
-            if (finalInvoiceId) {
-              try {
-                await emitDomainEvent({
-                  event_type: 'billing.invoice.requested',
-                  tenant_id: String((pendingSub as any).tenant_id || '') || null,
-                  source_service: 'billing',
-                  payload: {
-                    tenant_id: String((pendingSub as any).tenant_id || '') || null,
-                    subscription_id: String((pendingSub as any).id || ''),
-                    billing_id: String(collision.id),
-                    invoice_id: String(finalInvoiceId),
-                    timestamp: new Date().toISOString(),
-                    send: true,
-                    send_as_role: roleName || null,
-                    send_as_tenant_id: tenantId || null,
-                    correlation_id: correlationId || null,
-                  },
-                });
-              } catch {}
-            }
-            return {
-              subscription: pendingSub,
-              checkout: { billing_id: collision.id, invoice_id: collision.Invoice?.id || null },
-              reused: true,
-            };
-          } else {
-            await prisma.billing.update({ where: { id: collision.id }, data: { billing_date: new Date() } });
-          }
-        } else {
-          if (collision.Invoice && ['DRAFT', 'SENT', 'VIEWED'].includes(String(collision.Invoice.status))) {
-            await prisma.invoice.update({ where: { id: collision.Invoice.id }, data: { status: 'CANCELLED' as any } });
-          }
-          await prisma.billing.update({ where: { id: collision.id }, data: { billing_date: new Date() } });
-        }
-      }
-
-      const amount = plan.billing_period === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly;
-      const newBilling = await billingService.createBilling({
-        subscription_id: String(pendingSub.id),
-        amount: Number(amount),
-        billing_date: billingDate,
-        due_date: dueDate,
-        charge_type: 'UPGRADE' as any,
-        upgrade_plan_id_snapshot: String(planId),
-        upgrade_price_snapshot: Number(amount),
-        plan_change_request_id: pcr ? String(pcr.id) : undefined,
-        correlation_id: correlationId || undefined,
-      });
-      await emitDomainEvent({
-        event_type: 'billing.invoice.requested',
-        tenant_id: String((pendingSub as any).tenant_id || '') || null,
-        source_service: 'billing',
-        payload: {
-          tenant_id: String((pendingSub as any).tenant_id || '') || null,
-          subscription_id: String((pendingSub as any).id || ''),
-          billing_id: String(newBilling.id),
-          timestamp: new Date().toISOString(),
-          invoice_data: { due_date: dueDate.toISOString() },
-          send: true,
-          send_as_role: roleName || null,
-          send_as_tenant_id: tenantId || null,
-          correlation_id: correlationId || null,
-        },
-      });
-      const createdInvId = await waitForInvoiceIdByBillingId(String(newBilling.id), 1500);
-      return {
-        subscription: pendingSub,
-        checkout: { billing_id: String(newBilling.id), invoice_id: createdInvId },
-        reused: false,
-      };
-    }
-  }
-
-  let subscription = await resolveSubscriptionForUpgrade(user, targetModules, subscriptionId, targetServiceCode);
-  let planChange: any | null = null;
-
-  if (!subscription) {
-    const end = computePeriodEnd();
-    subscription = await prisma.subscription.create({
-      data: {
-        tenant_id: tenantId,
-        plan_id: String(planId),
-        service_code: (plan as any).service_code,
-        start_date: now,
-        end_date: end,
-        next_billing_date: end,
-        status: 'UPGRADE_PENDING' as any,
-      },
-      include: { Plan: true, Tenant: { select: { id: true, name: true, domain: true } } },
-    });
-
-    planChange = await prisma.planChangeRequest.create({
-      data: {
-        subscription_id: String(subscription.id),
-        from_plan_id: String((subscription as any).plan_id),
-        to_plan_id: String(planId),
-        effective_date: now,
-        change_type: 'UPGRADE' as any,
-        status: 'SCHEDULED' as any,
-        price_snapshot: Number(plan.billing_period === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly),
-        currency: String((plan as any).currency || 'IDR'),
-        reason: 'UPGRADE',
-      },
-    });
-  } else {
-    // Cancel any previously SCHEDULED plan change for this subscription (idempotent for platforms with unique constraint)
-    await prisma.planChangeRequest.updateMany({
-      where: { subscription_id: String(subscription.id), status: 'SCHEDULED' as any },
-      data: { status: 'CANCELLED' as any },
-    });
-    planChange = await prisma.planChangeRequest.create({
-      data: {
-        subscription_id: String(subscription.id),
-        from_plan_id: String((subscription as any).plan_id),
-        to_plan_id: String(planId),
-        effective_date: now,
-        change_type: 'UPGRADE' as any,
-        status: 'SCHEDULED' as any,
-        price_snapshot: Number(plan.billing_period === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly),
-        currency: String((plan as any).currency || 'IDR'),
-        reason: 'UPGRADE',
-      },
-    });
-
-    const next = computePeriodEnd();
-    const currentStatus = String((subscription as any).status || '');
-    if (currentStatus !== 'TRIAL') {
-      subscription = await prisma.subscription.update({
-        where: { id: String(subscription.id) },
-        data: { 
-          ...(currentStatus !== 'ACTIVE' ? { status: 'UPGRADE_PENDING' as any } : {}),
-          next_billing_date: next 
-        },
-        include: { Plan: true, Tenant: { select: { id: true, name: true, domain: true } } },
-      });
-    } else {
-      subscription = await prisma.subscription.findUnique({
-        where: { id: String(subscription.id) },
-        include: { Plan: true, Tenant: { select: { id: true, name: true, domain: true } } },
-      });
-    }
-  }
-
-  const billingDate = normalizeToStartOfDay(now);
-  
-  // FIX: Check for ANY billing collision on this date, not just for the same plan.
-  // This handles Scenario 2 (Unique Constraint) and Scenario 3 (Reuse Cancelled Invoice)
-  const collisionBilling = await prisma.billing.findFirst({
-    where: {
-      subscription_id: String(subscription.id),
-      billing_date: billingDate,
-    },
-    include: { Invoice: { select: { id: true, status: true } } },
-  });
-
-  if (collisionBilling) {
-    // Case A: The existing billing is for the SAME plan
-    if (collisionBilling.upgrade_plan_id_snapshot === String(planId)) {
-      // If Invoice is CANCELLED, we must NOT reuse it. We must supersede it.
-      if (collisionBilling.Invoice?.status === 'CANCELLED') {
-         // Shift the old billing date so we can create a new one
-         await prisma.billing.update({
-           where: { id: collisionBilling.id },
-           data: { billing_date: new Date() } // Shift to now() with time
-         });
-         // Proceed to create new billing below...
-      } else {
-         // Invoice is active (DRAFT/SENT/VIEWED), reuse it.
-         const finalInvoiceId = collisionBilling.Invoice?.id || null;
-         if (finalInvoiceId) {
-            try {
-              await emitDomainEvent({
-                event_type: 'billing.invoice.requested',
-                tenant_id: String((subscription as any).tenant_id || '') || null,
-                source_service: 'billing',
-                payload: {
-                  tenant_id: String((subscription as any).tenant_id || '') || null,
-                  subscription_id: String((subscription as any).id || ''),
-                  billing_id: String(collisionBilling.id),
-                  invoice_id: String(finalInvoiceId),
-                  timestamp: new Date().toISOString(),
-                  send: true,
-                  send_as_role: roleName || null,
-                  send_as_tenant_id: tenantId || null,
-                  correlation_id: correlationId || null,
-                },
-              });
-            } catch {}
-         }
-         return {
-           subscription,
-           checkout: { billing_id: collisionBilling.id, invoice_id: finalInvoiceId },
-           reused: true,
-         };
-      }
-    } else {
-      // Case B: The existing billing is for a DIFFERENT plan
-      // We must supersede it because of Unique Constraint [subscription_id, billing_date]
-      
-      // If the old one is Active, we should probably cancel it first to be clean
-      if (collisionBilling.Invoice && ['DRAFT', 'SENT', 'VIEWED'].includes(String(collisionBilling.Invoice.status))) {
-         await prisma.invoice.update({
-           where: { id: collisionBilling.Invoice.id },
-           data: { status: 'CANCELLED' as any }
-         });
-      }
-      
-      // Shift the old billing date
-      await prisma.billing.update({
-        where: { id: collisionBilling.id },
-        data: { billing_date: new Date() } // Shift to now()
-      });
-      // Proceed to create new billing below...
-    }
-  }
-
-  const dueDate = new Date(now);
-  dueDate.setDate(dueDate.getDate() + DUE_DAYS);
-  const amount = plan.billing_period === 'YEAR' ? (plan.price_yearly || plan.price_monthly * 12) : plan.price_monthly;
-  const billing = await billingService.createBilling({
-    subscription_id: String(subscription.id),
-    amount: Number(amount),
-    billing_date: billingDate,
-    due_date: dueDate,
-    charge_type: 'UPGRADE' as any,
-    upgrade_plan_id_snapshot: String(planId),
-    upgrade_price_snapshot: Number(amount),
-    plan_change_request_id: planChange ? String(planChange.id) : undefined,
-    correlation_id: correlationId || undefined,
-  });
-
-  await emitDomainEvent({
-    event_type: 'billing.invoice.requested',
-    tenant_id: String((subscription as any).tenant_id || '') || null,
-    source_service: 'billing',
-    payload: {
-      tenant_id: String((subscription as any).tenant_id || '') || null,
-      subscription_id: String((subscription as any).id || ''),
-      billing_id: String(billing.id),
-      timestamp: new Date().toISOString(),
-      invoice_data: { due_date: dueDate.toISOString() },
-      send: true,
-      send_as_role: roleName || null,
-      send_as_tenant_id: tenantId || null,
-      correlation_id: correlationId || null,
-    },
-  });
-  const createdInvoiceId = await waitForInvoiceIdByBillingId(String(billing.id), 1500);
-
-  await prisma.activityLog.create({
-    data: {
-      tenant_id: String(subscription.tenant_id),
-      user_id: user?.id ? String(user.id) : null,
-      action: 'UPGRADE_CLICKED',
-      entity: 'SUBSCRIPTION',
-      entity_id: String(subscription.id),
-      metadata: JSON.stringify({
-        subscription_id: String(subscription.id),
-        from_plan_id: planChange ? String(planChange.from_plan_id) : null,
-        to_plan_id: String(planId),
-        billing_id: String(billing.id),
-        invoice_id: createdInvoiceId,
-        plan_change_request_id: planChange ? String(planChange.id) : null,
-        correlation_id: correlationId || null,
-      }),
-    },
-  });
-
-  return {
-    subscription,
-    checkout: { billing_id: String(billing.id), invoice_id: createdInvoiceId },
-    reused: false,
-  };
-}
 
 export const subscriptionController = {
   async getAllSubscriptions(request: any, reply: any) {
@@ -1288,71 +861,19 @@ export const subscriptionController = {
     }
   },
 
-  async upgradeWizard(request: any, reply: any) {
+  async upgradeWizard(_request: any, reply: any) {
     try {
-      const user = request.user!;
-      const { action, plan_id, subscription_id } = request.body || {};
-
-      const normalizedAction = String(action || 'START').toUpperCase();
-      const sub = await resolveSubscriptionForUpgrade(user, subscription_id);
-
-      if (normalizedAction === 'START') {
-        const plans = await listPublicPlans();
-        let checkout: any = null;
-        if (sub?.id) {
-          const latestBilling = await prisma.billing.findFirst({
-            where: { subscription_id: String(sub.id) },
-            orderBy: { created_at: 'desc' },
-            include: { Invoice: { select: { id: true, status: true, due_date: true, paid_at: true } } },
-          });
-          if (latestBilling?.Invoice && String(latestBilling.Invoice.status) !== 'PAID') {
-            checkout = { billing_id: String(latestBilling.id), invoice_id: String(latestBilling.Invoice.id) };
-          }
-        }
-        reply.status(200);
-        return {
-          success: true,
-          message: 'Upgrade wizard state',
-          data: {
-            subscription: sub || null,
-            plans,
-            checkout,
-          },
-          wizard: {
-            step: 'CHOOSE_PLAN',
-            instruction: 'Pilih plan, lalu kirim { action: "SELECT_PLAN", plan_id } ke endpoint yang sama.',
-            next_action: { action: 'SELECT_PLAN' },
-          },
-        };
-      }
-
-      if (normalizedAction === 'SELECT_PLAN') {
-        if (!plan_id) throw toHttpError(400, 'plan_id is required');
-
-        const result = await buildUpgradeCheckout(
-          user,
-          String(plan_id),
-          sub?.id ? String(sub.id) : subscription_id,
-          request.correlationId
-        );
-
-        reply.status(200);
-        return {
-          success: true,
-          message: result.reused ? 'Checkout already exists for today' : 'Checkout created',
-          data: {
-            subscription: result.subscription,
-            checkout: result.checkout,
-          },
-          wizard: {
-            step: 'PAY',
-            instruction: 'Gunakan billing_id untuk membuat pembayaran via /api/payments/create.',
-            next_action: { action: 'START' },
-          },
-        };
-      }
-
-      throw toHttpError(400, 'Invalid action');
+      const plans = await listPublicPlans();
+      reply.status(200);
+      return {
+        success: true,
+        message: 'Upgrade wizard is deprecated. Use /billing/subscriptions/order instead.',
+        data: {
+          subscription: null,
+          plans,
+          checkout: null,
+        },
+      };
     } catch (error: any) {
       const statusCode = Number(error?.statusCode) || 500;
       reply.status(statusCode);
@@ -1360,36 +881,21 @@ export const subscriptionController = {
     }
   },
 
-  async choosePlan(request: any, reply: any) {
-    try {
-      const user = request.user!;
-      const { id } = request.params;
-      const { plan_id } = request.body || {};
-
-      if (!id || !plan_id) {
-        reply.status(400);
-        return { success: false, message: 'Subscription ID and plan_id are required' };
-      }
-
-      const result = await buildUpgradeCheckout(user, String(plan_id), String(id), request.correlationId);
-      reply.status(200);
-      return {
-        success: true,
-        message: result.reused ? 'Billing already exists for today. No duplicate created.' : 'Plan chosen and invoice created',
-        data: { ...(result.subscription as any), checkout: result.checkout },
-      };
-    } catch (error) {
-      const statusCode = Number((error as any)?.statusCode) || 500;
-      const msg = error instanceof Error ? error.message : 'Failed to choose plan';
-      reply.status(statusCode);
-      return { success: false, message: msg };
-    }
+  async choosePlan(_request: any, reply: any) {
+    reply.status(200);
+    return {
+      success: true,
+      message: 'choosePlan is deprecated. Use /billing/subscriptions/order instead.',
+      data: {
+        checkout: null,
+      },
+    };
   },
 
   async orderPlan(request: any, reply: any) {
     try {
       const user = request.user!;
-      const { plan_id, billing_period } = request.body || {};
+      const { plan_id, billing_period, payment_method } = request.body || {};
 
       if (!plan_id) {
         reply.status(400);
@@ -1399,11 +905,9 @@ export const subscriptionController = {
       // Determine which plan variant to use based on billing_period
       let targetPlanId = plan_id;
       if (billing_period) {
-        // Find plan by original name + billing period suffix
         const originalPlan = await prisma.plan.findUnique({ where: { id: plan_id } });
         if (!originalPlan) {
-          // Try to find the variant using name-based lookup
-          const baseName = String(plan_id).replace(/-MONTHLY|-YEARLY$/, ''); // Remove suffix if exists
+          const baseName = String(plan_id).replace(/-MONTHLY|-YEARLY$/, '');
           const variant = await prisma.plan.findFirst({
             where: {
               name: `${baseName}-${billing_period}`,
@@ -1415,7 +919,6 @@ export const subscriptionController = {
             targetPlanId = variant.id;
           }
         } else {
-          // If plan was provided, try to find its variant with the selected billing_period
           const baseName = originalPlan.name.replace(/-MONTHLY|-YEARLY$/, '');
           const variant = await prisma.plan.findFirst({
             where: {
@@ -1430,133 +933,144 @@ export const subscriptionController = {
         }
       }
 
-      const result = await buildUpgradeCheckout(user, String(targetPlanId), undefined, request.correlationId);
-
-      // Eagerly generate public link token for the created/reused invoice
-      let publicToken: string | undefined;
-      let publicUrl: string | undefined;
-      try {
-        const invoiceId = String((result as any)?.checkout?.invoice_id || '');
-        const tenantId = String(user?.tenant_id || '');
-        if (invoiceId && tenantId) {
-          const existingToken = await cacheService.get(CACHE_KEYS.INVOICE.PUBLIC_BY_INVOICE(invoiceId));
-          let token = typeof existingToken === 'string' ? existingToken : '';
-          if (!token) {
-            token = require('crypto').randomBytes(32).toString('hex');
-            const expirySeconds = 24 * 60 * 60;
-            await Promise.all([
-              cacheService.set(CACHE_KEYS.INVOICE.PUBLIC_TOKEN(token), { invoice_id: invoiceId, tenant_id: tenantId, expiry: Date.now() + (expirySeconds * 1000) }, expirySeconds),
-              cacheService.set(CACHE_KEYS.INVOICE.PUBLIC_BY_INVOICE(invoiceId), token, expirySeconds),
-            ]);
-          }
-          const appBaseUrl = resolveBaseUrlFromRequest(request);
-          publicToken = token;
-          publicUrl = `${String(appBaseUrl).replace(/\/+$/, '')}/payment/public/${token}`;
-          try {
-            const expirySeconds = (() => {
-              const envTtl = parseInt(String(process.env.INVOICE_PUBLIC_LINK_TTL_SECONDS || '').trim() || '');
-              return Number.isFinite(envTtl) && envTtl > 0 ? envTtl : (7 * 24 * 60 * 60);
-            })();
-            const { persistPublicInvoiceToken } = await import('../../../utils/publicInvoiceToken');
-            await persistPublicInvoiceToken(String(invoiceId), tenantId, token, expirySeconds);
-          } catch {}
+      // === 2. Resolve local Plan ===
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const axios = require('axios');
+      
+      let localPlan = await prisma.plan.findFirst({
+        where: {
+          OR: [
+            { id: String(targetPlanId) },
+            { code: String(targetPlanId) }
+          ]
         }
-      } catch {}
+      });
+      if (!localPlan) {
+        // Fallback import plan dynamically if not seeded locally yet
+        const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
+        if (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) {
+          const planData = plansResponse.data.data.find((p: any) => p.id === targetPlanId);
+          if (planData) {
+            let features = planData.features_json;
+            if (typeof features === 'string') {
+              try { features = JSON.parse(features); } catch (e) { features = []; }
+            }
+            const modId = planData.module_id || 'ABSENSI';
+            let localMod = await prisma.module.findUnique({ where: { id: modId } });
+            if (!localMod) {
+              localMod = await prisma.module.create({
+                data: { id: modId, name: modId, is_active: true }
+              });
+            }
+            localPlan = await prisma.plan.create({
+              data: {
+                id: planData.id,
+                code: planData.id,
+                service_code: planData.service_code || 'ABSENSI',
+                module_id: modId,
+                name: planData.name || planData.title,
+                price_monthly: planData.price_monthly || 0,
+                price_yearly: planData.price_yearly || 0,
+                max_user: planData.device_limit || null,
+                features_json: features || [],
+                description: planData.description || '',
+                billing_period: planData.billing_period || 'MONTH',
+                absensi_mode: planData.module_id === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+                is_active: true,
+                is_public: true,
+                currency: 'IDR'
+              }
+            });
+          }
+        }
+      }
+
+      if (!localPlan) {
+        throw toHttpError(404, 'Plan specifications could not be resolved locally or from the licensing server.');
+      }
+
+      // Double-Lock Validation: order tier must be >= active academic core tier
+      const isCorePlan = localPlan.service_code === 'CORE';
+      const isKoperasi = localPlan.service_code === 'KOPERASI';
+      if (!isCorePlan && !isKoperasi) {
+        const coreSub = await prisma.subscription.findFirst({
+          where: {
+            tenant_id: user.tenant_id,
+            service_code: 'CORE',
+            status: 'ACTIVE',
+          },
+          include: { Plan: true },
+        });
+
+        if (coreSub && coreSub.Plan) {
+          const orderTier = getPlanSizeLabel(localPlan).toLowerCase();
+          const coreTier = getPlanSizeLabel(coreSub.Plan).toLowerCase();
+          const orderIdx = TIER_ORDER.indexOf(orderTier);
+          const coreIdx = TIER_ORDER.indexOf(coreTier);
+
+          if (orderIdx !== -1 && coreIdx !== -1 && orderIdx < coreIdx) {
+            throw toHttpError(400, `Paket yang dibeli (${getPlanSizeLabel(localPlan)}) minimal harus setara dengan kapasitas sekolah Anda (${getPlanSizeLabel(coreSub.Plan)}).`);
+          }
+        }
+      }
+
+      const isUnlimited = localPlan.billing_period === 'YEAR' ? 1 : 0;
+      const targetPrice = localPlan.billing_period === 'YEAR' ? (localPlan.price_yearly || 0) : (localPlan.price_monthly || 0);
+
+      // === 3. Call Licensing Server to Create Central Invoice ===
+      const licenseKey = process.env.LICENSE_KEY;
+      if (!licenseKey) {
+        throw toHttpError(400, 'LICENSE_KEY is not configured in this server environment.');
+      }
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: user.tenant_id } });
+      const schoolName = tenant ? tenant.name : 'Absenta School';
+
+      console.log(`[ORDER PROXY] Requesting central invoice for plan: ${targetPlanId} from licensing server...`);
+      const response = await axios.post(`${LICENSE_SERVER_URL}/api/license/request`, {
+        school_name: schoolName,
+        device_limit: localPlan.max_user || 100,
+        is_unlimited: isUnlimited,
+        product_id: 'absenta',
+        plan_id: String(targetPlanId),
+        price: targetPrice,
+        payment_method: payment_method || 'QRIS2',
+        renew_license_key: licenseKey.trim()
+      }, { timeout: 12000 });
+
+      if (!response.data || !response.data.success || !response.data.data) {
+        throw toHttpError(500, response.data?.message || 'Gagal membuat invoice di Server Lisensi pusat.');
+      }
+
+      const remoteInvoice = response.data.data;
+      const checkoutUrl = remoteInvoice.qr_url || remoteInvoice.checkout_url || remoteInvoice.payment_url || remoteInvoice.pay_url;
 
       reply.status(200);
       return {
         success: true,
-        message: 'Order berhasil dibuat',
-        data: { 
-          ...(result.subscription as any), 
-          checkout: { 
-            ...result.checkout, 
-            public_token: publicToken, 
-            public_url: publicUrl 
-          } 
-        },
-      };
-    } catch (error) {
-      // Graceful fallback: try to recover existing upgrade invoice instead of erroring
-      try {
-        const user = request.user!;
-        const tenantId = String(user?.tenant_id);
-        const pendingSub = await prisma.subscription.findFirst({
-          where: {
-            tenant_id: tenantId,
-            status: { in: ['UPGRADE_PENDING', 'PENDING_PAYMENT'] as any },
-            Billing: {
-              some: {
-                charge_type: 'UPGRADE' as any,
-                Invoice: {
-                  status: { in: ['DRAFT', 'SENT', 'VIEWED'] as any },
-                },
-              },
-            },
-          },
-          include: {
-            Billing: {
-              where: {
-                charge_type: 'UPGRADE' as any,
-                Invoice: { status: { in: ['DRAFT', 'SENT', 'VIEWED'] as any } },
-              },
-              include: { Invoice: true },
-              orderBy: { created_at: 'desc' },
-              take: 1,
-            },
-          },
-        });
-        const invId = pendingSub?.Billing?.[0]?.Invoice?.id || null;
-        if (invId) {
-          // Attempt to generate/resolve public token as well for smoother redirect
-          let publicToken: string | undefined;
-          let publicUrl: string | undefined;
-          try {
-            const existingToken = await cacheService.get(CACHE_KEYS.INVOICE.PUBLIC_BY_INVOICE(String(invId)));
-            let token = typeof existingToken === 'string' ? existingToken : '';
-            if (!token) {
-              token = require('crypto').randomBytes(32).toString('hex');
-              const expirySeconds = 24 * 60 * 60;
-              await Promise.all([
-                cacheService.set(CACHE_KEYS.INVOICE.PUBLIC_TOKEN(token), { invoice_id: String(invId), tenant_id: tenantId, expiry: Date.now() + (expirySeconds * 1000) }, expirySeconds),
-                cacheService.set(CACHE_KEYS.INVOICE.PUBLIC_BY_INVOICE(String(invId)), token, expirySeconds),
-              ]);
-            }
-            const baseUrl = resolveBaseUrlFromRequest(request);
-            publicToken = token;
-            publicUrl = `${String(baseUrl).replace(/\/+$/, '')}/payment/public/${token}`;
-            try {
-              const expirySeconds = (() => {
-                const envTtl = parseInt(String(process.env.INVOICE_PUBLIC_LINK_TTL_SECONDS || '').trim() || '');
-                return Number.isFinite(envTtl) && envTtl > 0 ? envTtl : (7 * 24 * 60 * 60);
-              })();
-              const { persistPublicInvoiceToken } = await import('../../../utils/publicInvoiceToken');
-              await persistPublicInvoiceToken(String(invId), tenantId, token, expirySeconds);
-            } catch {}
-          } catch {}
-          reply.status(200);
-          return {
-            success: true,
-            message: 'Checkout already exists for today',
-            data: {
-              subscription: pendingSub,
-              checkout: { 
-                billing_id: String(pendingSub?.Billing?.[0]?.id || ''), 
-                invoice_id: String(invId),
-                public_token: publicToken,
-                public_url: publicUrl
-              },
-            },
-            wizard: {
-              step: 'PAY',
-              instruction: 'Gunakan billing_id untuk membuat pembayaran via /api/payments/create.',
-              next_action: { action: 'START' },
-            },
-          };
+        message: 'Order berhasil dibuat secara terpusat',
+        data: {
+          checkout_url: checkoutUrl,
+          checkout: {
+            public_token: remoteInvoice.invoice_number,
+            public_url: checkoutUrl
+          }
         }
-      } catch {}
-      const statusCode = Number((error as any)?.statusCode) || 500;
-      const msg = error instanceof Error ? error.message : 'Failed to order plan';
+      };
+    } catch (error: any) {
+      console.error('[ORDER PLAN PROXY ERROR]', error);
+      
+      let statusCode = Number(error?.statusCode) || 500;
+      let msg = error instanceof Error ? error.message : 'Failed to order plan centrally';
+      
+      // Mengekstrak detail status dan pesan kesalahan asli dari Axios/Server Lisensi
+      if (error?.response) {
+        statusCode = error.response.status || statusCode;
+        if (error.response.data && error.response.data.message) {
+          msg = error.response.data.message;
+        }
+      }
+      
       reply.status(statusCode);
       return { success: false, message: msg };
     }
@@ -1800,6 +1314,141 @@ export const subscriptionController = {
         success: false,
         message: errorMessage,
       };
+    }
+  },
+
+  async updateAcademicTier(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const { tier } = request.body || {};
+
+      if (!tier) {
+        reply.status(400);
+        return { success: false, message: 'tier is required' };
+      }
+
+      const tierUpper = String(tier).trim().toUpperCase();
+      if (!['MICRO', 'SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE'].includes(tierUpper)) {
+        reply.status(400);
+        return { success: false, message: 'Invalid tier. Allowed values: MICRO, SMALL, MEDIUM, LARGE, ENTERPRISE' };
+      }
+
+      const targetPlanId = `ACADEMIC_${tierUpper}_TAHUNAN`;
+      let localPlan = await prisma.plan.findUnique({ where: { id: targetPlanId } });
+      if (!localPlan) {
+        // Fallback: Jika belum ada di lokal, coba cari atau buat dari default seed
+        const defaultPlans = {
+          'MICRO': 100,
+          'SMALL': 300,
+          'MEDIUM': 600,
+          'LARGE': 1200,
+          'ENTERPRISE': null
+        };
+        const maxUser = (defaultPlans as any)[tierUpper];
+        localPlan = await prisma.plan.create({
+          data: {
+            id: targetPlanId,
+            code: targetPlanId,
+            service_code: 'CORE',
+            module_id: 'CORE',
+            name: `Academic Core (${tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase()}) - Tahunan`,
+            price_monthly: 0,
+            price_yearly: 0,
+            max_user: maxUser,
+            features_json: [],
+            description: `Academic Core capacity tier ${tierUpper}`,
+            billing_period: 'YEAR',
+            absensi_mode: 'SIMPLE',
+            is_active: true,
+            is_public: true,
+            size_label: tierUpper.charAt(0) + tierUpper.slice(1).toLowerCase(),
+            currency: 'IDR'
+          }
+        });
+      }
+
+      // Cari core subscription aktif milik tenant saat ini
+      let coreSub = await prisma.subscription.findFirst({
+        where: { tenant_id: user.tenant_id, service_code: 'CORE', status: 'ACTIVE' }
+      });
+
+      if (!coreSub) {
+        // Fallback: Jika tidak ketemu, coba cari CORE_PLATFORM atau buat baru
+        const now = new Date();
+        const end = new Date(now);
+        end.setFullYear(end.getFullYear() + 100);
+        coreSub = await prisma.subscription.create({
+          data: {
+            tenant_id: user.tenant_id,
+            plan_id: localPlan.id,
+            service_code: 'CORE',
+            status: 'ACTIVE',
+            start_date: now,
+            end_date: end,
+            next_billing_date: end,
+            auto_renew: false
+          }
+        });
+      } else {
+        await prisma.subscription.update({
+          where: { id: coreSub.id },
+          data: { plan_id: localPlan.id }
+        });
+      }
+
+      // Synchronize dengan Licensing Server
+      const licenseKey = process.env.LICENSE_KEY;
+      if (licenseKey) {
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const axios = require('axios');
+        try {
+          await axios.post(`${LICENSE_SERVER_URL}/api/license/update-academic-tier`, {
+            license_key: licenseKey.trim(),
+            tier: tierUpper
+          }, { timeout: 8000 });
+        } catch (e: any) {
+          console.error('[SYNC TIER] Failed to sync tier with licensing server:', e.message);
+          // Kita tidak batalkan request karena lokal sukses terupdate, sinkronisasi berkala selanjutnya akan memulihkan data
+        }
+      }
+
+      return { success: true, message: `Kapasitas sekolah berhasil diubah ke ${tierUpper}.` };
+    } catch (err: any) {
+      reply.status(500);
+      return { success: false, message: err.message || 'Gagal mengubah kapasitas sekolah' };
+    }
+  },
+
+  async handleLicenseWebhook(request: any, reply: any) {
+    try {
+      const { license_key, tenant_id } = request.body || {};
+      
+      const localLicenseKey = process.env.LICENSE_KEY;
+      if (!localLicenseKey || !license_key || String(license_key).trim() !== localLicenseKey.trim()) {
+        reply.status(400);
+        return { success: false, message: 'Invalid license key' };
+      }
+
+      console.log(`[LICENSE CALLBACK] Received real-time push event for tenant: ${tenant_id || 'unknown'}. Triggering sync...`);
+      
+      // Pull and update database state securely from central licensing server
+      const targetTenantId = tenant_id || String(request.headers['x-tenant-id'] || '');
+      let finalTenantId = targetTenantId;
+      if (!finalTenantId) {
+        const tenant = await prisma.tenant.findFirst({ select: { id: true } });
+        if (tenant) finalTenantId = tenant.id;
+      }
+
+      if (finalTenantId) {
+        await syncLocalSubscriptionsWithLicensingServer(finalTenantId);
+      }
+
+      reply.status(200);
+      return { success: true, message: 'Real-time sync triggered successfully' };
+    } catch (e: any) {
+      console.error('[LICENSE CALLBACK ERROR]', e);
+      reply.status(500);
+      return { success: false, message: e.message || 'Callback failed' };
     }
   },
 };

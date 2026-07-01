@@ -31,7 +31,6 @@ import {
   getInvoiceDownloadUrl,
   getPublicInvoiceLink,
 } from '@/api/mySubscription.api';
-import { openInvoicePublic } from '@/utils/invoiceLink';
 import type { Subscription } from '@/types/subscription';
 import type { Invoice } from '@/types/invoice';
 import type { PaymentRecord } from '@/types/payments';
@@ -156,20 +155,19 @@ function MySubscriptionContent() {
     if (!subscription) return;
     const upgradeInvoiceId = subscription.upgrade_invoice_id || null;
     if (!upgradeInvoiceId) {
-      navigate('/billing?tab=invoice');
+      navigate('/service-center?tab=status');
       return;
     }
     try {
       setUpgradePayLoading(true);
       const res = await getPublicInvoiceLink(upgradeInvoiceId);
-      const token = res.success && res.data?.token ? res.data.token : null;
-      if (!token) {
-        navigate('/billing?tab=invoice');
-        return;
+      if (res.success && res.data?.url) {
+        window.open(res.data.url, '_blank');
+      } else {
+        navigate('/service-center?tab=status');
       }
-      navigate(`/payment/public/${token}`);
     } catch {
-      navigate('/billing?tab=invoice');
+      navigate('/service-center?tab=status');
     } finally {
       setUpgradePayLoading(false);
     }
@@ -211,9 +209,11 @@ function MySubscriptionContent() {
     try {
       setActionLoading(invoiceId);
       const res = await getPublicInvoiceLink(invoiceId);
-      if (res.success && res.data?.token) openInvoicePublic(res.data.token);
-      else if (res.success && res.data?.url) window.open(res.data.url, '_blank');
-      else toast.error('Gagal membuka invoice.');
+      if (res.success && res.data?.url) {
+        window.open(res.data.url, '_blank');
+      } else {
+        toast.error('Gagal membuka invoice.');
+      }
     } catch {
       toast.error('Gagal membuka invoice.');
     } finally {

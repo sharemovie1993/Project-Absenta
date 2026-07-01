@@ -12,21 +12,11 @@ async function processJob(job: Job) {
   const name = String(job.name);
   
   try {
-    if (name === 'tenant-risk') {
-      const { runTenantRiskCycle } = await import('../jobs/tenantRisk.job');
-      await runTenantRiskCycle();
-    } else if (name === 'metric-aggregation') {
+    if (name === 'metric-aggregation') {
       const { runMetricAggregationCycle } = await import('../jobs/metricAggregation.job');
       await runMetricAggregationCycle();
-    } else if (name === 'revenue-aggregation') {
-      const { runRevenueAggregationCycle } = await import('../jobs/revenueAggregation.job');
-      await runRevenueAggregationCycle();
-    } else if (name === 'revenue-forecast') {
-      const { runRevenueForecastCycle } = await import('../jobs/revenueForecast.job');
-      await runRevenueForecastCycle();
-    } else if (name === 'upgrade-intelligence') {
-      const { runUpgradeIntelligenceCycle } = await import('../jobs/upgradeIntelligence.job');
-      await runUpgradeIntelligenceCycle();
+    } else {
+      console.log(`[analytics-worker] job_type=${name} is deprecated on tenant level (platform-only). Skipping.`);
     }
     await markJobEnd(ANALYTICS_QUEUE_NAME, Date.now() - startTime);
   } catch (error) {

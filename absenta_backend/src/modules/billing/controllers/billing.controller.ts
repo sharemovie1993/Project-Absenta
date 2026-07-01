@@ -1,5 +1,5 @@
-import { billingService, CreateBillingInput, UpdateBillingInput } from '../services/billing.service';
-import { InvoiceStatus } from '@prisma/client';
+import { billingService } from '../services/billing.service';
+import { CreateBillingInput, UpdateBillingInput, InvoiceStatus } from '../services/billing.types';
 import { runRecurringBillingCycle } from '@/jobs/recurringBilling.job';
 import { emitDomainEvent } from '@/infra/event-bus';
 

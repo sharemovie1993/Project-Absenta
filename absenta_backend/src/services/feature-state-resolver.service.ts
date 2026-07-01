@@ -56,9 +56,13 @@ export const featureStateResolver = {
       const status = relevantSub.status;
       const isExpired = relevantSub.end_date <= now;
 
-      if (status === 'TRIAL' && !isExpired) {
+      // 7-day grace period for offline/grace situations
+      const gracePeriodExpiry = new Date(relevantSub.end_date.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const isWithinGracePeriod = now <= gracePeriodExpiry;
+
+      if (status === 'TRIAL' && (!isExpired || isWithinGracePeriod)) {
         state = FeatureState.TRIAL;
-      } else if ((status === 'ACTIVE' || status === 'UPGRADE_PENDING') && !isExpired) {
+      } else if ((status === 'ACTIVE' || status === 'UPGRADE_PENDING') && (!isExpired || isWithinGracePeriod)) {
         state = FeatureState.ACTIVE;
       } else if (status === 'EXPIRED' || isExpired) {
         state = FeatureState.EXPIRED;

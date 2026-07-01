@@ -133,39 +133,15 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                       {formatCurrency(inv.total_amount, inv.currency)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end">
                         <Button 
                           size="sm" 
-                          variant="outline" 
-                          onClick={() => handleViewInvoice(inv.id, true)} 
+                          onClick={() => handleViewInvoice(inv.id)} 
                           disabled={actionLoading === inv.id}
-                          className="h-8 px-3 rounded-md text-xs font-bold"
+                          className="rounded-md bg-blue-600 text-white font-bold h-8 px-4 text-xs shadow-md shadow-blue-600/10 hover:bg-blue-700 transition-all active:scale-[0.97]"
                         >
-                          {actionLoading === inv.id ? <Loader size="sm" /> : 'Detail'}
+                          {actionLoading === inv.id ? <Loader size="sm" /> : 'Bayar / Detail'}
                         </Button>
-                        {inv.status !== 'CANCELLED' ? (
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => handleCancelInvoice(inv.id)}
-                              disabled={actionLoading === inv.id}
-                              className="h-8 px-3 rounded-md text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                              Batalkan
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleViewInvoice(inv.id)} 
-                              disabled={actionLoading === inv.id}
-                              className="rounded-md bg-blue-600 text-white font-bold h-8 px-4 text-xs shadow-md shadow-blue-600/10 hover:bg-blue-700"
-                            >
-                              Bayar
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-bold italic text-[10px] uppercase tracking-wider px-2">Dibatalkan</span>
-                        )}
                       </div>
                     </td>
                   </tr>

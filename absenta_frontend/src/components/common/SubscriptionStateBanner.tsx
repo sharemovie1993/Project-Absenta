@@ -8,7 +8,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { formatDateShort } from '@/utils/layoutUtils';
 import { getMySubscription, getPublicInvoiceLink } from '@/api/mySubscription.api';
 import { getSubscriptionStatusLabel } from '@/utils/subscriptionStatusDictionary';
-import { openInvoicePublic } from '@/utils/invoiceLink';
 import { getSidebarMenu, MENU_QUERY_KEY } from '@/api/menu.api';
 import { useQuery } from '@tanstack/react-query';
 import { Lock, Rocket } from 'lucide-react';
@@ -117,21 +116,16 @@ export default function SubscriptionStateBanner() {
     const upgradeInvoiceId =
       (effectiveSubscription as any).upgrade_invoice_id || null;
     if (!upgradeInvoiceId) {
-      navigate('/billing?tab=invoice');
+      navigate('/service-center?tab=status');
       return;
     }
     try {
       setRedirectingInvoiceId(upgradeInvoiceId);
       const res = await getPublicInvoiceLink(upgradeInvoiceId);
-      const token = res.success && res.data?.token ? res.data.token : null;
-      if (!token) {
-        navigate('/billing?tab=invoice');
-        return;
-      }
-      if (mode === 'pay') {
-        navigate(`/payment/public/${token}`);
+      if (res.success && res.data?.url) {
+        window.open(res.data.url, '_blank');
       } else {
-        navigate(`/invoice/public/${token}`);
+        navigate('/service-center?tab=status');
       }
     } finally {
       setRedirectingInvoiceId(null);

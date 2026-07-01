@@ -33,14 +33,12 @@ model Tenant {
   AbsenGuru               AbsenGuru[]
   AbsenSiswa              AbsenSiswa[]
   activityLogs            ActivityLog[]
-  billing                 Billing[]
   config                  Config[]
   documents               Document[]               @relation("TenantDocuments")
   documentActivities      DocumentActivity[]       @relation("TenantDocumentActivities")
   financialReports        FinancialReport[]
   guru                    Guru[]
   GuruMapel               GuruMapel[]
-  invoices                Invoice[]
   JenisKegiatanMaster     JenisKegiatanMaster[]
   jurusan                 Jurusan[]
   kelas                   Kelas[]
@@ -49,7 +47,6 @@ model Tenant {
   notificationLogs        NotificationLog[]
   notificationPreferences NotificationPreference[]
   OrangTua                OrangTua[]
-  payments                Payment[]
   sekolah                 Sekolah[]
   Semester                Semester[]
   sesiAbsensi             SesiAbsensi[]
@@ -60,7 +57,6 @@ model Tenant {
   subscriptions           Subscription[]           @relation("TenantSubscriptions")
   SystemConfig            SystemConfig[]
   SiswaFaceTemplate       SiswaFaceTemplate[]
-  RefundRecord            RefundRecord[]
   JadwalTemplate          JadwalTemplate[]
   PelanggaranSiswa        PelanggaranSiswa[]
   SupervisiGuru           SupervisiGuru[]
@@ -591,11 +587,9 @@ model Subscription {
   pricing_meta   Json? // Detail simulasi: students, desc, etc
   plan_snapshot  Json? // Full snapshot of the plan at the time of subscription (features, limits, etc.)
 
-  Billing           Billing[]
   Plan              Plan                  @relation(fields: [plan_id], references: [id])
   Tenant            Tenant                @relation("TenantSubscriptions", fields: [tenant_id], references: [id], onDelete: Cascade)
   History           SubscriptionHistory[]
-  Invoice           Invoice[]
   PlanChangeRequest PlanChangeRequest[]
   SubscriptionAddon SubscriptionAddon[]
 
@@ -651,153 +645,7 @@ model SubscriptionAddon {
   @@index([addon_id])
 }
 
-model Billing {
-  id                       String        @id @default(uuid())
-  tenant_id                String
-  subscription_id          String
-  amount                   Int
-  charge_type              ChargeType    @default(RECURRING)
-  status                   BillingStatus @default(UNPAID)
-  created_at               DateTime      @default(now())
-  updated_at               DateTime      @updatedAt
-  payment_method           String?
-  payment_reference        String?
-  billing_date             DateTime      @db.Timestamptz
-  upgrade_plan_id_snapshot String?
-  upgrade_price_snapshot   Int?
-  plan_change_request_id   String?
-  Subscription             Subscription  @relation(fields: [subscription_id], references: [id])
-  Tenant                   Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Invoice                  Invoice?
-  Payment                  Payment[]
 
-  @@unique([subscription_id, billing_date])
-  @@index([tenant_id, created_at])
-}
-
-model Invoice {
-  id               String        @id @default(uuid())
-  tenant_id        String
-  billing_id       String        @unique
-  subscription_id  String
-  invoice_number   String        @unique
-  title            String?
-  description      String?
-  amount           Int
-  // New tax fields
-  subtotal_amount  Int           @default(0)
-  tax_rate         Float?
-  tax_amount       Int?
-  total_amount     Int
-  tax_type         String?
-  tax_included     Boolean       @default(false)
-  tax_label        String?
-  currency         String        @default("IDR")
-  status           InvoiceStatus @default(DRAFT)
-  issue_date       DateTime      @default(now()) @db.Timestamptz
-  due_date         DateTime      @db.Timestamptz
-  period_start     DateTime?     @db.Timestamptz
-  period_end       DateTime?     @db.Timestamptz
-  sent_at          DateTime?
-  viewed_at        DateTime?
-  paid_at          DateTime?     @db.Timestamptz
-  invoice_items    Json?
-  notes            String?
-  terms_conditions String?
-
-  // Snapshot Tenant Identity (Audit Safe)
-  invoice_tenant_name       String?
-  invoice_tenant_identifier String?
-  invoice_tenant_address    String?
-
-  // Snapshot Issuer Identity (Audit & Legal Safe)
-  invoice_company_legal_name      String?
-  invoice_company_trade_name      String?
-  invoice_company_npwp            String?
-  invoice_company_address         String?
-  invoice_company_email_billing   String?
-  invoice_company_phone_billing   String?
-  invoice_company_logo_url        String?
-  invoice_company_signature_name  String?
-  invoice_company_signature_title String?
-
-  pdf_path             String?
-  pdf_storage_provider String?
-  pdf_storage_key      String?
-  pdf_sha256           String?
-  pdf_generated_at     DateTime?      @db.Timestamptz
-  pdf_size_bytes       Int?
-  email_sent           Boolean        @default(false)
-  whatsapp_sent        Boolean        @default(false)
-  created_at           DateTime       @default(now())
-  updated_at           DateTime       @updatedAt
-  Billing              Billing        @relation(fields: [billing_id], references: [id])
-  Tenant               Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Subscription         Subscription   @relation(fields: [subscription_id], references: [id])
-  payments             Payment[]      @relation("InvoicePayments")
-  RefundRecord         RefundRecord[]
-
-  @@index([tenant_id, created_at])
-  @@index([billing_id])
-  @@index([subscription_id])
-  @@index([status])
-}
-
-// Persisted public invoice tokens to avoid dependency on Redis availability
-model InvoicePublicToken {
-  id         String    @id @default(uuid())
-  invoice_id String
-  tenant_id  String?
-  token_hash String    @unique
-  created_at DateTime  @default(now())
-  expires_at DateTime?
-  revoked_at DateTime?
-
-  @@index([invoice_id])
-  @@index([tenant_id])
-}
-
-// Tax type enum
-enum TaxType {
-  NONE
-  PPN
-}
-
-model Payment {
-  id                     String         @id @default(uuid())
-  tenant_id              String
-  billing_id             String
-  gateway                PaymentGateway
-  payment_method         PaymentMethod
-  amount                 Int
-  currency               String         @default("IDR")
-  status                 PaymentStatus  @default(PENDING)
-  gateway_transaction_id String?        @unique
-  gateway_payment_url    String?
-  gateway_qr_string      String?
-  gateway_response       Json?
-  webhook_received_at    DateTime?      @db.Timestamptz
-  webhook_verified       Boolean        @default(false)
-  webhook_signature      String?
-  confirmed_by           String? // 'TRIPAY_WEBHOOK' | 'MANUAL' | 'SYSTEM'
-  is_first_success       Boolean        @default(false)
-  paid_at                DateTime?      @db.Timestamptz
-  expired_at             DateTime?      @db.Timestamptz
-  failure_reason         String?
-  created_at             DateTime       @default(now())
-  updated_at             DateTime       @updatedAt
-  invoice_id             String?
-  proof_url              String?
-  Billing                Billing        @relation(fields: [billing_id], references: [id])
-  Invoice                Invoice?       @relation("InvoicePayments", fields: [invoice_id], references: [id])
-  Tenant                 Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  RefundRecord           RefundRecord[]
-
-  @@index([tenant_id, created_at])
-  @@index([billing_id])
-  @@index([status])
-  @@index([invoice_id])
-}
 
 // Audit trail perubahan plan pada subscription
 model SubscriptionHistory {
@@ -1744,24 +1592,7 @@ model DocumentActivity {
   @@index([actor_tenant_id, created_at])
 }
 
-model RefundRecord {
-  id          String   @id @default(uuid())
-  tenant_id   String
-  invoice_id  String?
-  payment_id  String?
-  amount      Int
-  currency    String   @default("IDR")
-  reason      String?
-  recorded_at DateTime @default(now()) @db.Timestamptz
-  created_at  DateTime @default(now())
-  Tenant      Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Invoice     Invoice? @relation(fields: [invoice_id], references: [id])
-  Payment     Payment? @relation(fields: [payment_id], references: [id])
 
-  @@index([tenant_id])
-  @@index([invoice_id])
-  @@index([payment_id])
-}
 
 enum PlanChangeStatus {
   SCHEDULED
@@ -1999,21 +1830,7 @@ enum SubscriptionStatus {
   SUSPENDED
 }
 
-enum BillingStatus {
-  UNPAID
-  PAID
-  OVERDUE
-  CANCELLED
-}
 
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  VIEWED
-  PAID
-  OVERDUE
-  CANCELLED
-}
 
 enum PaymentGateway {
   MIDTRANS

@@ -48,6 +48,47 @@ export const planController = {
     }
   },
 
+  // Public endpoint: return Academic Core tier plans for registration form (no auth required)
+  async getAcademicTierPlans(_request: any, reply: any) {
+    try {
+      const { prisma } = await import('@/utils/prisma');
+      const plans = await prisma.plan.findMany({
+        where: {
+          id: { startsWith: 'ACADEMIC_' },
+          is_active: true,
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          size_label: true,
+          max_user: true,
+          description: true,
+          price_monthly: true,
+          price_yearly: true,
+        },
+        orderBy: { max_user: 'asc' },
+      });
+
+      // Ensure ENTERPRISE (null max_user) comes last
+      const sorted = [
+        ...plans.filter((p) => p.max_user !== null),
+        ...plans.filter((p) => p.max_user === null),
+      ];
+
+      reply.status(200);
+      return {
+        success: true,
+        message: 'Academic tier plans retrieved successfully',
+        data: sorted,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve academic tier plans';
+      reply.status(500);
+      return { success: false, message: errorMessage };
+    }
+  },
+
   async getPlanById(request: any, reply: any) {
     try {
       const { id } = request.params;

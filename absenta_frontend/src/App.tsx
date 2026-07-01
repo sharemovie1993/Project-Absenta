@@ -54,8 +54,7 @@ const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage')
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
 const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/MonitoringKbmPage'));
 // Removed GerbangPage import
-const InvoicePage = lazy(() => import('./pages/invoice/InvoicePage'));
-const InvoicePrivateRedirect = lazy(() => import('./pages/invoice/InvoicePrivateRedirect'));
+
 const UsersPage = lazy(() => import('./pages/users/UsersPage'));
 const TenantsPage = lazy(() => import('./pages/tenants/TenantsPage'));
 const TenantDetailPage = lazy(() => import('./pages/superadmin/TenantDetailPage'));
@@ -158,13 +157,8 @@ const TermsOfServicePage = lazy(() => import('./pages/public/TermsOfServicePage'
 const DataProcessingAgreementPage = lazy(() => import('./pages/public/DataProcessingAgreementPage'));
 const ServicesCatalogPage = lazy(() => import('./pages/public/ServicesCatalogPage'));
 const ServiceDetailPage = lazy(() => import('./pages/public/ServiceDetailPage'));
-const InvoicePublicPage = lazy(() => import('./pages/public/InvoicePublicPage'));
-const PaymentPublicPage = lazy(() => import('./pages/public/PaymentPublicPage'));
 const SuratKeluarQuickApprovePage = lazy(() => import('./pages/public/SuratKeluarQuickApprovePage'));
 const SuratKeluarPublicViewPage = lazy(() => import('./pages/public/SuratKeluarPublicViewPage'));
-const PaymentInstructionPage = lazy(() => import('./pages/public/PaymentInstructionPage'));
-const PaymentReturnPage = lazy(() => import('./pages/public/PaymentReturnPage'));
-const PaymentStatusPage = lazy(() => import('./pages/public/PaymentStatusPage'));
 const EmailVerificationStatusPage = lazy(() => import('./pages/public/EmailVerificationStatusPage'));
 const SubdomainRedirect = lazy(() => import('./pages/auth/SubdomainRedirect'));
 
@@ -371,20 +365,15 @@ function App() {
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsOfServicePage />} />
                 <Route path="/dpa" element={<DataProcessingAgreementPage />} />
-                <Route path="/invoice/public/:token" element={<InvoicePublicPage />} />
-                <Route path="/payment/public/:token" element={<PaymentPublicPage />} />
-                <Route path="/surat-keluar/quick-approve/:token" element={<SuratKeluarQuickApprovePage />} />
-                <Route path="/surat-keluar/public-view/:token" element={<SuratKeluarPublicViewPage />} />
-                <Route path="/payment/public/:token/instruction" element={<PaymentInstructionPage />} />
-                <Route path="/payment/return" element={<PaymentReturnPage />} />
-                <Route path="/payment/status/:ref" element={<PaymentStatusPage />} />
-                <Route path="/verify-email/status" element={<EmailVerificationStatusPage />} />
-                <Route path="/verify-email/status/:token" element={<EmailVerificationStatusPage />} />
                 <Route path="/register-tenant" element={<RegisterTenant />} />
                 <Route path="/check-email" element={<CheckEmail />} />
                 <Route path="/reset-password" element={<ResetPasswordConfirmPage />} />
                 <Route path="/subdomain-redirect" element={<SubdomainRedirect />} />
                 <Route path="/services/:slug" element={<ServiceDetailPage />} />
+                <Route path="/surat-keluar/quick-approve/:token" element={<SuratKeluarQuickApprovePage />} />
+                <Route path="/surat-keluar/public-view/:token" element={<SuratKeluarPublicViewPage />} />
+                <Route path="/verify-email/status" element={<EmailVerificationStatusPage />} />
+                <Route path="/verify-email/status/:token" element={<EmailVerificationStatusPage />} />
                 
                 {/* Error Routes */}
                 <Route path="/403" element={<ForbiddenPage />} />
@@ -958,28 +947,7 @@ function App() {
                         <BillingReportsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/billing/invoices" element={<Navigate to="/invoice/list" replace />} />
-                    <Route path="/billing/monitoring" element={<Navigate to="/superadmin/infra/monitoring" replace />} />
-                    
-                    {/* Invoice Routes */}
-                    <Route path="/invoice" element={<Navigate to="/invoice/dashboard" replace />} />
-                    <Route path="/invoice/dashboard" element={
-                      <ProtectedRoute requiredCapability="billing.invoices.view.list">
-                        <InvoicePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/invoice/list" element={
-                      <ProtectedRoute requiredCapability="billing.invoices.view.list">
-                        <InvoicePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/invoice/create" element={
-                      <ProtectedRoute requiredCapability="billing.invoices.generate">
-                        <InvoicePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/invoice/:id" element={<InvoicePrivateRedirect />} />
-                    <Route path="/invoice/:id/edit" element={<InvoicePrivateRedirect />} />
+
                     <Route path="/users" element={
                       <ProtectedRoute requiredCapability="core.users.view.list">
                         <UsersPage />

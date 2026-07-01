@@ -8,7 +8,7 @@ import { registerRoutes } from './infra/router';
 import { closeInvoicePdfQueue, initInvoicePdfWorker } from './modules/pdf/invoice-pdf.queue';
 import { closeMouPdfQueue, initMouPdfWorker } from './modules/document-center/mou-pdf.queue';
 import { initNotificationWorker } from './modules/notification/notification.worker';
-import { initInvoiceEventConsumer } from './modules/invoice/services/event-handlers/invoice-event-consumer';
+
 import { initBillingPaymentEventConsumer } from './modules/billing/services/event-handlers/payment-succeeded.consumer';
 import { initBillingTenantCreatedConsumer } from './modules/billing/services/event-handlers/tenant-created.consumer';
 import { initAcademicTenantCreatedConsumer } from './modules/academic/services/event-handlers/tenant-created.consumer';
@@ -229,9 +229,7 @@ async function start() {
       await (await import('./infra/event-bus')).initEventBus({ redis, io, ioApi });
     });
 
-    await trackService('Invoice Event Consumer', 'consumer', async () => {
-      await initInvoiceEventConsumer();
-    });
+
 
     await trackService('Billing Payment Consumer', 'consumer', async () => {
       await initBillingPaymentEventConsumer();
@@ -253,6 +251,12 @@ async function start() {
     if (process.send) {
       process.send('ready');
     }
+
+    // Sync license with center licensing server asynchronously
+    const { LicenseService } = await import('./infra/license/license.service');
+    LicenseService.syncLicense().catch((err: any) => {
+      console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
+    });
 
     // ─── Print PM2-style startup table ───
     printStartupTable(port, host);

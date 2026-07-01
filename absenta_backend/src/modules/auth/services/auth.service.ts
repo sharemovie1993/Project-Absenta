@@ -10,7 +10,6 @@ import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '..
 import { emitDomainEvent } from '@/infra/event-bus';
 import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
-import { generateInvoiceNumber } from '@/modules/billing/services/utils/invoice-number';
 
 // Removed hardcoded DEFAULT_STRUKTUR_ORGANISASI in favor of shared config
 
@@ -248,7 +247,7 @@ export class AuthService {
   }
 
   async registerTenant(input: RegisterTenantInput) {
-    const { tenant_name, tenant_domain, npsn, admin_full_name, admin_email, admin_password, admin_phone, plan_id, alamat, billing_cycle_months, custom_price, sim_model, sim_students, sim_desc } = input;
+    const { tenant_name, tenant_domain, npsn, admin_full_name, admin_email, admin_password, admin_phone, plan_id, alamat, billing_cycle_months, custom_price, sim_model, sim_students, sim_desc, academic_tier } = input;
     let aggregatedBillingId: string | null = null;
 
     const normalizedNpsn = String(npsn ?? '').trim().replace(/\D/g, '');
@@ -331,11 +330,26 @@ export class AuthService {
         throw new Error('Password minimal 8 karakter.');
     }
 
-    const corePlan = await prisma.plan.findFirst({
-      where: { name: 'CORE_PLATFORM', is_active: true },
+    const tier = String(academic_tier || 'MICRO').toUpperCase();
+    // Cari plan ACADEMIC berdasarkan code (termasuk yang is_active=false agar tidak jatuh ke CORE_PLATFORM)
+    let corePlan = await prisma.plan.findFirst({
+      where: { code: `ACADEMIC_${tier}_TAHUNAN` },
     });
+    // Jika ditemukan tapi tidak aktif, aktifkan sekarang
+    if (corePlan && !corePlan.is_active) {
+      corePlan = await prisma.plan.update({
+        where: { id: corePlan.id },
+        data: { is_active: true }
+      });
+    }
     if (!corePlan) {
-      throw new Error('Default CORE_PLATFORM plan not found. Please contact support.');
+      // Fallback: Cari CORE_PLATFORM jika ACADEMIC tidak ada sama sekali
+      corePlan = await prisma.plan.findFirst({
+        where: { name: 'CORE_PLATFORM', is_active: true },
+      });
+    }
+    if (!corePlan) {
+      throw new Error('Default Academic/CORE plan not found. Please contact support.');
     }
 
     const requestedPlan = plan_id
@@ -461,7 +475,7 @@ export class AuthService {
         const reqEnd = new Date(reqNow);
         reqEnd.setMonth(reqEnd.getMonth() + cycle);
 
-        const requestedSubscription = await tx.subscription.create({
+        await tx.subscription.create({
           data: {
             tenant_id: newTenant.id,
             plan_id: requestedPlan.id,
@@ -480,45 +494,7 @@ export class AuthService {
           },
         });
 
-        const amount = custom_price ?? (
-          cycle === 12 && requestedPlan.price_yearly 
-            ? requestedPlan.price_yearly 
-            : requestedPlan.price_monthly * cycle
-        );
-        
-        // Create corresponding Billing record
-        const newBilling = await tx.billing.create({
-          data: {
-            tenant_id: newTenant.id,
-            subscription_id: requestedSubscription.id,
-            amount: amount,
-            billing_date: reqNow,
-            charge_type: 'RECURRING',
-            status: 'UNPAID',
-            upgrade_plan_id_snapshot: requestedPlan.id,
-            upgrade_price_snapshot: amount,
-          },
-        });
 
-        // Generate Invoice in SENT status so it appears in the user dashboard
-        await tx.invoice.create({
-          data: {
-            tenant_id: newTenant.id,
-            billing_id: newBilling.id,
-            subscription_id: requestedSubscription.id,
-            invoice_number: await generateInvoiceNumber(),
-            title: `Langganan ${requestedPlan.name}`,
-            description: `Aktivasi awal layanan ${requestedPlan.name} untuk ${tenant_name}`,
-            amount: amount,
-            subtotal_amount: amount,
-            total_amount: amount,
-            status: 'SENT',
-            issue_date: reqNow,
-            due_date: new Date(reqNow.getTime() + 3 * 24 * 60 * 60 * 1000), // Due in 3 days
-            period_start: reqNow,
-            period_end: reqEnd,
-          },
-        });
 
         // Keep config markers for backward compatibility/reference
         try {

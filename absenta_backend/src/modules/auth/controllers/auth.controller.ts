@@ -1045,7 +1045,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
           }
         } catch {}
       }
-      {
+      if (!resolvedTenantId) {
         const tenantRecord = await authController.resolveTenantByHost(request.headers);
         if (tenantRecord) {
           resolvedTenantId = tenantRecord.id;

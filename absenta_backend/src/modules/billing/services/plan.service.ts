@@ -35,6 +35,7 @@ export interface PlanResponse {
   is_active: boolean;
   size_label?: string | null;
   tier?: string | null;
+  service_code?: string | null;
   metadata?: any;
   created_at: Date;
   updated_at: Date;
@@ -62,6 +63,24 @@ export class PlanService {
     if (n.toLowerCase().startsWith('koperasi-')) return 'KOPERASI';
     if (n.toLowerCase().startsWith('absensi-')) return 'ABSENSI';
     return 'CORE';
+  }
+
+  private getPlanSizeLabel(plan: any): string {
+    if (plan.size_label) return plan.size_label;
+    
+    const name = String(plan.name || plan.title || '').toLowerCase();
+    if (name.includes('micro')) return 'Micro';
+    if (name.includes('small')) return 'Small';
+    if (name.includes('medium')) return 'Medium';
+    if (name.includes('large')) return 'Large';
+    if (name.includes('enterprise')) return 'Enterprise';
+
+    const limit = plan.device_limit ?? plan.max_user ?? 0;
+    if (limit === 100 || limit === 30) return 'Micro';
+    if (limit === 300) return 'Small';
+    if (limit === 600) return 'Medium';
+    if (limit === 1200) return 'Large';
+    return 'Enterprise';
   }
 
   async getAllPlans(includeInactive: boolean = false): Promise<PlanResponse[]> {
@@ -96,8 +115,9 @@ export class PlanService {
             billing_period: plan.billing_period || 'MONTH',
             currency: 'IDR',
             is_active: true,
-            size_label: plan.size_label || 'Standard',
-            tier: plan.size_label || 'Standard',
+            size_label: this.getPlanSizeLabel(plan),
+            tier: this.getPlanSizeLabel(plan),
+            service_code: plan.service_code || this.resolveServiceCode(planName, features),
             metadata: null,
             created_at: new Date(plan.created_at || Date.now()),
             updated_at: new Date(plan.updated_at || Date.now()),
@@ -147,6 +167,7 @@ export class PlanService {
       is_active: plan.is_active,
       size_label: (plan as any).size_label,
       tier: (plan as any).tier,
+      service_code: (plan as any).service_code || null,
       metadata: (plan as any).metadata,
       created_at: plan.created_at,
       updated_at: plan.updated_at,
@@ -188,6 +209,7 @@ export class PlanService {
       is_active: plan.is_active,
       size_label: (plan as any).size_label,
       tier: (plan as any).tier,
+      service_code: (plan as any).service_code || null,
       metadata: (plan as any).metadata,
       created_at: plan.created_at,
       updated_at: plan.updated_at,

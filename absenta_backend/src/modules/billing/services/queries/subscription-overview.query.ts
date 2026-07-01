@@ -1,4 +1,4 @@
-import { InvoiceStatus, SubscriptionStatus } from '@prisma/client';
+import { SubscriptionStatus } from '@prisma/client';
 import { subscriptionDb as prisma } from '../repositories/subscription.db';
 
 export async function getMySubscriptionOverviewQuery(tenantId: string) {
@@ -7,11 +7,6 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     orderBy: { end_date: 'desc' },
     include: {
       Plan: { include: { Module: true } },
-      Invoice: {
-        where: { status: InvoiceStatus.PAID as any },
-        orderBy: { paid_at: 'desc' },
-        take: 1,
-      },
     },
   });
 
@@ -68,54 +63,6 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     orderBy: { effective_date: 'asc' },
   });
 
-  let upgradeInvoiceId: string | null = null;
-  let upgradeInvoiceStatus: string | null = null;
-  let upgradePaymentStatus: string | null = null;
-
-  if (upgradePlanChange) {
-    const upgradeBilling = await prisma.billing.findFirst({
-      where: {
-        subscription_id: subscription.id,
-        plan_change_request_id: upgradePlanChange.id,
-        charge_type: 'UPGRADE' as any,
-      },
-      include: {
-        Invoice: true,
-        Payment: {
-          orderBy: { created_at: 'desc' },
-          take: 1,
-          select: { status: true },
-        },
-      },
-    });
-
-    const invoice = (upgradeBilling as any)?.Invoice;
-    if (invoice) {
-      upgradeInvoiceId = String(invoice.id);
-      upgradeInvoiceStatus = String(invoice.status);
-    }
-    const p = Array.isArray((upgradeBilling as any)?.Payment) ? (upgradeBilling as any).Payment[0] : null;
-    if (p?.status) {
-      upgradePaymentStatus = String(p.status);
-    }
-  }
-
-  // FALLBACK: Jika tidak ada upgradePlanChange tapi ada tagihan tertunda secara umum
-  if (!upgradeInvoiceId) {
-    const pendingInvoice = await prisma.invoice.findFirst({
-      where: {
-        tenant_id: tenantId,
-        status: { in: [InvoiceStatus.SENT, InvoiceStatus.VIEWED, InvoiceStatus.OVERDUE] as any }
-      },
-      orderBy: { issue_date: 'desc' }
-    });
-
-    if (pendingInvoice) {
-      upgradeInvoiceId = String(pendingInvoice.id);
-      upgradeInvoiceStatus = String(pendingInvoice.status);
-    }
-  }
-
   // Agregasi fitur hanya dari langganan yang benar-benar aktif (ACTIVE/TRIAL)
   const subscriptionsForFeatures = activeSubscriptions.filter(s => 
     s.status === SubscriptionStatus.ACTIVE || s.status === SubscriptionStatus.TRIAL
@@ -160,9 +107,9 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
           billing_period: upgradePlanChange.toPlan?.billing_period ?? null,
         }
       : null,
-    upgrade_invoice_id: upgradeInvoiceId,
-    upgrade_invoice_status: upgradeInvoiceStatus,
-    upgrade_payment_status: upgradePaymentStatus,
+    upgrade_invoice_id: null,
+    upgrade_invoice_status: null,
+    upgrade_payment_status: null,
     expected_upgrade_price: upgradePlanChange ? upgradePlanChange.price_snapshot : null,
     scheduled_downgrade: scheduledDowngrade
       ? {
@@ -184,40 +131,10 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
   };
 }
 
-export async function getInvoicesByTenantQuery(tenantId: string) {
-  return prisma.invoice.findMany({
-    where: { tenant_id: tenantId },
-    orderBy: { issue_date: 'desc' },
-    include: { 
-      Billing: {
-        include: { 
-          Subscription: {
-            include: {
-              Plan: {
-                include: { Module: true }
-              }
-            }
-          } 
-        }
-      },
-      Subscription: {
-        include: {
-          Plan: {
-            include: { Module: true }
-          }
-        }
-      },
-      payments: {
-        orderBy: { created_at: 'desc' },
-        take: 1
-      }
-    },
-  });
+export async function getInvoicesByTenantQuery(_tenantId: string) {
+  return [];
 }
 
-export async function getPaymentsByTenantQuery(tenantId: string) {
-  return prisma.payment.findMany({
-    where: { tenant_id: tenantId },
-    orderBy: { created_at: 'desc' },
-  });
+export async function getPaymentsByTenantQuery(_tenantId: string) {
+  return [];
 }

@@ -1,4 +1,11 @@
-import type { InvoiceStatus } from '@prisma/client';
+export enum InvoiceStatus {
+  DRAFT = 'DRAFT',
+  SENT = 'SENT',
+  VIEWED = 'VIEWED',
+  OVERDUE = 'OVERDUE',
+  PAID = 'PAID',
+  CANCELLED = 'CANCELLED'
+}
 
 export interface CreateBillingInput {
   subscription_id: string;

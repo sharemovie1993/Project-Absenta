@@ -404,19 +404,11 @@ export class DashboardController {
    * 8️⃣ Recent Payments for Analytics
    * GET /dashboard/recent-payments
    */
-  async getRecentPayments(request: AuthenticatedRequest, reply: any) {
+  async getRecentPayments(_request: AuthenticatedRequest, reply: any) {
     try {
-      const { prisma } = await import('../../../utils/prisma');
-      const tenantId = request.tenantId;
-      const { limit = '5' } = (request as any).query || {};
-      const safeLimit = Math.min(Math.max(parseInt(String(limit)) || 5, 1), 50);
+      // Stub
 
-      const payments = await prisma.payment.findMany({
-        where: tenantId ? { tenant_id: tenantId } : {},
-        include: { Invoice: { select: { id: true } } },
-        orderBy: { created_at: 'desc' },
-        take: safeLimit
-      });
+      const payments: any[] = [];
 
       const data = payments.map((p: any) => ({
         id: p.id,
@@ -444,26 +436,12 @@ export class DashboardController {
    * 9️⃣ Payment Chart Data for Analytics
    * GET /dashboard/payment-chart
    */
-  async getPaymentChart(request: AuthenticatedRequest, reply: any) {
+  async getPaymentChart(_request: AuthenticatedRequest, reply: any) {
     try {
-      const { prisma } = await import('../../../utils/prisma');
-      const tenantId = request.tenantId;
-      const now = new Date();
       const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const currentYear = now.getFullYear();
 
       // Ambil pembayaran sukses per bulan untuk tahun berjalan
-      const payments = await prisma.payment.findMany({
-        where: {
-          ...(tenantId ? { tenant_id: tenantId } : {}),
-          status: 'SUCCESS',
-          created_at: {
-            gte: new Date(currentYear, 0, 1),
-            lte: new Date(currentYear, 11, 31, 23, 59, 59)
-          }
-        },
-        select: { amount: true, created_at: true }
-      });
+      const payments: any[] = [];
 
       // Agregasi per bulan
       const monthlyTotals = new Array(12).fill(0);

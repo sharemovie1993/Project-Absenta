@@ -215,33 +215,17 @@ export class DashboardService {
   }
 
   async getAnalyticsStats(tenantId: string | null) {
-    const [usersCount, billingsCount, paymentsSuccessCount, paidInvoicesAgg] = await Promise.all([
+    const [usersCount] = await Promise.all([
       prisma.user.count({
         where: tenantId ? { tenant_id: tenantId } : {}
       }),
-      prisma.billing.count({
-        where: tenantId ? { tenant_id: tenantId } : {}
-      }),
-      prisma.payment.count({
-        where: {
-          ...(tenantId ? { tenant_id: tenantId } : {}),
-          status: 'SUCCESS'
-        }
-      }),
-      prisma.invoice.aggregate({
-        where: {
-          ...(tenantId ? { tenant_id: tenantId } : {}),
-          status: 'PAID'
-        },
-        _sum: { total_amount: true }
-      })
     ]);
 
     return {
       users: usersCount,
-      billings: billingsCount,
-      payments: paymentsSuccessCount,
-      revenue: paidInvoicesAgg._sum.total_amount || 0
+      billings: 0,
+      payments: 0,
+      revenue: 0
     };
   }
 

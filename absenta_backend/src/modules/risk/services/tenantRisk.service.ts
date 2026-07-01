@@ -140,11 +140,7 @@ export class TenantRiskService {
     const [
       emailFailedCount,
       emailTotalCount,
-      paymentFailedCount,
-      paymentTerminalCount,
       suspendedCount,
-      overdueInvoiceCount,
-      paidInvoices,
       tenant,
     ] = await Promise.all([
       prisma.notificationLog.count({
@@ -153,25 +149,16 @@ export class TenantRiskService {
       prisma.notificationLog.count({
         where: { tenant_id: tenantId, type: 'EMAIL', status: { in: ['SENT', 'FAILED'] }, created_at: { gte: since } },
       }),
-      prisma.payment.count({
-        where: { tenant_id: tenantId, status: { in: ['FAILED', 'EXPIRED'] }, created_at: { gte: since } },
-      }),
-      prisma.payment.count({
-        where: { tenant_id: tenantId, status: { in: ['SUCCESS', 'FAILED', 'EXPIRED'] }, created_at: { gte: since } },
-      }),
       prisma.subscription.count({
         where: { tenant_id: tenantId, status: 'SUSPENDED', updated_at: { gte: since } },
       }),
-      prisma.invoice.count({
-        where: { tenant_id: tenantId, status: 'OVERDUE', due_date: { gte: since, lt: now } },
-      }),
-      prisma.invoice.findMany({
-        where: { tenant_id: tenantId, status: 'PAID', paid_at: { not: null }, due_date: { gte: since } },
-        select: { due_date: true, paid_at: true },
-        take: 500,
-      }),
       prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, name: true } }),
     ]);
+
+    const paymentFailedCount = 0;
+    const paymentTerminalCount = 0;
+    const overdueInvoiceCount = 0;
+    const paidInvoices: any[] = [];
 
     const emailFailureRate = emailTotalCount > 0 ? emailFailedCount / emailTotalCount : 0;
     const paymentFailureRate = paymentTerminalCount > 0 ? paymentFailedCount / paymentTerminalCount : 0;

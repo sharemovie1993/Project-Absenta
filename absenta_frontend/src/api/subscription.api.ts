@@ -277,9 +277,9 @@ export async function chooseSubscriptionPlan(id: string, plan_id: string): Promi
 }
 
 // ADMIN order plan for own tenant - POST /api/billing/subscriptions/order
-export async function orderSubscriptionPlan(plan_id: string, billing_period?: 'MONTH' | 'YEAR'): Promise<SubscriptionResponse> {
+export async function orderSubscriptionPlan(plan_id: string, billing_period?: 'MONTH' | 'YEAR', payment_method?: string): Promise<SubscriptionResponse> {
   return requestWithFallback<SubscriptionResponse>('post', `/billing/subscriptions/order`, {
-    data: { plan_id, billing_period },
+    data: { plan_id, billing_period, payment_method },
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }

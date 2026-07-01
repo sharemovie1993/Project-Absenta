@@ -247,9 +247,7 @@ export class PlatformIntelligenceService {
     const total = failed + success;
     const failureRate7d = total > 0 ? failed / total : 0;
 
-    const overdueCount = await prisma.invoice.count({
-      where: { status: 'OVERDUE' as any },
-    });
+    const overdueCount = 0;
 
     const latestSubscriptions = await prisma.subscription.findMany({
       distinct: ['tenant_id'],

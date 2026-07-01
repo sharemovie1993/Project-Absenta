@@ -18,18 +18,11 @@ import './metricAggregation.job';
 import './tenantBackupPurge.job';
 
 // ── Risk & Analytics ─────────────────────────────────────────────────────────
-import './tenantRisk.job';
 import './ewsSnapshot.job';
-import './revenueAggregation.job';
-import './revenueForecast.job';       // juga mendaftarkan subJob 'cohort'
-import './upgradeIntelligence.job';
 
 // ── Billing & Subscription ────────────────────────────────────────────────────
-import './recurringBilling.job';
 import './subscriptionRenewal.job';
 import './billingHealthScan.job';
-import './paymentReconciliation.job';
-import './tenantRetention.job';
 
 // ── Trial & Notification ──────────────────────────────────────────────────────
 import './trial-reminder.job';

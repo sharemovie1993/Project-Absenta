@@ -133,6 +133,94 @@ export async function registerRoutes(fastify: any, prisma: any) {
 
         const { authRoutes } = await import('../modules/auth/routes/auth.routes');
         await fastify.register(authRoutes, { prefix: '/auth' });
+
+        // Public route for viewing central invoice details on the public payment page
+        fastify.get('/invoice/public/:token', async (request: any, reply: any) => {
+          const { token } = request.params;
+          const axios = require('axios');
+          const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+          const coreKey = process.env.LICENSE_KEY || '';
+          try {
+            const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
+            if (response.data?.success && response.data?.data?.invoices) {
+              const inv = response.data.data.invoices.find((i: any) => i.invoice_number === token);
+              if (inv) {
+                const mappedStatus = String(inv.status).toUpperCase();
+                let status = 'SENT';
+                if (mappedStatus === 'PAID') status = 'PAID';
+                else if (mappedStatus === 'CANCELLED') status = 'CANCELLED';
+                else if (mappedStatus === 'EXPIRED') status = 'OVERDUE';
+
+                const total_amount = inv.amount;
+
+                let instructions = [];
+                try {
+                  instructions = typeof inv.payment_instructions === 'string'
+                    ? JSON.parse(inv.payment_instructions)
+                    : (inv.payment_instructions || []);
+                } catch {
+                  instructions = [];
+                }
+
+                if (instructions.length === 0 && inv.pay_code) {
+                  instructions = [{
+                    title: `Bayar via ${inv.payment_method || 'Virtual Account'}`,
+                    steps: [
+                      `Gunakan nomor Virtual Account / Kode Bayar: <strong>${inv.pay_code}</strong>`,
+                      `Transfer nominal persis: <strong>Rp ${total_amount.toLocaleString('id-ID')}</strong>`,
+                      `Status pembayaran akan terkonfirmasi otomatis setelah transfer diterima.`
+                    ]
+                  }];
+                }
+
+                return reply.send({
+                  success: true,
+                  message: 'Invoice found',
+                  gateways: [inv.payment_method || 'TRIPAY'],
+                  tripay_channels: [
+                    {
+                      code: inv.payment_method === 'Manual' ? 'MANUAL_TRANSFER' : (inv.pay_code ? 'VA' : 'QRIS'),
+                      name: inv.payment_method || 'QRIS / Virtual Account',
+                      group: inv.payment_method || 'Online Payment',
+                      icon_url: inv.qr_url || 'https://img.icons8.com/fluency/96/qr-code.png'
+                    }
+                  ],
+                  manual_payment: {
+                    bankName: 'Mandiri / BCA',
+                    bankAccount: '1234567890',
+                    accountHolder: 'Absenta License'
+                  },
+                  data: {
+                    id: String(inv.invoice_number),
+                    invoice_number: inv.invoice_number,
+                    amount: inv.amount,
+                    total_amount: total_amount,
+                    currency: 'IDR',
+                    status: status,
+                    due_date: inv.expired_time 
+                      ? (typeof inv.expired_time === 'number' || !isNaN(Number(inv.expired_time))
+                          ? new Date(Number(inv.expired_time) * 1000).toISOString()
+                          : inv.expired_time)
+                      : new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+                    created_at: inv.created_at,
+                    notes: inv.plan_title || 'Layanan Absenta Premium',
+                    active_transaction: inv.paid_at ? null : {
+                      status: 'PENDING',
+                      reference: inv.payment_reference || '',
+                      payment_method: inv.payment_method || 'TRIPAY',
+                      pay_code: inv.pay_code || '',
+                      qr_url: inv.qr_url || '',
+                      instructions: instructions
+                    }
+                  }
+                });
+              }
+            }
+          } catch (err: any) {
+            console.error('[Public invoice details proxy failed]:', err.message);
+          }
+          return reply.status(404).send({ success: false, message: 'Tagihan tidak ditemukan atau sudah kedaluwarsa.' });
+        });
       });
 
       // Protected API routes (user/admin/etc) with auth + tenant middleware
@@ -149,9 +237,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const url = String(routeOptions?.url || '');
         if (
           url.startsWith('/billing') ||
-          url.startsWith('/subscriptions') ||
-          url.startsWith('/invoice') ||
-          url.startsWith('/payments')
+          url.startsWith('/subscriptions')
         ) {
           routeOptions.config = { ...(routeOptions.config || {}), billing: true };
         }
@@ -231,33 +317,79 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { moduleRoutes } = await import('../modules/billing/routes/module.routes');
       const { subscriptionRoutes } = await import('../modules/billing/routes/subscription.routes');
       const { subscriptionCheckRoutes } = await import('../modules/billing/routes/subscription-check.routes');
-      const { billingRoutes } = await import('../modules/billing/routes/billing.routes');
-      const { billingDashboardRoutes } = await import('../modules/billing/routes/billing-dashboard.routes');
-      const { billingReportsRoutes } = await import('../modules/billing/routes/billing-reports.routes');
       const { mySubscriptionRoutes } = await import('../modules/billing/routes/my-subscription.routes');
-      const { billingSettingsRoutes } = await import('../modules/billing/routes/billing-settings.routes');
       await fastify.register(planRoutes, { prefix: '/billing/plans' });
       await fastify.register(moduleRoutes, { prefix: '/billing/modules' });
       await fastify.register(subscriptionRoutes, { prefix: '/billing/subscriptions' });
       await fastify.register(mySubscriptionRoutes, { prefix: '/billing/my-subscription' });
+
+      // Fallback route for /invoice/:invoiceId/public-link to resolve central license server links
+      fastify.get('/invoice/:invoiceId/public-link', {
+        preHandler: [requireCapability('billing.my.subscription.view')]
+      }, async (request: any, reply: any) => {
+        const { invoiceId } = request.params;
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const coreKey = process.env.LICENSE_KEY || '';
+        try {
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
+          if (response.data?.success && response.data?.data?.invoices) {
+            const inv = response.data.data.invoices.find((i: any) => i.invoice_number === invoiceId);
+            if (inv) {
+              const url = inv.status === 'paid' 
+                ? `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`
+                : (inv.qr_url || `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`);
+              
+              return reply.send({
+                success: true,
+                message: 'Invoice link resolved',
+                data: {
+                  url: url,
+                  token: null
+                }
+              });
+            }
+          }
+        } catch (err: any) {
+          console.error('[Fallback public-link route] Failed to resolve:', err.message);
+        }
+        return reply.status(404).send({ success: false, message: 'Invoice tidak ditemukan di Server Lisensi.' });
+      });
+
+      // Proxy route to fetch active Tripay payment channels from the Server Lisensi centrally
+      fastify.get('/billing/payment-channels', {
+        preHandler: [requireCapability('billing.my.subscription.view')]
+      }, async (_request: any, reply: any) => {
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        try {
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/payment-channels`, { timeout: 5000 });
+          if (response.data?.success) {
+            return reply.send({
+              success: true,
+              message: 'Payment channels retrieved',
+              data: response.data.data
+            });
+          }
+        } catch (err: any) {
+          console.error('[Fallback payment-channels failed]:', err.message);
+        }
+
+        // Offline Fallback list
+        return reply.send({
+          success: true,
+          message: 'Payment channels retrieved (offline fallback)',
+          data: [
+            { code: 'QRIS2', name: 'QRIS (Gopay/OVO/Dana/BCA/dll)', group: 'E-Wallet', fee_flat: 0, fee_percent: 0.7, icon_url: 'https://img.icons8.com/fluency/96/qr-code.png' },
+            { code: 'MANDIRIVA', name: 'Mandiri Virtual Account', group: 'Virtual Account', fee_flat: 3000, fee_percent: 0, icon_url: 'https://img.icons8.com/color/96/bank.png' },
+            { code: 'BCAVA', name: 'BCA Virtual Account', group: 'Virtual Account', fee_flat: 3000, fee_percent: 0, icon_url: 'https://img.icons8.com/color/96/bank.png' },
+            { code: 'BRIVA', name: 'BRI Virtual Account', group: 'Virtual Account', fee_flat: 3000, fee_percent: 0, icon_url: 'https://img.icons8.com/color/96/bank.png' },
+            { code: 'BNIVA', name: 'BNI Virtual Account', group: 'Virtual Account', fee_flat: 3000, fee_percent: 0, icon_url: 'https://img.icons8.com/color/96/bank.png' },
+          ]
+        });
+      });
+
       await fastify.register(subscriptionCheckRoutes, { prefix: '/subscriptions' });
-      await fastify.register(billingRoutes, { prefix: '/billing/billings' });
-      await fastify.register(billingReportsRoutes, { prefix: '/billing/reports' });
-      await fastify.register(billingSettingsRoutes, { prefix: '/billing/settings' });
-      await fastify.register(billingDashboardRoutes, { prefix: '/billing' });
-
-
-      const { tenantDetailRoutes } = await import('../modules/superadmin/tenant-detail/routes/tenant-detail.routes');
-      await fastify.register(tenantDetailRoutes, { prefix: '/superadmin/tenants' });
-      
-      const { infraRoutes } = await import('../modules/superadmin/infra/routes/infra.routes');
-      await fastify.register(infraRoutes, { prefix: '/superadmin/infra' });
-
-      const { infraMonitoringRoutes } = await import('../modules/superadmin/infra-monitoring/routes/infra-monitoring.routes');
-      await fastify.register(infraMonitoringRoutes, { prefix: '/admin/infra' });
-
-      const { platformIntelligenceRoutes } = await import('../modules/superadmin/infra/routes/platformIntelligence.routes');
-      await fastify.register(platformIntelligenceRoutes, { prefix: '/superadmin/intelligence' });
 
       const { menuRoutes } = await import('../modules/menu/routes/menu.routes');
       await fastify.register(menuRoutes, { prefix: '/menu' });
@@ -269,16 +401,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(systemUpdateRoutes, { prefix: '/system/update' });
       const { observabilityRoutes } = await import('../modules/observability/routes/observability.routes');
       await fastify.register(observabilityRoutes, { prefix: '/system/observability' });
-      const { riskAdminRoutes } = await import('../modules/risk/routes/risk-admin.routes');
-      await fastify.register(riskAdminRoutes, { prefix: '/admin/risk' });
-      const { revenueAdminRoutes } = await import('../modules/revenue/routes/revenue-admin.routes');
-      await fastify.register(revenueAdminRoutes, { prefix: '/admin/revenue' });
       const { analyticsAdminRoutes } = await import('../modules/analytics/routes/analytics-admin.routes');
       await fastify.register(analyticsAdminRoutes, { prefix: '/admin/analytics' });
-      const { upgradeIntelligenceAdminRoutes } = await import(
-        '../modules/upgrade-intelligence/routes/upgrade-intelligence-admin.routes'
-      );
-      await fastify.register(upgradeIntelligenceAdminRoutes, { prefix: '/admin/analytics/upgrade' });
 
       const { supportTicketRoutes } = await import(
         '../modules/support-ticket/routes/support-ticket.routes'
@@ -291,19 +415,8 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(uploadRoutes, { prefix: '/upload' });
       const { documentsRoutes } = await import('../modules/document-center/routes/documents.routes');
       await fastify.register(documentsRoutes, { prefix: '/documents' });
-      const { pdfRoutes } = await import('../modules/pdf/routes/pdf.routes');
-      await fastify.register(pdfRoutes, { prefix: '/pdf' });
 
-      const { invoiceRoutes } = await import('../modules/invoice/routes/invoice.routes');
-      await fastify.register(invoiceRoutes, { prefix: '/invoice' });
 
-      const { paymentRoutes } = await import('../modules/payment/routes/payment.routes');
-      await fastify.register(async function paymentApi(fastify: any) {
-        await paymentRoutes(fastify, prisma);
-      }, { prefix: '/payments' });
-
-      const { testRoutes } = await import('../modules/payment/routes/test.routes');
-      await fastify.register(testRoutes, { prefix: '/platform/payments' });
 
       const { notificationRoutes } = await import('../modules/notification/routes/notification.routes');
       await fastify.register(notificationRoutes, { prefix: '/notifications' });
@@ -364,15 +477,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { piketModule } = await import('../modules/kesiswaan/piket');
       await fastify.register(piketModule, { prefix: '/kesiswaan/piket' });
 
-      const { registerInvoicePublicRoutes } = await import('../modules/invoice/routes/public.routes');
-      await fastify.register(registerInvoicePublicRoutes, { prefix: '/invoice/public' });
 
-      const { registerPaymentPublicRoutes } = await import('../modules/payment/routes/public.routes');
-      await fastify.register(registerPaymentPublicRoutes, { prefix: '/payment' });
-      const { webhookRoutes } = await import('../modules/payment/routes/webhook.routes');
-      await fastify.register(async function webhookApi(fastify: any) {
-        await webhookRoutes(fastify, prisma);
-      }, { prefix: '/webhooks/payment' });
 
       // Moving business routes from root to /api
       fastify.post('/upload/file', {

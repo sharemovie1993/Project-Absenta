@@ -84,6 +84,34 @@ const RegisterTenant = () => {
   });
 
   const appName = systemConfig?.app_name || 'Sistem Absensi';
+
+  // Fetch Academic Tier plans dynamically from API (no auth required)
+  const { data: academicTierPlans, isLoading: academicPlansLoading } = useQuery({
+    queryKey: ['academic-tier-plans'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/billing/plans/academic-tiers');
+      return (res.data?.data || []) as Array<{
+        id: string;
+        code: string;
+        name: string;
+        size_label: string | null;
+        max_user: number | null;
+        description: string | null;
+      }>;
+    },
+    staleTime: 1000 * 60 * 10, // cache 10 menit
+    retry: 1,
+  });
+
+  // Fallback static tiers jika API gagal
+  const STATIC_TIERS = [
+    { id: 'ACADEMIC_MICRO_TAHUNAN', size_label: 'Micro', max_user: 100 },
+    { id: 'ACADEMIC_SMALL_TAHUNAN', size_label: 'Small', max_user: 300 },
+    { id: 'ACADEMIC_MEDIUM_TAHUNAN', size_label: 'Medium', max_user: 600 },
+    { id: 'ACADEMIC_LARGE_TAHUNAN', size_label: 'Large', max_user: 1200 },
+    { id: 'ACADEMIC_ENTERPRISE_TAHUNAN', size_label: 'Enterprise', max_user: null },
+  ];
+  const tierOptions = (academicTierPlans && academicTierPlans.length > 0) ? academicTierPlans : STATIC_TIERS;
   
   const [formData, setFormData] = useState({
     tenant_name: '',
@@ -95,7 +123,8 @@ const RegisterTenant = () => {
     admin_password: '',
     confirm_password: '', // Added for consistency
     admin_phone: '',
-    agreedToTerms: false
+    agreedToTerms: false,
+    academic_tier: 'MICRO'
   });
 
   const [loading, setLoading] = useState(false);
@@ -357,6 +386,86 @@ const RegisterTenant = () => {
                                      />
                                   </div>
                                 </div>
+
+                                 {/* ── Kapasitas Sekolah: Visual Card Picker ── */}
+                                 <div>
+                                   <div className="flex items-start gap-2 mb-3">
+                                     <div>
+                                       <label className="text-xs font-black text-slate-400 uppercase tracking-widest block">
+                                         Berapa jumlah siswa aktif di sekolah Anda?
+                                       </label>
+                                       <p className="text-[11px] text-slate-400 mt-0.5">
+                                         Pilih kapasitas yang paling sesuai — ini menentukan paket dasar gratis (Academic Core) Anda.
+                                       </p>
+                                     </div>
+                                   </div>
+
+                                   {academicPlansLoading ? (
+                                     <div className="flex items-center gap-2 text-slate-400 py-4">
+                                       <Loader2 size={16} className="animate-spin" />
+                                       <span className="text-xs font-medium">Memuat pilihan kapasitas...</span>
+                                     </div>
+                                   ) : (
+                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                                       {tierOptions.map((tier) => {
+                                         const label = tier.size_label || tier.id.replace('ACADEMIC_', '').replace('_TAHUNAN', '');
+                                         const tierKey = label.toUpperCase();
+                                         const isSelected = formData.academic_tier === tierKey;
+                                         const isPopular = tierKey === 'SMALL';
+
+                                         const TIER_META: Record<string, { emoji: string; color: string; selectedColor: string }> = {
+                                           MICRO:      { emoji: '🏫', color: 'border-slate-200 hover:border-blue-300 dark:border-slate-700',      selectedColor: 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-2 ring-blue-500/30' },
+                                           SMALL:      { emoji: '🏫', color: 'border-slate-200 hover:border-blue-300 dark:border-slate-700',      selectedColor: 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-2 ring-blue-500/30' },
+                                           MEDIUM:     { emoji: '🏫', color: 'border-slate-200 hover:border-indigo-300 dark:border-slate-700',    selectedColor: 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 ring-2 ring-indigo-500/30' },
+                                           LARGE:      { emoji: '🏛️', color: 'border-slate-200 hover:border-violet-300 dark:border-slate-700',   selectedColor: 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 ring-2 ring-violet-500/30' },
+                                           ENTERPRISE: { emoji: '🏙️', color: 'border-slate-200 hover:border-amber-300 dark:border-slate-700',    selectedColor: 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 ring-2 ring-amber-500/30' },
+                                         };
+                                         const meta = TIER_META[tierKey] || TIER_META['MICRO'];
+                                         // Kapasitas dari data API (dinamis)
+                                         const capacityText = tier.max_user
+                                           ? `S/d ${tier.max_user.toLocaleString('id-ID')} siswa`
+                                           : 'Tanpa batas';
+
+                                         return (
+                                           <button
+                                             key={tier.id}
+                                             type="button"
+                                             onClick={() => setFormData(prev => ({ ...prev, academic_tier: tierKey }))}
+                                             className={`relative flex flex-col items-center text-center p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer w-full ${
+                                               isSelected ? meta.selectedColor : `bg-white dark:bg-slate-900 ${meta.color}`
+                                             }`}
+                                           >
+                                             {isPopular && (
+                                               <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                 Paling Populer
+                                               </span>
+                                             )}
+                                             <span className="text-xl mb-1">{meta.emoji}</span>
+                                             <span className={`text-[11px] font-black ${ isSelected ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300' }`}>
+                                               {label}
+                                             </span>
+                                             <span className={`text-[9px] font-semibold mt-0.5 leading-tight ${ isSelected ? 'text-slate-600 dark:text-slate-400' : 'text-slate-400' }`}>
+                                               {capacityText}
+                                             </span>
+                                             {isSelected && (
+                                               <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-blue-600 rounded-full flex items-center justify-center">
+                                                 <Check size={8} strokeWidth={3} className="text-white" />
+                                               </span>
+                                             )}
+                                           </button>
+                                         );
+                                       })}
+                                     </div>
+                                   )}
+
+                                   {/* Info box: apa itu Academic Core */}
+                                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl flex gap-2.5 items-start">
+                                     <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
+                                     <p className="text-[10.5px] text-blue-700 dark:text-blue-300 font-medium leading-relaxed">
+                                       <strong>Paket Academic Core gratis selamanya.</strong> Kapasitas ini menentukan batas jumlah siswa aktif. Jika ingin menambah fitur seperti Absensi Digital atau Koperasi, Anda bisa membeli modul tambahan dengan edisi yang sama atau lebih tinggi.
+                                     </p>
+                                   </div>
+                                 </div>
                              </div>
 
                              {/* Section: Admin Info */}

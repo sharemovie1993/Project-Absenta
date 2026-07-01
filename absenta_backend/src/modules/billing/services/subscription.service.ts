@@ -1,6 +1,6 @@
 import { subscriptionDb as prisma } from './repositories/subscription.db';
 import { getSmartFrontendBaseUrl } from '@/utils/url-helper';
-import { SubscriptionStatus, InvoiceStatus, ObservabilityMetricType } from '@prisma/client';
+import { SubscriptionStatus, ObservabilityMetricType } from '@prisma/client';
 import { observabilityAggregationService } from '../../observability/services/observabilityAggregation.service';
 import type { CreateSubscriptionInput, SubscriptionResponse, UpdateSubscriptionInput } from './subscription.types';
 import { applyDuePlanChangesCommand } from './commands/apply-due-plan-changes.command';
@@ -700,18 +700,6 @@ export const subscriptionService = {
              domain: true,
            }
          },
-         Billing: {
-           where: {
-             Invoice: {
-               status: {
-                 in: [InvoiceStatus.SENT, InvoiceStatus.VIEWED, InvoiceStatus.OVERDUE]
-               }
-             }
-           },
-           include: {
-             Invoice: true
-           }
-         }
        }
     });
 
@@ -729,7 +717,7 @@ export const subscriptionService = {
         if ((sub as any).cancel_date) continue; 
 
         // GAP 3: If has unpaid invoice -> PENDING_PAYMENT (not EXPIRED)
-        const hasUnpaidInvoice = sub.Billing && sub.Billing.length > 0;
+        const hasUnpaidInvoice = false;
         
         if (hasUnpaidInvoice) {
           idsPendingPayment.push(sub.id);
@@ -894,10 +882,7 @@ export const subscriptionService = {
     if (existing.status !== SubscriptionStatus.CANCELLED && existing.status !== SubscriptionStatus.EXPIRED) {
       throw new Error('Only canceled or expired subscriptions can be deleted');
     }
-    const billingCount = await prisma.billing.count({ where: { subscription_id: id } });
-    if (billingCount > 0) {
-      throw new Error('Cannot delete subscription with existing billing records');
-    }
+
     await prisma.subscriptionHistory.deleteMany({ where: { subscription_id: id } });
     await prisma.subscription.delete({ where: { id } });
     return { deleted: true, id };

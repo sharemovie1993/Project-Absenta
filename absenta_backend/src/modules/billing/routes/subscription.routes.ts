@@ -77,6 +77,11 @@ export async function subscriptionRoutes(fastify: any) {
     handler: subscriptionController.orderPlan.bind(subscriptionController),
   });
 
+  fastify.post('/update-academic-tier', {
+    preHandler: [requireCapability(['billing.my.subscription.upgrade'])],
+    handler: subscriptionController.updateAcademicTier.bind(subscriptionController),
+  });
+
   fastify.post('/upgrade/cancel', {
     preHandler: [requireCapability('billing.my.subscription.upgrade')],
     handler: subscriptionController.cancelPendingUpgrade.bind(subscriptionController),
@@ -110,5 +115,10 @@ export async function subscriptionRoutes(fastify: any) {
   fastify.delete('/:id', {
     preHandler: [requireCapability('billing.subscriptions.cancel')], // Use cancel or update?
     handler: subscriptionController.deleteSubscription.bind(subscriptionController),
+  });
+
+  fastify.post('/license/callback', {
+    config: { skipAuth: true, public: true },
+    handler: subscriptionController.handleLicenseWebhook.bind(subscriptionController),
   });
 }

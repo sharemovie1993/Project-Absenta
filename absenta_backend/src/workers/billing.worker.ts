@@ -3,7 +3,6 @@ import { getRedisConnection } from '../queue/redis';
 import { BILLING_QUEUE_NAME } from '../queues/billing.queue';
 import { startWorkerRegistryAndHeartbeat, startWorkerHeartbeat } from '../infra/workerHeartbeat';
 import { initInvoicePdfDomainConsumer, initInvoicePdfWorker } from '../modules/pdf/invoice-pdf.queue';
-import { initInvoiceEventConsumer } from '../modules/invoice/services/event-handlers/invoice-event-consumer';
 import { initBillingPaymentEventConsumer } from '../modules/billing/services/event-handlers/payment-succeeded.consumer';
 import { initBillingTenantCreatedConsumer } from '../modules/billing/services/event-handlers/tenant-created.consumer';
 import { initAcademicTenantCreatedConsumer } from '../modules/academic/services/event-handlers/tenant-created.consumer';
@@ -67,7 +66,6 @@ async function start() {
 
   initInvoicePdfWorker();
   await initInvoicePdfDomainConsumer();
-  await initInvoiceEventConsumer();
   await initBillingPaymentEventConsumer();
   await initBillingTenantCreatedConsumer();
   await initAcademicTenantCreatedConsumer();

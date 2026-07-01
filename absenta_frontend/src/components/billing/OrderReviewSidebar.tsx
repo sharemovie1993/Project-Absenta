@@ -25,6 +25,7 @@ interface OrderReviewSidebarProps {
   setShowOrderPanel: (show: boolean) => void;
   setActiveOrder: React.Dispatch<React.SetStateAction<OrderPayload | null>>;
   handleCheckout: () => Promise<void>;
+  activeAcademicTier?: string;
 }
 
 export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
@@ -34,6 +35,7 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
   setShowOrderPanel,
   setActiveOrder,
   handleCheckout,
+  activeAcademicTier = 'Micro',
 }) => {
   if (!activeOrder) return null;
 
@@ -186,30 +188,49 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                 })()}
               </div>
 
-              {/* ── PILIH EDISI ── */}
               {groupedVariants.length > 0 && (
                 <div className="p-5 border-b border-slate-100 dark:border-slate-800">
                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
                     1 · Pilih Edisi
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {groupedVariants.map(([sizeLabel]) => {
-                      const isSelected = activeOrder.size === sizeLabel;
-                      return (
-                        <button
-                          key={sizeLabel}
-                          onClick={() => selectSize(sizeLabel)}
-                          className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 border-2 ${
-                            isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-105'
-                              : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:text-blue-600'
-                          }`}
-                        >
-                          {sizeLabel}
-                        </button>
-                      );
-                    })}
+                    {(() => {
+                      const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
+                      const academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+
+                      return groupedVariants.map(([sizeLabel]) => {
+                        const isSelected = activeOrder.size === sizeLabel;
+                        const sizeIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === sizeLabel.toLowerCase());
+                        const isLocked = activeOrder.service_code !== 'KOPERASI' && academicIdx !== -1 && sizeIdx !== -1 && sizeIdx < academicIdx;
+
+                        return (
+                          <button
+                            key={sizeLabel}
+                            id={`edition-select-${sizeLabel}`}
+                            data-testid={`edition-select-${sizeLabel}`}
+                            onClick={() => {
+                              if (!isLocked) selectSize(sizeLabel);
+                            }}
+                            disabled={isLocked}
+                            className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all duration-200 border-2 ${
+                              isLocked
+                                ? 'bg-slate-100 dark:bg-slate-900/50 text-slate-300 dark:text-slate-700 border-slate-100 dark:border-slate-800 cursor-not-allowed opacity-50'
+                                : isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20 scale-105'
+                                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-300 hover:text-blue-600'
+                            }`}
+                          >
+                            {sizeLabel} {isLocked && '🔒'}
+                          </button>
+                        );
+                      });
+                    })()}
                   </div>
+                  {activeAcademicTier && activeAcademicTier.toLowerCase() !== 'micro' && activeOrder.service_code !== 'KOPERASI' && (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic mt-3 block">
+                      * Edisi minimal yang dapat dibeli adalah {activeAcademicTier} sesuai kapasitas sekolah Anda.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -266,6 +287,10 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500 font-semibold">Pajak (PPN 11%)</span>
                   <span className="text-emerald-500 font-black">Termasuk</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-slate-400">
+                  <span>Estimasi Biaya Layanan</span>
+                  <span className="font-bold">± Rp 4.500 (Terhubung Gateway)</span>
                 </div>
                 {activeOrder.period === 'YEAR' && (
                   <div className="flex justify-between items-center text-xs p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-600 font-bold">

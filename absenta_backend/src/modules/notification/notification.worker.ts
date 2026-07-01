@@ -1,19 +1,13 @@
 import { Worker, Job } from 'bullmq';
-import { getSmartFrontendBaseUrl } from '@/utils/url-helper';
 import { getRedisConnection } from '@/queue/redis';
 import { NOTIFICATION_QUEUE_NAME, NotificationJobData } from './notification.queue';
 import { parentNotificationService } from '@/modules/parent-app/services/parent-notification.service';
 import { DOMAIN_EVENT_CHANNEL } from '@/infra/event-bus';
 import type { DomainEvent } from '@/infra/event-bus';
-import { getEmailQueue } from '@/queue/email.queue';
 import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
 import { pushService } from '@/modules/notification/services/push.service';
 import { FcmService } from '@/modules/notification/services/fcm.service';
 import { prisma } from '@/utils/prisma';
-import { systemConfigService } from '@/modules/system-config/services/system-config.service';
-import { NotificationEvent } from '@/modules/notification/types/notification-event.enum';
-import * as fs from 'fs';
-import * as path from 'path';
 import { getNotificationDlqQueue } from '@/queues/notification.queue';
 import { handleAttendanceDomainEvent } from './services/event-handlers/attendance-event-consumer';
 import { handleNotificationRequestDomainEvent } from './services/event-handlers/notification-request-consumer';
@@ -26,214 +20,16 @@ import { startWorkerRegistryAndHeartbeat } from '@/infra/workerHeartbeat';
 let worker: Worker<NotificationJobData> | null = null;
 let domainSubscriberStarted = false;
 
-function loadNotificationTemplate(templateName: string): string {
-  const distPath = path.join(__dirname, 'templates', `${templateName}.html`);
-  if (fs.existsSync(distPath)) {
-    return fs.readFileSync(distPath, 'utf-8');
-  }
-  const srcPath = path.join(process.cwd(), 'src', 'modules', 'notification', 'templates', `${templateName}.html`);
-  return fs.readFileSync(srcPath, 'utf-8');
-}
 
-function renderNotificationTemplate(template: string, data: any): string {
-  let rendered = template;
-  Object.keys(data || {}).forEach((key) => {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    rendered = rendered.replace(regex, data[key] ?? '');
-  });
-  rendered = rendered.replace(/{{#if\s+(\w+)}}([\s\S]*?){{\/if}}/g, (_match, condition, content) => {
-    return data?.[condition] ? content : '';
-  });
-  rendered = rendered.replace(/{{#if\s+\(eq\s+(\w+)\s+'([^']+)'\)}}([\s\S]*?){{\/if}}/g, (_match, variable, value, content) => {
-    return data?.[variable] === value ? content : '';
-  });
-  return rendered;
-}
 
 async function processWhatsappSendJob(payload: any): Promise<void> {
   const wa = new WhatsAppService();
   await wa.sendWhatsApp(payload);
 }
 
-async function processPaymentEventJob(input: { eventType: 'payment.succeeded' | 'payment.failed'; paymentId: string }): Promise<void> {
-  const payment = await prisma.payment.findUnique({
-    where: { id: String(input.paymentId) },
-    include: {
-      Billing: { include: { Tenant: true, Invoice: true } },
-      Tenant: true,
-      Invoice: true,
-    } as any,
-  });
-  if (!payment) return;
-
-  const billing = (payment as any).Billing;
-  const tenant = (billing && billing.Tenant) || (payment as any).Tenant;
-  if (!tenant) return;
-
-  if (input.eventType === 'payment.succeeded') {
-    const config = await systemConfigService.getActive(String(tenant.id));
-    const emailEnabled = !(config && (config as any).notif_email_new_payment === false);
-
-    const tenantAdmin = await prisma.user.findFirst({
-      where: { tenant_id: String(tenant.id), Role: { name: 'ADMIN' } } as any,
-      select: { id: true, email: true, full_name: true, no_hp: true },
-    });
-    if (!tenantAdmin) return;
-
-    const invoiceNumber =
-      (billing as any)?.Invoice?.invoice_number ||
-      (billing as any)?.id ||
-      String((payment as any).invoice_id || '').slice(0, 8);
-
-    if (tenantAdmin.email && emailEnabled) {
-      const template = loadNotificationTemplate('payment-success');
-      const html = renderNotificationTemplate(template, {
-        studentName: tenantAdmin.full_name || 'Admin',
-        schoolName: tenant.name || 'Sekolah',
-        amount: Number(payment.amount || 0).toLocaleString('id-ID'),
-        paymentMethod: String((payment as any).payment_method || ''),
-        transactionId: String((payment as any).gateway_transaction_id || (payment as any).id),
-        paidAt: ((payment as any).paid_at ? new Date((payment as any).paid_at) : new Date()).toLocaleString('id-ID'),
-        billingDescription: String((billing as any)?.description || 'Subscription Payment'),
-      });
-      await getEmailQueue().add('SEND_EMAIL', {
-        to: String(tenantAdmin.email),
-        subject: `Pembayaran Berhasil - ${String((billing as any)?.description || 'Subscription Payment')}`,
-        html,
-        tenantId: String(tenant.id),
-        event: NotificationEvent.INVOICE_PAID,
-        relatedId: String((billing as any)?.Invoice?.id || (billing as any)?.id || (payment as any).id),
-      });
-    }
-
-    try {
-      let phone = tenantAdmin.no_hp || null;
-      if (!phone) {
-        const guru = await prisma.guru.findFirst({
-          where: { user_id: tenantAdmin.id },
-          select: { no_hp: true },
-        });
-        phone = (guru as any)?.no_hp || null;
-      }
-      if (phone) {
-        const wa = new WhatsAppService();
-        const formatted = wa.formatPhoneNumber(String(phone));
-        await wa.sendPaymentSuccessWhatsApp({
-          tenantId: String(tenant.id),
-          tenantName: String((tenant as any).name || ''),
-          recipientPhone: formatted,
-          invoiceNumber: String(invoiceNumber),
-          amount: Number((payment as any).amount || 0),
-          paymentMethod: String((payment as any).payment_method || ''),
-          billingId: String((billing as any)?.id || ''),
-        });
-      }
-    } catch {}
-
-    try {
-      await prisma.activityLog.create({
-        data: {
-          tenant_id: String(tenant.id),
-          user_id: 'system',
-          action: 'NOTIFICATION_DISPATCHED',
-          entity: 'BILLING',
-          entity_id: String((billing as any)?.id || ''),
-          metadata: JSON.stringify({
-            type: 'PAYMENT_SUCCESS',
-            payment_id: String((payment as any).id),
-            email_attempted: Boolean(tenantAdmin.email && emailEnabled),
-            whatsapp_attempted: true,
-          }),
-        } as any,
-      });
-    } catch {}
-
-    return;
-  }
-
-  const payload: any = (payment as any) || {};
-  const config = await systemConfigService.getActive(String(tenant.id));
-  const emailEnabled = !(config && (config as any).notif_email_payment_failed === false);
-
-  const tenantAdmin = await prisma.user.findFirst({
-    where: { tenant_id: String(tenant.id), Role: { name: 'ADMIN' } } as any,
-    select: { id: true, email: true, full_name: true, no_hp: true },
-  });
-  if (!tenantAdmin) return;
-
-  const failureReason = String(payload.failure_reason || payload.failureReason || 'Payment processing failed');
-  const invoiceNumber =
-    (billing as any)?.Invoice?.invoice_number ||
-    (billing as any)?.id ||
-    String((payment as any).invoice_id || '').slice(0, 8);
-
-  if (tenantAdmin.email && emailEnabled) {
-    const template = loadNotificationTemplate('payment-failure');
-    const html = renderNotificationTemplate(template, {
-      studentName: tenantAdmin.full_name || 'Admin',
-      schoolName: tenant.name || 'Sekolah',
-      amount: Number((payment as any).amount || 0).toLocaleString('id-ID'),
-      paymentMethod: String((payment as any).payment_method || ''),
-      transactionId: String((payment as any).gateway_transaction_id || (payment as any).id),
-      attemptTime: new Date().toLocaleString('id-ID'),
-      billingDescription: String((billing as any)?.description || 'Subscription Payment'),
-      failureReason,
-    });
-    await getEmailQueue().add('SEND_EMAIL', {
-      to: String(tenantAdmin.email),
-      subject: `Pembayaran Gagal - ${String((billing as any)?.description || 'Subscription Payment')}`,
-      html,
-      tenantId: String(tenant.id),
-      event: 'PAYMENT_FAILED',
-      relatedId: String((billing as any)?.Invoice?.id || (billing as any)?.id || (payment as any).id),
-    });
-  }
-
-  try {
-    let phone = tenantAdmin.no_hp || null;
-    if (!phone) {
-      const guru = await prisma.guru.findFirst({
-        where: { user_id: tenantAdmin.id },
-        select: { no_hp: true },
-      });
-      phone = (guru as any)?.no_hp || null;
-    }
-    if (phone) {
-      const wa = new WhatsAppService();
-      const formatted = wa.formatPhoneNumber(String(phone));
-      const message = `Halo ${String((tenant as any).name || '')}
-
-Pembayaran invoice ${String(invoiceNumber)} sebesar Rp ${Number((payment as any).amount || 0).toLocaleString('id-ID')} *gagal* ❌
-
-Alasan: ${failureReason}
-
-👉 ${getSmartFrontendBaseUrl()}/billing/subscriptions`;
-      await wa.sendWhatsApp({
-        phoneNumber: formatted,
-        message,
-        tenantId: String(tenant.id),
-        relatedId: String((billing as any)?.id || ''),
-      });
-    }
-  } catch {}
-
-  try {
-    await prisma.activityLog.create({
-      data: {
-        tenant_id: String(tenant.id),
-        user_id: 'system',
-        action: 'NOTIFICATION_DISPATCHED',
-        entity: 'BILLING',
-        entity_id: String((billing as any)?.id || ''),
-        metadata: JSON.stringify({
-          type: 'PAYMENT_FAILED',
-          payment_id: String((payment as any).id),
-          email_attempted: Boolean(tenantAdmin.email && emailEnabled),
-          whatsapp_attempted: true,
-        }),
-      } as any,
-    });
-  } catch {}
+async function processPaymentEventJob(_input: { eventType: 'payment.succeeded' | 'payment.failed'; paymentId: string }): Promise<void> {
+  // Payment events are handled outside the application now
+  return;
 }
 
 async function processParentNotificationCreatedJob(input: {

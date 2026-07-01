@@ -1,6 +1,4 @@
 import { cacheInvalidationService } from '../utils/cache-invalidation.service';
-import { TenantDetailService } from '../modules/superadmin/tenant-detail/services/tenant-detail.service';
-
 /**
  * 🔄 Cache Invalidation Middleware
  * Otomatis invalidate cache berdasarkan route dan method
@@ -156,37 +154,11 @@ function extractTenantId(request: any): string | null {
 /**
  * Hook untuk invalidate cache setelah response berhasil
  */
-export function createPostResponseCacheInvalidation(io?: any) {
-  const tenantDetailService = new TenantDetailService();
+export function createPostResponseCacheInvalidation(_io?: any) {
   return async (request: any, reply: any) => {
     // Hanya jalankan jika response sukses (2xx)
     if (reply.statusCode >= 200 && reply.statusCode < 300) {
       await createCacheInvalidationMiddleware()(request, reply);
-
-      try {
-        // Emit realtime updates via WebSocket untuk halaman Tenant Detail
-        const routeKey = `${request.method}:${request.routerPath}`;
-        const rule = INVALIDATION_RULES[routeKey];
-        const tenantId = (extractTenantId(request) || request.tenantId || null) as string | null;
-        if (io && rule && tenantId) {
-          // Minimal: kirim ulang metrics dan users agar statistik segera ter-update
-          const room = `tenant:${tenantId}`;
-          const tasks: Array<Promise<void>> = [];
-          if (rule.tags?.includes('user') || rule.tags?.includes('dashboard')) {
-            tasks.push(
-              tenantDetailService.getTenantMetrics(tenantId).then((data: any) => {
-                io.to(room).emit('tenant_metrics_update', data);
-              }).catch(() => Promise.resolve())
-            );
-            tasks.push(
-              tenantDetailService.getTenantUsers(tenantId, 1, 50).then((data: any) => {
-                io.to(room).emit('tenant_users_update', data);
-              }).catch(() => Promise.resolve())
-            );
-          }
-          await Promise.allSettled(tasks);
-        }
-      } catch {}
     }
   };
 }

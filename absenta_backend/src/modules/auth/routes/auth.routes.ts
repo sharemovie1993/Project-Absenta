@@ -28,7 +28,8 @@ export async function authRoutes(fastify: any) {
           admin_password: { type: 'string' },
           admin_phone: { type: 'string' },
           plan_id: { type: 'string' },
-          billing_cycle_months: { type: 'number', enum: [1, 3, 6, 12] }
+          billing_cycle_months: { type: 'number', enum: [1, 3, 6, 12] },
+          academic_tier: { type: 'string', enum: ['MICRO', 'SMALL', 'MEDIUM', 'LARGE', 'ENTERPRISE'] }
         }
       },
       response: {

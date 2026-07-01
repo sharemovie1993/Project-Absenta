@@ -67,9 +67,17 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   const filteredPlans = useMemo(() => {
     if (!catalogPlans || !Array.isArray(catalogPlans)) return [];
-    if (categoryFilter === 'ALL') return catalogPlans;
     
-    return catalogPlans.filter((p: any) => {
+    // Filter out Academic Core / CORE plans entirely from the catalog
+    const nonCorePlans = catalogPlans.filter((p: any) => {
+      const code = String(p.code || p.service_code || '').toUpperCase();
+      const name = String(p.name || '').toUpperCase();
+      return !code.includes('CORE') && !name.includes('CORE_PLATFORM') && !name.includes('ACADEMIC CORE');
+    });
+
+    if (categoryFilter === 'ALL') return nonCorePlans;
+    
+    return nonCorePlans.filter((p: any) => {
       if (p.module_id && p.module_id.toUpperCase() === categoryFilter.toUpperCase()) return true;
 
       const sCode = String(p.service_code || '').toUpperCase();

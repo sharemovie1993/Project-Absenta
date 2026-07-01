@@ -27,6 +27,7 @@ export interface RegisterTenantInput {
   sim_model?: string;
   sim_students?: number;
   sim_desc?: string;
+  academic_tier?: string;
 }
 
 export interface UserResponse {

@@ -1,4 +1,11 @@
-import { PaymentGateway, PaymentMethod, PaymentStatus } from '@prisma/client';
+export enum PaymentGateway {
+  TRIPAY = 'TRIPAY',
+  MIDTRANS = 'MIDTRANS',
+  STRIPE = 'STRIPE',
+  XENDIT = 'XENDIT'
+}
+export type PaymentMethod = 'QRIS' | 'MANDIRI_VA' | 'BCA_VA' | 'BNI_VA' | 'BRI_VA' | 'CREDIT_CARD';
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
 
 export interface CreatePaymentRequest {
   billingId: string;

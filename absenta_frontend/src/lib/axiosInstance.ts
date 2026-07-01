@@ -62,10 +62,10 @@ export const resolvePublicApiBaseUrl = (): string => {
   const winPort = typeof window !== 'undefined' ? window.location.port : '';
 
   if (winPort === '5173' || (!hasExplicitPort && BASE_URL.includes('5173'))) {
-    // Force http for local/private dev unless explicitly on a production domain
-    const isPrivateIp = /^(localhost|127\.0\.0\.1|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(winHost);
-    const finalProto = isPrivateIp ? 'http:' : winProto;
-    return `${finalProto}//${winHost}:3001/api`;
+    // Keep same protocol as window to avoid SSL mismatch or Mixed Content block
+    const finalProto = winProto || 'http:';
+    const targetPort = u.port || '3001';
+    return `${finalProto}//${winHost}:${targetPort}/api`;
   }
 
   // Default: use same origin as protected API (drop /api suffix)
@@ -132,8 +132,6 @@ axiosInstance.interceptors.request.use(
         urlToCheck.startsWith('/auth/request-password-reset') ||
         urlToCheck.startsWith('/auth/confirm-password-reset') ||
         urlToCheck.startsWith('/sekolah/lookup-npsn') ||
-        urlToCheck.startsWith('/invoice/public') ||
-        urlToCheck.startsWith('/payment/public') ||
         (urlToCheck.startsWith('/billing/plans/public') && method === 'GET') ||
         (urlToCheck.startsWith('/system/config') && method === 'GET');
 
@@ -289,8 +287,6 @@ axiosInstance.interceptors.response.use(
         urlToCheck.startsWith('/auth/request-password-reset') ||
         urlToCheck.startsWith('/auth/confirm-password-reset') ||
         urlToCheck.startsWith('/sekolah/lookup-npsn') ||
-        urlToCheck.startsWith('/invoice/public') ||
-        urlToCheck.startsWith('/payment/public') ||
         (urlToCheck.startsWith('/billing/plans/public') && method === 'GET') ||
         (urlToCheck.startsWith('/system/config') && method === 'GET');
 

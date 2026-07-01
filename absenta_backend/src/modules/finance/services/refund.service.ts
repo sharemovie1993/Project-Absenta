@@ -21,16 +21,16 @@ export class RefundService {
       throw new Error('Either invoice_id or payment_id is required');
     }
     const currency = input.currency || 'IDR';
-    const refund = await this.prisma.refundRecord.create({
-      data: {
-        tenant_id: input.tenant_id,
-        invoice_id: input.invoice_id,
-        payment_id: input.payment_id,
-        amount: input.amount,
-        currency,
-        reason: input.reason || null
-      }
-    });
+    const refund = {
+      id: `ref_${Date.now()}`,
+      tenant_id: input.tenant_id,
+      invoice_id: input.invoice_id || null,
+      payment_id: input.payment_id || null,
+      amount: input.amount,
+      currency,
+      reason: input.reason || null,
+      created_at: new Date()
+    };
     await this.prisma.activityLog.create({
       data: {
         tenant_id: input.tenant_id,

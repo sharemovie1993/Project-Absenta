@@ -644,6 +644,119 @@ async function main() {
     console.log(`✅ Plan "CORE_PLATFORM" diperbarui. ID: ${freeTrialPlan.id}`);
   }
 
+  // 1.2. SEED THE 5 FREE ACADEMIC PLANS
+  const academicPlans = [
+    {
+      id: 'ACADEMIC_MICRO_TAHUNAN',
+      code: 'ACADEMIC_MICRO_TAHUNAN',
+      service_code: 'CORE',
+      module_id: 'CORE',
+      name: 'Academic Core (Micro) - Tahunan',
+      price_monthly: 0,
+      price_yearly: 0,
+      max_user: 100,
+      features_json: [],
+      description: 'Platform Dasar gratis kapasitas Micro (Maks. 100 Siswa Aktif)',
+      is_active: true,
+      is_public: true,
+      currency: 'IDR',
+      billing_period: 'YEAR' as any,
+      absensi_mode: 'SIMPLE' as any,
+      size_label: 'Micro',
+      tier: 'BASIC'
+    },
+    {
+      id: 'ACADEMIC_SMALL_TAHUNAN',
+      code: 'ACADEMIC_SMALL_TAHUNAN',
+      service_code: 'CORE',
+      module_id: 'CORE',
+      name: 'Academic Core (Small) - Tahunan',
+      price_monthly: 0,
+      price_yearly: 0,
+      max_user: 300,
+      features_json: [],
+      description: 'Platform Dasar gratis kapasitas Small (Maks. 300 Siswa Aktif)',
+      is_active: true,
+      is_public: true,
+      currency: 'IDR',
+      billing_period: 'YEAR' as any,
+      absensi_mode: 'SIMPLE' as any,
+      size_label: 'Small',
+      tier: 'BASIC'
+    },
+    {
+      id: 'ACADEMIC_MEDIUM_TAHUNAN',
+      code: 'ACADEMIC_MEDIUM_TAHUNAN',
+      service_code: 'CORE',
+      module_id: 'CORE',
+      name: 'Academic Core (Medium) - Tahunan',
+      price_monthly: 0,
+      price_yearly: 0,
+      max_user: 600,
+      features_json: [],
+      description: 'Platform Dasar gratis kapasitas Medium (Maks. 600 Siswa Aktif)',
+      is_active: true,
+      is_public: true,
+      currency: 'IDR',
+      billing_period: 'YEAR' as any,
+      absensi_mode: 'SIMPLE' as any,
+      size_label: 'Medium',
+      tier: 'STANDARD'
+    },
+    {
+      id: 'ACADEMIC_LARGE_TAHUNAN',
+      code: 'ACADEMIC_LARGE_TAHUNAN',
+      service_code: 'CORE',
+      module_id: 'CORE',
+      name: 'Academic Core (Large) - Tahunan',
+      price_monthly: 0,
+      price_yearly: 0,
+      max_user: 1200,
+      features_json: [],
+      description: 'Platform Dasar gratis kapasitas Large (Maks. 1200 Siswa Aktif)',
+      is_active: true,
+      is_public: true,
+      currency: 'IDR',
+      billing_period: 'YEAR' as any,
+      absensi_mode: 'SIMPLE' as any,
+      size_label: 'Large',
+      tier: 'ENTERPRISE'
+    },
+    {
+      id: 'ACADEMIC_ENTERPRISE_TAHUNAN',
+      code: 'ACADEMIC_ENTERPRISE_TAHUNAN',
+      service_code: 'CORE',
+      module_id: 'CORE',
+      name: 'Academic Core (Enterprise) - Tahunan',
+      price_monthly: 0,
+      price_yearly: 0,
+      max_user: null,
+      features_json: [],
+      description: 'Platform Dasar gratis kapasitas Enterprise (Tanpa Batasan Siswa)',
+      is_active: true,
+      is_public: true,
+      currency: 'IDR',
+      billing_period: 'YEAR' as any,
+      absensi_mode: 'SIMPLE' as any,
+      size_label: 'Enterprise',
+      tier: 'ULTIMATE'
+    }
+  ];
+
+  for (const plan of academicPlans) {
+    const existing = await prisma.plan.findUnique({ where: { id: plan.id } });
+    if (!existing) {
+      await prisma.plan.create({ data: plan });
+      console.log(`✅ Plan "${plan.id}" berhasil dibuat.`);
+    } else {
+      await prisma.plan.update({
+        where: { id: plan.id },
+        data: plan
+      });
+      console.log(`✅ Plan "${plan.id}" berhasil diperbarui.`);
+    }
+  }
+
   console.log('🌱 Generating Unified Plan Definitions...');
 
   const MODULE_BLUEPRINTS = {
@@ -791,10 +904,12 @@ async function main() {
 
   // 0️⃣ CLEANUP: Deactivate all old public plans to avoid clutter (e.g., 7 variations instead of 5)
   // We keep them in DB but hide them from public catalog.
+  // ACADEMIC plans dikecualikan karena mereka dikelola secara mandiri dan harus selalu aktif.
   console.log('🧹 Deactivating old plans for a fresh catalog start...');
   await prisma.plan.updateMany({
     where: {
       code: { not: 'CORE_PLATFORM' },
+      id: { not: { startsWith: 'ACADEMIC_' } }, // Jangan nonaktifkan ACADEMIC plans
       is_public: true
     },
     data: { is_active: false, is_public: false }

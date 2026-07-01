@@ -167,21 +167,13 @@ export async function exportTenantDataQuery(
     }
 
     if (entities.includes('billing')) {
-      const [subscriptions, payments] = await Promise.all([
-        prisma.subscription.findMany({
-          where: {
-            tenant_id: tenantId,
-            ...(Object.keys(dateFilter).length > 0 && { created_at: dateFilter })
-          },
-          include: { Plan: true }
-        }),
-        prisma.payment.findMany({
-          where: {
-            tenant_id: tenantId,
-            ...(Object.keys(dateFilter).length > 0 && { created_at: dateFilter })
-          }
-        })
-      ]);
+      const subscriptions = await prisma.subscription.findMany({
+        where: {
+          tenant_id: tenantId,
+          ...(Object.keys(dateFilter).length > 0 && { created_at: dateFilter })
+        },
+        include: { Plan: true }
+      });
 
       exportData.billing = {
         subscriptions: (subscriptions as any[]).map((s: any) => ({
@@ -192,14 +184,7 @@ export async function exportTenantDataQuery(
           end_date: s.end_date,
           created_at: s.created_at
         })),
-        payments: (payments as any[]).map((p: any) => ({
-          id: p.id,
-          amount: p.amount,
-          status: p.status,
-          payment_method: p.payment_method,
-          created_at: p.created_at,
-          paid_at: p.paid_at
-        }))
+        payments: []
       };
     }
 

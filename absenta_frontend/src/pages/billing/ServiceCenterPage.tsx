@@ -13,7 +13,9 @@ import {
   User, 
   Settings, 
   ExternalLink,
-  Info
+  Info,
+  RefreshCw,
+  GraduationCap
 } from 'lucide-react';
 
 import * as UI from '../../components/ui';
@@ -213,6 +215,28 @@ export default function ServiceCenterPage() {
   const isLoading = subQuery.isLoading || invQuery.isLoading;
   const isError = subQuery.isError || invQuery.isError;
 
+  // Active Academic Tier Resolution
+  const activeCorePlan = useMemo(() => {
+    if (!subscription) return null;
+    let items: SubscriptionItem[] = [];
+    if (Array.isArray(subscription.subscriptions)) {
+       items = subscription.subscriptions;
+    } else if (subscription.id) {
+       items = [subscription as unknown as SubscriptionItem];
+    }
+    const coreSub = items.find((item: any) => {
+      const code = String(item?.Plan?.service_code || item?.plan_snapshot?.service_code || '').trim().toUpperCase();
+      return code === 'CORE';
+    });
+    if (!coreSub) return null;
+    return (coreSub.Plan || coreSub.plan_snapshot) as any;
+  }, [subscription]);
+
+  const activeAcademicTier = useMemo(() => {
+    if (!activeCorePlan) return 'Micro';
+    return activeCorePlan?.size_label || 'Micro';
+  }, [activeCorePlan]);
+
   // Normalized Services Group (Purchased)
   const services = useMemo(() => {
     if (!subscription) return [];
@@ -340,42 +364,29 @@ export default function ServiceCenterPage() {
     }
   }, [invoices, confirm, subQuery, invQuery]);
 
-  const handleViewInvoice = useCallback(async (invoiceId: string, forceDocument: boolean = false) => {
+  const handleViewInvoice = useCallback(async (invoiceId: string) => {
     try {
       setActionLoading(invoiceId);
-      
+
+      // Cari data invoice lokal yang sudah di-fetch
+      const targetInvoice = (invoices as any[]).find(i => i.id === invoiceId);
+
+      // Jika invoice belum terbayar DAN memiliki plan_id → redirect ke checkout (idempotensi)
+      if (targetInvoice && !['PAID', 'CANCELLED', 'OVERDUE'].includes(targetInvoice.status) && targetInvoice.plan_id) {
+        const params = new URLSearchParams({ plan_id: targetInvoice.plan_id });
+        if (targetInvoice.payment_method) {
+          params.set('method', targetInvoice.payment_method);
+        }
+        navigate(`/billing/checkout?${params.toString()}`);
+        return;
+      }
+
+      // Untuk invoice yang sudah PAID/CANCELLED/EXPIRED atau tidak ada plan_id → buka via public-link
       const res = await getPublicInvoiceLink(invoiceId);
-      if (res.success && res.data?.token) {
-        const token = res.data.token;
-        
-        if (forceDocument) {
-          navigate(`/invoice/public/${token}`);
-          return;
-        }
-
-        try {
-          const publicRes = await axiosInstance.get(`/invoice/public/${token}`, {
-            baseURL: resolvePublicApiBaseUrl(),
-            headers: { Accept: 'application/json' }
-          });
-          
-          const fullInv = publicRes.data?.data as Invoice & { active_transaction?: { status: string; reference: string } };
-          const activeTx = fullInv?.active_transaction;
-
-          if (activeTx && activeTx.status === 'PENDING' && activeTx.reference) {
-            toast.success('Melanjutkan transaksi aktif...');
-            navigate(`/payment/public/${token}/instruction?ref=${encodeURIComponent(activeTx.reference)}`);
-            return;
-          }
-        } catch (checkError) {
-          console.error('Gagal verifikasi transaksi aktif:', checkError);
-        }
-
-        navigate(`/invoice/public/${token}`);
-      } else if (res.success && res.data?.url) {
+      if (res.success && res.data?.url) {
         window.open(res.data.url, '_blank');
       } else {
-        toast.error('Gagal membuka invoice.');
+        toast.error(res.message || 'Gagal membuka invoice.');
       }
     } catch (error: unknown) {
       const err = error as Error;
@@ -383,28 +394,12 @@ export default function ServiceCenterPage() {
     } finally {
       setActionLoading(null);
     }
-  }, [navigate]);
+  }, [navigate, invoices]);
 
   const handleCheckout = useCallback(async () => {
     if (!activeOrder) return;
-    setCheckoutProcessing(true);
-    try {
-      const res = await orderSubscriptionPlan(activeOrder.id, activeOrder.period) as unknown as CheckoutResponse;
-      let invoiceId = res?.data?.checkout?.invoice_id || res?.data?.checkout?.invoiceId || null;
-      const token = res?.data?.checkout?.public_token || (invoiceId ? (await getPublicInvoiceLink(String(invoiceId))).data?.token : null);
-      
-      if (token) {
-        toast.success('Mengarahkan ke pembayaran...');
-        navigate(`/payment/public/${encodeURIComponent(token)}`);
-      } else {
-        throw new Error('Gagal mendapatkan token pembayaran');
-      }
-    } catch (error: unknown) {
-      const err = error as Error & { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || err.message || 'Gagal memproses pesanan.');
-    } finally {
-      setCheckoutProcessing(false);
-    }
+    setShowOrderPanel(false);
+    navigate(`/billing/checkout?plan_id=${activeOrder.id}&cycle=${activeOrder.period}`);
   }, [activeOrder, navigate]);
 
   const breadcrumbs = useMemo(() => [
@@ -478,6 +473,63 @@ export default function ServiceCenterPage() {
             {currentTab === 'status' && (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-1 space-y-3">
+                  <Card className="p-4 border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10 rounded-xl mb-4">
+                    <div className="flex items-center gap-2 mb-2 text-slate-900 dark:text-white">
+                      <GraduationCap size={16} className="text-blue-500" />
+                      <span className="text-[12px] font-black uppercase tracking-wider">Kapasitas Sekolah</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[11px] text-slate-500 font-bold">Edisi Core:</span>
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 font-black text-[9px] uppercase px-2 py-0.5">
+                        {activeAcademicTier}
+                      </Badge>
+                    </div>
+                    {/* Informasi kapasitas siswa aktual dari plan database */}
+                    {activeCorePlan && (
+                      <div className="mt-2 flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                        <span className="text-[10px] font-semibold">
+                          {activeCorePlan.max_user
+                            ? `Maks. ${activeCorePlan.max_user.toLocaleString('id-ID')} Siswa Aktif`
+                            : 'Tanpa Batas Siswa'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className="mt-3.5 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pilih Kapasitas Baru</label>
+                      <select
+                        value={activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' ? 'MICRO' : activeAcademicTier.toUpperCase()}
+                        onChange={async (e) => {
+                          const newTier = e.target.value;
+                          const confirmChange = window.confirm(`Apakah Anda yakin ingin mengubah kapasitas sekolah ke edisi ${newTier}?`);
+                          if (!confirmChange) return;
+                          
+                          try {
+                            const res = await axiosInstance.post('/billing/subscriptions/update-academic-tier', { tier: newTier });
+                            if (res.data && res.data.success) {
+                              toast.success(res.data.message || 'Kapasitas sekolah berhasil diubah!');
+                              subQuery.refetch();
+                            } else {
+                              toast.error(res.data.message || 'Gagal mengubah kapasitas sekolah.');
+                            }
+                          } catch (err: any) {
+                            toast.error(err.response?.data?.message || 'Terjadi kesalahan saat menghubungi server.');
+                          }
+                        }}
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                      >
+                        <option value="MICRO">Micro (Maks. 100 Siswa)</option>
+                        <option value="SMALL">Small (Maks. 300 Siswa)</option>
+                        <option value="MEDIUM">Medium (Maks. 600 Siswa)</option>
+                        <option value="LARGE">Large (Maks. 1.200 Siswa)</option>
+                        <option value="ENTERPRISE">Enterprise (Tanpa Batas)</option>
+                      </select>
+                      <p className="text-[8.5px] text-slate-400 font-medium leading-relaxed italic mt-2">
+                        * Pilihan edisi minimal setara dengan kapasitas sekolah Anda untuk dapat membeli modul premium.
+                      </p>
+                    </div>
+                  </Card>
+
                   <h3 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider px-1 items-center flex gap-2">
                     <LayoutGrid size={14} /> Daftar Layanan
                   </h3>
@@ -517,6 +569,22 @@ export default function ServiceCenterPage() {
                         );
                       })
                     )}
+                    <Button
+                      onClick={async () => {
+                        const promise = subQuery.refetch();
+                        toast.promise(promise, {
+                          loading: 'Menyingkronkan status lisensi...',
+                          success: 'Status lisensi berhasil diperbarui!',
+                          error: 'Gagal melakukan sinkronisasi lisensi.'
+                        });
+                      }}
+                      disabled={subQuery.isRefetching}
+                      variant="outline"
+                      className="w-full mt-4 h-11 border-dashed hover:border-blue-500 hover:text-blue-500 font-bold rounded-xl text-xs flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw size={14} className={subQuery.isRefetching ? 'animate-spin' : ''} />
+                      Sinkronisasi Status Lisensi
+                    </Button>
                   </div>
                 </div>
 
@@ -644,18 +712,27 @@ export default function ServiceCenterPage() {
                     const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
                     const variants = group.variants || [];
 
-                    // Pilih default: varian MONTH dengan ukuran terkecil
+                    // Pilih default: varian MONTH dengan ukuran yang sesuai dengan activeAcademicTier (jika ada)
                     const monthlyVariants = variants.filter((v) =>
                       v.billing_period === 'MONTH' || !v.billing_period
                     );
-                    const sortedMonthly = [...monthlyVariants].sort((a, b) => {
-                      const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === (a.size_label || '').toLowerCase());
-                      const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === (b.size_label || '').toLowerCase());
-                      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-                    });
-
-                    // Fallback ke variants[0] jika tidak ada varian MONTH
-                    const defaultVariant = sortedMonthly[0] || variants[0];
+                    
+                    let defaultVariant = monthlyVariants.find(
+                      (v) => (v.size_label || '').toLowerCase() === activeAcademicTier.toLowerCase()
+                    );
+                    if (!defaultVariant) {
+                      defaultVariant = variants.find(
+                        (v) => (v.size_label || '').toLowerCase() === activeAcademicTier.toLowerCase()
+                      );
+                    }
+                    if (!defaultVariant) {
+                      const sortedMonthly = [...monthlyVariants].sort((a, b) => {
+                        const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === (a.size_label || '').toLowerCase());
+                        const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === (b.size_label || '').toLowerCase());
+                        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+                      });
+                      defaultVariant = sortedMonthly[0] || variants[0];
+                    }
 
                     setActiveOrder({
                       id: defaultVariant.id,
@@ -700,6 +777,7 @@ export default function ServiceCenterPage() {
           setShowOrderPanel={setShowOrderPanel}
           setActiveOrder={setActiveOrder}
           handleCheckout={handleCheckout}
+          activeAcademicTier={activeAcademicTier}
         />
         <AutoRenewModal
           isAutoRenewModalOpen={isAutoRenewModalOpen}

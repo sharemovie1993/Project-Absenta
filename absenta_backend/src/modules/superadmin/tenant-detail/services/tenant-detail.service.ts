@@ -486,72 +486,14 @@ export class TenantDetailService {
       });
 
       // Ambil payment history
-      const paymentHistory = await prisma.payment.findMany({
-        where: { tenant_id: tenantId },
-        include: {
-          Billing: {
-            include: {
-              Subscription: {
-                include: {
-                  Plan: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: { created_at: 'desc' },
-        take: 20 // Limit to last 20 payments
-      });
+      const paymentHistory: any[] = [];
 
       // Hitung billing analytics
-      const totalRevenue = await prisma.payment.aggregate({
-        where: { 
-          tenant_id: tenantId,
-          status: 'SUCCESS'
-        },
-        _sum: {
-          amount: true
-        }
-      });
-
-      const monthlyRevenue = await prisma.payment.aggregate({
-        where: { 
-          tenant_id: tenantId,
-          status: 'SUCCESS',
-          created_at: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-          }
-        },
-        _sum: {
-          amount: true
-        }
-      });
-
-      const paymentStats = await prisma.payment.groupBy({
-        by: ['status'],
-        where: { tenant_id: tenantId },
-        _count: {
-          status: true
-        }
-      });
+      const totalRevenue = { _sum: { amount: 0 } };
+      const monthlyRevenue = { _sum: { amount: 0 } };
 
       // Hitung next billing date
       let nextBillingDate = null;
-      if (activeSubscription) {
-        const lastPayment = await prisma.payment.findFirst({
-          where: { 
-            tenant_id: tenantId,
-            status: 'SUCCESS'
-          },
-          orderBy: { created_at: 'desc' }
-        });
-
-        if (lastPayment) {
-          // Asumsi billing cycle monthly karena schema hanya ada price_monthly
-          const lastPaymentDate = new Date(lastPayment.created_at);
-          nextBillingDate = new Date(lastPaymentDate.setMonth(lastPaymentDate.getMonth() + 1));
-        }
-      }
 
       return {
         activeSubscription: activeSubscription ? {
@@ -597,10 +539,7 @@ export class TenantDetailService {
         analytics: {
           totalRevenue: totalRevenue._sum?.amount || 0,
           monthlyRevenue: monthlyRevenue._sum?.amount || 0,
-          paymentStats: paymentStats.reduce((acc, stat) => {
-            acc[stat.status.toLowerCase()] = stat._count.status;
-            return acc;
-          }, {} as Record<string, number>),
+          paymentStats: {},
           totalPayments: paymentHistory.length,
           averagePayment: paymentHistory.length > 0 
             ? (totalRevenue._sum?.amount || 0) / paymentHistory.length 

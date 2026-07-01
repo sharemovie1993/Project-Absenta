@@ -116,14 +116,7 @@ export const upgradeIntelligenceService = {
       upgradeAttemptCountByTenant.set(tenantId, (upgradeAttemptCountByTenant.get(tenantId) || 0) + 1);
     }
 
-    const paidUpgradeInvoices = await db.invoice.findMany({
-      where: {
-        paid_at: { gte: monthStart, lt: monthEnd },
-        status: 'PAID' as any,
-        Billing: { charge_type: 'UPGRADE' as any },
-      },
-      select: { tenant_id: true },
-    });
+    const paidUpgradeInvoices: any[] = [];
 
     const upgradePaidCountByTenant = new Map<string, number>();
     for (const inv of paidUpgradeInvoices as any[]) {
@@ -132,14 +125,7 @@ export const upgradeIntelligenceService = {
       upgradePaidCountByTenant.set(tenantId, (upgradePaidCountByTenant.get(tenantId) || 0) + 1);
     }
 
-    const overdueGroups = await db.invoice.groupBy({
-      by: ['tenant_id'],
-      where: {
-        created_at: { gte: monthStart, lt: monthEnd },
-        status: 'OVERDUE' as any,
-      },
-      _count: { _all: true },
-    });
+    const overdueGroups: any[] = [];
 
     const overdueCountByTenant = new Map<string, number>();
     for (const g of overdueGroups as any[]) {
@@ -220,26 +206,11 @@ export const upgradeIntelligenceService = {
       where: { created_at: { gte: monthStart, lt: monthEnd }, reason: 'UPGRADE' },
     });
 
-    const invoiceCreatedCount = await db.invoice.count({
-      where: { created_at: { gte: monthStart, lt: monthEnd }, Billing: { charge_type: 'UPGRADE' as any } },
-    });
+    const invoiceCreatedCount = 0;
 
-    const invoicePaidCount = await db.invoice.count({
-      where: {
-        paid_at: { gte: monthStart, lt: monthEnd },
-        status: 'PAID' as any,
-        Billing: { charge_type: 'UPGRADE' as any },
-      },
-    });
+    const invoicePaidCount = 0;
 
-    const paidUpgradeInvoiceIds = await db.invoice.findMany({
-      where: {
-        paid_at: { gte: monthStart, lt: monthEnd },
-        status: 'PAID' as any,
-        Billing: { charge_type: 'UPGRADE' as any },
-      },
-      select: { id: true },
-    });
+    const paidUpgradeInvoiceIds: any[] = [];
 
     const upgradeAppliedCount =
       paidUpgradeInvoiceIds.length > 0
