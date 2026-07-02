@@ -145,12 +145,35 @@ function Install-CaddyLocal {
     $hosts = $Domain
     if ($DeployScenario -eq "saas" -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
         $hosts = "$Domain, *.$Domain"
-    } elseif ($DeployScenario -eq "hybrid") {
-        # Hybrid mode needs to accept all incoming tunneled hosts (subdomains & custom domains) over HTTP
-        $hosts = "$Domain, http://:80"
     }
 
-    $caddyfileContent = @"
+    $caddyfileContent = ""
+
+    if ($DeployScenario -eq "hybrid") {
+        # Blok HTTP Port 80 khusus untuk menerima traffic lokal IP & tunnel (tanpa TLS)
+        $caddyfileContent += @"
+http://:80 {
+    # Forward API requests to Backend
+    reverse_proxy /api/* localhost:$BPort
+
+    # WebSocket Support (socket.io)
+    reverse_proxy /socket.io/* localhost:$BPort {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Forward everything else to Frontend
+    reverse_proxy /* localhost:$FPort
+
+    # Optimization
+    encode gzip zstd
+}
+
+"@
+    }
+
+    # Blok Utama untuk Domain dengan SSL/TLS
+    $caddyfileContent += @"
 $hosts {
     # Forward API requests to Backend
     reverse_proxy /api/* localhost:$BPort

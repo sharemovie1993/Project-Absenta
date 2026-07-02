@@ -257,22 +257,24 @@ export default function LoginPage() {
                    />
                 </motion.div>
   
-                <motion.div variants={itemVariants} transition={{ delay: 0.2 }}>
-                   <div className="flex justify-between items-center mb-1.5 ml-1">
-                      <label htmlFor="loginPassword" className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Kata Sandi</label>
-                      <button type="button" onClick={() => navigate('/login/forgot-password')} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">Lupa Sandi?</button>
-                   </div>
-                   <Input 
-                      id="loginPassword"
-                      type="password"
-                      required
-                      size="auth"
-                      leftIcon={<Lock />}
-                      value={credentials.password}
-                      onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                      placeholder="••••••••"
-                   />
-                </motion.div>
+                  <motion.div variants={itemVariants} transition={{ delay: 0.2 }}>
+                    <div className="flex justify-between items-center mb-1.5 ml-1">
+                       <label htmlFor="loginPassword" className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Kata Sandi</label>
+                    </div>
+                    <Input 
+                       id="loginPassword"
+                       type="password"
+                       required
+                       size="auth"
+                       leftIcon={<Lock />}
+                       value={credentials.password}
+                       onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                       placeholder="••••••••"
+                    />
+                    <div className="flex justify-end mt-2">
+                       <button type="button" onClick={() => navigate('/login/forgot-password')} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors">Lupa Sandi?</button>
+                    </div>
+                 </motion.div>
   
                 {String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production' && (
                   <motion.div variants={itemVariants} transition={{ delay: 0.3 }}>
