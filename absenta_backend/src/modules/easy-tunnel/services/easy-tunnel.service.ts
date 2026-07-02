@@ -9,6 +9,33 @@ import {
   removeLicenseCustomDomain
 } from '../../../services/licenseClient';
 import os from 'os';
+import dns from 'dns/promises';
+
+const PLATFORM_DOMAIN = process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id';
+const VALID_CNAME_TARGETS = [
+  `app.${PLATFORM_DOMAIN}`,
+  PLATFORM_DOMAIN,
+  `www.${PLATFORM_DOMAIN}`
+];
+
+async function verifyCname(customDomain: string): Promise<boolean> {
+  try {
+    const addresses = await dns.resolveCname(customDomain);
+    const resolved = addresses.map((a: string) => a.toLowerCase().replace(/\.$/, ''));
+    return resolved.some((addr: string) =>
+      VALID_CNAME_TARGETS.some(target => addr === target || addr.endsWith(`.${PLATFORM_DOMAIN}`))
+    );
+  } catch {
+    try {
+      const aRecords = await dns.resolve4(customDomain);
+      const platformIps = await dns.resolve4(`app.${PLATFORM_DOMAIN}`).catch(() => [] as string[]);
+      return aRecords.some((ip: string) => platformIps.includes(ip));
+    } catch {
+      return false;
+    }
+  }
+}
+
 
 export class EasyTunnelService {
   /**
@@ -312,12 +339,21 @@ export class EasyTunnelService {
       throw new Error('Domain ini sudah digunakan oleh institusi lain.');
     }
 
-    // 3. Ambil tunnel aktif milik tenant ini untuk mendapatkan license_key
+    // 3. Ambil data tenant saat ini
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { subdomain: true }
+      select: { subdomain: true, custom_domain: true, custom_domain_status: true }
     });
     if (!tenant) throw new Error('Tenant tidak ditemukan.');
+
+    // UX Optimization: Jika domain sama dan sudah ACTIVE, tidak perlu di-reset
+    if (tenant.custom_domain === domainClean && tenant.custom_domain_status === 'ACTIVE') {
+      return {
+        custom_domain: tenant.custom_domain,
+        custom_domain_status: tenant.custom_domain_status,
+        message: `Domain '${domainClean}' sudah aktif.`
+      };
+    }
 
     const tunnel = await prisma.easyTunnel.findFirst({
       where: { slug: tenant.subdomain || '' }
@@ -329,20 +365,29 @@ export class EasyTunnelService {
     // 4. Kirim ke License Server → update licenses.db + trigger Caddy sync
     await setLicenseCustomDomain(tunnel.license_key, domainClean);
 
-    // 5. Update Tenant DB — set domain + status PENDING
+    // 5. Cek verifikasi DNS secara instan (agar tidak perlu menunggu cron job)
+    const isInstantVerified = await verifyCname(domainClean);
+    const targetStatus = isInstantVerified ? 'ACTIVE' : 'PENDING';
+    const verifiedAt = isInstantVerified ? new Date() : null;
+
+    // 6. Update Tenant DB
     const updated = await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         custom_domain: domainClean,
-        custom_domain_status: 'PENDING',
-        custom_domain_verified_at: null
+        custom_domain_status: targetStatus,
+        custom_domain_verified_at: verifiedAt
       }
     });
+
+    const userMsg = isInstantVerified 
+      ? `Domain '${domainClean}' berhasil didaftarkan dan langsung aktif! 🎉`
+      : `Domain '${domainClean}' berhasil didaftarkan. Silakan tambahkan CNAME record di DNS Anda.`;
 
     return {
       custom_domain: updated.custom_domain,
       custom_domain_status: updated.custom_domain_status,
-      message: `Domain '${domainClean}' berhasil didaftarkan. Silakan tambahkan CNAME record di DNS Anda.`
+      message: userMsg
     };
   }
 
