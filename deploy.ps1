@@ -145,6 +145,9 @@ function Install-CaddyLocal {
     $hosts = $Domain
     if ($DeployScenario -eq "saas" -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
         $hosts = "$Domain, *.$Domain"
+    } elseif ($DeployScenario -eq "hybrid") {
+        # Hybrid mode needs to accept all incoming tunneled hosts (subdomains & custom domains) over HTTP
+        $hosts = "$Domain, http://:80"
     }
 
     $caddyfileContent = @"
