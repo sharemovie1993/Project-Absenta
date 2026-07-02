@@ -33,3 +33,6 @@ import './trialNotification.job';
 import './attendanceAutoClose.job';
 import './attendanceAutoSession.job';
 import './attendanceDigest.job';
+
+// ── Easy Tunnel ───────────────────────────────────────────────────────────────
+import './customDomainVerify.job';

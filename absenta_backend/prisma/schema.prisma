@@ -23,6 +23,8 @@ model Tenant {
 
   subdomain               String?                  @unique
   custom_domain           String?                  @unique
+  custom_domain_status    String?                  @default("NONE") // NONE | PENDING | ACTIVE | FAILED
+  custom_domain_verified_at DateTime?              @db.Timestamptz
   logo_url                String?
   status                  String                   @default("ACTIVE")
   deletion_requested_at   DateTime?

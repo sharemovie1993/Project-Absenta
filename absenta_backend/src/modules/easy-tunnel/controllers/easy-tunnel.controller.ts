@@ -11,6 +11,7 @@ import {
 } from '../../../services/licenseClient';
 import os from 'os';
 
+
 export const easyTunnelController = {
   async getTunnels(request: any, reply: any) {
     try {
@@ -230,6 +231,42 @@ export const easyTunnelController = {
       const result = await WireguardManager.installWireGuard();
       return reply.send(result);
     } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err.message });
+    }
+  },
+
+  // ─── Custom Domain Handlers ──────────────────────────────────────────────────
+
+  async setCustomDomain(request: any, reply: any) {
+    try {
+      const { custom_domain } = request.body || {};
+      if (!custom_domain) {
+        return reply.status(400).send({ success: false, message: 'custom_domain wajib diisi.' });
+      }
+      const result = await EasyTunnelService.setCustomDomain(request.tenantId, custom_domain);
+      return reply.send({ success: true, ...result });
+    } catch (err: any) {
+      console.error('[EasyTunnel] setCustomDomain error:', err);
+      return reply.status(400).send({ success: false, message: err.message });
+    }
+  },
+
+  async removeCustomDomain(request: any, reply: any) {
+    try {
+      const result = await EasyTunnelService.removeCustomDomain(request.tenantId);
+      return reply.send({ success: true, ...result });
+    } catch (err: any) {
+      console.error('[EasyTunnel] removeCustomDomain error:', err);
+      return reply.status(400).send({ success: false, message: err.message });
+    }
+  },
+
+  async getCustomDomainStatus(request: any, reply: any) {
+    try {
+      const result = await EasyTunnelService.getCustomDomainStatus(request.tenantId);
+      return reply.send({ success: true, data: result });
+    } catch (err: any) {
+      console.error('[EasyTunnel] getCustomDomainStatus error:', err);
       return reply.status(500).send({ success: false, message: err.message });
     }
   }

@@ -1,4 +1,4 @@
-import { requestWithFallback } from './apiUtils';
+﻿import { requestWithFallback } from './apiUtils';
 
 export interface Tunnel {
   id: string;
@@ -26,14 +26,22 @@ export interface SystemInfo {
   tunnel_base_domain?: string;
 }
 
+export interface CustomDomainStatus {
+  custom_domain: string | null;
+  custom_domain_status: 'NONE' | 'PENDING' | 'ACTIVE' | 'FAILED';
+  custom_domain_verified_at: string | null;
+  platform_subdomain: string | null;
+  platform_url: string | null;
+}
+
 export const easyTunnelApi = {
   // Tunnels CRUD
   async list(): Promise<{ success: boolean; data: Tunnel[] }> {
-    return requestWithFallback('get', '/api/system/easy-tunnel/tunnels');
+    return requestWithFallback('get', '/system/easy-tunnel/tunnels');
   },
-  
+
   async get(id: string): Promise<{ success: boolean; data: Tunnel }> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/tunnels/${id}`);
+    return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}`);
   },
 
   async setup(data: {
@@ -42,50 +50,50 @@ export const easyTunnelApi = {
     local_port: number;
     app_name: string;
   }): Promise<{ success: boolean; message: string; data: any }> {
-    return requestWithFallback('post', '/api/system/easy-tunnel/tunnels/setup', { data });
+    return requestWithFallback('post', '/system/easy-tunnel/tunnels/setup', { data });
   },
 
   async start(id: string): Promise<{ success: boolean; message: string }> {
-    return requestWithFallback('post', `/api/system/easy-tunnel/tunnels/${id}/start`);
+    return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/start`);
   },
 
   async stop(id: string): Promise<{ success: boolean; message: string }> {
-    return requestWithFallback('post', `/api/system/easy-tunnel/tunnels/${id}/stop`);
+    return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/stop`);
   },
 
   async diagnose(id: string): Promise<{ success: boolean; data: { success: boolean; message: string; details: string[] } }> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/tunnels/${id}/diagnose`);
+    return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}/diagnose`);
   },
 
   async edit(id: string, data: { local_port: number; app_name: string }): Promise<{ success: boolean; message: string; data: any }> {
-    return requestWithFallback('post', `/api/system/easy-tunnel/tunnels/${id}/edit`, { data });
+    return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/edit`, { data });
   },
 
   async remove(id: string): Promise<{ success: boolean; message: string }> {
-    return requestWithFallback('delete', `/api/system/easy-tunnel/tunnels/${id}`);
+    return requestWithFallback('delete', `/system/easy-tunnel/tunnels/${id}`);
   },
 
   async forceRelease(licenseKey: string): Promise<{ success: boolean; message: string }> {
-    return requestWithFallback('post', '/api/system/easy-tunnel/tunnels/force-release', {
+    return requestWithFallback('post', '/system/easy-tunnel/tunnels/force-release', {
       data: { license_key: licenseKey }
     });
   },
 
   // Billing & Order Proxy
   async getPackages(): Promise<{ success: boolean; data: any[] }> {
-    return requestWithFallback('get', '/api/system/easy-tunnel/order/packages');
+    return requestWithFallback('get', '/system/easy-tunnel/order/packages');
   },
 
   async getPaymentChannels(): Promise<{ success: boolean; data: any[] }> {
-    return requestWithFallback('get', '/api/system/easy-tunnel/order/payment-channels');
+    return requestWithFallback('get', '/system/easy-tunnel/order/payment-channels');
   },
 
   async checkSlug(slug: string): Promise<{ success: boolean; available: boolean; message: string }> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/order/check-slug/${encodeURIComponent(slug)}`);
+    return requestWithFallback('get', `/system/easy-tunnel/order/check-slug/${encodeURIComponent(slug)}`);
   },
 
   async validateKey(key: string): Promise<{ success: boolean; data: any }> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/order/validate-key/${encodeURIComponent(key)}`);
+    return requestWithFallback('get', `/system/easy-tunnel/order/validate-key/${encodeURIComponent(key)}`);
   },
 
   async newOrder(data: {
@@ -97,23 +105,38 @@ export const easyTunnelApi = {
     app_name?: string;
     local_port?: number;
   }): Promise<{ success: boolean; data: any }> {
-    return requestWithFallback('post', '/api/system/easy-tunnel/order/new', { data });
+    return requestWithFallback('post', '/system/easy-tunnel/order/new', { data });
   },
 
   async checkPaymentStatus(key: string): Promise<any> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/order/payment-status/${encodeURIComponent(key)}`);
+    return requestWithFallback('get', `/system/easy-tunnel/order/payment-status/${encodeURIComponent(key)}`);
   },
 
   async checkInvoiceStatus(number: string): Promise<any> {
-    return requestWithFallback('get', `/api/system/easy-tunnel/order/invoice-status/${encodeURIComponent(number)}`);
+    return requestWithFallback('get', `/system/easy-tunnel/order/invoice-status/${encodeURIComponent(number)}`);
   },
 
   // System & Installation Info
   async info(): Promise<{ success: boolean; data: SystemInfo }> {
-    return requestWithFallback('get', '/api/system/easy-tunnel/system/info');
+    return requestWithFallback('get', '/system/easy-tunnel/system/info');
   },
 
   async installWireguard(): Promise<{ success: boolean; message: string }> {
-    return requestWithFallback('post', '/api/system/easy-tunnel/system/install-wireguard');
+    return requestWithFallback('post', '/system/easy-tunnel/system/install-wireguard');
+  },
+
+  // Custom Domain
+  async getCustomDomainStatus(): Promise<{ success: boolean; data: CustomDomainStatus }> {
+    return requestWithFallback('get', '/system/easy-tunnel/custom-domain/status');
+  },
+
+  async setCustomDomain(customDomain: string): Promise<{ success: boolean; custom_domain: string; custom_domain_status: string; message: string }> {
+    return requestWithFallback('post', '/system/easy-tunnel/custom-domain', {
+      data: { custom_domain: customDomain }
+    });
+  },
+
+  async removeCustomDomain(): Promise<{ success: boolean; message: string }> {
+    return requestWithFallback('delete', '/system/easy-tunnel/custom-domain');
   }
 };

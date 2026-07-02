@@ -4,7 +4,9 @@ import {
   validateLicenseKey,
   requestTunnelConfig,
   releaseLicense,
-  updateLicensePort
+  updateLicensePort,
+  setLicenseCustomDomain,
+  removeLicenseCustomDomain
 } from '../../../services/licenseClient';
 import os from 'os';
 
@@ -285,4 +287,127 @@ export class EasyTunnelService {
   static async forceRelease(licenseKey: string): Promise<any> {
     return await releaseLicense(licenseKey);
   }
+
+  // ─── Custom Domain Methods ────────────────────────────────────────────────────
+
+  /**
+   * Daftarkan custom domain untuk tenant.
+   * Flow: validasi format → cek konflik → kirim ke License Server (trigger Caddy sync)
+   *       → update Tenant.custom_domain + status PENDING
+   */
+  static async setCustomDomain(tenantId: string, customDomain: string): Promise<any> {
+    const domainClean = customDomain.trim().toLowerCase();
+
+    // 1. Validasi format domain
+    const domainRegex = /^(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+    if (!domainRegex.test(domainClean)) {
+      throw new Error('Format domain tidak valid. Contoh: absen.smkn1.sch.id');
+    }
+
+    // 2. Cek konflik dengan tenant lain di Absenta DB
+    const conflict = await prisma.tenant.findFirst({
+      where: { custom_domain: domainClean, id: { not: tenantId } }
+    });
+    if (conflict) {
+      throw new Error('Domain ini sudah digunakan oleh institusi lain.');
+    }
+
+    // 3. Ambil tunnel aktif milik tenant ini untuk mendapatkan license_key
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subdomain: true }
+    });
+    if (!tenant) throw new Error('Tenant tidak ditemukan.');
+
+    const tunnel = await prisma.easyTunnel.findFirst({
+      where: { slug: tenant.subdomain || '' }
+    });
+    if (!tunnel) {
+      throw new Error('Tunnel belum dikonfigurasi. Pasang lisensi Easy Tunnel terlebih dahulu sebelum mendaftarkan custom domain.');
+    }
+
+    // 4. Kirim ke License Server → update licenses.db + trigger Caddy sync
+    await setLicenseCustomDomain(tunnel.license_key, domainClean);
+
+    // 5. Update Tenant DB — set domain + status PENDING
+    const updated = await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        custom_domain: domainClean,
+        custom_domain_status: 'PENDING',
+        custom_domain_verified_at: null
+      }
+    });
+
+    return {
+      custom_domain: updated.custom_domain,
+      custom_domain_status: updated.custom_domain_status,
+      message: `Domain '${domainClean}' berhasil didaftarkan. Silakan tambahkan CNAME record di DNS Anda.`
+    };
+  }
+
+  /**
+   * Hapus custom domain dari tenant.
+   */
+  static async removeCustomDomain(tenantId: string): Promise<any> {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subdomain: true, custom_domain: true }
+    });
+    if (!tenant) throw new Error('Tenant tidak ditemukan.');
+    if (!tenant.custom_domain) throw new Error('Tidak ada custom domain yang terdaftar.');
+
+    const tunnel = await prisma.easyTunnel.findFirst({
+      where: { slug: tenant.subdomain || '' }
+    });
+
+    // Hapus dari License Server jika ada tunnel
+    if (tunnel) {
+      try {
+        await removeLicenseCustomDomain(tunnel.license_key);
+      } catch (e: any) {
+        console.warn('[EasyTunnel] Gagal hapus domain dari License Server:', e.message);
+      }
+    }
+
+    // Clear dari Tenant DB
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        custom_domain: null,
+        custom_domain_status: 'NONE',
+        custom_domain_verified_at: null
+      }
+    });
+
+    return { message: 'Custom domain berhasil dihapus.' };
+  }
+
+  /**
+   * Ambil status custom domain tenant saat ini.
+   */
+  static async getCustomDomainStatus(tenantId: string): Promise<any> {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        custom_domain: true,
+        custom_domain_status: true,
+        custom_domain_verified_at: true,
+        subdomain: true
+      }
+    });
+    if (!tenant) throw new Error('Tenant tidak ditemukan.');
+
+    return {
+      custom_domain: tenant.custom_domain,
+      custom_domain_status: tenant.custom_domain_status || 'NONE',
+      custom_domain_verified_at: tenant.custom_domain_verified_at,
+      platform_subdomain: tenant.subdomain,
+      platform_url: tenant.subdomain
+        ? `${tenant.subdomain}.${process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id'}`
+        : null
+    };
+  }
 }
+
+export const easyTunnelService = new EasyTunnelService();

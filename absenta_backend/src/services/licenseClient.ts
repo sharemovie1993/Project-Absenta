@@ -254,3 +254,36 @@ export async function fetchMyOrders(token: string): Promise<any[]> {
   if (!data.success) throw new Error(data.message || 'Gagal mengambil riwayat transaksi.');
   return data.data;
 }
+
+/** Daftarkan custom domain ke server lisensi + trigger Caddy sync */
+export async function setLicenseCustomDomain(licenseKey: string, customDomain: string): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tunnel/custom-domain`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      license_key: licenseKey.trim(),
+      custom_domain: customDomain.trim().toLowerCase()
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal mendaftarkan custom domain ke server.');
+  return data;
+}
+
+/** Hapus custom domain dari server lisensi + trigger Caddy sync */
+export async function removeLicenseCustomDomain(licenseKey: string): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tunnel/custom-domain`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      license_key: licenseKey.trim(),
+      custom_domain: null
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal menghapus custom domain dari server.');
+  return data;
+}
+

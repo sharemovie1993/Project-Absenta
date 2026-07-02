@@ -30,4 +30,10 @@ export async function easyTunnelRoutes(fastify: any) {
   // System & Installation Info
   fastify.get('/system/info', opts, easyTunnelController.getSystemInfo.bind(easyTunnelController));
   fastify.post('/system/install-wireguard', opts, easyTunnelController.installWireguard.bind(easyTunnelController));
+
+  // Custom Domain
+  fastify.get('/custom-domain/status', opts, easyTunnelController.getCustomDomainStatus.bind(easyTunnelController));
+  fastify.post('/custom-domain', opts, easyTunnelController.setCustomDomain.bind(easyTunnelController));
+  fastify.delete('/custom-domain', opts, easyTunnelController.removeCustomDomain.bind(easyTunnelController));
 }
+

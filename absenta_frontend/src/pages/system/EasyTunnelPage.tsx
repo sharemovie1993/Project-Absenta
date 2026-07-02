@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { easyTunnelApi, Tunnel, SystemInfo } from '../../api/easyTunnel.api';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { easyTunnelApi, Tunnel, SystemInfo, CustomDomainStatus } from '../../api/easyTunnel.api';
 import { Copy } from 'lucide-react';
 import { requestWithFallback } from '../../api/apiUtils';
 import useConfirm from '../../hooks/useConfirm';
@@ -114,18 +114,19 @@ export default function EasyTunnelPage() {
   // General loading states
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({});
 
+  // Custom Domain state
+  const [customDomainData, setCustomDomainData] = useState<CustomDomainStatus | null>(null);
+  const [customDomainInput, setCustomDomainInput] = useState('');
+  const [customDomainLoading, setCustomDomainLoading] = useState(false);
+  const [customDomainError, setCustomDomainError] = useState<string | null>(null);
+
   const loadData = async () => {
     try {
       setError(null);
       const res = await easyTunnelApi.list();
-      if (res.success) {
-        setTunnels(res.data);
-      }
-      
+      if (res.success) setTunnels(res.data);
       const infoRes = await easyTunnelApi.info();
-      if (infoRes.success) {
-        setSystemInfo(infoRes.data);
-      }
+      if (infoRes.success) setSystemInfo(infoRes.data);
     } catch (err: any) {
       setError(getErrorMessage(err) || 'Gagal memuat data dari server.');
     } finally {
@@ -133,11 +134,64 @@ export default function EasyTunnelPage() {
     }
   };
 
+  const loadCustomDomainStatus = useCallback(async () => {
+    try {
+      const res = await easyTunnelApi.getCustomDomainStatus();
+      if (res.success) {
+        setCustomDomainData(res.data);
+        if (res.data.custom_domain) setCustomDomainInput(res.data.custom_domain);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     loadData();
+    loadCustomDomainStatus();
     const interval = setInterval(loadData, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    // Poll status domain setiap 30 detik jika PENDING
+    const domainInterval = setInterval(() => {
+      if (customDomainData?.custom_domain_status === 'PENDING') loadCustomDomainStatus();
+    }, 30000);
+    return () => { clearInterval(interval); clearInterval(domainInterval); };
+  }, [loadCustomDomainStatus, customDomainData?.custom_domain_status]);
+
+  const handleSetCustomDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customDomainInput.trim()) return;
+    setCustomDomainLoading(true);
+    setCustomDomainError(null);
+    try {
+      await easyTunnelApi.setCustomDomain(customDomainInput.trim());
+      showSuccessToast('Domain berhasil didaftarkan! Silakan tambahkan CNAME di DNS Anda.');
+      await loadCustomDomainStatus();
+    } catch (err: any) {
+      setCustomDomainError(getErrorMessage(err) || 'Gagal mendaftarkan domain.');
+    } finally {
+      setCustomDomainLoading(false);
+    }
+  };
+
+  const handleRemoveCustomDomain = async () => {
+    const confirmed = await confirm({
+      title: 'Hapus Custom Domain',
+      description: 'Domain kustom akan dihapus dari sistem dan tidak bisa lagi diakses melalui domain tersebut. Lanjutkan?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+    if (!confirmed) return;
+    setCustomDomainLoading(true);
+    try {
+      await easyTunnelApi.removeCustomDomain();
+      setCustomDomainInput('');
+      showSuccessToast('Custom domain berhasil dihapus.');
+      await loadCustomDomainStatus();
+    } catch (err: any) {
+      showErrorToast(getErrorMessage(err) || 'Gagal menghapus domain.');
+    } finally {
+      setCustomDomainLoading(false);
+    }
+  };
 
   // Pre-populate dari data tenant (sekolah) hanya sekali saat komponen pertama kali dirender
   useEffect(() => {
@@ -230,6 +284,17 @@ export default function EasyTunnelPage() {
         confirmText: 'Ya, Hapus',
         cancelText: 'Batal',
         style: 'danger'
+      });
+      if (!isConfirmed) return;
+    }
+
+    if (action === 'stop') {
+      const isConfirmed = await confirm({
+        title: 'Matikan Tunnel',
+        description: 'Mematikan tunnel akan memutus akses ke dashboard melalui domain publik. Anda harus mengakses kembali melalui localhost untuk mengaktifkannya lagi. Lanjutkan?',
+        confirmText: 'Ya, Matikan',
+        cancelText: 'Batal',
+        style: 'warning'
       });
       if (!isConfirmed) return;
     }
@@ -563,6 +628,160 @@ export default function EasyTunnelPage() {
           ))}
         </div>
       )}
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CUSTOM DOMAIN SECTION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5 shadow-sm">
+        <div className="flex justify-between items-start flex-wrap gap-3">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              🌐 Custom Domain
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Akses aplikasi Anda melalui domain milik sekolah sendiri (misal: <span className="font-mono">absen.smkn1.sch.id</span>)
+            </p>
+          </div>
+          {/* Status Badge */}
+          {customDomainData?.custom_domain_status && customDomainData.custom_domain_status !== 'NONE' && (
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+              customDomainData.custom_domain_status === 'ACTIVE'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                : customDomainData.custom_domain_status === 'PENDING'
+                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+            }`}>
+              {customDomainData.custom_domain_status === 'ACTIVE' && '✅ Domain Aktif'}
+              {customDomainData.custom_domain_status === 'PENDING' && '⏳ Menunggu DNS'}
+              {customDomainData.custom_domain_status === 'FAILED' && '❌ Verifikasi Gagal'}
+            </span>
+          )}
+        </div>
+
+        {/* Form Input Domain */}
+        <form onSubmit={handleSetCustomDomain} className="flex gap-2 items-start">
+          <div className="flex-1">
+            <input
+              id="custom-domain-input"
+              type="text"
+              placeholder="absen.smkn1.sch.id"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              value={customDomainInput}
+              onChange={e => setCustomDomainInput(e.target.value)}
+              disabled={customDomainLoading}
+            />
+            {customDomainError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1">⚠️ {customDomainError}</p>
+            )}
+          </div>
+          <button
+            id="btn-set-custom-domain"
+            type="submit"
+            disabled={customDomainLoading || !customDomainInput.trim()}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition flex items-center gap-1.5"
+          >
+            {customDomainLoading
+              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Menyimpan...</>
+              : '💾 Simpan Domain'
+            }
+          </button>
+          {customDomainData?.custom_domain && (
+            <button
+              id="btn-remove-custom-domain"
+              type="button"
+              onClick={handleRemoveCustomDomain}
+              disabled={customDomainLoading}
+              className="px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-950 dark:hover:bg-red-900 text-red-700 dark:text-red-300 rounded-lg text-sm font-semibold transition"
+              title="Hapus Custom Domain"
+            >
+              🗑️
+            </button>
+          )}
+        </form>
+
+        {/* Instruksi DNS — tampil setelah domain disimpan */}
+        {customDomainData?.custom_domain && customDomainData.custom_domain_status !== 'NONE' && (
+          <div className="space-y-3">
+            {/* Instruksi CNAME */}
+            {customDomainData.custom_domain_status !== 'ACTIVE' && (
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">📋 Langkah Selanjutnya — Tambahkan DNS Record</p>
+                <p className="text-xs text-indigo-700 dark:text-indigo-400">
+                  Login ke panel DNS domain <span className="font-semibold">{customDomainData.custom_domain.split('.').slice(1).join('.')}</span> Anda, lalu tambahkan record berikut:
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-indigo-100 dark:bg-indigo-900">
+                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold rounded-tl-lg">Type</th>
+                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold">Name / Host</th>
+                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold rounded-tr-lg">Value / Target</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="bg-white dark:bg-slate-900 border-t border-indigo-100 dark:border-indigo-900">
+                        <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-400">CNAME</td>
+                        <td className="px-3 py-2 font-mono text-gray-800 dark:text-gray-200">
+                          {customDomainData.custom_domain.split('.')[0]}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                          app.{systemInfo?.tunnel_base_domain || 'absenta.id'}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`app.${systemInfo?.tunnel_base_domain || 'absenta.id'}`);
+                              showSuccessToast('Nilai CNAME disalin!');
+                            }}
+                            className="text-indigo-500 hover:text-indigo-700"
+                            title="Salin"
+                          >
+                            <Copy size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-500 italic">
+                  ⏱️ Setelah menambahkan record, sistem akan memverifikasi otomatis setiap 5 menit. Propagasi DNS bisa memakan waktu hingga 24 jam.
+                </p>
+              </div>
+            )}
+
+            {/* Status ACTIVE */}
+            {customDomainData.custom_domain_status === 'ACTIVE' && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center gap-3">
+                <span className="text-2xl">🎉</span>
+                <div>
+                  <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Domain aktif dan berjalan!</p>
+                  <a
+                    href={`https://${customDomainData.custom_domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-600 dark:text-emerald-400 font-mono hover:underline"
+                  >
+                    https://{customDomainData.custom_domain} ↗
+                  </a>
+                  {customDomainData.custom_domain_verified_at && (
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
+                      Diverifikasi: {new Date(customDomainData.custom_domain_verified_at).toLocaleString('id-ID')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status FAILED */}
+            {customDomainData.custom_domain_status === 'FAILED' && (
+              <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                <p className="text-sm font-bold text-red-800 dark:text-red-300">❌ Verifikasi DNS gagal</p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                  Sistem tidak dapat mendeteksi CNAME record untuk domain ini setelah 7 hari. Pastikan record DNS sudah benar, lalu simpan ulang domain untuk mencoba lagi.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       {/* MODAL 1: SETUP LISENSI */}
       {showSetupModal && (
