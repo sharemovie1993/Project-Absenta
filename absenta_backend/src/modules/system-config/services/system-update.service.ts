@@ -1,11 +1,41 @@
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import axios from 'axios';
+// @ts-ignore
+import AdmZip from 'adm-zip';
 
 // Path root kedua repo — sesuaikan jika letak folder berbeda
 const BACKEND_ROOT = path.join(__dirname, '..', '..', '..', '..'); // absenta_backend/
 const FRONTEND_ROOT = path.join(BACKEND_ROOT, '..', 'absenta_frontend'); // ../absenta_frontend/
 const PROGRESS_FILE = path.join(BACKEND_ROOT, '..', 'update-progress.json');
+
+function isVersionBehind(local: string, latest: string): boolean {
+  const lParts = String(local).split('.').map(Number);
+  const rParts = String(latest).split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const lVal = lParts[i] || 0;
+    const rVal = rParts[i] || 0;
+    if (rVal > lVal) return true;
+    if (lVal > rVal) return false;
+  }
+  return false;
+}
+
+async function downloadFile(url: string, outputPath: string): Promise<void> {
+  const writer = fs.createWriteStream(outputPath);
+  const response = await axios({
+    url,
+    method: 'GET',
+    responseType: 'stream'
+  });
+  response.data.pipe(writer);
+  return new Promise((resolve, reject) => {
+    writer.on('finish', resolve);
+    writer.on('error', reject);
+  });
+}
+
 
 export type UpdateStatus = 'idle' | 'running' | 'success' | 'failed';
 export type UpdateStep =
@@ -76,25 +106,6 @@ function execCmd(cmd: string, cwd: string): Promise<string> {
   });
 }
 
-function parseCommits(raw: string): CommitInfo[] {
-  return raw
-    .trim()
-    .split('\n')
-    .filter(Boolean)
-    .map(line => {
-      const spaceIdx = line.indexOf(' ');
-      if (spaceIdx === -1) return { hash: line, message: '' };
-      return { hash: line.substring(0, spaceIdx), message: line.substring(spaceIdx + 1) };
-    });
-}
-
-async function getCurrentBranch(cwd: string): Promise<string> {
-  try {
-    return (await execCmd('git rev-parse --abbrev-ref HEAD', cwd)).trim() || 'master';
-  } catch {
-    return 'master';
-  }
-}
 
 /** Simulasi delay step untuk dry-run mode */
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -104,31 +115,48 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 // ---------------------------------------------------------------------------
 
 export async function checkUpdates(): Promise<UpdateCheckResult> {
-  // Fetch terbaru dari remote untuk kedua repo
-  await Promise.allSettled([
-    execCmd('git fetch origin', BACKEND_ROOT),
-    execCmd('git fetch origin', FRONTEND_ROOT),
-  ]);
+  try {
+    const licenseServerUrl = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+    const currentVersion = process.env.APP_VERSION || '1.0.0';
 
-  const [backendBranch, frontendBranch] = await Promise.all([
-    getCurrentBranch(BACKEND_ROOT),
-    getCurrentBranch(FRONTEND_ROOT),
-  ]);
+    const response = await axios.get(`${licenseServerUrl}/api/public/release/check`, { timeout: 10000 });
+    const release = response.data;
 
-  const [backendLog, frontendLog] = await Promise.allSettled([
-    execCmd(`git log HEAD..origin/${backendBranch} --oneline`, BACKEND_ROOT),
-    execCmd(`git log HEAD..origin/${frontendBranch} --oneline`, FRONTEND_ROOT),
-  ]);
+    if (release && release.success && release.latest_version) {
+      const isBehind = isVersionBehind(currentVersion, release.latest_version);
+      
+      if (isBehind) {
+        // Map changelog ke backendCommits untuk ditampilkan di UI tanpa merubah React frontend
+        const changelogLines = String(release.changelog || '')
+          .split(/[.\n]/)
+          .map(s => s.trim())
+          .filter(Boolean);
 
-  const backendCommits =
-    backendLog.status === 'fulfilled' ? parseCommits(backendLog.value) : [];
-  const frontendCommits =
-    frontendLog.status === 'fulfilled' ? parseCommits(frontendLog.value) : [];
+        const backendCommits = [
+          { hash: 'version', message: `Versi Baru Tersedia: v${release.latest_version}` },
+          { hash: 'date', message: `Tanggal Rilis: ${new Date(release.released_at || Date.now()).toLocaleDateString('id-ID')}` },
+          { hash: 'info', message: '--- CATATAN RILIS ---' },
+          ...changelogLines.map((line, idx) => ({
+            hash: `item-${idx}`,
+            message: `• ${line}`
+          }))
+        ];
+
+        return {
+          isBehind: true,
+          backendCommits,
+          frontendCommits: []
+        };
+      }
+    }
+  } catch (err: any) {
+    console.error('[Updater] Gagal memeriksa update dari Server Lisensi:', err.message);
+  }
 
   return {
-    isBehind: backendCommits.length > 0 || frontendCommits.length > 0,
-    backendCommits,
-    frontendCommits,
+    isBehind: false,
+    backendCommits: [],
+    frontendCommits: []
   };
 }
 
@@ -183,150 +211,154 @@ async function runDryRunInBackground(): Promise<void> {
   }
 }
 
-async function hasFileChanged(cwd: string, fileName: string): Promise<boolean> {
-  try {
-    const diff = await execCmd(`git diff HEAD origin/$(git rev-parse --abbrev-ref HEAD) --name-only -- ${fileName}`, cwd);
-    return diff.trim().length > 0;
-  } catch {
-    return true; // Asumsikan berubah jika gagal cek
-  }
-}
-
-// ---------------------------------------------------------------------------
-// PRODUKSI — jalankan perintah shell nyata
-// ---------------------------------------------------------------------------
-
 async function runUpdateInBackground(): Promise<void> {
+  const tmpZipPath = path.join(BACKEND_ROOT, '..', 'tmp_update.zip');
+  const tmpExtractPath = path.join(BACKEND_ROOT, '..', 'tmp_update_extracted');
+
   try {
-    // Step 1 — Pull backend
-    writeProgress({ status: 'running', step: 'pulling_backend', message: 'Menarik kode backend terbaru dari GitHub...' });
-    const backendBranch = await getCurrentBranch(BACKEND_ROOT);
-    await execCmd('git fetch origin', BACKEND_ROOT);
+    const licenseServerUrl = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
 
-    // Cek apakah package-lock berubah SEBELUM reset --hard
-    const backendDepsChanged = await hasFileChanged(BACKEND_ROOT, 'package-lock.json');
-    const prismaSchemaChanged = await hasFileChanged(BACKEND_ROOT, 'prisma/schema.prisma');
+    // Step 1 — Pull backend (Mengunduh rilis)
+    writeProgress({ status: 'running', step: 'pulling_backend', message: 'Mencari paket rilis terbaru...' });
+    const response = await axios.get(`${licenseServerUrl}/api/public/release/check`, { timeout: 10000 });
+    const release = response.data;
 
-    await execCmd(`git reset --hard origin/${backendBranch}`, BACKEND_ROOT);
+    if (!release || !release.success || !release.download_url) {
+      throw new Error('Gagal mendapatkan URL paket rilis dari Server Lisensi.');
+    }
 
-    // Step 2 — Pull frontend
-    writeProgress({ status: 'running', step: 'pulling_frontend', message: 'Menarik kode frontend terbaru dari GitHub...' });
-    const frontendBranch = await getCurrentBranch(FRONTEND_ROOT);
-    await execCmd('git fetch origin', FRONTEND_ROOT);
-    
-    const frontendDepsChanged = await hasFileChanged(FRONTEND_ROOT, 'package-lock.json');
-    
-    await execCmd(`git reset --hard origin/${frontendBranch}`, FRONTEND_ROOT);
+    writeProgress({ status: 'running', step: 'pulling_backend', message: `Mengunduh paket rilis v${release.latest_version}...` });
+    await downloadFile(release.download_url, tmpZipPath);
 
-    // Step 3 — Install backend deps (Hanya jika berubah)
+    // Step 2 — Pull frontend (Mengekstrak rilis)
+    writeProgress({ status: 'running', step: 'pulling_frontend', message: 'Mengekstrak berkas paket rilis...' });
+    if (fs.existsSync(tmpExtractPath)) {
+      fs.rmSync(tmpExtractPath, { recursive: true, force: true });
+    }
+    fs.mkdirSync(tmpExtractPath, { recursive: true });
+
+    const zip = new AdmZip(tmpZipPath);
+    zip.extractAllTo(tmpExtractPath, true);
+
+    const newBackendPath = path.join(tmpExtractPath, 'absenta_backend');
+    const newFrontendPath = path.join(tmpExtractPath, 'absenta_frontend');
+
+    const backendDepsChanged = hasFileContentChanged(
+      path.join(BACKEND_ROOT, 'package-lock.json'),
+      path.join(newBackendPath, 'package-lock.json')
+    );
+    const prismaSchemaChanged = hasFileContentChanged(
+      path.join(BACKEND_ROOT, 'prisma', 'schema.prisma'),
+      path.join(newBackendPath, 'prisma', 'schema.prisma')
+    );
+
+    // Step 3 — Install backend dependencies jika berubah
     if (backendDepsChanged) {
-      const useCi = process.platform !== 'win32';
-      const cmd = useCi 
-        ? 'npm ci --omit=dev --no-audit' 
-        : 'npm install --omit=dev --no-audit --no-fund --prefer-offline';
-      const msg = useCi 
-        ? 'Memperbarui dependensi backend (npm ci)...' 
-        : 'Memperbarui dependensi backend (npm install)...';
+      writeProgress({ status: 'running', step: 'installing_backend', message: 'Memperbarui dependensi backend (npm install)...' });
+      fs.copyFileSync(path.join(newBackendPath, 'package.json'), path.join(BACKEND_ROOT, 'package.json'));
+      fs.copyFileSync(path.join(newBackendPath, 'package-lock.json'), path.join(BACKEND_ROOT, 'package-lock.json'));
       
-      writeProgress({ status: 'running', step: 'installing_backend', message: msg });
-      
-      try {
-        await execCmd(cmd, BACKEND_ROOT);
-      } catch (err: any) {
-        // Fallback jika terjadi error
-        if (useCi && (err.stderr?.includes('EPERM') || err.message?.includes('EPERM'))) {
-          writeProgress({ status: 'running', step: 'installing_backend', message: 'npm ci gagal (file locked), mencoba npm install...' });
-          await execCmd('npm install --omit=dev --no-audit --no-fund --prefer-offline', BACKEND_ROOT);
-        } else {
-          throw err;
-        }
-      }
+      const cmd = 'npm install --omit=dev --no-audit --no-fund --prefer-offline';
+      await execCmd(cmd, BACKEND_ROOT);
     } else {
       writeProgress({ status: 'running', step: 'installing_backend', message: 'Dependensi backend tidak berubah, melewati instalasi.' });
+      if (fs.existsSync(path.join(newBackendPath, 'package.json'))) {
+        fs.copyFileSync(path.join(newBackendPath, 'package.json'), path.join(BACKEND_ROOT, 'package.json'));
+      }
       await sleep(500);
     }
 
-    // Step 4 — Install frontend deps (Hanya jika berubah)
-    if (frontendDepsChanged) {
-      const useCi = process.platform !== 'win32';
-      const cmd = useCi 
-        ? 'npm ci --no-audit' 
-        : 'npm install --no-audit --no-fund --prefer-offline';
-      const msg = useCi 
-        ? 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm ci)...' 
-        : 'Menghentikan layanan frontend sementara & memperbarui dependensi (npm install)...';
+    // Step 4 — Install frontend dependencies (Dilewati karena static build sudah siap)
+    writeProgress({ status: 'running', step: 'installing_frontend', message: 'Menyalin berkas statis frontend...' });
+    await sleep(500);
 
-      writeProgress({ status: 'running', step: 'installing_frontend', message: msg });
-      
-      // Matikan frontend sementara jika dijalankan via pm2 agar file .node tidak terlock
-      try {
-        await execCmd('npx pm2 stop /absenta-frontend/', BACKEND_ROOT);
-      } catch (e) {
-        // Abaikan error jika pm2 tidak ada atau proses tidak ditemukan
-      }
-
-      try {
-        await execCmd(cmd, FRONTEND_ROOT);
-      } catch (err: any) {
-        if (useCi && (err.stderr?.includes('EPERM') || err.message?.includes('EPERM'))) {
-          writeProgress({ status: 'running', step: 'installing_frontend', message: 'npm ci gagal (file locked), mencoba npm install...' });
-          await execCmd('npm install --no-audit --no-fund --prefer-offline', FRONTEND_ROOT);
-        } else {
-          throw err;
-        }
-      }
-    } else {
-      writeProgress({ status: 'running', step: 'installing_frontend', message: 'Dependensi frontend tidak berubah, melewati instalasi.' });
-      await sleep(500);
-    }
-
-    // Step 5 — Prisma migrate
+    // Step 5 — Prisma migrate jika berubah
     if (prismaSchemaChanged) {
       writeProgress({ status: 'running', step: 'migrating', message: 'Menjalankan migrasi database (prisma migrate deploy)...' });
+      fs.cpSync(path.join(newBackendPath, 'prisma'), path.join(BACKEND_ROOT, 'prisma'), { recursive: true, force: true });
       await execCmd('npx prisma generate', BACKEND_ROOT);
       await execCmd('npx prisma migrate deploy', BACKEND_ROOT);
     } else {
       writeProgress({ status: 'running', step: 'migrating', message: 'Skema database tidak berubah, melewati migrasi.' });
-      await execCmd('npx prisma generate', BACKEND_ROOT); // Tetap generate untuk jaga-jaga
+      await execCmd('npx prisma generate', BACKEND_ROOT);
     }
 
-    // Step 6 — Build frontend
-    writeProgress({ status: 'running', step: 'building_frontend', message: 'Mengompilasi aset frontend (vite build)...' });
-    await execCmd('npm run build', FRONTEND_ROOT);
-
-    // Step 7 — Build backend (dengan trik renaming untuk Windows)
-    writeProgress({ status: 'running', step: 'restarting', message: 'Membangun ulang backend (Build)...' });
+    // Step 6 — Salin build frontend statis (vite build sudah jadi dari paket zip)
+    writeProgress({ status: 'running', step: 'building_frontend', message: 'Memperbarui file antarmuka frontend...' });
+    const targetFrontendDist = path.join(FRONTEND_ROOT, 'dist');
+    const newFrontendDist = path.join(newFrontendPath, 'dist');
     
-    // Trik Renaming untuk Windows agar file tidak terkunci
-    try {
-      await execCmd('if exist dist_old rmdir /s /q dist_old', BACKEND_ROOT);
-      await execCmd('if exist dist rename dist dist_old', BACKEND_ROOT);
-    } catch (e) {
-      console.warn('[Updater] Gagal melakukan renaming folder dist, mencoba build langsung...');
+    if (fs.existsSync(newFrontendDist)) {
+      if (fs.existsSync(targetFrontendDist)) {
+        fs.rmSync(targetFrontendDist, { recursive: true, force: true });
+      }
+      fs.cpSync(newFrontendDist, targetFrontendDist, { recursive: true, force: true });
     }
 
-    await execCmd('npm run build', BACKEND_ROOT);
+    // Step 7 — Salin build backend (dist) & restart PM2
+    writeProgress({ status: 'running', step: 'restarting', message: 'Memasang rilis backend baru & memuat ulang layanan...' });
+    
+    const targetBackendDist = path.join(BACKEND_ROOT, 'dist');
+    const newBackendDist = path.join(newBackendPath, 'dist');
 
-    writeProgress({ status: 'success', step: 'done', message: 'Aplikasi berhasil diperbarui! Memuat ulang layanan...' });
+    if (fs.existsSync(newBackendDist)) {
+      const oldDistPath = path.join(BACKEND_ROOT, 'dist_old');
+      if (fs.existsSync(oldDistPath)) {
+        fs.rmSync(oldDistPath, { recursive: true, force: true });
+      }
+      if (fs.existsSync(targetBackendDist)) {
+        fs.renameSync(targetBackendDist, oldDistPath);
+      }
+      fs.cpSync(newBackendDist, targetBackendDist, { recursive: true, force: true });
+    }
+
+    // Bersihkan file sementara
+    try {
+      if (fs.existsSync(tmpZipPath)) fs.unlinkSync(tmpZipPath);
+      if (fs.existsSync(tmpExtractPath)) fs.rmSync(tmpExtractPath, { recursive: true, force: true });
+    } catch (e) {}
+
+    // Update versi aplikasi di file .env jika ada
+    try {
+      const envPath = path.join(BACKEND_ROOT, '.env');
+      if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, 'utf8');
+        envContent = envContent.replace(/APP_VERSION=.*/, `APP_VERSION=${release.latest_version}`);
+        fs.writeFileSync(envPath, envContent, 'utf8');
+      }
+    } catch (e) {}
+
+    writeProgress({ status: 'success', step: 'done', message: `Aplikasi berhasil diperbarui ke v${release.latest_version}! Memuat ulang layanan...` });
 
     // Tunda 2 detik baru restart agar response sempat dibaca frontend
     setTimeout(() => {
-      // Menggunakan restart alih-alih reload, agar proses frontend yang distop bisa jalan kembali
-      exec('npx pm2 restart ../ecosystem.config.js --update-env', { cwd: BACKEND_ROOT }, (err) => {
-        if (err) {
-          console.warn('[Updater] pm2 restart ecosystem failed, trying restart all:', err.message);
-          exec('npx pm2 restart all', { cwd: BACKEND_ROOT }, () => {});
-        }
-      });
+      exec('npx pm2 restart all', { cwd: BACKEND_ROOT }, () => {});
     }, 2000);
 
   } catch (errPayload: any) {
     console.error('[Updater] Update failed:', errPayload);
+    
+    try {
+      if (fs.existsSync(tmpZipPath)) fs.unlinkSync(tmpZipPath);
+      if (fs.existsSync(tmpExtractPath)) fs.rmSync(tmpExtractPath, { recursive: true, force: true });
+    } catch (e) {}
+
     writeProgress({
       status: 'failed',
       step: 'error',
       message: 'Proses pembaruan gagal.',
-      error: errPayload?.stderr || errPayload?.error?.message || String(errPayload),
+      error: errPayload?.message || String(errPayload),
     });
+  }
+}
+
+function hasFileContentChanged(localPath: string, newPath: string): boolean {
+  if (!fs.existsSync(localPath) || !fs.existsSync(newPath)) return true;
+  try {
+    const localContent = fs.readFileSync(localPath, 'utf8').trim();
+    const newContent = fs.readFileSync(newPath, 'utf8').trim();
+    return localContent !== newContent;
+  } catch (e) {
+    return true;
   }
 }
