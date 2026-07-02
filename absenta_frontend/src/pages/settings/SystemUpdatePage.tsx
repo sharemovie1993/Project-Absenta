@@ -10,13 +10,13 @@ import { LogService } from '@/utils/LogService';
 // ─── Stepper config ──────────────────────────────────────────────────────────
 
 const STEPS: { key: UpdateProgress['step']; label: string; desc: string }[] = [
-  { key: 'pulling_backend',    label: 'Tarik Kode Backend',    desc: 'git fetch + reset --hard (absenta_backend)' },
-  { key: 'pulling_frontend',   label: 'Tarik Kode Frontend',   desc: 'git fetch + reset --hard (absenta_frontend)' },
-  { key: 'installing_backend', label: 'Install Deps Backend',  desc: 'npm ci --omit=dev' },
-  { key: 'installing_frontend',label: 'Install Deps Frontend', desc: 'npm ci' },
-  { key: 'migrating',          label: 'Migrasi Database',      desc: 'prisma generate + migrate deploy' },
-  { key: 'building_frontend',  label: 'Build Frontend',        desc: 'vite build' },
-  { key: 'restarting',         label: 'Build & Reload Layanan',desc: 'tsc build + pm2 reload' },
+  { key: 'pulling_backend',    label: 'Unduh Rilis Baru',      desc: 'Mengunduh paket .zip dari Server Lisensi' },
+  { key: 'pulling_frontend',   label: 'Ekstrak Paket Rilis',   desc: 'Mengekstrak berkas statis rilis baru' },
+  { key: 'installing_backend', label: 'Perbarui Dependensi',   desc: 'Mengevaluasi dan menginstal npm packages' },
+  { key: 'installing_frontend',label: 'Salin Statis Frontend',  desc: 'Menyalin aset antarmuka statis' },
+  { key: 'migrating',          label: 'Migrasi Database',      desc: 'Menjalankan skema migrasi database Prisma' },
+  { key: 'building_frontend',  label: 'Pembaruan Antarmuka',   desc: 'Sinkronisasi file build frontend statis' },
+  { key: 'restarting',         label: 'Reload Layanan',        desc: 'Memuat ulang modul backend & PM2' },
 ];
 
 function getStepStatus(progress: UpdateProgress | null, stepKey: string) {
@@ -47,15 +47,27 @@ function CommitList({ title, commits }: { title: string; commits: { hash: string
           <CheckCircle2 size={14} className="text-green-500" /> Sudah sinkron
         </div>
       ) : (
-        <ul className="space-y-1.5">
-          {commits?.map((c, i) => (
-            <li key={c.hash || i} className="flex items-start gap-2 text-sm">
-              <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-                {(c.hash || '').slice(0, 7)}
-              </span>
-              <span className="text-gray-700 dark:text-gray-300 leading-snug">{c.message}</span>
-            </li>
-          ))}
+        <ul className="space-y-2">
+          {commits?.map((c, i) => {
+            const isGitHash = c.hash && c.hash.length > 8 && !c.hash.includes('-');
+            const isHeaderInfo = c.hash === 'version' || c.hash === 'date' || c.hash === 'info';
+            return (
+              <li key={c.hash || i} className="flex items-start gap-2 text-sm">
+                {isGitHash ? (
+                  <span className="font-mono text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+                    {c.hash.slice(0, 7)}
+                  </span>
+                ) : c.hash === 'version' ? (
+                  <span className="text-[9px] font-extrabold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0 uppercase tracking-wider mt-0.5">
+                    Versi
+                  </span>
+                ) : null}
+                <span className={`${isHeaderInfo ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-400 pl-2'} leading-snug`}>
+                  {c.message}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
@@ -82,11 +94,11 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
 
   const instruction = useMemo(() => ({
     title: 'Panduan Pembaruan Sistem',
-    description: 'Kelola pembaruan kode aplikasi langsung dari repositori GitHub untuk mendapatkan fitur terbaru dan perbaikan bug.',
+    description: 'Kelola pembaruan kode aplikasi langsung dari Server Lisensi untuk mendapatkan fitur terbaru dan perbaikan bug.',
     items: [
-      { text: 'Klik "Cek Pembaruan" untuk melihat apakah ada commit baru di GitHub.' },
-      { text: 'Proses update akan melakukan git pull, instalasi dependensi, migrasi DB, dan build frontend.' },
-      { text: 'Layanan akan otomatis restart setelah build selesai.' },
+      { text: 'Klik "Cek Pembaruan" untuk melihat apakah ada versi rilis baru di Server Lisensi.' },
+      { text: 'Proses update akan mengunduh paket rilis zip, mengekstraknya, melakukan migrasi database, dan menyalin berkas terbaru.' },
+      { text: 'Layanan akan otomatis dimuat ulang (restart) setelah pemasangan selesai.' },
       { text: 'Gunakan "Paksa Restart" hanya jika aplikasi tidak merespon.' }
     ]
   }), []);
@@ -155,7 +167,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
   async function doUpdate() {
     const ok = await confirm({
       title: 'Mulai Pembaruan Aplikasi?',
-      description: 'Proses ini akan menarik kode terbaru dari GitHub, migrasi database, build ulang, dan reload layanan PM2. Pastikan Anda telah melakukan backup jika diperlukan.',
+      description: 'Proses ini akan mengunduh paket rilis terbaru dari Server Lisensi, melakukan migrasi database, dan memuat ulang layanan PM2. Pastikan Anda telah melakukan backup jika diperlukan.',
       confirmText: 'Mulai Update',
       cancelText: 'Batal',
       style: 'info'
@@ -215,7 +227,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <GitCommit size={16} />
-          <span>GitHub Auto-Update — Backend &amp; Frontend</span>
+          <span>Sistem Auto-Update — Server Lisensi</span>
         </div>
         <Button
           onClick={() => doCheck()}
@@ -301,7 +313,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
               ) : checking ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 text-gray-400">
                   <Loader2 size={32} className="animate-spin text-blue-400" />
-                  <p className="text-sm">Menghubungi GitHub...</p>
+                  <p className="text-sm">Menghubungi Server Lisensi...</p>
                 </div>
               ) : isBehind ? (
                 /* Ada update */
@@ -309,10 +321,10 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
                   <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
                     <UploadCloud size={22} className="text-amber-500 shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-amber-800 dark:text-amber-300">Versi Baru Tersedia!</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
-                        Ditemukan <strong>{totalNew}</strong> commit baru di GitHub. Lakukan pembaruan sekarang.
-                      </p>
+                       <p className="font-semibold text-amber-800 dark:text-amber-300">Versi Rilis Baru Tersedia!</p>
+                       <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                         Versi rilis baru terdeteksi di Server Lisensi. Lakukan pembaruan sekarang.
+                       </p>
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -338,7 +350,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
                   </div>
                   <h3 className="font-semibold text-gray-800 dark:text-gray-200">Aplikasi Sudah Terkini</h3>
                   <p className="text-sm text-gray-500 max-w-xs">
-                    Backend dan Frontend sinkron dengan commit terbaru di GitHub.
+                    Backend dan Frontend sinkron dengan rilis terbaru di Server Lisensi.
                   </p>
                   <button
                     onClick={() => doCheck()}
@@ -372,16 +384,15 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
 
           {/* Changelog */}
           <SectionCard
-            title="Changelog GitHub"
+            title="Catatan Rilis (Changelog)"
             icon={GitCommit}
             fullWidth
           >
             <div className="w-full space-y-4">
-              <p className="text-xs text-gray-400">Commit yang belum ditarik ke server</p>
+              <p className="text-xs text-gray-400">Informasi detail rilis dari Server Lisensi</p>
               {checkData ? (
                 <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-                  <CommitList title="Backend" commits={checkData.backendCommits} />
-                  <CommitList title="Frontend" commits={checkData.frontendCommits} />
+                  <CommitList title="Info Rilis" commits={checkData.backendCommits} />
                 </div>
               ) : (
                 <p className="text-xs text-gray-400 italic">Belum ada data — klik Cek Pembaruan</p>
@@ -430,7 +441,7 @@ const SystemUpdatePage: React.FC<{ isTab?: boolean }> = ({ isTab = false }) => {
   return (
     <AcademicPageLayout
       title="Pembaruan Sistem"
-      description="Kelola sinkronisasi kode dan fitur terbaru langsung dari GitHub."
+      description="Kelola sinkronisasi kode dan fitur terbaru langsung dari Server Lisensi."
       breadcrumbs={breadcrumbs}
       instruction={instruction}
       hardeningModuleKey="systemupdate"
