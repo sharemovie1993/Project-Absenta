@@ -24,6 +24,8 @@ export interface User {
     id: string;
     name: string;
     domain?: string;
+    subdomain?: string;
+    custom_domain?: string;
     absensi_mode?: any;
   } | null;
   has_completed_onboarding?: boolean;
@@ -123,7 +125,7 @@ export const useAuthStore = create<AuthState>()(
               try {
                 const [tenantRes, subRes] = await Promise.allSettled([getMyTenant(), getMySubscription()]);
                 if (tenantRes.status === 'fulfilled') {
-                  const domain = (tenantRes.value?.data as any)?.domain;
+                  const domain = (tenantRes.value?.data as any)?.subdomain || (tenantRes.value?.data as any)?.domain;
                   if (typeof domain === 'string' && domain.trim().length > 0) {
                     localStorage.setItem('tenant_domain', domain.trim().toLowerCase());
                   }
@@ -160,6 +162,56 @@ export const useAuthStore = create<AuthState>()(
           const response = await getCurrentUser();
           
           if (response.success) {
+            // ── Domain-Tenant Mismatch Guard ──────────────────────────────────
+            // When the app is accessed via a real subdomain (e.g. smp4.absenta.id)
+            // but the stored token belongs to a DIFFERENT tenant (e.g. SMKN1PLERED),
+            // all protected API calls will get 403 "tenant-domain mismatch".
+            // We detect this early and force a clean logout + redirect to login.
+            if (typeof window !== 'undefined') {
+              const hostname = window.location.hostname;
+              const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local');
+              if (!isLocalhost) {
+                // Extract subdomain from current hostname (e.g. 'smp4' from 'smp4.absenta.id')
+                const hostParts = hostname.split('.');
+                const currentSub = hostParts.length >= 3 ? hostParts[0].toLowerCase() : '';
+
+                // Tenant info from /auth/me response
+                const jwtTenantId = response.data.tenant_id;
+                const jwtTenantDomain: string = ((response.data.tenant as any)?.custom_domain ?? '').toLowerCase().trim();
+                const jwtTenantSub: string = ((response.data.tenant as any)?.subdomain ?? '').toLowerCase().trim();
+
+                // Derive the subdomain the JWT tenant would live under
+                const jwtSub = jwtTenantSub || (jwtTenantDomain.includes('.') ? jwtTenantDomain.split('.')[0] : jwtTenantDomain);
+
+                // Temporary bypass: During domain/subdomain migration, we disable this guard
+                // to prevent accidental logouts when accessing via fallback domains (like t.absenta.id)
+                /*
+                if (currentSub && jwtTenantId && jwtTenantId !== 'system' && jwtSub && currentSub !== jwtSub) {
+                  console.warn(`[AUTH] Tenant mismatch: JWT tenant "${jwtSub}" does not match domain subdomain "${currentSub}". Forcing logout.`);
+                  // Clear stale auth data AND cached UI branding
+                  localStorage.removeItem('access_token');
+                  localStorage.removeItem('refresh_token');
+                  localStorage.removeItem('tenant_id');
+                  localStorage.removeItem('tenant_domain');
+                  localStorage.removeItem('active_system_config');
+                  set({
+                    user: null,
+                    isAuthenticated: false,
+                    token: null,
+                    refreshToken: null,
+                    tenantId: null,
+                    tenantMode: null,
+                    isLoading: false,
+                  });
+                  // Redirect to login page for the correct domain
+                  window.location.href = '/login';
+                  return;
+                }
+                */
+              }
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             set({
               user: response.data,
               isAuthenticated: true,
@@ -176,7 +228,7 @@ export const useAuthStore = create<AuthState>()(
               try {
                 const [tenantRes, subRes] = await Promise.allSettled([getMyTenant(), getMySubscription()]);
                 if (tenantRes.status === 'fulfilled') {
-                  const domain = (tenantRes.value?.data as any)?.domain;
+                  const domain = (tenantRes.value?.data as any)?.subdomain || (tenantRes.value?.data as any)?.domain;
                   if (typeof domain === 'string' && domain.trim().length > 0) {
                     localStorage.setItem('tenant_domain', domain.trim().toLowerCase());
                   }

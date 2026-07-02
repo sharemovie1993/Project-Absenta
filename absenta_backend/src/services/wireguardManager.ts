@@ -193,7 +193,10 @@ export class WireguardManager {
           Start-Process "${WINDOWS_WG_PATH}" -ArgumentList '/uninstalltunnelservice','et-${slug}' -Wait
           Start-Sleep -Seconds 1
           Start-Process "${WINDOWS_WG_PATH}" -ArgumentList '/installtunnelservice','${confPath}' -Wait
-          net start '${svcName}'
+          $svc = Get-Service -Name '${svcName}' -ErrorAction SilentlyContinue
+          if ($svc -and $svc.Status -ne 'Running') {
+              Start-Service -Name '${svcName}'
+          }
         `.trim();
         const codeBuffer = Buffer.from(psCode, 'utf16le');
         const codeBase64 = codeBuffer.toString('base64');
@@ -218,11 +221,32 @@ export class WireguardManager {
       let lastErr: any = null;
       for (let i = 0; i < 5; i++) {
         try {
+          // Cek terlebih dahulu apakah layanan sudah berstatus RUNNING
+          try {
+            const queryOut = execSync(`sc query "${svcName}"`, { stdio: 'pipe', windowsHide: true }).toString();
+            if (queryOut.includes('RUNNING')) {
+              started = true;
+              break;
+            }
+          } catch {}
+
           execSync('powershell -Command "Start-Sleep -Milliseconds 500"', { stdio: 'pipe', windowsHide: true });
           execSync(`net start "${svcName}"`, { stdio: 'pipe', windowsHide: true });
           started = true;
           break;
         } catch (err: any) {
+          // Tangani jika layanan sudah berjalan (Error 2182 / already started)
+          const errMsg = err.message || '';
+          const errStderr = err.stderr ? err.stderr.toString() : '';
+          if (
+            errMsg.includes('2182') || 
+            errStderr.includes('2182') || 
+            errMsg.includes('already been started') || 
+            errStderr.includes('already been started')
+          ) {
+            started = true;
+            break;
+          }
           lastErr = err;
         }
       }

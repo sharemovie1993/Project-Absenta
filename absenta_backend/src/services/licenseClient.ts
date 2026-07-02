@@ -48,7 +48,30 @@ export async function fetchPackages(): Promise<EasyTunnelPackage[]> {
   });
   const data = await res.json() as any;
   if (!data.success) throw new Error(data.message || 'Gagal mengambil paket.');
-  return data.data;
+  
+  const raw = data.data || [];
+  return raw.map((p: any) => {
+    let duration = '1 Bulan';
+    let priceVal = p.priceMonthly;
+    if (p.id.includes('annual') || p.id.includes('year') || p.billingPeriod === 'YEAR') {
+      duration = '1 Tahun';
+      priceVal = p.priceYearly || (p.priceMonthly * 12);
+    } else if (p.id.includes('semester')) {
+      duration = '6 Bulan (1 Semester)';
+      priceVal = p.priceYearly || (p.priceMonthly * 6);
+    } else if (p.id.includes('monthly') || p.billingPeriod === 'MONTH') {
+      duration = '1 Bulan';
+      priceVal = p.priceMonthly;
+    }
+    const formattedPrice = `Rp ${Number(priceVal).toLocaleString('id-ID')}`;
+    return {
+      id: p.id,
+      title: p.name || p.title || '',
+      duration,
+      price: formattedPrice,
+      badge: p.badge || null
+    };
+  });
 }
 
 /** Validasi license key dari server lisensi */

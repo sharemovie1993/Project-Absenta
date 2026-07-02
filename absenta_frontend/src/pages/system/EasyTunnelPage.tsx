@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { easyTunnelApi, Tunnel, SystemInfo } from '../../api/easyTunnel.api';
+import { Copy } from 'lucide-react';
 import { requestWithFallback } from '../../api/apiUtils';
 import useConfirm from '../../hooks/useConfirm';
 import { useToast } from '../../hooks/useToast';
@@ -51,6 +52,20 @@ const resolveSmartSlug = (tenant: any): string => {
 
 export default function EasyTunnelPage() {
   const confirm = useConfirm();
+
+  // Extract error message safely from Axios structure
+  const getErrorMessage = (err: any): string => {
+    return err.response?.data?.message || err.message || '';
+  };
+
+  // Mendeteksi port development secara cerdas dari URL window.location
+  const devPort = useMemo(() => {
+    if (typeof window !== 'undefined' && window.location && window.location.port) {
+      const port = parseInt(window.location.port, 10);
+      if (!isNaN(port) && port > 0) return port;
+    }
+    return 3003; // Fallback default
+  }, []);
   const { toasts, error: showErrorToast, success: showSuccessToast, removeToast } = useToast();
 
   const [tunnels, setTunnels] = useState<Tunnel[]>([]);
@@ -64,7 +79,6 @@ export default function EasyTunnelPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   
   // Prepopulate state
-  const [hasPrepopulated, setHasPrepopulated] = useState(false);
 
   // Deployment mode state
   const [deploymentMode, setDeploymentMode] = useState<'on_premise' | 'local_windows' | 'public_vps'>('on_premise');
@@ -112,24 +126,8 @@ export default function EasyTunnelPage() {
       if (infoRes.success) {
         setSystemInfo(infoRes.data);
       }
-
-      // Auto pre-populate dari data tenant (sekolah)
-      if (!hasPrepopulated) {
-        try {
-          const tenantRes = await requestWithFallback<any>('get', '/api/me/tenant');
-          if (tenantRes?.success && tenantRes.data) {
-            const tenant = tenantRes.data;
-            setSchoolName(tenant.name || '');
-            setAppName(tenant.name || 'Absenta Local Portal');
-            setSubdomainSlug(resolveSmartSlug(tenant));
-            setHasPrepopulated(true);
-          }
-        } catch (err) {
-          console.warn('Failed to pre-populate tenant data:', err);
-        }
-      }
     } catch (err: any) {
-      setError(err.message || 'Gagal memuat data dari server.');
+      setError(getErrorMessage(err) || 'Gagal memuat data dari server.');
     } finally {
       setLoading(false);
     }
@@ -141,17 +139,60 @@ export default function EasyTunnelPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Pre-populate dari data tenant (sekolah) hanya sekali saat komponen pertama kali dirender
+  useEffect(() => {
+    const prepopulate = async () => {
+      try {
+        const tenantRes = await requestWithFallback<any>('get', '/api/me/tenant');
+        if (tenantRes?.success && tenantRes.data) {
+          const tenant = tenantRes.data;
+          setSchoolName(tenant.name || '');
+          setAppName(tenant.name || 'Absenta Local Portal');
+          setSubdomainSlug(resolveSmartSlug(tenant));
+        }
+      } catch (err) {
+        console.warn('Failed to pre-populate tenant data:', err);
+      }
+    };
+    prepopulate();
+  }, []);
+
   useEffect(() => {
     if (systemInfo?.platform) {
       if (systemInfo.platform === 'win32') {
         setDeploymentMode('local_windows');
-        setLocalPort(3003);
+        setLocalPort(devPort);
       } else {
         setDeploymentMode('on_premise');
         setLocalPort(443);
       }
     }
-  }, [systemInfo?.platform]);
+  }, [systemInfo?.platform, devPort]);
+
+  // Polling status invoice setelah order dibuat secara otomatis (tiap 5 detik)
+  useEffect(() => {
+    let interval: any = null;
+    if (orderStep === 2 && invoice?.invoice_number) {
+      interval = setInterval(async () => {
+        try {
+          const statusRes = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
+          const isPaid = statusRes?.success && (statusRes.data?.status === 'paid' || statusRes.data?.status === 'PAID' || statusRes.data?.paid || statusRes.paid);
+          if (isPaid) {
+            const key = statusRes.data?.license_key || statusRes.license_key || invoice?.license_key || licenseKey || '';
+            showSuccessToast(`Pembayaran Sukses! Lisensi Anda: ${key}`);
+            setLicenseKey(key);
+            setOrderStep(3);
+            if (interval) clearInterval(interval);
+          }
+        } catch (err) {
+          console.warn('Polling status invoice failed:', err);
+        }
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [orderStep, invoice, showSuccessToast]);
 
   const handleDeploymentModeChange = (mode: 'on_premise' | 'local_windows' | 'public_vps') => {
     setDeploymentMode(mode);
@@ -159,8 +200,8 @@ export default function EasyTunnelPage() {
       setLocalPort(443);
       setEditLocalPort(443);
     } else if (mode === 'local_windows') {
-      setLocalPort(3003);
-      setEditLocalPort(3003);
+      setLocalPort(devPort);
+      setEditLocalPort(devPort);
     }
   };
 
@@ -171,7 +212,7 @@ export default function EasyTunnelPage() {
       showSuccessToast(res.message || 'Proses instalasi selesai.');
       loadData();
     } catch (err: any) {
-      showErrorToast('Gagal menginstal WireGuard: ' + err.message);
+      showErrorToast('Gagal menginstal WireGuard: ' + getErrorMessage(err));
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -207,7 +248,7 @@ export default function EasyTunnelPage() {
       }
       loadData();
     } catch (err: any) {
-      showErrorToast(`Gagal melakukan aksi ${action}: ${err.message}`);
+      showErrorToast(`Gagal melakukan aksi ${action}: ${getErrorMessage(err)}`);
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -227,7 +268,7 @@ export default function EasyTunnelPage() {
         showErrorToast('Gagal mendiagnosa koneksi.');
       }
     } catch (err: any) {
-      showErrorToast('Gagal mendiagnosa koneksi: ' + err.message);
+      showErrorToast('Gagal mendiagnosa koneksi: ' + getErrorMessage(err));
     } finally {
       setActionLoading(prev => {
         const next = { ...prev };
@@ -256,7 +297,7 @@ export default function EasyTunnelPage() {
         loadData();
       }
     } catch (err: any) {
-      setSetupError(err.message || 'Gagal memproses setup tunnel.');
+      setSetupError(getErrorMessage(err) || 'Gagal memproses setup tunnel.');
     } finally {
       setSetupLoading(false);
     }
@@ -285,7 +326,7 @@ export default function EasyTunnelPage() {
         loadData();
       }
     } catch (err: any) {
-      setEditError(err.message || 'Gagal memperbarui konfigurasi.');
+      setEditError(getErrorMessage(err) || 'Gagal memperbarui konfigurasi.');
     } finally {
       setEditLoading(false);
     }
@@ -325,10 +366,13 @@ export default function EasyTunnelPage() {
       });
       if (res.success) {
         setInvoice(res.data);
+        if (res.data?.license_key) {
+          setLicenseKey(res.data.license_key);
+        }
         setOrderStep(2);
       }
     } catch (err: any) {
-      setOrderError(err.message || 'Gagal mengajukan transaksi baru.');
+      setOrderError(getErrorMessage(err) || 'Gagal mengajukan transaksi baru.');
     } finally {
       setOrderLoading(false);
     }
@@ -452,42 +496,67 @@ export default function EasyTunnelPage() {
               <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 {t.status === 'active' ? (
                   <button
-                    className="flex-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition"
+                    className="flex-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 focus:outline-none"
                     onClick={() => handleTunnelAction(t.id, 'stop')}
                     disabled={actionLoading[t.id] !== undefined}
                   >
-                    Nonaktifkan
+                    {actionLoading[t.id] === 'stop' ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        Mematikan...
+                      </>
+                    ) : (
+                      'Nonaktifkan'
+                    )}
                   </button>
                 ) : (
                   <button
-                    className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition"
+                    className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 focus:outline-none"
                     onClick={() => handleTunnelAction(t.id, 'start')}
                     disabled={actionLoading[t.id] !== undefined}
                   >
-                    Aktifkan
+                    {actionLoading[t.id] === 'start' ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        Mengaktifkan...
+                      </>
+                    ) : (
+                      'Aktifkan'
+                    )}
                   </button>
                 )}
                 <button
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1 focus:outline-none"
                   onClick={() => handleDiagnose(t.id)}
                   disabled={actionLoading[t.id] !== undefined}
                 >
-                  🔍 Diagnosa
+                  {actionLoading[t.id] === 'diagnose' ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-slate-400/30 border-t-slate-600 rounded-full animate-spin"></span>
+                      Proses...
+                    </>
+                  ) : (
+                    '🔍 Diagnosa'
+                  )}
                 </button>
                 <button
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-semibold transition focus:outline-none"
                   onClick={() => handleEditClick(t)}
                   disabled={actionLoading[t.id] !== undefined}
                 >
                   ✏️ Edit
                 </button>
                 <button
-                  className="px-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950 dark:hover:bg-red-900 dark:text-red-300 rounded-lg text-xs font-semibold transition"
+                  className="px-2 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-950 dark:hover:bg-red-900 dark:text-red-300 rounded-lg text-xs font-semibold transition flex items-center justify-center focus:outline-none"
                   onClick={() => handleTunnelAction(t.id, 'delete')}
                   disabled={actionLoading[t.id] !== undefined}
                   title="Hapus Permanen"
                 >
-                  🗑️
+                  {actionLoading[t.id] === 'delete' ? (
+                    <span className="w-3.5 h-3.5 border-2 border-red-500/30 border-t-red-700 rounded-full animate-spin"></span>
+                  ) : (
+                    '🗑️'
+                  )}
                 </button>
               </div>
             </div>
@@ -498,7 +567,7 @@ export default function EasyTunnelPage() {
       {/* MODAL 1: SETUP LISENSI */}
       {showSetupModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Setup Kunci Lisensi</h3>
               <button className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl" onClick={() => setShowSetupModal(false)}>×</button>
@@ -586,7 +655,7 @@ export default function EasyTunnelPage() {
                     />
                     <div>
                       <span className="font-bold text-xs text-gray-900 dark:text-white block">Uji Coba Pengembang - Developer Mode (Tanpa Caddy)</span>
-                      <span className="text-[10px] text-gray-500 leading-normal block">Untuk keperluan testing lokal langsung pada PC Windows/Linux tanpa web server Caddy. (Port 3003)</span>
+                      <span className="text-[10px] text-gray-500 leading-normal block">Untuk keperluan testing lokal langsung pada PC Windows/Linux tanpa web server Caddy. (Port {devPort})</span>
                     </div>
                   </label>
 
@@ -646,7 +715,7 @@ export default function EasyTunnelPage() {
       {/* MODAL 2: EDIT TUNNEL */}
       {showEditModal && selectedTunnel && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Edit Konfigurasi Tunnel</h3>
               <button className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl" onClick={() => setShowEditModal(false)}>×</button>
@@ -856,7 +925,7 @@ export default function EasyTunnelPage() {
                       />
                       <div>
                         <span className="font-bold text-xs text-gray-900 dark:text-white block">Uji Coba Pengembang - Developer Mode (Tanpa Caddy)</span>
-                        <span className="text-[10px] text-gray-500 leading-normal block">Untuk keperluan testing lokal langsung pada PC Windows/Linux tanpa web server Caddy. (Port 3003)</span>
+                        <span className="text-[10px] text-gray-500 leading-normal block">Untuk keperluan testing lokal langsung pada PC Windows/Linux tanpa web server Caddy. (Port {devPort})</span>
                       </div>
                     </label>
 
@@ -927,57 +996,166 @@ export default function EasyTunnelPage() {
                   <p className="text-xs text-gray-500">Nomor Invoice: {invoice.invoice_number}</p>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-800 max-w-sm mx-auto space-y-2">
-                  <p className="text-xs text-gray-500">Total Tagihan:</p>
-                  <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{invoice.amount_formatted}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">Metode: {invoice.payment_method}</p>
+                <div className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl text-center space-y-1 max-w-sm mx-auto shadow-sm">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total yang harus dibayar</span>
+                  <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                    {invoice.amount_formatted || (invoice.amount ? `Rp ${Number(invoice.amount).toLocaleString('id-ID')}` : '')}
+                  </p>
                 </div>
 
                 {invoice.qr_url ? (
-                  <div className="space-y-2">
-                    <img src={invoice.qr_url} alt="QR Code Pembayaran" className="w-48 h-48 mx-auto border p-2 bg-white rounded-lg" />
-                    <p className="text-xs text-gray-500">Scan QRIS diatas menggunakan e-wallet Anda.</p>
+                  <div className="flex flex-col items-center py-4">
+                    {invoice.payment_method && (
+                      <div className="mb-4 flex items-center justify-center">
+                        {(() => {
+                          const channel = paymentChannels.find(c => c.code === invoice.payment_method);
+                          if (channel) {
+                            return (
+                              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-md">
+                                {(channel.icon_url || channel.logo_url || channel.logo) && (
+                                  <img src={channel.icon_url || channel.logo_url || channel.logo} alt={channel.name} className="h-5 w-auto object-contain" />
+                                )}
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{channel.name}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-md">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">{invoice.payment_method}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    <div className="bg-white p-4 rounded-2xl shadow-xl display-inline-block">
+                      <img
+                        src={invoice.qr_url}
+                        alt="QRIS Code"
+                        className="w-48 h-48 block object-contain mx-auto"
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 mt-4 text-center max-w-sm leading-relaxed">
+                      Pindai kode QRIS di atas menggunakan aplikasi e-wallet Anda (GoPay, OVO, Dana, LinkAja, ShopeePay, BCA Mobile, dll.)
+                    </span>
                   </div>
                 ) : invoice.pay_url ? (
                   <a
                     href={invoice.pay_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-block px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition"
+                    className="inline-block px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition shadow-md"
                   >
                     💳 Klik Disini Untuk Bayar
                   </a>
                 ) : (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500">Nomor Rekening / Virtual Account:</p>
-                    <p className="text-lg font-mono font-bold text-gray-900 dark:text-white">{invoice.payment_code}</p>
+                  <div className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl text-center max-w-sm mx-auto">
+                    {invoice.payment_method && (
+                      <div className="mb-4 flex items-center justify-center">
+                        {(() => {
+                          const channel = paymentChannels.find(c => c.code === invoice.payment_method);
+                          if (channel) {
+                            return (
+                              <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-md">
+                                {(channel.icon_url || channel.logo_url || channel.logo) && (
+                                  <img src={channel.icon_url || channel.logo_url || channel.logo} alt={channel.name} className="h-5 w-auto object-contain" />
+                                )}
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{channel.name}</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-700 shadow-md">
+                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">{invoice.payment_method}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                      Nomor Virtual Account / Kode Bayar
+                    </span>
+                    <div className="flex items-center justify-center gap-3">
+                      <strong className="text-2xl font-mono font-black text-slate-800 dark:text-white tracking-widest">
+                        {invoice.pay_code || invoice.payment_code}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(invoice.pay_code || invoice.payment_code);
+                          showSuccessToast('Kode bayar disalin!');
+                        }}
+                        className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors shadow-sm focus:outline-none"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-2 font-medium">
+                      Gunakan kode VA di atas untuk melakukan transfer melalui ATM/M-Banking.
+                    </span>
                   </div>
                 )}
 
-                <div className="pt-4 border-t flex flex-col gap-2">
+                {/* Petunjuk Pembayaran Accordion */}
+                {Array.isArray(invoice.payment_instructions) && invoice.payment_instructions.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-left max-w-sm mx-auto">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                      Petunjuk Pembayaran
+                    </h4>
+                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                      {invoice.payment_instructions.map((inst: any, idx: number) => (
+                        <div key={idx} className="p-4 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/30 rounded-xl">
+                          <strong className="text-xs font-bold text-blue-600 dark:text-blue-400 block mb-2">{inst.title}</strong>
+                          <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                            {inst.steps.map((step: string, sIdx: number) => (
+                              <li key={sIdx} dangerouslySetInnerHTML={{ __html: step }} />
+                            ))}
+                          </ol>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t flex flex-col gap-2 max-w-sm mx-auto w-full">
                   <button
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold transition"
+                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 focus:outline-none"
                     onClick={async () => {
                       setOrderLoading(true);
                       try {
-                        const status = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
-                        if (status.paid) {
-                          showSuccessToast(`Pembayaran Sukses! Lisensi Anda: ${status.license_key}`);
-                          setLicenseKey(status.license_key);
+                        const statusRes = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
+                        const isPaid = statusRes?.success && (statusRes.data?.status === 'paid' || statusRes.data?.status === 'PAID' || statusRes.data?.paid || statusRes.paid);
+                        if (isPaid) {
+                          const key = statusRes.data?.license_key || statusRes.license_key || invoice?.license_key || licenseKey || '';
+                          showSuccessToast(`Pembayaran Sukses! Lisensi Anda: ${key}`);
+                          setLicenseKey(key);
                           setOrderStep(3);
                         } else {
                           showErrorToast('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
                         }
                       } catch (err: any) {
-                        showErrorToast('Gagal mengecek status: ' + err.message);
+                        showErrorToast('Gagal mengecek status: ' + getErrorMessage(err));
                       } finally {
                         setOrderLoading(false);
                       }
                     }}
                   >
-                    🔄 Cek Status Pembayaran
+                    🔄 Verifikasi Pembayaran
                   </button>
-                  <button className="text-xs text-gray-500 hover:text-gray-700" onClick={() => setShowOrderModal(false)}>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const waNum = '6287779937341';
+                      const msgText = `Halo Admin, saya ingin mengirimkan bukti pembayaran lisensi Easy Tunnel.\nInvoice: ${invoice.invoice_number}\nJumlah: Rp ${Number(invoice.amount).toLocaleString('id-ID')}`;
+                      const msg = encodeURIComponent(msgText);
+                      window.open(`https://wa.me/${waNum}?text=${msg}`, '_blank');
+                    }}
+                    className="w-full py-2 bg-green-50 dark:bg-green-950/20 hover:bg-green-100 dark:hover:bg-green-950/40 text-green-600 dark:text-green-400 font-bold text-xs rounded-lg transition-all border border-green-100 dark:border-green-900/30 flex items-center justify-center gap-2 focus:outline-none"
+                  >
+                    Hubungi WhatsApp Admin (Konfirmasi Manual)
+                  </button>
+
+                  <button className="text-xs text-gray-500 hover:text-gray-700 mt-1 focus:outline-none" onClick={() => setShowOrderModal(false)}>
                     Kembali Nanti
                   </button>
                 </div>
@@ -1012,7 +1190,7 @@ export default function EasyTunnelPage() {
                       setShowOrderModal(false);
                       loadData();
                     } catch (err: any) {
-                      showErrorToast('Gagal memasang tunnel otomatis: ' + err.message);
+                      showErrorToast('Gagal memasang tunnel otomatis: ' + getErrorMessage(err));
                       setShowOrderModal(false);
                       setShowSetupModal(true); // fallback ke manual
                     } finally {

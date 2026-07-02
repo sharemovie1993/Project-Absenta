@@ -46,6 +46,8 @@ export interface SubscriptionResponse {
   tenant?: {
     id: string;
     name: string;
-    domain: string | null;
+    domain?: string | null;
+    subdomain?: string | null;
+    custom_domain?: string | null;
   };
 }

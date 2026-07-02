@@ -22,7 +22,7 @@ export default defineCronJob({
         status: 'PENDING_DELETION',
         deletion_requested_at: { lt: retentionCutoff },
       },
-      select: { id: true, name: true, domain: true },
+      select: { id: true, name: true, subdomain: true },
     });
 
     appLogger.info(
@@ -50,7 +50,7 @@ export default defineCronJob({
           correlation_id: correlationId,
           metadata: {
             tenant_name: tenant.name,
-            domain: tenant.domain,
+            subdomain: tenant.subdomain,
             reason: 'retention_policy_expired',
           },
         });

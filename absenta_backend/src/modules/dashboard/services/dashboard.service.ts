@@ -254,7 +254,7 @@ export class DashboardService {
       id: l.id,
       tenant_id: l.tenant_id,
       tenant_name: l.Tenant?.name,
-      tenant_domain: l.Tenant?.domain,
+      tenant_domain: l.Tenant?.custom_domain || (l.Tenant?.subdomain ? `${l.Tenant.subdomain}.absenta.id` : null),
       admin_user: l.User ? { id: l.User.id, full_name: l.User.full_name, email: l.User.email } : null,
       timestamp: l.created_at,
       metadata: (() => {

@@ -190,15 +190,6 @@ export function getSmartParentAppUrl(tenant?: { subdomain?: string | null, custo
     return `${scheme}://${sub}.${mainDomain}${portStr}`;
   }
 
-  // 3. Fallback: Kolom domain lama (Legacy)
-  if (tenant?.domain) {
-    const d = tenant.domain.toLowerCase().trim();
-    if (d.includes('.') && (d.endsWith(`.${mainDomain}`) || d === mainDomain)) {
-      return `${scheme}://${d}${portStr}`;
-    }
-    return `${scheme}://${d}.${mainDomain}${portStr}`;
-  }
-
   // 4. Ultimate Fallback: Base URL + tenantId
   const baseUrl = mainDomain ? `${scheme}://${mainDomain}${portStr}` : parentAppBase;
   if (isIp && tenantId) {

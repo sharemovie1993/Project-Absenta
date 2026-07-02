@@ -140,7 +140,7 @@ export const revenueIntelligenceService = {
       tenantIds.length
         ? prisma.tenant.findMany({
             where: { id: { in: tenantIds } },
-            select: { id: true, name: true, domain: true, status: true },
+            select: { id: true, name: true, subdomain: true, status: true },
           })
         : Promise.resolve([]),
       tenantIds.length
@@ -169,7 +169,7 @@ export const revenueIntelligenceService = {
         return {
           tenant_id: tenantId,
           tenant_name: tenant?.name || null,
-          tenant_domain: tenant?.domain || null,
+          tenant_domain: tenant?.subdomain || null,
           tenant_status: tenant?.status || null,
           mrr,
           arr: Number((s as any).arr || 0),

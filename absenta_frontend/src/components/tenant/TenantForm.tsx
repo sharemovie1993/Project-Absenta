@@ -24,6 +24,8 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
     name: '',
     absensi_mode: 'SIMPLE',
     domain: '',
+    subdomain: '',
+    custom_domain: '',
     logo_url: '',
     status: 'ACTIVE'
   });
@@ -43,7 +45,9 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
           setFormData({
             name: tenant.name,
             absensi_mode: tenant.absensi_mode,
-            domain: tenant.domain || '',
+            domain: tenant.subdomain || tenant.domain || '',
+            subdomain: tenant.subdomain || '',
+            custom_domain: tenant.custom_domain || '',
             logo_url: tenant.logo_url || '',
             status: (tenant.status as 'ACTIVE' | 'INACTIVE' | 'SUSPENDED') || 'ACTIVE'
           });
@@ -77,7 +81,9 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
         const updateData: UpdateTenantRequest = {
           name: formData.name,
           absensi_mode: formData.absensi_mode,
-          domain: formData.domain || undefined,
+          domain: formData.subdomain || undefined,
+          subdomain: formData.subdomain || undefined,
+          custom_domain: formData.custom_domain || undefined,
           logo_url: formData.logo_url || undefined,
           status: formData.status
         };
@@ -85,7 +91,11 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
       } else {
         // Mode create
         const skip = isSystemSuperAdmin(user?.role?.name || user?.role, user?.tenant_id);
-        await createTenant(formData, { skipTenantHeader: skip });
+        const submitData = {
+          ...formData,
+          domain: formData.subdomain,
+        };
+        await createTenant(submitData, { skipTenantHeader: skip });
       }
       onSuccess();
     } catch (err: any) {
@@ -169,20 +179,43 @@ const TenantForm: React.FC<TenantFormProps> = ({ tenantId, onSuccess, onCancel }
             </p>
           </div>
 
-          {/* Domain */}
+          {/* Subdomain */}
           <div>
-            <label htmlFor="domain" className="block text-sm font-medium text-gray-700 mb-1">
-              Domain
+            <label htmlFor="subdomain" className="block text-sm font-medium text-gray-700 mb-1">
+              Subdomain *
             </label>
             <input
               type="text"
-              id="domain"
-              name="domain"
-              value={formData.domain}
+              id="subdomain"
+              name="subdomain"
+              value={formData.subdomain}
+              onChange={handleInputChange}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="contoh: smkn1plered (tanpa domain)"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Alamat utama akses aplikasi (misal: smkn1plered.absenta.id)
+            </p>
+          </div>
+
+          {/* Custom Domain */}
+          <div>
+            <label htmlFor="custom_domain" className="block text-sm font-medium text-gray-700 mb-1">
+              Custom Domain (Opsional)
+            </label>
+            <input
+              type="text"
+              id="custom_domain"
+              name="custom_domain"
+              value={formData.custom_domain}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="contoh: sekolah.com"
+              placeholder="contoh: smkn1plered.sch.id"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Domain kustom milik sekolah
+            </p>
           </div>
 
           {/* Logo URL */}

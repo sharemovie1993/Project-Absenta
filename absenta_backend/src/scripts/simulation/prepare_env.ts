@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   const tenantDomain = 'smkn1cimahi';
-  const tenant = await prisma.tenant.findUnique({ where: { domain: tenantDomain } });
+  const tenant = await prisma.tenant.findUnique({ where: { subdomain: tenantDomain } });
   if (!tenant) throw new Error('Tenant not found');
 
   const todayStart = new Date();

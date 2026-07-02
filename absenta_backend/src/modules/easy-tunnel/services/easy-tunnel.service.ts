@@ -63,8 +63,38 @@ export class EasyTunnelService {
     return tunnel;
   }
 
-  static async getAllTunnels(): Promise<any[]> {
+  static async verifyTunnelTenant(tunnelSlug: string, tenantId?: string): Promise<void> {
+    if (!tenantId) return; // Skip if no tenant (e.g. global admin)
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subdomain: true }
+    });
+    if (!tenant) throw new Error('Tenant tidak ditemukan.');
+    const tenantSubdomain = tenant.subdomain || undefined;
+    if (tunnelSlug !== tenantSubdomain) {
+      throw new Error('Akses ditolak. Terowongan ini bukan milik institusi Anda.');
+    }
+  }
+
+  static async getTunnelsForTenant(tenantId?: string): Promise<any[]> {
+    let tenantSubdomain: string | undefined;
+
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subdomain: true }
+      });
+      if (tenant) {
+        tenantSubdomain = tenant.subdomain || undefined;
+      }
+    }
+
+    return this.getAllTunnels(tenantSubdomain);
+  }
+
+  static async getAllTunnels(subdomain?: string): Promise<any[]> {
     const tunnels = await prisma.easyTunnel.findMany({
+      where: subdomain ? { slug: subdomain } : {},
       orderBy: { created_at: 'desc' }
     });
 
@@ -84,9 +114,10 @@ export class EasyTunnelService {
     return enriched;
   }
 
-  static async getTunnelById(id: string): Promise<any> {
+  static async getTunnelById(id: string, tenantId?: string): Promise<any> {
     const t = await prisma.easyTunnel.findUnique({ where: { id } });
     if (!t) throw new Error('Tunnel tidak ditemukan.');
+    await this.verifyTunnelTenant(t.slug, tenantId);
 
     const synced = await this.syncTunnelPort(t);
     const wgStatus = synced.slug
@@ -101,8 +132,22 @@ export class EasyTunnelService {
     subdomain_slug: string;
     local_port: number;
     app_name: string;
-  }): Promise<any> {
+  }, tenantId?: string): Promise<any> {
     const { license_key, subdomain_slug, local_port, app_name } = params;
+
+    // Verify tenant subdomain match
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subdomain: true }
+      });
+      if (tenant) {
+        const tenantSubdomain = tenant.subdomain || undefined;
+        if (subdomain_slug !== tenantSubdomain) {
+          throw new Error('Akses ditolak. Subdomain harus sesuai dengan subdomain institusi Anda.');
+        }
+      }
+    }
 
     // Cek duplikasi lisensi
     const existing = await prisma.easyTunnel.findFirst({
@@ -145,9 +190,10 @@ export class EasyTunnelService {
     });
   }
 
-  static async startTunnel(id: string): Promise<any> {
+  static async startTunnel(id: string, tenantId?: string): Promise<any> {
     const tunnel = await prisma.easyTunnel.findUnique({ where: { id } });
     if (!tunnel) throw new Error('Tunnel tidak ditemukan.');
+    await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
     // Validasi kedaluwarsa secara berkala ke server lisensi
     try {
@@ -182,9 +228,10 @@ export class EasyTunnelService {
     return res;
   }
 
-  static async stopTunnel(id: string): Promise<any> {
+  static async stopTunnel(id: string, tenantId?: string): Promise<any> {
     const tunnel = await prisma.easyTunnel.findUnique({ where: { id } });
     if (!tunnel) throw new Error('Tunnel tidak ditemukan.');
+    await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
     const res = await WireguardManager.stopTunnel(tunnel.slug);
     await prisma.easyTunnel.update({
@@ -195,9 +242,10 @@ export class EasyTunnelService {
     return res;
   }
 
-  static async removeTunnel(id: string): Promise<any> {
+  static async removeTunnel(id: string, tenantId?: string): Promise<any> {
     const tunnel = await prisma.easyTunnel.findUnique({ where: { id } });
     if (!tunnel) throw new Error('Tunnel tidak ditemukan.');
+    await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
     // 1. Lepas lisensi di server pusat
     try {
@@ -216,9 +264,10 @@ export class EasyTunnelService {
     return await prisma.easyTunnel.delete({ where: { id } });
   }
 
-  static async editTunnel(id: string, localPort: number, appName: string): Promise<any> {
+  static async editTunnel(id: string, localPort: number, appName: string, tenantId?: string): Promise<any> {
     const tunnel = await prisma.easyTunnel.findUnique({ where: { id } });
     if (!tunnel) throw new Error('Tunnel tidak ditemukan.');
+    await this.verifyTunnelTenant(tunnel.slug, tenantId);
 
     // 1. Update ke server pusat
     await updateLicensePort(tunnel.license_key, localPort, appName);

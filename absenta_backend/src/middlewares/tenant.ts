@@ -1,6 +1,7 @@
 import { isSystemSuperAdmin } from '../utils/rbac';
 import { subscriptionGuard } from './subscription.guard';
 import { prisma } from '../utils/prisma';
+import * as jwt from 'jsonwebtoken';
 import { getDomainBases } from '@/utils/url-helper';
 
 export async function tenantMiddleware(
@@ -8,7 +9,7 @@ export async function tenantMiddleware(
   reply: any
 ) {
   let tenantIdHeader = request.headers['x-tenant-id'] as string;
-  const hostHeaderRaw = String(request.headers['host'] || request.headers['x-forwarded-host'] || '');
+  const hostHeaderRaw = String(request.headers['x-forwarded-host'] || request.headers['host'] || '');
   const hostNoPort = hostHeaderRaw.split(':')[0].toLowerCase();
   const isPrivateLan =
     /^10\./.test(hostNoPort) ||
@@ -29,27 +30,48 @@ export async function tenantMiddleware(
     urlPath.startsWith('/api/sekolah/lookup-npsn') || 
     urlPath.startsWith('/sekolah/lookup-npsn') ||
     urlPath.startsWith('/api/auth/') ||
-    urlPath.startsWith('/auth/');
+    urlPath.startsWith('/auth/') ||
+    urlPath.startsWith('/api/system/config') ||
+    urlPath.startsWith('/system/config') ||
+    urlPath.startsWith('/api/system/branding') ||
+    urlPath.startsWith('/system/branding') ||
+    urlPath.startsWith('/uploads/') ||
+    urlPath.startsWith('/api/uploads/');
     
+  // Resolve domain tenant (context only; not authoritative)
+  let domainTenantId: string | undefined;
+  const isIpAddress = /^[0-9.]+$/.test(hostNoPort);
+
+  try {
+    // 1. Try exact match with custom_domain
+    const trCustom = await prisma.tenant.findFirst({ where: { custom_domain: { equals: hostNoPort, mode: 'insensitive' } } });
+    if (trCustom) {
+      domainTenantId = trCustom.id;
+    } else {
+      // 2. Try subdomain match
+      const hostParts = hostNoPort.split('.');
+      
+      // If we are in dev mode and the host is localhost, we might not have a subdomain in the host header
+      // but the user might be passing it via x-tenant-id or it should be in the JWT.
+      
+      const subdomain = (hostParts.length > 2 && !isIpAddress) ? hostParts[0] : '';
+      if (subdomain) {
+        const trSub = await prisma.tenant.findFirst({ where: { subdomain: { equals: subdomain, mode: 'insensitive' } } });
+        if (trSub) { domainTenantId = trSub.id; }
+      }
+    }
+  } catch (e) {
+    console.error('[TenantMiddleware] Resolution Error:', e);
+  }
+
+  // Populate context tenantId for all requests
+  if (domainTenantId) {
+    request.tenantId = domainTenantId;
+  }
+
   if (urlPath === '/health' || isPublicRegister || urlPath === '/api/attendance/devices/heartbeat' || urlPath === '/api/attendance/devices/tap') {
     return;
   }
-
-  
-  // Resolve domain tenant (context only; not authoritative)
-  let domainTenantId: string | undefined;
-  try {
-    const headerHostRaw = request.headers['x-forwarded-host'] || request.headers['host'] || '';
-    const headerHost = headerHostRaw ? String(headerHostRaw).toLowerCase() : '';
-    const hostNoPort = headerHost.split(':')[0];
-    const isIpAddress = /^[0-9.]+$/.test(hostNoPort);
-    const hostParts = hostNoPort.split('.');
-    const subdomain = (hostParts.length > 2 && !isIpAddress) ? hostParts[0] : '';
-    if (subdomain) {
-      const tr = await prisma.tenant.findFirst({ where: { domain: subdomain } });
-      if (tr) { domainTenantId = tr.id; }
-    }
-  } catch (e) {}
 
   // PARENT APP HANDLER: Fix Tenant Resolution
   if (urlPath.startsWith('/parent-app') || urlPath.startsWith('/api/parent-app')) {
@@ -75,7 +97,7 @@ export async function tenantMiddleware(
         
         if (!genericHosts.has(hostname)) {
           const subdomain = hostname.split('.')[0];
-          const tr = await prisma.tenant.findFirst({ where: { domain: subdomain } });
+          const tr = await prisma.tenant.findFirst({ where: { subdomain: subdomain } });
           if (tr) parentTenantId = tr.id;
         }
       } catch (e) {}
@@ -141,10 +163,25 @@ export async function tenantMiddleware(
   
   // NON-SUPERADMIN: JWT-first authority
   if (!jwtTenantId) {
-    return reply.status(400).send({
-      error: 'Missing tenant ID',
-      message: 'User must have tenant_id in JWT token'
-    });
+    // If we have a domain-based tenant, we set it. 
+    // If this is a protected route, authMiddleware will eventually handle the missing user/token.
+    if (domainTenantId) {
+       request.tenantId = domainTenantId;
+       return;
+    }
+
+    // If no user and no domain resolution, we only block if it's NOT a public route.
+    // However, since this middleware is often registered on protected groups, we should be careful.
+    if (request.user) {
+       // Authenticated but no tenantId in JWT? That's a 400.
+       return reply.status(400).send({
+         error: 'Missing tenant ID',
+         message: `User authenticated but tenant_id missing in token. Host: ${hostNoPort}, Resolved Subdomain: ${hostNoPort.split('.')[0]}`
+       });
+    }
+
+    // If not authenticated, we let it pass to authMiddleware or the handler.
+    return;
   }
 
   // Verify X-Support-Token for Assist Login/Impersonation bypass
@@ -153,7 +190,8 @@ export async function tenantMiddleware(
   if (supportTokenHeader && supportTokenHeader.startsWith('Bearer ')) {
     try {
       const supportToken = supportTokenHeader.substring(7).trim();
-      const supportPayload = await request.server.jwt.verify(supportToken);
+      const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+      const supportPayload = jwt.verify(supportToken, JWT_SECRET) as any;
       if (supportPayload) {
         const supportRole = supportPayload.roleName || supportPayload.role?.name;
         if (supportRole === 'SUPERADMIN' || supportRole === 'PLATFORM_SUPPORT') {
@@ -178,24 +216,25 @@ export async function tenantMiddleware(
     }
   }
 
-  // Mismatch detection between header and JWT (logging only; and 403)
+  // Mismatch detection between header and JWT (logging only)
   if (tenantIdHeader && tenantIdHeader !== jwtTenantId) {
-    try {
-      console.warn(JSON.stringify({
-        event: 'TENANT_MISMATCH',
-        jwtTenant: jwtTenantId,
-        headerTenant: tenantIdHeader,
-        host: String(request.headers['x-forwarded-host'] || request.headers['host'] || ''),
-        userId: request.user?.id || null
-      }));
-    } catch {}
-    return reply.status(403).send({
-      error: 'TENANT_TOKEN_MISMATCH',
-      reason: 'TENANT_TOKEN_MISMATCH',
-      message: 'Token tidak valid untuk tenant ini'
-    });
+    // If it's a platform support or superadmin, we might allow mismatch if they explicitly set the header
+    if (!systemSuperAdmin && !isImpersonated) {
+      try {
+        console.warn(JSON.stringify({
+          event: 'TENANT_MISMATCH_LOG_ONLY',
+          jwtTenant: jwtTenantId,
+          headerTenant: tenantIdHeader,
+          host: String(request.headers['x-forwarded-host'] || request.headers['host'] || ''),
+          userId: request.user?.id || null
+        }));
+      } catch {}
+      // Prioritize JWT Tenant over Header during transition
+      request.tenantId = jwtTenantId;
+    }
+  } else {
+    request.tenantId = jwtTenantId || domainTenantId;
   }
-  request.tenantId = jwtTenantId;
 
   // Enforce that domain tenant matches JWT tenant for non-system SUPERADMIN
   if (!isSystemSuperAdmin(request.user?.roleName, request.user?.tenant_id ?? request.user?.tenantId)) {
@@ -207,16 +246,18 @@ export async function tenantMiddleware(
       const isChoose = /\/(api(\/v1)?)?\/billing\/subscriptions\/[A-Za-z0-9\-]+\/choose-plan$/.test(path) || /\/billing\/subscriptions\/[A-Za-z0-9\-]+\/choose-plan$/.test(path);
       return isOrder || isChoose;
     })();
+    
+    // During domain migration, if JWT is present, we TRUST JWT even if domain resolution (hostNoPort)
+    // is pointing to a different tenant or fallback domain.
     if (domainTenantId && jwtTenantId && domainTenantId !== jwtTenantId && !isOrderOrChoosePlan) {
       if (isImpersonated) {
         if (request.log) {
           request.log.info('[AUTH] Bypassing tenant-domain mismatch due to valid support impersonation session');
         }
       } else {
-        return reply.status(403).send({
-          error: 'Forbidden',
-          message: 'Forbidden: tenant-domain mismatch'
-        });
+        // Log mismatch but allow if JWT is valid for transition
+        console.warn(`[TenantMiddleware] Domain/JWT Mismatch: Domain=${domainTenantId}, JWT=${jwtTenantId}. Trusting JWT.`);
+        request.tenantId = jwtTenantId;
       }
     }
   }

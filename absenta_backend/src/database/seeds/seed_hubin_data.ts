@@ -18,7 +18,7 @@ async function seedHubinData() {
   console.log(`📋 Found ${tenants.length} active tenants. Starting seeding for each...`);
 
   for (const tenant of tenants) {
-    console.log(`\n🏢 Seeding Hubin for Tenant: ${tenant.name} (${tenant.domain || 'no domain'})`);
+    console.log(`\n🏢 Seeding Hubin for Tenant: ${tenant.name} (${tenant.subdomain || 'no domain'})`);
 
     // 1. Create Mitra Industri
     const mitrasData = [

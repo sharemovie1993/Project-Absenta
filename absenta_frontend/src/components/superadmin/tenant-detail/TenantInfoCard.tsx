@@ -22,9 +22,12 @@ export const TenantInfoCard: React.FC<TenantInfoCardProps> = ({ tenantDetail }) 
           <div className="space-y-2">
             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
               <Building2 className="mr-2 h-4 w-4" />
-              Domain
+              Subdomain
             </div>
-            <p className="font-medium">{tenantDetail.domain}</p>
+            <p className="font-medium">
+              {tenantDetail.subdomain || tenantDetail.domain || '-'}
+              {tenantDetail.custom_domain ? ` / ${tenantDetail.custom_domain}` : ''}
+            </p>
           </div>
           
           {tenantDetail.contact_email && (

@@ -17,7 +17,7 @@ async function main() {
   
   console.log('--- Tenant Info ---');
   console.log(`Name: ${tenant.name}`);
-  console.log(`Domain: ${tenant.domain}`);
+  console.log(`Domain: ${tenant.subdomain}`);
   console.log(`Status: ${tenant.status}`);
   console.log(`Absensi Mode: ${tenant.absensi_mode}`);
 

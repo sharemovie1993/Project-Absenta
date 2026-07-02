@@ -8,7 +8,7 @@ async function main() {
     console.log('🚀 Memulai Seeding Hidayat dengan Alur Bisnis Real...');
 
     const tenantDomain = 'smkn1cimahi';
-    const tenant = await prisma.tenant.findUnique({ where: { domain: tenantDomain } });
+    const tenant = await prisma.tenant.findUnique({ where: { subdomain: tenantDomain } });
     if (!tenant) throw new Error('Tenant smkn1cimahi tidak ditemukan');
     const tenantId = tenant.id;
 

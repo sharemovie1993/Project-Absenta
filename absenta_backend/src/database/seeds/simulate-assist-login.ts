@@ -17,7 +17,7 @@ async function main() {
   const allTenants = await prisma.tenant.findMany();
   console.log('📊 [DATABASE] Daftar tenant terdaftar:');
   allTenants.forEach(t => {
-    console.log(`   - ID: ${t.id} | Name: "${t.name}" | Domain: "${t.domain}"`);
+    console.log(`   - ID: ${t.id} | Name: "${t.name}" | Subdomain: "${t.subdomain}"`);
   });
 
   // 1. Dapatkan akun Support
@@ -32,21 +32,21 @@ async function main() {
 
   // 2. Dapatkan Tenant A (Sekolah A) untuk resolusi Domain Host
   const domainTenant = await prisma.tenant.findFirst({
-    where: { id: { not: 'system' }, domain: { not: null } }
+    where: { id: { not: 'system' }, subdomain: { not: null } }
   });
   if (!domainTenant) {
-    throw new Error('Tidak ada tenant sekolah terdaftar untuk resolusi domain host.');
+    throw new Error('Tidak ada tenant sekolah terdaftar untuk resolusi subdomain host.');
   }
-  console.log(`✅ [FOUND] Tenant A (Sekolah A) untuk Domain Host: "${domainTenant.name}" (Domain: ${domainTenant.domain})`);
+  console.log(`%c[FOUND] Tenant A (Sekolah A) untuk Subdomain Host: "${domainTenant.name}" (Subdomain: ${domainTenant.subdomain})`);
 
   // Dapatkan Tenant B (Sekolah B) yang berbeda untuk target Assist Login
   const targetTenant = await prisma.tenant.findFirst({
-    where: { id: { notIn: ['system', domainTenant.id] }, domain: { not: null } }
+    where: { id: { notIn: ['system', domainTenant.id] }, subdomain: { not: null } }
   });
   if (!targetTenant) {
     throw new Error('Tidak ada tenant sekolah target B yang berbeda untuk simulasi.');
   }
-  console.log(`✅ [FOUND] Tenant B (Sekolah B) untuk Sesi Bantuan: "${targetTenant.name}" (ID: ${targetTenant.id}, Domain: ${targetTenant.domain})`);
+  console.log(`✅ [FOUND] Tenant B (Sekolah B) untuk Sesi Bantuan: "${targetTenant.name}" (ID: ${targetTenant.id}, Subdomain: ${targetTenant.subdomain})`);
 
   // 3. Dapatkan Admin sekolah target (Sekolah B)
   const targetAdminRole = await prisma.role.findFirst({ where: { name: 'ADMIN' } });
@@ -95,7 +95,7 @@ async function main() {
 
   const mockRequest1: any = {
     headers: {
-      host: `${domainTenant.domain}.absenta.local:5173`, // Domain Sekolah A
+      host: `${domainTenant.subdomain}.absenta.local:5173`, // Domain/Subdomain Sekolah A
       authorization: `Bearer ${targetAdminToken}`
     },
     method: 'GET',
@@ -142,7 +142,7 @@ async function main() {
 
   const mockRequest2: any = {
     headers: {
-      host: `${domainTenant.domain}.absenta.local:5173`, // Domain Sekolah A
+      host: `${domainTenant.subdomain}.absenta.local:5173`, // Domain/Subdomain Sekolah A
       authorization: `Bearer ${targetAdminToken}`,
       'x-support-token': `Bearer ${supportToken}` // Sisipkan kredensial Support asli
     },

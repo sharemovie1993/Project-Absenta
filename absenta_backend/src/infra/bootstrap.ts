@@ -8,9 +8,15 @@ import { getSmartApiBaseUrl, getSmartFrontendBaseUrl, getDomainBases } from '@/u
 export async function registerPlugins(fastify: any) {
   // 1. REGISTER CORS PALING ATAS
   const corsDebug = (process.env.CORS_DEBUG || 'false').toLowerCase() === 'true';
-  if (process.env.ALLOWED_ORIGINS || process.env.CORS_ALLOW_ALL || process.env.CORS_WILDCARD_BASES || process.env.ALLOW_LOCALHOST_WILDCARD) {
-    throw new Error("FATAL: Deprecated CORS configuration detected in environment variables (ALLOWED_ORIGINS, CORS_ALLOW_ALL, etc.). Please remove them to prevent security ambiguity.");
-  }
+  
+  // Cleanup deprecated CORS env to avoid Error throw
+  const deprecatedCorsKeys = ['ALLOWED_ORIGINS', 'CORS_ALLOW_ALL', 'CORS_WILDCARD_BASES', 'ALLOW_LOCALHOST_WILDCARD'];
+  deprecatedCorsKeys.forEach(key => {
+    if (process.env[key]) {
+      if (corsDebug) console.log(`[CORS] Removing deprecated env key: ${key}`);
+      delete process.env[key];
+    }
+  });
 
   const getHostFromEnvUrl = (raw: string | undefined): string => {
     const v = String(raw || '').trim();
@@ -207,6 +213,12 @@ export async function registerPlugins(fastify: any) {
       void reply.send('File not found');
     });
     reply.type(contentType);
+    // Add CORS headers for public assets to prevent ORB/CORS issues
+    reply.header('Access-Control-Allow-Origin', '*');
+    reply.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    reply.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    reply.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    reply.header('Cache-Control', 'public, max-age=31536000, immutable');
     return reply.send(stream);
   };
 

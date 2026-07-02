@@ -25,13 +25,12 @@ if (!BASE_URL) {
   throw new Error('FATAL: VITE_API_BASE_URL is missing in environment variables. Application cannot start.');
 }
 
-if (!BASE_URL.endsWith('/api')) {
-  throw new Error(`FATAL: VITE_API_BASE_URL must end with "/api". Current value: ${BASE_URL}`);
-}
+// Normalize BASE_URL to end with /api/ (trailing slash) for consistent concatenation
+const API_URL = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
 
 // 2. Create Instance
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_URL,
   timeout: 15000,
   withCredentials: true, // MANDATORY per directive
   headers: {
@@ -317,7 +316,11 @@ axiosInstance.interceptors.response.use(
           localStorage.setItem('refresh_token', refreshed.refreshToken);
         }
 
-        originalRequest.headers.Authorization = `Bearer ${refreshed.token}`;
+        if (originalRequest.headers.set) {
+          originalRequest.headers.set('Authorization', `Bearer ${refreshed.token}`);
+        } else {
+          originalRequest.headers.Authorization = `Bearer ${refreshed.token}`;
+        }
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         useAuthStore.getState().logout();
@@ -343,7 +346,7 @@ axiosInstance.interceptors.response.use(
 
       // If it's a GET request (loading page data), redirect to Forbidden page unless skipped
       // Otherwise (actions), just reject so UI can show toast
-      if (method === 'GET' && !skipRedirect && !isSubscriptionInactive) {
+      if (method === 'GET' && !skipRedirect && !isSubscriptionInactive && !isPublic) {
         const message = errorMessage || 'Access Denied';
         const source = url || 'Unknown URL';
         window.location.href = `/403?source=${encodeURIComponent(source)}&reason=${encodeURIComponent(message)}`;

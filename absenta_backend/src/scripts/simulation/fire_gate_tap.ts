@@ -7,7 +7,7 @@ async function main() {
   const args = process.argv.slice(2);
   const rfid = args[0] || 'ABC123XYZ';
 
-  const tenant = await prisma.tenant.findFirst({ where: { domain: 'smkn1cimahi' } });
+  const tenant = await prisma.tenant.findFirst({ where: { subdomain: 'smkn1cimahi' } });
   if (!tenant) throw new Error('Tenant not found');
 
   const student = await prisma.siswa.findFirst({

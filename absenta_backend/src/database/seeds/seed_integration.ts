@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  const tenant = await prisma.tenant.findFirst({ where: { domain: 'smkn1cimahi' } });
+  const tenant = await prisma.tenant.findFirst({ where: { subdomain: 'smkn1cimahi' } });
   if (!tenant) {
     console.error('Tenant smkn1cimahi not found. Please run seed.ts first.');
     return;

@@ -60,7 +60,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       <div className="relative">
         {leftIcon && (
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors" aria-hidden="true">
-            {React.cloneElement(leftIcon as React.ReactElement, { className: 'w-5 h-5' } as any)}
+            {React.isValidElement(leftIcon) && typeof leftIcon.type !== 'string' ? (
+              React.cloneElement(leftIcon as React.ReactElement, { className: 'w-5 h-5' } as any)
+            ) : (
+              leftIcon
+            )}
           </div>
         )}
         <input
@@ -75,7 +79,11 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         />
         {rightIcon && (
           <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400" aria-hidden="true">
-            {React.cloneElement(rightIcon as React.ReactElement, { className: 'w-5 h-5' } as any)}
+            {React.isValidElement(rightIcon) && typeof rightIcon.type !== 'string' ? (
+              React.cloneElement(rightIcon as React.ReactElement, { className: 'w-5 h-5' } as any)
+            ) : (
+              rightIcon
+            )}
           </div>
         )}
       </div>

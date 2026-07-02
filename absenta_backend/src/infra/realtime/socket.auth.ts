@@ -1,3 +1,7 @@
+import * as jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+
 export type ParentTokenValidator = (token: string) => Promise<any>;
 
 export function setupSocketAuth(
@@ -33,7 +37,7 @@ export function setupSocketAuth(
 
       // Try validating as Standard User (JWT)
       try {
-        const decoded = await (fastify as any).jwt.verify(token);
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || '';
@@ -113,7 +117,7 @@ export function setupSocketAuth(
 
       // Try validating as Standard User (JWT)
       try {
-        const decoded = await (fastify as any).jwt.verify(token);
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
         const userId = decoded?.id || '';
         const userTenant = decoded?.tenantId || decoded?.tenant_id || '';
         const userRole = decoded?.roleName || decoded?.role?.name || '';

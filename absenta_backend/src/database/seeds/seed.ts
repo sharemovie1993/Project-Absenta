@@ -984,14 +984,14 @@ async function main() {
   // 8️⃣ Seed Struktur Organisasi (System Tenant + All Active Tenants)
   console.log('🌱 Seeding Struktur Organisasi for all active tenants...');
   const devTenantSubdomain = 'smkn1cimahi';
-  let devTenant = await prisma.tenant.findFirst({ where: { domain: devTenantSubdomain } });
+  let devTenant = await prisma.tenant.findFirst({ where: { subdomain: devTenantSubdomain } });
 
   if (!devTenant) {
     console.log(`🌱 Creating Development Tenant: ${devTenantSubdomain}...`);
     devTenant = await prisma.tenant.create({
       data: {
         name: 'SMK Negeri 1 Cimahi',
-        domain: devTenantSubdomain,
+        subdomain: devTenantSubdomain,
         status: 'ACTIVE',
         absensi_mode: 'MULTI_SESI',
         jam_masuk_default: '07:00',

@@ -11,6 +11,18 @@ import { checkTenantLimitQuery } from './queries/tenant-limit.query';
 import { cacheService } from '@/utils/cache.service';
 import { sidebarRenderingService } from '@/modules/menu/services/sidebar-rendering.service';
 export type { CreateSubscriptionInput, SubscriptionResponse, UpdateSubscriptionInput } from './subscription.types';
+
+const mapTenant = (tenant: any) => {
+  if (!tenant) return undefined;
+  return {
+    id: tenant.id,
+    name: tenant.name,
+    domain: tenant.subdomain,
+    subdomain: tenant.subdomain,
+    custom_domain: tenant.custom_domain
+  };
+};
+
 export const subscriptionService = {
   async schedulePlanChange(subscriptionId: string, toPlanId: string, reason?: string) {
     return schedulePlanChangeCommand(subscriptionId, toPlanId, reason);
@@ -34,7 +46,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       },
@@ -47,7 +60,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     });
   },
@@ -90,7 +103,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       },
@@ -106,7 +120,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     });
 
@@ -144,7 +158,8 @@ export const subscriptionService = {
            select: {
              id: true,
              name: true,
-             domain: true,
+             subdomain: true,
+             custom_domain: true,
            }
          }
        },
@@ -159,7 +174,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     });
   },
@@ -174,7 +189,7 @@ export const subscriptionService = {
       include: {
         Plan: true,
         Tenant: {
-          select: { id: true, name: true, domain: true }
+          select: { id: true, name: true, subdomain: true, custom_domain: true }
         }
       },
       orderBy: { created_at: 'desc' }
@@ -188,7 +203,7 @@ export const subscriptionService = {
       include: {
         Plan: true,
         Tenant: {
-          select: { id: true, name: true, domain: true }
+          select: { id: true, name: true, subdomain: true, custom_domain: true }
         }
       },
       orderBy: { created_at: 'desc' }
@@ -200,7 +215,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -213,7 +228,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       }
@@ -226,7 +242,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -242,7 +258,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       },
@@ -258,7 +275,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -358,7 +375,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       }
@@ -387,7 +405,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -431,7 +449,8 @@ export const subscriptionService = {
             select: {
               id: true,
               name: true,
-              domain: true,
+              subdomain: true,
+              custom_domain: true,
             }
           }
         }
@@ -445,7 +464,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     }
 
@@ -458,7 +477,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       }
@@ -485,7 +505,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -514,7 +534,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       }
@@ -560,7 +581,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -586,7 +607,8 @@ export const subscriptionService = {
             select: {
               id: true,
               name: true,
-              domain: true,
+              subdomain: true,
+              custom_domain: true,
             }
           }
         }
@@ -595,7 +617,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     }
 
@@ -617,7 +639,8 @@ export const subscriptionService = {
             select: {
               id: true,
               name: true,
-              domain: true,
+              subdomain: true,
+              custom_domain: true,
             }
           }
         }
@@ -626,7 +649,7 @@ export const subscriptionService = {
       return {
         ...subscriptionData,
         plan: Plan,
-        tenant: Tenant
+        tenant: mapTenant(Tenant)
       };
     }
 
@@ -642,7 +665,8 @@ export const subscriptionService = {
           select: {
             id: true,
             name: true,
-            domain: true,
+            subdomain: true,
+            custom_domain: true,
           }
         }
       }
@@ -668,7 +692,7 @@ export const subscriptionService = {
     return {
       ...subscriptionData,
       plan: Plan,
-      tenant: Tenant
+      tenant: mapTenant(Tenant)
     };
   },
 
@@ -697,7 +721,8 @@ export const subscriptionService = {
            select: {
              id: true,
              name: true,
-             domain: true,
+             subdomain: true,
+             custom_domain: true,
            }
          },
        }
@@ -854,7 +879,8 @@ export const subscriptionService = {
             select: {
               id: true,
               name: true,
-              domain: true,
+              subdomain: true,
+              custom_domain: true,
             }
           }
         }
@@ -866,7 +892,7 @@ export const subscriptionService = {
         return {
           ...subscriptionData,
           plan: Plan,
-          tenant: Tenant
+          tenant: mapTenant(Tenant)
         };
       });
     }
@@ -896,7 +922,7 @@ export const subscriptionService = {
           include: {
             Plan: true,
             Tenant: {
-              select: { id: true, name: true, domain: true }
+              select: { id: true, name: true, subdomain: true, custom_domain: true }
             }
           }
         }
@@ -928,7 +954,7 @@ export const subscriptionService = {
       new_plan_id: h.new_plan_id || null,
       old_plan_name: h.old_plan_id ? (planMap.get(h.old_plan_id) || null) : null,
       new_plan_name: h.new_plan_id ? (planMap.get(h.new_plan_id) || null) : null,
-      tenant: h.Subscription?.Tenant || null,
+      tenant: mapTenant(h.Subscription?.Tenant),
     }));
   },
 
@@ -943,7 +969,7 @@ export const subscriptionService = {
         Subscription: {
           include: {
             Plan: true,
-            Tenant: { select: { id: true, name: true, domain: true } }
+            Tenant: { select: { id: true, name: true, subdomain: true, custom_domain: true } }
           }
         }
       },
@@ -973,7 +999,7 @@ export const subscriptionService = {
       new_plan_id: h.new_plan_id || null,
       old_plan_name: h.old_plan_id ? (planMap.get(h.old_plan_id) || null) : null,
       new_plan_name: h.new_plan_id ? (planMap.get(h.new_plan_id) || null) : null,
-      tenant: h.Subscription?.Tenant || null,
+      tenant: mapTenant(h.Subscription?.Tenant),
     }));
   },
 

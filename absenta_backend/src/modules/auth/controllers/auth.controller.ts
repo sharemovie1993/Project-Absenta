@@ -2,6 +2,7 @@ import { authService } from '../services/auth.service';
 import { authDb as prisma } from '../services/repositories/auth.db';
 import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '../types/auth.types';
 import { authorizationService } from '../services/authorization.service';
+import { checkSlugAvailability } from '@/services/licenseClient';
 import { organizationalAuthorizationEngine } from '../services/organizational-authorization.engine';
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
@@ -13,6 +14,9 @@ import { activityLogService } from '@/modules/activity/services/activity-log.ser
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@/utils/url-helper';
+import * as jwt from 'jsonwebtoken';
+
+export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
 export const authController = {
   extractSubdomain(host: string): string | null {
@@ -106,7 +110,6 @@ export const authController = {
       where: {
         OR: [
           { custom_domain: { equals: hostNoPort, mode: 'insensitive' } },
-          { domain: { equals: hostNoPort, mode: 'insensitive' } },
           { subdomain: { equals: hostNoPort, mode: 'insensitive' } }
         ]
       }
@@ -136,10 +139,7 @@ export const authController = {
         if (sub) {
           const t = await prisma.tenant.findFirst({
             where: {
-              OR: [
-                { subdomain: { equals: sub, mode: 'insensitive' } },
-                { domain: { equals: sub, mode: 'insensitive' } }
-              ]
+              subdomain: { equals: sub, mode: 'insensitive' }
             }
           });
           if (t) return t;
@@ -184,12 +184,20 @@ export const authController = {
           status: 'ACTIVE',
           id: { not: 'system' as any },
         },
-        select: { id: true, name: true, domain: true },
+        select: { id: true, name: true, subdomain: true, custom_domain: true },
         orderBy: { name: 'asc' },
       });
 
+      const mappedTenants = tenants.map(t => ({
+        id: t.id,
+        name: t.name,
+        domain: t.subdomain,
+        subdomain: t.subdomain,
+        custom_domain: t.custom_domain
+      }));
+
       reply.status(200);
-      return { success: true, message: 'Tenants retrieved', data: tenants };
+      return { success: true, message: 'Tenants retrieved', data: mappedTenants };
     } catch {
       reply.status(500);
       return { success: false, message: 'Internal server error' };
@@ -1049,7 +1057,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         const tenantRecord = await authController.resolveTenantByHost(request.headers);
         if (tenantRecord) {
           resolvedTenantId = tenantRecord.id;
-          logDomain = String(tenantRecord.domain || logDomain).toLowerCase();
+          logDomain = String(tenantRecord.custom_domain || tenantRecord.subdomain || logDomain).toLowerCase();
         }
       }
       if (!resolvedTenantId) {
@@ -1106,7 +1114,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
                           message: 'Silakan login melalui domain sekolah Anda.',
                           redirectUrl: tenantLoginUrl,
                           tenantName: tenant.name,
-                          tenantDomain: tenant.domain
+                          tenantDomain: tenant.subdomain
                         };
                       }
                    }
@@ -1255,8 +1263,8 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
       };
 
-      const token = await request.server.jwt.sign(tokenPayload);
-      const refreshToken = await request.server.jwt.sign(refreshTokenPayload);
+      const token = jwt.sign(tokenPayload, getJwtSecret());
+      const refreshToken = jwt.sign(refreshTokenPayload, getJwtSecret());
 
       try {
         const logTenantId = user.role.name === 'SUPERADMIN' ? 'system' : user.tenant_id;
@@ -1356,7 +1364,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
       try {
         if (user?.tenant_id) {
           const t = await prisma.tenant.findUnique({ where: { id: user.tenant_id } });
-          if (t?.domain) domain = String(t.domain).toLowerCase();
+          if (t) domain = String(t.custom_domain || t.subdomain || '').toLowerCase();
         }
       } catch {}
       const logTenantId = (user?.roleName === 'SUPERADMIN' && (!user?.tenant_id || user?.tenant_id === 'system')) ? 'system' : (user?.tenant_id || 'system');
@@ -1393,17 +1401,19 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
       }
 
       // Verify the refresh token
-      const decoded = await request.server.jwt.verify(refreshToken) as any;
+      const decoded = jwt.verify(refreshToken, getJwtSecret()) as any;
 
       // Generate new access token
-      const newToken = await request.server.jwt.sign({
+      const newToken = jwt.sign({
         id: decoded.id,
         email: decoded.email,
-        tenantId: decoded.tenantId,
+        tenantId: decoded.tenantId || (decoded as any).tenant_id,
+        tenant_id: (decoded as any).tenant_id || decoded.tenantId,
         roleId: decoded.roleId,
         roleName: decoded.roleName,
         permissions: decoded.permissions, // Include permissions in refreshed token
-      });
+        exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutes
+      }, getJwtSecret());
 
       reply.status(200);
       return {
@@ -1498,23 +1508,66 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         if (ix > 0) return domain.substring(0, ix);
         return domain;
       })();
+
+      // 1. Format validation
+      const subdomainRegex = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+      if (!subdomainRegex.test(sub)) {
+        return {
+          success: true,
+          message: 'Format subdomain tidak valid.',
+          data: { domain, subdomain: sub, available: false }
+        };
+      }
+
+      // 2. Reserved subdomains
+      const reservedSubdomains = ['www', 'api', 'admin', 'mail', 'smtp', 'pop', 'imap', 'test', 'dev', 'stage', 'prod', 'support', 'help', 'blog', 'status', 'app', 'dashboard', 'auth', 'login', 'register', 'signin', 'signup'];
+      if (reservedSubdomains.includes(sub)) {
+        return {
+          success: true,
+          message: 'Subdomain ini tidak tersedia (reserved).',
+          data: { domain, subdomain: sub, available: false }
+        };
+      }
+
+      // 3. Local check
       const existing = await prisma.tenant.findFirst({
         where: {
           OR: [
-            { domain },
-            { domain: sub }
+            { subdomain: sub },
+            { custom_domain: domain }
           ]
         }
       });
-      const available = existing ? false : true;
+      if (existing) {
+        return {
+          success: true,
+          message: 'Domain sudah digunakan secara lokal',
+          data: { domain, subdomain: sub, available: false }
+        };
+      }
+
+      // 4. Global license server check
+      try {
+        const globCheck = await checkSlugAvailability(sub);
+        if (!globCheck.available) {
+          return {
+            success: true,
+            message: 'Domain sudah digunakan di server lisensi pusat',
+            data: { domain, subdomain: sub, available: false }
+          };
+        }
+      } catch (err: any) {
+        console.warn(`[Subdomain Check Warning] Gagal verifikasi subdomain '${sub}' secara global di server pusat:`, err.message);
+      }
+
       reply.status(200);
       return {
         success: true,
-        message: available ? 'Domain tersedia' : 'Domain sudah digunakan',
+        message: 'Domain tersedia',
         data: {
           domain,
           subdomain: sub,
-          available
+          available: true
         }
       };
     } catch (err) {
@@ -1534,7 +1587,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
       // 1. Dapatkan tenant target
       const tenant = await prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { id: true, name: true, domain: true, status: true, absensi_mode: true }
+        select: { id: true, name: true, subdomain: true, custom_domain: true, status: true, absensi_mode: true }
       });
       if (!tenant) {
         reply.status(404);
@@ -1629,8 +1682,8 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 hari
       };
 
-      const token = await request.server.jwt.sign(tokenPayload);
-      const refreshToken = await request.server.jwt.sign(refreshTokenPayload);
+      const token = jwt.sign(tokenPayload, getJwtSecret());
+      const refreshToken = jwt.sign(refreshTokenPayload, getJwtSecret());
 
       // 5. Catat Log Audit Impersonasi
       try {
@@ -1675,7 +1728,7 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
 };
 async function logLoginFailedOnce(reason: string, email: string, domain: string, tenantId?: string) {
   try {
-    const tid = tenantId || (await prisma.tenant.findFirst({ where: { domain } }))?.id || 'system';
+    const tid = tenantId || (await prisma.tenant.findFirst({ where: { subdomain: domain } }))?.id || 'system';
     const since = new Date(Date.now() - 5000);
     const signature = JSON.stringify({ reason, email, domain });
     const existing = await prisma.activityLog.findFirst({

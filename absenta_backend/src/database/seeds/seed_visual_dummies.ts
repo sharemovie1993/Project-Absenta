@@ -8,7 +8,7 @@ async function main() {
     console.log('🌱 Memulai seeding data visual dummy (Fase 2)...');
 
     const tenantDomain = 'smkn1cimahi';
-    const tenant = await prisma.tenant.findUnique({ where: { domain: tenantDomain } });
+    const tenant = await prisma.tenant.findUnique({ where: { subdomain: tenantDomain } });
 
     if (!tenant) {
         console.error(`❌ Tenant ${tenantDomain} tidak ditemukan.`);

@@ -17,7 +17,8 @@ export interface CreateTenantInput {
 export interface UpdateTenantInput {
   name?: string;
   absensi_mode?: 'SIMPLE' | 'MULTI_SESI';
-  domain?: string;
+  subdomain?: string;
+  custom_domain?: string;
   logo_url?: string;
   status?: string;
   jam_masuk_default?: string;
@@ -38,7 +39,9 @@ export interface TenantResponse {
   id: string;
   name: string;
   absensi_mode: 'SIMPLE' | 'MULTI_SESI';
-  domain: string | null;
+  domain: string | null; // Mapped from subdomain for backward-compatibility
+  subdomain: string | null;
+  custom_domain: string | null;
   logo_url: string | null;
   status: string;
   created_at: Date;
@@ -87,7 +90,8 @@ export class TenantService {
     if (search) {
       const searchConditions = [
         { name: { contains: search, mode: 'insensitive' } },
-        { domain: { contains: search, mode: 'insensitive' } },
+        { subdomain: { contains: search, mode: 'insensitive' } },
+        { custom_domain: { contains: search, mode: 'insensitive' } },
         { status: { contains: search, mode: 'insensitive' } }
       ];
 
@@ -123,7 +127,9 @@ export class TenantService {
       id: tenant.id,
       name: tenant.name,
       absensi_mode: tenant.absensi_mode,
-      domain: tenant.domain,
+      domain: tenant.subdomain, // Backward compatibility
+      subdomain: tenant.subdomain,
+      custom_domain: tenant.custom_domain,
       logo_url: tenant.logo_url,
       status: tenant.status,
       created_at: tenant.created_at,
@@ -241,7 +247,9 @@ export class TenantService {
       id: tenant.id,
       name: tenant.name,
       absensi_mode: tenant.absensi_mode,
-      domain: tenant.domain,
+      domain: tenant.subdomain, // Backward compatibility
+      subdomain: tenant.subdomain,
+      custom_domain: tenant.custom_domain,
       logo_url: tenant.logo_url,
       status: tenant.status,
       created_at: tenant.created_at,
@@ -294,7 +302,9 @@ export class TenantService {
       id: tenant.id,
       name: tenant.name,
       absensi_mode: tenant.absensi_mode,
-      domain: tenant.domain,
+      domain: tenant.subdomain, // Backward compatibility
+      subdomain: tenant.subdomain,
+      custom_domain: tenant.custom_domain,
       logo_url: tenant.logo_url,
       status: tenant.status,
       created_at: tenant.created_at,
@@ -503,7 +513,9 @@ export class TenantService {
       id: tenant.id,
       name: tenant.name,
       absensi_mode: tenant.absensi_mode,
-      domain: tenant.domain,
+      domain: tenant.subdomain, // Backward compatibility
+      subdomain: tenant.subdomain,
+      custom_domain: tenant.custom_domain,
       logo_url: tenant.logo_url,
       status: tenant.status,
       created_at: tenant.created_at,
@@ -603,7 +615,9 @@ export class TenantService {
       id: updated.id,
       name: updated.name,
       absensi_mode: updated.absensi_mode,
-      domain: updated.domain,
+      domain: updated.subdomain, // Backward compatibility
+      subdomain: updated.subdomain,
+      custom_domain: updated.custom_domain,
       logo_url: updated.logo_url,
       status: updated.status,
       created_at: updated.created_at,
@@ -653,7 +667,9 @@ export class TenantService {
       id: updated.id,
       name: updated.name,
       absensi_mode: updated.absensi_mode,
-      domain: updated.domain,
+      domain: updated.subdomain, // Backward compatibility
+      subdomain: updated.subdomain,
+      custom_domain: updated.custom_domain,
       logo_url: updated.logo_url,
       status: updated.status,
       created_at: updated.created_at,

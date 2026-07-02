@@ -4,7 +4,9 @@ import { requestWithFallback } from "./apiUtils";
 export interface TenantDetail {
   id: string;
   name: string;
-  domain: string;
+  domain?: string;
+  subdomain?: string;
+  custom_domain?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   subscription_status: 'ACTIVE' | 'EXPIRED' | 'TRIAL';
   created_at: string;

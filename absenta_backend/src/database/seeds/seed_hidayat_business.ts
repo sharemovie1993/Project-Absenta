@@ -9,7 +9,7 @@ async function seed() {
   const user = await prisma.user.findFirst({ where: { email: 'hidayat@gmail.com' } });
   if (!user) throw new Error('User hidayat@gmail.com not found');
 
-  const tenant = await prisma.tenant.findUnique({ where: { domain: 'smkn1cimahi' } });
+  const tenant = await prisma.tenant.findUnique({ where: { subdomain: 'smkn1cimahi' } });
   if (!tenant) throw new Error('Tenant smkn1cimahi not found');
 
   // 2. Ensure Active Academic Context

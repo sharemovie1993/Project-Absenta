@@ -7,7 +7,9 @@ interface Tenant {
   id: string;
   name: string;
   absensi_mode: AbsensiMode;
-  domain?: string;
+  domain?: string; // Mapped to subdomain for backward-compatibility
+  subdomain?: string;
+  custom_domain?: string;
   logo_url?: string;
   logo_daerah_url?: string;
   address?: string;
@@ -44,7 +46,9 @@ interface Tenant {
 export interface CreateTenantRequest {
   name: string;
   absensi_mode?: AbsensiMode;
-  domain?: string;
+  domain?: string; // Mapped to subdomain
+  subdomain?: string;
+  custom_domain?: string;
   logo_url?: string;
   logo_daerah_url?: string;
   address?: string;
@@ -70,7 +74,9 @@ export interface CreateTenantRequest {
 export interface UpdateTenantRequest {
   name?: string;
   absensi_mode?: AbsensiMode;
-  domain?: string;
+  domain?: string; // Mapped to subdomain
+  subdomain?: string;
+  custom_domain?: string;
   logo_url?: string;
   logo_daerah_url?: string;
   address?: string;

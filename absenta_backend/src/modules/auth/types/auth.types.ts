@@ -48,6 +48,9 @@ export interface UserResponse {
   tenant?: {
     id: string;
     name: string;
+    domain?: string | null;
+    subdomain?: string | null;
+    custom_domain?: string | null;
     absensi_mode: string;
   } | null;
   position_codes?: string[];

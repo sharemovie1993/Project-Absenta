@@ -10,6 +10,7 @@ import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '..
 import { emitDomainEvent } from '@/infra/event-bus';
 import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
+import { checkSlugAvailability } from '@/services/licenseClient';
 
 // Removed hardcoded DEFAULT_STRUKTUR_ORGANISASI in favor of shared config
 
@@ -226,7 +227,7 @@ export class AuthService {
       if (effectiveTenantId && effectiveTenantId !== 'system') {
         const t = await prisma.tenant.findUnique({
           where: { id: effectiveTenantId },
-          select: { id: true, name: true },
+          select: { id: true, name: true, subdomain: true, custom_domain: true },
         });
         if (t) {
           const resolvedMode = await getEffectiveAbsensiMode(effectiveTenantId);
@@ -234,6 +235,9 @@ export class AuthService {
           userResponse.tenant = {
             id: t.id,
             name: t.name,
+            domain: t.subdomain ?? undefined,
+            subdomain: t.subdomain ?? undefined,
+            custom_domain: t.custom_domain ?? undefined,
             absensi_mode: resolvedMode,
           };
           // Attach Tenant Features (Capability Switch)
@@ -299,10 +303,28 @@ export class AuthService {
 
     // 2. Check Subdomain Availability
     const existingDomain = await prisma.tenant.findFirst({
-      where: { domain: { in: candidates } }
+      where: {
+        OR: [
+          { subdomain: { in: candidates } },
+          { custom_domain: { in: candidates } }
+        ]
+      }
     });
     if (existingDomain) {
       throw new Error(`Subdomain '${subLabel}' sudah digunakan. Silakan pilih yang lain.`);
+    }
+
+    // 2b. Check Subdomain Availability Globally on the central License Server
+    try {
+      const globCheck = await checkSlugAvailability(subLabel);
+      if (!globCheck.available) {
+        throw new Error(`Subdomain '${subLabel}' sudah digunakan di server lisensi pusat. Silakan pilih subdomain lain.`);
+      }
+    } catch (err: any) {
+      if (err.message && err.message.includes('sudah digunakan')) {
+        throw err;
+      }
+      console.warn(`[Subdomain Check Warning] Gagal verifikasi subdomain '${subLabel}' secara global di server pusat:`, err.message);
     }
 
     // 3. Check Tenant Name Availability
@@ -394,7 +416,6 @@ export class AuthService {
         const newTenant = await tx.tenant.create({
           data: {
             name: tenant_name,
-            domain: tenant_domain,
             subdomain: subdomainSlug,
             status: 'ACTIVE',
           },
@@ -518,7 +539,7 @@ export class AuthService {
           entity_id: newTenant.id,
           metadata: JSON.stringify({
             tenant_name: newTenant.name,
-            tenant_domain: newTenant.domain,
+            tenant_domain: newTenant.subdomain,
             npsn: masterSekolah?.npsn ?? normalizedNpsn ?? null,
             admin_user_id: newAdmin.id,
             admin_email: newAdmin.email,
@@ -574,7 +595,7 @@ export class AuthService {
         payload: {
           tenant_id: tenantId,
           tenant_name: result.tenant.name,
-          tenant_domain: result.tenant.domain,
+          tenant_domain: result.tenant.subdomain,
           admin_user_id: result.user.id,
           admin_email: admin_email,
           admin_name: admin_full_name,
@@ -644,7 +665,7 @@ export class AuthService {
       if (effectiveTenantId && effectiveTenantId !== 'system') {
         const t = await prisma.tenant.findUnique({
           where: { id: effectiveTenantId },
-          select: { id: true, name: true },
+          select: { id: true, name: true, subdomain: true, custom_domain: true },
         });
         if (t) {
           const resolvedMode = await getEffectiveAbsensiMode(effectiveTenantId);
@@ -652,6 +673,9 @@ export class AuthService {
           response.tenant = {
             id: t.id,
             name: t.name,
+            domain: t.subdomain ?? undefined,
+            subdomain: t.subdomain ?? undefined,
+            custom_domain: t.custom_domain ?? undefined,
             absensi_mode: resolvedMode,
           };
           // Attach Tenant Features (Capability Switch)

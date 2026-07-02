@@ -24,7 +24,7 @@ export class BackupService {
     return this.prisma.tenantBackup.findMany({
       orderBy: { snapshot_date: 'desc' },
       take: 100,
-      include: { Tenant: { select: { name: true, domain: true } } }
+      include: { Tenant: { select: { name: true, subdomain: true } } }
     });
   }
 

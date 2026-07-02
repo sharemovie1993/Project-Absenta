@@ -21,7 +21,6 @@ model Tenant {
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?
 
-  domain                  String?                  @unique
   subdomain               String?                  @unique
   custom_domain           String?                  @unique
   logo_url                String?

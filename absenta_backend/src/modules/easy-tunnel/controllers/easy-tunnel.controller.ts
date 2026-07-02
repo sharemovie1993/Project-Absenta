@@ -12,9 +12,9 @@ import {
 import os from 'os';
 
 export const easyTunnelController = {
-  async getTunnels(_request: any, reply: any) {
+  async getTunnels(request: any, reply: any) {
     try {
-      const data = await EasyTunnelService.getAllTunnels();
+      const data = await EasyTunnelService.getTunnelsForTenant(request.tenantId);
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getTunnels error:', err);
@@ -25,7 +25,7 @@ export const easyTunnelController = {
   async getTunnelById(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const data = await EasyTunnelService.getTunnelById(id);
+      const data = await EasyTunnelService.getTunnelById(id, request.tenantId);
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getTunnelById error:', err);
@@ -53,7 +53,7 @@ export const easyTunnelController = {
         subdomain_slug,
         local_port: portNum,
         app_name
-      });
+      }, request.tenantId);
 
       return reply.send({
         success: true,
@@ -69,7 +69,7 @@ export const easyTunnelController = {
   async startTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.startTunnel(id);
+      const result = await EasyTunnelService.startTunnel(id, request.tenantId);
       return reply.send({ success: true, message: result.message });
     } catch (err: any) {
       console.error('[EasyTunnel] startTunnel error:', err);
@@ -80,7 +80,7 @@ export const easyTunnelController = {
   async stopTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.stopTunnel(id);
+      const result = await EasyTunnelService.stopTunnel(id, request.tenantId);
       return reply.send({ success: true, message: result.message });
     } catch (err: any) {
       console.error('[EasyTunnel] stopTunnel error:', err);
@@ -91,7 +91,7 @@ export const easyTunnelController = {
   async diagnoseTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const data = await EasyTunnelService.getTunnelById(id);
+      const data = await EasyTunnelService.getTunnelById(id, request.tenantId);
       const result = await WireguardManager.diagnoseTunnel(data.slug);
       return reply.send({ success: true, data: result });
     } catch (err: any) {
@@ -103,7 +103,7 @@ export const easyTunnelController = {
   async removeTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.removeTunnel(id);
+      const result = await EasyTunnelService.removeTunnel(id, request.tenantId);
       return reply.send({ success: true, message: 'Tunnel berhasil dihapus.', data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] removeTunnel error:', err);
@@ -120,7 +120,7 @@ export const easyTunnelController = {
         return reply.status(400).send({ success: false, message: 'Port lokal tidak valid (1-65535).' });
       }
 
-      const result = await EasyTunnelService.editTunnel(id, portNum, app_name);
+      const result = await EasyTunnelService.editTunnel(id, portNum, app_name, request.tenantId);
       return reply.send({ success: true, message: 'Konfigurasi berhasil disimpan.', data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] editTunnel error:', err);
@@ -182,7 +182,7 @@ export const easyTunnelController = {
     try {
       const payload = request.body || {};
       const result = await requestNewLicense(payload);
-      return reply.send({ success: true, data: result });
+      return reply.send({ success: true, data: result?.data || result });
     } catch (err: any) {
       return reply.status(500).send({ success: false, message: err.message });
     }

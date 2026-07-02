@@ -139,8 +139,10 @@ const RegisterTenant = () => {
   const [showPasswordInSuccess, setShowPasswordInSuccess] = useState(false);
 
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable' | 'error'>('idle');
+  const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable' | 'error'>('idle');
   
   const debouncedEmail = useDebounce(formData.admin_email, 800);
+  const debouncedDomain = useDebounce(formData.tenant_domain, 800);
 
   useEffect(() => {
     if (!domainEdited && formData.tenant_name) {
@@ -190,16 +192,48 @@ const RegisterTenant = () => {
     } catch { setEmailStatus('error'); }
   };
 
+  const checkDomainAvailable = async (domain: string) => {
+    if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(domain)) return;
+    setDomainStatus('checking');
+    try {
+      const res = await axiosInstance.get<{ success: boolean; message: string; data: { available: boolean } }>(`/auth/check-domain`, { params: { domain } });
+      if (res.data.success) {
+        if (res.data.data.available) {
+          setDomainStatus('available');
+          setErrors(prev => {
+            const next = { ...prev };
+            delete next.tenant_domain;
+            return next;
+          });
+        } else {
+          setDomainStatus('unavailable');
+          setErrors(prev => ({ ...prev, tenant_domain: res.data.message || 'Subdomain sudah digunakan.' }));
+        }
+      }
+    } catch { 
+      setDomainStatus('error'); 
+    }
+  };
+
   useEffect(() => {
     if (debouncedEmail && !errors.admin_email) checkEmailAvailable(debouncedEmail);
   }, [debouncedEmail]);
+
+  useEffect(() => {
+    if (debouncedDomain && !errors.tenant_domain) {
+      checkDomainAvailable(debouncedDomain);
+    }
+  }, [debouncedDomain]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     validateField(name, value);
-    if (name === 'tenant_domain') setDomainEdited(true);
+    if (name === 'tenant_domain') {
+      setDomainEdited(true);
+      setDomainStatus('idle');
+    }
     if (name === 'npsn') {
        if (value.length >= 8) checkNpsn(value);
        else { setNpsnStatus('idle'); setNpsnMessage(''); }
@@ -363,28 +397,34 @@ const RegisterTenant = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <Input 
-                                     label="Subdomain Aplikasi"
-                                     name="tenant_domain"
-                                     value={formData.tenant_domain}
-                                     onChange={handleChange}
-                                     placeholder="nama-sekolah"
-                                     size="auth"
-                                     errorText={errors.tenant_domain}
-                                     rightIcon={<span className="text-slate-400 font-bold">.{MAIN_DOMAIN}</span>}
-                                     required
-                                  />
-                                  <div className="flex flex-col">
-                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Lokasi Singkat</label>
-                                     <Input 
-                                       name="alamat"
-                                       value={formData.alamat}
-                                       onChange={handleChange}
-                                       placeholder="Contoh: Jakarta Selatan"
-                                       size="auth"
-                                       required
-                                     />
-                                  </div>
+                                   <Input 
+                                      label="Subdomain Aplikasi"
+                                      name="tenant_domain"
+                                      value={formData.tenant_domain}
+                                      onChange={handleChange}
+                                      placeholder="nama-sekolah"
+                                      size="auth"
+                                      className="pr-36"
+                                      errorText={errors.tenant_domain}
+                                      rightIcon={
+                                        <div className="flex items-center gap-1.5 select-none pr-1 font-bold text-slate-400">
+                                          {domainStatus === 'checking' && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+                                          {domainStatus === 'available' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                                          {domainStatus === 'unavailable' && <X className="w-4 h-4 text-red-500" />}
+                                          <span>.{MAIN_DOMAIN}</span>
+                                        </div>
+                                      }
+                                      required
+                                   />
+                                   <Input 
+                                      label="Lokasi Singkat"
+                                      name="alamat"
+                                      value={formData.alamat}
+                                      onChange={handleChange}
+                                      placeholder="Contoh: Jakarta Selatan"
+                                      size="auth"
+                                      required
+                                   />
                                 </div>
 
                                  {/* ── Kapasitas Sekolah: Visual Card Picker ── */}

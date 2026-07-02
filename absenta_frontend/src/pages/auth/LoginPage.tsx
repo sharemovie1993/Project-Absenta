@@ -30,6 +30,25 @@ export default function LoginPage() {
 
   useEffect(() => {
     const initData = async () => {
+      // ── Stale localStorage Guard (on real domain) ───────────────────────
+      // When the browser visits smp4.absenta.id but localStorage still holds
+      // tenant_domain='t.absenta.id' from a previous session, the system config
+      // API will receive X-Tenant-Domain: t and return SMKN1PLERED branding.
+      // Clear stale tenant-specific items early, before ANY API call, so the
+      // Navbar and system-config load with a clean slate.
+      try {
+        const hn = window.location.hostname;
+        const hnParts = hn.split('.');
+        const hnSub = hnParts.length >= 3 ? hnParts[0].toLowerCase() : '';
+        const storedDomain = localStorage.getItem('tenant_domain') || '';
+        const storedSub = storedDomain.includes('.') ? storedDomain.split('.')[0] : storedDomain;
+        if (hnSub && storedSub && hnSub !== storedSub) {
+          localStorage.removeItem('tenant_domain');
+          localStorage.removeItem('active_system_config');
+        }
+      } catch {}
+      // ─────────────────────────────────────────────────────────────────────
+
       try {
         const cached = localStorage.getItem('active_system_config');
         if (cached) setSysConfig(JSON.parse(cached));
@@ -55,7 +74,13 @@ export default function LoginPage() {
       } catch {}
 
       const isDev = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
-      if (isDev) {
+      // Only show dev tenant selector when running on localhost.
+      // When accessed via a real domain (e.g. smp4.absenta.id), the tenant
+      // is already determined by the domain — no need for the dropdown, and
+      // calling /auth/dev/tenants would 403 (backend rejects non-localhost hosts).
+      const hostnameNow = window.location.hostname;
+      const isLocalhostNow = hostnameNow === 'localhost' || hostnameNow === '127.0.0.1' || hostnameNow.endsWith('.local');
+      if (isDev && isLocalhostNow) {
         setDevTenantsLoading(true);
         try {
           const res = await axiosInstance.get('/auth/dev/tenants');
@@ -84,7 +109,12 @@ export default function LoginPage() {
     e.preventDefault();
     setLocalError('');
     try {
-      await loginAction(credentials.email, credentials.password, (import.meta.env.VITE_DEV_MODE ? tenantIdDev.trim() : undefined));
+      const isDevMode = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
+      const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      // Only pass tenantIdDev when on localhost (dev dropdown). When accessed via real domain, 
+      // the backend resolves the tenant from the Host header automatically.
+      const devTenantArg = (isDevMode && isLocalhostLogin && tenantIdDev.trim()) ? tenantIdDev.trim() : undefined;
+      await loginAction(credentials.email, credentials.password, devTenantArg);
     } catch (err) {
       const errorObj = err as { response?: { data?: { message?: string; reason?: string; redirectUrl?: string; tenantName?: string; tenantDomain?: string }; status?: number }; message?: string };
       const data = errorObj?.response?.data;

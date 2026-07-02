@@ -3,6 +3,43 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
+// Periksa hak akses Administrator pada Windows
+if (process.platform === 'win32') {
+  try {
+    execSync('net session', { stdio: 'ignore' });
+  } catch (e) {
+    console.log('\n======================================================================');
+    console.log(' Peringatan: Development server harus dijalankan sebagai Administrator.');
+    console.log(' Mencoba membuka terminal Administrator baru secara otomatis...');
+    console.log('======================================================================\n');
+    try {
+      const { spawnSync } = require('child_process');
+      const cwd = process.cwd();
+      const escapedCwd = cwd.replace(/'/g, "''");
+      const psArgs = [
+        '-NoProfile',
+        '-Command',
+        `Start-Process powershell -ArgumentList '-NoExit', '-Command', 'Set-Location ''${escapedCwd}''; npm run dev' -Verb RunAs`
+      ];
+      
+      const result = spawnSync('powershell.exe', psArgs, { stdio: 'ignore' });
+      if (result.status === 0) {
+        process.exit(0); // Keluar dari terminal lama setelah terminal Admin berhasil dibuka
+      } else {
+        throw new Error('UAC ditolak atau dibatalkan.');
+      }
+    } catch (err) {
+      console.error('\x1b[41m\x1b[37m%s\x1b[0m', '======================================================================');
+      console.error('\x1b[41m\x1b[37m%s\x1b[0m', ' ERROR: GAGAL MEMBUKA TERMINAL ADMINISTRATOR ');
+      console.error('\x1b[41m\x1b[37m%s\x1b[0m', '======================================================================');
+      console.error('UAC dibatalkan, ditolak, atau tidak didukung di sistem ini.');
+      console.error('Silakan jalankan terminal / VS Code Anda secara manual sebagai Administrator.');
+      console.error('======================================================================\n');
+      process.exit(1);
+    }
+  }
+}
+
 /**
  * Mendapatkan daftar PID proses yang sedang LISTENING pada port tertentu secara akurat.
  * Menghindari false positive dari status TIME_WAIT atau koneksi keluar (outgoing).
