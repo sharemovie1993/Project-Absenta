@@ -1,4 +1,5 @@
-import { JenisKegiatanMasterService, CreateJKMInput, UpdateJKMInput } from '../services/jenis-kegiatan-master.service'
+import { JenisKegiatanMasterService, CreateJKMInput, UpdateJKMInput } from '../services/jenis-kegiatan-master.service';
+import { createJenisKegiatanMasterSchema, updateJenisKegiatanMasterSchema } from '../services/jenis-kegiatan-master.schema';
 
 const service = new JenisKegiatanMasterService()
 
@@ -44,18 +45,8 @@ export const jenisKegiatanMasterController = {
   async create(request: any, reply: any) {
     try {
       const user = request.user!
-      const body = request.body as CreateJKMInput
-      if (!body || !body.nama || typeof body.nama !== 'string' || body.nama.trim() === '') {
-        return reply.status(400).send({ success: false, message: 'Invalid request: nama wajib diisi', data: null })
-      }
-      if (!body.tipe || typeof body.tipe !== 'string') {
-        return reply.status(400).send({ success: false, message: 'Invalid request: tipe wajib diisi', data: null })
-      }
-      const { JenisKegiatan } = await import('../../../../constants/enums')
-      const validTipes = Object.values(JenisKegiatan as any)
-      if (!validTipes.includes(body.tipe)) {
-        return reply.status(400).send({ success: false, message: 'Invalid request: tipe tidak dikenal', data: null })
-      }
+      const parsedBody = createJenisKegiatanMasterSchema.parse(request.body);
+      const body: CreateJKMInput = parsedBody;
       const created = await service.create(body, user.tenantId)
       return reply.status(201).send({ success: true, message: 'Jenis Kegiatan created successfully', data: created })
     } catch (error) {
@@ -70,7 +61,8 @@ export const jenisKegiatanMasterController = {
     try {
       const user = request.user!
       const { id } = request.params
-      const body = request.body as UpdateJKMInput
+      const parsedBody = updateJenisKegiatanMasterSchema.parse(request.body);
+      const body: UpdateJKMInput = parsedBody;
       const updated = await service.update(id, body, user.roleName, user.tenantId)
       return reply.status(200).send({ success: true, message: 'Jenis Kegiatan updated successfully', data: updated })
     } catch (error) {

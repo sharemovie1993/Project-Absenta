@@ -166,4 +166,35 @@ export async function reportingRoutes(fastify: any) {
     },
     handler: reportingController.getKurikulumReport.bind(reportingController),
   });
+
+  // --- PDF Reports (Reporting Engine) ---
+  fastify.get('/pdf/certificate/:siswaId', {
+    preHandler: [requireCapability('reports.violation.view')],
+    handler: reportingController.printCertificate.bind(reportingController),
+  });
+
+  fastify.get('/pdf/certificate/class/:kelasId/zip', {
+    preHandler: [requireCapability('reports.violation.view')],
+    handler: reportingController.printCertificateClassZip.bind(reportingController),
+  });
+
+  fastify.get('/pdf/invoice/:invoiceNumber', {
+    preHandler: [requireCapability('reports.financial.view.monthly')],
+    handler: reportingController.printInvoice.bind(reportingController),
+  });
+
+  fastify.get('/pdf/supervision/:supervisionId', {
+    preHandler: [requireCapability('curriculum.supervision.view.report')],
+    handler: reportingController.printSupervision.bind(reportingController),
+  });
+
+  fastify.get('/pdf/izin-keluar/:izinId', {
+    preHandler: [requireCapability('reports.violation.view')],
+    handler: reportingController.printIzinKeluar.bind(reportingController),
+  });
+
+  fastify.get('/pdf/kesiswaan-bulanan', {
+    preHandler: [requireCapability('reports.violation.view')],
+    handler: reportingController.printKesiswaanBulanan.bind(reportingController),
+  });
 }

@@ -13,9 +13,14 @@ import {
   getStatistikHarian,
   getRekapBulananGuruMe,
   getRekapHarianKelas,
+  getLeaderboard,
 } from '../controllers/rekap.controller';
 
 export async function rekapRoutes(fastify: any) {
+  fastify.get('/leaderboard', {
+    preHandler: [requireCapability('attendance.reports.view')],
+    handler: getLeaderboard
+  });
   fastify.get('/siswa/me/harian', {
     preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view')],
     schema: {

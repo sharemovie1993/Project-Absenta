@@ -6,14 +6,14 @@ import { DataScope } from '../../../../types/fastify';
 
 export interface CreateJurusanInput {
   nama: string;
-  kode?: string;
-  singkatan?: string;
+  kode?: string | null;
+  singkatan?: string | null;
 }
 
 export interface UpdateJurusanInput {
   nama?: string;
-  kode?: string;
-  singkatan?: string;
+  kode?: string | null;
+  singkatan?: string | null;
 }
 
 export interface JurusanResponse {

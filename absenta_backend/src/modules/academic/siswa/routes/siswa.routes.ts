@@ -145,6 +145,16 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.generateRfidBulk(request, reply);
   });
 
+  // POST /siswa/rfid/bulk-pair - Pair RFID in bulk for a class
+  fastify.post('/rfid/bulk-pair', {
+    preHandler: [
+        requireCapability('academic.students.update'),
+        organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.pairRfidBulk(request, reply);
+  });
+
   // POST /siswa/akademik/sync
   fastify.post('/akademik/sync', {
     preHandler: [

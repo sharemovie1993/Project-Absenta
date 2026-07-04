@@ -33,4 +33,32 @@ export class AcademicStatsController {
       });
     }
   }
+
+  /**
+   * Get Yearly Comparison Statistics
+   * GET /academic/stats/comparison
+   */
+  async getYearlyComparison(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      
+      const comparison = await this.academicStatsService.getYearlyComparison(tenantId);
+      
+      return reply.status(200).send({
+        success: true,
+        message: 'Yearly comparison statistics retrieved successfully',
+        data: comparison
+      });
+    } catch (error) {
+      console.error('Error getting yearly comparison stats:', error);
+      return reply.status(500).send({
+        success: false,
+        message: 'Failed to get yearly comparison statistics',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
 }

@@ -23,6 +23,7 @@ import './ewsSnapshot.job';
 // ── Billing & Subscription ────────────────────────────────────────────────────
 import './subscriptionRenewal.job';
 import './billingHealthScan.job';
+import './licensePullSync.job';
 
 // ── Trial & Notification ──────────────────────────────────────────────────────
 import './trial-reminder.job';
@@ -36,3 +37,6 @@ import './attendanceDigest.job';
 
 // ── Easy Tunnel ───────────────────────────────────────────────────────────────
 import './customDomainVerify.job';
+
+// ── Sarpras ───────────────────────────────────────────────────────────────────
+import './sarprasOverdueReminder.job';

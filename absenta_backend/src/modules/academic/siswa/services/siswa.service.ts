@@ -7,6 +7,7 @@ import { deleteSiswaCommand } from './commands/delete-siswa.command';
 import { generateRfidBulkCommand } from './commands/generate-rfid-bulk.command';
 import { generateRfidForSiswaCommand } from './commands/generate-rfid-for-siswa.command';
 import { importFromRowsCommand } from './commands/import-from-rows.command';
+import { pairRfidBulkCommand } from './commands/pair-rfid-bulk.command';
 import { sendParentAccessCommand } from './commands/send-parent-access.command';
 import { syncSiswaAkademikCommand } from './commands/sync-siswa-akademik.command';
 import { syncSiswaAkademikWithDefaultsCommand } from './commands/sync-siswa-akademik-with-defaults.command';
@@ -112,8 +113,12 @@ export class SiswaService {
     return generateRfidBulkCommand(tenantId, kelasId);
   }
 
-  async importFromRows(_rows: any[], _tenantId: string, _options: any): Promise<any> {
-    return importFromRowsCommand(_rows, _tenantId, _options);
+  async pairRfidBulk(tenantId: string, kelasId: string, rfids: string[]) {
+    return pairRfidBulkCommand(tenantId, kelasId, rfids);
+  }
+
+  async importFromRows(rows: any[], tenantId: string, options: any): Promise<any> {
+    return importFromRowsCommand(rows, tenantId, options);
   }
 
   async getImportReferenceData(tenantId: string) {

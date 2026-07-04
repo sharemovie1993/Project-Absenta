@@ -1,5 +1,10 @@
 import { PelanggaranService } from '../services/pelanggaran.service';
 import { sendResponse, sendError } from '../../../utils/response';
+import { z } from 'zod';
+import {
+  createPelanggaranSchema,
+  updatePelanggaranSchema
+} from '../services/kesiswaan-validation.schema';
 
 export class PelanggaranController {
   static async getAll(req: any, reply: any) {
@@ -32,16 +37,14 @@ export class PelanggaranController {
   static async create(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const data = req.body;
-      
-      // Ensure date is parsed correctly
-      if (data.tanggal) {
-        data.tanggal = new Date(data.tanggal);
-      }
+      const parsed = createPelanggaranSchema.parse(req.body);
 
-      const result = await PelanggaranService.create(tenant_id, data);
+      const result = await PelanggaranService.create(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Pelanggaran created successfully', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Failed to create pelanggaran', error);
     }
   }
@@ -50,15 +53,14 @@ export class PelanggaranController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const data = req.body;
+      const parsed = updatePelanggaranSchema.parse(req.body);
 
-      if (data.tanggal) {
-        data.tanggal = new Date(data.tanggal);
-      }
-
-      const result = await PelanggaranService.update(tenant_id, id, data);
+      const result = await PelanggaranService.update(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Pelanggaran updated successfully', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Failed to update pelanggaran', error);
     }
   }

@@ -4,37 +4,37 @@ import { userService } from '../../../user/services/user.service';
 import { DataScope } from '../../../../types/fastify';
 
 export interface CreateGuruInput {
-  user_id?: string;
-  nip?: string;
+  user_id?: string | null;
+  nip?: string | null;
   nama_guru: string;
-  no_rfid?: string;
-  email?: string;
+  no_rfid?: string | null;
+  email?: string | null;
   // Kontak & Pribadi
-  no_hp?: string;
-  alamat?: string;
-  tempat_lahir?: string;
-  tanggal_lahir?: Date | string;
-  jenis_kelamin?: string;
-  agama?: string;
-  status_kepegawaian?: string;
-  pendidikan_terakhir?: string;
+  no_hp?: string | null;
+  alamat?: string | null;
+  tempat_lahir?: string | null;
+  tanggal_lahir?: Date | string | null;
+  jenis_kelamin?: string | null;
+  agama?: string | null;
+  status_kepegawaian?: string | null;
+  pendidikan_terakhir?: string | null;
 }
 
 export interface UpdateGuruInput {
-  nip?: string;
-  nama_guru?: string;
-  no_rfid?: string;
-  status?: string;
-  email?: string;
+  nip?: string | null;
+  nama_guru?: string | null;
+  no_rfid?: string | null;
+  status?: string | null;
+  email?: string | null;
   // Kontak & Pribadi
-  no_hp?: string;
-  alamat?: string;
-  tempat_lahir?: string;
+  no_hp?: string | null;
+  alamat?: string | null;
+  tempat_lahir?: string | null;
   tanggal_lahir?: Date | string | null;
-  jenis_kelamin?: string;
-  agama?: string;
-  status_kepegawaian?: string;
-  pendidikan_terakhir?: string;
+  jenis_kelamin?: string | null;
+  agama?: string | null;
+  status_kepegawaian?: string | null;
+  pendidikan_terakhir?: string | null;
 }
 
 export interface GuruResponse {
@@ -296,7 +296,7 @@ export class GuruService {
     }
 
     // Resolve or create associated user
-    let associatedUserId: string | undefined = input.user_id;
+    let associatedUserId: string | undefined = input.user_id ?? undefined;
 
     if (associatedUserId) {
       // Check if user exists and is in the same tenant
@@ -414,7 +414,7 @@ export class GuruService {
     }
 
     // Sinkronisasi Email ke tabel User jika ada perubahan
-    if (input.email !== undefined && existingGuru.user_id) {
+    if (input.email !== undefined && input.email !== null && existingGuru.user_id) {
       const emailToUse = input.email.trim().toLowerCase();
       
       const currentUser = await prisma.user.findUnique({

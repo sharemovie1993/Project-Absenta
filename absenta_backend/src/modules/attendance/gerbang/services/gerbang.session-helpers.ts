@@ -275,6 +275,7 @@ export async function markManualAbsence(params: {
         kelas_nama_snapshot: (siswaInfo as any)?.Kelas?.nama_kelas || null,
         tingkat_snapshot: (tingkatData as any)?.tingkat ?? null,
         tahun_pelajaran_id_snapshot: (activeYear as any)?.id || null,
+        catatan: keterangan || null,
       } as any,
     });
     processingInfo.processing_steps!.push('record_created');

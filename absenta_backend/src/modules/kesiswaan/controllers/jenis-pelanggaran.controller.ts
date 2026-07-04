@@ -7,6 +7,11 @@ import {
   seedDefaultJenisPelanggaranForTenant,
   updateJenisPelanggaran
 } from '../services/jenis-pelanggaran.service';
+import { z } from 'zod';
+import {
+  createJenisPelanggaranSchema,
+  updateJenisPelanggaranSchema
+} from '../services/kesiswaan-validation.schema';
 
 export class JenisPelanggaranController {
   static async getAll(req: any, reply: any) {
@@ -22,11 +27,14 @@ export class JenisPelanggaranController {
   static async create(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { kategori, nama_pelanggaran, poin } = req.body;
+      const parsed = createJenisPelanggaranSchema.parse(req.body);
 
-      const result = await createJenisPelanggaran(tenant_id, { kategori, nama_pelanggaran, poin });
+      const result = await createJenisPelanggaran(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Jenis pelanggaran created successfully', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Failed to create jenis pelanggaran', error);
     }
   }
@@ -35,16 +43,19 @@ export class JenisPelanggaranController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const { kategori, nama_pelanggaran, poin } = req.body;
+      const parsed = updateJenisPelanggaranSchema.parse(req.body);
 
-      const result = await updateJenisPelanggaran(tenant_id, id, { kategori, nama_pelanggaran, poin });
+      const result = await updateJenisPelanggaran(tenant_id, id, parsed);
 
       if (result.count === 0) {
         return sendError(reply, 404, 'Jenis pelanggaran not found');
       }
 
       return sendResponse(reply, 200, true, 'Jenis pelanggaran updated successfully');
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Failed to update jenis pelanggaran', error);
     }
   }

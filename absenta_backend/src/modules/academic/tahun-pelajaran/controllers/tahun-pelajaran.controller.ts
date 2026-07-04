@@ -1,5 +1,5 @@
-
 import { tahunPelajaranService, CreateTahunPelajaranInput, UpdateTahunPelajaranInput } from '../services/tahun-pelajaran.service';
+import { createTahunPelajaranSchema, updateTahunPelajaranSchema } from '../services/tahun-pelajaran.schema';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
 
@@ -56,7 +56,7 @@ export class TahunPelajaranController {
   async createTahunPelajaran(req: any, reply: any): Promise<void> {
     try {
       const user = req.user as any;
-      const { tahun, is_active } = req.body;
+      const parsedBody = createTahunPelajaranSchema.parse(req.body);
 
       console.log('🔍 [DEBUG] CreateTahunPelajaran Access Check:', {
         userRole: user?.roleName,
@@ -65,18 +65,7 @@ export class TahunPelajaranController {
         isSystemSuperAdmin: isSystemSuperAdmin(user?.roleName, user?.tenantId)
       });
 
-      if (!tahun) {
-        reply.status(400).send({
-          success: false,
-          message: 'Tahun is required',
-        });
-        return;
-      }
-
-      const createTahunPelajaranInput: CreateTahunPelajaranInput = {
-        tahun,
-        is_active: is_active || false,
-      };
+      const createTahunPelajaranInput: CreateTahunPelajaranInput = parsedBody;
 
       const tahunPelajaran = await tahunPelajaranService.createTahunPelajaran(
         createTahunPelajaranInput,
@@ -101,12 +90,9 @@ export class TahunPelajaranController {
     try {
       const user = req.user as any;
       const { id } = req.params;
-      const { tahun, is_active } = req.body;
+      const parsedBody = updateTahunPelajaranSchema.parse(req.body);
 
-      const updateTahunPelajaranInput: UpdateTahunPelajaranInput = {
-        tahun,
-        is_active,
-      };
+      const updateTahunPelajaranInput: UpdateTahunPelajaranInput = parsedBody;
 
       const tahunPelajaran = await tahunPelajaranService.updateTahunPelajaran(
         id,

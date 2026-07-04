@@ -40,6 +40,14 @@ export async function sarprasRoutes(fastify: any) {
     preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware]
   }, assetController.createAsset.bind(assetController));
 
+  fastify.get('/assets/:id/qrcode', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.printQrCodes.bind(assetController));
+
+  fastify.post('/assets/qrcode', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.printQrCodes.bind(assetController));
+
   fastify.put('/assets/:id', {
     preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware]
   }, assetController.updateAsset.bind(assetController));
@@ -59,6 +67,36 @@ export async function sarprasRoutes(fastify: any) {
   fastify.get('/assets/import/template', {
     preHandler: [requireCapability('sarpras.inventory.manage')]
   }, assetController.getImportTemplate.bind(assetController));
+
+  // --- Consumables & Depreciation Reports ---
+  fastify.get('/assets/reports/depreciation', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.getDepreciationReport.bind(assetController));
+
+  fastify.get('/assets/consumables', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.getConsumables.bind(assetController));
+
+  fastify.put('/assets/consumables/:id/threshold', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware]
+  }, assetController.updateConsumableThreshold.bind(assetController));
+
+  fastify.post('/assets/consumables/:id/consume', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware]
+  }, assetController.consumeAsset.bind(assetController));
+
+  // --- Real-time Dashboard ---
+  fastify.get('/assets/dashboard/realtime', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.getRealtimeStats.bind(assetController));
+
+  fastify.get('/assets/scan/:code', {
+    preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]
+  }, assetController.scanAsset.bind(assetController));
+
+  fastify.post('/assets/opname', {
+    preHandler: [requireCapability('sarpras.inventory.manage'), organizationalScopeMiddleware]
+  }, assetController.runStockOpname.bind(assetController));
 
   // --- Loans ---
   fastify.get('/loans', {
@@ -93,4 +131,8 @@ export async function sarprasRoutes(fastify: any) {
   fastify.put('/repairs/:id', {
     preHandler: [requireCapability('sarpras.repairs.manage'), organizationalScopeMiddleware]
   }, repairController.updateRepair.bind(repairController));
+
+  fastify.get('/repairs/calendar', {
+    preHandler: [requireCapability('sarpras.repairs.view.list'), organizationalScopeMiddleware]
+  }, repairController.getRepairsCalendar.bind(repairController));
 }

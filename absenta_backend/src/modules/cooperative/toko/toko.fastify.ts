@@ -1,12 +1,25 @@
 // @ts-nocheck
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TokoService } from './toko.service';
+import { EWalletService } from './ewallet.service';
 import { ProductCategoryService } from './product-category.service';
 import { OpnameService } from './opname.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { smartReadSheet } from '../../../utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
+import { z } from 'zod';
+import {
+    createProductSchema,
+    updateProductSchema,
+    posCheckoutSchema,
+    adjustStockSchema,
+    createProductCategorySchema,
+    updateProductCategorySchema,
+    createOpnameSessionSchema,
+    updateOpnameSessionItemsSchema,
+    rfidCheckoutSchema
+} from '../services/cooperative-validation.schema';
 
 export default async function tokoRoutes(fastify: any) {
 
@@ -31,10 +44,17 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const product = await TokoService.createProduct(tenantId, req.body as any, operatorId);
+            const parsed = createProductSchema.parse(req.body);
+            const product = await TokoService.createProduct(tenantId, parsed, operatorId);
             reply.code(201).send(product);
-        } catch (error) {
-            reply.code(500).send({ error: 'Failed to create product' });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            reply.code(500).send({ error: error.message || 'Failed to create product' });
         }
     });
 
@@ -42,10 +62,17 @@ export default async function tokoRoutes(fastify: any) {
     fastify.put('/:id', { preHandler: [requireCapability('cooperative.store.products.update')] }, async (req: any, reply: any) => {
         try {
             const operatorId = req.user?.id || req.user?.userId || null;
-            const product = await TokoService.updateProduct(req.params.id, req.body as any, operatorId);
+            const parsed = updateProductSchema.parse(req.body);
+            const product = await TokoService.updateProduct(req.params.id, parsed, operatorId);
             return product;
-        } catch (error) {
-            reply.code(500).send({ error: 'Failed to update product' });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            reply.code(500).send({ error: error.message || 'Failed to update product' });
         }
     });
 
@@ -77,10 +104,17 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const { memberId, items, paymentMethod, cashAmount, changeAmount, pin, voucherCode } = req.body as any;
+            const parsed = posCheckoutSchema.parse(req.body);
+            const { memberId, items, paymentMethod, cashAmount, changeAmount, pin, voucherCode } = parsed;
             const sale = await TokoService.processSale(tenantId, memberId, items, { paymentMethod, cashAmount, changeAmount, operatorId, pin, voucherCode });
             reply.code(201).send(sale);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message.includes('not found')) {
                 reply.code(404).send({ message: error.message });
             } else if (
@@ -125,10 +159,17 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const { newStock, reason } = req.body as any;
-            const product = await TokoService.adjustStock(tenantId, req.params.id, Number(newStock), reason, operatorId);
+            const parsed = adjustStockSchema.parse(req.body);
+            const { newStock, reason } = parsed;
+            const product = await TokoService.adjustStock(tenantId, req.params.id, newStock, reason, operatorId);
             return product;
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message === 'Product not found') {
                 reply.code(404).send({ message: 'Product not found' });
             } else {
@@ -192,10 +233,16 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const { name, description } = req.body as any;
-            const category = await ProductCategoryService.createCategory(tenantId, name, description, operatorId);
+            const parsed = createProductCategorySchema.parse(req.body);
+            const category = await ProductCategoryService.createCategory(tenantId, parsed.name, parsed.description, operatorId);
             reply.code(201).send(category);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             reply.code(400).send({ message: error.message || 'Failed to create category' });
         }
     });
@@ -205,10 +252,16 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const { name, description } = req.body as any;
-            const category = await ProductCategoryService.updateCategory(req.params.id, tenantId, name, description, operatorId);
+            const parsed = updateProductCategorySchema.parse(req.body);
+            const category = await ProductCategoryService.updateCategory(req.params.id, tenantId, parsed.name, parsed.description, operatorId);
             return category;
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             reply.code(400).send({ message: error.message || 'Failed to update category' });
         }
     });
@@ -256,10 +309,16 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
-            const { notes, categoryFilter } = req.body as any;
-            const session = await OpnameService.createSession(tenantId, operatorId, notes, categoryFilter);
+            const parsed = createOpnameSessionSchema.parse(req.body);
+            const session = await OpnameService.createSession(tenantId, operatorId, parsed.notes, parsed.categoryFilter);
             reply.code(201).send(session);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             reply.code(400).send({ message: error.message || 'Failed to create opname session' });
         }
     });
@@ -268,10 +327,16 @@ export default async function tokoRoutes(fastify: any) {
     fastify.put('/opname/:id/items', { preHandler: [requireCapability('cooperative.store.products.update')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { items } = req.body as any;
-            const updated = await OpnameService.updateSessionItems(tenantId, req.params.id, items);
+            const parsed = updateOpnameSessionItemsSchema.parse(req.body);
+            const updated = await OpnameService.updateSessionItems(tenantId, req.params.id, parsed.items);
             return updated;
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             reply.code(400).send({ message: error.message || 'Failed to update physical counts' });
         }
     });
@@ -426,6 +491,53 @@ export default async function tokoRoutes(fastify: any) {
         } catch (error: any) {
             console.error('Error importing products:', error);
             reply.code(500).send({ message: error.message || 'Failed to import products' });
+        }
+    });
+
+    // --- E-WALLET RFID INTEGRATION ---
+
+    // GET /rfid/balance/:rfid
+    fastify.get('/rfid/balance/:rfid', { preHandler: [requireCapability('cooperative.store.orders.manage')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const rfid = req.params.rfid;
+            const balance = await EWalletService.getBalanceByRfid(tenantId, rfid);
+            return balance;
+        } catch (error: any) {
+            reply.code(400).send({ message: error.message || 'Gagal mengambil saldo E-Wallet' });
+        }
+    });
+
+    // POST /rfid/checkout
+    fastify.post('/rfid/checkout', { preHandler: [requireCapability('cooperative.store.orders.manage')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const operatorId = req.user?.id || req.user?.userId || null;
+            const parsed = rfidCheckoutSchema.parse(req.body);
+            const { rfid, items, pin, voucherCode } = parsed;
+            
+            const sale = await EWalletService.processRfidPayment(tenantId, rfid, items, {
+                pin,
+                operatorId,
+                voucherCode
+            });
+            
+            reply.code(201).send(sale);
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            if (error.message.includes('tidak mencukupi') || 
+                error.message.includes('PIN') || 
+                error.message.includes('tidak terdaftar')
+            ) {
+                reply.code(400).send({ message: error.message });
+            } else {
+                reply.code(500).send({ message: error.message || 'Gagal memproses pembayaran RFID' });
+            }
         }
     });
 }

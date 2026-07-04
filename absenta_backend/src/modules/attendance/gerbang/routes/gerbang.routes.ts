@@ -45,6 +45,50 @@ export async function gerbangRoutes(fastify: any) {
       }
     }
   });
+
+  fastify.post('/offline-sync', {
+    preHandler: [requireCapability('attendance.gate.tap.entry')],
+    handler: gerbangController.syncOfflineTaps.bind(gerbangController),
+    schema: {
+      description: 'Sync offline taps from IoT devices',
+      tags: ['Gerbang'],
+      body: {
+        type: 'object',
+        required: ['taps'],
+        properties: {
+          taps: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['siswa_id', 'arah', 'timestamp'],
+              properties: {
+                siswa_id: { type: 'string' },
+                arah: { type: 'string', enum: ['GERBANG_DATANG', 'GERBANG_PULANG'] },
+                timestamp: { type: 'string', format: 'date-time' },
+                rfid: { type: 'string' },
+                device_id: { type: 'string' }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  fastify.post('/stress-test', {
+    preHandler: [requireCapability('system.performance.test')],
+    handler: gerbangController.stressTest.bind(gerbangController),
+    schema: {
+      description: 'Run stress test for gate taps',
+      tags: ['Gerbang'],
+      body: {
+        type: 'object',
+        properties: {
+          count: { type: 'number', default: 100 }
+        }
+      }
+    }
+  });
   
   // Face verification + tap (1:1)
   fastify.post('/face-verify', {

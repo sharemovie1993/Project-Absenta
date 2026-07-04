@@ -1,9 +1,9 @@
 import { gerbangService } from '../services/gerbang.service';
+import { gerbangTapSchema, faceVerifySchema, faceEnrollSchema } from '../services/gerbang.schema';
 import { buildAttendanceFeed } from '@/modules/attendance/notify/controllers/notify.controller';
 import { SocketMonitor } from '@/infra/realtime/socket.monitor';
 import { GerbangTapInput } from '../types/gerbang.types';
 import { JenisTap, AbsensiMode, RoleName } from '@/constants/enums';
-import type { FaceVerifyInput, FaceEnrollInput } from '../types/gerbang.types';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { emitDomainEvent } from '@/infra/event-bus';
 import { gerbangDb as prisma } from '../services/repositories/gerbang.db';
@@ -47,7 +47,8 @@ export const gerbangController = {
 
   async tap(request: any, reply: any) {
     try {
-      const { siswa_id, arah, device_id, rfid, waktu_tap, is_offline_sync } = request.body as GerbangTapInput;
+      const parsedBody = gerbangTapSchema.parse(request.body);
+      const { siswa_id, arah, device_id, rfid, waktu_tap, is_offline_sync } = parsedBody;
       const tenantId = request.tenantId ?? request.user?.tenantId;
       const roleName = request.user?.roleName || request.user?.Role?.name;
       const userId = request.user?.id;
@@ -369,18 +370,81 @@ export const gerbangController = {
     }
   },
 
+  async syncOfflineTaps(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { taps } = request.body;
+
+      if (!Array.isArray(taps)) {
+        return reply.status(400).send({ success: false, message: 'Payload "taps" harus berupa array' });
+      }
+
+      const result = await gerbangService.syncOfflineTaps(tenantId, taps);
+      return reply.status(200).send({
+        success: true,
+        message: `Sinkronisasi selesai: ${result.success} berhasil, ${result.failed} gagal`,
+        data: result
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: 'Internal Server Error',
+        error: error.message
+      });
+    }
+  },
+
+  async stressTest(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { count } = request.body;
+      const roleName = request.user?.roleName || request.user?.Role?.name;
+
+      if (roleName !== 'SUPERADMIN') {
+        return reply.status(403).send({ success: false, message: 'Only SUPERADMIN can run stress tests' });
+      }
+
+      const siswa = await prisma.siswa.findMany({
+        where: { tenant_id: tenantId, status: 'AKTIF' },
+        take: count || 100,
+        select: { id: true }
+      });
+
+      const startTime = Date.now();
+      const results = await Promise.all(siswa.map(s => 
+        gerbangService.tap({
+          siswa_id: s.id,
+          arah: JenisTap.GERBANG_DATANG,
+          device_id: 'STRESS_TEST_BOT'
+        }, 'SYSTEM', tenantId).catch(e => ({ success: false, error: e.message }))
+      ));
+
+      const duration = Date.now() - startTime;
+      const successCount = results.filter((r: any) => r.success).length;
+
+      return reply.status(200).send({
+        success: true,
+        metrics: {
+          total_attempted: siswa.length,
+          success: successCount,
+          failed: siswa.length - successCount,
+          total_duration_ms: duration,
+          avg_ms_per_tap: duration / (siswa.length || 1)
+        }
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
   async faceVerifyTap(request: any, reply: any) {
     try {
-      const { siswa_id, arah, image_base64, embedding } = request.body as FaceVerifyInput;
+      const parsedBody = faceVerifySchema.parse(request.body);
+      const { siswa_id, arah, image_base64, embedding } = parsedBody;
       const tenantId = request.tenantId ?? request.user?.tenantId;
       const userId = request.user?.id;
       const roleName = request.user?.roleName || request.user?.Role?.name;
       const attendanceMode = request.attendanceMode as AbsensiMode;
-
-      if (!arah || !image_base64) {
-        reply.status(400);
-        return { success: false, message: 'arah dan image_base64 wajib diisi' };
-      }
 
       let allowed = false;
       if (['SUPERADMIN', 'ADMIN'].includes(roleName)) {
@@ -446,14 +510,11 @@ export const gerbangController = {
 
   async faceEnroll(request: any, reply: any) {
     try {
-      const { siswa_id, image_base64, source, embedding_type, model_name, embedding } = request.body as FaceEnrollInput;
+      const parsedBody = faceEnrollSchema.parse(request.body);
+      const { siswa_id, image_base64, source, embedding_type, model_name, embedding } = parsedBody;
       const tenantId = request.tenantId ?? request.user?.tenantId;
       const userId = request.user?.id;
       const roleName = request.user?.roleName || request.user?.Role?.name;
-      if (!siswa_id || !image_base64) {
-        reply.status(400);
-        return { success: false, message: 'siswa_id dan image_base64 wajib diisi' };
-      }
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized' };

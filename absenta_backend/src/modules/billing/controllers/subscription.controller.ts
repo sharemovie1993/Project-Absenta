@@ -2,7 +2,10 @@ import { subscriptionService, CreateSubscriptionInput, UpdateSubscriptionInput }
 import { RoleName } from '../../../constants/enums';
 import { billingService } from '../services/billing.service';
 import { isSystemSuperAdmin } from '@/utils/rbac';
+import { z } from 'zod';
+import { licenseWebhookSchema } from '../services/subscription.schema';
 import { billingDb as prisma } from '../services/repositories/billing.db';
+import { tenantEntitlementService } from '../services/tenant-entitlement.service';
 import { emitDomainEvent } from '@/infra/event-bus';
 import { cancelDowngradeCommand, scheduleDowngradeCommand } from '../services/commands/schedule-downgrade.command';
 import { scheduleCancelCommand, undoCancelCommand } from '../services/commands/schedule-cancel.command';
@@ -170,6 +173,9 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
           }
         });
       }
+      
+      // Invalidate features cache to apply new entitlements instantly
+      await tenantEntitlementService.invalidateTenantFeaturesCache(tenantId);
     }
   } catch (e: any) {
     console.error('[SYNC SUBSCRIPTION] Failed to sync local subscriptions with licensing server:', e.stack);
@@ -1421,9 +1427,25 @@ export const subscriptionController = {
 
   async handleLicenseWebhook(request: any, reply: any) {
     try {
-      const { license_key, tenant_id } = request.body || {};
-      
+      const signature = request.headers['x-license-signature'];
       const localLicenseKey = process.env.LICENSE_KEY;
+      const secret = process.env.LICENSE_SECRET || localLicenseKey;
+
+      if (signature && secret) {
+        const crypto = require('crypto');
+        const expectedSignature = crypto
+          .createHmac('sha256', secret)
+          .update(JSON.stringify(request.body || {}))
+          .digest('hex');
+        if (signature !== expectedSignature) {
+          reply.status(401);
+          return { success: false, message: 'Invalid signature verification' };
+        }
+      }
+
+      const parsedBody = licenseWebhookSchema.parse(request.body || {});
+      const { license_key, tenant_id } = parsedBody;
+      
       if (!localLicenseKey || !license_key || String(license_key).trim() !== localLicenseKey.trim()) {
         reply.status(400);
         return { success: false, message: 'Invalid license key' };
@@ -1446,6 +1468,14 @@ export const subscriptionController = {
       reply.status(200);
       return { success: true, message: 'Real-time sync triggered successfully' };
     } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        reply.status(400);
+        return {
+          success: false,
+          message: e.errors.map(err => err.message).join(', '),
+          errors: e.errors
+        };
+      }
       console.error('[LICENSE CALLBACK ERROR]', e);
       reply.status(500);
       return { success: false, message: e.message || 'Callback failed' };

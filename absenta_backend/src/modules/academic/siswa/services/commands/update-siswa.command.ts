@@ -3,6 +3,7 @@ import { parentAuthService } from '@/modules/parent-app/services/parent-auth.ser
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import { siswaDb } from '../repositories/siswa.db';
 import type { SiswaResponse, UpdateSiswaInput } from '../siswa.types';
+import { updateSiswaSchema } from '../siswa.schema';
 
 export async function updateSiswaCommand(
   siswaId: string,
@@ -10,6 +11,10 @@ export async function updateSiswaCommand(
   scope: { tenantId: string; org: any; userId?: string }
 ): Promise<SiswaResponse> {
   const { tenantId, org, userId } = scope;
+  
+  // Validate input with Zod
+  const validatedInput = updateSiswaSchema.parse(input);
+
   const whereClause: any = { id: siswaId, tenant_id: tenantId };
 
   // Apply Isolate/Scope filter from Organization Engine
@@ -30,7 +35,7 @@ export async function updateSiswaCommand(
     throw new Error('Siswa not found');
   }
 
-  const { orang_tua, ...restOfInput } = input;
+  const { orang_tua, email, ...restOfInput } = validatedInput;
   
   // Whitelist of valid Siswa schema fields to prevent Prisma crashes from extra Excel columns
   const validFields = [
@@ -50,10 +55,10 @@ export async function updateSiswaCommand(
     }
   });
 
-  if (input.user_id && input.user_id !== existingSiswa.user_id) {
+  if (validatedInput.user_id && validatedInput.user_id !== existingSiswa.user_id) {
     const user = await siswaDb.user.findFirst({
       where: {
-        id: input.user_id,
+        id: validatedInput.user_id,
         tenant_id: existingSiswa.tenant_id,
       },
     });
@@ -64,7 +69,7 @@ export async function updateSiswaCommand(
 
     const otherSiswa = await siswaDb.siswa.findFirst({
       where: {
-        user_id: input.user_id,
+        user_id: validatedInput.user_id,
         tenant_id: existingSiswa.tenant_id,
         id: { not: siswaId },
       },
@@ -74,12 +79,12 @@ export async function updateSiswaCommand(
       throw new Error('New user is already linked to another siswa profile');
     }
 
-    dataToUpdate.user_id = input.user_id;
+    dataToUpdate.user_id = validatedInput.user_id;
   }
 
   // Handle email synchronization with User record
-  if (input.email && input.email.trim() !== '') {
-    const targetEmail = input.email.trim().toLowerCase();
+  if (email && email.trim() !== '') {
+    const targetEmail = email.trim().toLowerCase();
     
     if (existingSiswa.user_id) {
       const linkedUser = await siswaDb.user.findUnique({
@@ -117,14 +122,14 @@ export async function updateSiswaCommand(
         throw new Error('Role SISWA tidak ditemukan');
       }
       
-      const defaultPass = input.nisn || input.nis || existingSiswa.nisn || existingSiswa.nis || '123456';
+      const defaultPass = validatedInput.nisn || validatedInput.nis || existingSiswa.nisn || existingSiswa.nis || '123456';
       const hashedPassword = await bcrypt.hash(defaultPass, 12);
       
       const newUser = await siswaDb.user.create({
         data: {
           email: targetEmail,
           password: hashedPassword,
-          full_name: input.nama_siswa || existingSiswa.nama_siswa,
+          full_name: validatedInput.nama_siswa || existingSiswa.nama_siswa,
           role_id: siswaRole.id,
           tenant_id: existingSiswa.tenant_id,
           email_verified: false,
@@ -137,7 +142,6 @@ export async function updateSiswaCommand(
   }
 
   // Sanitize data: don't overwrite with null/empty for important fields
-  // This prevents accidental clearing of identity data if the admin leaves columns empty in Excel
   const protectedFields = ['nama_siswa', 'jenis_kelamin', 'kelas_id', 'nis', 'nisn', 'nik', 'no_rfid'];
   protectedFields.forEach(field => {
     if (dataToUpdate[field] === null || dataToUpdate[field] === undefined || String(dataToUpdate[field]).trim() === '') {
@@ -159,48 +163,35 @@ export async function updateSiswaCommand(
     let normalizedNew = (newValue === null || newValue === undefined) ? '' : String(newValue).trim();
     let normalizedOld = (oldValue === null || oldValue === undefined) ? '' : String(oldValue).trim();
     
-    // Strictly compare IDs and identity fields (Don't ignore leading zeros!)
     if (['nis', 'nisn', 'nik', 'no_rfid'].includes(key)) {
       if (normalizedNew !== normalizedOld) {
         hasChanges = true;
       }
     } else if (['nama_siswa', 'nama_ayah', 'nama_ibu', 'alamat', 'tempat_lahir'].includes(key)) {
-      // For names or addresses, be case-insensitive to avoid redundant updates
       if (normalizedNew.toLowerCase() !== normalizedOld.toLowerCase()) {
         hasChanges = true;
       }
     } else if (normalizedNew !== normalizedOld) {
-       // Default comparison for other fields
        hasChanges = true;
     }
 
-    // Date comparison
     if (!hasChanges && newValue instanceof Date && oldValue instanceof Date) {
       if (Math.abs(newValue.getTime() - oldValue.getTime()) > 1000) {
         hasChanges = true;
       }
     }
     
-    if (hasChanges) {
-      console.log(`[DIFF] Field "${key}" changed: "${normalizedOld}" -> "${normalizedNew}"`);
-      break;
-    }
+    if (hasChanges) break;
   }
 
-
-
   if (hasChanges) {
-    // Final Type Conversion to satisfy Prisma (especially for numbers from Excel)
     const stringFields = ['nis', 'nisn', 'nik', 'no_hp', 'no_rfid', 'nama_siswa', 'alamat', 'tempat_lahir'];
     stringFields.forEach(field => {
       if (dataToUpdate[field] !== undefined && dataToUpdate[field] !== null) {
         let val = String(dataToUpdate[field]).trim();
-        
-        // Smart Fix for Phone Numbers: If starts with 8, prepend 0
         if (field === 'no_hp' && val.startsWith('8') && val.length >= 9) {
           val = '0' + val;
         }
-        
         dataToUpdate[field] = val;
       }
     });
@@ -239,7 +230,7 @@ export async function updateSiswaCommand(
     }
   }
 
-  // Auto-sync to SiswaAkademik upon update (Solusi Redundansi Sempurna!)
+  // Auto-sync to SiswaAkademik upon update
   const currentSiswa: any = await siswaDb.siswa.findUnique({
     where: { id: siswaId },
     select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, status: true, nama_siswa: true }
@@ -267,13 +258,12 @@ export async function updateSiswaCommand(
           status: (currentSiswa.status || 'AKTIF') as any,
         },
       });
-      console.log(`[AUTO-SYNC] Successfully synced SiswaAkademik upon update for student: ${currentSiswa.nama_siswa}`);
     } catch (e: any) {
       console.error('[AUTO-SYNC] Failed to sync SiswaAkademik upon update:', e.message || e);
     }
   }
 
-  if (input.orang_tua && Array.isArray(input.orang_tua)) {
+  if (validatedInput.orang_tua && Array.isArray(validatedInput.orang_tua)) {
     const currentLinks = await siswaDb.orangTuaSiswa.findMany({
       where: { siswa_id: siswaId },
       select: { id: true, orang_tua_id: true },
@@ -281,7 +271,7 @@ export async function updateSiswaCommand(
 
     const processedParentIds: string[] = [];
 
-    for (const ot of input.orang_tua) {
+    for (const ot of validatedInput.orang_tua) {
       let parentId = (ot as any).id;
       const { id, ...otData } = ot as any;
 
@@ -345,7 +335,7 @@ export async function updateSiswaCommand(
         where: { id: link.id },
       });
     }
-  } else if (Object.prototype.hasOwnProperty.call(input, 'orang_tua')) {
+  } else if (Object.prototype.hasOwnProperty.call(validatedInput, 'orang_tua')) {
     await siswaDb.orangTuaSiswa.deleteMany({
       where: { siswa_id: siswaId },
     });
@@ -405,4 +395,3 @@ export async function updateSiswaCommand(
 
   return formattedSiswa as any;
 }
-

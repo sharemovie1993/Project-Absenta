@@ -3,6 +3,11 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { PPOBService } from './ppob.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { z } from 'zod';
+import {
+    createPpobProductSchema,
+    createPpobTransactionSchema
+} from '../services/cooperative-validation.schema';
 
 const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
@@ -18,20 +23,36 @@ export default async function ppobRoutes(fastify: any) {
 
     // Create PPOB Product (Admin)
     fastify.post('/', { preHandler: [requireCapability('cooperative.ppob.manage.products')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const data = req.body as any;
-        const product = await PPOBService.createProduct(tenantId, data);
-        return reply.send({ message: 'PPOB Product created', data: product });
+        try {
+            const tenantId = getTenantId(req);
+            const parsed = createPpobProductSchema.parse(req.body);
+            const product = await PPOBService.createProduct(tenantId, parsed);
+            return reply.send({ message: 'PPOB Product created', data: product });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.status(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            return reply.status(500).send({ message: error.message || 'Failed to create PPOB product' });
+        }
     });
 
     // Create Transaction
     fastify.post('/transaction', { preHandler: [requireCapability('cooperative.ppob.transact')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const data = req.body as any;
         try {
-            const transaction = await PPOBService.createTransaction(tenantId, data);
+            const tenantId = getTenantId(req);
+            const parsed = createPpobTransactionSchema.parse(req.body);
+            const transaction = await PPOBService.createTransaction(tenantId, parsed);
             return reply.send({ message: 'Transaction created', data: transaction });
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.status(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             return reply.status(400).send({ message: error.message });
         }
     });

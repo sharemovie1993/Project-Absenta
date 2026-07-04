@@ -1,5 +1,7 @@
 import { sendResponse, sendError } from '../../../utils/response';
 import { StrukturKurikulumService } from '../services/struktur-kurikulum.service';
+import { strukturKurikulumUpsertSchema } from '../services/kurikulum.schema';
+import { z } from 'zod';
 
 export class StrukturKurikulumController {
   static async getAll(req: any, reply: any) {
@@ -22,11 +24,18 @@ export class StrukturKurikulumController {
   static async upsert(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const data = req.body;
+      const parsed = strukturKurikulumUpsertSchema.parse(req.body);
       
-      const result = await StrukturKurikulumService.upsert(tenant_id, data);
+      const result = await StrukturKurikulumService.upsert(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Data saved successfully', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return sendError(reply, 500, 'Failed to save data', error);
     }
   }

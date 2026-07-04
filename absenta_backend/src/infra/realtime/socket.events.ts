@@ -86,5 +86,31 @@ export function setupSocketEvents(io: Server, _ioApi: Server) {
        }
     });
 
+    // Subscribe to HUBIN updates
+    sub.subscribe('events:hubin_activity_update', (message) => {
+       try {
+         const payload = JSON.parse(message);
+         if (payload.tenant_id) {
+           const tenantRoom = `tenant:${payload.tenant_id}`;
+           io.to(tenantRoom).emit('hubin_activity_update', payload);
+         }
+       } catch (e) {
+         console.error('[WS EVENTS] Error processing hubin activity update:', e);
+       }
+    });
+
+    // Subscribe to SARPRAS updates
+    sub.subscribe('events:sarpras_dashboard_update', (message) => {
+       try {
+         const payload = JSON.parse(message);
+         if (payload.tenant_id) {
+           const tenantRoom = `tenant:${payload.tenant_id}`;
+           io.to(tenantRoom).emit('sarpras_dashboard_update', payload);
+         }
+       } catch (e) {
+         console.error('[WS EVENTS] Error processing sarpras dashboard update:', e);
+       }
+    });
+
   });
 }

@@ -1,18 +1,27 @@
 import { BpbkService } from '../services/bpbk.service';
 import { sendResponse, sendError } from '../../../utils/response';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
+import { z } from 'zod';
+import { 
+  kasusBKSchema, updateKasusBKSchema,
+  konselingSiswaSchema, updateKonselingSchema,
+  pemanggilanOrangTuaSchema, updatePemanggilanSchema,
+  homeVisitSchema, updateHomeVisitSchema,
+  asesmenSiswaSchema, updateAsesmenSchema,
+  rujukanKasusSchema, updateRujukanSchema,
+  ewsWeightsSchema
+} from '../services/bpbk.schema';
 
 export class BpbkController {
   // === Kasus BK ===
   static async createKasusBK(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;
-      const data = req.body;
-      if (data.tanggal_kasus) data.tanggal_kasus = new Date(data.tanggal_kasus);
+      const data = kasusBKSchema.parse(req.body);
       const result = await BpbkService.createKasusBK(tenant_id, data, userId);
       return sendResponse(reply, 201, true, 'Kasus BK berhasil dibuka', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal membuka kasus BK', error);
+      return sendError(reply, 400, 'Gagal membuka kasus BK', error);
     }
   }
 
@@ -20,12 +29,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal_kasus) data.tanggal_kasus = new Date(data.tanggal_kasus);
+      const data = updateKasusBKSchema.parse(req.body);
       const result = await BpbkService.updateKasusBK(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Kasus BK berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui kasus BK', error);
+      return sendError(reply, 400, 'Gagal memperbarui kasus BK', error);
     }
   }
 
@@ -67,12 +75,11 @@ export class BpbkController {
   static async createKonseling(req: any, reply: any) {
     try {
       const { tenant_id, id: petugas_id } = req.user!;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = konselingSiswaSchema.parse(req.body);
       const result = await BpbkService.createKonseling(tenant_id, { ...data, petugas_id }, petugas_id);
       return sendResponse(reply, 201, true, 'Sesi konseling berhasil dicatat', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal mencatat sesi konseling', error);
+      return sendError(reply, 400, 'Gagal mencatat sesi konseling', error);
     }
   }
 
@@ -80,12 +87,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = updateKonselingSchema.parse(req.body);
       const result = await BpbkService.updateKonseling(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Sesi konseling berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui sesi konseling', error);
+      return sendError(reply, 400, 'Gagal memperbarui sesi konseling', error);
     }
   }
 
@@ -115,12 +121,11 @@ export class BpbkController {
   static async createPemanggilan(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;
-      const data = req.body;
-      if (data.tanggal_pemanggilan) data.tanggal_pemanggilan = new Date(data.tanggal_pemanggilan);
+      const data = pemanggilanOrangTuaSchema.parse(req.body);
       const result = await BpbkService.createPemanggilan(tenant_id, data, userId);
       return sendResponse(reply, 201, true, 'Pemanggilan orang tua berhasil dibuat', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal membuat pemanggilan orang tua', error);
+      return sendError(reply, 400, 'Gagal membuat pemanggilan orang tua', error);
     }
   }
 
@@ -138,13 +143,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal_pemanggilan) data.tanggal_pemanggilan = new Date(data.tanggal_pemanggilan);
-      if (data.tanggal_pertemuan) data.tanggal_pertemuan = new Date(data.tanggal_pertemuan);
+      const data = updatePemanggilanSchema.parse(req.body);
       const result = await BpbkService.updatePemanggilan(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Status pemanggilan berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui status pemanggilan', error);
+      return sendError(reply, 400, 'Gagal memperbarui status pemanggilan', error);
     }
   }
 
@@ -174,12 +177,11 @@ export class BpbkController {
   static async createHomeVisit(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = homeVisitSchema.parse(req.body);
       const result = await BpbkService.createHomeVisit(tenant_id, data, userId);
       return sendResponse(reply, 201, true, 'Log kunjungan rumah berhasil dicatat', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal mencatat log kunjungan rumah', error);
+      return sendError(reply, 400, 'Gagal mencatat log kunjungan rumah', error);
     }
   }
 
@@ -187,12 +189,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = updateHomeVisitSchema.parse(req.body);
       const result = await BpbkService.updateHomeVisit(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Log kunjungan rumah berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui log kunjungan rumah', error);
+      return sendError(reply, 400, 'Gagal memperbarui log kunjungan rumah', error);
     }
   }
 
@@ -222,12 +223,11 @@ export class BpbkController {
   static async createAsesmen(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = asesmenSiswaSchema.parse(req.body);
       const result = await BpbkService.createAsesmen(tenant_id, data, userId);
       return sendResponse(reply, 201, true, 'Hasil asesmen berhasil disimpan', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal menyimpan hasil asesmen', error);
+      return sendError(reply, 400, 'Gagal menyimpan hasil asesmen', error);
     }
   }
 
@@ -235,12 +235,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = updateAsesmenSchema.parse(req.body);
       const result = await BpbkService.updateAsesmen(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Hasil asesmen berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui hasil asesmen', error);
+      return sendError(reply, 400, 'Gagal memperbarui hasil asesmen', error);
     }
   }
 
@@ -270,12 +269,11 @@ export class BpbkController {
   static async createRujukan(req: any, reply: any) {
     try {
       const { tenant_id, id: userId } = req.user!;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = rujukanKasusSchema.parse(req.body);
       const result = await BpbkService.createRujukan(tenant_id, data, userId);
       return sendResponse(reply, 201, true, 'Disposisi rujukan berhasil dicatat', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal mencatat disposisi rujukan', error);
+      return sendError(reply, 400, 'Gagal mencatat disposisi rujukan', error);
     }
   }
 
@@ -283,12 +281,11 @@ export class BpbkController {
     try {
       const { tenant_id, id: userId } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
+      const data = updateRujukanSchema.parse(req.body);
       const result = await BpbkService.updateRujukan(tenant_id, id, data, userId);
       return sendResponse(reply, 200, true, 'Disposisi rujukan berhasil diperbarui', result);
     } catch (error) {
-      return sendError(reply, 500, 'Gagal memperbarui disposisi rujukan', error);
+      return sendError(reply, 400, 'Gagal memperbarui disposisi rujukan', error);
     }
   }
 
@@ -453,6 +450,45 @@ export class BpbkController {
       return sendResponse(reply, 200, true, 'Log audit BK berhasil diambil', result);
     } catch (error) {
       return sendError(reply, 500, 'Gagal mengambil log audit BK', error);
+    }
+  }
+
+  static async getCalendarEvents(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const query = req.query || {};
+      const result = await BpbkService.getCalendarEvents(tenant_id, query);
+      return sendResponse(reply, 200, true, 'Jadwal kalender BK berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil jadwal kalender BK', error);
+    }
+  }
+
+  static async getEwsWeights(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await BpbkService.getEwsWeights(tenant_id);
+      return sendResponse(reply, 200, true, 'Bobot parameter EWS berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil bobot parameter EWS', error);
+    }
+  }
+
+  static async updateEwsWeights(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsedBody = ewsWeightsSchema.parse(req.body);
+      const result = await BpbkService.updateEwsWeights(tenant_id, parsedBody);
+      return sendResponse(reply, 200, true, 'Bobot parameter EWS berhasil diperbarui', result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
+      return sendError(reply, 500, 'Gagal memperbarui bobot parameter EWS', error);
     }
   }
 }

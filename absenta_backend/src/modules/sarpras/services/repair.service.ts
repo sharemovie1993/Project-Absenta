@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { activityLogService } from '../../activity/services/activity-log.service';
+import { AssetService } from './asset.service';
 
 export class RepairService {
   static async createRepair(tenantId: string, data: {
@@ -8,6 +9,7 @@ export class RepairService {
     teknisi?: string;
     biaya?: number;
     deskripsi?: string;
+    foto_kerusakan?: string;
   }, scope?: any, userId?: string) {
     // Verify asset exists and belongs to tenant
     const asset = await prisma.sarprasAsset.findFirst({
@@ -32,7 +34,8 @@ export class RepairService {
           teknisi: data.teknisi,
           biaya: data.biaya ? new Prisma.Decimal(data.biaya) : undefined,
           deskripsi: data.deskripsi,
-          status: 'PROSES'
+          status: 'PROSES',
+          foto_kerusakan: data.foto_kerusakan
         }
       }),
       prisma.sarprasAsset.update({
@@ -52,6 +55,7 @@ export class RepairService {
       });
     }
 
+    AssetService.publishRealtimeDashboardUpdate(tenantId);
     return repair;
   }
 
@@ -61,6 +65,7 @@ export class RepairService {
     biaya?: number;
     deskripsi?: string;
     tanggal_selesai?: Date;
+    foto_kerusakan?: string;
   }, scope?: any, userId?: string) {
     const repair = await prisma.sarprasAssetRepair.findFirst({
       where: { id, tenant_id: tenantId }
@@ -142,6 +147,7 @@ export class RepairService {
       });
     }
 
+    AssetService.publishRealtimeDashboardUpdate(tenantId);
     return updatedRepair;
   }
 
@@ -219,5 +225,52 @@ export class RepairService {
       completed,
       totalCost: totalCost._sum.biaya?.toNumber() || 0
     };
+  }
+
+  static async getRepairsCalendar(tenantId: string, scope?: any) {
+    const where: any = {
+      tenant_id: tenantId
+    };
+
+    if (scope && !scope.tenant_wide) {
+      where.Asset = {
+        Location: {
+          unit_id: { in: scope.unit_ids || [] }
+        }
+      };
+    }
+
+    const repairs = await prisma.sarprasAssetRepair.findMany({
+      where,
+      include: {
+        Asset: {
+          include: { Location: true }
+        }
+      }
+    });
+
+    return repairs.map(repair => {
+      let color = '#3b82f6';
+      if (repair.status === 'SELESAI') color = '#10b981';
+      else if (repair.status === 'BATAL') color = '#ef4444';
+
+      return {
+        id: repair.id,
+        title: `Perbaikan: ${repair.Asset.nama}`,
+        start: repair.tanggal_mulai,
+        end: repair.tanggal_selesai || new Date(),
+        color,
+        allDay: false,
+        extendedProps: {
+          asset_kode: repair.Asset.kode,
+          location: repair.Asset.Location?.nama || 'Tanpa Lokasi',
+          status: repair.status,
+          teknisi: repair.teknisi || '-',
+          biaya: repair.biaya ? Number(repair.biaya) : 0,
+          deskripsi: repair.deskripsi || '',
+          foto_kerusakan: repair.foto_kerusakan || null
+        }
+      };
+    });
   }
 }

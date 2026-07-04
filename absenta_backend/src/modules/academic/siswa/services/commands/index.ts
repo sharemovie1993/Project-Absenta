@@ -6,4 +6,7 @@ export * from './import-from-rows.command';
 export * from './send-parent-access.command';
 export * from './sync-siswa-akademik.command';
 export * from './update-siswa.command';
+export * from './pair-rfid-bulk.command';
+export * from './generate-rfid-bulk.command';
+export * from './generate-rfid-for-siswa.command';
 

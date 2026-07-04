@@ -449,9 +449,36 @@ export const siswaController = {
     }
   },
 
-  async syncSiswaAkademik(_request: any, reply: any) {
+  async pairRfidBulk(request: any, reply: any) {
     try {
-      const request = _request;
+      const tenantId = request.tenantId;
+      const { kelas_id, rfids } = request.body;
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Tenant ID required' });
+      }
+
+      if (!kelas_id || !Array.isArray(rfids)) {
+        return reply.status(400).send({ success: false, message: 'Invalid payload: kelas_id and rfids (array) are required' });
+      }
+
+      const result = await siswaService.pairRfidBulk(String(tenantId), String(kelas_id), rfids);
+      return reply.status(200).send({
+        success: true,
+        message: `Successfully paired ${result.total_paired} RFIDs`,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error pair RFID bulk:', error);
+      return reply.status(error instanceof Error ? 400 : 500).send({
+        success: false,
+        message: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  },
+
+  async syncSiswaAkademik(request: any, reply: any) {
+    try {
       const tenantId = request.tenantId;
       if (!tenantId) {
         return reply.status(401).send({ success: false, message: 'Unauthorized: Tenant ID required' });

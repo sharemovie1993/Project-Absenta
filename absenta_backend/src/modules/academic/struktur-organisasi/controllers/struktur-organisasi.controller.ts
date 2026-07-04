@@ -1,5 +1,12 @@
 import { StrukturOrganisasiService } from '../services/struktur-organisasi.service';
 import { RoleName } from '@/constants/enums';
+import { z } from 'zod';
+import {
+  createStrukturSchema,
+  updateStrukturSchema,
+  assignGuruSchema,
+  assignSiswaSchema
+} from '../../services/academic-validation.schema';
 
 const service = new StrukturOrganisasiService();
 
@@ -172,32 +179,40 @@ export const strukturOrganisasiController = {
   },
 
   create: async (req: any, reply: any) => {
-    const body = req.body as any;
-    // Create usually uses user's tenant, but if superadmin wants to create for another tenant?
-    // For now, let's stick to user's tenant for creation or allow body override?
-    // The service takes tenantId.
-    // Let's assume creation is always for the user's tenant unless we implement specific tenant selection in UI.
-    // The user's request was about "filterisasi" (viewing).
-    // But let's apply the same logic for consistency if tenant_id is in query.
     const tenantId = getEffectiveTenantId(req);
 
     try {
-      const data = await service.create(tenantId, body);
+      const parsed = createStrukturSchema.parse(req.body);
+      const data = await service.create(tenantId, parsed);
       return reply.status(201).send({ success: true, message: 'Berhasil membuat struktur organisasi', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
 
   update: async (req: any, reply: any) => {
     const { id } = req.params as any;
-    const body = req.body as any;
     const tenantId = getEffectiveTenantId(req);
 
     try {
-      const data = await service.update(tenantId, id, body);
+      const parsed = updateStrukturSchema.parse(req.body);
+      const data = await service.update(tenantId, id, parsed);
       return reply.status(200).send({ success: true, message: 'Berhasil memperbarui struktur organisasi', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
@@ -215,7 +230,6 @@ export const strukturOrganisasiController = {
   },
   assignGuru: async (req: any, reply: any) => {
     const { id } = req.params as any; // struktur_id
-    const body = req.body as any; // { guru_id, start_date, end_date }
     const tenantId = getEffectiveTenantId(req);
 
     try {
@@ -225,16 +239,21 @@ export const strukturOrganisasiController = {
         return reply.status(403).send({ success: false, message: 'Anda tidak memiliki wewenang untuk mengelola struktur ini' });
       }
 
+      const parsed = assignGuruSchema.parse(req.body);
+
       const data = await service.assignGuru(tenantId, {
-        struktur_id: id,
-        guru_id: body.guru_id,
-        unit_id: body.unit_id,
-        kelas_id: body.kelas_id,
-        start_date: body.start_date ? new Date(body.start_date) : undefined,
-        end_date: body.end_date ? new Date(body.end_date) : undefined
+        ...parsed,
+        struktur_id: id
       });
       return reply.status(200).send({ success: true, message: 'Berhasil menugaskan guru', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
@@ -257,7 +276,6 @@ export const strukturOrganisasiController = {
   },
   assignSiswa: async (req: any, reply: any) => {
     const { id } = req.params as any;
-    const body = req.body as any;
     const tenantId = getEffectiveTenantId(req);
 
     try {
@@ -267,16 +285,21 @@ export const strukturOrganisasiController = {
         return reply.status(403).send({ success: false, message: 'Anda tidak memiliki wewenang untuk mengelola struktur ini' });
       }
 
+      const parsed = assignSiswaSchema.parse(req.body);
+
       const data = await service.assignSiswa(tenantId, {
-        struktur_id: id,
-        siswa_id: body.siswa_id,
-        unit_id: body.unit_id,
-        kelas_id: body.kelas_id ? String(body.kelas_id) : undefined,
-        start_date: body.start_date ? new Date(body.start_date) : undefined,
-        end_date: body.end_date ? new Date(body.end_date) : undefined
+        ...parsed,
+        struktur_id: id
       });
       return reply.status(200).send({ success: true, message: 'Berhasil menugaskan siswa', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(400).send({ success: false, message: error.message });
     }
   },

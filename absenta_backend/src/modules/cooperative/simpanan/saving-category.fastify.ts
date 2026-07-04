@@ -1,5 +1,10 @@
 import { SavingCategoryService } from './saving-category.service';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { z } from 'zod';
+import {
+    createSavingCategorySchema,
+    updateSavingCategorySchema
+} from '../services/cooperative-validation.schema';
 
 export async function savingCategoryRoutes(fastify: any) {
     // GET /cooperative/saving-categories — list semua kategori aktif (anggota & pengurus)
@@ -22,16 +27,40 @@ export async function savingCategoryRoutes(fastify: any) {
     fastify.post('/saving-categories', {
         preHandler: requireCapability('cooperative.savings.types.manage'),
     }, async (req: any, reply: any) => {
-        const data = await SavingCategoryService.createCategory(req.tenantId, req.body);
-        return reply.code(201).send({ success: true, data });
+        try {
+            const parsed = createSavingCategorySchema.parse(req.body);
+            const data = await SavingCategoryService.createCategory(req.tenantId, parsed);
+            return reply.code(201).send({ success: true, data });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    success: false,
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            return reply.code(400).send({ success: false, message: error.message });
+        }
     });
 
     // PUT /cooperative/saving-categories/:id — update kategori
     fastify.put('/saving-categories/:id', {
         preHandler: requireCapability('cooperative.savings.types.manage'),
     }, async (req: any, reply: any) => {
-        const data = await SavingCategoryService.updateCategory(req.params.id, req.tenantId, req.body);
-        return reply.send({ success: true, data });
+        try {
+            const parsed = updateSavingCategorySchema.parse(req.body);
+            const data = await SavingCategoryService.updateCategory(req.params.id, req.tenantId, parsed);
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    success: false,
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
+            return reply.code(400).send({ success: false, message: error.message });
+        }
     });
 
     // PATCH /cooperative/saving-categories/:id/toggle — aktif/nonaktif

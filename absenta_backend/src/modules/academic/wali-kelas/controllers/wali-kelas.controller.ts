@@ -1,7 +1,8 @@
 import {
   waliKelasService,
-  AssignWaliKelasStrukturInput,
 } from '../services/wali-kelas.service';
+import { assignWaliKelasStrukturSchema } from '../../services/academic-validation.schema';
+import { z } from 'zod';
 
 export const waliKelasController = {
 
@@ -48,20 +49,23 @@ export const waliKelasController = {
   async assignStrukturWaliKelas(request: any, reply: any) {
     try {
       const tenantId = request.tenantId;
-      const input: AssignWaliKelasStrukturInput = request.body;
-
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      if (!input?.kelas_id || !input?.guru_id) {
-        return reply.status(400).send({ success: false, message: 'Missing required fields', data: null });
-      }
+      const parsed = assignWaliKelasStrukturSchema.parse(request.body);
 
-      const data = await waliKelasService.assignStrukturWaliKelas(tenantId, input);
+      const data = await waliKelasService.assignStrukturWaliKelas(tenantId, parsed);
       return reply.status(200).send({ success: true, message: 'OK', data });
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       if (error instanceof Error) {
         if (
           error.message.includes('not found') ||

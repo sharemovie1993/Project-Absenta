@@ -3,6 +3,7 @@ import { parentAuthService } from '@/modules/parent-app/services/parent-auth.ser
 import { siswaDb } from '../repositories/siswa.db';
 import type { CreateSiswaInput, SiswaResponse } from '../siswa.types';
 import { updateSiswaCommand } from './update-siswa.command';
+import { createSiswaSchema } from '../siswa.schema';
 
 export async function createSiswaCommand(
   input: CreateSiswaInput,
@@ -13,15 +14,18 @@ export async function createSiswaCommand(
     throw new Error('Tenant ID is required for creating siswa');
   }
 
+  // Validate input with Zod
+  const validatedInput = createSiswaSchema.parse(input);
+
   /* Core Platform: Students are now unlimited and free */
-  /* if (!input.skipQuotaCheck) {
+  /* if (!validatedInput.skipQuotaCheck) {
     const { subscriptionService } = await import('../../../../billing/services/subscription.service');
     await subscriptionService.checkTenantLimit(tenantId, 'students');
   } */
 
   const kelas = await siswaDb.kelas.findFirst({
     where: {
-      id: input.kelas_id,
+      id: validatedInput.kelas_id,
       tenant_id: tenantId,
     },
   });
@@ -33,15 +37,15 @@ export async function createSiswaCommand(
   // Apply Isolate/Scope filter from Organization Engine
   if (org && org.tenant_wide !== true) {
     const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-    if (!allowed.includes(String(input.kelas_id))) {
+    if (!allowed.includes(String(validatedInput.kelas_id))) {
       throw new Error('Anda tidak memiliki akses untuk mendaftarkan siswa ke kelas ini');
     }
   }
 
-  if (input.tahun_pelajaran_id) {
+  if (validatedInput.tahun_pelajaran_id) {
     const tahunPelajaran = await siswaDb.tahunPelajaran.findFirst({
       where: {
-        id: input.tahun_pelajaran_id,
+        id: validatedInput.tahun_pelajaran_id,
         tenant_id: tenantId,
       },
     });
@@ -51,10 +55,10 @@ export async function createSiswaCommand(
     }
   }
 
-  if (input.semester_id) {
+  if (validatedInput.semester_id) {
     const semester = await siswaDb.semester.findFirst({
       where: {
-        id: input.semester_id,
+        id: validatedInput.semester_id,
         tenant_id: tenantId,
       },
     });
@@ -64,7 +68,7 @@ export async function createSiswaCommand(
     }
   }
 
-  let nisToUse = String(input.nis ?? '').trim();
+  let nisToUse = String(validatedInput.nis ?? '').trim();
   let existingSiswaByNis: any = null;
 
   if (nisToUse) {
@@ -73,8 +77,8 @@ export async function createSiswaCommand(
     });
 
     if (existingSiswaByNis) {
-      if (String(existingSiswaByNis.nama_siswa || '').toLowerCase().trim() === String(input.nama_siswa || '').toLowerCase().trim()) {
-        return updateSiswaCommand(existingSiswaByNis.id, { ...(input as any), nis: nisToUse }, scope);
+      if (String(existingSiswaByNis.nama_siswa || '').toLowerCase().trim() === String(validatedInput.nama_siswa || '').toLowerCase().trim()) {
+        return updateSiswaCommand(existingSiswaByNis.id, { ...(validatedInput as any), nis: nisToUse }, scope);
       } else {
         const suffix = Math.floor(Math.random() * 10000).toString();
         nisToUse = `${nisToUse}-${suffix}`;
@@ -84,13 +88,13 @@ export async function createSiswaCommand(
     const existingSiswaByName = await siswaDb.siswa.findFirst({
       where: {
         tenant_id: tenantId,
-        kelas_id: input.kelas_id,
-        nama_siswa: { equals: input.nama_siswa, mode: 'insensitive' },
+        kelas_id: validatedInput.kelas_id,
+        nama_siswa: { equals: validatedInput.nama_siswa, mode: 'insensitive' },
       } as any,
     });
 
     if (existingSiswaByName) {
-      return updateSiswaCommand((existingSiswaByName as any).id, input as any, scope);
+      return updateSiswaCommand((existingSiswaByName as any).id, validatedInput as any, scope);
     }
 
     const generateRandomNis = () => {
@@ -114,7 +118,7 @@ export async function createSiswaCommand(
     }
   }
 
-  let associatedUserId: string | undefined = input.user_id;
+  let associatedUserId: string | undefined = validatedInput.user_id || undefined;
 
   if (associatedUserId) {
     const user = await siswaDb.user.findFirst({
@@ -139,14 +143,14 @@ export async function createSiswaCommand(
       throw new Error('User already has a siswa profile');
     }
   } else {
-    const fullName = input.nama_siswa;
-    const baseLocalPart = (input.nis
-      ? String(input.nis)
+    const fullName = validatedInput.nama_siswa;
+    const baseLocalPart = (validatedInput.nis
+      ? String(validatedInput.nis)
       : fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '')).slice(0, 32);
     const uniqueSuffix = Math.random().toString(36).slice(2, 6);
     const generatedEmail = `${baseLocalPart}.${uniqueSuffix}@siswa.local`;
 
-    let emailToUse = input.email && input.email.trim().length > 0 ? input.email.trim() : generatedEmail;
+    let emailToUse = validatedInput.email && validatedInput.email.trim().length > 0 ? validatedInput.email.trim() : generatedEmail;
 
     const existingUserByEmail = await siswaDb.user.findFirst({
       where: { email: emailToUse, tenant_id: tenantId },
@@ -182,17 +186,17 @@ export async function createSiswaCommand(
 
   // --- SANITIZATION & AUTO-FIX ---
   // Ensure string fields are strings (Excel often sends numbers)
-  const nisn = input.nisn ? String(input.nisn).trim() : null;
-  const nik = input.nik ? String(input.nik).trim() : null;
-  const rfid = input.no_rfid ? String(input.no_rfid).trim() : null;
+  const nisn = validatedInput.nisn ? String(validatedInput.nisn).trim() : null;
+  const nik = validatedInput.nik ? String(validatedInput.nik).trim() : null;
+  const rfid = validatedInput.no_rfid ? String(validatedInput.no_rfid).trim() : null;
 
   // Phone Number Auto-Fix: Ensure it's a string and starts with '0'
-  let phone = input.no_hp ? String(input.no_hp).trim() : null;
+  let phone = validatedInput.no_hp ? String(validatedInput.no_hp).trim() : null;
   if (phone && /^\d+$/.test(phone) && !phone.startsWith('0')) {
     phone = '0' + phone;
   }
 
-  const genderToUse = input.jenis_kelamin && String(input.jenis_kelamin).trim() ? input.jenis_kelamin : '';
+  const genderToUse = validatedInput.jenis_kelamin && String(validatedInput.jenis_kelamin).trim() ? validatedInput.jenis_kelamin : '';
 
   const siswa = await siswaDb.siswa.create({
     data: {

@@ -1,5 +1,5 @@
-
 import { semesterService, CreateSemesterInput, UpdateSemesterInput } from '../services/semester.service';
+import { createSemesterSchema, updateSemesterSchema } from '../services/semester.schema';
 
 export class SemesterController {
   async getAllSemester(req: any, reply: any): Promise<void> {
@@ -75,21 +75,9 @@ export class SemesterController {
   async createSemester(req: any, reply: any): Promise<void> {
     try {
       const user = req.user as any;
-      const { tahun_pelajaran_id, nama_semester, is_active } = req.body;
+      const parsedBody = createSemesterSchema.parse(req.body);
 
-      if (!tahun_pelajaran_id || !nama_semester) {
-        reply.status(400).send({
-          success: false,
-          message: 'tahun_pelajaran_id and nama_semester are required',
-        });
-        return;
-      }
-
-      const createSemesterInput: CreateSemesterInput = {
-        tahun_pelajaran_id,
-        nama_semester,
-        is_active: is_active || false,
-      };
+      const createSemesterInput: CreateSemesterInput = parsedBody;
 
       const semester = await semesterService.createSemester(
         createSemesterInput,
@@ -114,15 +102,9 @@ export class SemesterController {
     try {
       const user = req.user as any;
       const { id } = req.params;
-      const { tahun_pelajaran_id, nama_semester, tanggal_mulai, tanggal_selesai, is_active } = req.body;
+      const parsedBody = updateSemesterSchema.parse(req.body);
 
-      const updateSemesterInput: UpdateSemesterInput = {
-        ...(tahun_pelajaran_id && { tahun_pelajaran_id }),
-        ...(nama_semester && { nama_semester }),
-        ...(tanggal_mulai && { tanggal_mulai: new Date(tanggal_mulai) }),
-        ...(tanggal_selesai && { tanggal_selesai: new Date(tanggal_selesai) }),
-        ...(is_active !== undefined && { is_active }),
-      };
+      const updateSemesterInput: UpdateSemesterInput = parsedBody;
 
       const semester = await semesterService.updateSemester(
         id,

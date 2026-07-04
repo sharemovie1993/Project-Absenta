@@ -1,4 +1,6 @@
 import { studentCardConfigService } from '../services/student-card-config.service';
+import { upsertStudentCardConfigSchema } from '../../services/academic-validation.schema';
+import { z } from 'zod';
 
 export class StudentCardConfigController {
   async getConfig(req: any, reply: any) {
@@ -25,11 +27,18 @@ export class StudentCardConfigController {
        return reply.status(400).send({ success: false, message: 'Tenant ID required' });
     }
 
-    const data = req.body as any;
     try {
-      const config = await studentCardConfigService.upsertConfig(tenantId, data);
+      const parsed = upsertStudentCardConfigSchema.parse(req.body);
+      const config = await studentCardConfigService.upsertConfig(tenantId, parsed);
       return { success: true, data: config };
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       req.log.error(error);
       return reply.status(500).send({ success: false, message: 'Failed to save config' });
     }

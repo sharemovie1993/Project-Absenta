@@ -31,7 +31,7 @@ export class PelanggaranService {
       siswaAkademikId = sa?.id;
     }
 
-    return prisma.pelanggaranSiswa.create({
+    const violation = await prisma.pelanggaranSiswa.create({
       data: {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
@@ -44,6 +44,43 @@ export class PelanggaranService {
         status: data.status || 'BARU',
       },
     });
+
+    // Real-time EWS alert integration
+    try {
+      const { BpbkService } = await import('../../bpbk/services/bpbk.service');
+      const ewsList = await BpbkService.calculateEwsForSiswa(tenantId);
+      const studentEws = ewsList.find((e: any) => e.siswa.id === data.siswa_id);
+      if (studentEws && studentEws.riskLevel === 'HIGH') {
+        const bkTeachers = await prisma.user.findMany({
+          where: {
+            tenant_id: tenantId,
+            Role: {
+              rolePermissions: {
+                some: {
+                  permission_id: 'bk.cases.manage'
+                }
+              }
+            }
+          },
+          select: { id: true }
+        });
+        if (bkTeachers.length > 0) {
+          const { notificationService } = await import('../../../services/notification.service');
+          const studentName = studentEws.siswa.nama_siswa || studentEws.siswa.nama || 'Siswa';
+          for (const teacher of bkTeachers) {
+            await notificationService.sendInApp(
+              teacher.id,
+              'PERINGATAN DINI: Siswa Berisiko Tinggi (Pelanggaran Baru)',
+              `Siswa ${studentName} terdeteksi berisiko TINGGI (Skor EWS: ${studentEws.riskScore}) setelah dicatat melakukan pelanggaran "${data.jenis_pelanggaran}".`
+            );
+          }
+        }
+      }
+    } catch (ewsErr) {
+      console.error('[EWS INTEGRATION ERROR] Failed to run real-time EWS alert:', ewsErr);
+    }
+
+    return violation;
   }
 
   static async update(tenantId: string, id: string, data: {

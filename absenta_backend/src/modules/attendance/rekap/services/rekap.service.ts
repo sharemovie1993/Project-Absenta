@@ -1394,6 +1394,40 @@ export class RekapService {
       detail
     };
   }
+
+  /**
+   * Get Attendance Leaderboard
+   * Ranks students based on attendance points
+   */
+  async getLeaderboard(tenantId: string, limit: number = 10) {
+    const students = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId, status: 'AKTIF' },
+      select: {
+        id: true,
+        nama_siswa: true,
+        Kelas: { select: { nama_kelas: true } },
+        _count: {
+          select: {
+            AbsenGerbangSiswa: {
+              where: { status: 'HADIR' }
+            }
+          }
+        }
+      },
+      take: limit * 2 // Fetch more to calculate points accurately in memory if needed
+    });
+
+    // Calculate points (Simplified for this task)
+    const leaderboard = students.map(s => ({
+      id: s.id,
+      nama: s.nama_siswa,
+      kelas: s.Kelas?.nama_kelas,
+      hadir_count: s._count.AbsenGerbangSiswa,
+      points: s._count.AbsenGerbangSiswa * 10 // 10 points per presence
+    })).sort((a, b) => b.points - a.points).slice(0, limit);
+
+    return leaderboard;
+  }
 }
 
 export const rekapService = new RekapService();

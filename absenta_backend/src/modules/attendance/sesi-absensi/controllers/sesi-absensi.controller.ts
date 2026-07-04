@@ -1,4 +1,5 @@
 import { sesiService } from '../services/sesi.service';
+import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
 import { systemConfigService } from '../../../system-config/services/system-config.service';
 import { getTenantLocalTime, generateSessionsForTenant } from '../../../../jobs/attendanceAutoSession.job';
 
@@ -8,7 +9,8 @@ export const sesiAbsensiController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       const userId = request.user?.id;
-      const payload = request.body || {};
+      const parsedBody = createSesiAbsensiSchema.parse(request.body || {});
+      const payload = parsedBody;
 
       if (!tenantId) {
         reply.status(401);
@@ -67,7 +69,8 @@ export const sesiAbsensiController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       const { id } = request.params;
-      const { status } = request.body || {};
+      const parsedBody = updateSesiStatusSchema.parse(request.body || {});
+      const { status } = parsedBody;
 
       if (!tenantId) {
         reply.status(401);
@@ -92,7 +95,8 @@ export const sesiAbsensiController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       const { id } = request.params;
-      const data = request.body || {};
+      const parsedBody = updateSesiAbsensiSchema.parse(request.body || {});
+      const data = parsedBody;
 
       if (!tenantId) {
         reply.status(401);
@@ -142,7 +146,8 @@ export const sesiAbsensiController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       const { id, guru_id } = request.params;
-      const data = request.body || {};
+      const parsedBody = updateAbsenGuruSchema.parse(request.body || {});
+      const data = parsedBody;
 
       if (!tenantId) {
         reply.status(401);
@@ -168,7 +173,8 @@ export const sesiAbsensiController = {
       const tenantId = request.tenantId;
       const userId = request.user?.id;
       const { id: sesi_id } = request.params;
-      const data = request.body || {};
+      const parsedBody = tapSiswaSchema.parse(request.body || {});
+      const data = parsedBody;
 
       if (!tenantId) {
         reply.status(401);

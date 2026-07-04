@@ -103,19 +103,55 @@ export class AcademicStatsService {
     ]);
 
     return {
-      total_jurusan: totalJurusan,
-      total_kelas: totalKelas,
-      total_siswa: totalSiswa,
-      total_guru: totalGuru,
-      total_mapel: totalMapel,
-      total_semester: totalSemester,
-      total_tahun_pelajaran: totalTahunPelajaran,
-      tahun_pelajaran: activeTahunPelajaran,
-      semester: activeSemester,
-      active_kelas_by_tingkat: activeKelasByTingkat.map(item => ({
-        tingkat: item.tingkat,
-        count: item._count.id
-      }))
+      totalJurusan,
+      totalKelas,
+      totalSiswa,
+      totalGuru,
+      totalMapel,
+      totalSemester,
+      totalTahunPelajaran,
+      activeKelasByTingkat: activeKelasByTingkat.map(g => ({ tingkat: g.tingkat, count: g._count.id })),
+      activeTahunPelajaran,
+      activeSemester
     };
+  }
+
+  /**
+   * Get Yearly Comparison Stats
+   * Returns student counts comparison between school years
+   */
+  async getYearlyComparison(tenantId: string) {
+    const years = await prisma.tahunPelajaran.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { tahun: 'desc' },
+      take: 5
+    });
+
+    const comparison = await Promise.all(years.map(async (year) => {
+      const studentCount = await prisma.siswaAkademik.count({
+        where: {
+          tahun_pelajaran_id: year.id,
+          status: 'AKTIF'
+        }
+      });
+
+      const teacherCount = await prisma.guru.count({
+        where: {
+          tenant_id: tenantId,
+          created_at: {
+            lte: year.updated_at
+          }
+        }
+      });
+
+      return {
+        year: year.tahun,
+        students: studentCount,
+        teachers: teacherCount,
+        ratio: teacherCount > 0 ? (studentCount / teacherCount).toFixed(2) : 0
+      };
+    }));
+
+    return comparison.reverse();
   }
 }

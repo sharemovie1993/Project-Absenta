@@ -76,7 +76,7 @@ export class DeviceService {
     return prisma.attendanceDevice.delete({ where: { id } });
   }
 
-  async heartbeat(deviceId: string, data: { battery?: number; version?: string }) {
+  async heartbeat(deviceId: string, data: { battery?: number | null; version?: string | null }) {
     const device = await prisma.attendanceDevice.findUnique({
       where: { device_id: deviceId },
     });
@@ -98,7 +98,7 @@ export class DeviceService {
     });
   }
 
-  async tap(deviceId: string, data: { rfid?: string; battery?: number; version?: string }) {
+  async tap(deviceId: string, data: { rfid?: string; battery?: number | null; version?: string | null }) {
     // 1. Resolve Device & Metadata
     const device = await prisma.attendanceDevice.findUnique({
       where: { device_id: deviceId },

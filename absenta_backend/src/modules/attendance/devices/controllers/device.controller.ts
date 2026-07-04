@@ -1,4 +1,5 @@
 import { deviceService } from '../services/device.service';
+import { createDeviceSchema, updateDeviceSchema, heartbeatSchema, deviceTapSchema } from '../services/device.schema';
 
 export const deviceController = {
   async getDevices(request: any) {
@@ -29,10 +30,10 @@ export const deviceController = {
 
   async createDevice(request: any, reply: any) {
     const { tenant_id } = request.user;
-    const data = request.body as any;
     
     try {
-      const result = await deviceService.createDevice(tenant_id, data);
+      const parsedBody = createDeviceSchema.parse(request.body);
+      const result = await deviceService.createDevice(tenant_id, parsedBody);
       return { success: true, data: result, message: 'Perangkat berhasil didaftarkan' };
     } catch (e: any) {
       return reply.status(400).send({ success: false, message: e.message });
@@ -42,10 +43,10 @@ export const deviceController = {
   async updateDevice(request: any, reply: any) {
     const { tenant_id } = request.user;
     const { id } = request.params as any;
-    const data = request.body as any;
     
     try {
-      const result = await deviceService.updateDevice(id, tenant_id, data);
+      const parsedBody = updateDeviceSchema.parse(request.body);
+      const result = await deviceService.updateDevice(id, tenant_id, parsedBody);
       return { success: true, data: result, message: 'Data perangkat berhasil diperbarui' };
     } catch (e: any) {
       return reply.status(400).send({ success: false, message: e.message });
@@ -65,13 +66,9 @@ export const deviceController = {
   },
 
   async heartbeat(request: any, reply: any) {
-    const { device_id, battery, version } = request.body as any;
-    
-    if (!device_id) {
-      return reply.status(400).send({ success: false, message: 'device_id is required' });
-    }
-
     try {
+      const parsedBody = heartbeatSchema.parse(request.body);
+      const { device_id, battery, version } = parsedBody;
       const result = await deviceService.heartbeat(device_id, { battery, version });
       return { success: true, data: result };
     } catch (e: any) {
@@ -80,13 +77,9 @@ export const deviceController = {
   },
 
   async tap(request: any, reply: any) {
-    const { device_id, rfid, battery, version } = request.body as any;
-    
-    if (!device_id) {
-      return reply.status(400).send({ success: false, message: 'device_id is required' });
-    }
-
     try {
+      const parsedBody = deviceTapSchema.parse(request.body);
+      const { device_id, rfid, battery, version } = parsedBody;
       const result = await deviceService.tap(device_id, { rfid, battery, version });
       return { success: true, ...result };
     } catch (e: any) {

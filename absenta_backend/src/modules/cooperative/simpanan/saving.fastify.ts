@@ -4,6 +4,11 @@ import { SavingService } from './saving.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
+import { z } from 'zod';
+import {
+    createSavingSchema,
+    processSavingTransactionSchema
+} from '../services/cooperative-validation.schema';
 
 export default async function savingRoutes(fastify: any) {
     
@@ -37,11 +42,17 @@ export default async function savingRoutes(fastify: any) {
     // POST /savings — buat rekening simpanan baru (gunakan categoryId bukan enum type)
     fastify.post('/', { preHandler: [requireCapability('cooperative.savings.create')] }, async (req: any, reply: any) => {
         try {
-            const { memberId, categoryId, initialAmount } = req.body as any;
-            if (!categoryId) return reply.code(400).send({ message: 'categoryId wajib diisi.' });
-            const saving = await SavingService.createSaving(memberId, categoryId, Number(initialAmount || 0));
+            const parsed = createSavingSchema.parse(req.body);
+            const { memberId, categoryId, initialAmount } = parsed;
+            const saving = await SavingService.createSaving(memberId, categoryId, initialAmount);
             reply.code(201).send(saving);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message.includes('tidak ditemukan') || error.message.includes('not found')) {
                 reply.code(404).send({ message: error.message });
             } else if (error.message.includes('sudah ada')) {
@@ -55,13 +66,17 @@ export default async function savingRoutes(fastify: any) {
     // POST /savings/transaction
     fastify.post('/transaction', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.savings.withdraw'])] }, async (req: any, reply: any) => {
         try {
-            const { savingId, amount, type, description } = req.body as any;
-            if (!savingId) return reply.code(400).send({ message: 'savingId wajib diisi.' });
-            if (!type) return reply.code(400).send({ message: 'type transaksi wajib diisi.' });
-            if (!amount || isNaN(Number(amount))) return reply.code(400).send({ message: 'amount tidak valid.' });
-            const transaction = await SavingService.processTransaction(savingId, Number(amount), type, description, req.user?.id);
+            const parsed = processSavingTransactionSchema.parse(req.body);
+            const { savingId, amount, type, description } = parsed;
+            const transaction = await SavingService.processTransaction(savingId, amount, type, description, req.user?.id);
             reply.code(201).send(transaction);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             fastify.log.error({ err: error }, 'Error processing saving transaction');
             // Kembalikan pesan error aktual agar frontend bisa menampilkan feedback yang tepat
             const msg = error?.message || 'Gagal memproses transaksi';

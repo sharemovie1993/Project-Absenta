@@ -4,6 +4,14 @@ import { authorizationService } from '../../auth/services/authorization.service'
 import { storageService } from '../../../infra/storage/storage.service';
 import crypto from 'crypto';
 import path from 'path';
+import { z } from 'zod';
+import { 
+  createMitraSchema, 
+  updateMitraSchema, 
+  createPenempatanSchema, 
+  updatePenempatanSchema, 
+  bulkCreatePenempatanSchema 
+} from '../services/hubin.schema';
 
 
 interface AuthenticatedRequest {
@@ -53,24 +61,40 @@ export class HubinController {
 
   async createMitra(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.createMitra(request.tenantId!, request.body, request.user.id);
+      const parsedBody = createMitraSchema.parse(request.body);
+      const data = await this.hubinService.createMitra(request.tenantId!, parsedBody, request.user.id);
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
 
   async updateMitra(request: AuthenticatedRequest, reply: any) {
     try {
+      const parsedBody = updateMitraSchema.parse(request.body);
       const data = await this.hubinService.updateMitra(
         request.tenantId!, 
         request.params.id, 
-        request.body, 
+        parsedBody, 
         request.user.id,
         request.organizationalScope
       );
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -115,14 +139,22 @@ export class HubinController {
 
   async createPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
+      const parsedBody = createPenempatanSchema.parse(request.body);
       const data = await this.hubinService.createPenempatan(
         request.tenantId!, 
-        request.body, 
+        parsedBody, 
         request.user.id,
         request.organizationalScope
       );
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -130,29 +162,45 @@ export class HubinController {
   async updatePenempatan(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
+      const parsedBody = updatePenempatanSchema.parse(request.body);
       const data = await this.hubinService.updatePenempatan(
         request.tenantId!, 
         id, 
-        request.body,
+        parsedBody,
         request.user.id,
         request.organizationalScope
       );
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
 
   async bulkCreatePenempatan(request: AuthenticatedRequest, reply: any) {
     try {
+      const parsedBody = bulkCreatePenempatanSchema.parse(request.body);
       const data = await this.hubinService.bulkCreatePenempatan(
         request.tenantId!,
-        request.body,
+        parsedBody,
         request.user.id,
         request.organizationalScope
       );
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -272,6 +320,32 @@ export class HubinController {
       return reply.status(200).send({ success: true, data: result });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async syncOfflineLogbook(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { siswaPklId, logs } = request.body;
+      if (!logs || !Array.isArray(logs)) {
+        return reply.status(400).send({ success: false, message: 'Invalid payload: logs must be an array' });
+      }
+
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat melakukan presensi untuk penempatan Anda sendiri' });
+        }
+      }
+
+      const result = await this.hubinService.syncOfflineLogbook(request.tenantId!, siswaPklId, logs);
+      return reply.status(200).send({ success: true, data: result });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
 

@@ -1,5 +1,12 @@
 import { AssetService } from '../services/asset.service';
 import * as XLSX from 'xlsx';
+import { z } from 'zod';
+import {
+  sarprasCategorySchema,
+  sarprasLocationSchema,
+  sarprasAssetSchema,
+  updateSarprasAssetSchema
+} from '../services/sarpras.schema';
 
 interface AuthenticatedRequest {
   user: {
@@ -12,6 +19,7 @@ interface AuthenticatedRequest {
   params: any;
   query: any;
   body: any;
+  method?: string;
   organizationalScope?: any;
 }
 
@@ -28,9 +36,13 @@ export class AssetController {
 
   async createCategory(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await AssetService.createCategory(request.tenantId!, request.body);
+      const parsed = sarprasCategorySchema.parse(request.body);
+      const data = await AssetService.createCategory(request.tenantId!, parsed);
       return reply.status(201).send({ success: true, message: 'Kategori berhasil dibuat', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -47,9 +59,13 @@ export class AssetController {
 
   async createLocation(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await AssetService.createLocation(request.tenantId!, request.body);
+      const parsed = sarprasLocationSchema.parse(request.body);
+      const data = await AssetService.createLocation(request.tenantId!, parsed);
       return reply.status(201).send({ success: true, message: 'Lokasi berhasil dibuat', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -86,28 +102,14 @@ export class AssetController {
 
   async createAsset(request: AuthenticatedRequest, reply: any) {
     try {
-      const { nama, jumlah, price_purchase, category_id, location_id } = request.body;
-      if (!nama || typeof nama !== 'string' || nama.trim() === '') {
-        return reply.status(400).send({ success: false, message: 'Nama aset wajib diisi dan harus berupa text' });
-      }
-      if (jumlah !== undefined && (typeof jumlah !== 'number' || jumlah < 1 || !Number.isInteger(jumlah))) {
-        return reply.status(400).send({ success: false, message: 'Jumlah wajib bertipe angka bulat positif minimal 1' });
-      }
-      if (price_purchase !== undefined && (typeof price_purchase !== 'number' || price_purchase < 0)) {
-        return reply.status(400).send({ success: false, message: 'Harga pembelian tidak boleh bernilai negatif' });
-      }
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (category_id && !uuidRegex.test(category_id)) {
-        return reply.status(400).send({ success: false, message: 'ID Kategori tidak valid' });
-      }
-      if (location_id && !uuidRegex.test(location_id)) {
-        return reply.status(400).send({ success: false, message: 'ID Lokasi tidak valid' });
-      }
-
+      const parsed = sarprasAssetSchema.parse(request.body);
       const userId = (request.user as any).id || (request.user as any).userId;
-      const data = await AssetService.createAsset(request.tenantId!, request.body, request.organizationalScope, userId);
+      const data = await AssetService.createAsset(request.tenantId!, parsed, request.organizationalScope, userId);
       return reply.status(201).send({ success: true, message: 'Aset berhasil dibuat', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -115,28 +117,14 @@ export class AssetController {
   async updateAsset(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
-      const { nama, jumlah, price_purchase, category_id, location_id } = request.body;
-      if (nama !== undefined && (typeof nama !== 'string' || nama.trim() === '')) {
-        return reply.status(400).send({ success: false, message: 'Nama aset tidak boleh kosong' });
-      }
-      if (jumlah !== undefined && (typeof jumlah !== 'number' || jumlah < 1 || !Number.isInteger(jumlah))) {
-        return reply.status(400).send({ success: false, message: 'Jumlah wajib bertipe angka bulat positif minimal 1' });
-      }
-      if (price_purchase !== undefined && (typeof price_purchase !== 'number' || price_purchase < 0)) {
-        return reply.status(400).send({ success: false, message: 'Harga pembelian tidak boleh bernilai negatif' });
-      }
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (category_id && !uuidRegex.test(category_id)) {
-        return reply.status(400).send({ success: false, message: 'ID Kategori tidak valid' });
-      }
-      if (location_id && !uuidRegex.test(location_id)) {
-        return reply.status(400).send({ success: false, message: 'ID Lokasi tidak valid' });
-      }
-
+      const parsed = updateSarprasAssetSchema.parse(request.body);
       const userId = (request.user as any).id || (request.user as any).userId;
-      const data = await AssetService.updateAsset(request.tenantId!, id, request.body, request.organizationalScope, userId);
+      const data = await AssetService.updateAsset(request.tenantId!, id, parsed, request.organizationalScope, userId);
       return reply.status(200).send({ success: true, message: 'Aset berhasil diperbarui', data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
@@ -234,6 +222,132 @@ export class AssetController {
       const data = await AssetService.getStats(request.tenantId!, request.organizationalScope);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printQrCodes(request: AuthenticatedRequest, reply: any) {
+    try {
+      let ids: string[] = [];
+      if (request.method === 'POST') {
+        const bodySchema = z.object({
+          ids: z.array(z.string().uuid('ID Aset tidak valid')).min(1, 'Daftar ID Aset wajib diisi')
+        });
+        const parsed = bodySchema.parse(request.body);
+        ids = parsed.ids;
+      } else {
+        const { id } = request.params;
+        if (!id) {
+          return reply.status(400).send({ success: false, message: 'ID Aset wajib disediakan' });
+        }
+        ids = [id];
+      }
+
+      const pdfBuffer = await AssetService.generateQrCodePdf(request.tenantId!, ids);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="qrcode_labels.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getDepreciationReport(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await AssetService.getAssetDepreciationReport(request.tenantId!, request.organizationalScope);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getConsumables(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await AssetService.getConsumables(request.tenantId!, request.organizationalScope);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateConsumableThreshold(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const bodySchema = z.object({
+        min_stock: z.number().int().nonnegative('Ambang batas stok minimum harus berupa angka non-negatif')
+      });
+      const parsed = bodySchema.parse(request.body);
+      const data = await AssetService.updateConsumableThreshold(request.tenantId!, id, parsed.min_stock);
+      return reply.status(200).send({ success: true, message: 'Ambang batas stok minimum berhasil diperbarui', data });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async consumeAsset(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const bodySchema = z.object({
+        qty: z.number().int().positive('Jumlah konsumsi minimal 1')
+      });
+      const parsed = bodySchema.parse(request.body);
+      const userId = (request.user as any).id || (request.user as any).userId;
+      const data = await AssetService.consumeAsset(request.tenantId!, id, parsed.qty, userId);
+      return reply.status(200).send({ success: true, message: `Berhasil mencatat konsumsi barang sejumlah ${parsed.qty}`, data });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getRealtimeStats(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await AssetService.getRealtimeRepairStats(request.tenantId!, request.organizationalScope);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async scanAsset(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { code } = request.params;
+      if (!code) {
+        return reply.status(400).send({ success: false, message: 'Kode barcode/QR wajib diisi' });
+      }
+      const data = await AssetService.scanAssetByCode(request.tenantId!, code, request.organizationalScope);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async runStockOpname(request: AuthenticatedRequest, reply: any) {
+    try {
+      const bodySchema = z.object({
+        asset_id: z.string().uuid('ID Aset tidak valid'),
+        location_id: z.string().uuid('ID Lokasi tidak valid'),
+        kondisi: z.enum(['BAIK', 'RUSAK', 'PERBAIKAN', 'HILANG']),
+        catatan: z.string().optional()
+      });
+      const parsed = bodySchema.parse(request.body);
+      const userId = (request.user as any).id || (request.user as any).userId;
+      
+      const data = await AssetService.runStockOpname(request.tenantId!, parsed, request.organizationalScope, userId);
+      return reply.status(200).send({ success: true, message: 'Stock opname berhasil dicatat', data });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }

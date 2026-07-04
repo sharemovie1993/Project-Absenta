@@ -8,10 +8,46 @@ export class StudentCardConfigService {
     
     if (!config) {
       // Return defaults if not found, but don't save yet to avoid junk data
+      const defaultPresets = [
+        {
+          name: 'Vertical - Versi 1',
+          template: 'vertical',
+          primary_color: '#2563eb',
+          secondary_color: '#ffffff',
+          photo_shape: 'square',
+          photo_width: 24,
+          photo_height: 32,
+          card_width: 54,
+          card_height: 85.6,
+        },
+        {
+          name: 'Horizontal - Versi 1',
+          template: 'horizontal',
+          primary_color: '#16a34a',
+          secondary_color: '#ffffff',
+          photo_shape: 'circle',
+          photo_width: 25,
+          photo_height: 25,
+          card_width: 85.6,
+          card_height: 54,
+        },
+        {
+          name: 'Modern Dark',
+          template: 'vertical',
+          primary_color: '#1e293b',
+          secondary_color: '#f8fafc',
+          photo_shape: 'rounded',
+          photo_width: 24,
+          photo_height: 32,
+          card_width: 54,
+          card_height: 85.6,
+        }
+      ];
+
       return {
         template: 'vertical',
         selected_preset: 'Vertical - Versi 1',
-        layout_presets: '{}',
+        layout_presets: JSON.stringify(defaultPresets),
         card_title: 'KARTU PELAJAR',
         header_text: '',
         subheader_text: '',

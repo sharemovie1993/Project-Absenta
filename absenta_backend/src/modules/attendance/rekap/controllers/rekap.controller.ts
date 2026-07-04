@@ -376,14 +376,32 @@ export async function getRekapBulananKelas(request: AuthenticatedRequest, reply:
 
     return reply.status(200).send({
       success: true,
-      message: 'Rekap bulanan kelas berhasil diambil',
-      data: normalized,
+      data: normalized
     });
-  } catch (error: any) {
+
+  } catch (error) {
+    console.error('Error getting monthly recap:', error);
     return reply.status(500).send({
       success: false,
-      message: error.message || 'Internal server error',
+      message: 'Failed to get monthly recap'
     });
+  }
+}
+
+export async function getLeaderboard(request: any, reply: any) {
+  try {
+    const tenantId = request.tenantId;
+    const { limit } = request.query;
+    
+    const data = await rekapService.getLeaderboard(tenantId, limit ? parseInt(limit) : 10);
+    
+    return reply.status(200).send({
+      success: true,
+      message: 'Leaderboard retrieved successfully',
+      data
+    });
+  } catch (error) {
+    return reply.status(500).send({ success: false, message: 'Failed to get leaderboard' });
   }
 }
 

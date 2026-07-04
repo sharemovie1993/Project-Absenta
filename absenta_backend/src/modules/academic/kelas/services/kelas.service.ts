@@ -5,9 +5,9 @@ export interface CreateKelasInput {
   nama_kelas: string;
   tingkat: number;
   jurusan_id: string;
-  guru_id?: string; // For wali kelas assignment
-  jam_masuk?: string;
-  jam_pulang?: string;
+  guru_id?: string | null; // For wali kelas assignment
+  jam_masuk?: string | null;
+  jam_pulang?: string | null;
   is_active?: boolean;
 }
 
@@ -15,9 +15,9 @@ export interface UpdateKelasInput {
   nama_kelas?: string;
   tingkat?: number;
   jurusan_id?: string;
-  guru_id?: string; // For wali kelas assignment
-  jam_masuk?: string;
-  jam_pulang?: string;
+  guru_id?: string | null; // For wali kelas assignment
+  jam_masuk?: string | null;
+  jam_pulang?: string | null;
   is_active?: boolean;
 }
 

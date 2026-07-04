@@ -1,5 +1,7 @@
 import { FinancialService } from '../services/financial.service';
 import { GeneralReportService } from '../services/general-report.service';
+import { PdfGeneratorService } from '../services/pdf-generator.service';
+import { prisma } from '../../../utils/prisma';
 
 export class ReportingController {
   private financialService: FinancialService;
@@ -306,6 +308,119 @@ export class ReportingController {
       reply.send({ success: true, data });
     } catch (error: any) {
       reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printCertificate(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+      
+      const pdfBuffer = await PdfGeneratorService.generateCertificatePdf(tenantId, siswaId);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="certificate.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printCertificateClassZip(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { kelasId } = request.params;
+
+      const students = await prisma.siswa.findMany({
+        where: { kelas_id: kelasId, tenant_id: tenantId }
+      });
+
+      if (students.length === 0) {
+        return reply.status(404).send({ success: false, message: 'Tidak ada siswa ditemukan di kelas ini' });
+      }
+
+      const AdmZip = require('adm-zip');
+      const zip = new AdmZip();
+
+      for (const s of students) {
+        try {
+          const pdfBuffer = await PdfGeneratorService.generateCertificatePdf(tenantId, s.id);
+          const filename = `${s.nis}_${s.nama_siswa.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          zip.addFile(filename, pdfBuffer);
+        } catch (err: any) {
+          console.error(`[ZIP EXPORT ERROR] Failed for student ${s.id}:`, err.message);
+        }
+      }
+
+      const zipBuffer = zip.toBuffer();
+      reply.header('Content-Type', 'application/zip');
+      reply.header('Content-Disposition', `attachment; filename="sertifikat_kelas_${kelasId}.zip"`);
+      return reply.send(zipBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printInvoice(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { invoiceNumber } = request.params;
+      
+      const pdfBuffer = await PdfGeneratorService.generateInvoicePdf(tenantId, invoiceNumber);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="invoice.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printSupervision(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { supervisionId } = request.params;
+      
+      const pdfBuffer = await PdfGeneratorService.generateSupervisionPdf(tenantId, supervisionId);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="supervision_report.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printIzinKeluar(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { izinId } = request.params;
+      
+      const pdfBuffer = await PdfGeneratorService.generateIzinKeluarPdf(tenantId, izinId);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="surat_izin_keluar.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printKesiswaanBulanan(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { month, year } = request.query;
+      
+      const m = Number(month) || new Date().getMonth() + 1;
+      const y = Number(year) || new Date().getFullYear();
+
+      const pdfBuffer = await PdfGeneratorService.generateKesiswaanBulananPdf(tenantId, m, y);
+      
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="laporan_bulanan_kesiswaan.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
     }
   }
 }

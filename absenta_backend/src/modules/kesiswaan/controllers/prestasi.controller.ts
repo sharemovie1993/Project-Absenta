@@ -1,14 +1,25 @@
 import { PrestasiService } from '../services/prestasi.service';
 import { sendResponse, sendError } from '../../../utils/response';
+import { z } from 'zod';
+import {
+  createJenisPrestasiSchema,
+  updateJenisPrestasiSchema,
+  createPrestasiSiswaSchema,
+  updatePrestasiSiswaSchema
+} from '../services/kesiswaan-validation.schema';
 
 export class PrestasiController {
   // === Jenis Prestasi ===
   static async createJenisPrestasi(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const result = await PrestasiService.createJenisPrestasi(tenant_id, req.body);
+      const parsed = createJenisPrestasiSchema.parse(req.body);
+      const result = await PrestasiService.createJenisPrestasi(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Kategori prestasi berhasil dibuat', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Gagal membuat kategori prestasi', error);
     }
   }
@@ -17,9 +28,13 @@ export class PrestasiController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await PrestasiService.updateJenisPrestasi(tenant_id, id, req.body);
+      const parsed = updateJenisPrestasiSchema.parse(req.body);
+      const result = await PrestasiService.updateJenisPrestasi(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Kategori prestasi berhasil diperbarui', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Gagal diperbarui kategori prestasi', error);
     }
   }
@@ -49,11 +64,13 @@ export class PrestasiController {
   static async createPrestasiSiswa(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
-      const result = await PrestasiService.createPrestasiSiswa(tenant_id, data);
+      const parsed = createPrestasiSiswaSchema.parse(req.body);
+      const result = await PrestasiService.createPrestasiSiswa(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Prestasi siswa berhasil dicatat', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Gagal mencatat prestasi siswa', error);
     }
   }
@@ -62,11 +79,13 @@ export class PrestasiController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const data = req.body;
-      if (data.tanggal) data.tanggal = new Date(data.tanggal);
-      const result = await PrestasiService.updatePrestasiSiswa(tenant_id, id, data);
+      const parsed = updatePrestasiSiswaSchema.parse(req.body);
+      const result = await PrestasiService.updatePrestasiSiswa(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Prestasi siswa berhasil diperbarui', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+      }
       return sendError(reply, 500, 'Gagal memperbarui prestasi siswa', error);
     }
   }

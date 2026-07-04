@@ -276,9 +276,9 @@ export class GerbangService {
         return buildDuplicateResponse(tapTx.record!, tenantMode, processingInfo);
       }
 
-      // Step 5: Build comprehensive response
+       // Step 5: Build comprehensive response
       if (input.arah === JenisTap.GERBANG_DATANG) {
-        void markGatePresent(tenantId, input.siswa_id);
+        void markGatePresent(tenantId, input.siswa_id!);
       }
       const responseData = await buildTapResponseData(tapTx.record, siswa, tenantMode, sessionInfo, input);
       const t5 = Date.now();
@@ -489,13 +489,20 @@ export class GerbangService {
       // Final Check (STRICT MODE ONLY - REMOVED FALLBACK)
       const verified = matchScore <= threshold; // Using Euclidean Distance (lower is closer/better)
       
-      if (!verified) {
-        console.warn(`[FACE_DENIED] Unrecognized face attempt: distance=${matchScore.toFixed(4)}, target_id=${identifiedSiswaId}`);
+      // Liveness Detection (New Requirement)
+      const livenessScore = parseFloat(String(input.liveness_score || '1.0'));
+      const livenessThreshold = parseFloat(process.env.FACE_LIVENESS_THRESHOLD || '0.70');
+      const isLive = livenessScore >= livenessThreshold;
+
+      if (!verified || !isLive) {
+        console.warn(`[FACE_DENIED] Unrecognized face attempt: distance=${matchScore.toFixed(4)}, liveness=${livenessScore.toFixed(4)}, target_id=${identifiedSiswaId}`);
         processingInfo.end_time = new Date();
         return buildErrorResponse({
-          error_type: 'FACE_NOT_RECOGNIZED', // Standardized error for consistency
-          message: `Verifikasi wajah tidak cocok (jarak: ${matchScore.toFixed(4)}, batas maksimum: ${threshold}).`,
-          details: { distance: matchScore, threshold, verified: false }
+          error_type: !verified ? 'FACE_NOT_RECOGNIZED' : 'FACE_SPOOFING_DETECTED',
+          message: !verified 
+            ? `Verifikasi wajah tidak cocok (jarak: ${matchScore.toFixed(4)}, batas: ${threshold}).`
+            : `Terdeteksi upaya spoofing wajah (liveness score: ${livenessScore.toFixed(4)}, batas: ${livenessThreshold}).`,
+          details: { distance: matchScore, liveness: livenessScore, threshold, verified, isLive }
         } as any, processingInfo);
       }
 
@@ -579,7 +586,8 @@ export class GerbangService {
             waktu_tap: absenRecord.waktu_tap || new Date().toISOString(),
             status: AbsenStatus.HADIR,
             record_id: String(absenRecord.id),
-            source: 'FACE_SCAN'
+            source: 'FACE_SCAN',
+            image_stream: input.image_base64 // Stream image to dashboard V2
         };
         const redis = getRedisConnection();
         await (redis as any).publish('events:gerbang_tap_update', JSON.stringify(payload));
@@ -940,6 +948,69 @@ export class GerbangService {
       console.warn('Gagal decode embedding buffer:', e);
       return [];
     }
+  }
+
+  /**
+   * Sync offline taps from IoT devices (Store and Forward)
+   */
+  async syncOfflineTaps(tenantId: string, taps: any[]) {
+    const results = {
+      success: 0,
+      failed: 0,
+      details: [] as any[]
+    };
+
+    for (const tap of taps) {
+      try {
+        // Process each tap as a standard tap but with the original timestamp
+        const input: GerbangTapInput = {
+          siswa_id: tap.siswa_id,
+          rfid: tap.rfid,
+          arah: tap.arah as JenisTap,
+          device_id: tap.device_id || 'OFFLINE_SYNC',
+        };
+
+        // Custom logic for offline sync: use tap.timestamp instead of now
+        const tapTime = tap.timestamp ? new Date(tap.timestamp) : new Date();
+        
+        // We bypass standard tap logic to use historical time
+        const res = await this.processOfflineTap(tenantId, input, tapTime);
+        
+        results.success++;
+        results.details.push({ id: tap.id, status: 'SUCCESS', record_id: res.id });
+      } catch (err) {
+        results.failed++;
+        results.details.push({ id: tap.id, status: 'FAILED', error: err instanceof Error ? err.message : 'Unknown' });
+      }
+    }
+
+    return results;
+  }
+
+  private async processOfflineTap(tenantId: string, input: GerbangTapInput, tapTime: Date) {
+    // Basic implementation of offline tap processing
+    // Similar to tap() but handles historical time
+    return await gerbangDb.$transaction(async (tx) => {
+        const siswa = await tx.siswa.findFirst({
+            where: input.rfid ? { no_rfid: input.rfid, tenant_id: tenantId } : { id: input.siswa_id ? input.siswa_id : undefined, tenant_id: tenantId }
+        });
+        if (!siswa) throw new Error('Student not found');
+
+        const session = await getOrCreateSessionInfo(tenantId);
+        
+        return await tx.absenGerbangSiswa.create({
+            data: {
+                tenant_id: tenantId,
+                sesi_gerbang_id: session.id,
+                siswa_id: siswa.id,
+                arah: input.arah,
+                status: AbsenStatus.HADIR,
+                waktu_tap: tapTime,
+                verification_method: 'OFFLINE_SYNC',
+                created_at: new Date()
+            }
+        });
+    });
   }
 }
 

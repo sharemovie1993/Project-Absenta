@@ -1,6 +1,5 @@
-
-
 import { kelasService, CreateKelasInput, UpdateKelasInput } from '../services/kelas.service';
+import { createKelasSchema, updateKelasSchema } from '../services/kelas.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 
@@ -95,30 +94,14 @@ export const kelasController = {
   async createKelas(request: any, reply: any) {
     try {
       const tenantId = request.tenantId;
-      const input: CreateKelasInput = request.body;
 
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      // Validate required fields
-      if (!input.nama_kelas || input.tingkat === undefined) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Missing required fields: nama_kelas, tingkat',
-          data: null,
-        });
-      }
-
-      // Validate tingkat is a positive number
-      if (input.tingkat < 1 || input.tingkat > 12) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Tingkat must be between 1 and 12',
-          data: null,
-        });
-      }
+      const parsedBody = createKelasSchema.parse(request.body);
+      const input: CreateKelasInput = parsedBody;
 
       const scope = (request as any).organizationalScope;
       const kelas = await kelasService.createKelas(input, tenantId, scope);
@@ -156,21 +139,13 @@ export const kelasController = {
       const tenantId = request.tenantId;
       const { id } = request.params;
 
-      const input: UpdateKelasInput = request.body;
-
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      // Validate tingkat if provided
-      if (input.tingkat !== undefined && (input.tingkat < 1 || input.tingkat > 12)) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Tingkat must be between 1 and 12',
-          data: null,
-        });
-      }
+      const parsedBody = updateKelasSchema.parse(request.body);
+      const input: UpdateKelasInput = parsedBody;
 
       const scope = (request as any).organizationalScope;
       const kelas = await kelasService.updateKelas(id, input, tenantId, scope);

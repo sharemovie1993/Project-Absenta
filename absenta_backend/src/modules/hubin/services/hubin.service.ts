@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { activityLogService } from '../../activity/services/activity-log.service';
 import { studentResolverService } from '../../../services/student-resolver.service';
 import { waGatewayService } from '../../../services/wa-gateway.service';
+import { getRedisConnection } from '@/queue/redis';
 
 export class HubinService {
   private log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
@@ -14,6 +15,36 @@ export class HubinService {
         entity,
         entity_id: entityId,
         metadata
+      });
+
+      // Emit real-time event via Redis Pub/Sub
+      queueMicrotask(async () => {
+        try {
+          const redis = getRedisConnection();
+          let actorName = 'System / Anonim';
+          if (userId) {
+            const userObj = await prisma.user.findUnique({
+              where: { id: userId },
+              select: { full_name: true }
+            });
+            if (userObj?.full_name) {
+              actorName = userObj.full_name;
+            }
+          }
+          const payload = {
+            id: crypto.randomUUID(),
+            action: event,
+            actor: actorName,
+            entity,
+            entity_id: entityId,
+            metadata: metadata || null,
+            created_at: new Date().toISOString(),
+            tenant_id: tenantId
+          };
+          await redis.publish('events:hubin_activity_update', JSON.stringify(payload));
+        } catch (wsErr) {
+          console.error('[WS HUBIN LOG] Failed to publish real-time update:', wsErr);
+        }
       });
     } catch (err) {
       console.error(`Failed to log HUBIN event ${event}:`, err);
@@ -678,6 +709,115 @@ export class HubinService {
         image_url: data.image_url || existing.image_url
       }
     });
+  }
+
+  async syncOfflineLogbook(
+    tenantId: string, 
+    siswaPklId: string, 
+    logs: Array<{ 
+      tanggal: string; 
+      jam_masuk: string; 
+      jam_pulang?: string; 
+      kegiatan: string; 
+      latitude_masuk: number; 
+      longitude_masuk: number; 
+      latitude_pulang?: number; 
+      longitude_pulang?: number; 
+      accuracy?: number; 
+      is_dinas_luar?: boolean; 
+      address_snapshot?: string;
+    }>
+  ) {
+    const pkl = await prisma.siswaPkl.findUnique({
+      where: { id: siswaPklId },
+      include: { Mitra: true }
+    });
+
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    const results: any[] = [];
+
+    for (const log of logs) {
+      try {
+        const logDate = new Date(log.tanggal);
+        logDate.setHours(0, 0, 0, 0);
+
+        let isOutsideRadius = false;
+        let distanceMeters = 0;
+
+        const targetLat = pkl.lat_override || pkl.Mitra.latitude;
+        const targetLon = pkl.lon_override || pkl.Mitra.longitude;
+        const radius = pkl.radius_override || pkl.Mitra.radius || 100;
+
+        // Geofencing Check for check-in location
+        if (targetLat && targetLon) {
+          const distance = this.calculateDistance(
+            log.latitude_masuk,
+            log.longitude_masuk,
+            targetLat,
+            targetLon
+          );
+          distanceMeters = Math.round(distance);
+
+          if (distance > radius) {
+            isOutsideRadius = true; // Flag as outside radius
+          }
+        }
+
+        // Check if absensi for this date already exists
+        const existing = await prisma.absensiPkl.findFirst({
+          where: {
+            siswa_pkl_id: siswaPklId,
+            tanggal: logDate
+          }
+        });
+
+        const entryData = {
+          tenant_id: tenantId,
+          siswa_pkl_id: siswaPklId,
+          tanggal: logDate,
+          jam_masuk: new Date(log.jam_masuk),
+          jam_pulang: log.jam_pulang ? new Date(log.jam_pulang) : null,
+          latitude_masuk: log.latitude_masuk,
+          longitude_masuk: log.longitude_masuk,
+          latitude_pulang: log.latitude_pulang !== undefined ? log.latitude_pulang : null,
+          longitude_pulang: log.longitude_pulang !== undefined ? log.longitude_pulang : null,
+          kegiatan: log.kegiatan,
+          is_outside_radius: isOutsideRadius,
+          distance_meters: distanceMeters,
+          address_snapshot: log.address_snapshot || null,
+          is_verified: !isOutsideRadius, // automatically verify if inside radius
+          status: 'HADIR'
+        };
+
+        let savedRecord;
+        if (existing) {
+          savedRecord = await prisma.absensiPkl.update({
+            where: { id: existing.id },
+            data: entryData
+          });
+        } else {
+          savedRecord = await prisma.absensiPkl.create({
+            data: entryData
+          });
+        }
+
+        results.push({
+          tanggal: log.tanggal,
+          status: 'SUCCESS',
+          id: savedRecord.id,
+          is_outside_radius: isOutsideRadius
+        });
+      } catch (err: any) {
+        results.push({
+          tanggal: log.tanggal,
+          status: 'FAILED',
+          error: err.message
+        });
+      }
+    }
+
+    return results;
   }
 
   async updatePenilaian(tenantId: string, id: string, nilai: any, requesterId?: string, org?: any) {

@@ -1,4 +1,5 @@
 import { BpbkController } from '../controllers/bpbk.controller';
+import { BullyingReportController } from '../controllers/bullying-report.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { organizationalScopeMiddleware, elevatedScopeMiddleware } from '@/middlewares/organizationalScope';
 
@@ -276,12 +277,50 @@ export async function bpbkRoutes(fastify: any) {
       organizationalScopeMiddleware
     ]
   }, BpbkController.getWaliKelasReports);
-
   fastify.get('/audit-logs', {
     preHandler: [
       requireCapability('bk.audit.view'),
       organizationalScopeMiddleware
     ]
   }, BpbkController.getAuditLogs);
+
+  // === Kalender BK & Kustomisasi EWS ===
+  fastify.get('/calendar', {
+    preHandler: [
+      requireCapability('bk.cases.view.list'),
+      organizationalScopeMiddleware
+    ]
+  }, BpbkController.getCalendarEvents);
+
+  fastify.get('/ews/weights', {
+    preHandler: [
+      requireCapability('bk.cases.view.list'),
+      organizationalScopeMiddleware
+    ]
+  }, BpbkController.getEwsWeights);
+
+  fastify.post('/ews/weights', {
+    preHandler: [
+      requireCapability('bk.cases.manage'),
+      organizationalScopeMiddleware
+    ]
+  }, BpbkController.updateEwsWeights);
+
+  // === Anonymous Bullying Reporting (Whistleblowing) ===
+  fastify.post('/bullying-reports', BullyingReportController.createReport);
+
+  fastify.get('/bullying-reports', {
+    preHandler: [
+      requireCapability('bk.cases.manage'),
+      organizationalScopeMiddleware
+    ]
+  }, BullyingReportController.getReports);
+
+  fastify.put('/bullying-reports/:id/status', {
+    preHandler: [
+      requireCapability('bk.cases.manage'),
+      organizationalScopeMiddleware
+    ]
+  }, BullyingReportController.updateStatus);
 }
 

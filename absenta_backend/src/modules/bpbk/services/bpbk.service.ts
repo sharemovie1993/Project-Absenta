@@ -56,18 +56,19 @@ export class BpbkService {
       return {}; 
     }
 
+    // Optimization: Parallel fetch if needed, but here it's simple enough
     const waliKelasClassIds = await this.getWaliKelasClassIds(tenantId, userContext.id);
 
     if (waliKelasClassIds.length > 0) {
+      // Optimized query structure for large datasets
       return {
         OR: [
           {
-            Siswa: { kelas_id: { in: waliKelasClassIds } },
-            visibility: { in: ['LIMITED', 'PUBLIC'] }
+            visibility: 'PUBLIC'
           },
           {
-            Siswa: { kelas_id: { notIn: waliKelasClassIds } },
-            visibility: 'PUBLIC'
+            visibility: 'LIMITED',
+            Siswa: { kelas_id: { in: waliKelasClassIds } }
           }
         ]
       };
@@ -301,7 +302,7 @@ export class BpbkService {
     prioritas: string;
     visibility: string;
     tanggal_kasus: Date;
-    keterangan?: string;
+    keterangan?: string | null;
   }, userId?: string) {
     const res = await prisma.kasusBK.create({
       data: {
@@ -340,7 +341,7 @@ export class BpbkService {
     prioritas?: string;
     visibility?: string;
     tanggal_kasus?: Date;
-    keterangan?: string;
+    keterangan?: string | null;
   }, userId?: string) {
     await this.verifyOwner('kasusBK', id, tenantId);
     const oldVal = await prisma.kasusBK.findUnique({ where: { id } });
@@ -627,12 +628,12 @@ export class BpbkService {
     siswa_id: string;
     tanggal: Date;
     tipe: 'INDIVIDU' | 'KELOMPOK';
-    kelompok_id?: string;
+    kelompok_id?: string | null;
     masalah: string;
-    solusi?: string;
+    solusi?: string | null;
     status: 'PROSES' | 'SELESAI';
     visibility?: string;
-    kasus_bk_id?: string;
+    kasus_bk_id?: string | null;
     petugas_id: string;
   }, userId?: string) {
     const res = await prisma.konselingSiswa.create({
@@ -666,12 +667,12 @@ export class BpbkService {
   static async updateKonseling(tenantId: string, id: string, data: {
     tanggal?: Date;
     tipe?: 'INDIVIDU' | 'KELOMPOK';
-    kelompok_id?: string;
+    kelompok_id?: string | null;
     masalah?: string;
-    solusi?: string;
+    solusi?: string | null;
     status?: 'PROSES' | 'SELESAI';
     visibility?: string;
-    kasus_bk_id?: string;
+    kasus_bk_id?: string | null;
   }, userId?: string) {
     await this.verifyOwner('konselingSiswa', id, tenantId);
     const oldVal = await prisma.konselingSiswa.findUnique({ where: { id } });
@@ -820,10 +821,10 @@ export class BpbkService {
     siswa_id: string;
     tanggal_pemanggilan: Date;
     alasan: string;
-    waktu_pertemuan?: string;
-    tempat_pertemuan?: string;
-    surat_dokumen_id?: string;
-    kasus_bk_id?: string;
+    waktu_pertemuan?: string | null;
+    tempat_pertemuan?: string | null;
+    surat_dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
     ortu_notified?: boolean;
     status?: string;
@@ -933,14 +934,14 @@ export class BpbkService {
 
   static async updatePemanggilan(tenantId: string, id: string, data: {
     tanggal_pemanggilan?: Date;
-    tanggal_pertemuan?: Date;
-    keterangan_pertemuan?: string;
+    tanggal_pertemuan?: Date | null;
+    keterangan_pertemuan?: string | null;
     status?: string;
     alasan?: string;
-    waktu_pertemuan?: string;
-    tempat_pertemuan?: string;
-    surat_dokumen_id?: string;
-    kasus_bk_id?: string;
+    waktu_pertemuan?: string | null;
+    tempat_pertemuan?: string | null;
+    surat_dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
     ortu_notified?: boolean;
   }, userId?: string) {
@@ -1104,9 +1105,9 @@ export class BpbkService {
     siswa_id: string;
     tanggal: Date;
     alasan: string;
-    hasil?: string;
-    foto_dokumen_id?: string;
-    kasus_bk_id?: string;
+    hasil?: string | null;
+    foto_dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
     ortu_notified?: boolean;
   }, userId?: string) {
@@ -1143,9 +1144,9 @@ export class BpbkService {
   static async updateHomeVisit(tenantId: string, id: string, data: {
     tanggal?: Date;
     alasan?: string;
-    hasil?: string;
-    foto_dokumen_id?: string;
-    kasus_bk_id?: string;
+    hasil?: string | null;
+    foto_dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
     ortu_notified?: boolean;
   }, userId?: string) {
@@ -1275,10 +1276,10 @@ export class BpbkService {
     siswa_id: string;
     tanggal: Date;
     nama_asesmen: string;
-    hasil_skor?: string;
-    keterangan?: string;
-    dokumen_id?: string;
-    kasus_bk_id?: string;
+    hasil_skor?: string | null;
+    keterangan?: string | null;
+    dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
   }, userId?: string) {
     const res = await prisma.asesmenSiswa.create({
@@ -1310,10 +1311,10 @@ export class BpbkService {
   static async updateAsesmen(tenantId: string, id: string, data: {
     tanggal?: Date;
     nama_asesmen?: string;
-    hasil_skor?: string;
-    keterangan?: string;
-    dokumen_id?: string;
-    kasus_bk_id?: string;
+    hasil_skor?: string | null;
+    keterangan?: string | null;
+    dokumen_id?: string | null;
+    kasus_bk_id?: string | null;
     visibility?: string;
   }, userId?: string) {
     await this.verifyOwner('asesmenSiswa', id, tenantId);
@@ -1451,7 +1452,7 @@ export class BpbkService {
     rujukan_ke: string;
     alasan: string;
     status?: string;
-    kasus_bk_id?: string;
+    kasus_bk_id?: string | null;
     visibility?: string;
   }, userId?: string) {
     const res = await prisma.rujukanKasus.create({
@@ -1484,7 +1485,7 @@ export class BpbkService {
     rujukan_ke?: string;
     alasan?: string;
     status?: string;
-    kasus_bk_id?: string;
+    kasus_bk_id?: string | null;
     visibility?: string;
   }, userId?: string) {
     await this.verifyOwner('rujukanKasus', id, tenantId);
@@ -1695,7 +1696,133 @@ export class BpbkService {
   }
 
   // === EWS Calculation Helper ===
+  static readonly DEFAULT_EWS_WEIGHTS = {
+    weight_violation: 1.5,
+    weight_alpa: 12.0,
+    weight_case_high: 25.0,
+    weight_case_medium: 10.0,
+    weight_case_low: 5.0,
+    weight_achievement: 0.5,
+  };
+
+  static async getEwsWeights(tenantId: string) {
+    const config = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'bpbk_ews_weights' }
+    });
+    if (config?.value) {
+      try {
+        const parsed = JSON.parse(config.value);
+        return {
+          weight_violation: typeof parsed.weight_violation === 'number' ? parsed.weight_violation : this.DEFAULT_EWS_WEIGHTS.weight_violation,
+          weight_alpa: typeof parsed.weight_alpa === 'number' ? parsed.weight_alpa : this.DEFAULT_EWS_WEIGHTS.weight_alpa,
+          weight_case_high: typeof parsed.weight_case_high === 'number' ? parsed.weight_case_high : this.DEFAULT_EWS_WEIGHTS.weight_case_high,
+          weight_case_medium: typeof parsed.weight_case_medium === 'number' ? parsed.weight_case_medium : this.DEFAULT_EWS_WEIGHTS.weight_case_medium,
+          weight_case_low: typeof parsed.weight_case_low === 'number' ? parsed.weight_case_low : this.DEFAULT_EWS_WEIGHTS.weight_case_low,
+          weight_achievement: typeof parsed.weight_achievement === 'number' ? parsed.weight_achievement : this.DEFAULT_EWS_WEIGHTS.weight_achievement,
+        };
+      } catch {
+        return this.DEFAULT_EWS_WEIGHTS;
+      }
+    }
+    return this.DEFAULT_EWS_WEIGHTS;
+  }
+
+  static async updateEwsWeights(tenantId: string, weights: any) {
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'bpbk_ews_weights' }
+    });
+    const serialized = JSON.stringify(weights);
+    if (existing) {
+      return prisma.config.update({
+        where: { id: existing.id },
+        data: { value: serialized }
+      });
+    } else {
+      return prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key: 'bpbk_ews_weights',
+          value: serialized,
+          description: 'Custom bobot perhitungan skor EWS BPBK'
+        }
+      });
+    }
+  }
+
+  static async getCalendarEvents(tenantId: string, query: { start?: string; end?: string }) {
+    const whereSummons: any = { tenant_id: tenantId, deleted_at: null };
+    const whereHomeVisits: any = { tenant_id: tenantId, deleted_at: null };
+
+    if (query.start) {
+      const startDate = new Date(query.start);
+      whereSummons.tanggal_pemanggilan = { gte: startDate };
+      whereHomeVisits.tanggal = { gte: startDate };
+    }
+    if (query.end) {
+      const endDate = new Date(query.end);
+      if (!whereSummons.tanggal_pemanggilan) whereSummons.tanggal_pemanggilan = {};
+      if (!whereHomeVisits.tanggal) whereHomeVisits.tanggal = {};
+      whereSummons.tanggal_pemanggilan.lte = endDate;
+      whereHomeVisits.tanggal.lte = endDate;
+    }
+
+    const [summons, homeVisits] = await Promise.all([
+      prisma.pemanggilanOrangTua.findMany({
+        where: whereSummons,
+        include: {
+          Siswa: {
+            select: { id: true, nama_siswa: true, nis: true }
+          }
+        },
+        orderBy: { tanggal_pemanggilan: 'asc' }
+      }),
+      prisma.homeVisit.findMany({
+        where: whereHomeVisits,
+        include: {
+          Siswa: {
+            select: { id: true, nama_siswa: true, nis: true }
+          }
+        },
+        orderBy: { tanggal: 'asc' }
+      })
+    ]);
+
+    const events: Array<any> = [];
+
+    summons.forEach(s => {
+      events.push({
+        id: s.id,
+        type: 'SUMMONS',
+        title: `Pemanggilan: ${s.Siswa?.nama_siswa || 'Siswa'}`,
+        start: s.tanggal_pemanggilan.toISOString().split('T')[0],
+        end: s.tanggal_pemanggilan.toISOString().split('T')[0],
+        description: s.alasan,
+        status: s.status,
+        metadata: {
+          waktu: s.waktu_pertemuan || null,
+          tempat: s.tempat_pertemuan || null
+        }
+      });
+    });
+
+    homeVisits.forEach(hv => {
+      events.push({
+        id: hv.id,
+        type: 'HOMEVISIT',
+        title: `Home Visit: ${hv.Siswa?.nama_siswa || 'Siswa'}`,
+        start: hv.tanggal.toISOString().split('T')[0],
+        end: hv.tanggal.toISOString().split('T')[0],
+        description: hv.alasan,
+        status: 'SELESAI'
+      });
+    });
+
+    return events;
+  }
+
   static async calculateEwsForSiswa(tenantId: string) {
+    const weights = await this.getEwsWeights(tenantId);
+
     const siswaList = await prisma.siswa.findMany({
       where: { tenant_id: tenantId, status: 'AKTIF' },
       include: {
@@ -1752,6 +1879,22 @@ export class BpbkService {
       }
     });
 
+    // Fetch EWS snapshots of active students for AI trend calculation
+    const snapshots = await prisma.ewsSnapshot.findMany({
+      where: {
+        tenant_id: tenantId,
+        siswa_id: { in: siswaList.map(s => s.id) }
+      },
+      orderBy: { snapshot_date: 'desc' }
+    });
+
+    const snapshotMap = new Map<string, any[]>();
+    snapshots.forEach(snap => {
+      const arr = snapshotMap.get(snap.siswa_id) || [];
+      arr.push(snap);
+      snapshotMap.set(snap.siswa_id, arr);
+    });
+
     return siswaList.map(s => {
       const totalViolations = s.PelanggaranSiswa.reduce((sum: number, p: any) => sum + p.poin, 0);
       const totalAchievements = s.PrestasiSiswa.reduce((sum: number, p: any) => sum + p.poin, 0);
@@ -1760,12 +1903,12 @@ export class BpbkService {
       const mediumPriority = mediumPriorityMap.get(s.id) || 0;
       const lowPriority = lowPriorityMap.get(s.id) || 0;
 
-      let riskScore = (totalViolations * 1.5) 
-                      + (alpaCount * 12.0) 
-                      + (highPriority * 25.0) 
-                      + (mediumPriority * 10.0) 
-                      + (lowPriority * 5.0) 
-                      - (totalAchievements * 0.5);
+      let riskScore = (totalViolations * weights.weight_violation) 
+                      + (alpaCount * weights.weight_alpa) 
+                      + (highPriority * weights.weight_case_high) 
+                      + (mediumPriority * weights.weight_case_medium) 
+                      + (lowPriority * weights.weight_case_low) 
+                      - (totalAchievements * weights.weight_achievement);
       riskScore = Math.max(0, Math.round(riskScore));
 
       let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
@@ -1775,6 +1918,44 @@ export class BpbkService {
         riskLevel = 'MEDIUM';
       }
 
+      // Pola Kasus AI Sederhana
+      const detectedPatterns: string[] = [];
+      const sSnaps = snapshotMap.get(s.id) || [];
+      
+      let trendSlope = 0;
+      if (sSnaps.length >= 2) {
+        const recent = sSnaps[0];
+        const oldest = sSnaps[sSnaps.length - 1];
+        const scoreDiff = (recent.risk_score || 0) - (oldest.risk_score || 0);
+        const daysDiff = Math.max(1, Math.round((recent.snapshot_date.getTime() - oldest.snapshot_date.getTime()) / (1000 * 3600 * 24)));
+        trendSlope = (scoreDiff / daysDiff) * 7; // points per week
+      }
+
+      // 1. RISK_TREND_EXPONENTIAL_INCREASE
+      if (trendSlope >= 15) {
+        detectedPatterns.push('RISK_TREND_EXPONENTIAL_INCREASE');
+      }
+
+      // 2. PATTERN_WITHDRAWAL (Active cases + Alpa > 3 days in last 30 days)
+      if ((highPriority + mediumPriority) > 0 && alpaCount > 3) {
+        detectedPatterns.push('PATTERN_WITHDRAWAL');
+      }
+
+      // 3. PATTERN_AGGRESSIVE (Violations increased > 20 points in last 15 days)
+      const date15DaysAgo = new Date();
+      date15DaysAgo.setDate(date15DaysAgo.getDate() - 15);
+      const recentViolationsScore = s.PelanggaranSiswa
+        .filter((p: any) => new Date(p.tanggal || p.created_at) >= date15DaysAgo)
+        .reduce((sum: number, p: any) => sum + p.poin, 0);
+      if (recentViolationsScore >= 20) {
+        detectedPatterns.push('PATTERN_AGGRESSIVE');
+      }
+
+      // 4. PATTERN_DISRUPTIVE (Total violations > 3 and Alpa > 5)
+      if (s.PelanggaranSiswa.length > 3 && alpaCount > 5) {
+        detectedPatterns.push('PATTERN_DISRUPTIVE');
+      }
+
       return {
         siswa: s as any,
         violations: totalViolations,
@@ -1782,7 +1963,8 @@ export class BpbkService {
         riskScore,
         riskLevel,
         alpaCount,
-        activeCasesCount: highPriority + mediumPriority + lowPriority
+        activeCasesCount: highPriority + mediumPriority + lowPriority,
+        detectedPatterns
       };
     });
   }

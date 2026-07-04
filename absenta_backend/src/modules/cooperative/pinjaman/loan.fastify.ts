@@ -5,6 +5,12 @@ import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 import { prisma } from '../../../utils/prisma';
+import { z } from 'zod';
+import {
+    createLoanSchema,
+    payInstallmentSchema,
+    updateLoanStatusSchema
+} from '../services/cooperative-validation.schema';
 
 export default async function loanRoutes(fastify: any) {
 
@@ -27,7 +33,8 @@ export default async function loanRoutes(fastify: any) {
     fastify.post('/', { preHandler: [requireCapability('cooperative.loans.apply')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { memberId, amount, interestRate, duration } = req.body as any;
+            const parsed = createLoanSchema.parse(req.body);
+            const { memberId, amount, interestRate, duration } = parsed;
             
             // Security check: regular member can only apply for their own member account
             const user = req.user;
@@ -43,9 +50,15 @@ export default async function loanRoutes(fastify: any) {
                 }
             }
 
-            const loan = await LoanService.createLoan(memberId, Number(amount), Number(interestRate), Number(duration));
+            const loan = await LoanService.createLoan(memberId, amount, interestRate, duration);
             reply.code(201).send(loan);
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message?.startsWith('LOAN_RESTRICTION:')) {
                 // Validasi aturan bisnis koperasi: kembalikan 400 dengan pesan deskriptif
                 // Ambil teks pesan setelah prefix "LOAN_RESTRICTION:ACTIVE: " atau "LOAN_RESTRICTION:PENDING: "
@@ -100,10 +113,16 @@ export default async function loanRoutes(fastify: any) {
     // POST /loans/pay-installment
     fastify.post('/pay-installment', { preHandler: [requireCapability('cooperative.loans.repay')] }, async (req: any, reply: any) => {
         try {
-            const { installmentId } = req.body as any;
-            const updatedInstallment = await LoanService.payInstallment(installmentId);
+            const parsed = payInstallmentSchema.parse(req.body);
+            const updatedInstallment = await LoanService.payInstallment(parsed.installmentId);
             return updatedInstallment;
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message === 'Installment not found') {
                 reply.code(404).send({ message: 'Installment not found' });
             } else if (error.message === 'Installment already paid') {
@@ -118,10 +137,16 @@ export default async function loanRoutes(fastify: any) {
     fastify.put('/:id/status', { preHandler: [requireCapability(['cooperative.loans.approve', 'cooperative.loans.reject'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { status } = req.body as any;
-            const loan = await LoanService.updateLoanStatus(req.params.id, status, tenantId, req.user?.id);
+            const parsed = updateLoanStatusSchema.parse(req.body);
+            const loan = await LoanService.updateLoanStatus(req.params.id, parsed.status, tenantId, req.user?.id);
             return loan;
         } catch (error: any) {
+            if (error instanceof z.ZodError) {
+                return reply.code(400).send({
+                    message: error.errors.map(e => e.message).join(', '),
+                    errors: error.errors
+                });
+            }
             if (error.message?.includes('Self-Approval')) {
                 reply.code(400).send({ message: error.message });
             } else {

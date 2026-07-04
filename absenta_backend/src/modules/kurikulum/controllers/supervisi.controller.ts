@@ -1,13 +1,23 @@
 import { SupervisiService } from '../services/supervisi.service';
 import { sendResponse, sendError } from '../../../utils/response';
+import { supervisiGuruCreateSchema, supervisiGuruUpdateSchema } from '../services/kurikulum.schema';
+import { z } from 'zod';
 
 export class SupervisiController {
   static async create(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const result = await SupervisiService.create(tenant_id, req.body);
+      const parsed = supervisiGuruCreateSchema.parse(req.body);
+      const result = await SupervisiService.create(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Data supervisi created', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return sendError(reply, 500, 'Failed to create supervisi data', error);
     }
   }
@@ -16,9 +26,17 @@ export class SupervisiController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const result = await SupervisiService.update(tenant_id, id, req.body);
+      const parsed = supervisiGuruUpdateSchema.parse(req.body);
+      const result = await SupervisiService.update(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Data supervisi updated', result);
-    } catch (error) {
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return sendError(reply, 500, 'Failed to update supervisi data', error);
     }
   }

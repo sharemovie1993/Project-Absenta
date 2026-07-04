@@ -40,6 +40,38 @@ export default defineCronJob({
           data: snapshotsData
         });
 
+        // Trigger push alerts for high-risk students to BK teachers
+        const highRiskStudents = ewsList.filter((e: any) => e.riskLevel === 'HIGH');
+        if (highRiskStudents.length > 0) {
+          const bkTeachers = await prisma.user.findMany({
+            where: {
+              tenant_id: tenant.id,
+              Role: {
+                rolePermissions: {
+                  some: {
+                    permission_id: 'bk.cases.manage'
+                  }
+                }
+              }
+            },
+            select: { id: true }
+          });
+
+          if (bkTeachers.length > 0) {
+            const { notificationService } = await import('../services/notification.service');
+            for (const student of highRiskStudents) {
+              const studentName = student.siswa.nama || 'Siswa';
+              for (const teacher of bkTeachers) {
+                await notificationService.sendInApp(
+                  teacher.id,
+                  'PERINGATAN DINI: Siswa Berisiko Tinggi',
+                  `Siswa ${studentName} terdeteksi berisiko TINGGI (Skor: ${student.riskScore}) pada tanggal ${now.toLocaleDateString('id-ID')}`
+                );
+              }
+            }
+          }
+        }
+
         processedCount += ewsList.length;
       } catch (error: any) {
         failedCount++;

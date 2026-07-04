@@ -1,4 +1,6 @@
 import { PiketService } from '../services/piket.service';
+import { createIzinSchema } from '../../services/kesiswaan-validation.schema';
+import { z } from 'zod';
 
 export class PiketController {
   private piketService: PiketService;
@@ -10,9 +12,17 @@ export class PiketController {
   async createIzin(request: any, reply: any) {
     try {
       const tenantId = (request as any).tenantId;
-      const data = await this.piketService.createIzin(tenantId, request.body);
+      const parsed = createIzinSchema.parse(request.body);
+      const data = await this.piketService.createIzin(tenantId, parsed);
       reply.status(201).send({ success: true, data });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       reply.status(500).send({ success: false, message: error.message });
     }
   }

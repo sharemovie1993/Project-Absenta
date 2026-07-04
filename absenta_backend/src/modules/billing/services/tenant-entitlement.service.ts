@@ -36,12 +36,24 @@ export const tenantEntitlementService = {
       } catch {}
     }
 
+    // Check if there is a custom grace period in database config
+    let graceDays = 7;
+    const configGrace = await prisma.config.findFirst({
+      where: { tenant_id: t, key: 'subscription_grace_days' }
+    });
+    if (configGrace && configGrace.value) {
+      const parsedDays = parseInt(configGrace.value);
+      if (!isNaN(parsedDays)) graceDays = parsedDays;
+    }
+
     const now = new Date();
+    const graceThreshold = new Date(now.getTime() - graceDays * 24 * 60 * 60 * 1000);
+
     const subscriptions = await prisma.subscription.findMany({
       where: {
         tenant_id: t,
         status: { in: ['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'] as any },
-        end_date: { gt: now },
+        end_date: { gt: graceThreshold },
       },
       include: { Plan: true },
       orderBy: { end_date: 'desc' },

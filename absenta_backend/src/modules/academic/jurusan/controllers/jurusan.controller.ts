@@ -1,6 +1,7 @@
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { JurusanService, CreateJurusanInput, UpdateJurusanInput } from '../services/jurusan.service';
+import { createJurusanSchema, updateJurusanSchema } from '../services/jurusan.schema';
 
 const jurusanService = new JurusanService();
 
@@ -68,32 +69,8 @@ export const jurusanController = {
   async createJurusan(request: any, reply: any) {
     try {
       const user = request.user!;
-
-      const input: CreateJurusanInput = request.body;
-
-      if (!input.nama) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Missing required field: nama',
-          data: null,
-        });
-      }
-
-      if (input.nama.length < 2 || input.nama.length > 100) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Nama must be between 2 and 100 characters',
-          data: null,
-        });
-      }
-
-      if (input.kode && (input.kode.length < 2 || input.kode.length > 10)) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Kode must be between 2 and 10 characters',
-          data: null,
-        });
-      }
+      const parsedBody = createJurusanSchema.parse(request.body);
+      const input: CreateJurusanInput = parsedBody;
 
       const jurusan = await jurusanService.createJurusan(input, user.tenantId);
 
@@ -116,23 +93,8 @@ export const jurusanController = {
     try {
       const user = request.user!;
       const { id } = request.params;
-      const input: UpdateJurusanInput = request.body;
-
-      if (input.nama && (input.nama.length < 2 || input.nama.length > 100)) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Nama must be between 2 and 100 characters',
-          data: null,
-        });
-      }
-
-      if (input.kode && (input.kode.length < 2 || input.kode.length > 10)) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Kode must be between 2 and 10 characters',
-          data: null,
-        });
-      }
+      const parsedBody = updateJurusanSchema.parse(request.body);
+      const input: UpdateJurusanInput = parsedBody;
 
       const jurusan = await jurusanService.updateJurusan(id, input, user.roleName, user.tenantId);
 

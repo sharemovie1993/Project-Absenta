@@ -27,6 +27,7 @@ export async function hubinRoutes(fastify: any) {
   fastify.post('/absensi/check-out', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.checkOut(req, reply));
   fastify.put('/absensi/:siswaPklId/logbook', { preHandler: [requireCapability(['hubin.self.logbook', 'hubin.logbook.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updateLogbook(req, reply));
   fastify.put('/absensi/:id/verify', { preHandler: [requireCapability('hubin.absensi.verify'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.verifyAbsensi(req, reply));
+  fastify.post('/absensi/sync-offline', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.syncOfflineLogbook(req, reply));
 
   // --- JURNAL & PORTOFOLIO PKL ---
   fastify.post('/penempatan/:id/jurnal-akhir', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.submitJurnalPortofolio(req, reply));

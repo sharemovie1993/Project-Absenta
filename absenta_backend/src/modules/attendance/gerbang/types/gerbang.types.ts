@@ -2,11 +2,11 @@ import { JenisTap, AbsensiMode, AbsenStatus } from '@/constants/enums';
 
 // Input interfaces
 export interface GerbangTapInput {
-  siswa_id: string;
+  siswa_id?: string | null;
   arah: JenisTap;
-  device_id?: string;
-  rfid?: string;
-  waktu_tap?: string | Date;
+  device_id?: string | null;
+  rfid?: string | null;
+  waktu_tap?: string | Date | null;
   is_offline_sync?: boolean;
 }
 
@@ -142,18 +142,19 @@ export interface MultiSesiModeTapData extends GerbangTapData {
 }
 
 export interface FaceVerifyInput {
-  siswa_id?: string;
+  siswa_id?: string | null;
   arah: JenisTap;
   image_base64: string;
-  embedding?: number[];
+  embedding?: number[] | null;
+  liveness_score?: number | string | null;
 }
 export interface FaceEnrollInput {
   siswa_id: string;
   image_base64: string;
-  embedding?: number[];
-  source?: string;
-  embedding_type?: string;
-  model_name?: string;
+  embedding?: number[] | null;
+  source?: string | null;
+  embedding_type?: string | null;
+  model_name?: string | null;
 }
 
 // Session management interfaces

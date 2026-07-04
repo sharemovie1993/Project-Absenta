@@ -1,4 +1,5 @@
 import { guruService, CreateGuruInput, UpdateGuruInput } from '../services/guru.service';
+import { createGuruSchema, updateGuruSchema } from '../services/guru.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { getPaginationParams } from '../../../../utils/pagination';
@@ -117,34 +118,8 @@ export class GuruController {
   async createGuru(request: any, reply: any): Promise<ApiResponse> {
     try {
       const scope = request.dataScope;
-      const { user_id, nip, nama_guru, no_rfid, email,
-        no_hp, alamat, tempat_lahir, tanggal_lahir,
-        jenis_kelamin, agama, status_kepegawaian, pendidikan_terakhir } = request.body;
-
-      // Validate required fields
-      if (!nama_guru) {
-        reply.status(400);
-        return {
-          success: false,
-          message: 'nama_guru is required',
-        };
-      }
-
-      const createGuruInput: CreateGuruInput = {
-        user_id,
-        nip,
-        nama_guru,
-        no_rfid,
-        email,
-        no_hp,
-        alamat,
-        tempat_lahir,
-        tanggal_lahir,
-        jenis_kelamin,
-        agama,
-        status_kepegawaian,
-        pendidikan_terakhir,
-      };
+      const parsedBody = createGuruSchema.parse(request.body);
+      const createGuruInput: CreateGuruInput = parsedBody;
 
       const guru = await guruService.createGuru(createGuruInput, scope);
 
@@ -177,9 +152,7 @@ export class GuruController {
     try {
       const scope = request.dataScope;
       const { id } = request.params;
-      const { nip, nama_guru, no_rfid, status,
-        no_hp, alamat, tempat_lahir, tanggal_lahir,
-        jenis_kelamin, agama, status_kepegawaian, pendidikan_terakhir } = request.body;
+      const parsedBody = updateGuruSchema.parse(request.body);
 
       const user = request.user;
 
@@ -206,11 +179,7 @@ export class GuruController {
         }
       }
 
-      const updateGuruInput: UpdateGuruInput = { 
-        nip, nama_guru, no_rfid, status, no_hp, alamat, 
-        tempat_lahir, tanggal_lahir, jenis_kelamin, 
-        agama, status_kepegawaian, pendidikan_terakhir 
-      };
+      const updateGuruInput: UpdateGuruInput = parsedBody;
 
       const guru = await guruService.updateGuru(id, updateGuruInput, scope);
 

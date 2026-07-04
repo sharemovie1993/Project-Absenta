@@ -1,6 +1,5 @@
-
-
 import { mapelService } from '../services/mapel.service';
+import { createMapelSchema, updateMapelSchema } from '../services/mapel.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 
@@ -68,16 +67,8 @@ export const mapelController = {
   async createMapel(request: any, reply: any) {
     try {
       const user = request.user!;
-
-      const input = request.body;
-
-      if (!input.nama_mapel) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Missing required field: nama_mapel',
-          data: null,
-        });
-      }
+      const parsedBody = createMapelSchema.parse(request.body);
+      const input = parsedBody;
 
       const mapel = await mapelService.createMapel(input, user.tenantId);
 
@@ -112,8 +103,8 @@ export const mapelController = {
     try {
       const user = request.user!;
       const { id } = request.params;
-
-      const input = request.body;
+      const parsedBody = updateMapelSchema.parse(request.body);
+      const input = parsedBody;
 
       const mapel = await mapelService.updateMapel(id, input, user.roleName, user.tenantId);
 

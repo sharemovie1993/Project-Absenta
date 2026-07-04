@@ -8,16 +8,16 @@ const prisma = new PrismaClient();
 
 export interface CreateMapelInput {
   nama_mapel: string;
-  kode_mapel?: string;
-  tingkat?: number;
-  deskripsi?: string;
+  kode_mapel?: string | null;
+  tingkat?: number | null;
+  deskripsi?: string | null;
 }
 
 export interface UpdateMapelInput {
   nama_mapel?: string;
-  kode_mapel?: string;
-  tingkat?: number;
-  deskripsi?: string;
+  kode_mapel?: string | null;
+  tingkat?: number | null;
+  deskripsi?: string | null;
 }
 
 export interface MapelResponse {
@@ -164,7 +164,7 @@ export const mapelService = {
     }
 
     // Validate tingkat range (if provided)
-    if (input.tingkat !== undefined && (input.tingkat < 1 || input.tingkat > 12)) {
+    if (input.tingkat !== undefined && input.tingkat !== null && (input.tingkat < 1 || input.tingkat > 12)) {
       throw new Error('Tingkat must be between 1 and 12');
     }
 
@@ -245,7 +245,7 @@ export const mapelService = {
     }
 
     // Validate tingkat range (if provided)
-    if (input.tingkat !== undefined && (input.tingkat < 1 || input.tingkat > 12)) {
+    if (input.tingkat !== undefined && input.tingkat !== null && (input.tingkat < 1 || input.tingkat > 12)) {
       throw new Error('Tingkat must be between 1 and 12');
     }
 

@@ -103,4 +103,12 @@ export async function academicRoutes(fastify: any) {
     },
     academicStatsController.getAcademicStats.bind(academicStatsController)
   );
+
+  fastify.get(
+    '/stats/comparison',
+    {
+      preHandler: [requireCapability(['academic.teaching.rekap', 'dashboard.view.overview'])]
+    },
+    academicStatsController.getYearlyComparison.bind(academicStatsController)
+  );
 }
