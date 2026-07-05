@@ -69,6 +69,17 @@ export const heartbeatService = {
         } catch {}
       }
 
+      // Get school name from DB
+      let schoolName = undefined;
+      try {
+        const sekolah = await prisma.sekolah.findFirst({ select: { nama: true } });
+        if (sekolah && sekolah.nama) {
+          schoolName = sekolah.nama;
+        }
+      } catch (err: any) {
+        console.warn('[Heartbeat] Gagal mendapatkan nama sekolah:', err.message);
+      }
+
       // 5. Send metrics to License Server
       console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, memoryUsage=${(memoryUsage * 100).toFixed(2)}%, lastTapped=${lastTapped.toISOString()}`);
       
@@ -77,7 +88,9 @@ export const heartbeatService = {
         dbSize,
         memoryUsage,
         lastTapped: lastTapped.toISOString(),
-        deployMode: process.env.DEPLOY_SCENARIO || 'local'
+        deployMode: process.env.DEPLOY_SCENARIO || 'local',
+        schoolName,
+        appDomain: process.env.PUBLIC_DOMAIN_BASE || undefined
       };
 
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {
