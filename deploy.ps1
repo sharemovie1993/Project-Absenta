@@ -554,31 +554,42 @@ if ($domainParts.Count -ge 3) {
 if (-not (Test-Path "absenta_backend/.env")) { Copy-Item "absenta_backend/.env.example" "absenta_backend/.env" }
 $backendEnv = Get-Content "absenta_backend/.env"
 $newBackendEnv = @()
+$writtenKeys = @{}
 
 foreach ($line in $backendEnv) {
-    if ($line -match "^PORT=") { $newBackendEnv += "PORT=$BackendPort" }
-    elseif ($line -match "^REDIS_MODE=") { $newBackendEnv += "REDIS_MODE=$redisMode" }
-    elseif ($line -match "^REDIS_URL=") { $newBackendEnv += "REDIS_URL=$redisUrl" }
-    elseif ($line -match "^API_URL=") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain/api" }
-    elseif ($line -match "^APP_URL=") { $newBackendEnv += "APP_URL=${finalScheme}://$finalDomain" }
-    elseif ($line -match "^PUBLIC_APP_URL=") { $newBackendEnv += "PUBLIC_APP_URL=${finalScheme}://$finalDomain" }
-    elseif ($line -match "^PUBLIC_INVOICE_BASE_URL=") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=${finalScheme}://$finalDomain" }
-    elseif ($line -match "^PUBLIC_APP_SCHEME=") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
-    elseif ($line -match "^PUBLIC_DOMAIN_BASE=") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
-    elseif ($line -match "^MAIN_DOMAIN=") { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
-    elseif ($line -match "^TENANT_BASE_DOMAIN=") { $newBackendEnv += "TENANT_BASE_DOMAIN=$calculatedMainDomain" }
-    elseif ($line -match "^FRONTEND_URL=") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
-    elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
-    elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
-    elseif ($line -match "^CLOUDFLARE_API_TOKEN=") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
-    elseif ($line -match "^DEPLOY_SCENARIO=") { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
-    else { $newBackendEnv += $line }
+    if ($line -match "^([^=]+)=(.*)$") {
+        $key = $Matches[1].Trim()
+        if ($writtenKeys.ContainsKey($key)) {
+            continue
+        }
+        $writtenKeys[$key] = $true
+
+        if ($key -eq "PORT") { $newBackendEnv += "PORT=$BackendPort" }
+        elseif ($key -eq "REDIS_MODE") { $newBackendEnv += "REDIS_MODE=$redisMode" }
+        elseif ($key -eq "REDIS_URL") { $newBackendEnv += "REDIS_URL=$redisUrl" }
+        elseif ($key -eq "API_URL") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain/api" }
+        elseif ($key -eq "APP_URL") { $newBackendEnv += "APP_URL=${finalScheme}://$finalDomain" }
+        elseif ($key -eq "PUBLIC_APP_URL") { $newBackendEnv += "PUBLIC_APP_URL=${finalScheme}://$finalDomain" }
+        elseif ($key -eq "PUBLIC_INVOICE_BASE_URL") { $newBackendEnv += "PUBLIC_INVOICE_BASE_URL=${finalScheme}://$finalDomain" }
+        elseif ($key -eq "PUBLIC_APP_SCHEME") { $newBackendEnv += "PUBLIC_APP_SCHEME=$finalScheme" }
+        elseif ($key -eq "PUBLIC_DOMAIN_BASE") { $newBackendEnv += "PUBLIC_DOMAIN_BASE=$finalDomain" }
+        elseif ($key -eq "MAIN_DOMAIN") { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
+        elseif ($key -eq "TENANT_BASE_DOMAIN") { $newBackendEnv += "TENANT_BASE_DOMAIN=$calculatedMainDomain" }
+        elseif ($key -eq "FRONTEND_URL") { $newBackendEnv += "FRONTEND_URL=${finalScheme}://$finalDomain" }
+        elseif ($key -eq "ALLOWED_LAN_IP") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
+        elseif ($key -eq "LICENSE_KEY") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+        elseif ($key -eq "CLOUDFLARE_API_TOKEN") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
+        elseif ($key -eq "DEPLOY_SCENARIO") { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
+        else { $newBackendEnv += $line }
+    } else {
+        $newBackendEnv += $line
+    }
 }
 # Pastikan variabel kritikal tertulis jika tidak ada di example
-if (-not ($newBackendEnv -match "^LICENSE_KEY=")) { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
-if (-not ($newBackendEnv -match "^CLOUDFLARE_API_TOKEN=")) { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
-if (-not ($newBackendEnv -match "^MAIN_DOMAIN=")) { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
-if (-not ($newBackendEnv -match "^DEPLOY_SCENARIO=")) { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
+if (-not $writtenKeys.ContainsKey("LICENSE_KEY")) { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
+if (-not $writtenKeys.ContainsKey("CLOUDFLARE_API_TOKEN")) { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
+if (-not $writtenKeys.ContainsKey("MAIN_DOMAIN")) { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
+if (-not $writtenKeys.ContainsKey("DEPLOY_SCENARIO")) { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
