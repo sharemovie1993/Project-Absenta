@@ -443,14 +443,44 @@ if (-not $Silent) {
                         Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
                     } else {
                         Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
-                        try {
-                            $machineId = "server-$([guid]::NewGuid().ToString().Substring(0,8))" # Fallback machine ID for script
+                            # Hitung fingerprint unik hardware
+                            $boardUuid = ""
+                            try {
+                                $boardUuid = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
+                            } catch {}
+                            if ([string]::IsNullOrWhiteSpace($boardUuid)) {
+                                try {
+                                    $boardUuid = (Get-WmiObject Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
+                                } catch {}
+                            }
+                            if ([string]::IsNullOrWhiteSpace($boardUuid)) {
+                                $boardUuid = "unknown-uuid"
+                            }
+
+                            $macs = ""
+                            try {
+                                $macs = (Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -ExpandProperty PhysicalAddress -ErrorAction SilentlyContinue) -join ""
+                            } catch {}
+                            if ([string]::IsNullOrWhiteSpace($macs)) {
+                                try {
+                                    $macs = (Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -eq $true } | Select-Object -ExpandProperty MACAddress -ErrorAction SilentlyContinue) -join ""
+                                } catch {}
+                            }
+                            $macs = ($macs -replace ':', '' -replace '-', '').Trim()
+
+                            $rawId = "${boardUuid}-${macs}"
+                            $sha1 = [System.Security.Cryptography.SHA1]::Create()
+                            $hashBytes = $sha1.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($rawId))
+                            $fingerprint = (($hashBytes | ForEach-Object { "{0:x2}" -f $_ }) -join "").Substring(0, 16)
+                            $machineId = "server-$fingerprint"
+
                             $body = @{
                                 school_name = $schoolName
                                 product_id = "platform-absenta"
                                 device_limit = 9999
                                 plan_id = "absenta_on_premise"
                                 payment_method = "manual"
+                                device_id = $machineId
                             } | ConvertTo-Json
                             
                             $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
@@ -540,12 +570,14 @@ foreach ($line in $backendEnv) {
     elseif ($line -match "^ALLOWED_LAN_IP=") { $newBackendEnv += "ALLOWED_LAN_IP=$lanIp" }
     elseif ($line -match "^LICENSE_KEY=") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
     elseif ($line -match "^CLOUDFLARE_API_TOKEN=") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
+    elseif ($line -match "^DEPLOY_SCENARIO=") { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
     else { $newBackendEnv += $line }
 }
 # Pastikan variabel kritikal tertulis jika tidak ada di example
 if (-not ($newBackendEnv -match "^LICENSE_KEY=")) { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
 if (-not ($newBackendEnv -match "^CLOUDFLARE_API_TOKEN=")) { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
 if (-not ($newBackendEnv -match "^MAIN_DOMAIN=")) { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
+if (-not ($newBackendEnv -match "^DEPLOY_SCENARIO=")) { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
