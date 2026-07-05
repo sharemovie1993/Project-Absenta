@@ -443,6 +443,7 @@ if (-not $Silent) {
                         Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
                     } else {
                         Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
+                        try {
                             # Hitung fingerprint unik hardware
                             $boardUuid = ""
                             try {
