@@ -452,6 +452,7 @@ if (-not $Silent) {
                 $requestNew = Read-Host "Belum punya lisensi? Ingin registrasi sekarang? [y/N]"
                 if ($requestNew -eq 'y' -or $requestNew -eq 'Y') {
                     $schoolName = Read-Host "Masukkan Nama Sekolah / Instansi"
+                    $whatsappNo = Read-Host "Masukkan Nomor WhatsApp Anda (untuk menerima Kunci Lisensi)"
                     if ([string]::IsNullOrWhiteSpace($schoolName)) {
                         Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
                     } else {
@@ -495,6 +496,7 @@ if (-not $Silent) {
                                 plan_id = "absenta_on_premise"
                                 payment_method = "manual"
                                 device_id = $machineId
+                                operator_phone = $whatsappNo
                             } | ConvertTo-Json
                             
                             $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
