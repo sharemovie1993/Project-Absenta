@@ -90,7 +90,9 @@ export const heartbeatService = {
         lastTapped: lastTapped.toISOString(),
         deployMode: process.env.DEPLOY_SCENARIO || 'local',
         schoolName,
-        appDomain: process.env.PUBLIC_DOMAIN_BASE || undefined
+        appDomain: process.env.PUBLIC_DOMAIN_BASE || undefined,
+        hostname: os.hostname(),
+        osType: `${os.type()} ${os.release()} (${os.arch()})`
       };
 
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {
