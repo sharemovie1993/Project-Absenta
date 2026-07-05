@@ -293,48 +293,55 @@ $LicenseServer = "https://api.absenta.id"
 $finalDomain = "your-domain.id"
 $finalScheme = "https"
 $deployScenario = "saas" # default
+$nodeName = "absenta-node-1"
+$dbUrl = "postgresql://postgres:123123123@localhost:5432/absensi"
 
 if (-not $Silent) {
     $confirmed = $false
     while (-not $confirmed) {
-        Show-Header "2 / 5 - Konfigurasi Skenario & Port"
+        Show-Header "2 / 5 - Konfigurasi Server Lokal"
+
+        # ─── BAGIAN A: Jaringan, Port & SSL (Network & SSL) ──────────────────────────
+        Write-Host "[BAGIAN A: Jaringan, Port & SSL]" -ForegroundColor Cyan
         Write-Host "Pilih Skenario Deployment:" -ForegroundColor White
         Write-Host " 1. SaaS / Cloud (Akses via Domain Publik, e.g. https://app.absenta.id)"
-        Write-Host " 2. Lokal Sekolah (Akses via IP LAN/Localhost, e.g. http://192.168.1.10:5175)"
-        Write-Host " 3. Hybrid (Lokal Sekolah + Reverse Proxy VPS via Caddy/Nginx)"
-        $scenarioChoice = Read-Host "Pilih [1/2/3] (Default: 1)"
+        Write-Host " 2. Hybrid (Lokal Sekolah + Reverse Proxy VPS via Caddy/Nginx)"
+        $scenarioChoice = Read-Host "Pilih [1/2] (Default: 1)"
         
+        $deployScenario = "saas"
         if ($scenarioChoice -eq "2") { 
-            $deployScenario = "local"
-            $finalScheme = "http"
-            $finalDomain = "localhost"
-        }
-        elseif ($scenarioChoice -eq "3") { 
             $deployScenario = "hybrid"
             $finalScheme = "https" # Biasanya VPS pakai SSL
         }
-        else { $deployScenario = "saas" }
 
-        Write-Host ""
-        Write-Host "Konfigurasi Target Server ($deployScenario):" -ForegroundColor White
+        # 1. Domain / Host
+        $inputDomain = Read-Host "Masukkan Domain Utama (misal: sekolah.absenta.id) [$finalDomain]"
+        if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
+
+        # 2. Protokol
+        $inputScheme = Read-Host "Gunakan Protokol (http/https) [$finalScheme]"
+        if (-not [string]::IsNullOrWhiteSpace($inputScheme)) { $finalScheme = $inputScheme }
         
-        # 0. Redis Mode
-        Write-Host "Pilih Mode Redis:" -ForegroundColor Gray
-        Write-Host " 1. Built-in (Embedded) - Rekomendasi"
-        Write-Host " 2. Eksternal (Laragon/Single)"
-        $redisChoice = Read-Host "Pilih [1/2] (Default: 1)"
-        if ($redisChoice -eq "2") { 
-            $redisMode = "single" 
-            $redisUrl = Read-Host "Masukkan Redis URL [redis://localhost:6379]"
-            if ([string]::IsNullOrWhiteSpace($redisUrl)) { $redisUrl = "redis://localhost:6379" }
-        } else { 
-            $redisMode = "embedded"
-            $redisUrl = "redis://localhost:6379"
+        # 3. LAN IP (Untuk akses lokal di skenario Hybrid)
+        if ($deployScenario -eq "hybrid") {
+            $lanIp = Read-Host "Masukkan IP LAN Server (akses bypass VPS) [192.168.1.10]"
+            if ([string]::IsNullOrWhiteSpace($lanIp)) { $lanIp = "192.168.1.10" }
+        } else {
+            $lanIp = $finalDomain
         }
+
+        # 4. Ports
+        $inputBPort = Read-Host "Port Backend [$BackendPort]"
+        if (-not [string]::IsNullOrWhiteSpace($inputBPort)) { $BackendPort = $inputBPort }
+        
+        $inputFPort = Read-Host "Port Frontend [$FrontendPort]"
+        if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
         # Membaca konfigurasi yang sudah ada di file .env jika ada (idempotensi)
         $existingLicense = ""
         $existingCFToken = ""
+        $existingDBUrl = ""
+        $existingNodeName = ""
         if (Test-Path "absenta_backend/.env") {
             $envContent = Get-Content "absenta_backend/.env"
             foreach ($line in $envContent) {
@@ -344,38 +351,16 @@ if (-not $Silent) {
                 elseif ($line -match "^CLOUDFLARE_API_TOKEN=(.*)") {
                     $existingCFToken = $Matches[1].Trim()
                 }
+                elseif ($line -match "^DATABASE_URL=(.*)") {
+                    $existingDBUrl = $Matches[1].Trim()
+                }
+                elseif ($line -match "^NODE_NAME=(.*)") {
+                    $existingNodeName = $Matches[1].Trim()
+                }
             }
         }
 
-        # 1. Domain / Host
-        if ($deployScenario -eq "local") {
-            $inputDomain = Read-Host "1. Masukkan IP LAN Server (misal: 192.168.1.10 atau localhost) [$finalDomain]"
-        } else {
-            $inputDomain = Read-Host "1. Masukkan Domain Utama (misal: sekolah.absenta.id) [$finalDomain]"
-        }
-        if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
-
-        # 2. Protokol
-        if ($deployScenario -eq "local") { $finalScheme = "http" }
-        $inputScheme = Read-Host "2. Gunakan Protokol (http/https) [$finalScheme]"
-        if (-not [string]::IsNullOrWhiteSpace($inputScheme)) { $finalScheme = $inputScheme }
-        
-        # 3. LAN IP (Untuk akses lokal di skenario Hybrid)
-        if ($deployScenario -eq "hybrid") {
-            $lanIp = Read-Host "3. Masukkan IP LAN Server (untuk akses lokal bypass VPS) [192.168.1.10]"
-            if ([string]::IsNullOrWhiteSpace($lanIp)) { $lanIp = "192.168.1.10" }
-        } else {
-            $lanIp = $finalDomain
-        }
-
-        # 4. Ports
-        $inputBPort = Read-Host "4. Port Backend [$BackendPort]"
-        if (-not [string]::IsNullOrWhiteSpace($inputBPort)) { $BackendPort = $inputBPort }
-        
-        $inputFPort = Read-Host "5. Port Frontend [$FrontendPort]"
-        if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
-
-        # 6. SSL Configuration
+        # 5. SSL Configuration
         $sslEmail = ""
         $cfToken = ""
         if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
@@ -389,7 +374,6 @@ if (-not $Silent) {
                     $inputEmail = Read-Host "Email untuk SSL Let's Encrypt"
                     if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
                 } else {
-                    # Cloudflare DNS Challenge
                     $cfPrompt = "Masukkan Cloudflare API Token Anda"
                     if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
                     $inputCF = Read-Host $cfPrompt
@@ -421,8 +405,37 @@ if (-not $Silent) {
             }
         }
 
-        # 7. License Key
-        $licPrompt = "7. Masukkan Kunci Lisensi"
+        # ─── BAGIAN B: Database & Cache (Data Storage) ──────────────────────────────────
+        Write-Host "`n[BAGIAN B: Database & Cache]" -ForegroundColor Cyan
+        
+        $defaultDBUrl = "postgresql://postgres:123123123@localhost:5432/absensi"
+        if ($existingDBUrl) { $defaultDBUrl = $existingDBUrl }
+        $dbUrlPrompt = "Masukkan DATABASE_URL PostgreSQL [$defaultDBUrl]"
+        $inputDB = (Read-Host $dbUrlPrompt).Trim()
+        if ([string]::IsNullOrWhiteSpace($inputDB)) {
+            $dbUrl = $defaultDBUrl
+        } else {
+            $dbUrl = $inputDB
+            if ($dbUrl.StartsWith("[")) { $dbUrl = $dbUrl.Substring(1) }
+            if ($dbUrl.EndsWith("]")) { $dbUrl = $dbUrl.Substring(0, $dbUrl.Length - 1) }
+        }
+
+        Write-Host "Pilih Mode Redis:" -ForegroundColor Gray
+        Write-Host " 1. Built-in (Embedded) - Rekomendasi"
+        Write-Host " 2. Eksternal (Laragon/Single)"
+        $redisChoice = Read-Host "Pilih [1/2] (Default: 1)"
+        if ($redisChoice -eq "2") { 
+            $redisMode = "single" 
+            $redisUrl = Read-Host "Masukkan Redis URL [redis://localhost:6379]"
+            if ([string]::IsNullOrWhiteSpace($redisUrl)) { $redisUrl = "redis://localhost:6379" }
+        } else { 
+            $redisMode = "embedded"
+            $redisUrl = "redis://localhost:6379"
+        }
+
+        # ─── BAGIAN C: Lisensi & Tunnel (License & Integration) ─────────────────────────
+        Write-Host "`n[BAGIAN C: Lisensi & Tunnel]" -ForegroundColor Cyan
+        $licPrompt = "Masukkan Kunci Lisensi"
         if ($existingLicense) { 
             $licPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingLicense)" 
         } else {
@@ -504,14 +517,36 @@ if (-not $Silent) {
             }
         }
 
-        Write-Host "--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
+        # ─── BAGIAN D: Identitas Node (Node Identity) ───────────────────────────────
+        Write-Host "`n[BAGIAN D: Identitas Node]" -ForegroundColor Cyan
+        $defaultNodeName = "absenta-node-1"
+        if ($existingNodeName) {
+            $defaultNodeName = $existingNodeName
+        } else {
+            $localIp = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notmatch "^127\." } | Select-Object -First 1 -ExpandProperty IPAddress -ErrorAction SilentlyContinue)
+            if ($localIp) {
+                $defaultNodeName = "node-" + $localIp.Replace(".", "-")
+            }
+        }
+        $nodeNamePrompt = "Masukkan Identitas Node (NODE_NAME) [$defaultNodeName]"
+        $inputNode = (Read-Host $nodeNamePrompt).Trim()
+        if ([string]::IsNullOrWhiteSpace($inputNode)) {
+            $nodeName = $defaultNodeName
+        } else {
+            $nodeName = $inputNode
+        }
+
+        Write-Host "`n--- RINGKASAN KONFIGURASI ---" -ForegroundColor Yellow
         Write-Host " - Skenario       : $deployScenario"
         Write-Host " - Domain/Host    : $finalDomain"
         Write-Host " - Protokol       : $finalScheme"
         Write-Host " - IP LAN (Local) : $lanIp"
         Write-Host " - Port Backend   : $BackendPort"
         Write-Host " - Port Frontend  : $FrontendPort"
+        Write-Host " - DB Target      : $dbUrl"
+        Write-Host " - Redis Mode     : $redisMode"
         Write-Host " - License Key    : $(if($licenseKey){$licenseKey}else{'Tidak Ada'})"
+        Write-Host " - Node Identity  : $nodeName"
         Write-Host "-----------------------------" -ForegroundColor Yellow
         if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
             if ($deployScenario -eq "hybrid") {
@@ -565,6 +600,7 @@ foreach ($line in $backendEnv) {
         $writtenKeys[$key] = $true
 
         if ($key -eq "PORT") { $newBackendEnv += "PORT=$BackendPort" }
+        elseif ($key -eq "DATABASE_URL") { $newBackendEnv += "DATABASE_URL=$dbUrl" }
         elseif ($key -eq "REDIS_MODE") { $newBackendEnv += "REDIS_MODE=$redisMode" }
         elseif ($key -eq "REDIS_URL") { $newBackendEnv += "REDIS_URL=$redisUrl" }
         elseif ($key -eq "API_URL") { $newBackendEnv += "API_URL=${finalScheme}://$finalDomain/api" }
@@ -580,16 +616,19 @@ foreach ($line in $backendEnv) {
         elseif ($key -eq "LICENSE_KEY") { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
         elseif ($key -eq "CLOUDFLARE_API_TOKEN") { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
         elseif ($key -eq "DEPLOY_SCENARIO") { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
+        elseif ($key -eq "NODE_NAME") { $newBackendEnv += "NODE_NAME=$nodeName" }
         else { $newBackendEnv += $line }
     } else {
         $newBackendEnv += $line
     }
 }
 # Pastikan variabel kritikal tertulis jika tidak ada di example
+if (-not $writtenKeys.ContainsKey("DATABASE_URL")) { $newBackendEnv += "DATABASE_URL=$dbUrl" }
 if (-not $writtenKeys.ContainsKey("LICENSE_KEY")) { $newBackendEnv += "LICENSE_KEY=$licenseKey" }
 if (-not $writtenKeys.ContainsKey("CLOUDFLARE_API_TOKEN")) { $newBackendEnv += "CLOUDFLARE_API_TOKEN=$cfToken" }
 if (-not $writtenKeys.ContainsKey("MAIN_DOMAIN")) { $newBackendEnv += "MAIN_DOMAIN=$calculatedMainDomain" }
 if (-not $writtenKeys.ContainsKey("DEPLOY_SCENARIO")) { $newBackendEnv += "DEPLOY_SCENARIO=$deployScenario" }
+if (-not $writtenKeys.ContainsKey("NODE_NAME")) { $newBackendEnv += "NODE_NAME=$nodeName" }
 $newBackendEnv | Set-Content "absenta_backend/.env"
 
 if (-not (Test-Path "absenta_frontend/.env")) { Copy-Item "absenta_frontend/.env.example" "absenta_frontend/.env" }
@@ -602,13 +641,7 @@ $proxyTargetFound = $false
 foreach ($line in $frontendEnv) {
     if ($line -match "^VITE_API_BASE_URL=") { 
         # Hybrid/SaaS scenario: Use relative path '/api' to prevent CORS issues and support dynamic subdomains
-        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
-            $newFrontendEnv += "VITE_API_BASE_URL=/api"
-        } 
-        # Pure Local scenario: Use IP/Localhost + Port
-        else {
-            $newFrontendEnv += "VITE_API_BASE_URL=${finalScheme}://$finalDomain`:$BackendPort/api"
-        }
+        $newFrontendEnv += "VITE_API_BASE_URL=/api"
     }
     elseif ($line -match "^VITE_PROXY_TARGET=") { 
         $newFrontendEnv += "VITE_PROXY_TARGET=http://localhost:$BackendPort"
