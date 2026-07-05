@@ -99,11 +99,11 @@ export const heartbeatService = {
   },
 
   startCronJob(): void {
-    // Schedule harian: setiap hari jam 23:59
-    cron.schedule('59 23 * * *', async () => {
+    // Jalankan setiap 2 menit agar panel owner mendeteksi status ONLINE secara akurat
+    cron.schedule('*/2 * * * *', async () => {
       console.log('[Heartbeat] Cron job triggered.');
       await this.collectAndSendMetrics();
     });
-    console.log('[Heartbeat] Daily heartbeat sync job has been scheduled (23:59 daily).');
+    console.log('[Heartbeat] Heartbeat sync job has been scheduled (every 2 minutes).');
   }
 };

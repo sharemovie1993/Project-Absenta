@@ -15,7 +15,6 @@ import { initAcademicTenantCreatedConsumer } from './modules/academic/services/e
 import { initKesiswaanTenantCreatedConsumer } from './modules/kesiswaan/services/event-handlers/tenant-created.consumer';
 import { parentAuthService } from './modules/parent-app/services/parent-auth.service';
 import { buildAttendanceFeed } from './modules/attendance/notify/controllers/notify.controller';
-import { TenantDetailService } from './modules/superadmin/tenant-detail/services/tenant-detail.service';
 import { startAttendanceWorker } from './workers/attendance.worker';
 import { initSchedulers } from './infra/scheduler';
 import { trackService, registerService, printStartupTable } from './utils/startup-table';
@@ -205,7 +204,14 @@ async function start() {
       await waGatewayService.restoreConnections();
     });
 
-    const tenantDetailProvider = new TenantDetailService();
+    const tenantDetailProvider = {
+      getTenantMetrics: async () => ({}),
+      getRecentActivities: async () => [],
+      getTenantLogs: async () => ({ data: [], total: 0 }),
+      getAttendanceData: async () => ({}),
+      getTenantBilling: async () => ({}),
+      getTenantUsers: async () => ({ data: [], total: 0 }),
+    };
     await trackService('Realtime (Socket.IO)', 'infra', async () => {
       const { io: _io, ioApi: _ioApi } = await initRealtime({
         server: fastify.server,
@@ -257,6 +263,17 @@ async function start() {
     LicenseService.syncLicense().catch((err: any) => {
       console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
     });
+
+    // Start heartbeat sync service dynamically
+    try {
+      const { heartbeatService } = await import('./modules/system-config/services/heartbeat.service');
+      // Kirim heartbeat pertama kali saat boot secara background
+      void heartbeatService.collectAndSendMetrics();
+      // Jalankan cron scheduler untuk update berkala
+      heartbeatService.startCronJob();
+    } catch (err: any) {
+      console.warn('[Heartbeat Startup Warning] Failed to initialize heartbeat service:', err.message);
+    }
 
     // ─── Print PM2-style startup table ───
     printStartupTable(port, host);
