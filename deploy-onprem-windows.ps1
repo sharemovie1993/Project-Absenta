@@ -479,13 +479,17 @@ if (-not $Silent) {
         Write-Host "`n[BAGIAN D: Lisensi & Tunnel]" -ForegroundColor Cyan
         $licPrompt = "Masukkan Kunci Lisensi"
         if ($existingLicense) { 
-            $licPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingLicense)" 
+            $licPrompt += " (Ketik 'new' jika ingin registrasi baru) [$existingLicense]" 
         } else {
             $licPrompt += " (Kosongkan jika ingin registrasi baru)"
         }
-        $inputLic = Read-Host $licPrompt
+        $inputLic = (Read-Host $licPrompt).Trim()
+        if ($inputLic -eq 'new' -or $inputLic -eq 'NEW') {
+            $inputLic = ""
+            $existingLicense = ""
+        }
         if (-not [string]::IsNullOrWhiteSpace($inputLic)) { 
-            $licenseKey = $inputLic.Trim() 
+            $licenseKey = $inputLic
         } else { 
             if ($existingLicense) {
                 $licenseKey = $existingLicense
