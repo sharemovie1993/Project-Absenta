@@ -525,6 +525,12 @@ if (-not $Silent) {
                             break
                         }
 
+                        # Clean human error: strip base domain suffix if input (e.g. demo.absenta.id -> demo)
+                        $baseDomainCheck = ".absenta.id"
+                        if ($slugInput.EndsWith($baseDomainCheck)) {
+                            $slugInput = $slugInput.Substring(0, $slugInput.Length - $baseDomainCheck.Length)
+                        }
+
                         Write-Host "Menghubungi server lisensi untuk mendaftarkan subdomain '$slugInput.absenta.id'..." -ForegroundColor Cyan
                         try {
                             $regBody = @{
