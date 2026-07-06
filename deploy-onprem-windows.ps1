@@ -373,8 +373,12 @@ if (-not $Silent) {
         }
 
         # 1. Domain / Host
-        $inputDomain = Read-Host "Masukkan Domain Utama (misal: sekolah.absenta.id) [$finalDomain]"
-        if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
+        if ($deployScenario -eq "saas") {
+            $inputDomain = Read-Host "Masukkan Domain Utama (misal: platform.com) [$finalDomain]"
+            if (-not [string]::IsNullOrWhiteSpace($inputDomain)) { $finalDomain = $inputDomain }
+        } else {
+            $finalDomain = ""
+        }
 
         # 2. Protokol
         $inputScheme = Read-Host "Gunakan Protokol (http/https) [$finalScheme]"
@@ -619,8 +623,6 @@ if (-not $Silent) {
             if ($deployScenario -eq "hybrid") {
                 Write-Host "Menghubungi server lisensi untuk memvalidasi domain dan lisensi..." -ForegroundColor Cyan
                 try {
-                    $slug = $finalDomain.Replace(".absenta.id", "").Trim().ToLower()
-                    
                     if ([string]::IsNullOrWhiteSpace($licenseKey)) {
                         Write-Host "[ERROR] Lisensi wajib diisi untuk skenario Hybrid!" -ForegroundColor Red
                         $confirmed = $false
@@ -631,9 +633,9 @@ if (-not $Silent) {
                     $validateUrl = "$LicenseServer/api/license/check/$licenseKey"
                     $valRes = Invoke-RestMethod -Uri $validateUrl -Method Get -TimeoutSec 10
                     
-                    $isActive = $valRes.license.isActive
-                    if ($isActive -eq $null) { $isActive = $valRes.license.is_active }
-                    $status = $valRes.license.status
+                    $isActive = $valRes.data.is_active
+                    if ($isActive -eq $null) { $isActive = $valRes.data.isActive }
+                    $status = $valRes.data.status
 
                     if ($valRes.success -ne $true -or $isActive -ne 1 -or $status -ne 'active') {
                         Write-Host "[ERROR] Kunci lisensi tidak valid atau tidak aktif!" -ForegroundColor Red
@@ -642,19 +644,29 @@ if (-not $Silent) {
                         continue
                     }
                     
-                    $expectedSlug = $valRes.license.requestedSlug
-                    if ($expectedSlug -eq $null) { $expectedSlug = $valRes.license.requested_slug }
-                    if ($expectedSlug -and $expectedSlug.ToLower().Trim() -ne $slug) {
-                        Write-Host "[ERROR] Domain '$finalDomain' tidak sesuai dengan alokasi lisensi Anda (Seharusnya: $expectedSlug.absenta.id)!" -ForegroundColor Red
-                        $confirmed = $false
-                        Read-Host "Tekan [ENTER] untuk mengulangi konfigurasi..."
-                        continue
-                    }
+                    $expectedSlug = $valRes.data.requested_slug
+                    if ($expectedSlug -eq $null) { $expectedSlug = $valRes.data.requestedSlug }
                     
+                    $finalDomain = "$expectedSlug.absenta.id"
                     Write-Host "Validasi berhasil! Lisensi aktif untuk domain '$finalDomain'." -ForegroundColor Green
+
+                    # Option for custom domain
+                    $useCustom = (Read-Host "Apakah Anda ingin menggunakan custom domain sekolah sendiri (seperti absen.smkn1.sch.id)? [y/N]").Trim()
+                    if ($useCustom -eq 'y' -or $useCustom -eq 'Y') {
+                        $customDom = (Read-Host "Masukkan Custom Domain Anda").Trim().ToLower()
+                        if (-not [string]::IsNullOrWhiteSpace($customDom)) {
+                            $finalDomain = $customDom
+                            Write-Host "Domain utama diatur ke custom domain: $finalDomain" -ForegroundColor Green
+                        }
+                    }
                     $confirmed = $true
                 } catch {
                     Write-Host "[WARNING] Gagal memvalidasi secara online: $($_.Exception.Message)" -ForegroundColor Yellow
+                    if ([string]::IsNullOrWhiteSpace($finalDomain)) {
+                        while ([string]::IsNullOrWhiteSpace($finalDomain)) {
+                            $finalDomain = (Read-Host "Masukkan Domain Publik Akses Sekolah (karena offline, contoh 'demo.absenta.id')").Trim().ToLower()
+                        }
+                    }
                     Write-Host "Melanjutkan instalasi dengan asumsi konfigurasi benar..." -ForegroundColor Yellow
                     $confirmed = $true
                 }
