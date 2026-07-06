@@ -140,7 +140,7 @@ function Install-CaddyLocal {
         # Create sync-ssl.ps1
         $syncScriptContent = @"
 `$sslDir = `"$sslDir`"
-`$url = `"http://10.0.0.1:5001/api/public/download-ssl?domain=$Domain`"
+`$url = `"$LicenseServer/api/public/download-ssl?domain=$Domain&license_key=$licenseKey`"
 try {
     `$resp = Invoke-RestMethod -Uri `$url -Method Get
     if (`$resp.success) {
@@ -493,24 +493,68 @@ if (-not $Silent) {
                 $licenseKey = "" 
                 $requestNew = Read-Host "Belum punya lisensi? Ingin registrasi sekarang? [y/N]"
                 if ($requestNew -eq 'y' -or $requestNew -eq 'Y') {
-                    $schoolName = Read-Host "Masukkan Nama Sekolah / Instansi"
-                    $whatsappNo = Read-Host "Masukkan Nomor WhatsApp Anda (untuk menerima Kunci Lisensi)"
-                    if ([string]::IsNullOrWhiteSpace($schoolName)) {
-                        Write-Host "Nama sekolah wajib diisi untuk registrasi!" -ForegroundColor Red
-                    } else {
-                        Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
+                    $schoolName = ""
+                    while ([string]::IsNullOrWhiteSpace($schoolName)) {
+                        $schoolName = (Read-Host "Masukkan Nama Sekolah / Instansi").Trim()
+                        if ([string]::IsNullOrWhiteSpace($schoolName)) {
+                            Write-Host "Nama sekolah wajib diisi!" -ForegroundColor Red
+                        }
+                    }
+
+                    $whatsappNo = ""
+                    while ([string]::IsNullOrWhiteSpace($whatsappNo)) {
+                        $whatsappNo = (Read-Host "Masukkan Nomor WhatsApp Anda (untuk menerima Kunci Lisensi via WA)").Trim()
+                        if ([string]::IsNullOrWhiteSpace($whatsappNo)) {
+                            Write-Host "Nomor WhatsApp wajib diisi!" -ForegroundColor Red
+                        }
+                    }
+
+                    $regSuccess = $false
+                    while (-not $regSuccess) {
+                        $slugInput = (Read-Host "Masukkan Subdomain/Slug yang diinginkan (contoh 'smp4' untuk smp4.absenta.id, atau ketik 'exit' untuk batal)").Trim().ToLower()
+                        if ([string]::IsNullOrWhiteSpace($slugInput)) {
+                            Write-Host "Subdomain wajib diisi!" -ForegroundColor Red
+                            continue
+                        }
+                        if ($slugInput -eq 'exit') {
+                            Write-Host "Registrasi dibatalkan." -ForegroundColor Yellow
+                            break
+                        }
+
+                        Write-Host "Menghubungi server lisensi untuk mendaftarkan subdomain '$slugInput.absenta.id'..." -ForegroundColor Cyan
                         try {
-                            $hwInfo = (Get-CimInstance Win32_ComputerSystemProduct).UUID + (Get-CimInstance Win32_BIOS).SerialNumber
-                            $encoded = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$schoolName|$whatsappNo|$hwInfo"))
-                            $response = Invoke-RestMethod -Uri "$LicenseServer/api/v1/register" -Method Post -Body @{ data = $encoded }
+                            $regBody = @{
+                                school_name = $schoolName
+                                wa_number = $whatsappNo
+                                requested_slug = $slugInput
+                            }
+                            $response = Invoke-RestMethod -Uri "$LicenseServer/api/license/request-local-free" -Method Post -Body ($regBody | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 15
+                            
                             if ($response.success) {
-                                $licenseKey = $response.licenseKey
-                                Write-Host "Registrasi Berhasil! Lisensi Anda: $licenseKey" -ForegroundColor Green
+                                $licenseKey = $response.license_key
+                                Write-Host "Registrasi Berhasil!" -ForegroundColor Green
+                                Write-Host "Lisensi Anda: $licenseKey" -ForegroundColor Green
+                                Write-Host "[INFO] Kunci Lisensi dan rincian domain telah dikirimkan ke WhatsApp Anda ($whatsappNo). Silakan cek pesan masuk Anda." -ForegroundColor Green
+                                $regSuccess = $true
+                                
+                                # Set default domain and scenario for next steps
+                                $deployScenario = "hybrid"
+                                $finalDomain = "$slugInput.absenta.id"
                             } else {
-                                throw "Gagal registrasi: $($response.message)"
+                                Write-Host "[ERROR] $($response.message)" -ForegroundColor Red
                             }
                         } catch {
-                            Write-Host "Gagal melakukan registrasi otomatis: $($_.Exception.Message)" -ForegroundColor Red
+                            $errMsg = $_.Exception.Message
+                            if ($_.Exception.Response) {
+                                try {
+                                    $stream = $_.Exception.Response.GetResponseStream()
+                                    $reader = New-Object System.IO.StreamReader($stream)
+                                    $errBody = $reader.ReadToEnd() | ConvertFrom-Json
+                                    if ($errBody.message) { $errMsg = $errBody.message }
+                                } catch {}
+                            }
+                            Write-Host "[ERROR] Gagal melakukan registrasi: $errMsg" -ForegroundColor Red
+                            Write-Host "Silakan masukkan subdomain alternatif." -ForegroundColor Yellow
                         }
                     }
                 }
@@ -574,17 +618,22 @@ if (-not $Silent) {
                         continue
                     }
                     
-                    $validateUrl = "$LicenseServer/api/license/easy-tunnel/validate/$licenseKey"
+                    $validateUrl = "$LicenseServer/api/license/check/$licenseKey"
                     $valRes = Invoke-RestMethod -Uri $validateUrl -Method Get -TimeoutSec 10
                     
-                    if ($valRes.success -ne $true) {
+                    $isActive = $valRes.license.isActive
+                    if ($isActive -eq $null) { $isActive = $valRes.license.is_active }
+                    $status = $valRes.license.status
+
+                    if ($valRes.success -ne $true -or $isActive -ne 1 -or $status -ne 'active') {
                         Write-Host "[ERROR] Kunci lisensi tidak valid atau tidak aktif!" -ForegroundColor Red
                         $confirmed = $false
                         Read-Host "Tekan [ENTER] untuk mengulangi konfigurasi..."
                         continue
                     }
                     
-                    $expectedSlug = $valRes.data.requested_slug
+                    $expectedSlug = $valRes.license.requestedSlug
+                    if ($expectedSlug -eq $null) { $expectedSlug = $valRes.license.requested_slug }
                     if ($expectedSlug -and $expectedSlug.ToLower().Trim() -ne $slug) {
                         Write-Host "[ERROR] Domain '$finalDomain' tidak sesuai dengan alokasi lisensi Anda (Seharusnya: $expectedSlug.absenta.id)!" -ForegroundColor Red
                         $confirmed = $false
