@@ -557,9 +557,9 @@ if (-not $Silent) {
                             $errMsg = $_.Exception.Message
                             if ($_.Exception.Response) {
                                 try {
-                                    $stream = $_.Exception.Response.GetResponseStream()
-                                    $reader = New-Object System.IO.StreamReader($stream)
-                                    $errBody = $reader.ReadToEnd() | ConvertFrom-Json
+                                    $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+                                    $respText = $reader.ReadToEnd()
+                                    $errBody = ConvertFrom-Json $respText
                                     if ($errBody.message) { $errMsg = $errBody.message }
                                 } catch {}
                             }
