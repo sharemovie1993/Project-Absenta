@@ -16,9 +16,8 @@ try {
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction SilentlyContinue
 } catch {}
 
-
 function Show-Header {
-    param ($StepTitle)
+    param([string]$StepTitle)
     Clear-Host
     Write-Host "==========================================================================" -ForegroundColor Cyan
     Write-Host "             WIZARD INSTALASI & DEPLOYMENT - PROJECT ABSENTA             " -ForegroundColor Yellow -Bold
@@ -36,7 +35,8 @@ function Install-CaddyLocal {
         [string]$BPort,
         [string]$SSLEmail = "",
         [string]$CFToken = "",
-        [string]$DeployScenario = "hybrid"
+        [string]$DeployScenario = "hybrid",
+        [string]$SSLScenario = "internal"
     )
     
     Show-Header "Setup Reverse Proxy Lokal (Caddy)"
@@ -81,7 +81,7 @@ function Install-CaddyLocal {
     }
 
     $dest = "$PSScriptRoot\caddy.exe"
-    $needCloudflare = -not [string]::IsNullOrWhiteSpace($CFToken)
+    $needCloudflare = ($SSLScenario -eq "cloudflare" -and -not [string]::IsNullOrWhiteSpace($CFToken))
 
     if ($needCloudflare) {
         if ($isCustomCaddy) {
@@ -132,7 +132,41 @@ function Install-CaddyLocal {
     Write-Host "Membuat konfigurasi Caddyfile..." -ForegroundColor Cyan
     $tlsConfig = "tls internal"
     
-    if (-not [string]::IsNullOrWhiteSpace($CFToken)) {
+    if ($SSLScenario -eq "sync") {
+        $sslDir = "$PSScriptRoot\ssl"
+        if (-not (Test-Path $sslDir)) { New-Item -ItemType Directory -Path $sslDir | Out-Null }
+        $tlsConfig = "tls `"$sslDir\cert.pem`" `"$sslDir\key.pem`""
+        
+        # Create sync-ssl.ps1
+        $syncScriptContent = @"
+`$sslDir = `"$sslDir`"
+`$url = `"http://10.0.0.1:5001/api/public/download-ssl?domain=$Domain`"
+try {
+    `$resp = Invoke-RestMethod -Uri `$url -Method Get
+    if (`$resp.success) {
+        `$resp.cert | Set-Content `"`$sslDir\cert.pem`" -NoNewline
+        `$resp.key | Set-Content `"`$sslDir\key.pem`" -NoNewline
+        Restart-Service -Name Caddy -Force
+    }
+} catch {}
+"@
+        $syncScriptContent | Set-Content "$PSScriptRoot\sync-ssl.ps1" -Encoding utf8
+        
+        # Run sync once immediately to fetch initial certs
+        try {
+            & "$PSScriptRoot\sync-ssl.ps1"
+        } catch {}
+        
+        # Register scheduled task
+        try {
+            $action = New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument "-NoProfile -WindowStyle Hidden -File `"$PSScriptRoot\sync-ssl.ps1`""
+            $trigger = New-ScheduledTaskTrigger -Daily -At 3am
+            Register-ScheduledTask -TaskName "Absenta SSL Sync" -Action $action -Trigger $trigger -User "NT AUTHORITY\SYSTEM" -Force
+        } catch {
+            $cmd = "schtasks /create /tn `"Absenta SSL Sync`" /tr `"powershell.exe -NoProfile -WindowStyle Hidden -File '$PSScriptRoot\sync-ssl.ps1'`" /sc daily /st 03:00 /ru SYSTEM /f"
+            Invoke-Expression $cmd
+        }
+    } elseif ($SSLScenario -eq "cloudflare" -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
         # Bersihkan token dari karakter yang tidak diinginkan (seperti titik dua di depan)
         $cleanToken = $CFToken.Trim().TrimStart(':').Trim()
         $tlsConfig = "tls {
@@ -143,7 +177,7 @@ function Install-CaddyLocal {
     }
 
     $hosts = $Domain
-    if ($DeployScenario -eq "saas" -and -not [string]::IsNullOrWhiteSpace($CFToken)) {
+    if ($DeployScenario -eq "saas" -and ($SSLScenario -eq "cloudflare" -and -not [string]::IsNullOrWhiteSpace($CFToken))) {
         $hosts = "$Domain, *.$Domain"
     }
 
@@ -295,6 +329,30 @@ $finalScheme = "https"
 $deployScenario = "saas" # default
 $nodeName = "absenta-node-1"
 $dbUrl = "postgresql://postgres:123123123@localhost:5432/absensi"
+$existingLicense = ""
+$existingCFToken = ""
+$existingDBUrl = ""
+$existingNodeName = ""
+
+if (Test-Path "absenta_backend/.env") {
+    $envContent = Get-Content "absenta_backend/.env"
+    foreach ($line in $envContent) {
+        if ($line -match "^LICENSE_KEY=(.*)") {
+            $existingLicense = $Matches[1].Trim()
+        }
+        elseif ($line -match "^CLOUDFLARE_API_TOKEN=(.*)") {
+            $existingCFToken = $Matches[1].Trim()
+        }
+        elseif ($line -match "^DATABASE_URL=(.*)") {
+            $existingDBUrl = $Matches[1].Trim()
+        }
+        elseif ($line -match "^NODE_NAME=(.*)") {
+            $existingNodeName = $Matches[1].Trim()
+        }
+    }
+}
+if ($existingDBUrl) { $dbUrl = $existingDBUrl }
+if ($existingNodeName) { $nodeName = $existingNodeName }
 
 if (-not $Silent) {
     $confirmed = $false
@@ -337,88 +395,18 @@ if (-not $Silent) {
         $inputFPort = Read-Host "Port Frontend [$FrontendPort]"
         if (-not [string]::IsNullOrWhiteSpace($inputFPort)) { $FrontendPort = $inputFPort }
 
-        # Membaca konfigurasi yang sudah ada di file .env jika ada (idempotensi)
-        $existingLicense = ""
-        $existingCFToken = ""
-        $existingDBUrl = ""
-        $existingNodeName = ""
-        if (Test-Path "absenta_backend/.env") {
-            $envContent = Get-Content "absenta_backend/.env"
-            foreach ($line in $envContent) {
-                if ($line -match "^LICENSE_KEY=(.*)") {
-                    $existingLicense = $Matches[1].Trim()
-                }
-                elseif ($line -match "^CLOUDFLARE_API_TOKEN=(.*)") {
-                    $existingCFToken = $Matches[1].Trim()
-                }
-                elseif ($line -match "^DATABASE_URL=(.*)") {
-                    $existingDBUrl = $Matches[1].Trim()
-                }
-                elseif ($line -match "^NODE_NAME=(.*)") {
-                    $existingNodeName = $Matches[1].Trim()
-                }
-            }
-        }
-
-        # 5. SSL Configuration
-        $sslEmail = ""
-        $cfToken = ""
-        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
-            if ($deployScenario -eq "saas") {
-                Write-Host "Opsi SSL SaaS (Memerlukan Cloudflare DNS Challenge untuk Wildcard SSL):" -ForegroundColor Gray
-                Write-Host " 1. Cloudflare DNS Challenge (Sertifikat Resmi Wildcard - Rekomendasi)"
-                Write-Host " 2. SSL Let's Encrypt Standar (Hanya Domain Utama - Tanpa Subdomain)"
-                $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
-                
-                if ($sslChoice -eq "2") {
-                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt"
-                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
-                } else {
-                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
-                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
-                    $inputCF = Read-Host $cfPrompt
-                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
-                        $cfToken = $existingCFToken
-                    } else {
-                        $cfToken = $inputCF.Trim()
-                    }
-                }
-            } else {
-                Write-Host "Opsi SSL Lokal (Hybrid):" -ForegroundColor Gray
-                Write-Host " 1. SSL Internal (Bawaan Caddy - Butuh Trust Manual)"
-                Write-Host " 2. Cloudflare DNS Challenge (Sertifikat Resmi - Seamless di HP)"
-                $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
-                
-                if ($sslChoice -eq "2") {
-                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
-                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
-                    $inputCF = Read-Host $cfPrompt
-                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
-                        $cfToken = $existingCFToken
-                    } else {
-                        $cfToken = $inputCF.Trim()
-                    }
-                } else {
-                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
-                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
-                }
-            }
-        }
-
-        # ─── BAGIAN B: Database & Cache (Data Storage) ──────────────────────────────────
-        Write-Host "`n[BAGIAN B: Database & Cache]" -ForegroundColor Cyan
-        
+        # ─── BAGIAN B: Database & Redis (Storage) ──────────────────────────────────
+        Write-Host "`n[BAGIAN B: Database & Redis]" -ForegroundColor Cyan
         $defaultDBUrl = "postgresql://postgres:123123123@localhost:5432/absensi"
         if ($existingDBUrl) { $defaultDBUrl = $existingDBUrl }
-        $dbUrlPrompt = "Masukkan DATABASE_URL PostgreSQL [$defaultDBUrl]"
-        $inputDB = (Read-Host $dbUrlPrompt).Trim()
-        if ([string]::IsNullOrWhiteSpace($inputDB)) {
-            $dbUrl = $defaultDBUrl
+        $inputDb = Read-Host "Masukkan DATABASE_URL [$defaultDBUrl]"
+        if (-not [string]::IsNullOrWhiteSpace($inputDb)) { 
+            $dbUrl = $inputDb.Trim() 
         } else {
-            $dbUrl = $inputDB
-            if ($dbUrl.StartsWith("[")) { $dbUrl = $dbUrl.Substring(1) }
-            if ($dbUrl.EndsWith("]")) { $dbUrl = $dbUrl.Substring(0, $dbUrl.Length - 1) }
+            $dbUrl = $defaultDBUrl
         }
+        if ($dbUrl.StartsWith("[")) { $dbUrl = $dbUrl.Substring(1) }
+        if ($dbUrl.EndsWith("]")) { $dbUrl = $dbUrl.Substring(0, $dbUrl.Length - 1) }
 
         Write-Host "Pilih Mode Redis:" -ForegroundColor Gray
         Write-Host " 1. Built-in (Embedded) - Rekomendasi"
@@ -433,8 +421,62 @@ if (-not $Silent) {
             $redisUrl = "redis://localhost:6379"
         }
 
-        # ─── BAGIAN C: Lisensi & Tunnel (License & Integration) ─────────────────────────
-        Write-Host "`n[BAGIAN C: Lisensi & Tunnel]" -ForegroundColor Cyan
+        # ─── BAGIAN C: SSL Configuration ──────────────────────────────────
+        Write-Host "`n[BAGIAN C: SSL Configuration]" -ForegroundColor Cyan
+        $sslEmail = ""
+        $cfToken = ""
+        $sslScenario = "internal"
+        if ($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") {
+            if ($deployScenario -eq "saas") {
+                Write-Host "Opsi SSL SaaS (Memerlukan Cloudflare DNS Challenge untuk Wildcard SSL):" -ForegroundColor Gray
+                Write-Host " 1. Cloudflare DNS Challenge (Sertifikat Resmi Wildcard - Rekomendasi)"
+                Write-Host " 2. SSL Let's Encrypt Standar (Hanya Domain Utama - Tanpa Subdomain)"
+                $sslChoice = Read-Host "Pilih [1/2] (Default: 1)"
+                
+                if ($sslChoice -eq "2") {
+                    $sslScenario = "letsencrypt"
+                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt"
+                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+                } else {
+                    $sslScenario = "cloudflare"
+                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
+                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
+                    $inputCF = Read-Host $cfPrompt
+                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
+                        $cfToken = $existingCFToken
+                    } else {
+                        $cfToken = $inputCF.Trim()
+                    }
+                }
+            } else {
+                Write-Host "Opsi SSL Lokal (Hybrid):" -ForegroundColor Gray
+                Write-Host " 1. SSL Internal (Bawaan Caddy - CA Lokal)"
+                Write-Host " 2. Sinkronisasi Sertifikat dari Server Lisensi (Otomatis via VPN - Rekomendasi)"
+                Write-Host " 3. Cloudflare DNS Challenge (Sertifikat Resmi - Manual)"
+                $sslChoice = Read-Host "Pilih [1-3] (Default: 2)"
+                
+                if ($sslChoice -eq "1") {
+                    $sslScenario = "internal"
+                    $inputEmail = Read-Host "Email untuk SSL Let's Encrypt (Kosongkan untuk SSL Internal)"
+                    if (-not [string]::IsNullOrWhiteSpace($inputEmail)) { $sslEmail = $inputEmail }
+                } elseif ($sslChoice -eq "3") {
+                    $sslScenario = "cloudflare"
+                    $cfPrompt = "Masukkan Cloudflare API Token Anda"
+                    if ($existingCFToken) { $cfPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingCFToken)" }
+                    $inputCF = Read-Host $cfPrompt
+                    if ([string]::IsNullOrWhiteSpace($inputCF)) {
+                        $cfToken = $existingCFToken
+                    } else {
+                        $cfToken = $inputCF.Trim()
+                    }
+                } else {
+                    $sslScenario = "sync"
+                }
+            }
+        }
+
+        # ─── BAGIAN D: Lisensi & Tunnel (License & Integration) ─────────────────────────
+        Write-Host "`n[BAGIAN D: Lisensi & Tunnel]" -ForegroundColor Cyan
         $licPrompt = "Masukkan Kunci Lisensi"
         if ($existingLicense) { 
             $licPrompt += " (Kosongkan untuk menggunakan yang sudah ada: $existingLicense)" 
@@ -458,69 +500,25 @@ if (-not $Silent) {
                     } else {
                         Write-Host "Menghubungi server lisensi untuk registrasi..." -ForegroundColor Cyan
                         try {
-                            # Hitung fingerprint unik hardware
-                            $boardUuid = ""
-                            try {
-                                $boardUuid = (Get-CimInstance Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
-                            } catch {}
-                            if ([string]::IsNullOrWhiteSpace($boardUuid)) {
-                                try {
-                                    $boardUuid = (Get-WmiObject Win32_ComputerSystemProduct -ErrorAction SilentlyContinue).UUID
-                                } catch {}
-                            }
-                            if ([string]::IsNullOrWhiteSpace($boardUuid)) {
-                                $boardUuid = "unknown-uuid"
-                            }
-
-                            $macs = ""
-                            try {
-                                $macs = (Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -ExpandProperty PhysicalAddress -ErrorAction SilentlyContinue) -join ""
-                            } catch {}
-                            if ([string]::IsNullOrWhiteSpace($macs)) {
-                                try {
-                                    $macs = (Get-CimInstance Win32_NetworkAdapterConfiguration | Where-Object { $_.IPEnabled -eq $true } | Select-Object -ExpandProperty MACAddress -ErrorAction SilentlyContinue) -join ""
-                                } catch {}
-                            }
-                            $macs = ($macs -replace ':', '' -replace '-', '').Trim()
-
-                            $rawId = "${boardUuid}-${macs}"
-                            $sha1 = [System.Security.Cryptography.SHA1]::Create()
-                            $hashBytes = $sha1.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($rawId))
-                            $fingerprint = (($hashBytes | ForEach-Object { "{0:x2}" -f $_ }) -join "").Substring(0, 16)
-                            $machineId = "server-$fingerprint"
-
-                            $body = @{
-                                school_name = $schoolName
-                                product_id = "platform-absenta"
-                                device_limit = 9999
-                                plan_id = "absenta_on_premise"
-                                payment_method = "manual"
-                                device_id = $machineId
-                                operator_phone = $whatsappNo
-                            } | ConvertTo-Json
-                            
-                            $resp = Invoke-RestMethod -Method Post -Uri "$LicenseServer/api/license/request" -Body $body -ContentType "application/json"
-                            if ($resp.success) {
-                                $licenseKey = $resp.data.license_key
-                                Write-Host "----------------------------------------------------------" -ForegroundColor Green
-                                Write-Host " REGISTRASI BERHASIL!" -ForegroundColor Green -Bold
-                                Write-Host " Kunci Lisensi Anda: $licenseKey" -ForegroundColor Yellow
-                                Write-Host " Status: Menunggu Persetujuan Admin (Pending Approval)"
-                                Write-Host "----------------------------------------------------------" -ForegroundColor Green
-                                Write-Host "Silakan teruskan proses deploy ini, lalu hubungi owner untuk aktivasi."
-                                Read-Host "Tekan [ENTER] untuk melanjutkan..."
+                            $hwInfo = (Get-CimInstance Win32_ComputerSystemProduct).UUID + (Get-CimInstance Win32_BIOS).SerialNumber
+                            $encoded = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes("$schoolName|$whatsappNo|$hwInfo"))
+                            $response = Invoke-RestMethod -Uri "$LicenseServer/api/v1/register" -Method Post -Body @{ data = $encoded }
+                            if ($response.success) {
+                                $licenseKey = $response.licenseKey
+                                Write-Host "Registrasi Berhasil! Lisensi Anda: $licenseKey" -ForegroundColor Green
+                            } else {
+                                throw "Gagal registrasi: $($response.message)"
                             }
                         } catch {
                             Write-Host "Gagal melakukan registrasi otomatis: $($_.Exception.Message)" -ForegroundColor Red
-                            Read-Host "Tekan [ENTER] untuk lanjut deploy tanpa lisensi..."
                         }
                     }
                 }
             }
         }
 
-        # ─── BAGIAN D: Identitas Node (Node Identity) ───────────────────────────────
-        Write-Host "`n[BAGIAN D: Identitas Node]" -ForegroundColor Cyan
+        # ─── BAGIAN E: Identitas Node (Node Identity) ───────────────────────────────
+        Write-Host "`n[BAGIAN E: Identitas Node]" -ForegroundColor Cyan
         $defaultNodeName = "absenta-node-1"
         if ($existingNodeName) {
             $defaultNodeName = $existingNodeName
@@ -561,7 +559,50 @@ if (-not $Silent) {
         }
         Write-Host ""
         $confKey = Read-Host "Apakah sudah benar? [Y/n]"
-        if ($confKey -eq 'n' -or $confKey -eq 'N') { } else { $confirmed = $true }
+        if ($confKey -eq 'n' -or $confKey -eq 'N') {
+            # Loop again
+        } else {
+            if ($deployScenario -eq "hybrid") {
+                Write-Host "Menghubungi server lisensi untuk memvalidasi domain dan lisensi..." -ForegroundColor Cyan
+                try {
+                    $slug = $finalDomain.Replace(".absenta.id", "").Trim().ToLower()
+                    
+                    if ([string]::IsNullOrWhiteSpace($licenseKey)) {
+                        Write-Host "[ERROR] Lisensi wajib diisi untuk skenario Hybrid!" -ForegroundColor Red
+                        $confirmed = $false
+                        Read-Host "Tekan [ENTER] untuk mengulangi konfigurasi..."
+                        continue
+                    }
+                    
+                    $validateUrl = "$LicenseServer/api/license/easy-tunnel/validate/$licenseKey"
+                    $valRes = Invoke-RestMethod -Uri $validateUrl -Method Get -TimeoutSec 10
+                    
+                    if ($valRes.success -ne $true) {
+                        Write-Host "[ERROR] Kunci lisensi tidak valid atau tidak aktif!" -ForegroundColor Red
+                        $confirmed = $false
+                        Read-Host "Tekan [ENTER] untuk mengulangi konfigurasi..."
+                        continue
+                    }
+                    
+                    $expectedSlug = $valRes.data.requested_slug
+                    if ($expectedSlug -and $expectedSlug.ToLower().Trim() -ne $slug) {
+                        Write-Host "[ERROR] Domain '$finalDomain' tidak sesuai dengan alokasi lisensi Anda (Seharusnya: $expectedSlug.absenta.id)!" -ForegroundColor Red
+                        $confirmed = $false
+                        Read-Host "Tekan [ENTER] untuk mengulangi konfigurasi..."
+                        continue
+                    }
+                    
+                    Write-Host "Validasi berhasil! Lisensi aktif untuk domain '$finalDomain'." -ForegroundColor Green
+                    $confirmed = $true
+                } catch {
+                    Write-Host "[WARNING] Gagal memvalidasi secara online: $($_.Exception.Message)" -ForegroundColor Yellow
+                    Write-Host "Melanjutkan instalasi dengan asumsi konfigurasi benar..." -ForegroundColor Yellow
+                    $confirmed = $true
+                }
+            } else {
+                $confirmed = $true
+            }
+        }
     }
 } else {
     # Logic for Silent mode parameters
@@ -572,14 +613,8 @@ if (-not $Silent) {
 # LANGKAH Tambahan: Setup Caddy (Hybrid/SaaS)
 # ----------------------------------------------------
 if (($deployScenario -eq "hybrid" -or $deployScenario -eq "saas") -and ($setupCaddy -eq 'y' -or $setupCaddy -eq 'Y' -or [string]::IsNullOrWhiteSpace($setupCaddy))) {
-    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken -DeployScenario $deployScenario
+    Install-CaddyLocal -Domain $finalDomain -FPort $FrontendPort -BPort $BackendPort -SSLEmail $sslEmail -CFToken $cfToken -DeployScenario $deployScenario -SSLScenario $sslScenario
 }
-
-# ----------------------------------------------------
-# LANGKAH 3: Tulis Konfigurasi ke .env
-# ----------------------------------------------------
-Write-Host "Menulis konfigurasi ke file .env..." -ForegroundColor Cyan
-
 # Hitung Main Domain (misal: app.absenta.id -> absenta.id)
 $calculatedMainDomain = $finalDomain
 $domainParts = $finalDomain.Split('.')

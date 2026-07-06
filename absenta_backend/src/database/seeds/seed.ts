@@ -589,13 +589,13 @@ async function main() {
 
   console.log('✅ Modules seeded and old modules deactivated.');
 
-  const toPlanCode = (name: string): string => {
-    return String(name || '')
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '');
-  };
+  // const toPlanCode = (name: string): string => {
+  //   return String(name || '')
+  //     .trim()
+  //     .toUpperCase()
+  //     .replace(/[^A-Z0-9]+/g, '_')
+  //     .replace(/^_+|_+$/g, '');
+  // };
 
 
 
