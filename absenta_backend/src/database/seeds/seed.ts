@@ -983,22 +983,27 @@ async function main() {
 
   // 8️⃣ Seed Struktur Organisasi (System Tenant + All Active Tenants)
   console.log('🌱 Seeding Struktur Organisasi for all active tenants...');
-  const devTenantSubdomain = 'smkn1cimahi';
-  let devTenant = await prisma.tenant.findFirst({ where: { subdomain: devTenantSubdomain } });
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.DEPLOY_SCENARIO === 'production' || process.env.SKIP_DUMMY_SEED === 'true';
+  
+  let devTenant = null;
+  if (!isProduction) {
+    const devTenantSubdomain = 'smkn1cimahi';
+    devTenant = await prisma.tenant.findFirst({ where: { subdomain: devTenantSubdomain } });
 
-  if (!devTenant) {
-    console.log(`🌱 Creating Development Tenant: ${devTenantSubdomain}...`);
-    devTenant = await prisma.tenant.create({
-      data: {
-        name: 'SMK Negeri 1 Cimahi',
-        subdomain: devTenantSubdomain,
-        status: 'ACTIVE',
-        absensi_mode: 'MULTI_SESI',
-        jam_masuk_default: '07:00',
-        jam_pulang_default: '15:00',
-        toleransi_keterlambatan_menit: 15,
-      }
-    });
+    if (!devTenant) {
+      console.log(`🌱 Creating Development Tenant: ${devTenantSubdomain}...`);
+      devTenant = await prisma.tenant.create({
+        data: {
+          name: 'SMK Negeri 1 Cimahi',
+          subdomain: devTenantSubdomain,
+          status: 'ACTIVE',
+          absensi_mode: 'MULTI_SESI',
+          jam_masuk_default: '07:00',
+          jam_pulang_default: '15:00',
+          toleransi_keterlambatan_menit: 15,
+        }
+      });
+    }
   }
 
   const allTenants = await prisma.tenant.findMany({ where: { status: 'ACTIVE' } });
