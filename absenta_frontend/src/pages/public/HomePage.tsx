@@ -63,6 +63,22 @@ export default function HomePage() {
     ]
   }), [appName]);
 
+  React.useEffect(() => {
+    try {
+      document.title = String(appName);
+    } catch {}
+  }, [appName]);
+
+  React.useEffect(() => {
+    if (systemConfig) {
+      try {
+        applyBrandingFromConfig(systemConfig);
+      } catch (err) {
+        console.error('Failed to apply branding:', err);
+      }
+    }
+  }, [systemConfig]);
+
   if (checkingPreset || configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
@@ -94,22 +110,6 @@ export default function HomePage() {
       </AcademicPageLayout>
     );
   }
-
-  React.useEffect(() => {
-    try {
-      document.title = String(appName);
-    } catch {}
-  }, [appName]);
-
-  React.useEffect(() => {
-    if (systemConfig) {
-      try {
-        applyBrandingFromConfig(systemConfig);
-      } catch (err) {
-        console.error('Failed to apply branding:', err);
-      }
-    }
-  }, [systemConfig]);
 
   const handleLearnMore = () => navigate('/learn-more');
   const handlePricing = () => navigate('/pricing');
