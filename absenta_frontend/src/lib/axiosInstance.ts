@@ -122,6 +122,7 @@ axiosInstance.interceptors.request.use(
         urlToCheck.startsWith('/auth/login') ||
         urlToCheck.startsWith('/auth/register') ||
         urlToCheck.startsWith('/auth/tenant-info') ||
+        urlToCheck.startsWith('/auth/registration-preset') ||
         urlToCheck.startsWith('/auth/dev/tenants') ||
         urlToCheck.startsWith('/auth/check-domain') ||
         urlToCheck.startsWith('/auth/check-email') ||
@@ -277,6 +278,7 @@ axiosInstance.interceptors.response.use(
         urlToCheck.startsWith('/auth/login') ||
         urlToCheck.startsWith('/auth/register') ||
         urlToCheck.startsWith('/auth/tenant-info') ||
+        urlToCheck.startsWith('/auth/registration-preset') ||
         urlToCheck.startsWith('/auth/dev/tenants') ||
         urlToCheck.startsWith('/auth/check-domain') ||
         urlToCheck.startsWith('/auth/check-email') ||
