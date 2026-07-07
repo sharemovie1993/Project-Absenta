@@ -2,7 +2,7 @@ import { authService } from '../services/auth.service';
 import { authDb as prisma } from '../services/repositories/auth.db';
 import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '../types/auth.types';
 import { authorizationService } from '../services/authorization.service';
-import { checkSlugAvailability } from '@/services/licenseClient';
+import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
 import { organizationalAuthorizationEngine } from '../services/organizational-authorization.engine';
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
@@ -101,6 +101,14 @@ export const authController = {
   },
 
   async resolveTenantByHost(headers: any): Promise<any | null> {
+    const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+    if (isSingleTenant) {
+      const singleTenant = await prisma.tenant.findFirst({
+        where: { subdomain: { not: 'app' } }
+      }) || await prisma.tenant.findFirst();
+      if (singleTenant) return singleTenant;
+    }
+
     const host = authController.pickHostForTenant(headers);
     const hostNoPort = String(host || '').split('/')[0].split(':')[0].toLowerCase().trim();
     if (!hostNoPort) return null;
@@ -1529,6 +1537,28 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         };
       }
 
+      // 2b. Bypass check if it matches local server's licensed subdomain in single-tenant mode
+      const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+      const licenseKey = process.env.LICENSE_KEY;
+      if (isSingleTenant && licenseKey) {
+        try {
+          const licInfo = await checkLicenseStatus(licenseKey);
+          if (licInfo.success && licInfo.data?.requested_slug) {
+            const serverSub = String(licInfo.data.requested_slug).trim().toLowerCase();
+            if (sub === serverSub) {
+              reply.status(200);
+              return {
+                success: true,
+                message: 'Domain tersedia (Lisensi Server Terverifikasi)',
+                data: { domain, subdomain: sub, available: true }
+              };
+            }
+          }
+        } catch (err: any) {
+          console.warn(`[Subdomain Bypass Warning] Gagal memvalidasi lisensi lokal saat checkDomain:`, err.message);
+        }
+      }
+
       // 3. Local check
       const existing = await prisma.tenant.findFirst({
         where: {
@@ -1573,6 +1603,69 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
     } catch (err) {
       reply.status(500);
       return { success: false, message: 'Internal server error' };
+    }
+  },
+
+  async registrationPreset(_request: any, reply: any) {
+    try {
+      const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+      const licenseKey = process.env.LICENSE_KEY;
+
+      const tenantCount = await prisma.tenant.count({
+        where: {
+          AND: [
+            { subdomain: { not: null } },
+            { subdomain: { not: '' } },
+            { subdomain: { notIn: ['app', 'system'] } }
+          ]
+        }
+      });
+      const isRegistered = tenantCount > 0;
+
+      if (isSingleTenant) {
+        let presetData: any = {
+          is_single_tenant: true,
+          is_registered: isRegistered,
+          license_key: licenseKey || '',
+          school_name: '',
+          subdomain: '',
+          npsn: '',
+          operator_phone: ''
+        };
+
+        if (licenseKey) {
+          try {
+            const licInfo = await checkLicenseStatus(licenseKey);
+            if (licInfo.success && licInfo.data) {
+              presetData.school_name = licInfo.data.school_name || '';
+              presetData.subdomain = licInfo.data.requested_slug || '';
+              presetData.npsn = licInfo.data.npsn || '';
+              presetData.operator_phone = licInfo.data.operator_phone || '';
+            }
+          } catch (err: any) {
+            console.error('[RegistrationPreset] Gagal memuat status lisensi pusat:', err.message);
+          }
+        }
+
+        return reply.send({
+          success: true,
+          data: presetData
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: {
+          is_single_tenant: false,
+          is_registered: false
+        }
+      });
+    } catch (err: any) {
+      console.error('[RegistrationPreset] error:', err);
+      return reply.status(500).send({
+        success: false,
+        message: err.message || 'Internal server error'
+      });
     }
   },
 

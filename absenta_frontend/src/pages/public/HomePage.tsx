@@ -5,6 +5,7 @@ import { fetchActiveSystemConfig, applyBrandingFromConfig } from '@/services/sys
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Sparkles } from 'lucide-react';
 import { Loader, SectionCard, Button } from '@/components/ui';
+import axiosInstance from '@/lib/axiosInstance';
 
 // Lazy loading heavy components
 const Navbar = lazy(() => import('@/components/layout/Navbar').then(m => ({ default: m.Navbar })));
@@ -19,10 +20,31 @@ const HomeCTA = lazy(() => import('@/components/public/home/HomeCTA').then(m => 
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const [checkingPreset, setCheckingPreset] = React.useState(true);
   const { data: systemConfig, isLoading: configLoading } = useQuery({
     queryKey: ['system-config', 'active', 'public'],
     queryFn: fetchActiveSystemConfig,
   });
+
+  React.useEffect(() => {
+    const checkPreset = async () => {
+      try {
+        const res = await axiosInstance.get('/auth/registration-preset');
+        if (res.data?.success) {
+          const preset = res.data.data;
+          if (preset.is_single_tenant && preset.is_registered) {
+            navigate('/login', { replace: true });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[HomePage] Gagal memuat registration-preset:', err);
+      } finally {
+        setCheckingPreset(false);
+      }
+    };
+    checkPreset();
+  }, [navigate]);
 
   const appName = systemConfig?.app_name || 'Sistem Absensi';
   const primaryColor = systemConfig?.primary_color || '#2563EB';
@@ -40,6 +62,14 @@ export default function HomePage() {
       { text: 'Hubungi tim sales kami jika Anda membutuhkan demo khusus untuk sekolah Anda.' }
     ]
   }), [appName]);
+
+  if (checkingPreset || configLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <Loader />
+      </div>
+    );
+  }
 
   if (!configLoading && !systemConfig) {
     return (

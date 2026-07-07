@@ -66,6 +66,42 @@ type NpsnLookupResult = {
 const RegisterTenant = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isSingleTenant, setIsSingleTenant] = useState(false);
+
+  useEffect(() => {
+    const checkPreset = async () => {
+      try {
+        const res = await axiosInstance.get('/auth/registration-preset');
+        if (res.data?.success) {
+          const preset = res.data.data;
+          if (preset.is_single_tenant) {
+            if (preset.is_registered) {
+              toast.error('Registrasi sekolah sudah selesai dilakukan untuk server ini.');
+              navigate('/login');
+              return;
+            }
+            setIsSingleTenant(true);
+            setFormData(prev => ({
+              ...prev,
+              tenant_name: preset.school_name || '',
+              tenant_domain: preset.subdomain || '',
+              npsn: preset.npsn || prev.npsn,
+              admin_phone: preset.operator_phone || prev.admin_phone
+            }));
+            setDomainStatus('available');
+            setDomainEdited(true);
+            if (preset.npsn) {
+              setNpsnStatus('found');
+              setNpsnMessage(preset.school_name);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[RegistrationPreset] Gagal memuat data awal:', err.message);
+      }
+    };
+    checkPreset();
+  }, []);
 
 
   // Extract plan_id from URL query params
@@ -145,11 +181,12 @@ const RegisterTenant = () => {
   const debouncedDomain = useDebounce(formData.tenant_domain, 800);
 
   useEffect(() => {
+    if (isSingleTenant) return;
     if (!domainEdited && formData.tenant_name) {
       const slug = formData.tenant_name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
       setFormData(prev => ({ ...prev, tenant_domain: slug }));
     }
-  }, [formData.tenant_name, domainEdited]);
+  }, [formData.tenant_name, domainEdited, isSingleTenant]);
 
   const validateField = (name: string, value: any) => {
     let error = '';
@@ -220,10 +257,11 @@ const RegisterTenant = () => {
   }, [debouncedEmail]);
 
   useEffect(() => {
+    if (isSingleTenant) return;
     if (debouncedDomain && !errors.tenant_domain) {
       checkDomainAvailable(debouncedDomain);
     }
-  }, [debouncedDomain]);
+  }, [debouncedDomain, isSingleTenant]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -260,7 +298,9 @@ const RegisterTenant = () => {
           ...prev,
           tenant_name: result.data.nama,
           alamat: result.data.alamat || prev.alamat,
-          tenant_domain: !domainEdited ? result.data.nama.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) : prev.tenant_domain
+          tenant_domain: isSingleTenant 
+            ? prev.tenant_domain 
+            : (!domainEdited ? result.data.nama.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) : prev.tenant_domain)
         }));
         toast.success('Data sekolah ditemukan!');
       } else {
@@ -360,10 +400,22 @@ const RegisterTenant = () => {
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
                         >
-                          <div className="mb-8">
-                             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Daftar Institusi Baru</h2>
-                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lengkapi detail untuk membangun sistem absensi mandiri sekolah Anda.</p>
-                          </div>
+                           <div className="mb-8">
+                              <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Daftar Institusi Baru</h2>
+                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lengkapi detail untuk membangun sistem absensi mandiri sekolah Anda.</p>
+                           </div>
+
+                           {isSingleTenant && (
+                             <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-start gap-3">
+                               <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                               <div>
+                                 <h4 className="text-sm font-bold">Mode Single-Tenant (On-Premise / Hybrid)</h4>
+                                 <p className="text-xs mt-0.5 opacity-90">
+                                   Server ini berjalan khusus untuk satu sekolah. Subdomain telah dikunci secara otomatis sesuai dengan Kunci Lisensi yang terpasang, sedangkan NPSN dan Nama Sekolah dapat Anda sesuaikan.
+                                 </p>
+                               </div>
+                             </div>
+                           )}
 
                           <form onSubmit={handleSubmit} className="space-y-6">
                              {/* Section: Data Sekolah */}
@@ -415,6 +467,7 @@ const RegisterTenant = () => {
                                         </div>
                                       }
                                       required
+                                      readOnly={isSingleTenant}
                                    />
                                    <Input 
                                       label="Lokasi Singkat"
@@ -607,7 +660,7 @@ const RegisterTenant = () => {
                            </div>
                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Pendaftaran Sukses!</h2>
                            <p className="text-slate-500 dark:text-slate-400 text-base mb-10 leading-relaxed italic">
-                              Kami telah mengirimkan email verifikasi ke <strong className="text-blue-600">{formData.admin_email}</strong>. Silakan cek inbox Anda untuk segera mengaktifkan portal sekolah {formData.tenant_name}.
+                              Kami telah mengirimkan email verifikasi ke <strong className="text-blue-600">{formData.admin_email}</strong> serta detail login ke WhatsApp Anda. Silakan cek inbox email dan WhatsApp Anda untuk segera mengaktifkan portal sekolah {formData.tenant_name}.
                            </p>
                            
                            <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 mb-10 text-left space-y-4">

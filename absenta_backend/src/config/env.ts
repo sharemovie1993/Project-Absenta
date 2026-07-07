@@ -99,18 +99,11 @@ export function validateEnv(): void {
     normalizeBool
   );
 
-  const paymentRequired = [
-    'MIDTRANS_SERVER_KEY',
-    'MIDTRANS_CLIENT_KEY',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_PUBLISHABLE_KEY',
-    'STRIPE_WEBHOOK_SECRET',
-    'XENDIT_SECRET_KEY',
-    'XENDIT_WEBHOOK_TOKEN',
-    'TRIPAY_API_KEY',
-    'TRIPAY_PRIVATE_KEY',
-    'TRIPAY_MERCHANT_CODE',
-  ];
+  if (!exists('DEPLOYMENT_MODE')) {
+    process.env.DEPLOYMENT_MODE = 'ON_PREMISE';
+  }
+
+  const paymentRequired: string[] = [];
   const missingPayment = paymentRequired.filter((k) => !exists(k));
   if (missingPayment.length > 0) {
     log('warn', `Payment env missing (skip in dev ok): ${missingPayment.join(', ')}`);

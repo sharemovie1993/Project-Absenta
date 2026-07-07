@@ -132,15 +132,83 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
   };
 }
 
+function resolveServiceMetadata(planTitle: string, productId: string) {
+  const title = String(planTitle || '').toUpperCase();
+  const prod = String(productId || '').toUpperCase();
+
+  if (prod === 'PLATFORM-ABSENTA') {
+    return {
+      service_code: 'CORE',
+      plan_name: planTitle || 'Layanan Utama',
+      module_name: 'Layanan Utama'
+    };
+  }
+
+  // Default values
+  let service_code = 'MODUL';
+  let module_name = planTitle ? planTitle.split('(')[0].trim() : 'Layanan Modular';
+
+  if (title.includes('HUBUNGAN INDUSTRI') || title.includes('HUBIN')) {
+    service_code = 'HUBIN';
+    module_name = 'Hubungan Industri';
+  } else if (title.includes('SARANA PRASARANA') || title.includes('SARPRAS') || title.includes('SARANA & PRASARANA') || title.includes('SARPRAS')) {
+    service_code = 'SARPRAS';
+    module_name = 'Sarana & Prasarana';
+  } else if (title.includes('KOPERASI')) {
+    service_code = 'KOPERASI';
+    module_name = 'Koperasi';
+  } else if (title.includes('KANTIN')) {
+    service_code = 'KANTIN';
+    module_name = 'Kantin';
+  } else if (title.includes('EASY TUNNEL') || title.includes('EASY-TUNNEL')) {
+    service_code = 'EASY_TUNNEL';
+    module_name = 'Easy Tunnel';
+  } else if (title.includes('VPN')) {
+    service_code = 'VPN';
+    module_name = 'VPN Tunnel';
+  } else if (title.includes('RAPOR')) {
+    service_code = 'RAPOR';
+    module_name = 'Rapor';
+  } else if (title.includes('ABSENSI') || title.includes('PRESENCE') || title.includes('ATTENDANCE')) {
+    service_code = 'ABSENSI';
+    module_name = 'Absensi';
+  }
+
+  return {
+    service_code,
+    plan_name: planTitle || 'Layanan Modular',
+    module_name
+  };
+}
+
 export async function getInvoicesByTenantQuery(_tenantId: string) {
   const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
   const coreKey = process.env.LICENSE_KEY || '';
   if (!coreKey) return [];
 
   try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: _tenantId },
+      select: { subdomain: true }
+    });
+    const slug = tenant?.subdomain?.toLowerCase();
+
     const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
     if (response.data?.success && response.data?.data?.invoices) {
-      const rawInvoices = response.data.data.invoices;
+      let rawInvoices = response.data.data.invoices;
+
+      if (slug) {
+        const licenses = response.data.data.licenses || [];
+        const tenantLicenses = licenses
+          .filter((l: any) => l.requested_slug?.toLowerCase() === slug)
+          .map((l: any) => l.id);
+        rawInvoices = rawInvoices.filter((inv: any) => 
+          tenantLicenses.includes(inv.license_id) || 
+          inv.school_name?.toLowerCase() === slug || 
+          inv.schoolName?.toLowerCase() === slug
+        );
+      }
+
       return rawInvoices.map((inv: any) => {
         const mappedStatus = String(inv.status).toUpperCase();
         let status = 'SENT';
@@ -154,6 +222,8 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
           status = 'OVERDUE';
         }
 
+        const meta = resolveServiceMetadata(inv.plan_title || inv.planTitle || '', inv.product_id || inv.productId || '');
+
         return {
           id: String(inv.invoice_number),
           invoice_number: inv.invoice_number,
@@ -165,14 +235,15 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
           paid_at: inv.paid_at,
           expired_time: inv.expired_time,
           plan_id: inv.plan_id || null,
+          plan_name: meta.plan_name,
           payment_method: inv.payment_method || null,
           payments: inv.paid_at ? [{ status: 'SUCCESS', payment_method: inv.payment_method || 'TRIPAY' }] : [],
           Subscription: {
-            service_code: inv.product_id === 'platform-absenta' ? 'CORE' : (inv.product_id || 'ABSENSI').toUpperCase(),
+            service_code: meta.service_code,
             Plan: {
-              name: inv.product_display_name || inv.product_id || 'Layanan Modular',
+              name: meta.plan_name,
               Module: {
-                name: inv.product_display_name || inv.product_id || 'Layanan Modular'
+                name: meta.module_name
               }
             }
           }
@@ -191,21 +262,53 @@ export async function getPaymentsByTenantQuery(_tenantId: string) {
   if (!coreKey) return [];
 
   try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: _tenantId },
+      select: { subdomain: true }
+    });
+    const slug = tenant?.subdomain?.toLowerCase();
+
     const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
     if (response.data?.success && response.data?.data?.invoices) {
-      const rawInvoices = response.data.data.invoices;
+      let rawInvoices = response.data.data.invoices;
+
+      if (slug) {
+        const licenses = response.data.data.licenses || [];
+        const tenantLicenses = licenses
+          .filter((l: any) => l.requested_slug?.toLowerCase() === slug)
+          .map((l: any) => l.id);
+        rawInvoices = rawInvoices.filter((inv: any) => 
+          tenantLicenses.includes(inv.license_id) || 
+          inv.school_name?.toLowerCase() === slug || 
+          inv.schoolName?.toLowerCase() === slug
+        );
+      }
+
       return rawInvoices
         .filter((inv: any) => inv.paid_at)
-        .map((inv: any) => ({
-          id: `PAY-${inv.invoice_number}`,
-          amount: inv.amount,
-          currency: 'IDR',
-          status: 'SUCCESS',
-          payment_method: inv.payment_method || 'TRIPAY',
-          paid_at: inv.paid_at,
-          created_at: inv.paid_at,
-          invoice_number: inv.invoice_number
-        }));
+        .map((inv: any) => {
+          const meta = resolveServiceMetadata(inv.plan_title || inv.planTitle || '', inv.product_id || inv.productId || '');
+          return {
+            id: `PAY-${inv.invoice_number}`,
+            amount: inv.amount,
+            currency: 'IDR',
+            status: 'SUCCESS',
+            payment_method: inv.payment_method || 'TRIPAY',
+            paid_at: inv.paid_at,
+            created_at: inv.paid_at,
+            invoice_number: inv.invoice_number,
+            plan_name: meta.plan_name,
+            Subscription: {
+              service_code: meta.service_code,
+              Plan: {
+                name: meta.plan_name,
+                Module: {
+                  name: meta.module_name
+                }
+              }
+            }
+          };
+        });
     }
   } catch (err: any) {
     console.error('[getPaymentsByTenantQuery] Failed to fetch payments from licensing server:', err.message);

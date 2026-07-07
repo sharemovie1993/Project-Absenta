@@ -92,6 +92,23 @@
 - **Keputusan**: Menghubungkan kalkulasi EWS (Early Warning System) dengan system notifikasi in-app kepada guru BK, membuat model dan API whistleblower perundungan anonim (`BullyingReport`), dan mengimplementasikan batch offline sync logbook PKL Hubin beserta kalkulasi geofencing radius area PKL.
 - **Rasional**: Memastikan guru BK sigap dalam pencegahan dini kasus siswa berisiko tinggi, memberikan jalur pengaduan perundungan yang aman dan anonim, serta memfasilitasi logbook dan absensi siswa PKL di area minim sinyal tanpa kehilangan kepatuhan geofencing.
 
+2026-07: Wildcard Fallback & SSL Error Prevention in Central License Server Caddyfile
+- **Keputusan**: Mengonfigurasi blok tangkapan wildcard `*.absenta.id` pada Caddyfile server lisensi pusat yang menunjuk langsung ke berkas sertifikat wildcard (`wildcard_.absenta.id.crt` dan `.key`), serta menyaring aset statis menggunakan pencocokan `@notAssets` agar tidak terpengaruh oleh rewrite ke `blocked.html`.
+- **Rasional**: Mencegah kegagalan jabat tangan SSL (`ERR_SSL_PROTOCOL_ERROR`) saat subdomain sekolah (tenant) yang belum memiliki tunnel aktif diakses secara publik melalui internet, serta memastikan file CSS/JS statis pada halaman pemblokiran dapat termuat secara normal.
+
+2026-07: Dynamic Wildcard Certificate Mapping on download-ssl API
+- **Keputusan**: Memperbarui endpoint `/api/public/download-ssl` pada Server Lisensi agar mendeteksi permintaan domain tenant secara dinamis dan menyajikan berkas sertifikat wildcard `wildcard_.absenta.id` yang tersimpan pada penyimpanan internal Caddy.
+- **Rasional**: Menghilangkan error sertifikat tidak valid (`NET::ERR_CERT_COMMON_NAME_INVALID`) pada server lokal target karena sebelumnya server lisensi secara kaku menyajikan sertifikat non-wildcard domain utama.
+
+2026-07: Non-Technical GUI Wizard Deployer UX Overhaul
+- **Keputusan**: Merestrukturisasi istilah jargon teknis (seperti "Deployment Scenario", "Target OS", "Database URL") pada GUI Wizard menjadi bahasa awam (seperti "Registrasi Server & Pasang Platform", "Pilih Server", "Mode Akses", "Penyimpanan", "Pemeriksaan"), serta menambahkan panduan pasca-instalasi yang detail (konfigurasi DNS Static di router Mikrotik sekolah dan inisialisasi menu Daftar Sekolah).
+- **Rasional**: Mempermudah operator sekolah dan teknisi awam memahami alur instalasi, serta memberikan kejelasan batas operasional jaringan lokal intranet dengan akses publik Easy Tunnel.
+
+2026-07: PM2 and Caddy Stopping prior to Remote Redeployment (Resiliency)
+- **Keputusan**: Memasukkan perintah `pm2 kill || true` dan `systemctl stop caddy || true` di awal Fase 2 pada skrip deployment remote (`deploy-absenta-remote.ps1`).
+- **Rasional**: Membebaskan memori server, kunci berkas (*file locks*) pada modul node, dan port `80/443` sebelum proses penarikan git, instalasi dependensi, dan kompilasi proyek dimulai kembali, menghindari kegagalan kompilasi akibat file sedang sibuk.
+
+
 
 
 

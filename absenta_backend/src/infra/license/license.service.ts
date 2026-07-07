@@ -1,3 +1,4 @@
+import { prisma } from '../../utils/prisma';
 import os from 'os';
 import crypto from 'crypto';
 import axios from 'axios';
@@ -71,12 +72,34 @@ export class LicenseService {
 
       if (result.success && result.token) {
         this.cachedToken = result.token;
-        // Decode tanpa verifikasi signature dulu untuk ambil info (verifikasi signature butuh public key)
         this.cachedDecoded = jwt.decode(result.token);
         
         console.log(`[License] ✅ Lisensi aktif untuk: ${result.school_name || 'Instansi'}`);
         console.log(`[License] 📅 Berlaku hingga: ${result.expires_at || 'Selamanya'}`);
         
+        // Cache token dan tanggal sinkronisasi terakhir ke database lokal
+        try {
+          const tokenKey = 'license_cached_token';
+          const syncKey = 'license_last_synced';
+          const SYSTEM_TENANT_ID = 'system';
+
+          const existingToken = await prisma.config.findFirst({ where: { tenant_id: SYSTEM_TENANT_ID, key: tokenKey } });
+          if (existingToken) {
+            await prisma.config.update({ where: { id: existingToken.id }, data: { value: result.token } });
+          } else {
+            await prisma.config.create({ data: { tenant_id: SYSTEM_TENANT_ID, key: tokenKey, value: result.token } }).catch(() => {});
+          }
+
+          const existingSync = await prisma.config.findFirst({ where: { tenant_id: SYSTEM_TENANT_ID, key: syncKey } });
+          if (existingSync) {
+            await prisma.config.update({ where: { id: existingSync.id }, data: { value: new Date().toISOString() } });
+          } else {
+            await prisma.config.create({ data: { tenant_id: SYSTEM_TENANT_ID, key: syncKey, value: new Date().toISOString() } }).catch(() => {});
+          }
+        } catch (dbErr: any) {
+          console.warn('[License] Gagal menyimpan cache lisensi ke database:', dbErr.message);
+        }
+
         return {
           success: true,
           message: 'Lisensi berhasil diverifikasi.',
@@ -102,13 +125,53 @@ export class LicenseService {
       };
     } catch (error: any) {
       const msg = error.response?.data?.message || error.message;
-      console.error(`[License] ❌ Gagal sinkronisasi lisensi: ${msg}`);
+      console.warn(`[License] ⚠️ Koneksi ke server lisensi gagal: ${msg}. Mencoba Grace Period offline...`);
       
-      // Fallback: Jika server offline, coba gunakan cached token jika ada di DB/File
-      // Untuk saat ini kita return error agar user tahu server lisensi harus bisa dijangkau saat startup pertama
+      // Offline Grace Period Fallback (7 Hari)
+      try {
+        const SYSTEM_TENANT_ID = 'system';
+        const cachedTokenConfig = await prisma.config.findFirst({
+          where: { tenant_id: SYSTEM_TENANT_ID, key: 'license_cached_token' }
+        });
+        const lastSyncedConfig = await prisma.config.findFirst({
+          where: { tenant_id: SYSTEM_TENANT_ID, key: 'license_last_synced' }
+        });
+
+        if (cachedTokenConfig && cachedTokenConfig.value && lastSyncedConfig && lastSyncedConfig.value) {
+          const lastSynced = new Date(lastSyncedConfig.value);
+          const daysSinceLastSync = (new Date().getTime() - lastSynced.getTime()) / (24 * 60 * 60 * 1000);
+          
+          if (daysSinceLastSync <= 7) {
+            this.cachedToken = cachedTokenConfig.value;
+            this.cachedDecoded = jwt.decode(cachedTokenConfig.value);
+            
+            const remainingDays = Math.ceil(7 - daysSinceLastSync);
+            console.log(`[License] ⚠️ Offline Fallback aktif. Menggunakan cache lisensi lokal (${remainingDays} hari tersisa).`);
+            
+            return {
+              success: true,
+              message: `Mode offline aktif. Menggunakan cache lisensi (${remainingDays} hari masa tenggang tersisa).`,
+              token: cachedTokenConfig.value,
+              school_name: this.cachedDecoded?.school_name,
+              expires_at: this.cachedDecoded?.expires_at,
+              is_active: true
+            };
+          } else {
+            console.error('[License] ❌ Masa tenggang offline (7 hari) telah berakhir. Lisensi dinonaktifkan.');
+            return {
+              success: false,
+              message: 'Masa tenggang offline (7 hari) telah berakhir. Harap sambungkan server ke internet.',
+              is_active: false
+            };
+          }
+        }
+      } catch (dbErr: any) {
+        console.error('[License] Gagal membaca cache offline dari database:', dbErr.message);
+      }
+
       return { 
         success: false, 
-        message: `Koneksi ke server lisensi gagal: ${msg}` 
+        message: `Koneksi ke server lisensi gagal dan tidak ada cache lokal: ${msg}` 
       };
     }
   }

@@ -1,6 +1,5 @@
 import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SocketMonitor } from './socket.monitor';
-import { InfraMonitoringBroadcaster } from '../../modules/superadmin/infra-monitoring/services/infra-monitoring.broadcaster';
 
 export type AttendanceFeedBuilder = (
   tenantId: string,
@@ -103,7 +102,7 @@ export function setupSocketRooms(
       }
       socket.join('infra:monitoring');
       fastify.log.info(`[WS] User ${user.id} joined infra:monitoring room`);
-      InfraMonitoringBroadcaster.getInstance().start(io);
+      // InfraMonitoringBroadcaster.getInstance().start(io);
     });
 
     socket.on('infra_monitoring_unsubscribe', () => {
@@ -229,7 +228,7 @@ export function setupSocketRooms(
       }
       socket.join('infra:monitoring');
       fastify.log.info(`[WS] User ${user.id} joined infra:monitoring room`);
-      InfraMonitoringBroadcaster.getInstance().start(ioApi);
+      // InfraMonitoringBroadcaster.getInstance().start(ioApi);
     });
 
     socket.on('infra_monitoring_unsubscribe', () => {

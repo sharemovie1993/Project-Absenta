@@ -10,7 +10,7 @@ import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '..
 import { emitDomainEvent } from '@/infra/event-bus';
 import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
-import { checkSlugAvailability } from '@/services/licenseClient';
+import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
 
 // Removed hardcoded DEFAULT_STRUKTUR_ORGANISASI in favor of shared config
 
@@ -315,16 +315,36 @@ export class AuthService {
     }
 
     // 2b. Check Subdomain Availability Globally on the central License Server
-    try {
-      const globCheck = await checkSlugAvailability(subLabel);
-      if (!globCheck.available) {
-        throw new Error(`Subdomain '${subLabel}' sudah digunakan di server lisensi pusat. Silakan pilih subdomain lain.`);
+    let shouldCheckGlobally = true;
+    const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+    const licenseKey = process.env.LICENSE_KEY;
+    if (isSingleTenant && licenseKey) {
+      try {
+        const licInfo = await checkLicenseStatus(licenseKey);
+        if (licInfo.success && licInfo.data?.requested_slug) {
+          const serverSub = String(licInfo.data.requested_slug).trim().toLowerCase();
+          if (subLabel === serverSub) {
+            shouldCheckGlobally = false;
+            console.log(`[Subdomain Bypass] Membebaskan pengecekan global karena subdomain '${subLabel}' cocok dengan lisensi lokal.`);
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[Subdomain Bypass Warning] Gagal memvalidasi lisensi lokal saat pendaftaran tenant:`, err.message);
       }
-    } catch (err: any) {
-      if (err.message && err.message.includes('sudah digunakan')) {
-        throw err;
+    }
+
+    if (shouldCheckGlobally) {
+      try {
+        const globCheck = await checkSlugAvailability(subLabel);
+        if (!globCheck.available) {
+          throw new Error(`Subdomain '${subLabel}' sudah digunakan di server lisensi pusat. Silakan pilih subdomain lain.`);
+        }
+      } catch (err: any) {
+        if (err.message && err.message.includes('sudah digunakan')) {
+          throw err;
+        }
+        console.warn(`[Subdomain Check Warning] Gagal verifikasi subdomain '${subLabel}' secara global di server pusat:`, err.message);
       }
-      console.warn(`[Subdomain Check Warning] Gagal verifikasi subdomain '${subLabel}' secara global di server pusat:`, err.message);
     }
 
     // 3. Check Tenant Name Availability
@@ -567,6 +587,35 @@ export class AuthService {
         }
       }
       throw e;
+    }
+
+    // 5. Update central license server if single tenant mode
+    if (isSingleTenant && licenseKey) {
+      try {
+        await updateLicenseInfo({
+          license_key: licenseKey,
+          school_name: tenant_name,
+          npsn: normalizedNpsn
+        });
+        console.log(`[License Server Sync] Berhasil memperbarui nama sekolah dan NPSN di server pusat.`);
+      } catch (err: any) {
+        console.error(`[License Server Sync Warning] Gagal memperbarui info lisensi di server pusat:`, err.message);
+      }
+    }
+
+    // 5b. Send WhatsApp credentials notification via central licensing server (For all modes: Single-Tenant & SaaS)
+    try {
+      const subdomainSlug = tenant_domain.includes('.') ? tenant_domain.split('.')[0] : tenant_domain;
+      await sendRegistrationWa({
+        school_name: tenant_name,
+        subdomain: subdomainSlug,
+        admin_email: admin_email,
+        admin_password: admin_password,
+        admin_phone: admin_phone
+      });
+      console.log(`[License Server WA] Berhasil mengirimkan permintaan notifikasi WA registrasi ke server pusat.`);
+    } catch (err: any) {
+      console.error(`[License Server WA Warning] Gagal mengirimkan notifikasi WA registrasi via server pusat:`, err.message);
     }
 
     let verificationToken: string | null = null;

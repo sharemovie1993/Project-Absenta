@@ -287,3 +287,39 @@ export async function removeLicenseCustomDomain(licenseKey: string): Promise<any
   return data;
 }
 
+/** Update nama sekolah dan NPSN ke server lisensi */
+export async function updateLicenseInfo(params: {
+  license_key: string;
+  school_name?: string;
+  npsn?: string;
+}): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/update-info`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(10000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal memperbarui informasi lisensi di server pusat.');
+  return data;
+}
+
+/** Kirim notifikasi WA pendaftaran tenant ke server lisensi */
+export async function sendRegistrationWa(params: {
+  school_name: string;
+  subdomain: string;
+  admin_email: string;
+  admin_password: string;
+  admin_phone: string;
+}): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tenant-registered-wa`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(10000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal mengirimkan notifikasi WA pendaftaran ke server pusat.');
+  return data;
+}
+

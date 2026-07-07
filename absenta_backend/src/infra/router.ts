@@ -401,8 +401,6 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(systemUpdateRoutes, { prefix: '/system/update' });
       const { observabilityRoutes } = await import('../modules/observability/routes/observability.routes');
       await fastify.register(observabilityRoutes, { prefix: '/system/observability' });
-      const { analyticsAdminRoutes } = await import('../modules/analytics/routes/analytics-admin.routes');
-      await fastify.register(analyticsAdminRoutes, { prefix: '/admin/analytics' });
 
       const { supportTicketRoutes } = await import(
         '../modules/support-ticket/routes/support-ticket.routes'

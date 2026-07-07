@@ -16,6 +16,7 @@ import './failedJobCleanup.job';
 import './logRetention.job';
 import './metricAggregation.job';
 import './tenantBackupPurge.job';
+import './heartbeatSync.job';
 
 // ── Risk & Analytics ─────────────────────────────────────────────────────────
 import './ewsSnapshot.job';

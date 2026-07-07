@@ -81,7 +81,12 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                   <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-slate-900 dark:text-white tracking-tight">#{inv.invoice_number}</div>
-                      <div className="text-[10px] text-slate-400 font-medium">{formatDate(inv.created_at)}</div>
+                      {((inv as any).plan_name || (inv as any).plan_title) && (
+                        <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                          {(inv as any).plan_name || (inv as any).plan_title}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-slate-400 font-medium mt-0.5">{formatDate(inv.created_at)}</div>
                     </td>
                     <td className="px-6 py-4">
                       {(() => {
@@ -193,7 +198,12 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                     <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-bold text-slate-900 dark:text-white tracking-tight">#{inv.invoice_number}</div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
+                        {((inv as any).plan_name || (inv as any).plan_title) && (
+                          <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                            {(inv as any).plan_name || (inv as any).plan_title}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 mt-1">
                           <div className={`p-1 rounded-sm ${style.dot} bg-opacity-10`}>
                             <IconComponent size={10} className={style.text} />
                           </div>

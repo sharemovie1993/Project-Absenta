@@ -6,7 +6,7 @@ import axiosInstance from '@/lib/axiosInstance';
 import { type SystemConfig } from '@/services/systemConfig';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smartphone } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smartphone, Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 
@@ -27,9 +27,38 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const [backendNodeId, setBackendNodeId] = useState<string | null>(null);
+  const [hideRegisterLink, setHideRegisterLink] = useState(false);
+
+  const features = useMemo(() => [
+    { title: "Presensi Wajah AI & Geolokasi", desc: "Verifikasi kehadiran menggunakan pendeteksian wajah cerdas dan geofencing lokasi presisi." },
+    { title: "Notifikasi Otomatis Orang Tua", desc: "Pemberitahuan real-time langsung ke WhatsApp saat siswa masuk, izin, sakit, atau alpa." },
+    { title: "Portal Keuangan Terintegrasi", desc: "Kemudahan pengelolaan SPP, tagihan otomatis, dan pembayaran via Payment Gateway." },
+    { title: "Satu Dasbor Akademik Terpadu", desc: "Akses komprehensif untuk nilai, jadwal pelajaran, e-raport, data siswa, dan guru." },
+    { title: "Keamanan Enkripsi End-to-End", desc: "Perlindungan data sensitif institusi secara aman dengan standar keamanan tingkat tinggi." }
+  ], []);
+
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveFeatureIndex(prev => (prev + 1) % features.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [features.length]);
 
   useEffect(() => {
     const initData = async () => {
+      try {
+        const res = await axiosInstance.get('/auth/registration-preset');
+        if (res.data?.success) {
+          const preset = res.data.data;
+          if (preset.is_single_tenant && preset.is_registered) {
+            setHideRegisterLink(true);
+          }
+        }
+      } catch (err) {
+        console.warn('[LoginPage] Gagal memuat status registrasi preset:', err);
+      }
       // ── Stale localStorage Guard (on real domain) ───────────────────────
       // When the browser visits smp4.absenta.id but localStorage still holds
       // tenant_domain='t.absenta.id' from a previous session, the system config
@@ -158,49 +187,71 @@ export default function LoginPage() {
 
   return (
     <InfraErrorBoundary>
-      <main className="min-h-screen w-full flex flex-col lg:flex-row bg-white dark:bg-slate-950 font-sans selection:bg-blue-100 overflow-x-hidden">
+      <main className="min-h-screen w-full flex flex-col md:flex-row bg-white dark:bg-slate-950 font-sans selection:bg-blue-100 overflow-x-hidden">
         <Navbar />
         
         {/* Left side: Immersive Branding */}
-        <div className="w-full lg:w-[45%] xl:w-[40%] bg-slate-900 text-white p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden min-h-[40vh] lg:min-h-screen">
-          <div className="absolute inset-0 bg-mesh opacity-30 pointer-events-none" />
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/20 to-transparent pointer-events-none" />
+        <div className="w-full md:w-[45%] xl:w-[40%] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white p-8 sm:p-12 lg:p-16 flex-col justify-between relative overflow-hidden min-h-[45vh] md:min-h-screen hidden md:flex">
+          {/* Glowing gradient mesh background */}
+          <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
+          <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
           
-          <div className="relative z-10 pt-20 lg:pt-32">
+          <div className="relative z-10 pt-16 lg:pt-24 flex-grow flex flex-col justify-center">
              <motion.div
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               transition={{ duration: 0.4 }}
+               initial={{ opacity: 0, y: 15 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.5 }}
                className="max-w-md"
              >
-                <div className="w-16 h-16 rounded-xl bg-white/10 backdrop-blur-xl flex items-center justify-center mb-8 border border-white/20 shadow-2xl">
-                   <ShieldCheck className="w-8 h-8 text-blue-400" />
+                <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-xl flex items-center justify-center mb-8 border border-white/20 shadow-2xl">
+                   <ShieldCheck className="w-7 h-7 text-blue-400" />
                 </div>
-                <h2 className="text-4xl lg:text-5xl font-black mb-6 tracking-tight leading-tight">
-                  Akses <span className="text-blue-400">Pusat Kendali</span> Sekolah Anda.
+                <h2 className="text-3xl lg:text-4xl xl:text-5xl font-black mb-6 tracking-tight leading-tight">
+                  Akses <span className="text-blue-400">Pusat Kendali</span> Akademik.
                 </h2>
-                <p className="text-lg text-slate-400 leading-relaxed mb-10">
-                  Gunakan identitas digital resmi institusi Anda untuk mulai mengelola data akademik, absensi cerdas, dan laporan keuangan.
+                <p className="text-sm lg:text-base text-slate-400 leading-relaxed mb-10">
+                  Gunakan identitas digital resmi institusi Anda untuk mulai mengelola data akademik, absensi cerdas, dan laporan keuangan secara terpadu.
                 </p>
   
-                <div className="space-y-6 hidden sm:block">
-                   {[
-                     { icon: <UserCheck className="w-5 h-6" />, title: "Autentikasi Aman", desc: "Data dienkripsi end-to-end 256-bit." },
-                     { icon: <Smartphone className="w-5 h-5" />, title: "Akses Multi-Device", desc: "Login dari mana saja, kapan saja." }
-                   ]?.map((feat, i) => (
-                     <div key={i} className="flex gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/10">{feat.icon}</div>
-                        <div>
-                           <h4 className="font-bold text-sm text-white">{feat.title}</h4>
-                           <p className="text-xs text-slate-500">{feat.desc}</p>
-                        </div>
-                     </div>
-                   ))}
+                {/* Rotating Feature Carousel */}
+                <div className="relative min-h-[140px] border-t border-white/10 pt-8 mt-10">
+                   <AnimatePresence mode="wait">
+                      <motion.div
+                         key={activeFeatureIndex}
+                         initial={{ opacity: 0, x: 20 }}
+                         animate={{ opacity: 1, x: 0 }}
+                         exit={{ opacity: 0, x: -20 }}
+                         transition={{ duration: 0.4, ease: 'easeInOut' }}
+                         className="space-y-2.5"
+                      >
+                         <h4 className="text-md font-black text-blue-400 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                            {features[activeFeatureIndex].title}
+                         </h4>
+                         <p className="text-xs lg:text-sm text-slate-400 leading-relaxed">
+                            {features[activeFeatureIndex].desc}
+                         </p>
+                      </motion.div>
+                   </AnimatePresence>
+                   
+                   {/* Carousel Dots */}
+                   <div className="flex gap-2 mt-6">
+                      {features.map((_, i) => (
+                         <button
+                            key={i}
+                            onClick={() => setActiveFeatureIndex(i)}
+                            className={`h-1.5 rounded-full transition-all duration-300 ${
+                               i === activeFeatureIndex ? 'w-6 bg-blue-500' : 'w-1.5 bg-slate-700'
+                            }`}
+                         />
+                      ))}
+                   </div>
                 </div>
              </motion.div>
           </div>
   
-          <div className="relative z-10 text-[10px] uppercase font-black tracking-widest text-slate-500 items-center gap-4 mt-12 hidden lg:flex">
+          <div className="relative z-10 text-[9px] uppercase font-black tracking-widest text-slate-500 items-center gap-3 mt-12 hidden lg:flex">
              <span>{sysConfig?.app_name || 'Absenta'} Infrastructure</span>
              <div className="w-1 h-1 rounded-full bg-slate-700" />
              <span>Trusted by 500+ Institutions</span>
@@ -208,12 +259,16 @@ export default function LoginPage() {
         </div>
   
         {/* Right side: Login Form */}
-        <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 items-center justify-center p-4 sm:p-8 lg:p-10">
+        <div className="flex-1 flex flex-col bg-gradient-to-tr from-slate-50 via-slate-50/70 to-blue-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 items-center justify-center p-4 sm:p-8 lg:p-12 min-h-screen relative overflow-hidden">
+           {/* Background gradient spheres */}
+           <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] pointer-events-none dark:bg-blue-600/5" />
+           <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none dark:bg-indigo-600/5" />
+
            <motion.div
              variants={containerVariants}
              initial="hidden"
              animate="visible"
-             className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800"
+             className="w-full max-w-md bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-[2.5rem] p-6 sm:p-10 shadow-2xl shadow-slate-200/30 dark:shadow-none border border-white/50 dark:border-slate-800/40 relative z-10"
            >
              <div className="flex flex-col items-center lg:items-start text-center lg:text-left mb-6">
                 {tenantLogo ? (
@@ -330,18 +385,21 @@ export default function LoginPage() {
                    </Button>
                 </motion.div>
              </form>
-  
-             <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                   Belum memiliki akun? <button onClick={() => navigate('/register-tenant')} className="text-blue-600 font-black hover:underline px-1">Daftar Sekolah</button>
-                </p>
-                <div className="mt-8 flex flex-col items-center gap-2">
-                  <button onClick={() => navigate('/')} className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-2 transition-colors">
-                     <Home className="w-3.5 h-3.5" /> Kembali ke Beranda
-                  </button>
-                  {backendNodeId && <span className="text-[9px] text-slate-300 dark:text-slate-800 font-mono tracking-tighter">NODE: {backendNodeId}</span>}
-                </div>
-             </div>
+               <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+                 {!hideRegisterLink && (
+                   <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-4">
+                      Belum memiliki akun? <button onClick={() => navigate('/register-tenant')} className="text-blue-600 font-black hover:underline px-1">Daftar Sekolah</button>
+                   </p>
+                 )}
+                  <div className="flex flex-col items-center gap-2">
+                    {!hideRegisterLink && (
+                      <button onClick={() => navigate('/')} className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-2 transition-colors">
+                         <Home className="w-3.5 h-3.5" /> Kembali ke Beranda
+                      </button>
+                    )}
+                    {backendNodeId && <span className="text-[9px] text-slate-300 dark:text-slate-800 font-mono tracking-tighter">NODE: {backendNodeId}</span>}
+                  </div>
+              </div>
           </motion.div>
        </div>
       </main>

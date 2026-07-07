@@ -216,8 +216,34 @@ const ParentApp = lazy(() => import('./apps/parent/App'));
 
 function App() {
   const { isAuthenticated, user, hasCompletedOnboarding, loadUser, isLoading } = useAuthStore();
+  const isSaas = import.meta.env.VITE_DEPLOY_MODE !== 'ON_PREMISE';
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
+
+  // Intercept support_token query param for Assist Login from Licensing Server
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const supportToken = urlParams.get('support_token');
+    if (supportToken) {
+      // 1. Back up existing session if any
+      const currentStorage = localStorage.getItem('auth-storage');
+      if (currentStorage && !localStorage.getItem('support_auth_state')) {
+        localStorage.setItem('support_auth_state', currentStorage);
+      }
+      
+      // 2. Set the support token as our active session token
+      localStorage.setItem('access_token', supportToken);
+      
+      // 3. Clear query parameters from URL without reloading
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // 4. Force load the user profile
+      loadUser().then(() => {
+        toast.success('Bypass login berhasil! Masuk ke Mode Asisten.');
+      }).catch(console.error);
+    }
+  }, [loadUser]);
 
   const handleExitImpersonate = () => {
     const supportStateRaw = localStorage.getItem('support_auth_state');
@@ -953,77 +979,81 @@ function App() {
                         <UsersPage />
                       </ProtectedRoute>
                     } />
-                    {/* Owner-only: Tenants management */}
-                    <Route path="/tenants" element={
-                      <ProtectedRoute requiredCapability="core.tenants.view.list">
-                        <TenantsPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/tenants/:tenantId" element={
-                      <ProtectedRoute requiredCapability="core.tenants.view.detail">
-                        <TenantDetailPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra" element={
-                      <ProtectedRoute
-                        requiredCapability={[
-                          'superadmin.infra.view.socket.global',
-                          'superadmin.infra.view.socket.tenants',
-                        ]}
-                      >
-                        <InfrastructureDashboard />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra/jobs" element={
-                      <ProtectedRoute requiredCapability="superadmin.infra.monitoring.view">
-                        <InfraControlCenterPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra/monitoring" element={
-                      <ProtectedRoute requiredCapability="billing.reports.view.summary">
-                        <MonitoringPageBilling />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra/tripay-health" element={
-                      <ProtectedRoute requiredCapability="billing.reports.view.summary">
-                        <TripayHealthPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra/tripay-simulator" element={
-                      <ProtectedRoute requiredCapability="payments.test.simulate">
-                        <TripaySimulatorPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/intelligence" element={
-                      <ProtectedRoute requiredCapability="core.tenants.view.list">
-                        <PlatformIntelligencePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/intelligence/revenue" element={
-                      <ProtectedRoute requiredCapability="core.tenants.view.list">
-                        <RevenueIntelligencePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/intelligence/upgrade" element={
-                      <ProtectedRoute requiredCapability="core.tenants.view.list">
-                        <UpgradeIntelligencePage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/revenue" element={
-                      <ProtectedRoute requiredCapability="superadmin.revenue.view.overview">
-                        <RevenueDashboardPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/backups" element={
-                      <ProtectedRoute requiredCapability="cadangan.view.cadangan">
-                        <BackupsPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/support" element={
-                      <ProtectedRoute requiredCapability="admin.tickets.view.list">
-                        <AdminSupportTicketPage />
-                      </ProtectedRoute>
-                    } />
+                    {isSaas && (
+                      <>
+                        {/* Owner-only: Tenants management */}
+                        <Route path="/tenants" element={
+                          <ProtectedRoute requiredCapability="core.tenants.view.list">
+                            <TenantsPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/tenants/:tenantId" element={
+                          <ProtectedRoute requiredCapability="core.tenants.view.detail">
+                            <TenantDetailPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/infra" element={
+                          <ProtectedRoute
+                            requiredCapability={[
+                              'superadmin.infra.view.socket.global',
+                              'superadmin.infra.view.socket.tenants',
+                            ]}
+                          >
+                            <InfrastructureDashboard />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/infra/jobs" element={
+                          <ProtectedRoute requiredCapability="superadmin.infra.monitoring.view">
+                            <InfraControlCenterPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/infra/monitoring" element={
+                          <ProtectedRoute requiredCapability="billing.reports.view.summary">
+                            <MonitoringPageBilling />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/infra/tripay-health" element={
+                          <ProtectedRoute requiredCapability="billing.reports.view.summary">
+                            <TripayHealthPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/infra/tripay-simulator" element={
+                          <ProtectedRoute requiredCapability="payments.test.simulate">
+                            <TripaySimulatorPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/intelligence" element={
+                          <ProtectedRoute requiredCapability="core.tenants.view.list">
+                            <PlatformIntelligencePage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/intelligence/revenue" element={
+                          <ProtectedRoute requiredCapability="core.tenants.view.list">
+                            <RevenueIntelligencePage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/intelligence/upgrade" element={
+                          <ProtectedRoute requiredCapability="core.tenants.view.list">
+                            <UpgradeIntelligencePage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/revenue" element={
+                          <ProtectedRoute requiredCapability="superadmin.revenue.view.overview">
+                            <RevenueDashboardPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/backups" element={
+                          <ProtectedRoute requiredCapability="cadangan.view.cadangan">
+                            <BackupsPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/support" element={
+                          <ProtectedRoute requiredCapability="admin.tickets.view.list">
+                            <AdminSupportTicketPage />
+                          </ProtectedRoute>
+                        } />
+                      </>
+                    )}
                     <Route path="/support" element={
                       <ProtectedRoute requiredCapability="support.tickets.view">
                         <SupportTicketPage />

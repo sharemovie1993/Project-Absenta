@@ -64,9 +64,6 @@ model Tenant {
   JenisPelanggaran        JenisPelanggaran[]
   SiswaDocument           SiswaDocument[]
   roles                   Role[]
-  tenantRiskScore         TenantRiskScore?
-  tenantRiskScoreLogs     TenantRiskScoreLog[]
-  tenantRiskEvents        TenantRiskEvent[]
   TenantBackup            TenantBackup[]
   Member                  Member[]
 
@@ -1279,117 +1276,7 @@ model AggregatedMetricDaily {
   @@map("aggregated_metric_daily")
 }
 
-model revenue_snapshot_monthly {
-  id             String   @id @default(uuid())
-  month          DateTime @db.Date
-  tenant_id      String?
-  mrr            Float
-  arr            Float
-  churn_amount   Float
-  upgrade_gain   Float
-  downgrade_loss Float
-  nrr            Float
-  created_at     DateTime @default(now()) @db.Timestamptz
-  updated_at     DateTime @updatedAt @db.Timestamptz
 
-  @@unique([month, tenant_id])
-  @@index([month, tenant_id])
-  @@map("revenue_snapshot_monthly")
-}
-
-model RevenueForecastMonthly {
-  id                     String   @id @default(cuid())
-  month                  DateTime @unique @db.Date
-  forecast_mrr           Float
-  forecast_arr           Float
-  projected_churn_loss   Float
-  projected_upgrade_gain Float
-  projected_net_revenue  Float
-  risk_adjusted_forecast Float
-  calculated_at          DateTime @default(now()) @db.Timestamptz
-  is_locked              Boolean  @default(false)
-  total_mrr              Decimal  @default(0) @db.Decimal(18, 2)
-  churn_rate             Decimal  @default(0) @db.Decimal(10, 4)
-  projected_mrr          Decimal  @default(0) @db.Decimal(18, 2)
-  risk_adjustment        Decimal? @db.Decimal(18, 2)
-  risk_score_snapshot    Decimal? @db.Decimal(10, 4)
-
-  @@index([month])
-  @@map("revenue_forecast_monthly")
-}
-
-model ForecastJobLock {
-  id         String   @id @default(cuid())
-  job_id     String   @unique
-  month      DateTime @db.Date
-  created_at DateTime @default(now()) @db.Timestamptz
-
-  @@index([month])
-  @@map("forecast_job_lock")
-}
-
-model TenantCohortMonthly {
-  id                      String   @id @default(cuid())
-  cohort_month            DateTime @db.Date
-  month                   DateTime @db.Date
-  active_count            Int
-  churned_count           Int      @default(0)
-  retained_after_1_month  Int
-  retained_after_3_month  Int
-  retained_after_6_month  Int
-  retained_after_12_month Int
-  revenue_generated       Float
-  calculated_at           DateTime @default(now()) @db.Timestamptz
-
-  @@unique([cohort_month, month])
-  @@index([month])
-  @@map("tenant_cohort_monthly")
-}
-
-model TenantUpgradeScoreMonthly {
-  id                    String   @id @default(uuid())
-  tenant_id             String
-  month                 String
-  intent_score          Int
-  intent_level          String
-  upgrade_attempt_count Int
-  upgrade_paid_count    Int
-  usage_growth_percent  Float?
-  invoice_overdue_count Int
-  risk_score_snapshot   Int
-  risk_level_snapshot   String   @default("HEALTHY")
-  risk_cutoff_at        DateTime @default(now()) @db.Timestamptz
-  snapshot_version      Int      @default(1)
-  snapshot_created_at   DateTime @default(now()) @db.Timestamptz
-  created_at            DateTime @default(now()) @db.Timestamptz
-
-  @@unique([tenant_id, month])
-  @@index([month])
-  @@map("tenant_upgrade_score_monthly")
-}
-
-model UpgradeFunnelMonthly {
-  id                    String   @id @default(uuid())
-  month                 String   @unique
-  intent_count          Int
-  invoice_created_count Int
-  invoice_paid_count    Int
-  upgrade_applied_count Int
-  conversion_rate       Float
-  snapshot_version      Int      @default(1)
-  snapshot_created_at   DateTime @default(now()) @db.Timestamptz
-  created_at            DateTime @default(now()) @db.Timestamptz
-
-  @@map("upgrade_funnel_monthly")
-}
-
-model UpgradeIntelligenceJobLock {
-  id         String   @id @default(uuid())
-  month      String   @unique
-  created_at DateTime @default(now()) @db.Timestamptz
-
-  @@map("upgrade_intelligence_job_lock")
-}
 
 model QueueJobLog {
   id            String   @id @default(uuid())
@@ -1467,57 +1354,7 @@ enum TenantRiskEventSeverity {
   HIGH
 }
 
-model TenantRiskScore {
-  id                        String          @id @default(cuid())
-  tenant_id                 String          @unique
-  risk_score                Int
-  risk_level                TenantRiskLevel
-  email_failure_rate        Float
-  payment_failure_rate      Float
-  suspension_count_30d      Int
-  invoice_overdue_count_30d Int
-  renewal_delay_avg         Float?
-  last_calculated_at        DateTime
-  created_at                DateTime        @default(now())
-  updated_at                DateTime        @updatedAt
 
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-
-  @@index([tenant_id])
-  @@index([risk_level])
-  @@map("tenant_risk_score")
-}
-
-model TenantRiskScoreLog {
-  id         String          @id @default(cuid())
-  tenant_id  String
-  risk_score Int
-  risk_level TenantRiskLevel
-  created_at DateTime        @default(now()) @db.Timestamptz
-
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-
-  @@index([tenant_id, created_at])
-  @@index([created_at])
-  @@map("tenant_risk_score_log")
-}
-
-model TenantRiskEvent {
-  id           String                  @id @default(cuid())
-  tenant_id    String
-  event_type   String
-  severity     TenantRiskEventSeverity
-  metric_value Float?
-  metadata     Json?
-  created_at   DateTime                @default(now())
-
-  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-
-  @@index([tenant_id])
-  @@index([event_type])
-  @@index([created_at])
-  @@map("tenant_risk_event")
-}
 
 enum DocumentCategory {
   ADMINISTRATIVE
@@ -3583,19 +3420,7 @@ model EwsSnapshot {
   @@index([snapshot_date])
 }
 
-model EasyTunnel {
-  id          String    @id @default(uuid())
-  slug        String    @unique
-  license_key String
-  local_port  Int
-  app_name    String
-  status      String    @default("disconnected") // connected, disconnected, error
-  expires_at  DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
 
-  @@map("easy_tunnels")
-}
 
 model BullyingReport {
   id             String    @id @default(uuid())
@@ -3612,4 +3437,19 @@ model BullyingReport {
 
   @@index([tenant_id])
 }
+
+model EasyTunnel {
+  id          String    @id @default(uuid())
+  slug        String    @unique
+  license_key String
+  local_port  Int
+  app_name    String
+  status      String    @default("disconnected") // connected, disconnected, error
+  expires_at  DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@map("easy_tunnels")
+}
+
 

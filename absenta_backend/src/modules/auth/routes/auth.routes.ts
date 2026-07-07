@@ -88,6 +88,13 @@ export async function authRoutes(fastify: any) {
     handler: authController.checkDomain.bind(authController),
   });
 
+  // Get registration preset configuration for single-tenant mode - public
+  fastify.get('/registration-preset', {
+    preHandler: [],
+    config: { skipAuth: true, public: true },
+    handler: authController.registrationPreset.bind(authController),
+  });
+
   // Check email availability - public
   fastify.get('/check-email', {
     preHandler: [],

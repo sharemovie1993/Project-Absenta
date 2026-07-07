@@ -50,6 +50,11 @@ function CheckoutContent() {
     return c === 'YEAR' || c === 'YEARLY' ? 'YEAR' : 'MONTH';
   }, [location.search]);
 
+  const initialToken = useMemo(() => {
+    const q = new URLSearchParams(location.search);
+    return q.get('token') || q.get('invoice_token') || q.get('invoiceToken') || '';
+  }, [location.search]);
+
   // States
   const [loading, setLoading] = useState(true);
   const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
@@ -119,6 +124,15 @@ function CheckoutContent() {
           }
         } catch (chanErr) {
           console.warn('Failed to load payment channels:', chanErr);
+        }
+
+        // Auto-redirect immediately if initialToken is passed in URL query param!
+        if (initialToken) {
+          setInvoiceToken(initialToken);
+          setStep('payment');
+          await loadInvoiceDetails(initialToken);
+          setLoading(false);
+          return;
         }
 
         try {

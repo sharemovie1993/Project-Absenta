@@ -373,7 +373,10 @@ export default function ServiceCenterPage() {
 
       // Jika invoice belum terbayar DAN memiliki plan_id → redirect ke checkout (idempotensi)
       if (targetInvoice && !['PAID', 'CANCELLED', 'OVERDUE'].includes(targetInvoice.status) && targetInvoice.plan_id) {
-        const params = new URLSearchParams({ plan_id: targetInvoice.plan_id });
+        const params = new URLSearchParams({ 
+          plan_id: targetInvoice.plan_id,
+          token: targetInvoice.invoice_number
+        });
         if (targetInvoice.payment_method) {
           params.set('method', targetInvoice.payment_method);
         }

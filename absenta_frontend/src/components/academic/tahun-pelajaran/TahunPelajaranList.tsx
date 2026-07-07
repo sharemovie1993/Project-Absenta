@@ -179,20 +179,20 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
       )
     },
     { 
-      key: '_count', 
+      key: '_count_siswa', 
       label: 'Siswa',
-      render: (count: { SiswaAkademik?: number; Siswa?: number } | undefined) => (
+      render: (_: unknown, row: any) => (
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-          {count?.SiswaAkademik || count?.Siswa || 0}
+          {row._count?.SiswaAkademik || row._count?.Siswa || 0}
         </span>
       )
     },
     { 
-      key: '_count', 
+      key: '_count_semester', 
       label: 'Semester',
-      render: (count: { Semester?: number } | undefined) => (
+      render: (_: unknown, row: any) => (
         <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-          {count?.Semester || 0}
+          {row._count?.Semester || 0}
         </span>
       )
     },
