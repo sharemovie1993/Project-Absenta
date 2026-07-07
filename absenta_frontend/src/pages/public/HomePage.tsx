@@ -32,7 +32,7 @@ export default function HomePage() {
         const res = await axiosInstance.get('/auth/registration-preset');
         if (res.data?.success) {
           const preset = res.data.data;
-          if (preset.is_single_tenant && preset.is_registered) {
+          if (preset.is_single_tenant) {
             navigate('/login', { replace: true });
             return;
           }

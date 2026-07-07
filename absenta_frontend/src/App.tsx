@@ -1336,6 +1336,7 @@ export default App;
 function UnauthedGate() {
   const location = useLocation();
   const path = String(location.pathname || '');
-  const to = path.startsWith('/documents') ? '/login' : '/home';
+  const isSaas = import.meta.env.VITE_DEPLOY_MODE !== 'ON_PREMISE';
+  const to = (path.startsWith('/documents') || !isSaas) ? '/login' : '/home';
   return <Navigate to={to} replace />;
 }
