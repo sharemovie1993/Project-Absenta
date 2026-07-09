@@ -160,9 +160,10 @@ const RegisterTenant = () => {
     confirm_password: '', // Added for consistency
     admin_phone: '',
     agreedToTerms: false,
-    academic_tier: 'MICRO'
+    academic_tier: ''
   });
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [npsnLoading, setNpsnLoading] = useState(false);
   const [npsnStatus, setNpsnStatus] = useState<'idle' | 'checking' | 'found' | 'not_found' | 'error'>('idle');
@@ -313,9 +314,19 @@ const RegisterTenant = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.academic_tier) {
+      toast.error('Silakan pilih kapasitas jumlah siswa aktif sekolah Anda terlebih dahulu.');
+      return;
+    }
     if (Object.values(errors).some(err => err !== '')) { toast.error('Mohon perbaiki kesalahan pada form.'); return; }
     if (!formData.agreedToTerms) { toast.error('Anda harus menyetujui Syarat & Ketentuan.'); return; }
     
+    // Open confirmation summary modal
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
     try {
       await registerTenant({
@@ -739,6 +750,72 @@ const RegisterTenant = () => {
           </div>
           <ModalFooter>
              <Button onClick={() => setShowLegalModal(null)} className="h-12 px-10 rounded-xl font-bold bg-blue-600 text-white">Saya Mengerti</Button>
+          </ModalFooter>
+        </Modal>
+
+        <Modal 
+          isOpen={showConfirmModal} 
+          onClose={() => setShowConfirmModal(false)}
+          zIndex={1000}
+          title={<div className="flex items-center gap-3"><School className="w-5 h-5 text-blue-600" /><span>Konfirmasi Pendaftaran Sekolah</span></div>}
+          size="2xl"
+        >
+          <div className="space-y-5">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+              Mohon periksa kembali data pendaftaran sekolah Anda. Kapasitas siswa aktif tidak dapat diubah setelah terdaftar.
+            </p>
+
+            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Nama Sekolah</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-black text-sm">{formData.tenant_name || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Kapasitas Siswa</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-black text-sm">
+                    {(() => {
+                      const opt = tierOptions.find(t => (t.size_label || '').toUpperCase() === (formData.academic_tier || '').toUpperCase());
+                      const cap = opt ? (opt.max_user ? `S/d ${opt.max_user.toLocaleString('id-ID')} siswa` : 'Tanpa batas') : formData.academic_tier;
+                      return `${formData.academic_tier} (${cap})`;
+                    })()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Subdomain Akses</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-black text-sm">{formData.tenant_domain}.absenta.id</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">No. WhatsApp Admin</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-black text-sm">{formData.admin_phone || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Nama Administrator</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-black text-sm">{formData.admin_full_name || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Email Administrator</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-black text-sm">{formData.admin_email || '-'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 flex gap-3 items-start">
+              <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 font-bold leading-relaxed">
+                PENTING: Batas kapasitas siswa aktif yang Anda pilih bersifat permanen untuk edisi sekolah saat ini. Jika jumlah siswa aktif melebihi batas ini, sistem akan membatasi pendaftaran siswa baru secara otomatis.
+              </p>
+            </div>
+          </div>
+          <ModalFooter>
+            <div className="flex gap-3 w-full justify-end">
+              <Button onClick={() => setShowConfirmModal(false)} className="h-12 px-6 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300">
+                Perbaiki Data
+              </Button>
+              <Button onClick={handleConfirmSubmit} className="h-12 px-8 rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
+                Ya, Konfirmasi & Daftar <ArrowRight className="w-4 h-4" />
+              </Button>
+            </div>
           </ModalFooter>
         </Modal>
       </main>
