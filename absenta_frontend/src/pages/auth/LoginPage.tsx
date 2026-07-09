@@ -52,8 +52,13 @@ export default function LoginPage() {
         const res = await axiosInstance.get('/auth/registration-preset');
         if (res.data?.success) {
           const preset = res.data.data;
-          if (preset.is_single_tenant && preset.is_registered) {
-            setHideRegisterLink(true);
+          if (preset.is_single_tenant) {
+            if (preset.is_registered) {
+              setHideRegisterLink(true);
+            } else {
+              navigate('/register-tenant', { replace: true });
+              return;
+            }
           }
         }
       } catch (err) {
