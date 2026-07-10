@@ -47,7 +47,7 @@ export const useSmartMenu = () => {
     const getPremiumInfo = (it: SidebarMenuItem) => {
       const rawFeatures = (it as any).required_features || [];
       const features = Array.isArray(rawFeatures) ? rawFeatures.map(f => String(f).toUpperCase()) : [];
-      const premiumKeys = ['ABSENSI', 'KOPERASI', 'SARPRAS', 'HUBIN', 'INVENTORY', 'KEUANGAN', 'SPP'];
+      const premiumKeys = ['ABSENSI', 'KOPERASI', 'SARPRAS', 'HUBIN', 'INVENTORY', 'KEUANGAN', 'SPP', 'BPBK'];
       const mainFeature = features.find(f => premiumKeys.some(k => f.includes(k)));
       
       if (!mainFeature) return undefined;
