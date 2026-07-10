@@ -100,13 +100,13 @@ export const transformDataToTree = (
                  label: shortenPosition(n.kelas_name || n.nama),
                  subLabel: headMember ? headMember.name : 'Belum diisi',
                  type: 'STRUCT' as any,
-                 data: { roleCode: kode, isUnassigned: !headMember, realMemberId: headMember?.id, realStrukturId: n.id, kelas_id: n.kelas_id },
+                 data: { roleCode: kode, isUnassigned: !headMember, realMemberId: headMember?.id, realStrukturId: n.id, kelas_id: n.kelas_id, tingkat },
                  children: sortedMembers.slice(1).map((m: any) => ({
                    id: `member-${kode}-${n.id}-${m.id}`,
                    label: m.name,
                    subLabel: cleanDetails(m.details),
                    type: 'MEMBER' as any,
-                   data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, kelas_id: n.kelas_id }
+                   data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, kelas_id: n.kelas_id, tingkat }
                  }))
                };
             })

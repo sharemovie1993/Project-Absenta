@@ -23,7 +23,13 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
   const role = node.data?.roleCode;
 
   let headerBg = "bg-indigo-700 dark:bg-indigo-600";
-  if (isStaff) {
+  if (node.data?.tingkat) {
+    const t = Number(node.data.tingkat);
+    const remainder = (t - 1) % 3;
+    if (remainder === 0) headerBg = "bg-sky-600 dark:bg-sky-500";
+    else if (remainder === 1) headerBg = "bg-violet-600 dark:bg-violet-500";
+    else headerBg = "bg-rose-600 dark:bg-rose-500";
+  } else if (isStaff) {
     headerBg = "bg-slate-500 dark:bg-slate-600";
   } else if (role === 'KEPALA_SEKOLAH') {
     headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
@@ -67,7 +73,13 @@ export const CategoryNode = React.memo<NodeDesignProps>(({ node }) => {
   
   // Custom theme colors for different categories
   let categoryColor = "bg-indigo-700 dark:bg-indigo-600";
-  if (node.id?.includes('mgmt-group-1') || node.id?.includes('mgmt-group-2')) {
+  if (node.data?.tingkat) {
+    const t = Number(node.data.tingkat);
+    const remainder = (t - 1) % 3;
+    if (remainder === 0) categoryColor = "bg-sky-600 dark:bg-sky-500";
+    else if (remainder === 1) categoryColor = "bg-violet-600 dark:bg-violet-500";
+    else categoryColor = "bg-rose-600 dark:bg-rose-500";
+  } else if (node.id?.includes('mgmt-group-1') || node.id?.includes('mgmt-group-2')) {
     categoryColor = "bg-slate-700 dark:bg-slate-800 border border-slate-600/80 rounded-xl shadow-sm";
   } else if (node.data?.roleCode === 'KURIKULUM') {
     categoryColor = "bg-emerald-600 dark:bg-emerald-500";
@@ -129,7 +141,13 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   const role = node.data?.roleCode;
 
   let headerBg = "bg-indigo-700 dark:bg-indigo-600";
-  if (isStaff) {
+  if (node.data?.tingkat) {
+    const t = Number(node.data.tingkat);
+    const remainder = (t - 1) % 3;
+    if (remainder === 0) headerBg = "bg-sky-600 dark:bg-sky-500";
+    else if (remainder === 1) headerBg = "bg-violet-600 dark:bg-violet-500";
+    else headerBg = "bg-rose-600 dark:bg-rose-500";
+  } else if (isStaff) {
     headerBg = "bg-slate-500 dark:bg-slate-600";
   } else if (role === 'KEPALA_SEKOLAH') {
     headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
