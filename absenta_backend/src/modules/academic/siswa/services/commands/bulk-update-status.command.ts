@@ -45,9 +45,31 @@ export async function bulkUpdateStatusCommand(
     }
   }
 
-  const result = await siswaDb.siswa.updateMany({
-    where: whereClause,
-    data: updateData,
+  const result = await siswaDb.$transaction(async (tx) => {
+    // 1. Get student profiles with their user_ids
+    const targetedStudents = await tx.siswa.findMany({
+      where: whereClause,
+      select: { id: true, user_id: true }
+    });
+    const userIds = targetedStudents.map(s => s.user_id).filter(Boolean) as string[];
+
+    // 2. Perform bulk update on student profiles
+    const updateResult = await tx.siswa.updateMany({
+      where: whereClause,
+      data: updateData,
+    });
+
+    // 3. Enforce User account business contract (LULUS keeps ACTIVE for Tracer Study, others frozen)
+    if (userIds.length > 0) {
+      const userLoginStatus = ['PINDAH', 'KELUAR', 'DO', 'MENINGGAL', 'NON_AKTIF'].includes(status) ? 'INACTIVE' : 'ACTIVE';
+      await tx.user.updateMany({
+        where: { id: { in: userIds } },
+        data: { status: userLoginStatus }
+      });
+      console.log(`[USER-SYNC] Updated ${userIds.length} student user accounts status to: ${userLoginStatus}`);
+    }
+
+    return updateResult;
   });
 
   if (scope.tenantId) {

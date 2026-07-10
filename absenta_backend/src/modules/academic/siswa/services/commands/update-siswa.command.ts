@@ -201,6 +201,20 @@ export async function updateSiswaCommand(
       data: dataToUpdate,
     });
 
+    // Enforce User account business contract (LULUS keeps ACTIVE for Tracer Study, others frozen)
+    if (existingSiswa.user_id && dataToUpdate.status) {
+      try {
+        const userLoginStatus = ['PINDAH', 'KELUAR', 'DO', 'MENINGGAL', 'NON_AKTIF'].includes(dataToUpdate.status) ? 'INACTIVE' : 'ACTIVE';
+        await siswaDb.user.update({
+          where: { id: existingSiswa.user_id },
+          data: { status: userLoginStatus }
+        });
+        console.log(`[USER-SYNC] Updated student user account status to: ${userLoginStatus}`);
+      } catch (err: any) {
+        console.error('[USER-SYNC] Failed to update user login status:', err.message || err);
+      }
+    }
+
     const oldKelasId = existingSiswa.kelas_id;
     const newKelasId = dataToUpdate.kelas_id;
     const kelasChanged = newKelasId !== undefined && String(newKelasId) !== String(oldKelasId);
