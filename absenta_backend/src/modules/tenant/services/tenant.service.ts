@@ -372,6 +372,7 @@ export class TenantService {
       kepala_sekolah,
       nip_kepala,
       allow_manual_hadir_gate,
+      jenjang,
       ...coreInput
     } = input;
 
@@ -414,8 +415,8 @@ export class TenantService {
       await upsertConfig('ALLOW_MANUAL_HADIR_GATE', allow_manual_hadir_gate ? 'true' : 'false');
     }
 
-    // Save kepala_sekolah & nip_kepala in Sekolah table
-    if (kepala_sekolah !== undefined || nip_kepala !== undefined) {
+    // Save kepala_sekolah, nip_kepala & jenjang in Sekolah table
+    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined) {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: tenantId }
       });
@@ -424,7 +425,8 @@ export class TenantService {
           where: { id: sekolah.id },
           data: {
             kepala_sekolah: kepala_sekolah !== undefined ? kepala_sekolah : undefined,
-            nip_kepala: nip_kepala !== undefined ? nip_kepala : undefined
+            nip_kepala: nip_kepala !== undefined ? nip_kepala : undefined,
+            jenjang: jenjang !== undefined ? jenjang : undefined
           }
         });
       } else {
@@ -433,7 +435,8 @@ export class TenantService {
             tenant_id: tenantId,
             nama: existingTenant.name,
             kepala_sekolah: kepala_sekolah || '',
-            nip_kepala: nip_kepala || ''
+            nip_kepala: nip_kepala || '',
+            jenjang: jenjang || null
           }
         });
       }
