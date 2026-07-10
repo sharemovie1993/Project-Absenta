@@ -328,55 +328,29 @@ export const TenantSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-16 px-4 animate-fadeIn">
-      {/* Premium Header */}
-      <div className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 -mr-20 -mt-20 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-60 h-60 bg-blue-500/10 -ml-20 -mb-20 rounded-full blur-2xl"></div>
-        
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
+    <div className="space-y-6 max-w-5xl mx-auto pb-16 px-4 animate-fadeIn">
+      {/* Clean Minimal Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Pengaturan Sekolah</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Kelola identitas resmi, Kop Surat dinamis, dan alur kerja sistem.</p>
+        </div>
+        <div>
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 transition-all">
+              <Edit2 className="h-4 w-4" /> Edit Profil & Kop
+            </Button>
+          ) : (
             <div className="flex items-center gap-2">
-              <Badge className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold px-3 py-1 text-[10px] tracking-wider uppercase rounded-full">
-                Tenant Settings
-              </Badge>
-            </div>
-            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
-              Identitas & Konfigurasi Sekolah
-            </h1>
-            <p className="text-sm text-indigo-200/80 leading-relaxed max-w-xl">
-              Atur profile resmi satuan pendidikan, kustomisasi kop surat dinamis berstandar nasional, dan kelola alur kerja sistem.
-            </p>
-          </div>
-          <div className="shrink-0">
-            {!isEditing ? (
-              <Button 
-                onClick={() => setIsEditing(true)} 
-                className="bg-white hover:bg-slate-100 text-indigo-950 font-black px-6 py-5 rounded-2xl shadow-lg hover:shadow-indigo-500/10 transition-all flex items-center gap-2 border border-white"
-              >
-                <Edit2 className="h-4 w-4 text-indigo-600" /> Edit Profil & Kop
+              <Button variant="outline" onClick={handleCancelEdit} disabled={saving} className="flex items-center gap-1">
+                <X className="h-4 w-4" /> Batal
               </Button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  onClick={handleCancelEdit} 
-                  disabled={saving} 
-                  className="bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 font-bold px-5 py-5 rounded-2xl border border-indigo-800/40"
-                >
-                  <X className="h-4 w-4 mr-1.5" /> Batal
-                </Button>
-                <Button 
-                  onClick={handleSaveProfile} 
-                  disabled={saving} 
-                  className="bg-indigo-500 hover:bg-indigo-600 text-white font-black px-6 py-5 rounded-2xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
-                >
-                  {saving ? <Loader className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                  Simpan Perubahan
-                </Button>
-              </div>
-            )}
-          </div>
+              <Button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-1">
+                {saving ? <Loader className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                Simpan
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
