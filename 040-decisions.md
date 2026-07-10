@@ -105,18 +105,13 @@
 - **Rasional**: Mempermudah operator sekolah dan teknisi awam memahami alur instalasi, serta memberikan kejelasan batas operasional jaringan lokal intranet dengan akses publik Easy Tunnel.
 
 2026-07: PM2 and Caddy Stopping prior to Remote Redeployment (Resiliency)
-- **Keputusan**: Memasukkan perintah `pm2 kill || true` dan `systemctl stop caddy || true` di awal Fase 2 pada skrip deployment remote (`deploy-absenta-remote.ps1`).
+- **Keputusan**: Memasukkan perintah `pm2 kill || true` and `systemctl stop caddy || true` di awal Fase 2 pada skrip deployment remote (`deploy-absenta-remote.ps1`).
 - **Rasional**: Membebaskan memori server, kunci berkas (*file locks*) pada modul node, dan port `80/443` sebelum proses penarikan git, instalasi dependensi, dan kompilasi proyek dimulai kembali, menghindari kegagalan kompilasi akibat file sedang sibuk.
 
+2026-07: BPBK Premium Gating Integration
+- **Keputusan**: Mengubah status modul BP/BK (Bimbingan Konseling) menjadi modul premium, menetapkan struktur lisensi berbayar setara dengan modul SARPRAS (Micro, Small, Medium, Large, Enterprise), dan menerapkan banner uji coba/gating (`PremiumFeatureGate`) pada seluruh 12 halaman frontend modul BPBK.
+- **Rasional**: Meningkatkan monetisasi produk dengan mengonversi fitur BPBK menjadi premium, sembari mempertahankan fleksibilitas akses trial (maksimal penyimpanan 10 data kasus di tingkat backend) agar tenant dapat mencoba sebelum berlangganan.
 
-
-
-
-
-
-
-
-
-
-
-
+2026-07: Relocation of Academic History & Deletion of Class Division Menu
+- **Keputusan**: Memindahkan visual tombol aksi Riwayat Akademik siswa (modal `SiswaHistory`) langsung ke halaman utama list Data Siswa (`SiswaPage.tsx`), menghapus route & halaman fisik `RegistrasiSiswaPage.tsx`, serta menghapus menu navigasi seeder "Pembagian Kelas" (`/academic/registrasi-siswa`).
+- **Rasional**: Operasional pembagian kelas akademik (ke tabel `SiswaAkademik`) sudah 100% ditangani secara otomatis (Auto-Sync) di backend saat penambahan profil siswa baru, import excel, maupun saat eksekusi Kenaikan Kelas (Transition). Pemindahan aksi riwayat ke menu utama Data Siswa meniadakan redundansi menu yang membingungkan admin sekolah, sekaligus merampingkan antarmuka sistem.
