@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
 import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
+import { getGuruList } from '@/api/academic/guru.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
@@ -39,6 +40,8 @@ export const TenantSettings: React.FC = () => {
   const [kepalaSekolah, setKepalaSekolah] = useState('');
   const [nipKepala, setNipKepala] = useState('');
   const [jenjang, setJenjang] = useState('');
+  const [gurus, setGurus] = useState<any[]>([]);
+  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDaerahInputRef = useRef<HTMLInputElement>(null);
@@ -106,6 +109,17 @@ export const TenantSettings: React.FC = () => {
     try {
       setLoading(true);
       const response = await getTenantById(user.tenant_id);
+      
+      // Fetch gurus list for dropdown
+      try {
+        const guruRes = await getGuruList(1, 1000);
+        if (guruRes.success && guruRes.data) {
+          setGurus(guruRes.data);
+        }
+      } catch (err) {
+        console.error('Failed to load gurus:', err);
+      }
+
       if (response.success) {
         const data = response.data;
         setTenant(data);
@@ -118,6 +132,7 @@ export const TenantSettings: React.FC = () => {
         setLogoDaerahUrl(data.logo_daerah_url || '');
         setKepalaSekolah(data.kepala_sekolah || '');
         setNipKepala(data.nip_kepala || '');
+        setSelectedGuruId(data.kepala_sekolah_guru_id || '');
         setJenjang(data.jenjang || '');
         
         // Parse the dynamic lines from the database string array
@@ -214,6 +229,7 @@ export const TenantSettings: React.FC = () => {
         kepala_sekolah: kepalaSekolah,
         nip_kepala: nipKepala,
         jenjang: jenjang || null,
+        kepala_sekolah_guru_id: selectedGuruId || null,
       };
 
       const response = await updateTenant(tenant.id, payload);
@@ -494,21 +510,56 @@ export const TenantSettings: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kepala Sekolah & NIP (Readonly, Managed through Struktur Organisasi) */}
+              {/* Kepala Sekolah & NIP (Managed dynamically with two-way sync to Struktur Organisasi) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4 border-slate-100 dark:border-slate-800">
                 <div className="grid gap-2">
-                  <Label htmlFor="kepala_sekolah" className="text-xs font-bold text-slate-500 uppercase">Nama Kepala Sekolah (Readonly)</Label>
-                  <Input
-                    id="kepala_sekolah"
-                    value={kepalaSekolah || 'Belum ditugaskan'}
-                    disabled
-                    className="bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed border-slate-200/60 dark:border-slate-800/80 font-bold"
-                  />
+                  <Label htmlFor="kepala_sekolah" className="text-xs font-bold text-slate-500 uppercase">
+                    Nama Kepala Sekolah {isEditing ? '(Pilih Guru)' : '(Readonly)'}
+                  </Label>
+                  {isEditing ? (
+                    <select
+                      id="kepala_sekolah"
+                      value={selectedGuruId}
+                      onChange={(e) => {
+                        const guruId = e.target.value;
+                        setSelectedGuruId(guruId);
+                        const selected = gurus.find((g) => g.id === guruId);
+                        if (selected) {
+                          setKepalaSekolah(selected.nama_guru);
+                          setNipKepala(selected.nip || '-');
+                        } else {
+                          setKepalaSekolah('');
+                          setNipKepala('-');
+                        }
+                      }}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">-- Pilih Kepala Sekolah --</option>
+                      {gurus.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.nama_guru} {g.nip ? `(NIP. ${g.nip})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      id="kepala_sekolah"
+                      value={kepalaSekolah || 'Belum ditugaskan'}
+                      disabled
+                      className="bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed border-slate-200/60 dark:border-slate-800/80 font-bold"
+                    />
+                  )}
                   <p className="text-[10px] text-slate-400 leading-relaxed">
-                    Data diambil otomatis berdasarkan penugasan posisi <span className="font-bold text-indigo-600 dark:text-indigo-400">Kepala Sekolah</span> di{' '}
-                    <a href="/academic/struktur-organisasi" className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800">
-                      Struktur Organisasi
-                    </a>.
+                    {isEditing ? (
+                      <span>Pilih Guru dari dropdown untuk menugaskannya langsung sebagai <span className="font-bold text-indigo-600 dark:text-indigo-400">Kepala Sekolah</span>.</span>
+                    ) : (
+                      <span>
+                        Data diambil otomatis berdasarkan penugasan posisi <span className="font-bold text-indigo-600 dark:text-indigo-400">Kepala Sekolah</span> di{' '}
+                        <a href="/academic/struktur-organisasi" className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800">
+                          Struktur Organisasi
+                        </a>.
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="grid gap-2">

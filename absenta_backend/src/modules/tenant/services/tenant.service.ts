@@ -35,6 +35,7 @@ export interface UpdateTenantInput {
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
   jenjang?: string | null;
+  kepala_sekolah_guru_id?: string | null;
 }
 
 export interface TenantResponse {
@@ -202,6 +203,7 @@ export class TenantService {
     // 1. Prioritas Utama: Cari dari Struktur Organisasi (Jabatan KEPALA_SEKOLAH)
     let kepalaSekolahNama = null;
     let kepalaSekolahNip = null;
+    let kepalaSekolahGuruId = null;
     try {
       const activeKepsekAssignment = await prisma.organizationalAssignment.findFirst({
         where: {
@@ -223,6 +225,7 @@ export class TenantService {
       if (activeKepsekAssignment?.User?.Guru) {
         kepalaSekolahNama = activeKepsekAssignment.User.Guru.nama_guru;
         kepalaSekolahNip = activeKepsekAssignment.User.Guru.nip || '-';
+        kepalaSekolahGuruId = activeKepsekAssignment.User.Guru.id || null;
       }
     } catch (e) {
       // safe fallback if position table is not fully initialized
@@ -281,6 +284,7 @@ export class TenantService {
       // Hybrid Kepala Sekolah values
       kepala_sekolah: kepalaSekolahNama || null,
       nip_kepala: kepalaSekolahNip || null,
+      kepala_sekolah_guru_id: kepalaSekolahGuruId || null,
       kota: sekolahKota || null,
       jenjang: sekolahJenjang || null,
       features: resolvedFeatures || [],
@@ -374,6 +378,7 @@ export class TenantService {
       nip_kepala,
       allow_manual_hadir_gate,
       jenjang,
+      kepala_sekolah_guru_id,
       ...coreInput
     } = input;
 
@@ -440,6 +445,101 @@ export class TenantService {
             jenjang: jenjang || null
           }
         });
+      }
+    }
+
+    // Sync Kepala Sekolah to Struktur Organisasi & Sekolah table dynamically
+    if (kepala_sekolah_guru_id !== undefined) {
+      if (kepala_sekolah_guru_id) {
+        const guru = await prisma.guru.findUnique({
+          where: { id: kepala_sekolah_guru_id }
+        });
+        if (guru && guru.user_id) {
+          // 1. Dapatkan atau buat posisi KEPALA_SEKOLAH
+          let position = await prisma.organizationalPosition.findFirst({
+            where: { tenant_id: tenantId, code: 'KEPALA_SEKOLAH' }
+          });
+          if (!position) {
+            position = await prisma.organizationalPosition.create({
+              data: {
+                tenant_id: tenantId,
+                name: 'Kepala Sekolah',
+                code: 'KEPALA_SEKOLAH',
+                level: 1
+              }
+            });
+          }
+
+          // 2. Nonaktifkan penugasan Kepala Sekolah lama
+          await prisma.organizationalAssignment.updateMany({
+            where: {
+              tenant_id: tenantId,
+              position_id: position.id,
+              is_active: true
+            },
+            data: { is_active: false }
+          });
+
+          // 3. Buat penugasan Kepala Sekolah baru
+          await prisma.organizationalAssignment.create({
+            data: {
+              tenant_id: tenantId,
+              position_id: position.id,
+              user_id: guru.user_id,
+              is_active: true
+            }
+          });
+
+          // 4. Update data di table Sekolah agar sinkron
+          const sekolah = await prisma.sekolah.findFirst({
+            where: { tenant_id: tenantId }
+          });
+          if (sekolah) {
+            await prisma.sekolah.update({
+              where: { id: sekolah.id },
+              data: {
+                kepala_sekolah: guru.nama_guru,
+                nip_kepala: guru.nip || '-'
+              }
+            });
+          } else {
+            await prisma.sekolah.create({
+              data: {
+                tenant_id: tenantId,
+                nama: existingTenant.name,
+                kepala_sekolah: guru.nama_guru,
+                nip_kepala: guru.nip || '-'
+              }
+            });
+          }
+        }
+      } else {
+        // Jika diset ke kosong/null, nonaktifkan assignment kepsek aktif
+        const position = await prisma.organizationalPosition.findFirst({
+          where: { tenant_id: tenantId, code: 'KEPALA_SEKOLAH' }
+        });
+        if (position) {
+          await prisma.organizationalAssignment.updateMany({
+            where: {
+              tenant_id: tenantId,
+              position_id: position.id,
+              is_active: true
+            },
+            data: { is_active: false }
+          });
+        }
+        const sekolah = await prisma.sekolah.findFirst({
+          where: { tenant_id: tenantId }
+        });
+        if (sekolah) {
+          await prisma.sekolah.update({
+            where: { id: sekolah.id },
+            data: {
+              kepala_sekolah: null,
+              nip_kepala: null
+            }
+          });
+        }
       }
     }
 
