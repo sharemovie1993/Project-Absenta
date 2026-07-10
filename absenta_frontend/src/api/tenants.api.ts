@@ -41,6 +41,7 @@ interface Tenant {
   kepala_sekolah?: string | null;
   nip_kepala?: string | null;
   kota?: string | null;
+  jenjang?: string | null;
 }
 
 export interface CreateTenantRequest {
@@ -69,6 +70,7 @@ export interface CreateTenantRequest {
   toleransi_keterlambatan_menit?: number;
   kepala_sekolah?: string;
   nip_kepala?: string;
+  jenjang?: string | null;
 }
 
 export interface UpdateTenantRequest {
@@ -99,6 +101,7 @@ export interface UpdateTenantRequest {
   kepala_sekolah?: string;
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
+  jenjang?: string | null;
 }
 
 export interface PaginationInfo {

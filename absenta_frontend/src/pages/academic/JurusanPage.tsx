@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import JurusanList from '../../components/academic/jurusan/JurusanList';
+import { ProgramKeahlianPanel } from '../../components/academic/jurusan/ProgramKeahlianPanel';
 import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import type { Jurusan } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { School, Users, Download, Calendar, Layers } from 'lucide-react';
+import { School, Users, Download, Calendar, Layers, BookMarked, GraduationCap } from 'lucide-react';
 import { importJurusanFromExcel, downloadJurusanImportTemplate, getJurusanList } from '../../api/academic/jurusan.api';
 import { Alert, Card, Button, SectionCard, Loader } from '../../components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -20,6 +21,7 @@ const JurusanForm = lazy(() => import('../../components/academic/jurusan/Jurusan
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
+type ActiveTab = 'konsentrasi' | 'program';
 
 interface ModalState {
   mode: ModalMode;
@@ -27,13 +29,13 @@ interface ModalState {
   isOpen: boolean;
 }
 
-// v1.0.2 - Fixed Excel Export Engine
+// v1.1.0 - Added Program Keahlian Tab (Kurikulum Merdeka)
 export const JurusanPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-
+  const [activeTab, setActiveTab] = useState<ActiveTab>('konsentrasi');
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
@@ -137,7 +139,6 @@ export const JurusanPage: React.FC = () => {
   const handleExport = useCallback(async () => {
     try {
       setIsExporting(true);
-      // Fetch all data (limit 1000 to get all majors)
       const response = await getJurusanList(1, 1000);
       if (response.success && response.data.length > 0) {
         exportDataToExcel<Jurusan>(response.data, [
@@ -162,8 +163,8 @@ export const JurusanPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Manajemen Jurusan"
-      description="Kelola daftar jurusan belajar yang ada di sekolah. Digunakan jika ada jurusan baru atau perubahan nama jurusan."
+      title="Manajemen Jurusan & Program Keahlian"
+      description="Kelola hierarki keahlian sekolah: Program Keahlian (induk) dan Konsentrasi Keahlian (jurusan). Sesuai Kurikulum Merdeka SMK."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
@@ -171,20 +172,22 @@ export const JurusanPage: React.FC = () => {
         { label: 'Jurusan', path: '/academic/jurusan' }
       ]}
       instruction={{
-        title: "Panduan Jurusan",
+        title: "Panduan Keahlian (Kurikulum Merdeka)",
         description: (
           <div className="space-y-2">
-            <p>Daftar bidang keahlian belajar siswa di sekolah. Jurusan ini menjadi wadah pengelompokan kelas dan mata pelajaran.</p>
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
-              <p><strong>Fungsi:</strong> Mengatur daftar jurusan belajar sekolah.</p>
-              <p><strong>Waktu Penggunaan:</strong> Hanya saat pendaftaran awal sekolah atau ketika ada jurusan baru yang dibuka.</p>
+            <p>Hierarki: <strong>Bidang Keahlian → Program Keahlian → Konsentrasi Keahlian</strong></p>
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500 text-[11px]">
+              <p>• <strong>Program Keahlian</strong>: Tingkat X, contoh: <em>Teknik Elektronika (TE)</em></p>
+              <p>• <strong>Konsentrasi Keahlian</strong>: Tingkat XI-XII, contoh: <em>TOI, TAV</em></p>
+              <p>• Hubungkan Konsentrasi ke Program Keahlian agar Pemetaan Kelas otomatis cerdas</p>
+              <p>• Data ini muncul di <strong>Ijazah & Transkrip Nilai</strong></p>
             </div>
           </div>
         ),
         items: [
-          { text: "Tambah jurusan secara manual atau melalui Impor Excel." },
-          { text: "Pastikan Kode Jurusan unik untuk menghindari bentrokan data." },
-          { text: "Gunakan fitur Cari untuk menemukan jurusan tertentu dengan cepat." }
+          { text: "Mulai dari tab 'Program Keahlian' — buat dulu induknya." },
+          { text: "Lalu di tab 'Konsentrasi Keahlian', edit setiap jurusan dan pilih Program Keahlian induknya." },
+          { text: "Setelah terhubung, fitur Pemetaan Kelas akan otomatis mengelompokkan kelas yang satu program." }
         ]
       }}
       canView={canView}
@@ -192,20 +195,50 @@ export const JurusanPage: React.FC = () => {
       permissionMessage="Anda tidak memiliki izin untuk mengakses data jurusan."
       hardeningModuleKey="jurusanpage"
     >
-      <div className="space-y-6">
-        <SectionCard 
-          fullWidth 
-          noPadding
-        >
-          <JurusanList
-            onAdd={canCreate ? handleAddJurusan : undefined}
-            onEdit={canEdit ? handleEditJurusan : undefined}
-            onView={handleViewJurusan}
-            onImport={canCreate ? handleOpenImport : undefined}
-            onExport={handleExport}
-            isExporting={isExporting}
-            refreshTrigger={refreshTrigger}
-          />
+      <div className="space-y-4">
+        {/* Tab Navigator */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl w-fit">
+          <button
+            onClick={() => setActiveTab('konsentrasi')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all ${
+              activeTab === 'konsentrasi'
+                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            Konsentrasi Keahlian
+          </button>
+          <button
+            onClick={() => setActiveTab('program')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all ${
+              activeTab === 'program'
+                ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <BookMarked className="w-3.5 h-3.5" />
+            Program Keahlian
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <SectionCard fullWidth noPadding>
+          {activeTab === 'konsentrasi' ? (
+            <JurusanList
+              onAdd={canCreate ? handleAddJurusan : undefined}
+              onEdit={canEdit ? handleEditJurusan : undefined}
+              onView={handleViewJurusan}
+              onImport={canCreate ? handleOpenImport : undefined}
+              onExport={handleExport}
+              isExporting={isExporting}
+              refreshTrigger={refreshTrigger}
+            />
+          ) : (
+            <div className="p-6">
+              <ProgramKeahlianPanel canEdit={!!canEdit} />
+            </div>
+          )}
         </SectionCard>
       </div>
 
@@ -225,7 +258,7 @@ export const JurusanPage: React.FC = () => {
       <Modal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? 'Tambah Jurusan' : 'Data Jurusan'}
+        title={modalState.mode === 'create' ? 'Tambah Konsentrasi Keahlian' : 'Data Konsentrasi Keahlian'}
         size="lg"
       >
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>

@@ -126,6 +126,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
         confirmText: 'Ya, Hapus',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus jurusan...',
       });
 
       if (!ok) return;
@@ -144,6 +146,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       toast.error(error.response?.data?.message || 'Terjadi kesalahan saat menghapus jurusan');
     } finally {
       setDeleting(false);
+      confirm.setLoading(false);
     }
   }, [fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
 

@@ -136,7 +136,13 @@ export interface Kelas {
   Jurusan?: {
     id: string;
     nama: string;
+    program_keahlian_id?: string | null;
+    ProgramKeahlian?: {
+      id: string;
+      nama: string;
+    } | null;
   };
+
   Siswa?: Siswa[];
   WaliKelas?: {
     id: string;
@@ -203,12 +209,27 @@ export interface Semester {
   SesiAbsensi?: SesiAbsensi[];
 }
 
+export interface ProgramKeahlian {
+  id: string;
+  tenant_id: string;
+  nama: string;
+  kode?: string | null;
+  singkatan?: string | null;
+  bidang_keahlian?: string | null;
+  created_at: Date;
+  updated_at: Date;
+  _count?: {
+    Jurusan: number;
+  };
+}
+
 export interface Jurusan {
   id: string;
   tenant_id: string;
   nama: string;
   kode?: string;
   singkatan?: string;
+  program_keahlian_id?: string | null;
   created_at: Date;
   updated_at: Date;
   _count?: {
@@ -219,6 +240,7 @@ export interface Jurusan {
   Tenant?: Tenant;
   Kelas?: Kelas[];
   Mapel?: Mapel[];
+  ProgramKeahlian?: ProgramKeahlian | null;
 }
 
 // Supporting types

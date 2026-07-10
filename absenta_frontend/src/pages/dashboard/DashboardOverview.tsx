@@ -9,6 +9,7 @@ import { useAuthStore } from "../../store/authStore";
 import { isSystemSuperAdmin, isPlatformUser } from "../../utils/rbac";
 
 const AttendanceChart = lazy(() => import("../../components/charts/AttendanceChart"));
+import OnboardingDashboard from "./OnboardingDashboard";
 import SimpleOnboardingModal from "../../components/dashboard/SimpleOnboardingModal";
 import DashboardEmptyState from "../../components/dashboard/DashboardEmptyState";
 import DashboardTipsBanner from "../../components/dashboard/DashboardTipsBanner";
@@ -737,6 +738,10 @@ export default function DashboardOverview() {
 
   // Determine effective view: activeView if found, otherwise first available view
   const currentView = availableViews.find(v => v.id === activeView) || availableViews[0];
+
+  if (!hasCompletedOnboarding && isAdminOrSuperadmin) {
+    return <OnboardingDashboard />;
+  }
 
   return (
     <div className="flex-1 space-y-6">

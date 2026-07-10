@@ -17,6 +17,8 @@ import {
   GraduationCap,
   CheckCircle2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import useConfirm from '../../../../hooks/useConfirm';
 
 interface Props {
   onNext: (mapping: ClassMapping[]) => void;
@@ -25,9 +27,9 @@ interface Props {
   managedClassId?: string;
 }
 
-// ── Tema warna per tingkat ─────────────────────────────────────────────────
-const TINGKAT_THEMES = {
-  10: {
+// ── Tema warna dinamis per tingkat (index-based, mendukung SD/SMP/SMA) ────
+const TINGKAT_THEMES = [
+  { // Index 0: Sky/Blue
     header: 'bg-gradient-to-br from-sky-500 to-sky-700',
     headerShadow: 'shadow-sky-500/30',
     connector: 'bg-sky-300 dark:bg-sky-700',
@@ -36,12 +38,11 @@ const TINGKAT_THEMES = {
     cardHover: 'hover:border-sky-400 hover:shadow-sky-100 dark:hover:shadow-sky-900/20',
     nameBg: 'bg-sky-500',
     nameText: 'text-white',
-    label: 'TINGKAT X',
     selectBorder: 'border-sky-300 dark:border-sky-700',
     unmappedText: 'text-sky-400 dark:text-sky-500',
     dot: 'bg-sky-400',
   },
-  11: {
+  { // Index 1: Violet/Purple
     header: 'bg-gradient-to-br from-violet-500 to-violet-700',
     headerShadow: 'shadow-violet-500/30',
     connector: 'bg-violet-300 dark:bg-violet-700',
@@ -50,12 +51,11 @@ const TINGKAT_THEMES = {
     cardHover: 'hover:border-violet-400 hover:shadow-violet-100 dark:hover:shadow-violet-900/20',
     nameBg: 'bg-violet-500',
     nameText: 'text-white',
-    label: 'TINGKAT XI',
     selectBorder: 'border-violet-300 dark:border-violet-700',
     unmappedText: 'text-violet-400 dark:text-violet-500',
     dot: 'bg-violet-400',
   },
-  12: {
+  { // Index 2: Rose/Pink
     header: 'bg-gradient-to-br from-rose-500 to-rose-700',
     headerShadow: 'shadow-rose-500/30',
     connector: 'bg-rose-300 dark:bg-rose-700',
@@ -64,29 +64,67 @@ const TINGKAT_THEMES = {
     cardHover: 'hover:border-rose-400 hover:shadow-rose-100 dark:hover:shadow-rose-900/20',
     nameBg: 'bg-rose-500',
     nameText: 'text-white',
-    label: 'TINGKAT XII',
     selectBorder: 'border-rose-300 dark:border-rose-700',
     unmappedText: 'text-rose-400 dark:text-rose-500',
     dot: 'bg-rose-400',
   },
-} as const;
+  { // Index 3: Emerald/Green
+    header: 'bg-gradient-to-br from-emerald-500 to-emerald-700',
+    headerShadow: 'shadow-emerald-500/30',
+    connector: 'bg-emerald-300 dark:bg-emerald-700',
+    cardBorder: 'border-emerald-200 dark:border-emerald-800',
+    cardBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    cardHover: 'hover:border-emerald-400 hover:shadow-emerald-100 dark:hover:shadow-emerald-900/20',
+    nameBg: 'bg-emerald-500',
+    nameText: 'text-white',
+    selectBorder: 'border-emerald-300 dark:border-emerald-700',
+    unmappedText: 'text-emerald-400 dark:text-emerald-500',
+    dot: 'bg-emerald-400',
+  },
+  { // Index 4: Amber/Orange
+    header: 'bg-gradient-to-br from-amber-500 to-amber-700',
+    headerShadow: 'shadow-amber-500/30',
+    connector: 'bg-amber-300 dark:bg-amber-700',
+    cardBorder: 'border-amber-200 dark:border-amber-800',
+    cardBg: 'bg-amber-50 dark:bg-amber-950/40',
+    cardHover: 'hover:border-amber-400 hover:shadow-amber-100 dark:hover:shadow-amber-900/20',
+    nameBg: 'bg-amber-500',
+    nameText: 'text-white',
+    selectBorder: 'border-amber-300 dark:border-amber-700',
+    unmappedText: 'text-amber-400 dark:text-amber-500',
+    dot: 'bg-amber-400',
+  },
+  { // Index 5: Indigo
+    header: 'bg-gradient-to-br from-indigo-500 to-indigo-700',
+    headerShadow: 'shadow-indigo-500/30',
+    connector: 'bg-indigo-300 dark:bg-indigo-700',
+    cardBorder: 'border-indigo-200 dark:border-indigo-800',
+    cardBg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    cardHover: 'hover:border-indigo-400 hover:shadow-indigo-100 dark:hover:shadow-indigo-900/20',
+    nameBg: 'bg-indigo-500',
+    nameText: 'text-white',
+    selectBorder: 'border-indigo-300 dark:border-indigo-700',
+    unmappedText: 'text-indigo-400 dark:text-indigo-500',
+    dot: 'bg-indigo-400',
+  },
+];
 
-type TingkatKey = keyof typeof TINGKAT_THEMES;
-
-const getTheme = (tingkat: number) =>
-  TINGKAT_THEMES[(tingkat as TingkatKey)] ?? TINGKAT_THEMES[12];
+// Pilih tema berdasarkan indeks dalam daftar tingkat yang aktif (dinamis, bergilir)
+const getTheme = (tingkat: number, tingkatList: number[]) => {
+  const idx = tingkatList.indexOf(tingkat);
+  return TINGKAT_THEMES[idx >= 0 ? idx % TINGKAT_THEMES.length : 0];
+};
 
 // ── Kartu Kelas (compact org-chart style) ─────────────────────────────────
 const KelasCard: React.FC<{
   kelas: Kelas;
+  theme: typeof TINGKAT_THEMES[0];
   isMapped: boolean;
   mappedValue: string;
   options: { value: string; label: string }[];
   onChange: (val: string) => void;
   isLast: boolean;
-}> = ({ kelas, isMapped, mappedValue, options, onChange, isLast }) => {
-  const theme = getTheme(kelas.tingkat);
-
+}> = ({ kelas, theme, isMapped, mappedValue, options, onChange, isLast }) => {
   // Cari label kelas tujuan yang sudah dipetakan
   const mappedLabel = options.find(o => o.value === mappedValue)?.label ?? mappedValue;
 
@@ -138,12 +176,13 @@ const KelasCard: React.FC<{
 // ── Kolom Tingkat (org-chart column) ──────────────────────────────────────
 const TingkatColumn: React.FC<{
   tingkat: number;
+  tingkatList: number[];
   classes: Kelas[];
   mapping: Record<string, string>;
   getOptions: (k: Kelas) => { value: string; label: string }[];
   onMappingChange: (id: string, val: string) => void;
-}> = ({ tingkat, classes, mapping, getOptions, onMappingChange }) => {
-  const theme = getTheme(tingkat);
+}> = ({ tingkat, tingkatList, classes, mapping, getOptions, onMappingChange }) => {
+  const theme = getTheme(tingkat, tingkatList);
   if (classes.length === 0) return null;
 
   return (
@@ -153,7 +192,7 @@ const TingkatColumn: React.FC<{
         className={`${theme.header} ${theme.headerShadow} shadow-lg text-white rounded-xl px-6 py-3 w-full text-center mb-0 z-10`}
       >
         <div className="text-[10px] font-black uppercase tracking-[0.25em] opacity-80 mb-0.5">Tingkat</div>
-        <div className="text-lg font-black tracking-tight">{theme.label.replace('TINGKAT ', '')}</div>
+        <div className="text-lg font-black tracking-tight">{tingkat}</div>
       </div>
 
       {/* Garis vertikal dari header ke kartu pertama */}
@@ -165,6 +204,7 @@ const TingkatColumn: React.FC<{
           <KelasCard
             key={kelas.id}
             kelas={kelas}
+            theme={theme}
             isMapped={!!mapping[kelas.id]}
             mappedValue={mapping[kelas.id] || ''}
             options={getOptions(kelas)}
@@ -179,8 +219,10 @@ const TingkatColumn: React.FC<{
 
 // ── Komponen utama ─────────────────────────────────────────────────────────
 const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, managedClassId }) => {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState<Kelas[]>([]);
+  const [classes, setClasses] = useState<Kelas[]>([]);       // Kelas aktif saja (sumber)
+  const [allClasses, setAllClasses] = useState<Kelas[]>([]); // Semua kelas (tujuan)
   const [mapping, setMapping] = useState<Record<string, string>>({});
 
   useEffect(() => { fetchClasses(); }, []);
@@ -196,9 +238,14 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
   const fetchClasses = async () => {
     setLoading(true);
     try {
-      const res = await getKelasList(1, 1000);
-      setClasses(res.data);
-      if (!initialMapping) autoMapClasses(res.data);
+      // Kelas sumber: hanya yang aktif (ada siswa aktif di semester berjalan)
+      const [activeRes, allRes] = await Promise.all([
+        getKelasList(1, 1000, '', '', '', '', 'true'),
+        getKelasList(1, 1000),
+      ]);
+      setClasses(activeRes.data);
+      setAllClasses(allRes.data);
+      if (!initialMapping) autoMapClasses(activeRes.data);
     } catch (error) {
       console.error('Failed to fetch classes', error);
     } finally {
@@ -206,33 +253,137 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     }
   };
 
-  const autoMapClasses = (data: Kelas[]) => {
+  const autoMapClasses = async (data: Kelas[], showConfirm = false) => {
+    if (showConfirm) {
+      const ok = await confirm({
+        title: 'Konfirmasi Auto-Map',
+        description: 'Sistem akan otomatis memetakan kelas asal ke kelas tujuan berdasarkan Program Keahlian. Harap periksa kembali hasilnya sebelum melanjutkan ke langkah berikutnya.',
+        confirmText: 'Terapkan',
+        cancelText: 'Batal',
+        style: 'warning',
+      });
+      if (!ok) return;
+    }
+
     const newMapping: Record<string, string> = {};
-    const byJurusanTingkat: Record<string, Kelas[]> = {};
-    data.forEach(k => {
-      const key = `${k.jurusan_id || 'general'}:${k.tingkat}`;
-      if (!byJurusanTingkat[key]) byJurusanTingkat[key] = [];
-      byJurusanTingkat[key].push(k);
+
+    // Gunakan allClasses untuk kandidat tujuan (termasuk kelas tidak aktif)
+    const targetPool = allClasses.length > 0 ? allClasses : data;
+
+    // Helper: Ambil key Program Keahlian (atau fallback ke jurusan_id)
+    const getGroupKey = (k: Kelas) => {
+      return k.Jurusan?.program_keahlian_id || k.jurusan_id || 'general';
+    };
+
+    // Kelompokkan target (tingkat XI/XII) per ProgramKeahlian:tingkat
+    const byProgramTingkat: Record<string, Kelas[]> = {};
+    targetPool.forEach(k => {
+      const key = `${getGroupKey(k)}:${k.tingkat}`;
+      if (!byProgramTingkat[key]) byProgramTingkat[key] = [];
+      byProgramTingkat[key].push(k);
     });
+
+    // Urutkan target secara alfabetis berdasarkan nama kelas
+    Object.values(byProgramTingkat).forEach(arr =>
+      arr.sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas))
+    );
+
+    // Kelompokkan sumber (tingkat X/XI) per ProgramKeahlian:tingkat
+    const sourceByProgramTingkat: Record<string, Kelas[]> = {};
+    data.forEach(k => {
+      const key = `${getGroupKey(k)}:${k.tingkat}`;
+      if (!sourceByProgramTingkat[key]) sourceByProgramTingkat[key] = [];
+      sourceByProgramTingkat[key].push(k);
+    });
+
+    // Urutkan sumber secara alfabetis berdasarkan nama kelas
+    Object.values(sourceByProgramTingkat).forEach(arr =>
+      arr.sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas))
+    );
+
+    // Helper: ambil angka di akhir nama kelas (misal "X TE 1" → "1", "XI TOI 2" → "2")
+    const getTrailingNumber = (name: string): string | null => {
+      const match = name.match(/(\d+)\s*$/);
+      return match ? match[1] : null;
+    };
+
+    // Helper: hapus prefix tingkat dari nama kelas
+    const removeTingkatPrefix = (name: string) =>
+      name.replace(/^(XII|XI|X|12|11|10)\s*/i, '').trim();
+
+    // Set untuk mencatat kelas tujuan yang sudah terpakai (menghindari bentrokan pemetaan ganda)
+    const usedTargets = new Set<string>();
+
     data.forEach(source => {
       const targetTingkat = source.tingkat + 1;
-      const targetKey = `${source.jurusan_id || 'general'}:${targetTingkat}`;
-      const candidates = byJurusanTingkat[targetKey];
-      if (candidates && candidates.length > 0) {
-        const sourceSuffix = source.nama_kelas.replace(/^(X|XI|XII|10|11|12)\s*/i, '');
-        const exactMatch = candidates.find(c => {
-          const targetSuffix = c.nama_kelas.replace(/^(X|XI|XII|10|11|12)\s*/i, '');
-          return targetSuffix === sourceSuffix;
-        });
-        newMapping[source.id] = exactMatch ? exactMatch.id : candidates[0].id;
-      } else if (source.tingkat >= 12) {
+      const targetKey = `${getGroupKey(source)}:${targetTingkat}`;
+      const candidates = byProgramTingkat[targetKey] || [];
+
+      // Kelas XII → LULUS
+      if (source.tingkat >= 12) {
         newMapping[source.id] = 'LULUS';
+        return;
+      }
+
+      if (candidates.length === 0) return;
+
+      // ── Strategi 1: Exact suffix match (dan belum terpakai) ─────────────────
+      // Cocok untuk penamaan standar: X AKL 1 → XI AKL 1
+      const sourceSuffix = removeTingkatPrefix(source.nama_kelas);
+      const exactMatch = candidates.find(c =>
+        !usedTargets.has(c.id) && removeTingkatPrefix(c.nama_kelas) === sourceSuffix
+      );
+      if (exactMatch) {
+        newMapping[source.id] = exactMatch.id;
+        usedTargets.add(exactMatch.id);
+        return;
+      }
+
+      // ── Strategi 2: Trailing number match (dan belum terpakai) ──────────────
+      // Untuk Kurikulum Merdeka: X TE 1 → XI TOI 1, X TE 4 → XI TAV 1
+      const sourceNumber = getTrailingNumber(source.nama_kelas);
+      if (sourceNumber) {
+        const numberMatch = candidates.find(c =>
+          !usedTargets.has(c.id) && getTrailingNumber(c.nama_kelas) === sourceNumber
+        );
+        if (numberMatch) {
+          newMapping[source.id] = numberMatch.id;
+          usedTargets.add(numberMatch.id);
+          return;
+        }
+      }
+
+      // ── Strategi 3: Positional order (dan belum terpakai) ───────────────────
+      // Petakan berurutan indeks relatif kelas dalam rumpun program keahlian
+      const sourceGroupKey = `${getGroupKey(source)}:${source.tingkat}`;
+      const sourceGroup = sourceByProgramTingkat[sourceGroupKey] || [];
+      const sourceIndex = sourceGroup.findIndex(k => k.id === source.id);
+
+      if (sourceIndex !== -1) {
+        // Cari kandidat yang belum terpakai terdekat secara indeks
+        const unusedCandidates = candidates.filter(c => !usedTargets.has(c.id));
+        if (unusedCandidates.length > 0) {
+          const match = unusedCandidates[Math.min(sourceIndex, unusedCandidates.length - 1)];
+          newMapping[source.id] = match.id;
+          usedTargets.add(match.id);
+          return;
+        }
+      }
+
+      // ── Fallback: Ambil kandidat pertama yang tersisa ───────────────────────
+      const fallback = candidates.find(c => !usedTargets.has(c.id)) || candidates[0];
+      if (fallback) {
+        newMapping[source.id] = fallback.id;
+        usedTargets.add(fallback.id);
       }
     });
+
     setMapping(prev => ({ ...prev, ...newMapping }));
   };
 
+
   const handleMappingChange = (sourceId: string, targetId: string) => {
+
     setMapping(prev => ({ ...prev, [sourceId]: targetId }));
   };
 
@@ -268,21 +419,47 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
 
   const getTargetOptions = (source: Kelas) => {
     const targetTingkat = source.tingkat + 1;
-    const sameJurusan = sortedClasses.filter(
-      c => c.tingkat === targetTingkat && c.jurusan_id === source.jurusan_id
+    const allSorted = [...allClasses].sort((a, b) =>
+      a.tingkat !== b.tingkat ? a.tingkat - b.tingkat : a.nama_kelas.localeCompare(b.nama_kelas)
     );
-    const candidates = sameJurusan.length > 0
-      ? sameJurusan
-      : sortedClasses.filter(c => c.tingkat === targetTingkat);
-    const options = candidates.map(c => ({
-      value: c.id,
-      label: `${c.nama_kelas}`,
-    }));
+    const allAtTarget = allSorted.filter(c => c.tingkat === targetTingkat);
+
+    if (allAtTarget.length === 0) {
+      // XII → LULUS
+      return [{ value: 'LULUS', label: 'LULUS / ALUMNI' }];
+    }
+
+    // Program Keahlian source
+    const sourceProgramKeahlianId = source.Jurusan?.program_keahlian_id;
+
+    // Prioritas: kelas dengan Program Keahlian yang sama (atau jurusan yang sama jika PK belum diset)
+    const samePK = sourceProgramKeahlianId
+      ? allAtTarget.filter(c => c.Jurusan?.program_keahlian_id === sourceProgramKeahlianId)
+      : allAtTarget.filter(c => c.jurusan_id === source.jurusan_id);
+
+    const otherPK = allAtTarget.filter(c =>
+      !samePK.some(s => s.id === c.id)
+    );
+
+    const options: { value: string; label: string; group?: string }[] = [];
+
+    if (samePK.length > 0) {
+      samePK.forEach(c => options.push({
+        value: c.id,
+        label: c.nama_kelas,
+        group: sourceProgramKeahlianId
+          ? `Program Keahlian: ${samePK[0].Jurusan?.ProgramKeahlian?.nama || 'Sama'}`
+          : 'Jurusan Sama'
+      }));
+    }
+
     if (source.tingkat >= 12 || options.length === 0) {
       options.push({ value: 'LULUS', label: 'LULUS / ALUMNI' });
     }
+
     return options;
   };
+
 
   // Progress
   const totalClasses = sortedClasses.length;
@@ -329,7 +506,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
           <Button
             variant="toolbarOutline"
             size="toolbar"
-            onClick={() => autoMapClasses(classes)}
+            onClick={() => autoMapClasses(classes, true)}
             className="rounded-xl border-slate-200 dark:border-slate-800 flex-shrink-0"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -352,12 +529,12 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
 
       {/* ── Legend ── */}
       <div className="flex flex-wrap items-center gap-3 px-1">
-        {([10, 11, 12] as TingkatKey[]).map(t => {
-          const th = getTheme(t);
+        {tingkatList.map(t => {
+          const th = getTheme(t, tingkatList);
           return (
             <div key={t} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${th.dot}`} />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{th.label}</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TINGKAT {t}</span>
             </div>
           );
         })}
@@ -388,6 +565,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
               <TingkatColumn
                 key={tingkat}
                 tingkat={tingkat}
+                tingkatList={tingkatList}
                 classes={classesByTingkat[tingkat] || []}
                 mapping={mapping}
                 getOptions={getTargetOptions}

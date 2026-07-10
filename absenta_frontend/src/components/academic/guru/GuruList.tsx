@@ -28,7 +28,7 @@ import {
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
-import { getGuruList, deleteGuru } from '../../../api/academic/guru.api';
+import { getGuruList, deleteGuru, updateGuru } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -41,6 +41,7 @@ interface GuruListProps {
   onExport?: () => void;
   isExporting?: boolean;
   refreshTrigger?: number;
+  onRefresh?: () => void;
 }
 
 const GuruList: React.FC<GuruListProps> = React.memo(({ 
@@ -50,7 +51,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   onImport,
   onExport,
   isExporting = false,
-  refreshTrigger = 0 
+  refreshTrigger = 0,
+  onRefresh
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
@@ -63,6 +65,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [pageInput, setPageInput] = useState('1');
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   
   // Use debounced search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -193,6 +196,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         confirmText: 'Ya, Hapus Data',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus data guru...',
       });
 
       if (!ok) return;
@@ -203,6 +208,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Guru berhasil dihapus');
         fetchGurus(currentPage, debouncedSearchTerm);
+        onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus guru');
       }
@@ -212,8 +218,31 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       toast.error(errorMessage);
     } finally {
       setDeleting(false);
+      confirm.setLoading(false);
     }
-  }, [fetchGurus, currentPage, debouncedSearchTerm, confirm]);
+  }, [fetchGurus, currentPage, debouncedSearchTerm, confirm, onRefresh]);
+
+  const handleToggleActive = useCallback(async (guru: Guru) => {
+    try {
+      setTogglingId(guru.id);
+      const currentStatus = guru.User?.status || 'ACTIVE';
+      const targetState = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const response = await updateGuru(guru.id, { status: targetState });
+      if (response.success) {
+        toast.success(`Status ${guru.nama_guru} berhasil diubah.`);
+        fetchGurus(currentPage, debouncedSearchTerm);
+        onRefresh?.();
+      } else {
+        toast.error(response.message || 'Gagal mengubah status');
+      }
+    } catch (error: any) {
+      console.error('Error toggling guru status:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat mengubah status';
+      toast.error(errorMessage);
+    } finally {
+      setTogglingId(null);
+    }
+  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -235,18 +264,39 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       render: (value: string | null) => value || '-'
     },
     { 
-      key: 'no_rfid', 
-      label: 'No. RFID',
+      key: 'no_hp', 
+      label: 'No. HP',
       render: (value: string | null) => value || '-'
     },
-    { 
-      key: 'User', 
-      label: 'Role',
-      render: (user: any) => (
-        <Badge variant="info">
-          {user?.role?.name || 'N/A'}
-        </Badge>
-      )
+    {
+      key: 'status',
+      label: 'Status',
+      render: (_: any, guru: Guru) => {
+        const isActive = (guru.User?.status || 'ACTIVE') === 'ACTIVE';
+        const isToggling = togglingId === guru.id;
+        return (
+          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <Badge variant={isActive ? 'success' : 'error'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
+              {isActive ? 'Aktif' : 'Nonaktif'}
+            </Badge>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => handleToggleActive(guru)}
+                disabled={isToggling}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'} ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ transition: 'background-color 0.2s' }}
+                aria-label={`Toggle status ${guru.nama_guru}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}`}
+                  style={{ transition: 'transform 0.2s' }}
+                />
+              </button>
+            )}
+          </div>
+        );
+      }
     },
     { 
       key: 'actions', 
@@ -295,22 +345,23 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     try {
       setBulkDeleting(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(async (id) => {
-        const res = await deleteGuru(id);
-        if (!res.success) throw new Error(res.message || 'Gagal menghapus');
-        return id;
-      }));
-      const failed: { id: string; name: string; message: string }[] = [];
+      const total = ids.length;
       const succeeded: string[] = [];
-      results.forEach((r, idx) => {
-        const id = ids[idx];
-        if (r.status === 'fulfilled') {
+      const failed: { id: string; name: string; message: string }[] = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const guru = gurus.find(g => g.id === id);
+        try {
+          const res = await deleteGuru(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
           succeeded.push(id);
-        } else {
-          const guru = gurus.find(g => g.id === id);
-          failed.push({ id, name: guru?.nama_guru || id, message: (r.reason as Error)?.message || 'Gagal menghapus' });
+        } catch (e: any) {
+          failed.push({ id, name: guru?.nama_guru || id, message: e?.message || 'Gagal menghapus' });
         }
-      });
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
+
       if (failed.length > 0) {
         setBulkErrorDetails(failed);
         setBulkErrorModalOpen(true);
@@ -322,13 +373,15 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       succeeded.forEach(id => next.delete(id));
       setSelectedIds(next);
       fetchGurus(currentPage, searchTerm);
+      onRefresh?.();
     } catch (err: any) {
       const msg = err?.message || 'Terjadi kesalahan saat bulk delete';
       toast.error(msg);
     } finally {
       setBulkDeleting(false);
+      confirm.setLoading(false);
     }
-  }, [selectedIds, deleteGuru, gurus, fetchGurus, currentPage, searchTerm]);
+  }, [selectedIds, gurus, fetchGurus, currentPage, searchTerm, confirm, onRefresh]);
 
   return (
     <div className="flex flex-col">
@@ -531,6 +584,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                        confirmText: 'Hapus',
                        cancelText: 'Batal',
                        style: 'danger',
+                       withProgress: true,
+                       progressLabel: `Menghapus ${selectedIds.size} guru...`,
                      });
                      if (ok) await handleBulkDelete();
                    }}

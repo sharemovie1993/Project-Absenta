@@ -16,6 +16,7 @@ import { tahunPelajaranApi } from '../../api/academic.api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { useJenjang } from '../../hooks/useJenjang';
 
 interface StrukturItem {
   id: string;
@@ -32,6 +33,7 @@ interface GradeStats {
 
 const StrukturKurikulumPage: React.FC = () => {
   const navigate = useNavigate();
+  const { tingkatList } = useJenjang();
 
   const { data: years } = useQuery({
     queryKey: ['academic-years'],
@@ -71,7 +73,7 @@ const StrukturKurikulumPage: React.FC = () => {
   const handleManagePlotting = useCallback(() => navigate('/kurikulum/plotting'), [navigate]);
 
   const statsGrid = useMemo(() => {
-    return [10, 11, 12]?.map((grade) => {
+    return tingkatList.map((grade) => {
       const s = statsByGrade[grade] ?? { count: 0, totalJp: 0 };
       return (
         <Card key={grade} className="p-6 border-none shadow-sm group hover:shadow-md transition-all relative overflow-hidden">

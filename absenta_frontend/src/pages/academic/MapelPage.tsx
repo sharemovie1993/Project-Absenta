@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import MapelList from '../../components/academic/mapel/MapelList';
 import { useAuth } from '../../hooks/useAuth';
+import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Mapel } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
@@ -33,6 +34,7 @@ export const MapelPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
 
   const navigate = useNavigate();
+  const { tingkatList: hookTingkatList } = useJenjang();
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -116,7 +118,7 @@ export const MapelPage: React.FC = () => {
   const handleTemplateDownload = useCallback(async () => {
     try {
       toast('Menyiapkan template cerdas...', { icon: 'ℹ️' });
-      const tingkatList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+      const tingkatList = hookTingkatList.map(String);
       const kelompokList = ['A', 'B', 'C', 'Peminatan', 'Muatan Lokal'];
 
       await generateAdvancedTemplate(

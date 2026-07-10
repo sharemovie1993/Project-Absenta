@@ -8,10 +8,15 @@ export interface UseConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   style?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
+  /** Set true to keep dialog open with progress bar after user clicks Confirm */
+  withProgress?: boolean;
+  progressLabel?: string;
 }
 
 export default function useConfirm() {
-  const { confirm } = useConfirmContext();
-  return (options: UseConfirmOptions) => confirm(options);
-}
+  const { confirm, setConfirmLoading } = useConfirmContext();
 
+  const showConfirm = (options: UseConfirmOptions) => confirm(options);
+
+  return Object.assign(showConfirm, { setLoading: setConfirmLoading });
+}

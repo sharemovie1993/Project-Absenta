@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
-import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
@@ -38,6 +38,7 @@ export const TenantSettings: React.FC = () => {
   const [logoDaerahUrl, setLogoDaerahUrl] = useState('');
   const [kepalaSekolah, setKepalaSekolah] = useState('');
   const [nipKepala, setNipKepala] = useState('');
+  const [jenjang, setJenjang] = useState('');
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDaerahInputRef = useRef<HTMLInputElement>(null);
@@ -117,6 +118,7 @@ export const TenantSettings: React.FC = () => {
         setLogoDaerahUrl(data.logo_daerah_url || '');
         setKepalaSekolah(data.kepala_sekolah || '');
         setNipKepala(data.nip_kepala || '');
+        setJenjang(data.jenjang || '');
         
         // Parse the dynamic lines from the database string array
         const rawLines = data.print_header_lines && data.print_header_lines.length > 0
@@ -210,7 +212,8 @@ export const TenantSettings: React.FC = () => {
         logo_daerah_url: logoDaerahUrl,
         print_header_lines: serializedLines,
         kepala_sekolah: kepalaSekolah,
-        nip_kepala: nipKepala
+        nip_kepala: nipKepala,
+        jenjang: jenjang || null,
       };
 
       const response = await updateTenant(tenant.id, payload);
@@ -424,6 +427,25 @@ export const TenantSettings: React.FC = () => {
                       onChange={(e) => setWebsite(e.target.value)}
                       placeholder="smkn1plered.mysch.id"
                     />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="jenjang" className="text-xs font-bold text-slate-500 uppercase">Jenjang Sekolah <span className="text-rose-500">*</span></Label>
+                    <select
+                      id="jenjang"
+                      value={jenjang}
+                      onChange={(e) => setJenjang(e.target.value)}
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300 font-bold text-slate-700 dark:text-slate-300"
+                    >
+                      <option value="">Pilih Jenjang...</option>
+                      <option value="SD">SD (Sekolah Dasar)</option>
+                      <option value="MI">MI (Madrasah Ibtidaiyah)</option>
+                      <option value="SMP">SMP (Sekolah Menengah Pertama)</option>
+                      <option value="MTs">MTs (Madrasah Tsanawiyah)</option>
+                      <option value="SMA">SMA (Sekolah Menengah Atas)</option>
+                      <option value="MA">MA (Madrasah Aliyah)</option>
+                      <option value="SMK">SMK (Sekolah Menengah Kejuruan)</option>
+                      <option value="MAK">MAK (Madrasah Aliyah Kejuruan)</option>
+                    </select>
                   </div>
                 </div>
 
@@ -822,6 +844,13 @@ export const TenantSettings: React.FC = () => {
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">No. Telepon</span>
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{phone || '-'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5 border-t border-slate-100/50 pt-2.5 dark:border-slate-800/50">
+                    <Layers className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Jenjang Sekolah</span>
+                      <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{tenant.jenjang || <span className="text-rose-500 italic text-xs font-bold">Harap tentukan jenjang!</span>}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5 border-t border-slate-100/50 pt-2.5 dark:border-slate-800/50">

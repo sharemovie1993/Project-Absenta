@@ -22,6 +22,7 @@ import { kurikulumApi } from '../../api/kurikulum.api';
 import { mapelApi, tahunPelajaranApi } from '../../api/academic.api';
 import { useConfirm } from '../../providers/ConfirmProvider';
 import { toast } from 'react-hot-toast';
+import { useJenjang } from '../../hooks/useJenjang';
 import type { Mapel } from '../../types/academic';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(module => ({ default: module.Modal })));
@@ -99,6 +100,16 @@ const MasterStrukturPage: React.FC = () => {
             setSelectedTahunId(activeYear.id);
         }
     }, [activeYear, selectedTahunId]);
+
+    // Ambil daftar tingkat secara dinamis dari hook useJenjang
+    const { tingkatList, isLoading: isLoadingJenjang } = useJenjang();
+
+    // Set selectedTingkat ke tingkat terendah yang valid jika belum dipilih atau tidak ada dalam list
+    React.useEffect(() => {
+        if (tingkatList.length > 0 && !tingkatList.includes(selectedTingkat)) {
+            setSelectedTingkat(tingkatList[0]);
+        }
+    }, [tingkatList, selectedTingkat]);
 
     const { data: mapping, isLoading: isLoadingMapping } = useQuery({
         queryKey: ['kurikulum-struktur', selectedTahunId, selectedTingkat],
@@ -198,7 +209,7 @@ const MasterStrukturPage: React.FC = () => {
                     </select>
                     <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 hidden md:block"></div>
                     <div className="flex gap-1 p-1">
-                        {[10, 11, 12].map((t) => (
+                        {tingkatList.map((t) => (
                             <button
                                 key={t}
                                 onClick={() => setSelectedTingkat(t)}

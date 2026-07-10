@@ -26,6 +26,7 @@ import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 interface MapelListProps {
   onEdit?: (mapel: Mapel) => void;
@@ -66,6 +67,7 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
   const { user, can } = useAuth();
+  const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -159,6 +161,8 @@ const MapelList = React.memo<MapelListProps>(({
         confirmText: 'Ya, Hapus Mapel',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus mata pelajaran...',
       });
 
       if (!ok) return;
@@ -178,6 +182,7 @@ const MapelList = React.memo<MapelListProps>(({
       toast.error(errorMessage);
     } finally {
       setDeleting(false);
+      confirm.setLoading(false);
     }
   }, [fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
@@ -189,28 +194,22 @@ const MapelList = React.memo<MapelListProps>(({
     try {
       setBulkDeleting(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(async (id) => {
-        const res = await deleteMapel(id);
-        if (!res.success) throw new Error(res.message || 'Gagal menghapus');
-        return id;
-      }));
-
+      const total = ids.length;
       const succeeded: string[] = [];
       const failed: { id: string; name: string; message: string }[] = [];
 
-      results.forEach((r, idx) => {
-        const id = ids[idx];
-        const mapel = mapels.find(m => m.id === id);
-        if (r.status === 'fulfilled') {
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const mapelItem = mapels.find(m => m.id === id);
+        try {
+          const res = await deleteMapel(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
           succeeded.push(id);
-        } else {
-          failed.push({
-            id,
-            name: mapel?.nama_mapel || id,
-            message: (r as PromiseRejectedResult).reason?.message || 'Gagal menghapus'
-          });
+        } catch (e: any) {
+          failed.push({ id, name: mapelItem?.nama_mapel || id, message: e?.message || 'Gagal menghapus' });
         }
-      });
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
 
       if (failed.length > 0) {
         setBulkErrorDetails(failed);
@@ -232,8 +231,9 @@ const MapelList = React.memo<MapelListProps>(({
       toast.error('Terjadi kesalahan saat menghapus data terpilih');
     } finally {
       setBulkDeleting(false);
+      confirm.setLoading(false);
     }
-  }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm]);
+  }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -331,7 +331,7 @@ const MapelList = React.memo<MapelListProps>(({
             onValueChange={(val) => setFilterTingkat(val)}
             options={[
               { label: 'Semua Tingkat', value: 'ALL' },
-              ...Array.from({ length: 12 }, (_, i) => i + 1).map((t) => ({ label: `Kelas ${t}`, value: t.toString() }))
+              ...tingkatList.map((t) => ({ label: `Kelas ${t}`, value: t.toString() }))
             ]}
             placeholder="Pilih Tingkat"
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -428,6 +428,8 @@ const MapelList = React.memo<MapelListProps>(({
                      confirmText: 'Hapus',
                      cancelText: 'Batal',
                      style: 'danger',
+                     withProgress: true,
+                     progressLabel: `Menghapus ${selectedIds.size} mata pelajaran...`,
                    });
                    if (ok) await handleBulkDelete();
                  }}

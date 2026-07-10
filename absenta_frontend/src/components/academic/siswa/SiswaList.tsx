@@ -28,6 +28,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 interface SiswaListProps {
   onEdit?: (siswa: Siswa) => void;
@@ -38,6 +39,7 @@ interface SiswaListProps {
   onExport?: () => void;
   isExporting?: boolean;
   refreshTrigger?: number;
+  onRefresh?: () => void;
 }
 
 const SiswaList: React.FC<SiswaListProps> = React.memo(({ 
@@ -48,7 +50,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   onSync,
   onExport,
   isExporting = false,
-  refreshTrigger = 0 
+  refreshTrigger = 0,
+  onRefresh
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
@@ -86,7 +89,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   // Filter states
   const [filterTingkat, setFilterTingkat] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState('AKTIF');
   const [filterGender, setFilterGender] = useState('');
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
 
@@ -103,6 +106,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
 
 
   const { can, user, hasPermissionCode, isLoading } = useAuth();
+  const { tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -227,6 +231,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       confirmText: 'YA, HAPUS SEMUANYA',
       cancelText: 'Batalkan',
       style: 'danger',
+      withProgress: true,
+      progressLabel: 'Menghapus seluruh data siswa...',
     });
 
     if (!doubleOk) return;
@@ -241,6 +247,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         setCurrentPage(1);
         setSelectedIds(new Set());
         fetchSiswas(1, '');
+        onRefresh?.();
       } else {
         toast.error(res.message || 'Gagal menghapus data');
       }
@@ -249,8 +256,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       toast.error(error?.message || 'Terjadi kesalahan saat menghapus data');
     } finally {
       setLoading(false);
+      confirm.setLoading(false);
     }
-  }, [confirm, fetchSiswas, totalItems]);
+  }, [confirm, fetchSiswas, totalItems, onRefresh]);
 
   const handleSendParentAccess = useCallback(async (siswa: Siswa) => {
     // Check local data if available
@@ -466,6 +474,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         confirmText: 'Hapus Siswa',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus data siswa...',
       });
 
       if (!ok) return;
@@ -476,6 +486,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Siswa berhasil dihapus');
         fetchSiswas(currentPage, searchTerm);
+        onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus siswa');
       }
@@ -485,8 +496,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     } finally {
       setDeleting(false);
       setLoading(false);
+      confirm.setLoading(false);
     }
-  }, [confirm, fetchSiswas, currentPage, searchTerm]);
+  }, [confirm, fetchSiswas, currentPage, searchTerm, onRefresh]);
 
 
   // Format status badge
@@ -632,22 +644,23 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
     try {
       setBulkDeleting(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled((ids || []).map(async (id) => {
-        const res = await deleteSiswa(id);
-        if (!res.success) throw new Error(res.message || 'Gagal menghapus');
-        return id;
-      }));
-      const failed: { id: string; name: string; message: string }[] = [];
+      const total = ids.length;
       const succeeded: string[] = [];
-      (results || []).forEach((r, idx) => {
-        const id = ids[idx];
-        if (r.status === 'fulfilled') {
+      const failed: { id: string; name: string; message: string }[] = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const siswa = siswas.find(s => s.id === id);
+        try {
+          const res = await deleteSiswa(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
           succeeded.push(id);
-        } else {
-          const siswa = (siswas || []).find(s => s.id === id);
-          failed.push({ id, name: siswa?.nama_siswa || id, message: (r.reason as Error)?.message || 'Gagal menghapus' });
+        } catch (e: any) {
+          failed.push({ id, name: siswa?.nama_siswa || id, message: e?.message || 'Gagal menghapus' });
         }
-      });
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
+
       if (failed.length > 0) {
         setBulkErrorDetails(failed);
         setBulkErrorModalOpen(true);
@@ -664,8 +677,9 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       toast.error(msg);
     } finally {
       setBulkDeleting(false);
+      confirm.setLoading(false);
     }
-  }, [selectedIds, siswas, fetchSiswas, currentPage, searchTerm]);
+  }, [selectedIds, siswas, confirm, fetchSiswas, currentPage, searchTerm]);
 
   // Don't render if user doesn't have permission to view
   if (!canView) {
@@ -807,9 +821,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           onValueChange={setFilterTingkat}
                           options={[
                             { label: 'Semua Tingkat', value: '' },
-                            { label: 'Tingkat X', value: '10' },
-                            { label: 'Tingkat XI', value: '11' },
-                            { label: 'Tingkat XII', value: '12' }
+                            ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
                           ]}
                           placeholder="Semua Tingkat"
                           searchPlaceholder="Cari Tingkat..."
@@ -949,6 +961,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           confirmText: 'Hapus',
                           cancelText: 'Batal',
                           style: 'danger',
+                          withProgress: true,
+                          progressLabel: `Menghapus ${selectedIds.size} siswa...`,
                         });
                         if (ok) await handleBulkDelete();
                       }}

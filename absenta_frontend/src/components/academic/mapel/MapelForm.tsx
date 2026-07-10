@@ -11,6 +11,7 @@ import {
 import { createMapel, updateMapel, getMapelDetail, type CreateMapelPayload, type UpdateMapelPayload } from '../../../api/academic/mapel.api';
 import toast from 'react-hot-toast';
 import { createMapelSchema, type CreateMapelSchema } from '../../../schemas/academic/mapel.schema';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 // Modular Sections
 import { MapelInfoSection } from './form/MapelInfoSection';
@@ -22,21 +23,7 @@ interface MapelFormProps {
   mode?: 'create' | 'edit' | 'view';
 }
 
-const TINGKAT_OPTIONS = [
-  { value: '0', label: 'Semua Tingkat' },
-  { value: '1', label: 'Kelas 1' },
-  { value: '2', label: 'Kelas 2' },
-  { value: '3', label: 'Kelas 3' },
-  { value: '4', label: 'Kelas 4' },
-  { value: '5', label: 'Kelas 5' },
-  { value: '6', label: 'Kelas 6' },
-  { value: '7', label: 'Kelas 7' },
-  { value: '8', label: 'Kelas 8' },
-  { value: '9', label: 'Kelas 9' },
-  { value: '10', label: 'Kelas 10' },
-  { value: '11', label: 'Kelas 11' },
-  { value: '12', label: 'Kelas 12' }
-];
+// TINGKAT_OPTIONS dinonaktifkan di sini karena telah digantikan dengan opsi dinamis dari useJenjang()
 
 export const MapelForm = React.memo<MapelFormProps>(({
   mapelId,
@@ -47,6 +34,15 @@ export const MapelForm = React.memo<MapelFormProps>(({
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+  
+  const { tingkatList } = useJenjang();
+  
+  const tingkatOptions = React.useMemo(() => {
+    return [
+      { value: '0', label: 'Semua Tingkat' },
+      ...tingkatList.map(t => ({ value: String(t), label: `Kelas ${t}` }))
+    ];
+  }, [tingkatList]);
 
 
 
@@ -160,7 +156,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
           errors={errors}
           isViewMode={isViewMode}
           watch={watch}
-          tingkatOptions={TINGKAT_OPTIONS}
+          tingkatOptions={tingkatOptions}
         />
 
         <ModalFooter className="mt-4 pt-6 border-t border-slate-100 dark:border-slate-800 gap-3">

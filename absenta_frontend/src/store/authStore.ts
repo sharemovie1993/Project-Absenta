@@ -107,6 +107,7 @@ export const useAuthStore = create<AuthState>()(
 
             // Fix: Immediately set user state to avoid 403 race condition
             // The backend sends capabilities in login response, so we should use them!
+            const localOnboarded = user.tenant_id ? localStorage.getItem(`onboarding_completed_${user.tenant_id}`) === 'true' : false;
             set({
               user,
               isAuthenticated: true,
@@ -114,6 +115,7 @@ export const useAuthStore = create<AuthState>()(
               refreshToken: refToken,
               tenantId: user.tenant_id || null,
               tenantMode: (user as any)?.tenant?.absensi_mode ?? null,
+              hasCompletedOnboarding: (user as any).has_completed_onboarding ?? localOnboarded ?? false,
             });
 
             console.log('🚀 [AUTH-DEBUG] Login success, tenantMode:', (user as any)?.tenant?.absensi_mode);

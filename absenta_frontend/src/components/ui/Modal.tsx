@@ -61,6 +61,7 @@ interface ModalProps {
   contentClassName?: string;
   placement?: 'center' | 'bottom' | 'top';
   zIndex?: number;
+  disableClose?: boolean;
 }
 
 const sizeClasses = {
@@ -84,12 +85,13 @@ export function Modal({
   className,
   contentClassName,
   placement = 'center',
-  zIndex = 50
+  zIndex = 50,
+  disableClose = false
 }: ModalProps) {
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && !disableClose) {
         onClose();
       }
     };
@@ -103,7 +105,7 @@ export function Modal({
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, disableClose]);
 
   return (
     <AnimatePresence>
@@ -118,7 +120,7 @@ export function Modal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={disableClose ? undefined : onClose}
           />
           
           {/* Modal Content */}
@@ -143,15 +145,17 @@ export function Modal({
                 <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   {title}
                 </h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onClose}
-                  className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 p-0"
-                  aria-label="Close modal"
-                >
-                  <X size={18} />
-                </Button>
+                {!disableClose && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 p-0"
+                    aria-label="Close modal"
+                  >
+                    <X size={18} />
+                  </Button>
+                )}
               </div>
             )}
             

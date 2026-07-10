@@ -111,7 +111,7 @@ const RegistrasiSiswaPage: React.FC = () => {
   const fetchSiswas = useCallback(async (page = 1) => {
     try {
       setLoading(true); setSyncError(null);
-      const res = await getSiswaList(page, itemsPerPage, debouncedSearchTerm, selectedKelasId, '');
+      const res = await getSiswaList(page, itemsPerPage, debouncedSearchTerm, selectedKelasId, 'AKTIF');
       setSiswas(res?.data || []);
       setTotalPages(res?.pagination?.totalPages || 1);
       setCurrentPage(res?.pagination?.page || page);

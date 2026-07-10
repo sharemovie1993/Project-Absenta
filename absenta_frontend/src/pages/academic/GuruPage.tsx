@@ -157,29 +157,29 @@ export const GuruPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Data Guru"
-      description="Kelola daftar nama dan biodata guru. Digunakan kapan saja jika ada penambahan atau perubahan data guru."
+      title="Data Guru & Staf"
+      description="Kelola daftar nama dan biodata GTK (Guru & Tenaga Kependidikan). Seluruh personel sekolah seperti Guru, Tata Usaha (TU), Satpam, dan Caraka terdaftar di sini untuk absensi, manajemen penugasan, dan hak akses."
       stats={academicStats}
       isLoadingStats={isLoadingStats}
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
-        { label: 'Data Guru', path: '/academic/guru' }
+        { label: 'Data Guru & Staf', path: '/academic/guru' }
       ]}
       instruction={{
-        title: "Panduan Guru",
+        title: "Panduan Data Personel",
         description: (
           <div className="space-y-2">
-            <p>Direktori lengkap profil guru sekolah. Data guru ini dibutuhkan untuk penugasan wali kelas, guru mengajar, dan hak akses login sistem.</p>
+            <p>Direktori lengkap profil GTK sekolah. Data ini mencakup Guru (tenaga pendidik) serta staf kependidikan (TU, Satpam, Caraka, dll.) yang dibutuhkan untuk absensi harian, penugasan, dan login sistem.</p>
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
-              <p><strong>Fungsi:</strong> Mengatur data identitas guru.</p>
-              <p><strong>Waktu Penggunaan:</strong> Kapan saja jika ada guru baru masuk atau datanya berubah.</p>
+              <p><strong>Fungsi:</strong> Mengatur identitas Guru & Tenaga Kependidikan.</p>
+              <p><strong>Waktu Penggunaan:</strong> Kapan saja saat ada staf/guru baru atau perubahan data.</p>
             </div>
           </div>
         ),
         items: [
-          { text: "Daftarkan Guru dengan NUPTK atau NIK yang valid." },
-          { text: "Hubungkan Guru dengan Mata Pelajaran yang diampu." },
-          { text: "Gunakan fitur Edit untuk memperbarui profil Guru." }
+          { text: "Daftarkan personel dengan NIP, NIK, atau nomor pengenal yang valid." },
+          { text: "Tentukan peran (role) untuk hak akses login sistem jika dibutuhkan." },
+          { text: "Gunakan fitur Edit untuk memperbarui biodata lengkap personel." }
         ]
       }}
       canView={canView}
@@ -200,6 +200,7 @@ export const GuruPage: React.FC = () => {
             onExport={handleExport}
             isExporting={isExporting}
             refreshTrigger={refreshTrigger}
+            onRefresh={useCallback(() => setRefreshTrigger(prev => prev + 1), [])}
           />
         </SectionCard>
       </div>

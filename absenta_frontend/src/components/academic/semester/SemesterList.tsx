@@ -197,6 +197,8 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
         confirmText: hasRelated ? undefined : 'Hapus Semester',
         cancelText: 'Tutup',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus semester...',
       });
 
       if (!ok || hasRelated) return;
@@ -216,6 +218,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     } finally {
       setDeleting(false);
       setLoading(false);
+      confirm.setLoading(false);
     }
   }, [confirm, fetchSemesters, currentPage, searchTerm]);
 
@@ -238,6 +241,8 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       confirmText: 'Aktifkan',
       cancelText: 'Batal',
       style: 'success',
+      withProgress: true,
+      progressLabel: 'Mengaktifkan semester...',
     });
 
     if (!ok) return;
@@ -257,6 +262,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       toast.error(error.response?.data?.message || 'Terjadi kesalahan saat mengaktifkan semester');
     } finally {
       setActivating(false);
+      confirm.setLoading(false);
     }
   }, [confirm, fetchSemesters, currentPage, searchTerm]);
 

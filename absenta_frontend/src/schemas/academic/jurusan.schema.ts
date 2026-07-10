@@ -15,6 +15,7 @@ export const createJurusanSchema = z.object({
     .regex(/^[A-Z0-9]+$/, 'Singkatan hanya boleh huruf kapital dan angka')
     .optional()
     .or(z.literal('')),
+  program_keahlian_id: z.string().optional().nullable(),
 });
 
 export const updateJurusanSchema = createJurusanSchema;

@@ -13,6 +13,7 @@ import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Jurusan } from '../../../types/academic';
 import { createKelasSchema, type CreateKelasSchema } from '../../../schemas/academic/kelas.schema';
 import toast from 'react-hot-toast';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 // Modular Sections
 import { KelasInfoSection } from './form/KelasInfoSection';
@@ -25,11 +26,8 @@ interface KelasFormProps {
   initialTingkat?: number;
 }
 
-const TINGKAT_OPTIONS = [
-  { value: 10, label: 'Kelas 10' },
-  { value: 11, label: 'Kelas 11' },
-  { value: 12, label: 'Kelas 12' }
-];
+// Tidak ada lagi TINGKAT_OPTIONS yang hardcode —
+// opsi tingkat diambil secara dinamis dari kelas yang terdaftar di database.
 
 export const KelasForm = React.memo<KelasFormProps>(({
   kelasId,
@@ -41,8 +39,11 @@ export const KelasForm = React.memo<KelasFormProps>(({
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
+  const [tingkatOptions, setTingkatOptions] = useState<{ value: number; label: string }[]>([]);
   const [loadingDropdowns, setLoadingDropdowns] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+  
+  const { tingkatList: hookTingkatList, isLoading: isLoadingJenjang } = useJenjang();
 
 
 
@@ -60,7 +61,7 @@ export const KelasForm = React.memo<KelasFormProps>(({
     resolver: zodResolver(createKelasSchema),
     defaultValues: {
       nama_kelas: '',
-      tingkat: 10,
+      tingkat: initialTingkat ?? 0, // akan di-update setelah tingkatOptions dimuat
       jurusan_id: '',
       device_id: '',
       is_active: true,
@@ -74,6 +75,15 @@ export const KelasForm = React.memo<KelasFormProps>(({
         setLoadingDropdowns(true);
         const jurusanResponse = await getJurusanList(1, 100);
         setJurusanList(jurusanResponse.data || []);
+
+        // Bangkitkan opsi tingkat secara dinamis dari hook useJenjang
+        const options = hookTingkatList.map(t => ({ value: t, label: `Kelas ${t}` }));
+        setTingkatOptions(options);
+
+        // Jika mode create dan tingkat belum dipilih (0), set ke tingkat pertama yang tersedia
+        if (mode === 'create' && initialTingkat === undefined && options.length > 0) {
+          reset(prev => ({ ...prev, tingkat: options[0].value }));
+        }
       } catch (error) {
         console.error('Error loading dropdown data:', error);
       } finally {
@@ -81,8 +91,10 @@ export const KelasForm = React.memo<KelasFormProps>(({
       }
     };
 
-    loadDropdownData();
-  }, []);
+    if (!isLoadingJenjang) {
+      loadDropdownData();
+    }
+  }, [hookTingkatList, isLoadingJenjang]);
 
   // Load initial tingkat for create mode
   useEffect(() => {
@@ -108,7 +120,7 @@ export const KelasForm = React.memo<KelasFormProps>(({
         
         reset({
           nama_kelas: kelas.nama_kelas || '',
-          tingkat: kelas.tingkat || 10,
+          tingkat: kelas.tingkat || tingkatOptions[0]?.value || 10,
           jurusan_id: kelas.jurusan_id || '',
           device_id: kelas.device_id || '',
           is_active: kelas.is_active !== undefined ? kelas.is_active : true,
@@ -189,7 +201,7 @@ export const KelasForm = React.memo<KelasFormProps>(({
           isViewMode={isViewMode}
           watch={watch}
           jurusanList={jurusanList}
-          tingkatOptions={TINGKAT_OPTIONS}
+          tingkatOptions={tingkatOptions}
           loadingDropdowns={loadingDropdowns}
         />
 

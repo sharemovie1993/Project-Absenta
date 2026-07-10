@@ -24,12 +24,14 @@ export interface CreateJurusanPayload {
   nama: string;
   kode?: string;
   singkatan?: string;
+  program_keahlian_id?: string | null;
 }
 
 export interface UpdateJurusanPayload {
   nama?: string;
   kode?: string;
   singkatan?: string;
+  program_keahlian_id?: string | null;
 }
 
 // Get Jurusan List - GET /api/academic/jurusan

@@ -83,16 +83,24 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
       confirmText: 'Nonaktifkan',
       cancelText: 'Batal',
       style: 'warning',
+      withProgress: true,
+      progressLabel: `Menonaktifkan ${selectedIds.size} wali kelas...`,
     });
     if (!ok) return;
 
     try {
       setBulkProcessing(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids?.map(id => nonaktifWaliKelasStruktur(id)));
-      
-      const succeeded = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-      const failed = results.length - succeeded;
+      const total = ids.length;
+      let succeeded = 0;
+      let failed = 0;
+      for (let i = 0; i < ids.length; i++) {
+        try {
+          const res = await nonaktifWaliKelasStruktur(ids[i]);
+          if (res.success) succeeded++; else failed++;
+        } catch { failed++; }
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
 
       if (failed > 0) {
         toast(`Berhasil: ${succeeded}, Gagal: ${failed}`, { icon: '⚠️' });
@@ -106,6 +114,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
       toast.error('Terjadi kesalahan saat bulk nonaktif');
     } finally {
       setBulkProcessing(false);
+      confirm.setLoading(false);
     }
   }, [selectedIds, confirm, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
 
@@ -142,6 +151,8 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
       confirmText: 'Ya, Nonaktifkan',
       cancelText: 'Batal',
       style: 'warning',
+      withProgress: true,
+      progressLabel: 'Menonaktifkan wali kelas...',
     });
     if (!ok) return;
     try {
@@ -155,6 +166,8 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menonaktifkan';
       toast.error(msg);
+    } finally {
+      confirm.setLoading(false);
     }
   }, [confirm, fetchData, currentPage, debouncedSearchTerm, includeInactive]);
 

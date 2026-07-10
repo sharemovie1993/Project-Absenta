@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { useAuth } from '../../hooks/useAuth';
+import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Kelas } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
@@ -56,6 +57,7 @@ export const KelasPage: React.FC = () => {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { tingkatList: hookTingkatList } = useJenjang();
   const guruIdFromUrl = searchParams.get('guru_id') || '';
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
@@ -190,7 +192,7 @@ export const KelasPage: React.FC = () => {
 
       const jurusanNames = (jurusanRes.data || [])?.map(j => j?.nama).filter(Boolean);
       const guruNames = (guruRes.data || [])?.map(g => g?.nama_guru).filter(Boolean);
-      const tingkatList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+      const tingkatList = hookTingkatList.map(String);
 
       await generateAdvancedTemplate(
         [
@@ -280,6 +282,12 @@ export const KelasPage: React.FC = () => {
           onDownloadTemplate={handleTemplateDownload}
           onSuccess={() => setRefreshTrigger(prev => prev + 1)}
           sampleDataHint="Pastikan nama kelas dan jurusan sudah sesuai dengan standar sekolah."
+          successHint={{
+            title: "Langkah Selanjutnya: Kelola Status Kelas",
+            message: "Setelah import selesai, nonaktifkan kelas-kelas lama yang tidak digunakan di Tahun Pelajaran ini agar tidak mengganggu data absensi dan akademik. Kelas yang tidak aktif tidak akan muncul di pilihan absensi dan pembagian siswa.",
+            actionLabel: "Kelola Status Kelas Sekarang",
+            onAction: () => { setImportOpen(false); },
+          }}
         />
       </Suspense>
 

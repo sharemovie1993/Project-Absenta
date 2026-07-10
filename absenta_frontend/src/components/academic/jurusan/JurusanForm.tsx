@@ -42,13 +42,15 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors }
   } = useForm<CreateJurusanSchema>({
     resolver: zodResolver(createJurusanSchema),
     defaultValues: {
       nama: '',
       kode: '',
-      singkatan: ''
+      singkatan: '',
+      program_keahlian_id: ''
     }
   });
 
@@ -64,7 +66,8 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
         reset({
           nama: jurusan.nama || '',
           kode: jurusan.kode || '',
-          singkatan: jurusan.singkatan || ''
+          singkatan: jurusan.singkatan || '',
+          program_keahlian_id: jurusan.program_keahlian_id || ''
         });
       } catch (error) {
         console.error('Error loading jurusan data:', error);
@@ -88,7 +91,8 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
       const payload: CreateJurusanPayload | UpdateJurusanPayload = {
         nama: data.nama,
         kode: data.kode || undefined,
-        singkatan: data.singkatan || undefined
+        singkatan: data.singkatan || undefined,
+        program_keahlian_id: data.program_keahlian_id || null
       };
 
       let response;
@@ -137,6 +141,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
           errors={errors}
           isViewMode={isViewMode}
           watch={watch}
+          setValue={setValue}
         />
 
         <ModalFooter className="mt-4 pt-6 border-t border-slate-100 dark:border-slate-800 gap-3">

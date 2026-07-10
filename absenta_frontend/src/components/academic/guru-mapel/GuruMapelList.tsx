@@ -136,6 +136,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
         confirmText: 'Ya, Hapus',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus pengampu...',
       });
       if (!ok) return;
 
@@ -149,6 +151,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
     } catch (e: any) {
       const msg = e.response?.data?.message || e.message || 'Gagal menghapus pengampu';
       toast.error(msg);
+    } finally {
+      confirm.setLoading(false);
     }
   }, [fetchData, confirm]);
 

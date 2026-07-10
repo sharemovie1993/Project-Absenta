@@ -103,9 +103,10 @@ export const downloadGuruImportTemplate = async (): Promise<Blob> => {
 
 export const importGuruFromExcel = async (
   file: File,
-  onProgress?: (percent: number) => void
+  onProgress?: (percent: number) => void,
+  socketId?: string
 ) => {
-  return importDataFromExcel('/academic/guru/import', file, onProgress);
+  return importDataFromExcel('/academic/guru/import', file, onProgress, socketId);
 };
 
 export const exportGuruToExcel = async (): Promise<Blob> => {

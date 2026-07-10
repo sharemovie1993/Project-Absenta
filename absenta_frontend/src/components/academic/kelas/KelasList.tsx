@@ -33,6 +33,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 interface KelasListProps {
   onEdit?: (kelas: Kelas) => void;
@@ -84,6 +85,7 @@ const KelasList = React.memo<KelasListProps>(({
   const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
 
   const { user, can } = useAuth();
+  const { tingkatList } = useJenjang();
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -246,6 +248,8 @@ const KelasList = React.memo<KelasListProps>(({
         confirmText: 'Ya, Hapus Kelas',
         cancelText: 'Batal',
         style: 'danger',
+        withProgress: true,
+        progressLabel: 'Menghapus kelas...',
       });
 
       if (!ok) return;
@@ -265,31 +269,32 @@ const KelasList = React.memo<KelasListProps>(({
       toast.error(errorMessage);
     } finally {
       setDeleting(false);
+      confirm.setLoading(false);
     }
   }, [fetchKelas, currentPage, debouncedSearchTerm, confirm]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const total = ids.length;
     try {
       setBulkDeleting(true);
-      const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(async (id) => {
-        const res = await deleteKelas(id);
-        if (!res.success) throw new Error(res.message || 'Gagal menghapus');
-        return id;
-      }));
-      
       const succeeded: string[] = [];
       const failed: string[] = [];
-      
-      results.forEach((r, idx) => {
-        const id = ids[idx];
-        if (r.status === 'fulfilled') {
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        try {
+          const res = await deleteKelas(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
           succeeded.push(id);
-        } else {
+        } catch {
           failed.push(id);
         }
-      });
+        // Update progress in the confirm dialog
+        const pct = Math.round(((i + 1) / total) * 100);
+        confirm.setLoading(true, pct);
+      }
 
       if (failed.length > 0) {
         toast(`Berhasil: ${succeeded.length}, Gagal: ${failed.length}`, { icon: '⚠️' });
@@ -306,8 +311,9 @@ const KelasList = React.memo<KelasListProps>(({
       toast.error(msg);
     } finally {
       setBulkDeleting(false);
+      confirm.setLoading(false);
     }
-  }, [selectedIds, fetchKelas, currentPage, searchTerm]);
+  }, [selectedIds, fetchKelas, currentPage, searchTerm, confirm]);
 
   // Table columns configuration
   const columns = useMemo(() => [
@@ -453,9 +459,7 @@ const KelasList = React.memo<KelasListProps>(({
             onValueChange={setFilterTingkat}
             options={[
               { label: "Semua Tingkat", value: "" },
-              { label: "Tingkat 10", value: "10" },
-              { label: "Tingkat 11", value: "11" },
-              { label: "Tingkat 12", value: "12" }
+              ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
             ]}
             placeholder="Pilih Tingkat"
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -717,7 +721,7 @@ const KelasList = React.memo<KelasListProps>(({
               </div>
             }
             toolbarRight={
-              selectedIds.size > 0 && canManage && (
+                 selectedIds.size > 0 && canManage && (
                  <Button
                    variant="toolbarDanger"
                    size="toolbar"
@@ -728,6 +732,8 @@ const KelasList = React.memo<KelasListProps>(({
                        confirmText: 'Hapus',
                        cancelText: 'Batal',
                        style: 'danger',
+                       withProgress: true,
+                       progressLabel: `Menghapus ${selectedIds.size} kelas...`,
                      });
                      if (ok) await handleBulkDelete();
                    }}

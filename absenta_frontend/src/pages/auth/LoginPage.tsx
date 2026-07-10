@@ -135,7 +135,16 @@ export default function LoginPage() {
     const sub = useAuthStore.getState().subscription;
     const isGerbang = (user as any)?.position_codes?.includes('GERBANG');
     const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard';
-    const target = (sub?.status === 'PENDING_PAYMENT') ? '/billing' : (location.state?.from?.pathname || defaultHome);
+    const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
+    
+    const roleName = user?.role?.name || (user as any)?.roleName || '';
+    const isAdminOrSuperadmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN';
+    
+    // Redirect to onboarding if not completed yet (only for admins)
+    const target = (sub?.status === 'PENDING_PAYMENT') 
+      ? '/billing' 
+      : (!hasCompletedOnboarding && isAdminOrSuperadmin ? '/onboarding' : (location.state?.from?.pathname || defaultHome));
+      
     return <Navigate to={target} replace />;
   }
 
@@ -306,14 +315,14 @@ export default function LoginPage() {
                 <motion.div variants={itemVariants} transition={{ delay: 0.1 }}>
                    <Input 
                       id="loginEmail"
-                      label="NISN atau Email Sekolah"
+                      label="NIP / NISN / Email Sekolah"
                       type="text"
                       required
                       size="auth"
                       leftIcon={<Mail />}
                       value={credentials.email}
                       onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                      placeholder="Masukkan NISN atau Email Anda"
+                      placeholder="Masukkan NIP, NISN atau Email Anda"
                    />
                 </motion.div>
   

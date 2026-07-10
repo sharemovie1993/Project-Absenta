@@ -12,14 +12,16 @@ import { Loader2, Search, AlertTriangle, GraduationCap, LogOut, Users, RefreshCw
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
-import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { getAcademicStats } from '../../../api/academic-stats.api';
 import { Loader } from '../../../components/ui/Loader';
+import { useJenjang } from '../../../hooks/useJenjang';
+import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
 const Modal = lazy(() => import('../../../components/ui').then(module => ({ default: module.Modal })));
 
 const StudentMutationPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const { config } = useJenjang();
 
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
@@ -69,6 +71,9 @@ const StudentMutationPage: React.FC = () => {
   useEffect(() => { if (canView) fetchKelas(); }, [canView]);
   useEffect(() => { if (canView) fetchSiswa(1); }, [canView, filterKelas, search, itemsPerPage]);
 
+  // Tingkat tertinggi yang terdaftar di tenant (diambil langsung dari jenjang sekolah, e.g. SD=6, SMP=9, SMA=12, SMK=13)
+  const maxTingkat = config.tingkatMax;
+
   const academicStats = useMemo(() => [
     { 
       title: "Siswa Aktif", 
@@ -86,12 +91,12 @@ const StudentMutationPage: React.FC = () => {
     },
     {
       title: "Target Lulus",
-      value: siswaList.filter(s => s.Kelas?.tingkat === 12 || s.Kelas?.tingkat === 9).length,
+      value: siswaList.filter(s => s.Kelas?.tingkat === maxTingkat).length,
       icon: <GraduationCap size={14} />,
       gradient: "from-emerald-600 to-teal-700",
-      subtitle: "Siswa tingkat akhir"
+      subtitle: `Siswa tingkat ${maxTingkat} (tingkat akhir)`
     }
-  ], [stats, selectedSiswa.length, siswaList]);
+  ], [stats, selectedSiswa.length, siswaList, maxTingkat]);
 
   const fetchKelas = useCallback(async () => {
     try {

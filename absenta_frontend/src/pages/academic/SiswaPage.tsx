@@ -238,13 +238,13 @@ const SiswaPage: React.FC = () => {
   
   const handleCloseImport = useCallback(() => setImportOpen(false), []);
 
-  const handleImportSiswa = useCallback(async (file: File, onProgress: (p: number) => void) => {
+  const handleImportSiswa = useCallback(async (file: File, onProgress: (p: number) => void, socketId?: string) => {
     const extraParams: Record<string, string> = {};
     if (!importConfig.useDefault) {
       if (importConfig.yearId) extraParams.tahun_pelajaran_id = importConfig.yearId;
       if (importConfig.semesterId) extraParams.semester_id = importConfig.semesterId;
     }
-    return importSiswaFromExcel(file, onProgress, undefined, extraParams);
+    return importSiswaFromExcel(file, onProgress, socketId, extraParams);
   }, [importConfig]);
 
   // Handle automatic edit modal from URL query
@@ -310,6 +310,7 @@ const SiswaPage: React.FC = () => {
             onExport={handleExport}
             isExporting={isExporting}
             refreshTrigger={refreshTrigger}
+            onRefresh={useCallback(() => setRefreshTrigger(prev => prev + 1), [])}
           />
         </SectionCard>
       </div>

@@ -428,7 +428,7 @@ function App() {
                 }>
                   <Route element={<ProtectedRoute />}>
                     <Route index element={<Navigate to={'/dashboard'} replace />} />
-                    {/* <Route path="/onboarding" element={<OnboardingDashboard />} /> */}
+                    <Route path="/onboarding" element={<OnboardingDashboard />} />
                     <Route path="/dashboard" element={
                       <ProtectedRoute requiredCapability="dashboard.view.overview">
                         <DashboardOverview />
