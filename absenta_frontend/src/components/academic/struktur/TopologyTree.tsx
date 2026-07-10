@@ -241,6 +241,9 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
         {(hasChildren || (
           ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'].includes(node.data?.roleCode) && 
           node.type === 'CATEGORY'
+        ) || (
+          node.data?.roleCode === 'BPBK' && 
+          node.type === 'STRUCT'
         )) && isExpanded && (
           <div className="relative w-full flex flex-col items-center">
             {/* Parent vertical stem (The Magnet Stem) */}
