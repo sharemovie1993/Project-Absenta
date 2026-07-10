@@ -20,10 +20,10 @@ import { lazy, Suspense } from 'react';
 import { Plus, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
 
 // Lazy load heavy components
-// Lazy load heavy components
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(module => ({ default: module.SiswaForm })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const Loader = lazy(() => import('../../components/ui/Loader').then(module => ({ default: module.Loader })));
+const SiswaHistory = lazy(() => import('../../components/academic/siswa/SiswaHistory').then(module => ({ default: module.SiswaHistory })));
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
 
@@ -56,6 +56,8 @@ const SiswaPage: React.FC = () => {
   const [availableYears, setAvailableYears] = useState<{ label: string; value: string }[]>([]);
   const [availableSemesters, setAvailableSemesters] = useState<{ label: string; value: string }[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
 
 
   // Permissions
@@ -311,6 +313,10 @@ const SiswaPage: React.FC = () => {
             isExporting={isExporting}
             refreshTrigger={refreshTrigger}
             onRefresh={useCallback(() => setRefreshTrigger(prev => prev + 1), [])}
+            onHistory={useCallback((siswa) => {
+              setHistorySiswaId(siswa.id);
+              setHistoryOpen(true);
+            }, [])}
           />
         </SectionCard>
       </div>
@@ -376,6 +382,13 @@ const SiswaPage: React.FC = () => {
           {modalState.mode && (
             <SiswaForm siswaId={modalState.siswaId} mode={modalState.mode} onSuccess={handleFormSuccess} onCancel={handleCloseModal} />
           )}
+        </Suspense>
+      </Modal>
+
+      {/* Academic History Modal */}
+      <Modal isOpen={historyOpen} onClose={() => setHistoryOpen(false)} title="Riwayat Akademik Siswa" size="xl">
+        <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
+          {historySiswaId && <SiswaHistory siswaId={historySiswaId} />}
         </Suspense>
       </Modal>
     </AcademicPageLayout>

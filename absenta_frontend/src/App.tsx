@@ -97,7 +97,6 @@ const JurusanPage = lazy(() => import('./pages/academic/JurusanPage').then(modul
 const JenisKegiatanMasterPage = lazy(() => import('./pages/academic/JenisKegiatanMasterPage'));
 const WaliKelasPage = lazy(() => import('./pages/academic/WaliKelasPage'));
 const GuruMapelPage = lazy(() => import('./pages/academic/GuruMapelPage'));
-const RegistrasiSiswaPage = lazy(() => import('./pages/academic/RegistrasiSiswaPage'));
 const StudentMutationPage = lazy(() => import('./pages/academic/mutation/StudentMutationPage'));
 const StrukturOrganisasiList = lazy(() => import('./pages/academic/struktur-organisasi/StrukturOrganisasiList'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
@@ -481,11 +480,6 @@ function App() {
                     <Route path="/academic/jurusan" element={
                       <ProtectedRoute requiredCapability="academic.structures.view.list">
                         <JurusanPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/academic/registrasi-siswa" element={
-                      <ProtectedRoute requiredCapability="academic.students.view.list">
-                        <RegistrasiSiswaPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/jenis-kegiatan" element={

@@ -236,7 +236,6 @@ async function main() {
             { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
             { label: 'Wali Kelas', icon: 'UserCheck', path: '/academic/wali-kelas', required_capability: 'academic.homeroom.manage' },
             { label: 'Guru Mapel', icon: 'ListChecks', path: '/academic/guru-mapel', required_capability: 'academic.teaching.manage' },
-            { label: 'Pembagian Kelas', icon: 'UserPlus', path: '/academic/registrasi-siswa', required_capability: 'academic.students.create' },
             { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
             { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
             { label: 'Mutasi Siswa', icon: 'UserMinus', path: '/academic/mutation', required_capability: 'academic.manage.siswa' },

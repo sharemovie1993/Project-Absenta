@@ -40,6 +40,7 @@ interface SiswaListProps {
   isExporting?: boolean;
   refreshTrigger?: number;
   onRefresh?: () => void;
+  onHistory?: (siswa: Siswa) => void;
 }
 
 const SiswaList: React.FC<SiswaListProps> = React.memo(({ 
@@ -51,7 +52,8 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   onExport,
   isExporting = false,
   refreshTrigger = 0,
-  onRefresh
+  onRefresh,
+  onHistory
 }) => {
   const isMobile = useIsMobile();
   const confirm = useConfirm();
@@ -620,6 +622,20 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               <KeyRound className="w-4 h-4" />
             </Button>
           )}
+          {onHistory && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHistory(siswa);
+              }}
+              aria-label="Riwayat Akademik Siswa"
+              className="h-8 w-8 p-0 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+            >
+              <History className="w-4 h-4" />
+            </Button>
+          )}
           {canManage && (
             <Button
               size="sm"
@@ -637,7 +653,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, canView, canSendAccess, onEdit, onView, handleDelete, handleSendParentAccess]);
+  ].filter(Boolean) as any, [canManage, canView, canSendAccess, onEdit, onView, handleDelete, handleSendParentAccess, onHistory]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
