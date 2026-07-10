@@ -238,6 +238,13 @@ export class TenantService {
         sekolahKota = sekolah.kota;
         sekolahJenjang = sekolah.jenjang;
       }
+
+      // Smart Fallback jika data jenjang di profil sekolah masih kosong/null
+      if (!sekolahJenjang || sekolahJenjang === 'null') {
+        const isSmkSubdomain = tenant.subdomain?.toLowerCase().includes('smk');
+        const isSmkName = tenant.name?.toLowerCase().includes('smk');
+        sekolahJenjang = (isSmkSubdomain || isSmkName) ? 'SMK' : null;
+      }
     } catch (e) {
       // safe fallback
     }

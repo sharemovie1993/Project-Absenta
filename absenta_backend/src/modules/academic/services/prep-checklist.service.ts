@@ -122,7 +122,16 @@ export class PrepChecklistService {
       where: { tenant_id: tenantId },
       select: { jenjang: true }
     });
-    const jenjang = (sekolahObj?.jenjang || 'SMA').toUpperCase();
+    let jenjang = (sekolahObj?.jenjang || '').toUpperCase();
+    if (!jenjang || jenjang === 'NULL') {
+      const tenantObj = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { name: true, subdomain: true }
+      });
+      const isSmkSubdomain = tenantObj?.subdomain?.toLowerCase().includes('smk');
+      const isSmkName = tenantObj?.name?.toLowerCase().includes('smk');
+      jenjang = (isSmkSubdomain || isSmkName) ? 'SMK' : 'SMA';
+    }
 
     // Fetch active tenant features (entitlements)
     const activeFeatures = await tenantEntitlementService.resolveTenantFeatures(tenantId);
