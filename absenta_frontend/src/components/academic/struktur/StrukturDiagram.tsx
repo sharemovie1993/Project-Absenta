@@ -119,13 +119,35 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'], data, jurusans);
     
     if (kepalaSekolahTree) {
+      const mgmtChildren = managementTree?.children || [];
+      const group1 = mgmtChildren.slice(0, 3);
+      const group2 = mgmtChildren.slice(3);
+
+      const childrenNodes: any[] = [];
+      if (group1.length > 0) {
+        childrenNodes.push({
+          id: 'mgmt-group-1',
+          label: 'BIDANG AKADEMIK & KESISWAAN',
+          type: 'CATEGORY',
+          children: group1
+        });
+      }
+      if (group2.length > 0) {
+        childrenNodes.push({
+          id: 'mgmt-group-2',
+          label: 'BIDANG OPERASIONAL & TATA USAHA',
+          type: 'CATEGORY',
+          children: group2
+        });
+      }
+
       map['G1'] = {
         id: 'PIMPINAN_ROOT',
         label: 'STRUKTUR PIMPINAN',
         type: 'ROOT',
         children: [{ 
           ...kepalaSekolahTree, 
-          children: managementTree?.children || [] 
+          children: childrenNodes
         }]
       };
     }
@@ -153,13 +175,36 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'], data, jurusans);
       
       if (!kepalaSekolahTree) return null;
+
+      const mgmtChildren = managementTree?.children || [];
+      const group1 = mgmtChildren.slice(0, 3);
+      const group2 = mgmtChildren.slice(3);
+
+      const childrenNodes: any[] = [];
+      if (group1.length > 0) {
+        childrenNodes.push({
+          id: 'mgmt-group-1',
+          label: 'BIDANG AKADEMIK & KESISWAAN',
+          type: 'CATEGORY',
+          children: group1
+        });
+      }
+      if (group2.length > 0) {
+        childrenNodes.push({
+          id: 'mgmt-group-2',
+          label: 'BIDANG OPERASIONAL & TATA USAHA',
+          type: 'CATEGORY',
+          children: group2
+        });
+      }
+
       return {
         id: 'PIMPINAN_ROOT',
         label: 'STRUKTUR PIMPINAN',
         type: 'ROOT' as any,
         children: [{ 
           ...kepalaSekolahTree, 
-          children: managementTree?.children || [] 
+          children: childrenNodes
         }]
       };
     }
