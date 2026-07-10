@@ -126,7 +126,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
 
   // Determine if children should be rendered vertically or horizontally
   const isRoot = node.type === 'ROOT';
-  const isTopLeader = node.type === 'STRUCT' && depth === 1; // Kepsek
+  const isTopLeader = node.type === 'STRUCT' && depth === 1 && node.data?.roleCode === 'KEPALA_SEKOLAH';
   
   const shouldBeVertical = 
     !isRoot && !isTopLeader && 
