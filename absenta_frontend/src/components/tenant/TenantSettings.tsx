@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
-import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers } from 'lucide-react';
+import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
@@ -328,36 +328,66 @@ export const TenantSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Pengaturan Sekolah</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Kelola identitas, Kop Surat dinamis, dan akun sekolah Anda.</p>
-        </div>
-        <div>
-          {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 transition-all">
-              <Edit2 className="h-4 w-4" /> Edit Profil & Kop
-            </Button>
-          ) : (
+    <div className="space-y-8 max-w-5xl mx-auto pb-16 px-4 animate-fadeIn">
+      {/* Premium Header */}
+      <div className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 -mr-20 -mt-20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-60 h-60 bg-blue-500/10 -ml-20 -mb-20 rounded-full blur-2xl"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancelEdit} disabled={saving} className="flex items-center gap-1">
-                <X className="h-4 w-4" /> Batal
-              </Button>
-              <Button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-1">
-                {saving ? <Loader className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                Simpan
-              </Button>
+              <Badge className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold px-3 py-1 text-[10px] tracking-wider uppercase rounded-full">
+                Tenant Settings
+              </Badge>
             </div>
-          )}
+            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+              Identitas & Konfigurasi Sekolah
+            </h1>
+            <p className="text-sm text-indigo-200/80 leading-relaxed max-w-xl">
+              Atur profile resmi satuan pendidikan, kustomisasi kop surat dinamis berstandar nasional, dan kelola alur kerja sistem.
+            </p>
+          </div>
+          <div className="shrink-0">
+            {!isEditing ? (
+              <Button 
+                onClick={() => setIsEditing(true)} 
+                className="bg-white hover:bg-slate-100 text-indigo-950 font-black px-6 py-5 rounded-2xl shadow-lg hover:shadow-indigo-500/10 transition-all flex items-center gap-2 border border-white"
+              >
+                <Edit2 className="h-4 w-4 text-indigo-600" /> Edit Profil & Kop
+              </Button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  onClick={handleCancelEdit} 
+                  disabled={saving} 
+                  className="bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-200 font-bold px-5 py-5 rounded-2xl border border-indigo-800/40"
+                >
+                  <X className="h-4 w-4 mr-1.5" /> Batal
+                </Button>
+                <Button 
+                  onClick={handleSaveProfile} 
+                  disabled={saving} 
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white font-black px-6 py-5 rounded-2xl shadow-lg shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+                >
+                  {saving ? <Loader className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Simpan Perubahan
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Profil Sekolah & Kop Surat Card */}
-      <Card className="shadow-sm border border-slate-100 dark:border-slate-800">
-        <CardHeader className="border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4">
-          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-200">
-            Identitas Sekolah & Konfigurasi Kop Dokumen
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
+          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+              <School className="h-4 w-4" />
+            </div>
+            Profil Sekolah & Format Dokumen Resmi
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
@@ -366,33 +396,33 @@ export const TenantSettings: React.FC = () => {
             <div className="space-y-6 animate-fadeIn">
               
               {/* ✨ LIVE PREVIEW KOP SURAT (Dinamis & Real-time) */}
-              <div className="p-5 border border-indigo-200 dark:border-indigo-900 bg-indigo-50/10 dark:bg-indigo-950/5 rounded-xl space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-xs font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="p-6 border border-indigo-100 dark:border-indigo-950/60 bg-indigo-50/10 dark:bg-indigo-950/5 rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
                     <Eye className="h-4 w-4 text-indigo-500 animate-pulse" />
-                    Live Preview Kop Surat Absenta (Dokumen Cetak)
+                    Live Preview Kop Surat Dinamis (Cetak Dokumen)
                   </span>
                   
                   {/* Preview Selector Tabs */}
-                  <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-bold">
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold">
                     <button
                       type="button"
                       onClick={() => setPreviewVariant('portrait')}
-                      className={`px-2.5 py-1 rounded-md transition-colors ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
                     >
                       A4 Portrait
                     </button>
                     <button
                       type="button"
                       onClick={() => setPreviewVariant('landscape')}
-                      className={`px-2.5 py-1 rounded-md transition-colors ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
                     >
                       A4 Landscape
                     </button>
                     <button
                       type="button"
                       onClick={() => setPreviewVariant('compact')}
-                      className={`px-2.5 py-1 rounded-md transition-colors ${previewVariant === 'compact' ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'compact' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm font-black' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'}`}
                     >
                       Thermal Receipt
                     </button>
@@ -400,7 +430,7 @@ export const TenantSettings: React.FC = () => {
                 </div>
 
                 {/* Paper sheet replica */}
-                <div className="p-6 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl shadow-inner overflow-x-auto min-h-[140px] flex items-center justify-center">
+                <div className="p-6 bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-none overflow-x-auto min-h-[140px] flex items-center justify-center border-dashed">
                   <div className={`w-full max-w-full ${previewVariant === 'compact' ? 'max-w-[280px]' : 'min-w-[480px]'}`}>
                     <PrintHeader variant={previewVariant} tenantInfo={liveTenantInfo} />
                   </div>
@@ -748,80 +778,85 @@ export const TenantSettings: React.FC = () => {
             </div>
           ) : (
             // ================= VIEW MODE =================
-            <div className="space-y-6">
+            <div className="space-y-8 px-2">
               
               {/* ✨ KOP PREVIEW (IN VIEW MODE) */}
-              <div className="p-8 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-xl shadow-inner overflow-x-auto">
+              <div className="p-6 border border-slate-100 dark:border-slate-900 bg-slate-50/30 dark:bg-slate-900/10 rounded-2xl shadow-inner">
                 <div className="flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4 mb-2">
-                    <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
                       <Eye className="h-4 w-4 text-slate-400" />
-                      Pratinjau Kop Surat (Real Configuration)
+                      Pratinjau Kop Surat Resmi
                     </span>
                     
-                    <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-[10px] font-bold">
+                    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold">
                       <button
                         type="button"
                         onClick={() => setPreviewVariant('portrait')}
-                        className={`px-3 py-1 rounded-md transition-all ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         Portrait
                       </button>
                       <button
                         type="button"
                         onClick={() => setPreviewVariant('landscape')}
-                        className={`px-3 py-1 rounded-md transition-all ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
                       >
                         Landscape
                       </button>
                     </div>
                   </div>
                   
-                  {/* Container dengan lebar statis untuk mensimulasikan kertas agar tidak terpengaruh zoom browser secara fluid */}
-                  <div className="flex justify-center bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <div className={`bg-white dark:bg-slate-950 shadow-lg p-8 border border-slate-200 dark:border-slate-800 transition-all duration-300 ${previewVariant === 'landscape' ? 'w-[1000px]' : 'w-[800px]'} min-w-[800px]`}>
+                  {/* Container replica */}
+                  <div className="flex justify-center bg-slate-100/50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800">
+                    <div className={`bg-white dark:bg-slate-950 shadow-xl p-8 border border-slate-200/60 dark:border-slate-800 transition-all duration-300 ${previewVariant === 'landscape' ? 'w-full' : 'w-[800px] max-w-full'}`}>
                       <PrintHeader variant={previewVariant} tenantInfo={liveTenantInfo} />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+              {/* Logo & Subscription Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Logo Daerah */}
-                <div className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/30">
-                  <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Logo Kiri (Pemda/Yayasan)</span>
+                <div className="flex flex-col items-center justify-center p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-slate-300 dark:bg-slate-700"></div>
+                  <span className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-wider">Logo Pemda / Yayasan</span>
                   {logoDaerahUrl ? (
-                    <img src={logoDaerahUrl} alt="Logo Pemda" className="h-16 w-auto object-contain" />
+                    <img src={logoDaerahUrl} alt="Logo Pemda" className="h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
-                    <div className="h-16 w-16 bg-slate-100 flex items-center justify-center rounded font-semibold text-[10px] text-slate-400">Belum Ada</div>
+                    <div className="h-16 w-16 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}
                 </div>
 
                 {/* Logo Sekolah */}
-                <div className="flex flex-col items-center justify-center p-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/30">
-                  <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Logo Kanan (Sekolah)</span>
+                <div className="flex flex-col items-center justify-center p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                  <span className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-wider">Logo Resmi Sekolah</span>
                   {logoUrl ? (
-                    <img src={logoUrl} alt="Logo Sekolah" className="h-16 w-auto object-contain" />
+                    <img src={logoUrl} alt="Logo Sekolah" className="h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
-                    <div className="h-16 w-16 bg-slate-100 flex items-center justify-center rounded font-semibold text-[10px] text-slate-400">Belum Ada</div>
+                    <div className="h-16 w-16 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}
                 </div>
 
                 {/* Status Langganan info */}
-                <div className="flex flex-col justify-center p-5 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 space-y-2">
+                <div className="flex flex-col justify-between p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Paket Langganan</span>
-                    <p className="text-base font-bold text-slate-800 dark:text-slate-200">{tenant.subscription_plan || 'Free'}</p>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Paket Aktif</span>
+                    <p className="text-lg font-black text-slate-800 dark:text-slate-200">{tenant.subscription_plan || 'Free Plan'}</p>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Status Akun</span>
-                    <div className="mt-0.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                        tenant.status === 'SUSPENDED' ? 'bg-yellow-100 text-yellow-800' :
-                        isPendingDeletion ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                  <div className="mt-3">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Status Lisensi</span>
+                    <div>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        tenant.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/30' :
+                        tenant.status === 'SUSPENDED' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' :
+                        isPendingDeletion ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' :
+                        'bg-slate-50 text-slate-700'
                       }`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current mr-1.5 animate-pulse"></span>
                         {isPendingDeletion ? 'Dalam Penghapusan' : tenant.status}
                       </span>
                     </div>
@@ -829,68 +864,92 @@ export const TenantSettings: React.FC = () => {
                 </div>
               </div>
 
-              {/* Detail Sekolah View */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Alamat Resmi</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{address || '-'}</p>
-                    </div>
+              {/* Detail Sekolah View (Premium Info Cards) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t border-slate-100 dark:border-slate-800 pt-8">
+                {/* Alamat */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
+                    <MapPin className="h-5 w-5" />
                   </div>
-                  <div className="flex items-start gap-2.5">
-                    <Phone className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">No. Telepon</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{phone || '-'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 border-t border-slate-100/50 pt-2.5 dark:border-slate-800/50">
-                    <Layers className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Jenjang Sekolah</span>
-                      <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{tenant.jenjang || <span className="text-rose-500 italic text-xs font-bold">Harap tentukan jenjang!</span>}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5 border-t border-slate-100/50 pt-2.5 dark:border-slate-800/50">
-                    <ShieldAlert className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Kepala Sekolah</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {tenant.kepala_sekolah || (
-                          <span className="text-slate-400 italic text-xs">Otomatis dari Struktur Organisasi</span>
-                        )}
-                      </p>
-                    </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Alamat Resmi</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">{address || '-'}</p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-start gap-2.5">
-                    <Mail className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Email Sekolah</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{email || '-'}</p>
-                    </div>
+                {/* Email */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
+                    <Mail className="h-5 w-5" />
                   </div>
-                  <div className="flex items-start gap-2.5">
-                    <Globe className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Website</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{website || '-'}</p>
-                    </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Email Resmi</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{email || '-'}</p>
                   </div>
-                  <div className="flex items-start gap-2.5 border-t border-slate-100/50 pt-2.5 dark:border-slate-800/50">
-                    <Clock className="h-4 w-4 text-slate-400 mt-1 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block">NIP Kepala Sekolah</span>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {tenant.nip_kepala || (
-                          <span className="text-slate-400 italic text-xs">Otomatis dari Struktur Organisasi</span>
-                        )}
-                      </p>
-                    </div>
+                </div>
+
+                {/* Telepon */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 rounded-xl shrink-0">
+                    <Phone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">No. Telepon</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{phone || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Website */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 rounded-xl shrink-0">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Website Resmi</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{website || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Jenjang */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 rounded-xl shrink-0">
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Jenjang Sekolah</span>
+                    <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                      {tenant.jenjang ? `${tenant.jenjang} (Sekolah Terkonfigurasi)` : (
+                        <span className="text-rose-500 italic text-[11px] font-black flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3 inline" /> Harap tentukan jenjang!
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Kepala Sekolah */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
+                    <ShieldAlert className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Kepala Sekolah</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {tenant.kepala_sekolah || <span className="text-slate-400 italic">Otomatis dari Struktur</span>}
+                    </p>
+                  </div>
+                </div>
+
+                {/* NIP Kepala Sekolah */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">NIP Kepala Sekolah</span>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {tenant.nip_kepala || <span className="text-slate-400 italic">Otomatis dari Struktur</span>}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -900,14 +959,17 @@ export const TenantSettings: React.FC = () => {
       </Card>
 
       {/* ⚖️ PENGATURAN BIMBINGAN KONSELING (BK) CARD */}
-      <Card className="shadow-sm border border-slate-100 dark:border-slate-800">
-        <CardHeader className="border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 py-4">
-          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-200">
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
+          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-violet-50 dark:bg-violet-950/40 rounded-xl text-violet-600 dark:text-violet-400">
+              <Clock className="h-4 w-4" />
+            </div>
             Konfigurasi Modul Bimbingan Konseling (BK)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/20">
+        <CardContent className="p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-6">
             <div className="space-y-1.5 max-w-lg">
               <Label className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 Persetujuan Kepala Sekolah untuk Surat Panggilan
@@ -940,14 +1002,16 @@ export const TenantSettings: React.FC = () => {
       </Card>
 
       {/* Danger Zone Card */}
-      <Card className="border-red-100 dark:border-red-950 bg-red-50/20 dark:bg-red-950/5 shadow-sm">
-        <CardHeader className="py-4 border-b border-red-50/50">
-          <CardTitle className="flex items-center text-sm font-bold text-red-700 dark:text-red-400">
-            <ShieldAlert className="h-4.5 w-4.5 mr-2" />
+      <Card className="border-red-200 dark:border-red-950 bg-red-50/10 dark:bg-red-950/5 shadow-lg rounded-3xl overflow-hidden">
+        <CardHeader className="py-5 px-8 border-b border-red-100/50 dark:border-red-900/20 bg-red-50/30 dark:bg-red-950/10">
+          <CardTitle className="flex items-center text-base font-black text-red-700 dark:text-red-400 gap-2.5">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl text-red-600 dark:text-red-400">
+              <ShieldAlert className="h-4.5 w-4.5" />
+            </div>
             Danger Zone
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-8">
           {isPendingDeletion ? (
              <div className="space-y-4">
                 <Alert className="bg-white dark:bg-gray-800 border-red-200">
