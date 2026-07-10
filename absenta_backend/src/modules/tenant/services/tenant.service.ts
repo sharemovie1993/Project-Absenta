@@ -234,10 +234,6 @@ export class TenantService {
       });
       if (sekolah) {
         sekolahKota = sekolah.kota;
-        if (!kepalaSekolahNama) {
-          kepalaSekolahNama = sekolah.kepala_sekolah;
-          kepalaSekolahNip = sekolah.nip_kepala;
-        }
       }
     } catch (e) {
       // safe fallback
