@@ -230,19 +230,36 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
  */
 export const GroupNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.group;
-  const roleCodeFromLabel = String(node.label || '').toUpperCase().replace(' ', '_');
-  const icon = getRoleIcon(roleCodeFromLabel, 18, "text-white/90 mb-1.5 flex-shrink-0 filter drop-shadow-sm");
+  const upperLabel = String(node.label || '').toUpperCase();
+  const isKoperasi = upperLabel.includes('KOPERASI');
+  // Detect icon: for Koperasi use KOPERASI code, otherwise try matching label as role code
+  const iconCode = isKoperasi ? 'KOPERASI' : upperLabel.replace(/\s+/g, '_');
+  const icon = getRoleIcon(iconCode, 18, "text-white/90 flex-shrink-0 filter drop-shadow-sm");
+
   return (
-    <div className={cn("flex flex-col w-full h-full items-center justify-center p-4", cfg.colors.bg)}>
+    <div className={cn("flex flex-row w-full h-full items-center justify-center p-4 gap-3", cfg.colors.bg)}>
       {icon}
-      <span className={cn(cfg.colors.text, "text-[10px] font-black uppercase tracking-[0.12em] text-center drop-shadow-sm whitespace-nowrap")}>
-        {node.label}
-      </span>
-      {node.subLabel && (
-        <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest mt-1">
-          {node.subLabel}
-        </span>
-      )}
+      <div className="flex flex-col items-start">
+        {isKoperasi ? (
+          <>
+            <span className={cn(cfg.colors.text, "text-[11px] font-black uppercase tracking-[0.15em] drop-shadow-sm leading-tight")}>
+              STRUKTUR ORGANISASI
+            </span>
+            <span className={cn(cfg.colors.text, "text-[11px] font-black uppercase tracking-[0.15em] drop-shadow-sm leading-tight")}>
+              KOPERASI
+            </span>
+          </>
+        ) : (
+          <span className={cn(cfg.colors.text, "text-[11px] font-black uppercase tracking-[0.15em] drop-shadow-sm")}>
+            {node.label}
+          </span>
+        )}
+        {node.subLabel && (
+          <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest mt-1">
+            {node.subLabel}
+          </span>
+        )}
+      </div>
     </div>
   );
 });
