@@ -123,21 +123,11 @@ export class PrepChecklistService {
     });
     const jenjang = (sekolahObj?.jenjang || 'SMA').toUpperCase();
 
-    let requiredCodes = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'SARPRAS', 'TU', 'BPBK'];
-    if (['SD', 'MI'].includes(jenjang)) {
-      requiredCodes = ['KEPALA_SEKOLAH', 'TU'];
-    } else if (['SMK', 'MAK'].includes(jenjang)) {
-      requiredCodes = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK'];
-    }
-
-    // Fetch all global structural positions and check active assignments
-    const globalPositions = await prisma.organizationalPosition.findMany({
+    // Fetch all active positions with assignments
+    const allPositions = await prisma.organizationalPosition.findMany({
       where: { 
         tenant_id: tenantId,
-        is_active: true,
-        code: {
-          in: requiredCodes
-        }
+        is_active: true
       },
       include: {
         organizationalAssigns: {
@@ -146,8 +136,42 @@ export class PrepChecklistService {
       }
     });
 
-    const unassignedPositions = globalPositions.filter(p => p.organizationalAssigns.length === 0);
-    const isStrukturDone = unassignedPositions.length === 0;
+    const getAssignCount = (code: string) => {
+      const pos = allPositions.find(p => p.code === code);
+      return pos ? pos.organizationalAssigns.length : 0;
+    };
+
+    const getPosName = (code: string) => {
+      const pos = allPositions.find(p => p.code === code);
+      return pos ? pos.name : code;
+    };
+
+    // 1. Kriteria Pimpinan & Manajemen
+    let requiredPimpinan = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'SARPRAS', 'TU', 'BPBK'];
+    if (['SD', 'MI'].includes(jenjang)) {
+      requiredPimpinan = ['KEPALA_SEKOLAH', 'TU'];
+    } else if (['SMK', 'MAK'].includes(jenjang)) {
+      requiredPimpinan = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK'];
+    }
+
+    const emptyPimpinan = requiredPimpinan.filter(code => getAssignCount(code) === 0);
+    const isPimpinanDone = emptyPimpinan.length === 0;
+
+    // 2. Kriteria Operasional Absensi & Kehadiran
+    const requiredAbsensi = ['GERBANG', 'PETUGAS_KELAS'];
+    const emptyAbsensi = requiredAbsensi.filter(code => {
+      if (code === 'PETUGAS_KELAS') {
+        return getAssignCount('PETUGAS_KELAS') === 0 && getAssignCount('PETUGAS_ABSENSI') === 0;
+      }
+      return getAssignCount(code) === 0;
+    });
+    const isAbsensiStrukturDone = emptyAbsensi.length === 0;
+
+    // 3. Kriteria Jabatan Kejuruan SMK
+    const isSMK = ['SMK', 'MAK'].includes(jenjang);
+    const requiredSMK = ['KAPROG', 'KABENG', 'TOOLMAN'];
+    const emptySMK = isSMK ? requiredSMK.filter(code => getAssignCount(code) === 0) : [];
+    const isSMKStrukturDone = !isSMK || emptySMK.length === 0;
 
     // Find assigned Wali Kelas for the active classes
     let assignedWaliKelasCount = 0;
@@ -258,24 +282,46 @@ export class PrepChecklistService {
       details: { total: totalGuru }
     });
 
-    // Step 4b: Struktur Organisasi Inti
+    // Step 4b: Struktur Pimpinan & Manajemen
     checklist.push({
-      key: 'struktur_organisasi',
-      label: 'Penugasan Struktur Organisasi Inti',
-      description: 'Pastikan seluruh posisi penting sekolah (Kepala Sekolah, Waka, Staf TU, Staf BK) sudah memiliki penugasan pejabat aktif.',
-      completed: isStrukturDone,
-      status_text: isStrukturDone
-        ? 'Seluruh jabatan struktur organisasi inti telah terisi'
-        : unassignedPositions.length === globalPositions.length 
-          ? 'Belum ada jabatan struktur organisasi inti terisi'
-          : `Terdapat ${unassignedPositions.length} jabatan penting yang masih kosong (${unassignedPositions.map(p => p.name).join(', ')})`,
+      key: 'struktur_pimpinan',
+      label: 'Struktur Pimpinan & Manajemen',
+      description: 'Pastikan posisi pimpinan sekolah (Kepala Sekolah, Tata Usaha, dan Wakil Kepala Sekolah) sudah terisi.',
+      completed: isPimpinanDone,
+      status_text: isPimpinanDone
+        ? 'Seluruh jabatan pimpinan utama telah terisi'
+        : `Terdapat ${emptyPimpinan.length} jabatan pimpinan penting yang masih kosong (${emptyPimpinan.map(getPosName).join(', ')})`,
       action_path: '/academic/struktur-organisasi',
-      details: {
-        total: globalPositions.length,
-        assigned: globalPositions.length - unassignedPositions.length,
-        unassigned: unassignedPositions.map(p => ({ code: p.code, name: p.name }))
-      }
+      details: { empty: emptyPimpinan }
     });
+
+    // Step 4c: Petugas Operasional Kehadiran & Gerbang
+    checklist.push({
+      key: 'struktur_operasional_absensi',
+      label: 'Petugas Operasional Kehadiran & Gerbang',
+      description: 'Daftarkan petugas penjaga mesin gerbang dan siswa petugas absensi kelas untuk operasional harian.',
+      completed: isAbsensiStrukturDone,
+      status_text: isAbsensiStrukturDone
+        ? 'Petugas gerbang dan absensi kelas telah terdaftar'
+        : `Petugas operasional absensi belum lengkap (${emptyAbsensi.map(getPosName).join(', ')})`,
+      action_path: '/academic/struktur-organisasi',
+      details: { empty: emptyAbsensi }
+    });
+
+    // Step 4d: Jabatan Fungsional Bengkel & Kaprog (Hanya SMK/MAK)
+    if (isSMK) {
+      checklist.push({
+        key: 'struktur_fungsional_smk',
+        label: 'Jabatan Fungsional Bengkel & Kaprog',
+        description: 'Tunjuk Ketua Program (Kaprog), Kepala Bengkel, dan Toolman untuk kelancaran praktik kejuruan.',
+        completed: isSMKStrukturDone,
+        status_text: isSMKStrukturDone
+          ? 'Jabatan kejuruan (Kaprog, Kabeng, Toolman) telah terisi'
+          : `Jabatan fungsional kejuruan penting belum terisi (${emptySMK.map(getPosName).join(', ')})`,
+        action_path: '/academic/struktur-organisasi',
+        details: { empty: emptySMK }
+      });
+    }
 
     // Step 5: Kenaikan Kelas (Siswa Lama) — HARUS DULUAN sebelum PPDB
     // Siswa lama naik kelas dulu agar slot kelas X kosong untuk siswa baru
