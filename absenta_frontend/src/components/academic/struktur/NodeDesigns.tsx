@@ -235,7 +235,7 @@ export const GroupNode = React.memo<NodeDesignProps>(({ node }) => {
   return (
     <div className={cn("flex flex-col w-full h-full items-center justify-center p-4", cfg.colors.bg)}>
       {icon}
-      <span className={cn(cfg.colors.text, "text-[12px] font-black uppercase tracking-[0.2em] text-center drop-shadow-sm")}>
+      <span className={cn(cfg.colors.text, "text-[10px] font-black uppercase tracking-[0.12em] text-center drop-shadow-sm whitespace-nowrap")}>
         {node.label}
       </span>
       {node.subLabel && (
