@@ -494,27 +494,37 @@ export const TenantSettings: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kepala Sekolah & NIP */}
+              {/* Kepala Sekolah & NIP (Readonly, Managed through Struktur Organisasi) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-4 border-slate-100 dark:border-slate-800">
                 <div className="grid gap-2">
-                  <Label htmlFor="kepala_sekolah" className="text-xs font-bold text-slate-500 uppercase">Nama Kepala Sekolah (Bila diisi, override Struktur)</Label>
+                  <Label htmlFor="kepala_sekolah" className="text-xs font-bold text-slate-500 uppercase">Nama Kepala Sekolah (Readonly)</Label>
                   <Input
                     id="kepala_sekolah"
-                    value={kepalaSekolah}
-                    onChange={(e) => setKepalaSekolah(e.target.value)}
-                    placeholder="Contoh: Drs. H. Budi Setiadi, M.Pd."
+                    value={kepalaSekolah || 'Belum ditugaskan'}
+                    disabled
+                    className="bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed border-slate-200/60 dark:border-slate-800/80 font-bold"
                   />
-                  <p className="text-[10px] text-slate-400">Jika dikosongkan, sistem akan otomatis mengambil nama dari Struktur Organisasi yang menduduki jabatan Kepala Sekolah.</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Data diambil otomatis berdasarkan penugasan posisi <span className="font-bold text-indigo-600 dark:text-indigo-400">Kepala Sekolah</span> di{' '}
+                    <a href="/academic/struktur-organisasi" className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800">
+                      Struktur Organisasi
+                    </a>.
+                  </p>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="nip_kepala" className="text-xs font-bold text-slate-500 uppercase">NIP Kepala Sekolah (Bila diisi, override Struktur)</Label>
+                  <Label htmlFor="nip_kepala" className="text-xs font-bold text-slate-500 uppercase">NIP Kepala Sekolah (Readonly)</Label>
                   <Input
                     id="nip_kepala"
-                    value={nipKepala}
-                    onChange={(e) => setNipKepala(e.target.value)}
-                    placeholder="Contoh: 197402092003121002"
+                    value={nipKepala || '-'}
+                    disabled
+                    className="bg-slate-50 dark:bg-slate-900 text-slate-500 cursor-not-allowed border-slate-200/60 dark:border-slate-800/80 font-bold"
                   />
-                  <p className="text-[10px] text-slate-400">Jika dikosongkan, sistem akan otomatis mengambil NIP dari Struktur Organisasi yang menduduki jabatan Kepala Sekolah.</p>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    NIP terikat langsung dengan data Guru yang ditugaskan sebagai Kepala Sekolah di{' '}
+                    <a href="/academic/struktur-organisasi" className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800">
+                      Struktur Organisasi
+                    </a>.
+                  </p>
                 </div>
               </div>
 
