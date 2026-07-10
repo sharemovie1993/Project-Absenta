@@ -162,9 +162,15 @@ export const transformDataToTree = (
       nodes.forEach(node => {
         const sortedMembers = [...(node.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
         const headMember = sortedMembers[0];
+        
+        let displayLabel = node.nama;
+        if (kode.includes('KOPERASI')) {
+          displayLabel = displayLabel.replace(/\s*KOPERASI/gi, '').trim();
+        }
+
         allRoots.push({
           id: `node-${kode}-${node.id}`,
-          label: shortenPosition(node.nama),
+          label: shortenPosition(displayLabel),
           subLabel: headMember ? headMember.name : 'Belum diisi',
           type: 'STRUCT' as any,
           data: { roleCode: kode, realStrukturId: node.id, realMemberId: headMember?.id },
@@ -183,9 +189,10 @@ export const transformDataToTree = (
   if (allRoots.length === 0) return null;
   if (allRoots.length === 1) return allRoots[0];
 
+  const isKoperasi = groupCodes.some(c => String(c).includes('KOPERASI'));
   return {
     id: `root-group-${groupCodes.join('-')}`,
-    label: 'STRUKTUR ORGANISASI',
+    label: isKoperasi ? 'STRUKTUR ORGANISASI KOPERASI' : 'STRUKTUR ORGANISASI',
     type: 'GROUP' as any,
     children: allRoots
   };
