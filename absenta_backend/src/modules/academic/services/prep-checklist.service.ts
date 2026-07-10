@@ -32,12 +32,35 @@ export class PrepChecklistService {
       select: { id: true, nama_semester: true }
     });
 
-    // 2. Identify target Year (the latest inactive year)
-    const targetYearObj = await prisma.tahunPelajaran.findFirst({
-      where: { tenant_id: tenantId, is_active: false },
-      orderBy: { tahun: 'desc' }, // Alphabetically/chronologically latest
-      select: { id: true, tahun: true }
-    });
+    // 2. Identify target Year
+    let targetYearObj = null;
+    if (currentYearObj) {
+      // Find if there is an inactive year that is newer than current active year
+      // Sort ascending to get the NEAREST future inactive year (e.g., 2027/2028 before 2028/2029)
+      targetYearObj = await prisma.tahunPelajaran.findFirst({
+        where: {
+          tenant_id: tenantId,
+          is_active: false,
+          tahun: { gt: currentYearObj.tahun }
+        },
+        orderBy: { tahun: 'asc' },
+        select: { id: true, tahun: true }
+      });
+    }
+
+    // Fallback 1: If no newer inactive year exists, target is the current active year
+    if (!targetYearObj) {
+      targetYearObj = currentYearObj;
+    }
+
+    // Fallback 2: If no active year exists either (e.g. initial setup), fallback to latest registered year
+    if (!targetYearObj) {
+      targetYearObj = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId },
+        orderBy: { tahun: 'desc' },
+        select: { id: true, tahun: true }
+      });
+    }
 
     // 3. Identify target Semester (Ganjil/1 in the target Year)
     let targetSemesterObj = null;
@@ -63,10 +86,12 @@ export class PrepChecklistService {
     }
 
     // 4. Calculate stats for checking checklist completion
-    const [totalKelas, totalGuru, countGuruMapel] = await Promise.all([
+    const [totalKelas, totalGuru, countGuruMapel, totalJurusan, totalMapel] = await Promise.all([
       prisma.kelas.count({ where: { tenant_id: tenantId, is_active: true } }),
       prisma.guru.count({ where: { tenant_id: tenantId } }),
-      prisma.guruMapel.count({ where: { tenant_id: tenantId } })
+      prisma.guruMapel.count({ where: { tenant_id: tenantId } }),
+      prisma.jurusan.count({ where: { tenant_id: tenantId } }),
+      prisma.mapel.count({ where: { tenant_id: tenantId } })
     ]);
 
     // Count new students in target year (grade X / tingkat 10)
@@ -90,6 +115,25 @@ export class PrepChecklistService {
         }
       });
     }
+
+    // Fetch all global structural positions and check active assignments
+    const globalPositions = await prisma.organizationalPosition.findMany({
+      where: { 
+        tenant_id: tenantId,
+        is_active: true,
+        code: {
+          in: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK']
+        }
+      },
+      include: {
+        organizationalAssigns: {
+          where: { is_active: true }
+        }
+      }
+    });
+
+    const unassignedPositions = globalPositions.filter(p => p.organizationalAssigns.length === 0);
+    const isStrukturDone = unassignedPositions.length === 0;
 
     // Find assigned Wali Kelas for the active classes
     let assignedWaliKelasCount = 0;
@@ -123,7 +167,7 @@ export class PrepChecklistService {
       label: 'Tahun Pelajaran Baru',
       description: 'Tambahkan Tahun Pelajaran non-aktif berikutnya di sistem.',
       completed: isYearDone,
-      status_text: isYearDone
+      status_text: isYearDone && targetYearObj
         ? `Tahun Pelajaran ${targetYearObj.tahun} telah dibuat`
         : 'Belum ada Tahun Pelajaran berikutnya yang terdaftar',
       action_path: '/academic/tahun-pelajaran',
@@ -144,6 +188,20 @@ export class PrepChecklistService {
       details: targetSemesterObj ? { id: targetSemesterObj.id, nama: targetSemesterObj.nama_semester } : undefined
     });
 
+    // Step 2b: Jurusan / Kompetensi Keahlian
+    const isJurusanDone = totalJurusan > 0;
+    checklist.push({
+      key: 'jurusan',
+      label: 'Kompetensi Keahlian (Jurusan)',
+      description: 'Daftarkan kompetensi keahlian / jurusan aktif di sekolah.',
+      completed: isJurusanDone,
+      status_text: isJurusanDone
+        ? `${totalJurusan} kompetensi keahlian terdaftar`
+        : 'Belum ada kompetensi keahlian / jurusan terdaftar',
+      action_path: '/academic/jurusan',
+      details: { total: totalJurusan }
+    });
+
     // Step 3: Kelas & Rombel
     const isKelasDone = totalKelas > 0;
     checklist.push({
@@ -158,6 +216,20 @@ export class PrepChecklistService {
       details: { total: totalKelas }
     });
 
+    // Step 3b: Mata Pelajaran (Mapel)
+    const isMapelDone = totalMapel > 0;
+    checklist.push({
+      key: 'mapel',
+      label: 'Mata Pelajaran (Mapel)',
+      description: 'Verifikasi daftar mata pelajaran yang diajarkan di sekolah.',
+      completed: isMapelDone,
+      status_text: isMapelDone
+        ? `${totalMapel} mata pelajaran aktif terdaftar`
+        : 'Belum ada mata pelajaran terdaftar',
+      action_path: '/academic/mapel',
+      details: { total: totalMapel }
+    });
+
     // Step 4: Data Guru & Tendik
     const isGuruDone = totalGuru > 0;
     checklist.push({
@@ -170,6 +242,25 @@ export class PrepChecklistService {
         : 'Belum ada data guru terdaftar',
       action_path: '/academic/guru',
       details: { total: totalGuru }
+    });
+
+    // Step 4b: Struktur Organisasi Inti
+    checklist.push({
+      key: 'struktur_organisasi',
+      label: 'Penugasan Struktur Organisasi Inti',
+      description: 'Pastikan seluruh posisi penting sekolah (Kepala Sekolah, Waka, Staf TU, Staf BK) sudah memiliki penugasan pejabat aktif.',
+      completed: isStrukturDone,
+      status_text: isStrukturDone
+        ? 'Seluruh jabatan struktur organisasi inti telah terisi'
+        : unassignedPositions.length === globalPositions.length 
+          ? 'Belum ada jabatan struktur organisasi inti terisi'
+          : `Terdapat ${unassignedPositions.length} jabatan penting yang masih kosong (${unassignedPositions.map(p => p.name).join(', ')})`,
+      action_path: '/academic/struktur-organisasi',
+      details: {
+        total: globalPositions.length,
+        assigned: globalPositions.length - unassignedPositions.length,
+        unassigned: unassignedPositions.map(p => ({ code: p.code, name: p.name }))
+      }
     });
 
     // Step 5: Kenaikan Kelas (Siswa Lama) — HARUS DULUAN sebelum PPDB
