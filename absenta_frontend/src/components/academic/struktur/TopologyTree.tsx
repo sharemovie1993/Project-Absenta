@@ -130,7 +130,11 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
   
   const shouldBeVertical = 
     !isRoot && !isTopLeader && 
-    (isVerticalLayout || node.data?.forceVertical || (node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2));
+    (node.data?.forceVertical === true || 
+     (node.data?.forceVertical !== false && 
+      (isVerticalLayout || (node.type === 'GROUP' && depth >= 1) || (node.type === 'STRUCT' && depth >= 2) || (node.type === 'CATEGORY' && depth >= 2))
+     )
+    );
   const isExpanded = true; 
 
   const cfg = STRUKTUR_CONFIG.design;

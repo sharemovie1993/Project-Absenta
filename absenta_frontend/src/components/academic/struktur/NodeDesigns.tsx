@@ -19,11 +19,27 @@ interface NodeDesignProps {
  */
 export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
-  // Detect hierarchy: Waka vs Staf
   const isStaff = node.label.toUpperCase().startsWith('STAF');
-  const headerBg = isStaff 
-    ? "bg-slate-500 dark:bg-slate-600" 
-    : "bg-indigo-700 dark:bg-indigo-600";
+  const role = node.data?.roleCode;
+
+  let headerBg = "bg-indigo-700 dark:bg-indigo-600";
+  if (isStaff) {
+    headerBg = "bg-slate-500 dark:bg-slate-600";
+  } else if (role === 'KEPALA_SEKOLAH') {
+    headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
+  } else if (role === 'KURIKULUM') {
+    headerBg = "bg-emerald-600 dark:bg-emerald-500";
+  } else if (role === 'KESISWAAN') {
+    headerBg = "bg-amber-600 dark:bg-amber-500";
+  } else if (role === 'HUBIN') {
+    headerBg = "bg-cyan-600 dark:bg-cyan-500";
+  } else if (role === 'SARPRAS') {
+    headerBg = "bg-indigo-600 dark:bg-indigo-500";
+  } else if (role === 'TU') {
+    headerBg = "bg-blue-600 dark:bg-blue-500";
+  } else if (role === 'BKK') {
+    headerBg = "bg-violet-600 dark:bg-violet-500";
+  }
 
   return (
     <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
@@ -48,9 +64,28 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
  */
 export const CategoryNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
+  
+  // Custom theme colors for different categories
+  let categoryColor = "bg-indigo-700 dark:bg-indigo-600";
+  if (node.id?.includes('mgmt-group-1') || node.id?.includes('mgmt-group-2')) {
+    categoryColor = "bg-slate-700 dark:bg-slate-800 border border-slate-600/80 rounded-xl shadow-sm";
+  } else if (node.data?.roleCode === 'KURIKULUM') {
+    categoryColor = "bg-emerald-600 dark:bg-emerald-500";
+  } else if (node.data?.roleCode === 'KESISWAAN') {
+    categoryColor = "bg-amber-600 dark:bg-amber-500";
+  } else if (node.data?.roleCode === 'HUBIN') {
+    categoryColor = "bg-cyan-600 dark:bg-cyan-500";
+  } else if (node.data?.roleCode === 'SARPRAS') {
+    categoryColor = "bg-indigo-600 dark:bg-indigo-500";
+  } else if (node.data?.roleCode === 'TU') {
+    categoryColor = "bg-blue-600 dark:bg-blue-500";
+  } else if (node.data?.roleCode === 'BKK') {
+    categoryColor = "bg-violet-600 dark:bg-violet-500";
+  }
+
   return (
-    <div className={cn(cfg.colors.top, "w-full h-[70px] flex items-center justify-center px-6")}>
-      <span className={cn(cfg.colors.textTop, "text-[11px] font-black uppercase tracking-widest block text-center leading-normal")}>
+    <div className={cn(categoryColor, "w-full h-[70px] flex items-center justify-center px-6")}>
+      <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block text-center leading-normal")}>
         {node.label}
       </span>
     </div>
@@ -91,9 +126,26 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.leadership;
   const tokens = STRUKTUR_CONFIG.design;
   const isStaff = node.label.toUpperCase().startsWith('STAF');
-  const headerBg = isStaff 
-    ? "bg-slate-500 dark:bg-slate-600" 
-    : "bg-indigo-700 dark:bg-indigo-600";
+  const role = node.data?.roleCode;
+
+  let headerBg = "bg-indigo-700 dark:bg-indigo-600";
+  if (isStaff) {
+    headerBg = "bg-slate-500 dark:bg-slate-600";
+  } else if (role === 'KEPALA_SEKOLAH') {
+    headerBg = "bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-500 dark:to-indigo-500";
+  } else if (role === 'KURIKULUM') {
+    headerBg = "bg-emerald-600 dark:bg-emerald-500";
+  } else if (role === 'KESISWAAN') {
+    headerBg = "bg-amber-600 dark:bg-amber-500";
+  } else if (role === 'HUBIN') {
+    headerBg = "bg-cyan-600 dark:bg-cyan-500";
+  } else if (role === 'SARPRAS') {
+    headerBg = "bg-indigo-600 dark:bg-indigo-500";
+  } else if (role === 'TU') {
+    headerBg = "bg-blue-600 dark:bg-blue-500";
+  } else if (role === 'BKK') {
+    headerBg = "bg-violet-600 dark:bg-violet-500";
+  }
   
   return (
     <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
