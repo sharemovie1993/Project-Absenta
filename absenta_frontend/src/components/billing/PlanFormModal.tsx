@@ -34,6 +34,9 @@ export const PlanFormModal: React.FC<PlanFormModalProps> = ({
     { id: 'KOPERASI', label: 'Modul Koperasi', disabled: false },
     { id: 'RAPORT', label: 'Modul Raport', disabled: false },
     { id: 'PPDB', label: 'Modul PPDB', disabled: false },
+    { id: 'SARPRAS', label: 'Modul Sarpras (Aset)', disabled: false },
+    { id: 'HUBIN', label: 'Modul Hubin (PKL)', disabled: false },
+    { id: 'BPBK', label: 'Modul Bimbingan Konseling (BPBK)', disabled: false },
   ];
 
   useEffect(() => {

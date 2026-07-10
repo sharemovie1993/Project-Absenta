@@ -301,7 +301,7 @@ async function main() {
 
     // --- BP/BK ---
     {
-      label: 'BP/BK', icon: 'HeartHandshake', path: null, required_features: ['CORE'], order: 25, children: [
+      label: 'BP/BK', icon: 'HeartHandshake', path: null, required_features: ['BPBK'], order: 25, children: [
         { label: 'Dashboard BPBK', icon: 'LayoutDashboard', path: '/bpbk/dashboard', required_capability: 'bk.cases.view.list' },
         { label: 'Data Kasus Siswa', icon: 'Users', path: '/bpbk/siswa', required_capability: 'bk.cases.view.list' },
         { label: 'Kasus BK', icon: 'ShieldAlert', path: '/bpbk/cases', required_capability: 'bk.cases.view.list' },
