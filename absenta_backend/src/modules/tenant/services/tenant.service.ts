@@ -34,6 +34,7 @@ export interface UpdateTenantInput {
   kepala_sekolah?: string;
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
+  jenjang?: string | null;
 }
 
 export interface TenantResponse {
