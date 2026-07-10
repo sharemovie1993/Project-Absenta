@@ -132,7 +132,7 @@ export const TenantSettings: React.FC = () => {
         setLogoDaerahUrl(data.logo_daerah_url || '');
         setKepalaSekolah(data.kepala_sekolah || '');
         setNipKepala(data.nip_kepala || '');
-        setSelectedGuruId(data.kepala_sekolah_guru_id || '');
+        setSelectedGuruId((data as any).kepala_sekolah_guru_id || '');
         setJenjang(data.jenjang || '');
         
         // Parse the dynamic lines from the database string array
