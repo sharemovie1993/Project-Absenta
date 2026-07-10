@@ -17,7 +17,8 @@ import {
   Shield, 
   UserCheck, 
   Wrench, 
-  Coins
+  Coins,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { STRUKTUR_CONFIG, shortenPosition } from './StrukturConfig';
@@ -36,6 +37,7 @@ export const getRoleIcon = (roleCode: string, size = 16, className = "") => {
   if (code === 'WALIKELAS') return <UserCheck size={size} className={className} />;
   if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(code)) return <Wrench size={size} className={className} />;
   if (code === 'KOPERASI' || code.includes('KOP')) return <Coins size={size} className={className} />;
+  if (['PETUGAS_KELAS', 'PETUGAS_ABSENSI'].includes(code)) return <ClipboardCheck size={size} className={className} />;
   return null;
 };
 
