@@ -228,12 +228,14 @@ export class TenantService {
 
     // 2. Prioritas Kedua (Fallback): Cari dari data profile Sekolah
     let sekolahKota = null;
+    let sekolahJenjang = null;
     try {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: id }
       });
       if (sekolah) {
         sekolahKota = sekolah.kota;
+        sekolahJenjang = sekolah.jenjang;
       }
     } catch (e) {
       // safe fallback
@@ -269,6 +271,7 @@ export class TenantService {
       kepala_sekolah: kepalaSekolahNama || null,
       nip_kepala: kepalaSekolahNip || null,
       kota: sekolahKota || null,
+      jenjang: sekolahJenjang || null,
     } as any;
   }
 

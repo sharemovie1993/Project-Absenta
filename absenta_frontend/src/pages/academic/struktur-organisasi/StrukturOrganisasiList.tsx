@@ -11,6 +11,7 @@ import {
 import { Loader } from '@/components/ui/Loader';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { useAuth } from '@/hooks/useAuth';
+import { useJenjang } from '@/hooks/useJenjang';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button } from '@/components/ui/Button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs';
@@ -42,15 +43,32 @@ const StrukturOrganisasiList: React.FC = () => {
 
   const { confirm } = useConfirm();
   const { user, can, isLoading: authLoading } = useAuth();
+  const { jenjang } = useJenjang();
 
   const isGlobalStrukturAdmin = can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
   const canManageAcademic = can('academic.structures.view.tree') || can('academic.structures.view.list');
 
+  const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
+
+  const visibleTabs = useMemo(() => {
+    return TABS.filter(tab => {
+      // 1. Jika bukan SMK/MAK, sembunyikan Kaprog, Kabeng, Toolman
+      if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(tab.id) && !['SMK', 'MAK'].includes(rawJenjang)) {
+        return false;
+      }
+      // 2. Jika SD/MI, sembunyikan BP/BK
+      if (tab.id === 'BP_BK' && ['SD', 'MI'].includes(rawJenjang)) {
+        return false;
+      }
+      return true;
+    });
+  }, [rawJenjang]);
+
   // Tab State — default dari query param ?tab= jika ada, fallback ke 'PIMPINAN'
   const initialTab = useMemo(() => {
     const tabParam = searchParams.get('tab');
-    return tabParam && TABS.some(t => t.id === tabParam) ? tabParam : 'PIMPINAN';
-  }, [searchParams]);
+    return tabParam && visibleTabs.some(t => t.id === tabParam) ? tabParam : 'PIMPINAN';
+  }, [searchParams, visibleTabs]);
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   // Modal State
@@ -69,9 +87,9 @@ const StrukturOrganisasiList: React.FC = () => {
   const allStrukturs = useMemo(() => Object.values(rawMap).flat() as StrukturOrganisasi[], [rawMap]);
 
   const activeTabCodes = useMemo(() => {
-    const tab = TABS.find(t => t.id === activeTab);
+    const tab = visibleTabs.find(t => t.id === activeTab);
     return tab ? tab.codes : [];
-  }, [activeTab]);
+  }, [activeTab, visibleTabs]);
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -155,7 +173,7 @@ const StrukturOrganisasiList: React.FC = () => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full lg:w-auto overflow-x-auto">
             <TabsList className="bg-slate-100/60 dark:bg-slate-800/80 p-1 flex h-auto gap-1 rounded-2xl w-max">
-              {TABS.map(tab => (
+              {visibleTabs.map(tab => (
                 <TabsTrigger 
                   key={tab.id} 
                   value={tab.id} 

@@ -116,13 +116,27 @@ export class PrepChecklistService {
       });
     }
 
+    // Fetch School Jenjang
+    const sekolahObj = await prisma.sekolah.findFirst({
+      where: { tenant_id: tenantId },
+      select: { jenjang: true }
+    });
+    const jenjang = (sekolahObj?.jenjang || 'SMA').toUpperCase();
+
+    let requiredCodes = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'SARPRAS', 'TU', 'BPBK'];
+    if (['SD', 'MI'].includes(jenjang)) {
+      requiredCodes = ['KEPALA_SEKOLAH', 'TU'];
+    } else if (['SMK', 'MAK'].includes(jenjang)) {
+      requiredCodes = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK'];
+    }
+
     // Fetch all global structural positions and check active assignments
     const globalPositions = await prisma.organizationalPosition.findMany({
       where: { 
         tenant_id: tenantId,
         is_active: true,
         code: {
-          in: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK']
+          in: requiredCodes
         }
       },
       include: {
