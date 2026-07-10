@@ -243,7 +243,8 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
           node.type === 'CATEGORY'
         ) || (
           node.data?.roleCode === 'BPBK' && 
-          node.type === 'STRUCT'
+          node.type === 'STRUCT' &&
+          node.data?.isCoordinator === true
         )) && isExpanded && (
           <div className="relative w-full flex flex-col items-center">
             {/* Parent vertical stem (The Magnet Stem) */}

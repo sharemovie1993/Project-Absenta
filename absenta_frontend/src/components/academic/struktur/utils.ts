@@ -130,7 +130,7 @@ export const transformDataToTree = (
             label: shortenPosition(unitLabel ? `${n.nama} ${unitLabel}` : n.nama),
             subLabel: headMember ? headMember.name : 'Belum diisi',
             type: 'STRUCT' as any,
-            data: { roleCode: kode, realMemberId: headMember?.id, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
+            data: { roleCode: kode, realMemberId: headMember?.id, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true, isCoordinator: true },
             children: [...(n.members || [])]
               .sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
               .slice(1)
