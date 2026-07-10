@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -12,7 +12,11 @@ import {
   Checkbox,
   ModalFooter,
   SectionCard,
-  Skeleton
+  Skeleton,
+  Label,
+  Textarea,
+  Alert,
+  AlertDescription
 } from '../../ui';
 
 // Lazy load Table to improve mobile performance (TBT)
@@ -20,7 +24,7 @@ const Table = lazy(() => import('../../ui/Table').then(module => ({ default: mod
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess } from '../../../api/academic/siswa.api';
+import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus } from '../../../api/academic/siswa.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
 import { resetUserPassword, updateUser } from '../../../api/user.api';
@@ -77,6 +81,14 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+
+  // Mutation & Graduation massal states
+  const [isMutationModalOpen, setIsMutationModalOpen] = useState(false);
+  const [isGraduationModalOpen, setIsGraduationModalOpen] = useState(false);
+  const [mutationDate, setMutationDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [mutationReason, setMutationReason] = useState('');
+  const [mutationStatus, setMutationStatus] = useState('PINDAH');
+  const [executing, setExecuting] = useState(false);
   
   // Menu states
   const [isToolbarMenuOpen, setIsToolbarMenuOpen] = useState(false);
@@ -501,6 +513,33 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       confirm.setLoading(false);
     }
   }, [confirm, fetchSiswas, currentPage, searchTerm, onRefresh]);
+
+  const handleExecuteBulk = useCallback(async (type: 'MUTATION' | 'GRADUATION') => {
+    if (!mutationDate) { toast.error('Tanggal wajib diisi.'); return; }
+    if (type === 'MUTATION' && !mutationReason) { toast.error('Alasan wajib diisi untuk mutasi.'); return; }
+    setExecuting(true);
+    try {
+      const status = type === 'GRADUATION' ? 'LULUS' : mutationStatus;
+      const reason = type === 'GRADUATION' ? 'Lulus Sekolah' : mutationReason;
+      await bulkUpdateStatus({ 
+        ids: Array.from(selectedIds), 
+        status, 
+        tanggal: new Date(mutationDate), 
+        keterangan: reason 
+      });
+      toast.success(`Berhasil memproses ${selectedIds.size} siswa.`);
+      setSelectedIds(new Set()); 
+      setIsMutationModalOpen(false); 
+      setIsGraduationModalOpen(false);
+      fetchSiswas(1, searchTerm);
+      onRefresh?.();
+    } catch (e: any) {
+      console.error('Error executing bulk status update:', e);
+      toast.error(e.response?.data?.message || e.message || 'Gagal memproses data.');
+    } finally {
+      setExecuting(false);
+    }
+  }, [mutationDate, mutationReason, mutationStatus, selectedIds, fetchSiswas, searchTerm, onRefresh]);
 
 
   // Format status badge
@@ -966,7 +1005,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               }
               toolbarRight={
                 selectedIds.size > 0 && canManage && (
-                  <div className="p-4">
+                  <div className="p-4 flex flex-wrap items-center gap-2">
                     <Button
                       variant="toolbarDanger"
                       size="toolbar"
@@ -984,7 +1023,33 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                       }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Hapus Terpilih ({selectedIds.size})
+                      Hapus ({selectedIds.size})
+                    </Button>
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => {
+                        setMutationDate(new Date().toISOString().split('T')[0]);
+                        setMutationReason('');
+                        setMutationStatus('PINDAH');
+                        setIsMutationModalOpen(true);
+                      }}
+                      className="text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/30 bg-orange-50/30 rounded-xl"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Mutasi ({selectedIds.size})
+                    </Button>
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => {
+                        setMutationDate(new Date().toISOString().split('T')[0]);
+                        setIsGraduationModalOpen(true);
+                      }}
+                      className="text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 rounded-xl"
+                    >
+                      <GraduationCap className="w-4 h-4 mr-2" />
+                      Luluskan ({selectedIds.size})
                     </Button>
                   </div>
                 )
@@ -1110,6 +1175,135 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
             </Button>
           </ModalFooter>
         </form>
+      </Modal>
+
+      {/* Mutation Modal */}
+      <Modal 
+        isOpen={isMutationModalOpen} 
+        onClose={() => setIsMutationModalOpen(false)} 
+        title={
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-xl text-orange-600">
+              <LogOut size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Proses Mutasi Siswa</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Student Academic Status</p>
+            </div>
+          </div>
+        }
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="bg-orange-50/50 dark:bg-orange-950/20 p-4 rounded-xl border border-orange-100 dark:border-orange-900/30 flex items-center gap-3">
+            <div className="h-10 w-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-orange-600 shadow-sm font-black text-lg">
+              {selectedIds.size}
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Siswa Terpilih</p>
+              <p className="text-[10px] text-slate-500 leading-relaxed uppercase tracking-widest font-black">Siap untuk diproses perubahan statusnya</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Jenis Mutasi / Keluar</Label>
+              <SearchableSelect 
+                triggerClassName="h-10 rounded-xl" 
+                value={mutationStatus} 
+                onValueChange={setMutationStatus} 
+                options={[
+                  { label: 'Pindah Sekolah', value: 'PINDAH' }, 
+                  { label: 'Undur Diri (Keluar)', value: 'KELUAR' }, 
+                  { label: 'Dikeluarkan (DO)', value: 'DO' }, 
+                  { label: 'Meninggal Dunia', value: 'MENINGGAL' }
+                ]} 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Efektif</Label>
+              <Input type="date" value={mutationDate} onChange={e => setMutationDate(e.target.value)} className="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Alasan / Keterangan <span className="text-red-500">*</span></Label>
+            <Textarea 
+              placeholder="Berikan alasan detail mutasi atau nomor surat pindah..." 
+              value={mutationReason} 
+              onChange={e => setMutationReason(e.target.value)} 
+              rows={3} 
+              className="text-xs rounded-xl border-slate-200 dark:border-slate-800 focus:ring-orange-500" 
+            />
+          </div>
+
+          <ModalFooter className="pt-6 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="ghost" onClick={() => setIsMutationModalOpen(false)} className="rounded-xl font-bold uppercase tracking-widest text-[10px]">Batal</Button>
+            <Button 
+              variant="danger" 
+              onClick={() => handleExecuteBulk('MUTATION')} 
+              disabled={executing || !mutationReason}
+              className="rounded-xl px-10 shadow-lg shadow-red-100 dark:shadow-none"
+            >
+              {executing ? <RefreshCw className="animate-spin mr-2" size={16} /> : <LogOut className="mr-2" size={16} />}
+              Konfirmasi Mutasi
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+
+      {/* Graduation Modal */}
+      <Modal 
+        isOpen={isGraduationModalOpen} 
+        onClose={() => setIsGraduationModalOpen(false)} 
+        title={
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600">
+              <GraduationCap size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Proses Kelulusan Massal</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">End of Academic Lifecycle</p>
+            </div>
+          </div>
+        }
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex items-center gap-4">
+            <div className="h-12 w-12 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-emerald-600 shadow-sm font-black text-xl border-2 border-emerald-100">
+              {selectedIds.size}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Siswa akan Diluluskan</p>
+              <p className="text-[10px] text-slate-500 leading-relaxed uppercase tracking-widest font-black">Data akan dipindahkan ke arsip alumni</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tanggal Kelulusan (Ijazah/SKL)</Label>
+            <Input type="date" value={mutationDate} onChange={e => setMutationDate(e.target.value)} className="h-11 rounded-xl font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          </div>
+
+          <Alert className="bg-amber-50/50 border-amber-100 rounded-xl py-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-[10px] font-bold text-amber-700 leading-normal ml-1">
+              Tindakan ini permanen. Siswa yang diluluskan tidak dapat lagi melakukan absensi harian dan statusnya akan berubah menjadi TIDAK AKTIF (LULUS).
+            </AlertDescription>
+          </Alert>
+
+          <ModalFooter className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="ghost" onClick={() => setIsGraduationModalOpen(false)} className="rounded-xl font-bold uppercase tracking-widest text-[10px]">Batal</Button>
+            <Button 
+              onClick={() => handleExecuteBulk('GRADUATION')} 
+              disabled={executing}
+              className="rounded-xl px-12 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 dark:shadow-none"
+            >
+              {executing ? <RefreshCw className="animate-spin mr-2" size={16} /> : <CheckSquare className="mr-2" size={16} />}
+              Luluskan Sekarang
+            </Button>
+          </ModalFooter>
+        </div>
       </Modal>
     </div>
   );

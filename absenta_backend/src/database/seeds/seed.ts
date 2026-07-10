@@ -238,8 +238,7 @@ async function main() {
             { label: 'Guru Mapel', icon: 'ListChecks', path: '/academic/guru-mapel', required_capability: 'academic.teaching.manage' },
             { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
             { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
-            { label: 'Mutasi Siswa', icon: 'UserMinus', path: '/academic/mutation', required_capability: 'academic.manage.siswa' },
-            { label: 'Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
+            { label: 'Kelulusan & Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
             { label: 'Struktur Organisasi', icon: 'Network', path: '/academic/struktur-organisasi', required_capability: 'academic.structures.view.list' },
             { label: 'Backup', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
           ]
