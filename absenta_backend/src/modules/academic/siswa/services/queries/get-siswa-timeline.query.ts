@@ -57,7 +57,8 @@ export async function getSiswaTimelineQuery(params: {
     summons,
     homeVisits,
     assessments,
-    referrals
+    referrals,
+    academicHistory
   ] = await Promise.all([
     prisma.pelanggaranSiswa.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
@@ -95,6 +96,14 @@ export async function getSiswaTimelineQuery(params: {
     prisma.rujukanKasus.findMany({
       where: { siswa_id: siswaId, tenant_id: tenantId },
       orderBy: { tanggal: 'asc' }
+    }),
+    prisma.siswaAkademik.findMany({
+      where: { siswa_id: siswaId },
+      include: {
+        kelas: { select: { nama_kelas: true } },
+        tahunPelajaran: { select: { tahun: true, created_at: true } },
+        semester: { select: { nama_semester: true, created_at: true } }
+      }
     })
   ]);
 
@@ -253,6 +262,18 @@ export async function getSiswaTimelineQuery(params: {
       user_name: 'Operator Sekolah'
     });
   }
+
+  // Add academic history entries (classes and semesters)
+  academicHistory.forEach((ah) => {
+    items.push({
+      id: `akademik-${ah.id}`,
+      tanggal: ah.semester?.created_at || ah.tahunPelajaran?.created_at || new Date(),
+      tipe: 'STATUS_AKADEMIK',
+      judul: `Penempatan Kelas: ${ah.kelas?.nama_kelas || '-'}`,
+      keterangan: `Tahun Pelajaran: ${ah.tahunPelajaran?.tahun || '-'} | Semester: ${ah.semester?.nama_semester || '-'} | Status Keaktifan: ${ah.status}`,
+      user_name: 'Sistem Akademik'
+    });
+  });
 
   // Sort chronologically (newest first)
   items.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
