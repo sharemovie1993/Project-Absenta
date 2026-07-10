@@ -465,7 +465,8 @@ export class TenantService {
                 tenant_id: tenantId,
                 name: 'Kepala Sekolah',
                 code: 'KEPALA_SEKOLAH',
-                level: 1
+                scope_type: 'global',
+                order: 5
               }
             });
           }
