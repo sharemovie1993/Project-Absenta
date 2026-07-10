@@ -43,26 +43,40 @@ const StrukturOrganisasiList: React.FC = () => {
 
   const { confirm } = useConfirm();
   const { user, can, isLoading: authLoading } = useAuth();
-  const { jenjang } = useJenjang();
+  const { jenjang, sekolah } = useJenjang();
 
   const isGlobalStrukturAdmin = can('academic.structures.create') || can('academic.structures.update') || can('academic.structures.delete');
   const canManageAcademic = can('academic.structures.view.tree') || can('academic.structures.view.list');
 
   const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
+  const activeFeatures = useMemo(() => {
+    return (sekolah as any)?.features?.map((f: string) => f.toUpperCase()) || [];
+  }, [sekolah]);
 
   const visibleTabs = useMemo(() => {
     return TABS.filter(tab => {
-      // 1. Jika bukan SMK/MAK, sembunyikan Kaprog, Kabeng, Toolman
+      // 1. Filter by active purchased features
+      if (tab.id === 'KOPERASI' && !activeFeatures.includes('KOPERASI')) {
+        return false;
+      }
+      if (tab.id === 'BP_BK' && !activeFeatures.includes('BK') && !activeFeatures.includes('BPBK')) {
+        return false;
+      }
+      if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(tab.id) && !activeFeatures.includes('HUBIN')) {
+        return false;
+      }
+
+      // 2. Jika bukan SMK/MAK, sembunyikan Kaprog, Kabeng, Toolman
       if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(tab.id) && !['SMK', 'MAK'].includes(rawJenjang)) {
         return false;
       }
-      // 2. Jika SD/MI, sembunyikan BP/BK
+      // 3. Jika SD/MI, sembunyikan BP/BK
       if (tab.id === 'BP_BK' && ['SD', 'MI'].includes(rawJenjang)) {
         return false;
       }
       return true;
     });
-  }, [rawJenjang]);
+  }, [rawJenjang, activeFeatures]);
 
   // Tab State — default dari query param ?tab= jika ada, fallback ke 'PIMPINAN'
   const initialTab = useMemo(() => {

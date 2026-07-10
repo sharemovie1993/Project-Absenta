@@ -4,6 +4,7 @@ import { seedDefaultJenisKegiatanForTenant } from '../../academic/jenis-kegiatan
 import { seedDefaultJenisPelanggaranForTenant } from '../../kesiswaan/services/jenis-pelanggaran.service';
 import { auditLogService } from '../../audit/services/audit-log.service';
 import { strukturOrganisasiService } from '../../academic/struktur-organisasi/services/struktur-organisasi.service';
+import { tenantEntitlementService } from '../../billing/services/tenant-entitlement.service';
 
 const prisma = new PrismaClient();
 
@@ -241,6 +242,8 @@ export class TenantService {
       // safe fallback
     }
 
+    const resolvedFeatures = await tenantEntitlementService.resolveTenantFeatures(id);
+
     return {
       id: tenant.id,
       name: tenant.name,
@@ -272,6 +275,7 @@ export class TenantService {
       nip_kepala: kepalaSekolahNip || null,
       kota: sekolahKota || null,
       jenjang: sekolahJenjang || null,
+      features: resolvedFeatures || [],
     } as any;
   }
 

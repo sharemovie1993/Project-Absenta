@@ -1,4 +1,5 @@
 import { prisma } from '../../../utils/prisma';
+import { tenantEntitlementService } from '../../billing/services/tenant-entitlement.service';
 
 export interface ChecklistItem {
   key: string;
@@ -123,6 +124,12 @@ export class PrepChecklistService {
     });
     const jenjang = (sekolahObj?.jenjang || 'SMA').toUpperCase();
 
+    // Fetch active tenant features (entitlements)
+    const activeFeatures = await tenantEntitlementService.resolveTenantFeatures(tenantId);
+    const hasBKModule = activeFeatures.includes('BK') || activeFeatures.includes('BPBK');
+    const hasHubinModule = activeFeatures.includes('HUBIN');
+    const hasAbsensiModule = activeFeatures.includes('ABSENSI');
+
     // Fetch all active positions with assignments
     const allPositions = await prisma.organizationalPosition.findMany({
       where: { 
@@ -147,17 +154,21 @@ export class PrepChecklistService {
     };
 
     // 1. Kriteria Pimpinan & Manajemen
-    let requiredPimpinan = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'SARPRAS', 'TU', 'BPBK'];
-    if (['SD', 'MI'].includes(jenjang)) {
-      requiredPimpinan = ['KEPALA_SEKOLAH', 'TU'];
-    } else if (['SMK', 'MAK'].includes(jenjang)) {
-      requiredPimpinan = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BPBK'];
+    let requiredPimpinan = ['KEPALA_SEKOLAH', 'TU']; // Core Basics
+    if (!['SD', 'MI'].includes(jenjang)) {
+      requiredPimpinan = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'SARPRAS', 'TU'];
+      if (hasBKModule) {
+        requiredPimpinan.push('BPBK');
+      }
+      if (hasHubinModule && ['SMK', 'MAK'].includes(jenjang)) {
+        requiredPimpinan.push('HUBIN');
+      }
     }
 
     const emptyPimpinan = requiredPimpinan.filter(code => getAssignCount(code) === 0);
     const isPimpinanDone = emptyPimpinan.length === 0;
 
-    // 2. Kriteria Operasional Absensi & Kehadiran
+    // 2. Kriteria Operasional Absensi & Kehadiran (Hanya jika modul ABSENSI aktif)
     const requiredAbsensi = ['GERBANG', 'PETUGAS_KELAS'];
     const emptyAbsensi = requiredAbsensi.filter(code => {
       if (code === 'PETUGAS_KELAS') {
@@ -167,11 +178,11 @@ export class PrepChecklistService {
     });
     const isAbsensiStrukturDone = emptyAbsensi.length === 0;
 
-    // 3. Kriteria Jabatan Kejuruan SMK
+    // 3. Kriteria Jabatan Kejuruan SMK (Hanya jika modul HUBIN aktif dan jenjang SMK)
     const isSMK = ['SMK', 'MAK'].includes(jenjang);
     const requiredSMK = ['KAPROG', 'KABENG', 'TOOLMAN'];
-    const emptySMK = isSMK ? requiredSMK.filter(code => getAssignCount(code) === 0) : [];
-    const isSMKStrukturDone = !isSMK || emptySMK.length === 0;
+    const emptySMK = (isSMK && hasHubinModule) ? requiredSMK.filter(code => getAssignCount(code) === 0) : [];
+    const isSMKStrukturDone = !isSMK || !hasHubinModule || emptySMK.length === 0;
 
     // Find assigned Wali Kelas for the active classes
     let assignedWaliKelasCount = 0;
@@ -295,21 +306,23 @@ export class PrepChecklistService {
       details: { empty: emptyPimpinan }
     });
 
-    // Step 4c: Petugas Operasional Kehadiran & Gerbang
-    checklist.push({
-      key: 'struktur_operasional_absensi',
-      label: 'Petugas Operasional Kehadiran & Gerbang',
-      description: 'Daftarkan petugas penjaga mesin gerbang dan siswa petugas absensi kelas untuk operasional harian.',
-      completed: isAbsensiStrukturDone,
-      status_text: isAbsensiStrukturDone
-        ? 'Petugas gerbang dan absensi kelas telah terdaftar'
-        : `Petugas operasional absensi belum lengkap (${emptyAbsensi.map(getPosName).join(', ')})`,
-      action_path: '/academic/struktur-organisasi',
-      details: { empty: emptyAbsensi }
-    });
+    // Step 4c: Petugas Operasional Kehadiran & Gerbang (Hanya jika modul ABSENSI aktif)
+    if (hasAbsensiModule) {
+      checklist.push({
+        key: 'struktur_operasional_absensi',
+        label: 'Petugas Operasional Kehadiran & Gerbang',
+        description: 'Daftarkan petugas penjaga mesin gerbang dan siswa petugas absensi kelas untuk operasional harian.',
+        completed: isAbsensiStrukturDone,
+        status_text: isAbsensiStrukturDone
+          ? 'Petugas gerbang dan absensi kelas telah terdaftar'
+          : `Petugas operasional absensi belum lengkap (${emptyAbsensi.map(getPosName).join(', ')})`,
+        action_path: '/academic/struktur-organisasi',
+        details: { empty: emptyAbsensi }
+      });
+    }
 
-    // Step 4d: Jabatan Fungsional Bengkel & Kaprog (Hanya SMK/MAK)
-    if (isSMK) {
+    // Step 4d: Jabatan Fungsional Bengkel & Kaprog (Hanya jika modul HUBIN aktif dan jenjang SMK)
+    if (isSMK && hasHubinModule) {
       checklist.push({
         key: 'struktur_fungsional_smk',
         label: 'Jabatan Fungsional Bengkel & Kaprog',
