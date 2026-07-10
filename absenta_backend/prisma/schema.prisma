@@ -42,6 +42,7 @@ model Tenant {
   GuruMapel               GuruMapel[]
   JenisKegiatanMaster     JenisKegiatanMaster[]
   jurusan                 Jurusan[]
+  programKeahlian         ProgramKeahlian[]
   kelas                   Kelas[]
   KelasMapel              KelasMapel[]
   mapel                   Mapel[]
@@ -661,18 +662,40 @@ model SubscriptionHistory {
 }
 
 model Jurusan {
-  id                    String                     @id @default(uuid())
-  tenant_id             String
-  nama                  String
-  kode                  String?
-  singkatan             String?
-  created_at            DateTime                   @default(now())
-  updated_at            DateTime                   @updatedAt
-  Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Kelas                 Kelas[]
-  sarprasLocations      SarprasLocation[]
-  organizationalAssigns OrganizationalAssignment[]
-  StrukturKurikulum     StrukturKurikulum[]
+  id                      String                     @id @default(uuid())
+  tenant_id               String
+  nama                    String
+  kode                    String?
+  singkatan               String?
+  program_keahlian_id     String?                    // FK ke ProgramKeahlian (Konsentrasi Keahlian)
+  created_at              DateTime                   @default(now())
+  updated_at              DateTime                   @updatedAt
+  Tenant                  Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  ProgramKeahlian         ProgramKeahlian?           @relation(fields: [program_keahlian_id], references: [id], onDelete: SetNull)
+  Kelas                   Kelas[]
+  sarprasLocations        SarprasLocation[]
+  organizationalAssigns   OrganizationalAssignment[]
+  StrukturKurikulum       StrukturKurikulum[]
+
+  @@unique([tenant_id, kode])
+  @@index([tenant_id])
+  @@index([program_keahlian_id])
+}
+
+// Model baru: Program Keahlian (Kurikulum Merdeka SMK)
+// Hierarki: Bidang Keahlian → Program Keahlian → Konsentrasi Keahlian (Jurusan)
+model ProgramKeahlian {
+  id              String    @id @default(uuid())
+  tenant_id       String
+  nama            String    // Contoh: "Teknik Elektronika", "Teknik Otomotif"
+  kode            String?   // Contoh: "TE", "TO"
+  singkatan       String?   // Singkatan opsional
+  bidang_keahlian String?   // Contoh: "Teknologi dan Rekayasa"
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  Tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Jurusan  Jurusan[] // Konsentrasi Keahlian yang berada di bawah Program Keahlian ini
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -971,6 +994,8 @@ model SiswaAkademik {
   tahun_pelajaran_id String
   semester_id        String
   status             AkademikStatus @default(AKTIF)
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @default(now()) @updatedAt
 
   siswa          Siswa          @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
   kelas          Kelas          @relation(fields: [kelas_id], references: [id], onDelete: Cascade)

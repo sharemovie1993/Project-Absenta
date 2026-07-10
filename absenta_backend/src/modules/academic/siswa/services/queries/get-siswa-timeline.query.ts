@@ -101,9 +101,10 @@ export async function getSiswaTimelineQuery(params: {
       where: { siswa_id: siswaId },
       include: {
         kelas: { select: { nama_kelas: true } },
-        tahunPelajaran: { select: { tahun: true, created_at: true } },
-        semester: { select: { nama_semester: true, created_at: true } }
-      }
+        tahunPelajaran: { select: { tahun: true } },
+        semester: { select: { nama_semester: true } }
+      },
+      orderBy: { created_at: 'asc' }
     })
   ]);
 
@@ -267,7 +268,7 @@ export async function getSiswaTimelineQuery(params: {
   academicHistory.forEach((ah) => {
     items.push({
       id: `akademik-${ah.id}`,
-      tanggal: ah.semester?.created_at || ah.tahunPelajaran?.created_at || new Date(),
+      tanggal: ah.created_at,
       tipe: 'STATUS_AKADEMIK',
       judul: `Penempatan Kelas: ${ah.kelas?.nama_kelas || '-'}`,
       keterangan: `Tahun Pelajaran: ${ah.tahunPelajaran?.tahun || '-'} | Semester: ${ah.semester?.nama_semester || '-'} | Status Keaktifan: ${ah.status}`,
