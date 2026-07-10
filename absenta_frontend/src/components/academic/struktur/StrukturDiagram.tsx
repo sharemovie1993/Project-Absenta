@@ -116,40 +116,23 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     if (!data || Object.keys(data).length === 0) return map;
 
     const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
-    const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'], data, jurusans);
+    const managementTree1 = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN'], data, jurusans);
+    const managementTree2 = transformManagementToTree(['SARPRAS', 'TU', 'BKK'], data, jurusans);
     
     if (kepalaSekolahTree) {
-      const mgmtChildren = managementTree?.children || [];
-      const group1 = mgmtChildren.slice(0, 3);
-      const group2 = mgmtChildren.slice(3);
-
-      const childrenNodes: any[] = [];
-      if (group1.length > 0) {
-        childrenNodes.push({
-          id: 'mgmt-group-1',
-          label: 'BIDANG AKADEMIK & KESISWAAN',
-          type: 'CATEGORY',
-          children: group1
-        });
-      }
-      if (group2.length > 0) {
-        childrenNodes.push({
-          id: 'mgmt-group-2',
-          label: 'BIDANG OPERASIONAL & TATA USAHA',
-          type: 'CATEGORY',
-          children: group2
-        });
-      }
-
-      map['G1'] = {
-        id: 'PIMPINAN_ROOT',
-        label: 'STRUKTUR PIMPINAN',
-        type: 'ROOT',
-        children: [{ 
-          ...kepalaSekolahTree, 
-          children: childrenNodes
-        }]
+      map['G1_TOP'] = {
+        ...kepalaSekolahTree,
+        children: managementTree1?.children || []
       };
+      
+      if (managementTree2) {
+        map['G1_BOTTOM'] = {
+          id: 'PIMPINAN_GRP2_ROOT',
+          label: 'MANAJEMEN OPERASIONAL',
+          type: 'ROOT' as any,
+          children: managementTree2.children || []
+        };
+      }
     }
 
     map['G2_TOP'] = transformDataToTree(['KAPROG', 'KABENG', 'TOOLMAN'], data, jurusans);
@@ -166,52 +149,42 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     return map;
   }, [data, jurusans]);
 
+  const currentTreeData1 = useMemo(() => {
+    if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
+
+    const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
+    const managementTree1 = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN'], data, jurusans);
+    
+    if (!kepalaSekolahTree) return null;
+    return {
+      ...kepalaSekolahTree,
+      children: managementTree1?.children || []
+    };
+  }, [data, jurusans, activeTab]);
+
+  const currentTreeData2 = useMemo(() => {
+    if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
+
+    const managementTree2 = transformManagementToTree(['SARPRAS', 'TU', 'BKK'], data, jurusans);
+    if (!managementTree2) return null;
+    return {
+      id: 'PIMPINAN_GRP2_ROOT',
+      label: 'MANAJEMEN OPERASIONAL',
+      type: 'ROOT' as any,
+      children: managementTree2.children || []
+    };
+  }, [data, jurusans, activeTab]);
+
   const currentTreeData = useMemo(() => {
     if (!data || Object.keys(data).length === 0) return null;
     if (!activeTab || !activeCodes || activeCodes.length === 0) return null;
 
     if (activeTab === 'PIMPINAN') {
-      const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
-      const managementTree = transformManagementToTree(['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'], data, jurusans);
-      
-      if (!kepalaSekolahTree) return null;
-
-      const mgmtChildren = managementTree?.children || [];
-      const group1 = mgmtChildren.slice(0, 3);
-      const group2 = mgmtChildren.slice(3);
-
-      const childrenNodes: any[] = [];
-      if (group1.length > 0) {
-        childrenNodes.push({
-          id: 'mgmt-group-1',
-          label: 'BIDANG AKADEMIK & KESISWAAN',
-          type: 'CATEGORY',
-          children: group1
-        });
-      }
-      if (group2.length > 0) {
-        childrenNodes.push({
-          id: 'mgmt-group-2',
-          label: 'BIDANG OPERASIONAL & TATA USAHA',
-          type: 'CATEGORY',
-          children: group2
-        });
-      }
-
-      return {
-        id: 'PIMPINAN_ROOT',
-        label: 'STRUKTUR PIMPINAN',
-        type: 'ROOT' as any,
-        children: [{ 
-          ...kepalaSekolahTree, 
-          children: childrenNodes
-        }]
-      };
+      return null;
     }
 
     return transformDataToTree(activeCodes, data, jurusans);
   }, [data, jurusans, activeCodes, activeTab]);
-
 
   const handleNodeAction = useCallback(async (node: TopologyNodeData | null | undefined, actionType: string = 'EDIT', element: HTMLElement | null = null) => {
     if (!node) {
@@ -261,7 +234,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
   const renderedGroups = useMemo(() => {
     return GROUP_CONFIG.map(group => {
-      const isMultiLayer = group.id === 'G2' || group.id === 'G3';
+      const isMultiLayer = group.id === 'G1' || group.id === 'G2' || group.id === 'G3';
       const treeData = stableTreeDataMap[group.id];
       const hasMultiData = isMultiLayer && (stableTreeDataMap[`${group.id}_TOP`] || stableTreeDataMap[`${group.id}_BOTTOM`]);
       
@@ -297,7 +270,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
                     </div>
                     <div className="relative flex justify-center" role="none">
                       <span className="bg-white dark:bg-slate-900 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        {group.id === 'G2' ? 'Jajaran Wali Kelas' : 'Petugas Khusus'}
+                        {group.id === 'G1' ? 'Bidang Sarana & Operasional' : group.id === 'G2' ? 'Jajaran Wali Kelas' : 'Petugas Khusus'}
                       </span>
                     </div>
                   </div>
@@ -360,7 +333,43 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   return (
     <div className="space-y-12 pb-20 min-h-screen" onClick={() => setEditingNode(null)} role="tree">
       {isTabularDiagram ? (
-        currentTreeData ? (
+        activeTab === 'PIMPINAN' ? (
+          <div className="flex flex-col gap-12">
+            {currentTreeData1 && (
+              <TreeErrorBoundary>
+                <TopologyTree 
+                  data={currentTreeData1} 
+                  editingId={editingNode?.node.id}
+                  onAction={handleNodeAction}
+                />
+              </TreeErrorBoundary>
+            )}
+            
+            {/* Divider */}
+            {currentTreeData1 && currentTreeData2 && (
+              <div className="relative py-8" role="none">
+                <div className="absolute inset-0 flex items-center" aria-hidden="true" role="none">
+                  <div className="w-full border-t-2 border-slate-200 dark:border-slate-800 border-dashed" role="none"></div>
+                </div>
+                <div className="relative flex justify-center" role="none">
+                  <span className="bg-slate-50 dark:bg-slate-950 px-6 py-1 rounded-full border border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest shadow-sm">
+                    Bidang Sarana & Operasional
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {currentTreeData2 && (
+              <TreeErrorBoundary>
+                <TopologyTree 
+                  data={currentTreeData2} 
+                  editingId={editingNode?.node.id}
+                  onAction={handleNodeAction}
+                />
+              </TreeErrorBoundary>
+            )}
+          </div>
+        ) : currentTreeData ? (
           <TreeErrorBoundary>
             <TopologyTree 
               data={currentTreeData} 
