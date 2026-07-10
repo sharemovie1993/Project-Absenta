@@ -134,13 +134,16 @@ export const transformDataToTree = (
             children: [...(n.members || [])]
               .sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
               .slice(1)
-              .map((m: any) => ({
-                id: `member-${kode}-${n.id}-${m.id}`,
-                label: m.name,
-                subLabel: cleanDetails(m.details),
-                type: 'MEMBER' as any,
-                data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id }
-              }))
+              .map((m: any) => {
+                const isBPBK = kode === 'BPBK';
+                return {
+                  id: isBPBK ? `staff-${kode}-${n.id}-${m.id}` : `member-${kode}-${n.id}-${m.id}`,
+                  label: isBPBK ? 'STAF BP/BK' : m.name,
+                  subLabel: isBPBK ? m.name : cleanDetails(m.details),
+                  type: (isBPBK ? 'STRUCT' : 'MEMBER') as any,
+                  data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id }
+                };
+              })
           };
         });
 
