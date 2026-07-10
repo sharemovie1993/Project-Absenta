@@ -4,9 +4,40 @@
  */
 
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { 
+  ChevronDown,
+  Award, 
+  BookOpen, 
+  Users, 
+  Briefcase, 
+  Settings, 
+  ClipboardList, 
+  TrendingUp, 
+  HeartHandshake, 
+  Shield, 
+  UserCheck, 
+  Wrench, 
+  Coins
+} from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { STRUKTUR_CONFIG, shortenPosition } from './StrukturConfig';
+
+export const getRoleIcon = (roleCode: string, size = 16, className = "") => {
+  const code = String(roleCode || '').toUpperCase();
+  if (code === 'KEPALA_SEKOLAH') return <Award size={size} className={className} />;
+  if (code === 'KURIKULUM') return <BookOpen size={size} className={className} />;
+  if (code === 'KESISWAAN') return <Users size={size} className={className} />;
+  if (code === 'HUBIN') return <Briefcase size={size} className={className} />;
+  if (code === 'SARPRAS') return <Settings size={size} className={className} />;
+  if (code === 'TU') return <ClipboardList size={size} className={className} />;
+  if (code === 'BKK') return <TrendingUp size={size} className={className} />;
+  if (code === 'BPBK') return <HeartHandshake size={size} className={className} />;
+  if (code === 'GERBANG') return <Shield size={size} className={className} />;
+  if (code === 'WALIKELAS') return <UserCheck size={size} className={className} />;
+  if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(code)) return <Wrench size={size} className={className} />;
+  if (code === 'KOPERASI' || code.includes('KOP')) return <Coins size={size} className={className} />;
+  return null;
+};
 
 interface NodeDesignProps {
   node: any;
@@ -47,10 +78,12 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-violet-600 dark:bg-violet-500";
   }
 
+  const icon = getRoleIcon(node.data?.roleCode, 14, "text-white/90 mr-1.5 flex-shrink-0");
   return (
     <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
       {/* Position Header */}
-      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center")}>
+      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center gap-1")}>
+        {icon}
         <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block whitespace-nowrap truncate text-center")}>
           {node.label}
         </span>
@@ -95,9 +128,11 @@ export const CategoryNode = React.memo<NodeDesignProps>(({ node }) => {
     categoryColor = "bg-violet-600 dark:bg-violet-500";
   }
 
+  const icon = getRoleIcon(node.data?.roleCode, 18, "text-white/90 mr-2 flex-shrink-0");
   return (
-    <div className={cn(categoryColor, "w-full h-[70px] flex items-center justify-center px-6")}>
-      <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block text-center leading-normal")}>
+    <div className={cn(categoryColor, "w-full h-[70px] flex items-center justify-center px-6 gap-2")}>
+      {icon}
+      <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block text-center leading-normal truncate")}>
         {node.label}
       </span>
     </div>
@@ -165,10 +200,12 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-violet-600 dark:bg-violet-500";
   }
   
+  const icon = getRoleIcon(node.data?.roleCode, 14, "text-white/90 mr-1.5 flex-shrink-0");
   return (
     <div className={cn("flex flex-col w-full h-full", cfg.minHeight)}>
       {/* Position Header - Themed based on hierarchy */}
-      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center")}>
+      <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center gap-1")}>
+        {icon}
         <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block whitespace-nowrap truncate text-center")}>
           {node.label}
         </span>
@@ -191,8 +228,11 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
  */
 export const GroupNode = React.memo<NodeDesignProps>(({ node }) => {
   const cfg = STRUKTUR_CONFIG.design.group;
+  const roleCodeFromLabel = String(node.label || '').toUpperCase().replace(' ', '_');
+  const icon = getRoleIcon(roleCodeFromLabel, 18, "text-white/90 mb-1.5 flex-shrink-0 filter drop-shadow-sm");
   return (
     <div className={cn("flex flex-col w-full h-full items-center justify-center p-4", cfg.colors.bg)}>
+      {icon}
       <span className={cn(cfg.colors.text, "text-[12px] font-black uppercase tracking-[0.2em] text-center drop-shadow-sm")}>
         {node.label}
       </span>
