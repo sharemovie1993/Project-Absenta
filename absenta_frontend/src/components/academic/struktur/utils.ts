@@ -136,11 +136,13 @@ export const transformDataToTree = (
               .slice(1)
               .map((m: any) => {
                 const isBPBK = kode === 'BPBK';
+                const isGerbang = kode === 'GERBANG';
+                const isStruct = isBPBK || isGerbang;
                 return {
-                  id: isBPBK ? `staff-${kode}-${n.id}-${m.id}` : `member-${kode}-${n.id}-${m.id}`,
-                  label: isBPBK ? 'STAF BP/BK' : m.name,
-                  subLabel: isBPBK ? m.name : cleanDetails(m.details),
-                  type: (isBPBK ? 'STRUCT' : 'MEMBER') as any,
+                  id: isStruct ? `staff-${kode}-${n.id}-${m.id}` : `member-${kode}-${n.id}-${m.id}`,
+                  label: isBPBK ? 'STAF BP/BK' : isGerbang ? 'PETUGAS GERBANG' : m.name,
+                  subLabel: isStruct ? m.name : cleanDetails(m.details),
+                  type: (isStruct ? 'STRUCT' : 'MEMBER') as any,
                   data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id }
                 };
               })
