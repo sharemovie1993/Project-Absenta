@@ -190,8 +190,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
 
           {/* Remove Member Button - Now OUTSIDE the clipping path */}
           {!isUnassigned && 
-           (node.type === 'STRUCT' || node.type === 'MEMBER') && 
-           !['KAPROG', 'KABENG', 'TOOLMAN', 'PETUGAS_KELAS', 'PETUGAS_ABSENSI'].includes(node.data?.roleCode) && (
+           (node.type === 'STRUCT' || node.type === 'MEMBER') && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
