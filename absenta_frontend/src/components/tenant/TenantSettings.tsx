@@ -758,7 +758,7 @@ export const TenantSettings: React.FC = () => {
                             }}
                             className="w-12 text-[11px] font-semibold bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-1.5 py-1 text-slate-700 dark:text-slate-300 text-center focus:outline-none"
                           />
-                          <span className="text-[9px] text-slate-400 font-bold">px</span>
+                          <span className="text-[9px] text-slate-400 font-bold">pt</span>
                         </div>
 
                         {/* Style Buttons (B, I, U) */}

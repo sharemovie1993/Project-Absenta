@@ -168,7 +168,7 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
               if (line.fontSize) {
                 // Scale size in landscape for optimal visibility
                 const scaledSize = isLandscape ? line.fontSize * 1.15 : line.fontSize;
-                inlineStyles.fontSize = `${scaledSize}px`;
+                inlineStyles.fontSize = `${scaledSize}pt`;
               }
               if (line.fontFamily) {
                 inlineStyles.fontFamily = line.fontFamily;
