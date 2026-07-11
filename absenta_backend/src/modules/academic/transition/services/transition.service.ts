@@ -70,7 +70,7 @@ export class TransitionService {
     }
     const map = new Map<string, string>();
     for (const m of mapping || []) {
-      if (byId.has(m.fromKelasId) && byId.has(m.toKelasId)) {
+      if (byId.has(m.fromKelasId) && (byId.has(m.toKelasId) || m.toKelasId === 'LULUS')) {
         map.set(m.fromKelasId, m.toKelasId);
       }
     }
@@ -192,6 +192,21 @@ export class TransitionService {
         const override = overrides.get(c.siswa_id);
         const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
         
+        // 1. Update historical status in the old year's academic record
+        await tx.siswaAkademik.update({
+          where: {
+            siswa_id_tahun_pelajaran_id_semester_id: {
+              siswa_id: c.siswa_id,
+              tahun_pelajaran_id: tahunLama.id,
+              semester_id: semesterAktifLama.id
+            }
+          },
+          data: {
+            status: status as any
+          }
+        });
+
+        // 2. Apply target mapping status for the new academic year
         if (status === 'LULUS') {
           // IDEAL GRADUATION: Keep them locked in their graduation year, preserve their graduation class, and set status to LULUS
           await tx.siswa.update({
@@ -213,7 +228,7 @@ export class TransitionService {
               kelas_id: toKelasId,
               tahun_pelajaran_id: tahunBaru.id,
               semester_id: semesterGanjilBaru.id,
-              status: status as any
+              status: 'AKTIF' // Active student in the new semester
             }
           });
           
@@ -223,13 +238,65 @@ export class TransitionService {
               kelas_id: toKelasId,
               tahun_pelajaran_id: tahunBaru.id,
               semester_id: semesterGanjilBaru.id,
-              status: status as any
+              status: 'AKTIF' // Active student in the new semester
             }
           });
         }
         count++;
       }
+
+      // 2b. Automatically manage class active status after transition
+      const allTenantClasses = await tx.kelas.findMany({
+        where: { tenant_id: tenantId }
+      });
+
+      const populatedClassIds = new Set(
+        (await tx.siswaAkademik.findMany({
+          where: {
+            tahun_pelajaran_id: tahunBaru.id,
+            semester_id: semesterGanjilBaru.id,
+            status: 'AKTIF'
+          },
+          select: { kelas_id: true }
+        })).map(sa => sa.kelas_id).filter(Boolean)
+      );
+
+      // Determine the lowest grade level (minTingkat) dynamically for the tenant (e.g. 1 for SD, 7 for SMP, 10 for SMA)
+      const minTingkat = allTenantClasses.reduce((min, k) => k.tingkat < min ? k.tingkat : min, 10);
+
+      for (const k of allTenantClasses) {
+        const shouldBeActive = populatedClassIds.has(k.id) || k.tingkat === minTingkat;
+        if (k.is_active !== shouldBeActive) {
+          await tx.kelas.update({
+            where: { id: k.id },
+            data: { is_active: shouldBeActive }
+          });
+        }
+      }
+
+      // 3. Automatically transition the active Tahun Pelajaran and Semester status
+      await tx.tahunPelajaran.updateMany({
+        where: { tenant_id: tenantId, id: { not: tahunBaru.id } },
+        data: { is_active: false }
+      });
+      await tx.tahunPelajaran.update({
+        where: { id: tahunBaru.id },
+        data: { is_active: true }
+      });
+
+      await tx.semester.updateMany({
+        where: { tenant_id: tenantId, id: { not: semesterGanjilBaru.id } },
+        data: { is_active: false }
+      });
+      await tx.semester.update({
+        where: { id: semesterGanjilBaru.id },
+        data: { is_active: true }
+      });
+
       return count;
+    }, {
+      maxWait: 45000,
+      timeout: 180000, // 3 menit timeout agar aman untuk jumlah siswa besar (ribuan)
     });
 
     if (userId) {

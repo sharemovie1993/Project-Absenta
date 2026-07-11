@@ -92,7 +92,7 @@ export class AuthService {
     // Log login attempt (safe)
     console.info(`[AUTH] Login Attempt | Input: ${email} | Tenant: ${tenant_id}`);
 
-    // Resolve NISN/NIS to Email if the input does not look like an email address
+    // Resolve NISN/NIS to Email or NIP to Email if the input does not look like an email address
     let targetEmail = email;
     if (email && !email.includes('@')) {
       const siswa = await prisma.siswa.findFirst({
@@ -116,6 +116,19 @@ export class AuthService {
         if (siswaByNis && siswaByNis.User?.email) {
           targetEmail = siswaByNis.User.email;
           console.info(`[AUTH] Resolved NIS ${email} to Email: ${targetEmail}`);
+        } else {
+          // Try to resolve Guru/Staf NIP to Email
+          const guru = await prisma.guru.findFirst({
+            where: {
+              nip: email,
+              tenant_id,
+            },
+            include: { User: true }
+          });
+          if (guru && guru.User?.email) {
+            targetEmail = guru.User.email;
+            console.info(`[AUTH] Resolved NIP ${email} to Email: ${targetEmail}`);
+          }
         }
       }
     }
@@ -179,6 +192,11 @@ export class AuthService {
       }
       console.warn(`[AUTH] User Not Found | Email: ${targetEmail}`);
       throw new Error('Invalid credentials');
+    }
+
+    if (user.status === 'INACTIVE') {
+      console.warn(`[AUTH] Login Rejected | User Inactive | Email: ${targetEmail}`);
+      throw new Error('Akun Anda dinonaktifkan. Silakan hubungi admin sekolah.');
     }
 
     // Verify password

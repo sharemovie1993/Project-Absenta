@@ -188,6 +188,7 @@ const SarprasInventoryPage = lazy(() => import('./pages/sarpras/SarprasInventory
 const SarprasLoansPage = lazy(() => import('./pages/sarpras/SarprasLoansPage'));
 const SarprasMaintenancePage = lazy(() => import('./pages/sarpras/SarprasMaintenancePage'));
 const SarprasDashboard = lazy(() => import('./pages/sarpras/SarprasDashboard'));
+const SarprasCatalogPage = lazy(() => import('./pages/sarpras/SarprasCatalogPage').then(m => ({ default: m.SarprasCatalogPage })));
 
 // Error Pages
 const ForbiddenPage = lazy(() => import('./pages/error/ForbiddenPage'));
@@ -783,6 +784,11 @@ function App() {
                     <Route path="/sarpras/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="sarpras.inventory.view.list">
                         <CetakBerkasSarprasPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/sarpras/catalog" element={
+                      <ProtectedRoute requiredRoles={['SUPERADMIN', 'ADMIN']}>
+                        <SarprasCatalogPage />
                       </ProtectedRoute>
                     } />
                     

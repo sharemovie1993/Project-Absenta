@@ -103,16 +103,16 @@ export class AcademicStatsService {
     ]);
 
     return {
-      totalJurusan,
-      totalKelas,
-      totalSiswa,
-      totalGuru,
-      totalMapel,
-      totalSemester,
-      totalTahunPelajaran,
-      activeKelasByTingkat: activeKelasByTingkat.map(g => ({ tingkat: g.tingkat, count: g._count.id })),
-      activeTahunPelajaran,
-      activeSemester
+      total_jurusan: totalJurusan,
+      total_kelas: totalKelas,
+      total_siswa: totalSiswa,
+      total_guru: totalGuru,
+      total_mapel: totalMapel,
+      total_semester: totalSemester,
+      total_tahun_pelajaran: totalTahunPelajaran,
+      active_kelas_by_tingkat: activeKelasByTingkat.map(g => ({ tingkat: g.tingkat, count: g._count.id })),
+      tahun_pelajaran: activeTahunPelajaran,
+      semester: activeSemester
     };
   }
 

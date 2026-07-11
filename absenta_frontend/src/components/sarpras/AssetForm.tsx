@@ -26,6 +26,16 @@ const KONDISI_OPTIONS = [
   { value: 'HILANG', label: 'Hilang' },
 ];
 
+const SUMBER_DANA_OPTIONS = [
+  { value: 'BOS_REGULER', label: 'BOS Reguler' },
+  { value: 'BOS_KINERJA', label: 'BOS Kinerja' },
+  { value: 'BOS_PROVINSI', label: 'BOS Provinsi (BOSDA)' },
+  { value: 'KOMITE', label: 'Komite Sekolah' },
+  { value: 'HIBAH', label: 'Hibah / Bantuan Pemerintah' },
+  { value: 'YAYASAN', label: 'Yayasan' },
+  { value: 'LAINNYA', label: 'Sumber Dana Lainnya' },
+];
+
 const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) => {
   const { subscription } = useAuthStore();
   const queryClient = useQueryClient();
@@ -46,8 +56,46 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
     is_loanable: true,
     purchase_date: '',
     price_purchase: '',
-    deskripsi: ''
+    deskripsi: '',
+    sumber_dana: ''
   });
+
+  const [catalogSuggestions, setCatalogSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Fetch catalog suggestions when typing in 'nama'
+  useEffect(() => {
+    const searchQuery = formData.nama.trim();
+    const delayDebounce = setTimeout(async () => {
+      try {
+        const res = await sarprasApi.getCatalog({ search: searchQuery || undefined });
+        if (res.success && res.data) {
+          setCatalogSuggestions(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch catalog suggestions:', err);
+      }
+    }, 200);
+
+    return () => clearTimeout(delayDebounce);
+  }, [formData.nama]);
+
+  const handleSelectSuggestion = (item: any) => {
+    const matchedCategory = categories?.data?.find(
+      (c: any) => c.nama.toLowerCase().includes(item.category_name.toLowerCase()) || 
+                  item.category_name.toLowerCase().includes(c.nama.toLowerCase())
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      nama: item.nama,
+      brand: item.brand || prev.brand,
+      is_loanable: item.is_loanable !== undefined ? item.is_loanable : prev.is_loanable,
+      category_id: matchedCategory ? matchedCategory.id : prev.category_id,
+      deskripsi: item.deskripsi || prev.deskripsi
+    }));
+    setShowSuggestions(false);
+  };
 
   // Load dropdown data
   const { data: categories } = useQuery({ 
@@ -83,7 +131,8 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
         is_loanable: a.is_loanable !== undefined ? a.is_loanable : true,
         purchase_date: a.purchase_date ? a.purchase_date.split('T')[0] : '',
         price_purchase: a.price_purchase?.toString() || '',
-        deskripsi: a.deskripsi || ''
+        deskripsi: a.deskripsi || '',
+        sumber_dana: a.sumber_dana || ''
       });
     }
   }, [assetDetail]);
@@ -170,7 +219,8 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
       ...formData,
       jumlah: Number(formData.jumlah),
       price_purchase: formData.price_purchase ? Number(formData.price_purchase) : undefined,
-      purchase_date: formData.purchase_date ? new Date(formData.purchase_date) : undefined
+      purchase_date: formData.purchase_date ? new Date(formData.purchase_date) : undefined,
+      sumber_dana: formData.sumber_dana || undefined
     };
     mutation.mutate(payload);
   }, [formData, mutation]);
@@ -198,7 +248,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2 group md:col-span-2">
+            <div className="space-y-2 group md:col-span-2 relative">
               <Label htmlFor="nama" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
                 Nama Aset <span className="text-rose-500">*</span>
               </Label>
@@ -208,8 +258,41 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
                 placeholder="Entry Nama Aset..." 
                 value={formData.nama}
                 onChange={e => setFormData(prev => ({...prev, nama: e.target.value}))}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setShowSuggestions(false), 200);
+                }}
                 className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                autoComplete="off"
               />
+              {showSuggestions && catalogSuggestions.length > 0 && (
+                <div className="absolute z-[999] left-0 right-0 top-[68px] max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in duration-100">
+                  {catalogSuggestions.map((item: any) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={() => handleSelectSuggestion(item)}
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 cursor-pointer transition-colors"
+                    >
+                      {item.image_url && (
+                        <img 
+                          src={item.image_url} 
+                          alt={item.nama} 
+                          className="w-10 h-10 rounded-lg object-cover bg-slate-100 dark:bg-slate-800 border border-slate-200/50 dark:border-slate-700/50" 
+                        />
+                      )}
+                      <div className="flex-1 flex flex-col gap-0.5">
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{item.nama}</span>
+                        <div className="flex gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                          <span>Brand: {item.brand || 'Kustom'}</span>
+                          <span>•</span>
+                          <span>Kategori: {item.category_name}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 group">
@@ -273,6 +356,20 @@ const AssetForm: React.FC<AssetFormProps> = ({ assetId, onSuccess, onCancel }) =
                 value={formData.location_id}
                 onValueChange={v => setFormData(prev => ({...prev, location_id: v}))}
                 placeholder="Pilih Lokasi"
+                triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="sumber_dana" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Sumber Dana (Asal Anggaran)
+              </Label>
+              <SearchableSelect 
+                id="sumber_dana"
+                options={SUMBER_DANA_OPTIONS} 
+                value={formData.sumber_dana}
+                onValueChange={v => setFormData(prev => ({...prev, sumber_dana: v}))}
+                placeholder="Pilih Sumber Dana"
                 triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
               />
             </div>

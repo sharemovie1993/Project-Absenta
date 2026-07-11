@@ -120,6 +120,10 @@ export default function EasyTunnelPage() {
   const [customDomainLoading, setCustomDomainLoading] = useState(false);
   const [customDomainError, setCustomDomainError] = useState<string | null>(null);
 
+  // Cloud licenses state
+  const [cloudLicenses, setCloudLicenses] = useState<any[]>([]);
+  const [loadingLicenses, setLoadingLicenses] = useState(false);
+
   const loadData = async () => {
     try {
       setError(null);
@@ -132,6 +136,28 @@ export default function EasyTunnelPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadCloudLicenses = useCallback(async (slug: string) => {
+    if (!slug) return;
+    setLoadingLicenses(true);
+    try {
+      const res = await easyTunnelApi.getMyLicenses(slug);
+      if (res.success) {
+        setCloudLicenses(res.data || []);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch cloud licenses:', err);
+    } finally {
+      setLoadingLicenses(false);
+    }
+  }, []);
+
+  const handleConnectCloudLicense = (lic: any) => {
+    setLicenseKey(lic.license_key);
+    if (lic.local_port) setLocalPort(lic.local_port);
+    if (lic.app_name) setAppName(lic.app_name);
+    setShowSetupModal(true);
   };
 
   const loadCustomDomainStatus = useCallback(async () => {
@@ -202,14 +228,18 @@ export default function EasyTunnelPage() {
           const tenant = tenantRes.data;
           setSchoolName(tenant.name || '');
           setAppName(tenant.name || 'Absenta Local Portal');
-          setSubdomainSlug(resolveSmartSlug(tenant));
+          const slug = resolveSmartSlug(tenant);
+          setSubdomainSlug(slug);
+          if (slug) {
+            loadCloudLicenses(slug);
+          }
         }
       } catch (err) {
         console.warn('Failed to pre-populate tenant data:', err);
       }
     };
     prepopulate();
-  }, []);
+  }, [loadCloudLicenses]);
 
   useEffect(() => {
     if (systemInfo?.platform) {
@@ -236,6 +266,9 @@ export default function EasyTunnelPage() {
             showSuccessToast(`Pembayaran Sukses! Lisensi Anda: ${key}`);
             setLicenseKey(key);
             setOrderStep(3);
+            if (subdomainSlug) {
+              loadCloudLicenses(subdomainSlug);
+            }
             if (interval) clearInterval(interval);
           }
         } catch (err) {
@@ -246,7 +279,7 @@ export default function EasyTunnelPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [orderStep, invoice, showSuccessToast]);
+  }, [orderStep, invoice, showSuccessToast, subdomainSlug, loadCloudLicenses]);
 
   const handleDeploymentModeChange = (mode: 'on_premise' | 'local_windows' | 'public_vps') => {
     setDeploymentMode(mode);
@@ -501,6 +534,83 @@ export default function EasyTunnelPage() {
         </div>
       )}
 
+      {/* Cloud Licenses list */}
+      {cloudLicenses.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                🔑 Kunci Lisensi Easy Tunnel Tersedia
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Berikut adalah daftar kunci lisensi yang Anda beli untuk subdomain <span className="font-semibold text-indigo-600 dark:text-indigo-400">{subdomainSlug}.{systemInfo?.tunnel_base_domain || 'absenta.id'}</span>.
+              </p>
+            </div>
+            <button 
+              onClick={() => loadCloudLicenses(subdomainSlug)}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1"
+              disabled={loadingLicenses}
+            >
+              {loadingLicenses ? 'Memuat...' : '🔄 Sinkronisasi Ulang'}
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {cloudLicenses.map(lic => {
+              const isUsedLocally = tunnels.some(t => t.license_key === lic.license_key);
+              const isExpired = lic.status === 'expired' || (lic.expires_at && new Date(lic.expires_at) < new Date());
+              return (
+                <div key={lic.license_key} className="py-3 flex justify-between items-center flex-wrap gap-3 first:pt-0 last:pb-0">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded select-all">
+                        {lic.license_key}
+                      </span>
+                      {isUsedLocally ? (
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold rounded-full">
+                          Terhubung ke Server Ini
+                        </span>
+                      ) : isExpired ? (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 text-[10px] font-bold rounded-full">
+                          Kedaluwarsa
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10px] font-bold rounded-full">
+                          Siap Dihubungkan
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Masa Aktif: <span className="font-medium">{lic.expires_at || 'Selamanya'}</span> | Nama Aplikasi: {lic.app_name || '-'} {lic.local_port ? `(Port ${lic.local_port})` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(lic.license_key);
+                        showSuccessToast('Kunci lisensi berhasil disalin ke clipboard!');
+                      }}
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg"
+                      title="Salin Kunci Lisensi"
+                    >
+                      <Copy size={16} />
+                    </button>
+                    {!isUsedLocally && !isExpired && (
+                      <button
+                        onClick={() => handleConnectCloudLicense(lic)}
+                        className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition"
+                      >
+                        🔌 Hubungkan ke Server
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Tunnels Grid */}
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -630,157 +740,241 @@ export default function EasyTunnelPage() {
       )}
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ CUSTOM DOMAIN SECTION ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5 shadow-sm">
-        <div className="flex justify-between items-start flex-wrap gap-3">
-          <div>
-            <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              🌐 Custom Domain
-            </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Akses aplikasi Anda melalui domain milik sekolah sendiri (misal: <span className="font-mono">absen.smkn1.sch.id</span>)
-            </p>
+      {tunnels.some(t => t.status === 'active') && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 space-y-5 shadow-sm">
+          <div className="flex justify-between items-start flex-wrap gap-3">
+            <div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                🌐 Custom Domain
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Akses aplikasi Anda melalui domain milik sekolah sendiri (misal: <span className="font-mono">absen.smkn1.sch.id</span>)
+              </p>
+            </div>
+            {/* Status Badge */}
+            {customDomainData?.custom_domain_status && customDomainData.custom_domain_status !== 'NONE' && (
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                customDomainData.custom_domain_status === 'ACTIVE'
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  : customDomainData.custom_domain_status === 'PENDING'
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                  : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
+              }`}>
+                {customDomainData.custom_domain_status === 'ACTIVE' && '✅ Domain Aktif'}
+                {customDomainData.custom_domain_status === 'PENDING' && '⏳ Menunggu DNS'}
+                {customDomainData.custom_domain_status === 'FAILED' && '❌ Verifikasi Gagal'}
+              </span>
+            )}
           </div>
-          {/* Status Badge */}
-          {customDomainData?.custom_domain_status && customDomainData.custom_domain_status !== 'NONE' && (
-            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-              customDomainData.custom_domain_status === 'ACTIVE'
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                : customDomainData.custom_domain_status === 'PENDING'
-                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-            }`}>
-              {customDomainData.custom_domain_status === 'ACTIVE' && '✅ Domain Aktif'}
-              {customDomainData.custom_domain_status === 'PENDING' && '⏳ Menunggu DNS'}
-              {customDomainData.custom_domain_status === 'FAILED' && '❌ Verifikasi Gagal'}
-            </span>
+
+          {/* Form Input Domain */}
+          <form onSubmit={handleSetCustomDomain} className="flex gap-2 items-start">
+            <div className="flex-1">
+              <input
+                id="custom-domain-input"
+                type="text"
+                placeholder="absen.smkn1.sch.id"
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={customDomainInput}
+                onChange={e => setCustomDomainInput(e.target.value)}
+                disabled={customDomainLoading}
+              />
+              {customDomainError && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">⚠️ {customDomainError}</p>
+              )}
+            </div>
+            <button
+              id="btn-set-custom-domain"
+              type="submit"
+              disabled={customDomainLoading || !customDomainInput.trim()}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition flex items-center gap-1.5"
+            >
+              {customDomainLoading
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Menyimpan...</>
+                : '💾 Simpan Domain'
+              }
+            </button>
+            {customDomainData?.custom_domain && (
+              <button
+                id="btn-remove-custom-domain"
+                type="button"
+                onClick={handleRemoveCustomDomain}
+                disabled={customDomainLoading}
+                className="px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-950 dark:hover:bg-red-900 text-red-700 dark:text-red-300 rounded-lg text-sm font-semibold transition"
+                title="Hapus Custom Domain"
+              >
+                🗑️
+              </button>
+            )}
+          </form>
+
+          {/* Instruksi DNS — tampil setelah domain disimpan */}
+          {customDomainData?.custom_domain && customDomainData.custom_domain_status !== 'NONE' && (
+            <div className="space-y-3">
+              {/* Status ACTIVE */}
+              {customDomainData.custom_domain_status === 'ACTIVE' && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center gap-3">
+                  <span className="text-2xl">🎉</span>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Domain aktif dan berjalan!</p>
+                    <a
+                      href={`https://${customDomainData.custom_domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-emerald-600 dark:text-emerald-400 font-mono hover:underline"
+                    >
+                      https://{customDomainData.custom_domain} ↗
+                    </a>
+                    {customDomainData.custom_domain_verified_at && (
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
+                        Diverifikasi: {new Date(customDomainData.custom_domain_verified_at).toLocaleString('id-ID')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Status FAILED */}
+              {customDomainData.custom_domain_status === 'FAILED' && (
+                <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                  <p className="text-sm font-bold text-red-800 dark:text-red-300">❌ Verifikasi DNS gagal</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    Sistem tidak dapat mendeteksi CNAME/A record untuk domain ini setelah 7 hari. Pastikan record DNS sudah benar, lalu simpan ulang domain untuk mencoba lagi.
+                  </p>
+                </div>
+              )}
+
+              {/* Panduan DNS (Selalu Tampil) */}
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl p-5 space-y-4">
+                <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">
+                  📋 Petunjuk Konfigurasi DNS Custom Domain
+                </p>
+                <p className="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed">
+                  Agar domain kustom Anda (<span className="font-semibold">{customDomainData.custom_domain}</span>) dapat terhubung ke server sekolah, silakan tambahkan **A Record** di panel pengelola domain Anda (seperti Cloudflare, Niagahoster, Rumahweb, dll.) sesuai petunjuk visual di bawah ini:
+                </p>
+                
+                <div className="space-y-4">
+                  {/* Cloudflare Mockup Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm max-w-xl mx-auto space-y-4 text-left">
+                    {/* Header */}
+                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">Add record</span>
+                      <span className="text-gray-400 dark:text-gray-500 text-sm select-none">×</span>
+                    </div>
+
+                    {/* Subtitle */}
+                    <p className="text-xs text-gray-800 dark:text-gray-200 leading-snug">
+                      <span className="font-semibold">{customDomainData.custom_domain}</span> points to <span className="font-bold">{systemInfo?.license_server_ip || '103.196.155.87'}</span>.
+                    </p>
+
+                    {/* Inputs Grid */}
+                    <div className="space-y-3 text-xs">
+                      {/* Row 1: Type & Name */}
+                      <div className="grid grid-cols-12 gap-3">
+                        <div className="col-span-3 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Type</label>
+                          <div className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-gray-800 dark:text-gray-200 font-semibold flex justify-between items-center select-none">
+                            <span>A</span>
+                            <span className="text-gray-400 text-[9px]">↕</span>
+                          </div>
+                        </div>
+                        <div className="col-span-9 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Name (subdomain prefix)</label>
+                          <div className="relative flex items-center">
+                            <input
+                              type="text"
+                              readOnly
+                              value={customDomainData.custom_domain.split('.')[0]}
+                              className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-gray-800 dark:text-gray-200 font-mono focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(customDomainData.custom_domain.split('.')[0]);
+                                showSuccessToast('Nilai Name disalin!');
+                              }}
+                              className="absolute right-2 text-indigo-500 hover:text-indigo-700 p-1"
+                              title="Salin Name"
+                            >
+                              <Copy size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Row 2: IPv4, Proxy, TTL */}
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                        <div className="col-span-6 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">IPv4 address (IP Tujuan)</label>
+                          <div className="relative flex items-center">
+                            <input
+                              type="text"
+                              readOnly
+                              value={systemInfo?.license_server_ip || '103.196.155.87'}
+                              className="w-full px-3 py-1.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg text-indigo-900 dark:text-indigo-300 font-mono font-bold focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(systemInfo?.license_server_ip || '103.196.155.87');
+                                showSuccessToast('Nilai IP disalin!');
+                              }}
+                              className="absolute right-2 text-indigo-500 hover:text-indigo-700 p-1"
+                              title="Salin IP"
+                            >
+                              <Copy size={11} />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="col-span-3 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Proxy status</label>
+                          <div className="flex items-center gap-1.5 py-1.5 select-none">
+                            <div className="w-8 h-4.5 bg-slate-200 dark:bg-slate-700 rounded-full p-0.5 relative cursor-not-allowed">
+                              <div className="w-3.5 h-3.5 bg-white rounded-full transition-transform"></div>
+                            </div>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">DNS only</span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-3 space-y-1">
+                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">TTL</label>
+                          <div className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-gray-800 dark:text-gray-200 font-medium flex justify-between items-center select-none">
+                            <span>Auto</span>
+                            <span className="text-gray-400 text-[9px]">↕</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Attributes and Buttons */}
+                    <div className="text-[10px] text-gray-400 flex items-center gap-1 pb-1 select-none cursor-not-allowed">
+                      <span>▼ Record Attributes</span>
+                      <span className="px-1 bg-slate-100 dark:bg-slate-800 text-[8px] rounded border border-slate-200">Beta</span>
+                    </div>
+
+                    <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                      <button type="button" className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-[11px] transition cursor-not-allowed">
+                        Save
+                      </button>
+                      <button type="button" className="px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-semibold rounded-lg text-[11px] transition cursor-not-allowed">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-indigo-600 dark:text-indigo-500 space-y-1 bg-indigo-100/30 dark:bg-indigo-950/20 p-3 rounded-lg border border-indigo-200/50">
+                  {customDomainData.custom_domain_status !== 'ACTIVE' && (
+                    <p>⏱️ Setelah menambahkan record, sistem akan memverifikasi otomatis setiap 5 menit. Propagasi DNS bisa memakan waktu hingga 24 jam.</p>
+                  )}
+                  <p className="font-semibold">📌 Catatan: Pastikan record lama (seperti CNAME ke subdomain platform) sudah dihapus sebelum memasang A Record ini agar tidak terjadi konflik DNS.</p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Form Input Domain */}
-        <form onSubmit={handleSetCustomDomain} className="flex gap-2 items-start">
-          <div className="flex-1">
-            <input
-              id="custom-domain-input"
-              type="text"
-              placeholder="absen.smkn1.sch.id"
-              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:bg-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={customDomainInput}
-              onChange={e => setCustomDomainInput(e.target.value)}
-              disabled={customDomainLoading}
-            />
-            {customDomainError && (
-              <p className="text-xs text-red-600 dark:text-red-400 mt-1">⚠️ {customDomainError}</p>
-            )}
-          </div>
-          <button
-            id="btn-set-custom-domain"
-            type="submit"
-            disabled={customDomainLoading || !customDomainInput.trim()}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-sm font-semibold transition flex items-center gap-1.5"
-          >
-            {customDomainLoading
-              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Menyimpan...</>
-              : '💾 Simpan Domain'
-            }
-          </button>
-          {customDomainData?.custom_domain && (
-            <button
-              id="btn-remove-custom-domain"
-              type="button"
-              onClick={handleRemoveCustomDomain}
-              disabled={customDomainLoading}
-              className="px-3 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-950 dark:hover:bg-red-900 text-red-700 dark:text-red-300 rounded-lg text-sm font-semibold transition"
-              title="Hapus Custom Domain"
-            >
-              🗑️
-            </button>
-          )}
-        </form>
-
-        {/* Instruksi DNS — tampil setelah domain disimpan */}
-        {customDomainData?.custom_domain && customDomainData.custom_domain_status !== 'NONE' && (
-          <div className="space-y-3">
-            {/* Instruksi CNAME */}
-            {customDomainData.custom_domain_status !== 'ACTIVE' && (
-              <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4 space-y-3">
-                <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">📋 Langkah Selanjutnya — Tambahkan DNS Record</p>
-                <p className="text-xs text-indigo-700 dark:text-indigo-400">
-                  Login ke panel DNS domain <span className="font-semibold">{customDomainData.custom_domain.split('.').slice(1).join('.')}</span> Anda, lalu tambahkan record berikut:
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-indigo-100 dark:bg-indigo-900">
-                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold rounded-tl-lg">Type</th>
-                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold">Name / Host</th>
-                        <th className="px-3 py-2 text-left text-indigo-800 dark:text-indigo-200 font-semibold rounded-tr-lg">Value / Target</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="bg-white dark:bg-slate-900 border-t border-indigo-100 dark:border-indigo-900">
-                        <td className="px-3 py-2 font-mono font-bold text-emerald-700 dark:text-emerald-400">CNAME</td>
-                        <td className="px-3 py-2 font-mono text-gray-800 dark:text-gray-200">
-                          {customDomainData.custom_domain.split('.')[0]}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                          app.{systemInfo?.tunnel_base_domain || 'absenta.id'}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(`app.${systemInfo?.tunnel_base_domain || 'absenta.id'}`);
-                              showSuccessToast('Nilai CNAME disalin!');
-                            }}
-                            className="text-indigo-500 hover:text-indigo-700"
-                            title="Salin"
-                          >
-                            <Copy size={12} />
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-[10px] text-indigo-600 dark:text-indigo-500 italic">
-                  ⏱️ Setelah menambahkan record, sistem akan memverifikasi otomatis setiap 5 menit. Propagasi DNS bisa memakan waktu hingga 24 jam.
-                </p>
-              </div>
-            )}
-
-            {/* Status ACTIVE */}
-            {customDomainData.custom_domain_status === 'ACTIVE' && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-center gap-3">
-                <span className="text-2xl">🎉</span>
-                <div>
-                  <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Domain aktif dan berjalan!</p>
-                  <a
-                    href={`https://${customDomainData.custom_domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-emerald-600 dark:text-emerald-400 font-mono hover:underline"
-                  >
-                    https://{customDomainData.custom_domain} ↗
-                  </a>
-                  {customDomainData.custom_domain_verified_at && (
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5">
-                      Diverifikasi: {new Date(customDomainData.custom_domain_verified_at).toLocaleString('id-ID')}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Status FAILED */}
-            {customDomainData.custom_domain_status === 'FAILED' && (
-              <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                <p className="text-sm font-bold text-red-800 dark:text-red-300">❌ Verifikasi DNS gagal</p>
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                  Sistem tidak dapat mendeteksi CNAME record untuk domain ini setelah 7 hari. Pastikan record DNS sudah benar, lalu simpan ulang domain untuk mencoba lagi.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      )}
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
 
       {/* MODAL 1: SETUP LISENSI */}

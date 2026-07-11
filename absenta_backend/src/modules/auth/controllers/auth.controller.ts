@@ -1486,6 +1486,29 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
         reply.status(404);
         return { success: false, message: 'Tenant not found' };
       }
+      
+      let isTunnelActive = false;
+      if (tenantRecord.subdomain) {
+        const tunnel = await prisma.easyTunnel.findFirst({
+          where: { slug: tenantRecord.subdomain }
+        });
+        if (tunnel && tunnel.status === 'connected') {
+          isTunnelActive = true;
+        }
+      }
+
+      // Fetch address and phone from Config table
+      const configs = await prisma.config.findMany({
+        where: {
+          tenant_id: tenantRecord.id,
+          key: { in: ['address', 'phone'] }
+        }
+      });
+      const configMap = configs.reduce((acc, curr) => {
+        acc[curr.key] = curr.value;
+        return acc;
+      }, {} as Record<string, string>);
+
       reply.status(200);
       return {
         success: true,
@@ -1495,6 +1518,9 @@ Jika Anda tidak merasa melakukan pendaftaran, abaikan pesan ini.`;
           name: tenantRecord.name,
           domain: tenantRecord.domain,
           logo_url: tenantRecord.logo_url,
+          address: configMap['address'] || null,
+          phone: configMap['phone'] || null,
+          is_tunnel_active: isTunnelActive,
         }
       };
     } catch (err) {

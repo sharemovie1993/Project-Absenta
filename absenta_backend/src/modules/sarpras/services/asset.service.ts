@@ -17,10 +17,40 @@ export class AssetService {
   }
 
   static async getCategories(tenantId: string) {
-    return prisma.sarprasCategory.findMany({
+    let categories = await prisma.sarprasCategory.findMany({
       where: { tenant_id: tenantId, deleted_at: null },
       orderBy: { nama: 'asc' }
     });
+
+    if (categories.length === 0) {
+      const totalCount = await prisma.sarprasCategory.count({
+        where: { tenant_id: tenantId }
+      });
+      if (totalCount === 0) {
+        const defaults = [
+          { nama: 'Peralatan Elektronik & IT', deskripsi: 'Komputer, Laptop, Projector, Printer, Switch/Router, dll.' },
+          { nama: 'Mebel / Furniture', deskripsi: 'Meja, Kursi, Lemari, Papan Tulis, Rak, dll.' },
+          { nama: 'Alat Tulis Kantor & Cetak', deskripsi: 'Mesin Fotokopi, Paper Shredder, Mesin Laminating, dll.' },
+          { nama: 'Alat Peraga & Praktik', deskripsi: 'Alat Lab IPA, Alat Lab Bahasa, Peralatan Bengkel, dll.' },
+          { nama: 'Sarana Olahraga & Seni', deskripsi: 'Bola, Matras, Sound System, Alat Musik, dll.' },
+          { nama: 'Perlengkapan Umum & Kebersihan', deskripsi: 'AC, Kipas Angin, Dispenser, Alat Kebersihan, P3K, dll.' },
+        ];
+        await prisma.sarprasCategory.createMany({
+          data: defaults.map(d => ({
+            tenant_id: tenantId,
+            nama: d.nama,
+            deskripsi: d.deskripsi
+          })),
+          skipDuplicates: true
+        });
+        categories = await prisma.sarprasCategory.findMany({
+          where: { tenant_id: tenantId, deleted_at: null },
+          orderBy: { nama: 'asc' }
+        });
+      }
+    }
+
+    return categories;
   }
 
   static async updateCategory(tenantId: string, id: string, data: { nama?: string; deskripsi?: string }) {
@@ -90,6 +120,7 @@ export class AssetService {
     price_purchase?: number;
     image_url?: string;
     deskripsi?: string;
+    sumber_dana?: string;
   }, scope?: any, userId?: string) {
     if (scope && !scope.tenant_wide && data.location_id) {
        if (!scope.unit_ids || !scope.unit_ids.includes(data.location_id)) {
@@ -309,7 +340,7 @@ export class AssetService {
 
     for (const assetData of assets) {
       try {
-        const { nama, kode, brand, serial_number, kondisi, jumlah, is_loanable, price_purchase, purchase_date, deskripsi, category_nama, location_nama } = assetData;
+        const { nama, kode, brand, serial_number, kondisi, jumlah, is_loanable, price_purchase, purchase_date, deskripsi, category_nama, location_nama, sumber_dana } = assetData;
         
         if (!nama) throw new Error("Nama aset wajib diisi");
 
@@ -347,7 +378,8 @@ export class AssetService {
           purchase_date: purchase_date ? new Date(purchase_date) : undefined,
           deskripsi,
           category_id,
-          location_id
+          location_id,
+          sumber_dana
         };
 
         if (kode) {
@@ -881,5 +913,54 @@ export class AssetService {
     this.publishRealtimeDashboardUpdate(tenantId);
 
     return updatedAsset;
+  }
+
+  static async getCatalog(search?: string) {
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { nama: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } },
+        { category_name: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+    return prisma.sarprasGlobalCatalog.findMany({
+      where,
+      orderBy: { nama: 'asc' },
+      take: 200 // Let's increase limit so we can list more in CRUD
+    });
+  }
+
+  static async createCatalogItem(data: any) {
+    return prisma.sarprasGlobalCatalog.create({
+      data: {
+        nama: data.nama,
+        brand: data.brand || null,
+        category_name: data.category_name,
+        is_loanable: data.is_loanable ?? true,
+        deskripsi: data.deskripsi || null,
+        image_url: data.image_url || null
+      }
+    });
+  }
+
+  static async updateCatalogItem(id: string, data: any) {
+    return prisma.sarprasGlobalCatalog.update({
+      where: { id },
+      data: {
+        nama: data.nama,
+        brand: data.brand !== undefined ? data.brand : undefined,
+        category_name: data.category_name,
+        is_loanable: data.is_loanable,
+        deskripsi: data.deskripsi,
+        image_url: data.image_url
+      }
+    });
+  }
+
+  static async deleteCatalogItem(id: string) {
+    return prisma.sarprasGlobalCatalog.delete({
+      where: { id }
+    });
   }
 }

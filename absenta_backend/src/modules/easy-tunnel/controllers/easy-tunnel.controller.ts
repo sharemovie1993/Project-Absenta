@@ -7,9 +7,13 @@ import {
   checkLicenseStatus,
   checkInvoiceStatus,
   checkSlugAvailability,
-  requestNewLicense
+  requestNewLicense,
+  fetchLicensesBySlug
 } from '../../../services/licenseClient';
 import os from 'os';
+
+
+import dns from 'dns';
 
 
 export const easyTunnelController = {
@@ -211,6 +215,19 @@ export const easyTunnelController = {
 
   async getSystemInfo(_request: any, reply: any) {
     try {
+      let license_server_ip = '';
+      try {
+        const targetDomain = process.env.MAIN_DOMAIN || 'smk6jkt.absenta.id';
+        const resolver = new dns.promises.Resolver();
+        resolver.setServers(['1.1.1.1', '8.8.8.8']);
+        const resolvedIps = await resolver.resolve4(targetDomain);
+        if (resolvedIps && resolvedIps.length > 0) {
+          license_server_ip = resolvedIps[0];
+        }
+      } catch (dnsErr: any) {
+        console.error('[EasyTunnel] Failed to resolve target domain IP via public DNS:', dnsErr.message);
+      }
+
       const info = {
         platform: os.platform(),
         release: os.release(),
@@ -218,7 +235,9 @@ export const easyTunnelController = {
         hostname: os.hostname(),
         uptime: os.uptime(),
         wg_installed: WireguardManager.isWireGuardInstalled(),
-        tunnel_base_domain: process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id'
+        tunnel_base_domain: process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id',
+        license_server_ip,
+        deploy_scenario: process.env.DEPLOY_SCENARIO || 'hybrid'
       };
       return reply.send({ success: true, data: info });
     } catch (err: any) {
@@ -267,6 +286,17 @@ export const easyTunnelController = {
       return reply.send({ success: true, data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] getCustomDomainStatus error:', err);
+      return reply.status(500).send({ success: false, message: err.message });
+    }
+  },
+  
+  async getMyLicenses(request: any, reply: any) {
+    try {
+      const { slug } = request.params;
+      const data = await fetchLicensesBySlug(slug);
+      return reply.send({ success: true, data });
+    } catch (err: any) {
+      console.error('[EasyTunnel] getMyLicenses error:', err);
       return reply.status(500).send({ success: false, message: err.message });
     }
   }

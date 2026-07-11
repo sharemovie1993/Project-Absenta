@@ -16,6 +16,7 @@ class TransitionController {
       const result = await transitionService.preview(scope, input);
       return reply.status(200).send({ success: true, message: 'OK', data: result });
     } catch (e: any) {
+      console.error('TRANSITION PREVIEW ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }
   }
@@ -34,6 +35,7 @@ class TransitionController {
       const result = await transitionService.execute(scope, input, request.user?.id);
       return reply.status(200).send({ success: true, message: 'OK', data: result });
     } catch (e: any) {
+      console.error('TRANSITION EXECUTE ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }
   }

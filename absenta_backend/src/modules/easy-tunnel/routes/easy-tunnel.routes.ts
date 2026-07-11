@@ -26,6 +26,7 @@ export async function easyTunnelRoutes(fastify: any) {
   fastify.post('/order/new', opts, easyTunnelController.newOrder.bind(easyTunnelController));
   fastify.get('/order/payment-status/:key', opts, easyTunnelController.checkPaymentStatus.bind(easyTunnelController));
   fastify.get('/order/invoice-status/:number', opts, easyTunnelController.checkInvoiceStatus.bind(easyTunnelController));
+  fastify.get('/order/licenses/:slug', opts, easyTunnelController.getMyLicenses.bind(easyTunnelController));
 
   // System & Installation Info
   fastify.get('/system/info', opts, easyTunnelController.getSystemInfo.bind(easyTunnelController));

@@ -156,6 +156,7 @@ export class KelasService {
           select: {
             id: true,
             nama: true,
+            program_keahlian_id: true,
           },
         },
         OrganizationalAssignments: {
@@ -169,7 +170,9 @@ export class KelasService {
         },
         _count: {
           select: {
-            Siswa: true,
+            Siswa: {
+              where: { status: 'AKTIF' }
+            },
           },
         },
       },
@@ -211,6 +214,7 @@ export class KelasService {
           select: {
             id: true,
             nama: true,
+            program_keahlian_id: true,
           },
         },
         OrganizationalAssignments: {
@@ -224,7 +228,9 @@ export class KelasService {
         },
         _count: {
           select: {
-            Siswa: true,
+            Siswa: {
+              where: { status: 'AKTIF' }
+            },
           },
         },
       },
@@ -406,14 +412,29 @@ export class KelasService {
 
       // Automatically create a default Sarpras Location for the new Class
       try {
-        await tx.sarprasLocation.create({
-          data: {
-            tenant_id: tenantId,
-            nama: `Ruang Kelas ${kelas.nama_kelas}`,
-            kelas_id: kelas.id,
-            deskripsi: `Ruang kelas untuk ${kelas.nama_kelas} tingkat ${kelas.tingkat}`
-          }
+        const existingLoc = await tx.sarprasLocation.findFirst({
+          where: { tenant_id: tenantId, nama: `Ruang Kelas ${kelas.nama_kelas}` }
         });
+        if (existingLoc) {
+          await tx.sarprasLocation.update({
+            where: { id: existingLoc.id },
+            data: {
+              kelas_id: kelas.id,
+              unit_id: kelas.jurusan_id,
+              deleted_at: null
+            }
+          });
+        } else {
+          await tx.sarprasLocation.create({
+            data: {
+              tenant_id: tenantId,
+              nama: `Ruang Kelas ${kelas.nama_kelas}`,
+              kelas_id: kelas.id,
+              unit_id: kelas.jurusan_id,
+              deskripsi: `Ruang kelas untuk ${kelas.nama_kelas} tingkat ${kelas.tingkat}`
+            }
+          });
+        }
       } catch (err) {
         console.warn('Failed to create automatic Sarpras Location for Kelas:', err);
       }
@@ -607,19 +628,52 @@ export class KelasService {
         }
       }
 
-      // Automatically update the default Sarpras Location for the Class if name changes
-      if (input.nama_kelas !== undefined) {
-        try {
-          await tx.sarprasLocation.updateMany({
-            where: { kelas_id: kelasId, tenant_id: existingKelas.tenant_id },
+      // Automatically create/update the default Sarpras Location for the Class
+      try {
+        const existingLoc = await tx.sarprasLocation.findFirst({
+          where: { kelas_id: kelasId, tenant_id: existingKelas.tenant_id }
+        });
+        const targetName = `Ruang Kelas ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas}`;
+        const targetDesc = `Ruang kelas untuk ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas} tingkat ${input.tingkat !== undefined ? input.tingkat : existingKelas.tingkat}`;
+        const targetUnitId = input.jurusan_id !== undefined ? input.jurusan_id : existingKelas.jurusan_id;
+
+        if (existingLoc) {
+          await tx.sarprasLocation.update({
+            where: { id: existingLoc.id },
             data: {
-              nama: `Ruang Kelas ${input.nama_kelas}`,
-              deskripsi: `Ruang kelas untuk ${input.nama_kelas} tingkat ${input.tingkat || existingKelas.tingkat}`
+              nama: targetName,
+              deskripsi: targetDesc,
+              unit_id: targetUnitId,
+              deleted_at: null
             }
           });
-        } catch (err) {
-          console.warn('Failed to update automatic Sarpras Location for Kelas:', err);
+        } else {
+          const duplicateNameLoc = await tx.sarprasLocation.findFirst({
+            where: { tenant_id: existingKelas.tenant_id, nama: targetName }
+          });
+          if (duplicateNameLoc) {
+            await tx.sarprasLocation.update({
+              where: { id: duplicateNameLoc.id },
+              data: {
+                kelas_id: kelasId,
+                unit_id: targetUnitId,
+                deleted_at: null
+              }
+            });
+          } else {
+            await tx.sarprasLocation.create({
+              data: {
+                tenant_id: existingKelas.tenant_id,
+                nama: targetName,
+                kelas_id: kelasId,
+                unit_id: targetUnitId,
+                deskripsi: targetDesc
+              }
+            });
+          }
         }
+      } catch (err) {
+        console.warn('Failed to sync automatic Sarpras Location for Kelas:', err);
       }
     });
 
@@ -696,12 +750,20 @@ export class KelasService {
       if (counts.PelanggaranSiswa > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki catatan pelanggaran siswa');
     }
 
-    // Soft-delete the corresponding location
+    // Soft-delete and rename the corresponding location to release the unique constraint
     try {
-      await prisma.sarprasLocation.updateMany({
-        where: { kelas_id: kelasId, tenant_id: tenantId },
-        data: { deleted_at: new Date() }
+      const locations = await prisma.sarprasLocation.findMany({
+        where: { kelas_id: kelasId, tenant_id: tenantId }
       });
+      for (const loc of locations) {
+        await prisma.sarprasLocation.update({
+          where: { id: loc.id },
+          data: {
+            nama: `${loc.nama} (Dihapus ${Date.now()})`,
+            deleted_at: new Date()
+          }
+        });
+      }
     } catch (err) {
       console.warn('Failed to delete automatic Sarpras Location for Kelas:', err);
     }

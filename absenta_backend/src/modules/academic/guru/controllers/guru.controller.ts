@@ -353,7 +353,29 @@ export class GuruController {
         };
       }
 
-      const result = await guruService.importFromExcel(rows, scope);
+      const io = request.server.io;
+      const ioApi = request.server.ioApi;
+      const userId = request.user?.id;
+      const clientSocketId = request.headers['x-socket-id'];
+      const roomName = `user:${userId}`;
+
+      const result = await guruService.importFromExcel(rows, scope, (current, total) => {
+        if (userId) {
+          const progress = Math.round((current / total) * 100);
+          const payload = {
+            type: 'guru',
+            progress,
+            current,
+            total
+          };
+          if (io) io.to(roomName).emit('import_progress', payload);
+          if (ioApi) ioApi.to(roomName).emit('import_progress', payload);
+          if (clientSocketId) {
+            if (io) io.to(clientSocketId).emit('import_progress', payload);
+            if (ioApi) ioApi.to(clientSocketId).emit('import_progress', payload);
+          }
+        }
+      });
 
       reply.status(200);
       return {

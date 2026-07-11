@@ -91,25 +91,32 @@ export const sendParentAccess = async (id: string): Promise<{ success: boolean; 
 };
 
 // Overload to support both signatures
-export function bulkUpdateStatus(ids: string[], status: string, tanggal: Date, keterangan?: string): Promise<{ success: boolean; message: string }>;
-export function bulkUpdateStatus(payload: { ids: string[]; status: string; tanggal: Date; keterangan?: string }): Promise<{ success: boolean; message: string }>;
+export function bulkUpdateStatus(ids: string[], status: string, tanggal: Date, alasan?: string): Promise<{ success: boolean; message: string }>;
+export function bulkUpdateStatus(payload: { siswaIds?: string[]; ids?: string[]; status: string; tanggal: Date; alasan?: string; keterangan?: string }): Promise<{ success: boolean; message: string }>;
 export function bulkUpdateStatus(
-  idsOrPayload: string[] | { ids: string[]; status: string; tanggal: Date; keterangan?: string },
+  idsOrPayload: string[] | { siswaIds?: string[]; ids?: string[]; status: string; tanggal: Date; alasan?: string; keterangan?: string },
   status?: string,
   tanggal?: Date,
-  keterangan?: string
+  alasan?: string
 ): Promise<{ success: boolean; message: string }> {
-  let data;
+  let data: any;
   if (Array.isArray(idsOrPayload)) {
-    data = { ids: idsOrPayload, status, tanggal, keterangan };
+    data = { siswaIds: idsOrPayload, status, tanggal, alasan };
   } else {
-    data = idsOrPayload;
+    // Normalize: support both 'ids'/'siswaIds' and 'keterangan'/'alasan'
+    data = {
+      siswaIds: idsOrPayload.siswaIds || idsOrPayload.ids,
+      status: idsOrPayload.status,
+      tanggal: idsOrPayload.tanggal,
+      alasan: idsOrPayload.alasan || (idsOrPayload as any).keterangan,
+    };
   }
   
   return requestWithFallback<{ success: boolean; message: string }>('post', '/academic/siswa/bulk-status', { 
     data
   });
 }
+
 
 export const generateRfid = async (id: string): Promise<{ success: boolean; message: string; data?: any }> => {
   return requestWithFallback<{ success: boolean; message: string; data?: any }>('post', `/academic/siswa/${id}/rfid/generate`);

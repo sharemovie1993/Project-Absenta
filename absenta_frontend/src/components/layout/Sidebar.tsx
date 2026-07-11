@@ -7,7 +7,7 @@ import {
   ShoppingCart, Shield, LayoutGrid, Clock, Settings,
   Award, LayoutDashboard, Users, UserCheck, MailOpen,
   Home, ClipboardList, Send, BarChart3, History, List,
-  ShieldAlert
+  ShieldAlert, BookOpen
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
@@ -338,6 +338,15 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         return !isDashboard;
       });
       finalTree.push(...cleanEmptyParents(others));
+    }
+
+    if (activeHub === 'SARPRAS' && (isSuperAdmin || String(user?.role?.name || '').toUpperCase() === 'ADMIN')) {
+      finalTree.push({
+        label: 'Katalog Global',
+        path: '/sarpras/catalog',
+        icon: BookOpen,
+        type: 'item'
+      });
     }
 
     return finalTree;

@@ -7,6 +7,7 @@ import { Settings } from 'lucide-react';
 import { Button, Loader, EmptyState } from '../../components/ui';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { easyTunnelApi, SystemInfo } from '@/api/easyTunnel.api';
 
 // Lazy loaded sub-components
 const TenantSettings = lazy(() => import('@/components/tenant/TenantSettings').then(module => ({ default: module.TenantSettings })));
@@ -31,6 +32,22 @@ const SettingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') || (isTenantAdmin ? 'tenant_profile' : 'general')).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
+
+  const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    easyTunnelApi.info().then(res => {
+      if (res.success && active) {
+        setSystemInfo(res.data);
+      }
+    }).catch(err => {
+      console.error('Failed to fetch easy tunnel system info in SettingsPage:', err);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Sistem', path: '/settings' },
@@ -195,10 +212,11 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   const tabs = useMemo(() => {
+    const showEasyTunnel = import.meta.env.VITE_DEPLOY_SCENARIO === 'hybrid';
+
     const list = isTenantAdmin
       ? [
-          { id: 'tenant_profile', label: 'Profil Sekolah' },
-          { id: 'easy_tunnel', label: 'Akses Online' }
+          { id: 'tenant_profile', label: 'Profil Sekolah' }
         ]
       : [
           { id: 'general', label: 'Umum' },
@@ -208,9 +226,12 @@ const SettingsPage: React.FC = () => {
           { id: 'security', label: 'Keamanan' },
           { id: 'notifications', label: 'Notifikasi' },
           { id: 'attendance', label: 'Absensi' },
-          { id: 'parent_app', label: 'Parent App' },
-          { id: 'easy_tunnel', label: 'Akses Online' }
+          { id: 'parent_app', label: 'Parent App' }
         ];
+
+    if (showEasyTunnel) {
+      list.push({ id: 'easy_tunnel', label: 'Akses Online' });
+    }
 
     if (can('core.system.config.update')) {
       list.push({ id: 'system_update', label: 'Pembaruan Sistem' });

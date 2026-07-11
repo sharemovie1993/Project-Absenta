@@ -126,7 +126,8 @@ export async function getSiswaTimelineQuery(params: {
       tipe: 'STATUS_AKADEMIK',
       judul: 'Siswa Terdaftar / Masuk Sekolah',
       keterangan: `Tanggal masuk resmi: ${student.tanggal_masuk.toISOString().slice(0, 10)}`,
-      user_name: 'Sistem'
+      user_name: 'Sistem',
+      _order: 0  // Always first in its day (will appear last in descending view)
     });
   }
 
@@ -252,7 +253,21 @@ export async function getSiswaTimelineQuery(params: {
     });
   });
 
-  // Add exit entry if exists
+  // Add academic history entries (classes and semesters)
+  // Must be added BEFORE exit entry so _order reflects correct chronological sequence
+  academicHistory.forEach((ah, idx) => {
+    items.push({
+      id: `akademik-${ah.id}`,
+      tanggal: ah.created_at,
+      tipe: 'STATUS_AKADEMIK',
+      judul: `Penempatan Kelas: ${ah.kelas?.nama_kelas || '-'}`,
+      keterangan: `Tahun Pelajaran: ${ah.tahunPelajaran?.tahun || '-'} | Semester: ${ah.semester?.nama_semester || '-'} | Status Keaktifan: ${ah.status}`,
+      user_name: 'Sistem Akademik',
+      _order: idx + 1  // After registration, sequential by creation order
+    });
+  });
+
+  // Add exit entry if exists (always logically the LAST event)
   if (student.tanggal_keluar) {
     items.push({
       id: `keluar-${student.id}`,
@@ -260,24 +275,18 @@ export async function getSiswaTimelineQuery(params: {
       tipe: 'STATUS_AKADEMIK',
       judul: `Status Keluar Resmi (${student.status})`,
       keterangan: `Alasan: ${student.alasan_keluar || '-'}`,
-      user_name: 'Operator Sekolah'
+      user_name: 'Operator Sekolah',
+      _order: 99999  // Always last in its day (will appear first in descending view)
     });
   }
 
-  // Add academic history entries (classes and semesters)
-  academicHistory.forEach((ah) => {
-    items.push({
-      id: `akademik-${ah.id}`,
-      tanggal: ah.created_at,
-      tipe: 'STATUS_AKADEMIK',
-      judul: `Penempatan Kelas: ${ah.kelas?.nama_kelas || '-'}`,
-      keterangan: `Tahun Pelajaran: ${ah.tahunPelajaran?.tahun || '-'} | Semester: ${ah.semester?.nama_semester || '-'} | Status Keaktifan: ${ah.status}`,
-      user_name: 'Sistem Akademik'
-    });
+  // Sort chronologically (newest first), with _order as stable tiebreaker for same-day events
+  items.sort((a, b) => {
+    const timeDiff = new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime();
+    if (timeDiff !== 0) return timeDiff;
+    // Same timestamp: use _order descending (higher = newer = top)
+    return (b._order ?? 50) - (a._order ?? 50);
   });
-
-  // Sort chronologically (newest first)
-  items.sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
 
   return items;
 }

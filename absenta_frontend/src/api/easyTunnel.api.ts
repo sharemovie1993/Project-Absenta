@@ -1,4 +1,4 @@
-﻿import { requestWithFallback } from './apiUtils';
+import { requestWithFallback } from './apiUtils';
 
 export interface Tunnel {
   id: string;
@@ -24,6 +24,8 @@ export interface SystemInfo {
   uptime: number;
   wg_installed: boolean;
   tunnel_base_domain?: string;
+  license_server_ip?: string;
+  deploy_scenario?: string;
 }
 
 export interface CustomDomainStatus {
@@ -114,6 +116,10 @@ export const easyTunnelApi = {
 
   async checkInvoiceStatus(number: string): Promise<any> {
     return requestWithFallback('get', `/system/easy-tunnel/order/invoice-status/${encodeURIComponent(number)}`);
+  },
+
+  async getMyLicenses(slug: string): Promise<{ success: boolean; data: any[] }> {
+    return requestWithFallback('get', `/system/easy-tunnel/order/licenses/${encodeURIComponent(slug)}`);
   },
 
   // System & Installation Info

@@ -74,6 +74,16 @@ export async function fetchPackages(): Promise<EasyTunnelPackage[]> {
   });
 }
 
+/** Ambil daftar lisensi Easy Tunnel berdasarkan subdomain slug */
+export async function fetchLicensesBySlug(slug: string): Promise<any[]> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/by-slug/${encodeURIComponent(slug.trim().toLowerCase())}`, {
+    signal: AbortSignal.timeout(8000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal mengambil daftar lisensi.');
+  return data.data || [];
+}
+
 /** Validasi license key dari server lisensi */
 export async function validateLicenseKey(licenseKey: string): Promise<LicenseInfo> {
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/validate/${encodeURIComponent(licenseKey.trim())}`, {

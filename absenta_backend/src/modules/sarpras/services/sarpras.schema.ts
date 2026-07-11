@@ -26,6 +26,7 @@ export const sarprasAssetSchema = z.object({
   deskripsi: z.string().optional(),
   category_id: z.string().uuid('ID Kategori tidak valid').optional(),
   location_id: z.string().uuid('ID Lokasi tidak valid').optional(),
+  sumber_dana: z.string().optional(),
 });
 
 export const updateSarprasAssetSchema = sarprasAssetSchema.partial();
@@ -56,3 +57,14 @@ export const sarprasAssetRepairSchema = z.object({
 });
 
 export const updateSarprasAssetRepairSchema = sarprasAssetRepairSchema.partial();
+
+export const sarprasCatalogSchema = z.object({
+  nama: z.string().min(1, 'Nama item katalog wajib diisi'),
+  brand: z.string().optional().nullable(),
+  category_name: z.string().min(1, 'Kategori kelompok wajib diisi'),
+  is_loanable: z.boolean().default(true),
+  deskripsi: z.string().optional().nullable(),
+  image_url: z.string().optional().nullable(),
+});
+
+export const updateSarprasCatalogSchema = sarprasCatalogSchema.partial();

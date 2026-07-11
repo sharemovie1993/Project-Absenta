@@ -1,6 +1,6 @@
 
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   Edit, 
   Trash2, 
@@ -29,6 +29,7 @@ interface JenisKegiatanListProps {
   onEdit: (item: JenisKegiatanMaster) => void;
   onDelete: (id: string) => void;
   onView: (item: JenisKegiatanMaster) => void;
+  onToggleActive?: (item: JenisKegiatanMaster) => void;
   canManage: boolean;
 }
 
@@ -43,8 +44,11 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
   onEdit,
   onDelete,
   onView,
+  onToggleActive,
   canManage
 }) => {
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
   const columns = useMemo(() => [
     { 
       label: 'Nama Kegiatan', 
@@ -81,11 +85,38 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
     { 
       label: 'Status', 
       key: 'aktif', 
-      render: (v: boolean) => (
-        <Badge variant={v ? 'success' : 'secondary'}>
-          {v ? 'Aktif' : 'Nonaktif'}
-        </Badge>
-      ) 
+      render: (v: boolean, item: JenisKegiatanMaster) => {
+        const isToggling = togglingId === item.id;
+        return (
+          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <Badge variant={v ? 'success' : 'secondary'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
+              {v ? 'Aktif' : 'Nonaktif'}
+            </Badge>
+            {canManage && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setTogglingId(item.id);
+                    await onToggleActive?.(item);
+                  } finally {
+                    setTogglingId(null);
+                  }
+                }}
+                disabled={isToggling}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${v ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'} ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ transition: 'background-color 0.2s' }}
+                aria-label={`Toggle status ${item.nama}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${v ? 'translate-x-4' : 'translate-x-0'}`}
+                  style={{ transition: 'transform 0.2s' }}
+                />
+              </button>
+            )}
+          </div>
+        );
+      } 
     },
     { 
       label: 'Aksi', 
@@ -127,7 +158,7 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
         </div>
       ) 
     }
-  ], [canManage, onEdit, onView, onDelete]);
+  ], [canManage, onEdit, onView, onDelete, onToggleActive, togglingId]);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">

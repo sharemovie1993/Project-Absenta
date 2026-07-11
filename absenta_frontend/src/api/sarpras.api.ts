@@ -103,6 +103,18 @@ export const sarprasApi = {
   scanUser: (code: string) =>
     requestWithFallback<any>('get', `/sarpras/scanner/user?code=${encodeURIComponent(code)}`),
 
+  getCatalog: (params?: { search?: string }) =>
+    requestWithFallback<any>('get', '/sarpras/catalog', { params }),
+
+  createCatalogItem: (data: any) =>
+    requestWithFallback<any>('post', '/sarpras/catalog', { data }),
+
+  updateCatalogItem: (id: string, data: any) =>
+    requestWithFallback<any>('put', `/sarpras/catalog/${id}`, { data }),
+
+  deleteCatalogItem: (id: string) =>
+    requestWithFallback<any>('delete', `/sarpras/catalog/${id}`),
+
   importAssets: (formData: FormData) =>
     requestWithFallback<any>('post', '/sarpras/assets/import', { 
       data: formData,

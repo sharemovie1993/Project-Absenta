@@ -68,6 +68,34 @@ export async function sarprasRoutes(fastify: any) {
     preHandler: [requireCapability('sarpras.inventory.manage')]
   }, assetController.getImportTemplate.bind(assetController));
 
+  const requireGlobalCatalogManage = async (request: any, reply: any) => {
+    const user = request.user;
+    if (!user) {
+      return reply.status(401).send({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
+    }
+    const roleName = user.roleName || user.Role?.name || user.role?.name;
+    if (roleName === 'SUPERADMIN' || roleName === 'ADMIN') {
+      return;
+    }
+    return reply.status(403).send({ code: 'FORBIDDEN', message: 'Akses ditolak: Hanya untuk Owner dan Superadmin' });
+  };
+
+  fastify.get('/catalog', {
+    preHandler: [requireCapability('sarpras.inventory.view.list')]
+  }, assetController.getCatalog.bind(assetController));
+
+  fastify.post('/catalog', {
+    preHandler: [requireGlobalCatalogManage]
+  }, assetController.createCatalogItem.bind(assetController));
+
+  fastify.put('/catalog/:id', {
+    preHandler: [requireGlobalCatalogManage]
+  }, assetController.updateCatalogItem.bind(assetController));
+
+  fastify.delete('/catalog/:id', {
+    preHandler: [requireGlobalCatalogManage]
+  }, assetController.deleteCatalogItem.bind(assetController));
+
   // --- Consumables & Depreciation Reports ---
   fastify.get('/assets/reports/depreciation', {
     preHandler: [requireCapability('sarpras.inventory.view.list'), organizationalScopeMiddleware]

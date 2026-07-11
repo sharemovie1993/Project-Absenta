@@ -1,50 +1,97 @@
 import { z } from 'zod';
 
+const coerceString = z.preprocess((val) => {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val === 'number') return String(val).trim();
+  if (typeof val === 'string') {
+    const s = val.trim();
+    return s === '' || s === '-' ? undefined : s;
+  }
+  return undefined;
+}, z.string().optional().nullable());
+
+const coerceRequiredString = (fieldName: string) => z.preprocess((val) => {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val === 'number') return String(val).trim();
+  if (typeof val === 'string') {
+    const s = val.trim();
+    return s === '' || s === '-' ? undefined : s;
+  }
+  return undefined;
+}, z.string({ required_error: `${fieldName} wajib diisi` }).min(1, `${fieldName} wajib diisi`));
+
 export const createSiswaSchema = z.object({
-  nis: z.string().min(1, 'NIS wajib diisi').optional(),
-  nisn: z.string().optional().nullable(),
-  nik: z.string().optional().nullable(),
-  nama_siswa: z.string().min(1, 'Nama Siswa wajib diisi'),
-  jenis_kelamin: z.string().min(1, 'Jenis Kelamin wajib diisi'),
-  tempat_lahir: z.string().optional().nullable(),
+  nis: coerceString, // Make NIS optional to support auto-generation
+  nisn: coerceString,
+  nik: coerceString,
+  nama_siswa: coerceRequiredString('Nama Siswa'),
+  jenis_kelamin: z.preprocess((val) => {
+    if (val === null || val === undefined) return 'L';
+    if (typeof val === 'string') {
+      const s = val.trim().toUpperCase();
+      if (s === 'P' || s.startsWith('PEREMPUAN') || s.startsWith('WITA') || s.startsWith('WANITA')) return 'P';
+      return 'L';
+    }
+    return 'L';
+  }, z.string().default('L')),
+  tempat_lahir: coerceString,
   tanggal_lahir: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
-  alamat: z.string().optional().nullable(),
-  dusun: z.string().optional().nullable(),
-  kelurahan: z.string().optional().nullable(),
-  kecamatan: z.string().optional().nullable(),
-  kabupaten: z.string().optional().nullable(),
-  provinsi: z.string().optional().nullable(),
-  rt: z.string().optional().nullable(),
-  rw: z.string().optional().nullable(),
-  kode_pos: z.string().optional().nullable(),
-  no_hp: z.string().optional().nullable(),
-  transportasi: z.string().optional().nullable(),
-  nama_ayah: z.string().optional().nullable(),
-  nik_ayah: z.string().optional().nullable(),
-  pekerjaan_ayah: z.string().optional().nullable(),
-  pendidikan_ayah: z.string().optional().nullable(),
-  penghasilan_ayah: z.string().optional().nullable(),
-  nama_ibu: z.string().optional().nullable(),
-  nik_ibu: z.string().optional().nullable(),
-  pekerjaan_ibu: z.string().optional().nullable(),
-  pendidikan_ibu: z.string().optional().nullable(),
-  penghasilan_ibu: z.string().optional().nullable(),
-  nama_wali: z.string().optional().nullable(),
-  hubungan_wali: z.string().optional().nullable(),
-  pekerjaan_wali: z.string().optional().nullable(),
-  penghasilan_wali: z.string().optional().nullable(),
-  anak_ke: z.number().optional().nullable(),
-  kebutuhan_khusus: z.string().optional().nullable(),
-  penerima_kps: z.boolean().optional().default(false),
-  penerima_kip: z.boolean().optional().default(false),
-  no_kip: z.string().optional().nullable(),
-  kelas_id: z.string().min(1, 'Kelas wajib diisi'),
-  tahun_pelajaran_id: z.string().optional().nullable(),
-  semester_id: z.string().optional().nullable(),
-  no_rfid: z.string().optional().nullable(),
-  email: z.string().email('Format email tidak valid').optional().nullable(),
-  status: z.string().optional().default('AKTIF'),
-  user_id: z.string().optional().nullable(),
+  alamat: coerceString,
+  dusun: coerceString,
+  kelurahan: coerceString,
+  kecamatan: coerceString,
+  kabupaten: coerceString,
+  provinsi: coerceString,
+  rt: coerceString,
+  rw: coerceString,
+  kode_pos: coerceString,
+  no_hp: coerceString,
+  transportasi: coerceString,
+  nama_ayah: coerceString,
+  nik_ayah: coerceString,
+  pekerjaan_ayah: coerceString,
+  pendidikan_ayah: coerceString,
+  penghasilan_ayah: coerceString,
+  nama_ibu: coerceString,
+  nik_ibu: coerceString,
+  pekerjaan_ibu: coerceString,
+  pendidikan_ibu: coerceString,
+  penghasilan_ibu: coerceString,
+  nama_wali: coerceString,
+  hubungan_wali: coerceString,
+  pekerjaan_wali: coerceString,
+  penghasilan_wali: coerceString,
+  anak_ke: z.union([z.number(), z.string()]).optional().nullable().transform(val => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = Number(val);
+    return isNaN(num) ? null : num;
+  }),
+  kebutuhan_khusus: coerceString,
+  penerima_kps: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val.trim().toLowerCase() === 'true' || val.trim().toLowerCase() === 'ya';
+    return false;
+  }),
+  penerima_kip: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val.trim().toLowerCase() === 'true' || val.trim().toLowerCase() === 'ya';
+    return false;
+  }),
+  no_kip: coerceString,
+  kelas_id: coerceRequiredString('Kelas'),
+  tahun_pelajaran_id: coerceString,
+  semester_id: coerceString,
+  no_rfid: coerceString,
+  email: z.preprocess((val) => {
+    if (val === null || val === undefined) return undefined;
+    if (typeof val === 'string') {
+      const s = val.trim();
+      return s === '' || s === '-' ? undefined : s;
+    }
+    return undefined;
+  }, z.string().email('Format email tidak valid').optional().nullable()),
+  status: coerceString.default('AKTIF'),
+  user_id: coerceString,
   skipQuotaCheck: z.boolean().optional().default(false),
   orang_tua: z.array(z.any()).optional(),
 });

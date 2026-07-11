@@ -19,10 +19,12 @@ export class AcademicStatsController {
       
       const stats = await this.academicStatsService.getAcademicStats(tenantId, dataScope);
       
+      const snakeCaseStats = stats;
+
       return reply.status(200).send({
         success: true,
         message: 'Academic statistics retrieved successfully',
-        data: stats
+        data: snakeCaseStats
       });
     } catch (error) {
       console.error('Error getting academic stats:', error);

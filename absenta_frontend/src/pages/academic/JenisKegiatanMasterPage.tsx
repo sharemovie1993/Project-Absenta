@@ -81,6 +81,23 @@ export default function JenisKegiatanMasterPage() {
     }
   };
 
+  const handleToggleActive = useCallback(async (item: JenisKegiatanMaster) => {
+    try {
+      const targetState = !item.aktif;
+      const res = await jenisKegiatanMasterApi.update(item.id, { aktif: targetState });
+      if (res.success) {
+        toast.success(`Kategori ${item.nama} berhasil ${targetState ? 'diaktifkan' : 'dinonaktifkan'}.`);
+        fetchList();
+      } else {
+        toast.error(res.message || 'Gagal mengubah status');
+      }
+    } catch (error: unknown) {
+      console.error(error);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || 'Gagal mengubah status');
+    }
+  }, [fetchList]);
+
   const handleExport = useCallback(() => {
     try {
       exportDataToExcel(items, [
@@ -158,6 +175,7 @@ export default function JenisKegiatanMasterPage() {
           onEdit={openEdit}
           onDelete={deleteItem}
           onView={openView}
+          onToggleActive={handleToggleActive}
           canManage={canManage}
         />
       </SectionCard>

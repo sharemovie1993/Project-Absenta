@@ -172,10 +172,42 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
     { 
       key: 'is_active', 
       label: 'Status',
-      render: (value: boolean) => (
-        <Badge variant={value ? "success" : "secondary"}>
-          {value ? 'Aktif' : 'Nonaktif'}
-        </Badge>
+      render: (isActive: boolean, tp: TahunPelajaran) => (
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <Badge variant={isActive ? "success" : "secondary"}>
+            {isActive ? 'Aktif' : 'Nonaktif'}
+          </Badge>
+          {canManage && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (isActive) {
+                  toast.error('Tahun pelajaran aktif tidak dapat dinonaktifkan secara langsung. Silakan aktifkan tahun pelajaran lainnya.');
+                  return;
+                }
+                const ok = await confirm({
+                  title: 'Konfirmasi Aktivasi Tahun Pelajaran',
+                  description: `Apakah Anda yakin ingin mengaktifkan tahun pelajaran "${tp.tahun}"?\nTindakan ini akan:\n• Menonaktifkan tahun pelajaran aktif sebelumnya\n• Mengubah konteks seluruh data akademik (absensi, nilai, laporan)`,
+                  confirmText: 'Aktifkan',
+                  cancelText: 'Batal',
+                  style: 'success',
+                });
+                if (ok) {
+                  await handleActivate(tp.id);
+                }
+              }}
+              disabled={activateMutation.isPending}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'} ${activateMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={{ transition: 'background-color 0.2s' }}
+              aria-label={`Toggle status ${tp.tahun}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}`}
+                style={{ transition: 'transform 0.2s' }}
+              />
+            </button>
+          )}
+        </div>
       )
     },
     { 
@@ -214,30 +246,6 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
           </Tooltip>
           {canManage && (
             <>
-              {!tahunPelajaran.is_active && (
-                <Tooltip content="Set Aktif">
-                    <Button
-                    size="sm"
-                    variant="primary"
-                    className="bg-green-600 hover:bg-green-700 h-8 w-8 p-0"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: 'Konfirmasi Aktivasi Tahun Pelajaran',
-                          description: `Apakah Anda yakin ingin mengaktifkan tahun pelajaran "${tahunPelajaran.tahun}"?\nTindakan ini akan:\n• Menonaktifkan tahun pelajaran aktif sebelumnya\n• Mengubah konteks seluruh data akademik (absensi, nilai, laporan)`,
-                          confirmText: 'Aktifkan',
-                          cancelText: 'Batal',
-                          style: 'success',
-                        });
-                        if (ok) {
-                          await handleActivate(tahunPelajaran.id);
-                        }
-                      }}
-                      aria-label="Set Aktif Tahun Pelajaran"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                    </Button>
-                </Tooltip>
-              )}
               <Tooltip content={tahunPelajaran.is_active ? "Tahun pelajaran aktif tidak dapat diedit" : "Edit"}>
                 <Button
                   size="sm"

@@ -56,9 +56,7 @@ prisma.$use(async (params, next) => {
     // Sarpras
     SarprasAsset: { module: 'SARPRAS', tenantField: 'tenant_id', checkDeleted: true },
     SarprasLoan: { module: 'SARPRAS', tenantField: 'tenant_id' },
-    SarprasAssetRepair: { module: 'SARPRAS', tenantField: 'tenant_id' },
-    SarprasCategory: { module: 'SARPRAS', tenantField: 'tenant_id', checkDeleted: true },
-    SarprasLocation: { module: 'SARPRAS', tenantField: 'tenant_id', checkDeleted: true }
+    SarprasAssetRepair: { module: 'SARPRAS', tenantField: 'tenant_id' }
   };
 
   if ((params.action === 'create' || params.action === 'createMany') && params.model && targetModels[params.model]) {

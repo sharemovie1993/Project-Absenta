@@ -5,7 +5,9 @@ import {
   sarprasCategorySchema,
   sarprasLocationSchema,
   sarprasAssetSchema,
-  updateSarprasAssetSchema
+  updateSarprasAssetSchema,
+  sarprasCatalogSchema,
+  updateSarprasCatalogSchema
 } from '../services/sarpras.schema';
 
 interface AuthenticatedRequest {
@@ -169,7 +171,8 @@ export class AssetController {
         purchase_date: row['Tanggal Beli'] || row['purchase_date'],
         deskripsi: row['Deskripsi'] || row['deskripsi'],
         category_nama: row['Kategori'] || row['category_nama'],
-        location_nama: row['Lokasi'] || row['location_nama']
+        location_nama: row['Lokasi'] || row['location_nama'],
+        sumber_dana: row['Sumber Dana'] || row['sumber_dana']
       }));
 
       const userId = (request.user as any).id || (request.user as any).userId;
@@ -348,6 +351,53 @@ export class AssetController {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
       }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async getCatalog(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { search } = request.query;
+      const data = await AssetService.getCatalog(search as string);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async createCatalogItem(request: AuthenticatedRequest, reply: any) {
+    try {
+      const parsed = sarprasCatalogSchema.parse(request.body);
+      const data = await AssetService.createCatalogItem(parsed);
+      return reply.status(201).send({ success: true, message: 'Item katalog global berhasil dibuat', data });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateCatalogItem(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const parsed = updateSarprasCatalogSchema.parse(request.body);
+      const data = await AssetService.updateCatalogItem(id, parsed);
+      return reply.status(200).send({ success: true, message: 'Item katalog global berhasil diperbarui', data });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ success: false, message: error.errors.map(e => e.message).join(', '), errors: error.errors });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteCatalogItem(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      await AssetService.deleteCatalogItem(id);
+      return reply.status(200).send({ success: true, message: 'Item katalog global berhasil dihapus' });
+    } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }

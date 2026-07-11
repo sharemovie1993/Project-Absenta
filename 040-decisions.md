@@ -115,3 +115,19 @@
 2026-07: Relocation of Academic History & Deletion of Class Division Menu
 - **Keputusan**: Memindahkan visual tombol aksi Riwayat Akademik siswa (modal `SiswaHistory`) langsung ke halaman utama list Data Siswa (`SiswaPage.tsx`), menghapus route & halaman fisik `RegistrasiSiswaPage.tsx`, serta menghapus menu navigasi seeder "Pembagian Kelas" (`/academic/registrasi-siswa`).
 - **Rasional**: Operasional pembagian kelas akademik (ke tabel `SiswaAkademik`) sudah 100% ditangani secara otomatis (Auto-Sync) di backend saat penambahan profil siswa baru, import excel, maupun saat eksekusi Kenaikan Kelas (Transition). Pemindahan aksi riwayat ke menu utama Data Siswa meniadakan redundansi menu yang membingungkan admin sekolah, sekaligus merampingkan antarmuka sistem.
+
+2026-07: Integrated Bulk Actions for Mutation & Graduation
+- **Keputusan**: Mengintegrasikan antarmuka Mutasi Massal dan Kelulusan Massal langsung ke dalam Toolbar Aksi Terpilih di halaman utama Data Siswa (`SiswaList.tsx`), serta menghapus rute navigasi `/academic/mutation` dan menu sidebar terkait.
+- **Rasional**: Mempermudah admin sekolah dalam mengelola transisi status akademik siswa secara langsung dari daftar siswa utama tanpa perlu membuka menu khusus, serta menyederhanakan arsitektur navigasi.
+
+2026-07: Student Account Status & Security Business Rules
+- **Keputusan**: Menerapkan aturan otomatisasi pembekuan akun login siswa (`User.status = INACTIVE`) saat status akademiknya diubah menjadi mutasi keluar (seperti `PINDAH`, `KELUAR`, `DO`). Namun, akun siswa dengan status `AKTIF` dan `LULUS` (Alumni) tetap dipertahankan aktif (`ACTIVE`).
+- **Rasional**: Mencegah potensi celah keamanan akses platform dari mantan siswa yang sudah keluar, sembari memastikan alumni tetap memiliki hak akses login untuk kebutuhan pelacakan lulusan pada modul HUBIN Tracer Study.
+
+2026-07: Clear Separation of Global Notifications & Attendance Feed
+- **Keputusan**: Memisahkan tanggung jawab hook `useNotifications.ts` agar hanya mem-poll endpoint `/api/notifications/my` untuk notifikasi/alert sistem global. Menghapus semua chain query transaksional absensi (seperti status sesi belajar harian/mingguan dan alert guru) dari hook global tersebut.
+- **Rasional**: Mengurangi beban query database (database overhead) secara masif akibat polling berkelanjutan dari client (khususnya akun Guru/Admin), serta mencegah kegagalan pemuatan notifikasi global akibat terhalang oleh *subscription check* modul Absensi.
+
+2026-07: Public DNS Resolution & Deployment Scenario Adaptability
+- **Keputusan**: Mengimplementasikan resolusi DNS publik menggunakan `dns.promises.Resolver` dengan konfigurasi server DNS terpercaya (`1.1.1.1` dan `8.8.8.8`) di backend untuk mendeteksi IP publik Server Lisensi asli secara dinamis, menyelaraskan penamaan penentu mode deployment dari `deploy_mode` menjadi `deploy_scenario` sesuai dengan variabel `.env` (`DEPLOY_SCENARIO` / `VITE_DEPLOY_SCENARIO`) yang ditulis oleh skrip installer (`saas` / `hybrid`), serta menyembunyikan/menampilkan kartu Custom Domain di frontend berdasarkan status keaktifan Easy Tunnel.
+- **Rasional**: Menghindari kesalahan resolusi domain utama sekolah (split-brain DNS) pada jaringan lokal yang menghasilkan IP intranet lokal (`10.10.10.99`) alih-alih IP publik server lisensi (`103.196.155.87`), meniadakan inkonsistensi penamaan variabel yang dapat menghentikan fungsi kondisional tab Akses Online, serta meminimalkan kebingungan admin sekolah dengan menyembunyikan instruksi konfigurasi domain sebelum tunnel terverifikasi aktif.

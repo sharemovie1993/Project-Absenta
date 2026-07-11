@@ -8,12 +8,14 @@ export interface CreateJurusanInput {
   nama: string;
   kode?: string | null;
   singkatan?: string | null;
+  program_keahlian_id?: string | null;
 }
 
 export interface UpdateJurusanInput {
   nama?: string;
   kode?: string | null;
   singkatan?: string | null;
+  program_keahlian_id?: string | null;
 }
 
 export interface JurusanResponse {
@@ -22,11 +24,19 @@ export interface JurusanResponse {
   nama: string;
   kode?: string | null;
   singkatan?: string | null;
+  program_keahlian_id?: string | null;
   created_at: Date;
   updated_at: Date;
   _count?: {
     Kelas: number;
   };
+  ProgramKeahlian?: {
+    id: string;
+    nama: string;
+    kode?: string | null;
+    singkatan?: string | null;
+    bidang_keahlian?: string | null;
+  } | null;
 }
 
 export interface PaginationParams {
@@ -80,6 +90,9 @@ export class JurusanService {
             Kelas: true,
           },
         },
+        ProgramKeahlian: {
+          select: { id: true, nama: true, kode: true, singkatan: true, bidang_keahlian: true }
+        },
       },
       orderBy: [
         { nama: 'asc' },
@@ -116,6 +129,9 @@ export class JurusanService {
           select: {
             Kelas: true,
           },
+        },
+        ProgramKeahlian: {
+          select: { id: true, nama: true, kode: true, singkatan: true, bidang_keahlian: true }
         },
       },
     });
@@ -156,12 +172,16 @@ export class JurusanService {
         nama: input.nama,
         kode: input.kode,
         singkatan: input.singkatan,
+        ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },
       include: {
         _count: {
           select: {
             Kelas: true,
           },
+        },
+        ProgramKeahlian: {
+          select: { id: true, nama: true, kode: true, singkatan: true, bidang_keahlian: true }
         },
       },
     });
@@ -238,12 +258,16 @@ export class JurusanService {
         ...(input.nama && { nama: input.nama }),
         ...(input.kode !== undefined && { kode: input.kode }),
         ...(input.singkatan !== undefined && { singkatan: input.singkatan }),
+        ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },
       include: {
         _count: {
           select: {
             Kelas: true,
           },
+        },
+        ProgramKeahlian: {
+          select: { id: true, nama: true, kode: true, singkatan: true, bidang_keahlian: true }
         },
       },
     });

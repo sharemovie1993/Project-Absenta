@@ -582,7 +582,7 @@ export class GuruService {
     });
   }
 
-  async importFromExcel(data: any[], scope: DataScope) {
+  async importFromExcel(data: any[], scope: DataScope, onProgress?: (current: number, total: number) => void) {
     if (!scope.tenantId) {
       throw new Error('Tenant ID is required for import');
     }
@@ -590,6 +590,7 @@ export class GuruService {
     let created = 0;
     let updated = 0;
     const errors: any[] = [];
+    const matchedGuruIds = new Set<string>();
 
     for (const [index, row] of data.entries()) {
       const rowNumber = row.__rowNum || (index + 2);
@@ -597,10 +598,15 @@ export class GuruService {
         const namaVal = row.nama_guru || row.nama_lengkap || row.nama || '';
         const nama = namaVal ? String(namaVal).trim() : '';
         
-        // Handle NIP flexibly (accept number or string, ignore empty)
+        // Handle NIP flexibly (accept number or string, generate if empty or '-')
         let nip: string | undefined = undefined;
-        if (row.nip !== undefined && row.nip !== null && String(row.nip).trim() !== '') {
+        let isNipGenerated = false;
+        if (row.nip !== undefined && row.nip !== null && String(row.nip).trim() !== '' && String(row.nip).trim() !== '-') {
           nip = String(row.nip).trim();
+        } else {
+          // Generate a placeholder NIP: 999 + last 6 digits of timestamp + 3 random digits
+          nip = `999${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+          isNipGenerated = true;
         }
 
         const email = row.email ? String(row.email).trim() : undefined;
@@ -632,14 +638,15 @@ export class GuruService {
              }
         }
 
-        // Try to find existing guru by NIP (if provided) or Email
+        // Try to find existing guru by NIP (if provided and NOT generated) or Email
         let existingGuru = null;
 
-        if (nip) {
+        if (nip && !isNipGenerated) {
           existingGuru = await prisma.guru.findFirst({
             where: {
               tenant_id: tenantId,
-              nip: nip
+              nip: nip,
+              id: { notIn: Array.from(matchedGuruIds) }
             }
           });
         }
@@ -658,24 +665,43 @@ export class GuruService {
             existingGuru = await prisma.guru.findFirst({
               where: {
                 tenant_id: tenantId,
-                user_id: user.id
+                user_id: user.id,
+                id: { notIn: Array.from(matchedGuruIds) }
               }
             });
           }
         }
 
+        // If still not found, try to match by exact Name to prevent duplicates
+        if (!existingGuru) {
+          existingGuru = await prisma.guru.findFirst({
+            where: {
+              tenant_id: tenantId,
+              nama_guru: nama,
+              id: { notIn: Array.from(matchedGuruIds) }
+            }
+          });
+        }
+
         if (existingGuru) {
+          // If NIP was generated but they already have a NIP in DB, preserve it!
+          if (isNipGenerated && existingGuru.nip) {
+            inputData.nip = existingGuru.nip;
+          }
           // Update
-          await this.updateGuru(existingGuru.id, inputData, scope);
+          const updatedGuru = await this.updateGuru(existingGuru.id, inputData, scope);
+          matchedGuruIds.add(updatedGuru.id);
           updated++;
         } else {
           // Create
-          await this.createGuru(inputData, scope);
+          const createdGuru = await this.createGuru(inputData, scope);
+          matchedGuruIds.add(createdGuru.id);
           created++;
         }
       } catch (err: any) {
         errors.push({ row: rowNumber, message: err.message });
       }
+      onProgress?.(index + 1, data.length);
     }
 
     return { created, updated, errors };

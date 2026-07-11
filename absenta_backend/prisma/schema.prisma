@@ -2961,6 +2961,7 @@ model SarprasAsset {
   price_purchase Decimal?  @db.Decimal(15, 2)
   image_url      String?
   deskripsi      String?
+  sumber_dana    String?   // BOS_REGULER, BOS_PROVINSI, KOMITE, HIBAH, YAYASAN, LAINNYA
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -3027,6 +3028,21 @@ model SarprasAssetRepair {
 
   @@index([tenant_id])
   @@index([asset_id])
+}
+
+model SarprasGlobalCatalog {
+  id            String   @id @default(uuid())
+  nama          String
+  brand         String?
+  category_name String
+  is_loanable   Boolean  @default(true)
+  deskripsi     String?
+  image_url     String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([nama, brand])
+  @@index([category_name])
 }
 
 // --- MODUL TU (TATA USAHA) ---

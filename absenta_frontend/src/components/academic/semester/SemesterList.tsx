@@ -296,10 +296,54 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
     { 
       key: 'is_active', 
       label: 'Status',
-      render: (value: boolean) => (
-        <Badge variant={value ? "success" : "secondary"}>
-          {value ? 'Aktif' : 'Tidak Aktif'}
-        </Badge>
+      render: (isActive: boolean, sem: Semester) => (
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          <Badge variant={isActive ? "success" : "secondary"}>
+            {isActive ? 'Aktif' : 'Nonaktif'}
+          </Badge>
+          {canManage && (
+            <button
+              type="button"
+              onClick={async () => {
+                if (isActive) {
+                  toast.error('Semester aktif tidak dapat dinonaktifkan secara langsung. Silakan aktifkan semester lainnya.');
+                  return;
+                }
+                const ok = await confirm({
+                  title: 'Konfirmasi Aktivasi Semester',
+                  description: (
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Apakah Anda yakin ingin mengaktifkan semester <strong>{sem.nama_semester}</strong>?
+                      </p>
+                      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                        <p className="text-xs text-blue-600 dark:text-blue-400 font-bold leading-relaxed">
+                          Tindakan ini juga akan otomatis mengaktifkan Tahun Pelajaran "{sem.TahunPelajaran?.tahun || sem.TahunPelajaran?.tahun || ''}" dan mensinkronisasi status siswa menjadi AKTIF.
+                        </p>
+                      </div>
+                    </div>
+                  ),
+                  confirmText: 'Aktifkan',
+                  cancelText: 'Batal',
+                  style: 'success',
+                  withProgress: true,
+                  progressLabel: 'Mengaktifkan semester...',
+                });
+                if (ok) {
+                  await handleSetActive(sem);
+                }
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'}`}
+              style={{ transition: 'background-color 0.2s' }}
+              aria-label={`Toggle status ${sem.nama_semester}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isActive ? 'translate-x-4' : 'translate-x-0'}`}
+                style={{ transition: 'transform 0.2s' }}
+              />
+            </button>
+          )}
+        </div>
       )
     },
     { 
@@ -327,28 +371,6 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
               >
                 <Edit className="w-4 h-4" />
               </Button>
-              {!semester.is_active && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: 'Konfirmasi Aktivasi Semester',
-                        description: `Apakah Anda yakin ingin mengaktifkan semester "${semester.nama_semester}"?`,
-                        confirmText: 'Aktifkan',
-                        cancelText: 'Batal',
-                        style: 'success',
-                      });
-                      if (ok) {
-                        await handleSetActive(semester);
-                      }
-                    }}
-                    aria-label="Aktifkan Semester"
-                    className="h-8 w-8 p-0 text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                  </Button>
-              )}
               <Button
                 size="sm"
                 variant="ghost"

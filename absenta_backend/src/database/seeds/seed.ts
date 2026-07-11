@@ -14,6 +14,7 @@ import { seedPolicies } from './seed_policies';
 import { seedCore } from './seed_core';
 import { seedCooperative } from './seed_cooperative';
 import { seedJobdesk } from './seed_jobdesk';
+import { seedSarprasCatalog } from './seed_sarpras_catalog';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 
 const prisma = new PrismaClient();
@@ -865,6 +866,9 @@ async function main() {
 
   // 10️⃣ Seed Jobdesk Dasar (Roles & Positions)
   await seedJobdesk();
+
+  // 11️⃣ Seed Sarpras Global Catalog
+  await seedSarprasCatalog(prisma);
 
   console.log('✨ Seed selesai!');
 }

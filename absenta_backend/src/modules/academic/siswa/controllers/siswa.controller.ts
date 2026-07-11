@@ -168,17 +168,20 @@ export const siswaController = {
       const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       
-      const payload = request.body;
+      const rawBody = request.body;
 
       if (!tenantId) {
         reply.status(401);
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
-      
-      // Convert date string to Date object
-      if (payload.tanggal) {
-        payload.tanggal = new Date(payload.tanggal);
-      }
+
+      // Normalize payload: support both 'ids'/'siswaIds' and 'keterangan'/'alasan'
+      const payload: any = {
+        siswaIds: rawBody.siswaIds || rawBody.ids || [],
+        status: rawBody.status,
+        tanggal: rawBody.tanggal ? new Date(rawBody.tanggal) : undefined,
+        alasan: rawBody.alasan || rawBody.keterangan,
+      };
 
       const result = await siswaService.bulkUpdateStatus(tenantId, scope, payload);
 

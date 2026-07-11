@@ -72,7 +72,6 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
       };
 
       if (!createInput.nama_siswa) throw new Error('Kolom Nama Siswa wajib diisi');
-      if (!createInput.jenis_kelamin) throw new Error('Kolom Jenis Kelamin wajib diisi');
 
       // 4. Call createSiswaCommand
       await createSiswaCommand(createInput, { tenantId, org: options?.org });

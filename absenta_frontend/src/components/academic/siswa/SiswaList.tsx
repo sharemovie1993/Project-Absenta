@@ -1000,60 +1000,62 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           Hapus Semua
                         </Button>
                     )}
+
+                    {/* Bulk actions — tampil hanya saat ada siswa dipilih */}
+                    {selectedIds.size > 0 && canManage && (
+                      <>
+                        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+                        <Button
+                          variant="toolbarDanger"
+                          size="toolbar"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: 'Hapus Siswa Terpilih',
+                              description: `Anda yakin ingin menghapus ${selectedIds.size} siswa terpilih?`,
+                              confirmText: 'Hapus',
+                              cancelText: 'Batal',
+                              style: 'danger',
+                              withProgress: true,
+                              progressLabel: `Menghapus ${selectedIds.size} siswa...`,
+                            });
+                            if (ok) await handleBulkDelete();
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Hapus ({selectedIds.size})
+                        </Button>
+                        <Button
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={() => {
+                            setMutationDate(new Date().toISOString().split('T')[0]);
+                            setMutationReason('');
+                            setMutationStatus('PINDAH');
+                            setIsMutationModalOpen(true);
+                          }}
+                          className="text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/30 bg-orange-50/30 rounded-xl"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Mutasi ({selectedIds.size})
+                        </Button>
+                        <Button
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={() => {
+                            setMutationDate(new Date().toISOString().split('T')[0]);
+                            setIsGraduationModalOpen(true);
+                          }}
+                          className="text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 rounded-xl"
+                        >
+                          <GraduationCap className="w-4 h-4 mr-2" />
+                          Luluskan ({selectedIds.size})
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               }
-              toolbarRight={
-                selectedIds.size > 0 && canManage && (
-                  <div className="p-4 flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="toolbarDanger"
-                      size="toolbar"
-                      onClick={async () => {
-                        const ok = await confirm({
-                          title: 'Hapus Siswa Terpilih',
-                          description: `Anda yakin ingin menghapus ${selectedIds.size} siswa terpilih?`,
-                          confirmText: 'Hapus',
-                          cancelText: 'Batal',
-                          style: 'danger',
-                          withProgress: true,
-                          progressLabel: `Menghapus ${selectedIds.size} siswa...`,
-                        });
-                        if (ok) await handleBulkDelete();
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Hapus ({selectedIds.size})
-                    </Button>
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => {
-                        setMutationDate(new Date().toISOString().split('T')[0]);
-                        setMutationReason('');
-                        setMutationStatus('PINDAH');
-                        setIsMutationModalOpen(true);
-                      }}
-                      className="text-orange-600 dark:text-orange-400 border-orange-100 dark:border-orange-900/30 bg-orange-50/30 rounded-xl"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Mutasi ({selectedIds.size})
-                    </Button>
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => {
-                        setMutationDate(new Date().toISOString().split('T')[0]);
-                        setIsGraduationModalOpen(true);
-                      }}
-                      className="text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 rounded-xl"
-                    >
-                      <GraduationCap className="w-4 h-4 mr-2" />
-                      Luluskan ({selectedIds.size})
-                    </Button>
-                  </div>
-                )
-              }
+              toolbarRight={null}
               />
             </Suspense>
           </div>
