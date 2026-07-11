@@ -50,7 +50,13 @@ export default function SupervisiPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [totalData, setTotalData] = useState(0);
-  const [selectedSupervisi, setSelectedSupervisi] = useState<Supervisi | null>(null);
+  const [selectedSupervisiId, setSelectedSupervisiId] = useState<string | null>(null);
+
+  const selectedSupervisi = useMemo(() => {
+    if (data.length === 0) return null;
+    if (!selectedSupervisiId) return data[0];
+    return data.find((s: Supervisi) => s.id === selectedSupervisiId) || data[0];
+  }, [data, selectedSupervisiId]);
 
   const confirm = useConfirm();
 
@@ -60,24 +66,15 @@ export default function SupervisiPage() {
     setLoading(true);
     try {
       const result = await kurikulumApi.getSupervisi({ limit: pageLimit, page: currentPage, search: debouncedSearch });
-      const list = result.data?.list ?? [];
-      setData(list);
+      setData(result.data?.list ?? []);
       setTotalData(result.data?.total ?? 0);
-
-      // Sinkronkan selectedSupervisi
-      if (selectedSupervisi) {
-        const found = list.find((s: Supervisi) => s.id === selectedSupervisi.id);
-        if (found) setSelectedSupervisi(found);
-      } else if (list.length > 0) {
-        setSelectedSupervisi(list[0]);
-      }
     } catch (err) {
       console.error(err);
       toast.error('Gagal mengambil data supervisi');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, currentPage, pageLimit, selectedSupervisi]);
+  }, [debouncedSearch, currentPage, pageLimit]);
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -323,7 +320,7 @@ export default function SupervisiPage() {
                   emptyMessage="Belum ada jadwal supervisi"
                   toolbarLeft={toolbarLeft}
                   toolbarRight={toolbarRight}
-                  onRowClick={(row: any) => setSelectedSupervisi(row)}
+                  onRowClick={(row: any) => setSelectedSupervisiId(row.id)}
                   rowClassName={(row: any) => cn(
                     "cursor-pointer transition-all duration-200",
                     selectedSupervisi?.id === row.id ? "bg-indigo-50/40 dark:bg-indigo-950/20 font-medium" : ""
