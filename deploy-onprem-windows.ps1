@@ -6,6 +6,7 @@ param (
     [string]$FrontendPort = "5175",
     [string]$DeployMode = "", # "saas" or "local"
     [string]$ServerDomain = "", # e.g. "api.absenta.id" or "192.168.1.10"
+    [string]$NodeName = "",
     [switch]$Silent = $false
 )
 
@@ -679,6 +680,7 @@ if (-not $Silent) {
     # Logic for Silent mode parameters
     if (-not [string]::IsNullOrWhiteSpace($ServerDomain)) { $finalDomain = $ServerDomain }
     if (-not [string]::IsNullOrWhiteSpace($DeployMode)) { $deployScenario = $DeployMode }
+    if (-not [string]::IsNullOrWhiteSpace($NodeName)) { $nodeName = $NodeName }
 }
 
 # ----------------------------------------------------
