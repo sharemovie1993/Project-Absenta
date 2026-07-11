@@ -678,6 +678,7 @@ if (-not $Silent) {
 } else {
     # Logic for Silent mode parameters
     if (-not [string]::IsNullOrWhiteSpace($ServerDomain)) { $finalDomain = $ServerDomain }
+    if (-not [string]::IsNullOrWhiteSpace($DeployMode)) { $deployScenario = $DeployMode }
 }
 
 # ----------------------------------------------------
