@@ -88,9 +88,11 @@ const StrukturKurikulumPage: React.FC = () => {
         item.Mapel?.nama_mapel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.Mapel?.kode_mapel?.toLowerCase().includes(searchTerm.toLowerCase());
         
-      let itemKelompok = item.kelompok ?? 'UMUM';
-      if (itemKelompok === 'NASIONAL') itemKelompok = 'UMUM';
-      if (itemKelompok === 'LOKAL') itemKelompok = 'MUATAN_LOKAL';
+      let itemKelompok = item.kelompok ?? 'MATA PELAJARAN UMUM';
+      if (itemKelompok === 'NASIONAL' || itemKelompok === 'UMUM') itemKelompok = 'MATA PELAJARAN UMUM';
+      if (itemKelompok === 'KEJURUAN') itemKelompok = 'MATA PELAJARAN KEJURUAN';
+      if (itemKelompok === 'PILIHAN') itemKelompok = 'MATA PELAJARAN PILIHAN';
+      if (itemKelompok === 'LOKAL' || itemKelompok === 'MUATAN_LOKAL') itemKelompok = 'MUATAN LOKAL';
       
       const matchesKelompok = selectedKelompok === 'ALL' || itemKelompok === selectedKelompok;
       
@@ -108,9 +110,11 @@ const StrukturKurikulumPage: React.FC = () => {
       acc.totalJp += curr.jp_per_minggu ?? 0;
       acc.mapelCount++;
       
-      let kel = curr.kelompok ?? 'UMUM';
-      if (kel === 'NASIONAL') kel = 'UMUM';
-      if (kel === 'LOKAL') kel = 'MUATAN_LOKAL';
+      let kel = curr.kelompok ?? 'MATA PELAJARAN UMUM';
+      if (kel === 'NASIONAL' || kel === 'UMUM') kel = 'MATA PELAJARAN UMUM';
+      if (kel === 'KEJURUAN') kel = 'MATA PELAJARAN KEJURUAN';
+      if (kel === 'PILIHAN') kel = 'MATA PELAJARAN PILIHAN';
+      if (kel === 'LOKAL' || kel === 'MUATAN_LOKAL') kel = 'MUATAN LOKAL';
       
       if (!acc.byKelompok[kel]) {
         acc.byKelompok[kel] = { jp: 0, count: 0 };
@@ -287,12 +291,15 @@ const StrukturKurikulumPage: React.FC = () => {
                               <td className="px-4 py-3">
                                 <Badge className={cn(
                                   "font-bold border-none px-2 py-0.5 rounded text-[9px] uppercase",
-                                  item.kelompok === 'KEJURUAN' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" :
-                                  item.kelompok === 'PILIHAN' ? "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400" :
-                                  item.kelompok === 'LOKAL' || item.kelompok === 'MUATAN_LOKAL' ? "bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400" :
+                                  item.kelompok?.includes('KEJURUAN') ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" :
+                                  item.kelompok?.includes('PILIHAN') ? "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400" :
+                                  item.kelompok?.includes('LOKAL') ? "bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400" :
                                   "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400"
                                 )}>
-                                  {item.kelompok === 'NASIONAL' ? 'UMUM' : item.kelompok === 'LOKAL' || item.kelompok === 'MUATAN_LOKAL' ? 'MUATAN LOKAL' : item.kelompok || 'UMUM'}
+                                  {item.kelompok?.includes('KEJURUAN') ? 'MAPEL KEJURUAN' :
+                                   item.kelompok?.includes('PILIHAN') ? 'MAPEL PILIHAN' :
+                                   item.kelompok?.includes('LOKAL') ? 'MUATAN LOKAL' :
+                                   'MAPEL UMUM'}
                                 </Badge>
                               </td>
                               <td className="px-4 py-3">
