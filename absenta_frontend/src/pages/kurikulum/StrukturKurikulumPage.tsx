@@ -180,7 +180,7 @@ const StrukturKurikulumPage: React.FC = () => {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 -mr-12 -mt-12 rounded-full group-hover:scale-110 transition-transform"></div>
                 <div className="relative z-10 space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge variant={isActive ? "primary" : "outline"} className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-lg">
+                    <Badge variant={isActive ? "default" : "outline"} className="text-[10px] font-black tracking-widest uppercase px-2 py-0.5 rounded-lg">
                       TINGKAT {grade}
                     </Badge>
                     <Target className={cn("w-5 h-5 transition-colors", isActive ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400")} />
