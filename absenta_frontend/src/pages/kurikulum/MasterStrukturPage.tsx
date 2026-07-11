@@ -52,17 +52,23 @@ const MasterStrukturPage: React.FC = () => {
     const [formData, setFormData] = useState<{mapel_id: string, jp_per_minggu: number, kelompok: string}>({
         mapel_id: '',
         jp_per_minggu: 2,
-        kelompok: 'NASIONAL'
+        kelompok: ''
     });
 
     const resetForm = useCallback(() => {
         setFormData({
             mapel_id: '',
             jp_per_minggu: 2,
-            kelompok: 'NASIONAL'
+            kelompok: kelompokOptions?.[0]?.value || 'UMUM'
         });
         setEditingItem(null);
-    }, []);
+    }, [kelompokOptions]);
+
+    React.useEffect(() => {
+        if (kelompokOptions?.length > 0 && !formData.kelompok) {
+            setFormData(prev => ({ ...prev, kelompok: kelompokOptions[0].value }));
+        }
+    }, [kelompokOptions, formData.kelompok]);
 
     const openCreateModal = useCallback(() => {
         resetForm();
@@ -102,7 +108,7 @@ const MasterStrukturPage: React.FC = () => {
     }, [activeYear, selectedTahunId]);
 
     // Ambil daftar tingkat secara dinamis dari hook useJenjang
-    const { tingkatList, isLoading: isLoadingJenjang } = useJenjang();
+    const { tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
 
     // Set selectedTingkat ke tingkat terendah yang valid jika belum dipilih atau tidak ada dalam list
     React.useEffect(() => {
@@ -408,10 +414,9 @@ const MasterStrukturPage: React.FC = () => {
                                         onChange={handleInputChange}
                                         className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     >
-                                        <option value="NASIONAL">NASIONAL (Muatan Umum)</option>
-                                        <option value="KEJURUAN">KEJURUAN (Produktif)</option>
-                                        <option value="PILIHAN">PILIHAN (Peminatan)</option>
-                                        <option value="LOKAL">MUATAN LOKAL</option>
+                                        {kelompokOptions?.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>

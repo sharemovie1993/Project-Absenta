@@ -39,7 +39,7 @@ interface GradeStats {
 
 const StrukturKurikulumPage: React.FC = () => {
   const navigate = useNavigate();
-  const { tingkatList } = useJenjang();
+  const { tingkatList, kelompokOptions } = useJenjang();
 
   const [selectedTingkat, setSelectedTingkat] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -243,10 +243,9 @@ const StrukturKurikulumPage: React.FC = () => {
                         className="h-9 px-3 text-xs rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50/50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer outline-none"
                       >
                         <option value="ALL">SEMUA KELOMPOK</option>
-                        <option value="NASIONAL">NASIONAL</option>
-                        <option value="KEJURUAN">KEJURUAN</option>
-                        <option value="PILIHAN">PILIHAN</option>
-                        <option value="LOKAL">MUATAN LOKAL</option>
+                        {kelompokOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label.toUpperCase()}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -342,7 +341,9 @@ const StrukturKurikulumPage: React.FC = () => {
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kontribusi Kelompok</p>
-                  {['NASIONAL', 'KEJURUAN', 'PILIHAN', 'LOKAL'].map(kel => {
+                  {kelompokOptions.map(opt => {
+                    const kel = opt.value;
+                    const label = opt.label;
                     const dataKel = selectedGradeStats.byKelompok[kel] ?? { jp: 0, count: 0 };
                     const percentage = selectedGradeStats.totalJp > 0 
                       ? Math.round((dataKel.jp / selectedGradeStats.totalJp) * 100) 
@@ -350,16 +351,16 @@ const StrukturKurikulumPage: React.FC = () => {
                     return (
                       <div key={kel} className="space-y-1">
                         <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-gray-500 uppercase">{kel}</span>
+                          <span className="text-gray-500 uppercase">{label}</span>
                           <span className="text-slate-800 dark:text-white">{dataKel.jp} JP ({percentage}%)</span>
                         </div>
                         <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
                           <div 
                             className={cn(
                               "h-full rounded-full transition-all duration-500",
-                              kel === 'KEJURUAN' ? "bg-emerald-500" :
-                              kel === 'PILIHAN' ? "bg-amber-500" :
-                              kel === 'LOKAL' ? "bg-sky-500" :
+                              kel.includes('KEJURUAN') || kel.includes('PRODUCTIVE') ? "bg-emerald-500" :
+                              kel.includes('PILIHAN') || kel.includes('ELECTIVE') || kel.includes('PEMINATAN') ? "bg-amber-500" :
+                              kel.includes('LOKAL') || kel.includes('LOCAL') ? "bg-sky-500" :
                               "bg-indigo-500"
                             )}
                             style={{ width: `${percentage}%` }}
