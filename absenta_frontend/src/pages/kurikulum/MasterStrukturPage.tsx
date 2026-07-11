@@ -41,6 +41,8 @@ const MasterStrukturPage: React.FC = () => {
     const queryClient = useQueryClient();
     const { confirm } = useConfirm();
     
+    const { tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
+
     // Filters
     const [selectedTahunId, setSelectedTahunId] = useState<string>('');
     const [selectedTingkat, setSelectedTingkat] = useState<number>(10);
@@ -107,8 +109,6 @@ const MasterStrukturPage: React.FC = () => {
         }
     }, [activeYear, selectedTahunId]);
 
-    // Ambil daftar tingkat secara dinamis dari hook useJenjang
-    const { tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
 
     // Set selectedTingkat ke tingkat terendah yang valid jika belum dipilih atau tidak ada dalam list
     React.useEffect(() => {
