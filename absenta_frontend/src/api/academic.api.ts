@@ -80,6 +80,14 @@ export const siswaApi = {
   generateRfidBulk: async (params?: { kelas_id?: string }): Promise<{ success: boolean; message: string; data?: { updated: number } }> => {
     const q: Record<string, unknown> | undefined = params ? { ...params } : undefined;
     return requestWithFallback<{ success: boolean; message: string; data?: { updated: number } }>('post', '/academic/siswa/rfid/generate-bulk', { data: null, params: q });
+  },
+
+  getByKelas: async (kelasId: string): Promise<AcademicListResponse<Siswa>> => {
+    return requestWithFallback<AcademicListResponse<Siswa>>(
+      'get',
+      '/academic/siswa',
+      { params: { kelas_id: kelasId }, headers: { 'X-Skip-403-Redirect': 'true' } }
+    );
   }
 };
 
