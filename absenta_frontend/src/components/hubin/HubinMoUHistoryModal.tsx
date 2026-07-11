@@ -106,6 +106,34 @@ export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = ({
     }
   });
 
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<string | null>(null);
+
+  const handleGeneratePdf = useCallback(async (row: HubinMoUHistory) => {
+    setIsGeneratingPdf(row.id);
+    try {
+      const res = await hubinApi.generateMoUPdf({
+        nomor: row.mou_nomor,
+        tanggal: row.tanggal_mulai,
+        pihak_kedua_nama: mitraNama || undefined,
+        description: row.keterangan || undefined,
+        title: `MoU ${row.mou_nomor} - ${mitraNama || ''}`
+      });
+
+      if (res.success && res.data?.id) {
+        const { createDocumentSignedUrl } = await import('../../api/documents.api');
+        const { download_url } = await createDocumentSignedUrl(res.data.id);
+        window.open(download_url, '_blank');
+        toast.success('MoU PDF berhasil dibuat dan diunduh!');
+      } else {
+        throw new Error(res.message || 'Gagal menghasilkan PDF');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal membuat dokumen MoU PDF');
+    } finally {
+      setIsGeneratingPdf(null);
+    }
+  }, [mitraNama]);
+
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.mou_nomor.trim()) {
@@ -162,16 +190,31 @@ export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = ({
     {
       key: 'mou_url',
       label: 'Dokumen',
-      render: (mou_url: string) => mou_url ? (
-        <a
-          href={mou_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
-        >
-          <FileText size={14} /> Link MoU <ExternalLink size={10} />
-        </a>
-      ) : '-'
+      render: (mou_url: string, row: HubinMoUHistory) => (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          {mou_url ? (
+            <a
+              href={mou_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+            >
+              <FileText size={14} /> Link MoU <ExternalLink size={10} />
+            </a>
+          ) : (
+            <span className="text-slate-400 text-xs">Belum diunggah</span>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-[10px] gap-1 py-1 px-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold"
+            onClick={() => handleGeneratePdf(row)}
+            disabled={isGeneratingPdf === row.id}
+          >
+            {isGeneratingPdf === row.id ? 'Memproses...' : 'Cetak PDF'}
+          </Button>
+        </div>
+      )
     },
     {
       key: 'actions',
@@ -188,7 +231,7 @@ export const HubinMoUHistoryModal: React.FC<HubinMoUHistoryModalProps> = ({
         </Button>
       )
     }
-  ], [handleDelete, deleteMutation.isPending]);
+  ], [handleDelete, deleteMutation.isPending, handleGeneratePdf, isGeneratingPdf]);
 
   return (
     <Modal

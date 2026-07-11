@@ -60,11 +60,17 @@ export async function prestasiRoutes(fastify: any) {
       organizationalScopeMiddleware
     ]
   }, PrestasiController.deletePrestasiSiswa);
-
   fastify.get('/prestasi', {
     preHandler: [
       requireCapability('kesiswaan.prestasi.view'),
       organizationalScopeMiddleware
     ]
   }, PrestasiController.getAllPrestasiSiswa);
+
+  fastify.get('/prestasi/leaderboard', {
+    preHandler: [
+      requireCapability('kesiswaan.prestasi.view'),
+      organizationalScopeMiddleware
+    ]
+  }, PrestasiController.getLeaderboard);
 }

@@ -268,15 +268,19 @@ export const waGatewayService = {
   },
 
   /**
-   * Kirim pesan WA secara soft (tidak throw jika belum connected — hanya log warning).
-   * Gunakan ini untuk notifikasi opsional.
+   * Kirim pesan WA secara soft melalui antrian (Queue Dispatcher).
+   * - Tidak throw jika belum connected — pesan masuk antrian, dikirim saat WA ready.
+   * - Rate-limited 1 pesan / 3 detik per tenant untuk mencegah ban WA.
+   * - Gunakan ini untuk semua notifikasi opsional (absensi, BK, billing, dll).
    */
-  async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string): Promise<void> {
+  async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     if (!nomor) return;
     try {
-      await waGatewayService.sendMessage(tenantId, nomor, pesan);
+      // Lazy import untuk menghindari circular dependency
+      const { waQueueService } = await import('./wa-queue.service');
+      await waQueueService.enqueueSoft({ tenantId, nomor, pesan, source: source ?? 'soft-send' });
     } catch (e: any) {
-      console.warn(`[WA-Pool:${tenantId}] Skip WA notif (${e.message})`);
+      console.warn(`[WA-Pool:${tenantId}] Skip WA notif queue (${e.message})`);
     }
   },
 

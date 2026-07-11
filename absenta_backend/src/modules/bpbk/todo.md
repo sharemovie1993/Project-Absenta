@@ -20,6 +20,6 @@
 ## Saran Fitur Baru
 - [x] **BK Mobile Notifications**: Notifikasi push langsung ke smartphone guru BK saat ada siswa yang mencapai skor risiko tinggi secara real-time.
 - [x] **Anonymous Reporting (Whistleblowing)**: Fitur bagi siswa untuk melaporkan kasus perundungan (bullying) atau masalah lainnya secara anonim.
-- [ ] **Parent Consultation Booking**: Modul bagi orang tua untuk melakukan booking jadwal konsultasi dengan guru BK melalui aplikasi orang tua.
+- [x] **Parent Consultation Booking**: Modul bagi orang tua untuk melakukan booking jadwal konsultasi dengan guru BK melalui aplikasi orang tua.
 - [ ] **Sociometry Integration**: Analisis hubungan sosial antar siswa dalam satu kelas untuk mendeteksi potensi konflik atau isolasi sosial.
 - [ ] **Psychological Test Integration**: Import data hasil tes psikologi (IQ, Minat Bakat) untuk melengkapi profil perkembangan siswa.

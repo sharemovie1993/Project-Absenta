@@ -188,7 +188,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
                   manual_payment: {
                     bankName: 'Mandiri / BCA',
                     bankAccount: '1234567890',
-                    accountHolder: 'Absenta License'
+                    accountHolder: 'Cakola License'
                   },
                   data: {
                     id: String(inv.invoice_number),
@@ -203,7 +203,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
                           : inv.expired_time)
                       : new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
                     created_at: inv.created_at,
-                    notes: inv.plan_title || 'Layanan Absenta Premium',
+                    notes: inv.plan_title || 'Layanan Cakola Premium',
                     active_transaction: inv.paid_at ? null : {
                       status: 'PENDING',
                       reference: inv.payment_reference || '',
@@ -441,6 +441,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { suratKeluarRoutes } = await import('../modules/correspondence/routes/surat-keluar.routes');
       await fastify.register(suratKeluarRoutes, { prefix: '/correspondence/surat-keluar' });
 
+      const { templateSuratRoutes } = await import('../modules/correspondence/routes/template-surat.routes');
+      await fastify.register(templateSuratRoutes, { prefix: '/correspondence/template-surat' });
+
       const { bpbkRoutes } = await import('../modules/bpbk/routes/bpbk.routes');
       await fastify.register(bpbkRoutes, { prefix: '/bpbk' });
 
@@ -450,6 +453,31 @@ export async function registerRoutes(fastify: any, prisma: any) {
 
       const { default: strukturKurikulumRoutes } = await import('../modules/kurikulum/routes/struktur-kurikulum.routes');
       await fastify.register(strukturKurikulumRoutes, { prefix: '/kurikulum/struktur' });
+
+      // Jadwal Module
+      const { default: jadwalValidationRoutes } = await import('../modules/jadwal/routes/jadwal-validation.routes');
+      await fastify.register(jadwalValidationRoutes, { prefix: '/jadwal' });
+
+      // Penilaian (KKM & Nilai)
+      const { default: kkmRoutes } = await import('../modules/kurikulum/routes/kkm.routes');
+      await fastify.register(kkmRoutes, { prefix: '/kurikulum/kkm' });
+
+      // Perangkat Ajar (Kurikulum)
+      const { default: perangkatAjarRoutes } = await import('../modules/kurikulum/routes/perangkat-ajar.routes');
+      await fastify.register(perangkatAjarRoutes, { prefix: '/kurikulum' });
+
+      // Modul Rapor & Penilaian (Decoupled dari Kurikulum)
+      const { default: nilaiRoutes } = await import('../modules/rapor/routes/nilai.routes');
+      await fastify.register(nilaiRoutes, { prefix: '/rapor/nilai' });
+
+      const { default: raporRoutes } = await import('../modules/rapor/routes/rapor.routes');
+      await fastify.register(raporRoutes, { prefix: '/rapor' });
+
+      const { default: ukkSklRoutes } = await import('../modules/rapor/routes/ukk-skl.routes');
+      await fastify.register(ukkSklRoutes, { prefix: '/rapor' });
+
+      const { default: p5Routes } = await import('../modules/rapor/routes/p5.routes');
+      await fastify.register(p5Routes, { prefix: '/rapor/p5' });
 
       // Attendance Module (Protected & Capability Guarded)
       const { default: attendancePlugin } = await import('../modules/attendance/plugin');

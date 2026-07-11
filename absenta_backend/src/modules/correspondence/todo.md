@@ -5,7 +5,7 @@
 - [x] **Quick Approval via WA Token**: Implementasi alur approval persuratan tanpa login web penuh.
 
 ## Medium Priority
-- [ ] **Template Surat Dinamis**: Menyediakan builder template surat berbasis Rich Text Editor.
+- [x] **Template Surat Dinamis**: Menyediakan builder template surat berbasis Rich Text Editor.
 
 ## Low Priority
 - [ ] **Surat Masuk Reminder**: Notifikasi otomatis jika disposisi belum ditindaklanjuti dalam 3 hari.

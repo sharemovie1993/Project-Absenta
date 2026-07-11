@@ -546,7 +546,6 @@ export class HubinService {
       where: { id: siswaPklId },
       include: { Mitra: true }
     });
-
     if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
 
     // Anti-Fraud: Accuracy Validation (Standard SaaS Enterprise Audit)
@@ -554,13 +553,40 @@ export class HubinService {
        console.warn(`[Anti-Fraud] Suspicious accuracy detected: ${data.accuracy}m for SiswaPkl: ${siswaPklId}`);
     }
 
-    let isOutsideRadius = false;
-    let distanceMeters = 0;
-    
-    // Geofencing Check
     const targetLat = pkl.lat_override || pkl.Mitra.latitude;
     const targetLon = pkl.lon_override || pkl.Mitra.longitude;
     const radius = pkl.radius_override || pkl.Mitra.radius || 100;
+
+    // Advanced Geofencing Refinement: Caching last known good location for weak signal areas
+    if (data.accuracy && data.accuracy > 100 && targetLat && targetLon) {
+      const lastGood = await prisma.absensiPkl.findFirst({
+        where: {
+          siswa_pkl_id: siswaPklId,
+          is_outside_radius: false,
+          latitude_masuk: { not: null },
+          longitude_masuk: { not: null },
+        },
+        orderBy: { tanggal: 'desc' },
+      });
+
+      if (lastGood && lastGood.latitude_masuk && lastGood.longitude_masuk) {
+        const distToLastGood = this.calculateDistance(
+          data.latitude,
+          data.longitude,
+          lastGood.latitude_masuk,
+          lastGood.longitude_masuk
+        );
+        // If they are within 150m of their last known good check-in location, we assume they are at the same site
+        if (distToLastGood < 150) {
+          console.log(`[Geofencing-Cache] Weak signal. Caching applied. Dist to last good: ${Math.round(distToLastGood)}m`);
+          data.latitude = lastGood.latitude_masuk;
+          data.longitude = lastGood.longitude_masuk;
+        }
+      }
+    }
+
+    let isOutsideRadius = false;
+    let distanceMeters = 0;
 
     if (targetLat && targetLon) {
       const distance = this.calculateDistance(
@@ -652,19 +678,44 @@ export class HubinService {
       where: { id: siswaPklId },
       include: { Mitra: true }
     });
-
     let isOutsideRadius = existing.is_outside_radius;
     if (pkl && (pkl.lat_override || pkl.Mitra.latitude)) {
       const targetLat = pkl.lat_override || pkl.Mitra.latitude as number;
       const targetLon = pkl.lon_override || pkl.Mitra.longitude as number;
       const radius = pkl.radius_override || pkl.Mitra.radius || 100;
-      
+
+      // Advanced Geofencing Refinement: Caching last known good location for weak signal areas
+      if (data.accuracy && data.accuracy > 100) {
+        const lastGood = await prisma.absensiPkl.findFirst({
+          where: {
+            siswa_pkl_id: siswaPklId,
+            is_outside_radius: false,
+            latitude_masuk: { not: null },
+            longitude_masuk: { not: null },
+          },
+          orderBy: { tanggal: 'desc' },
+        });
+
+        if (lastGood && lastGood.latitude_masuk && lastGood.longitude_masuk) {
+          const distToLastGood = this.calculateDistance(
+            data.latitude,
+            data.longitude,
+            lastGood.latitude_masuk,
+            lastGood.longitude_masuk
+          );
+          if (distToLastGood < 150) {
+            console.log(`[Geofencing-Cache] Weak signal during checkout. Using last known good location. Dist: ${Math.round(distToLastGood)}m`);
+            data.latitude = lastGood.latitude_masuk;
+            data.longitude = lastGood.longitude_masuk;
+          }
+        }
+      }
+
       const distance = this.calculateDistance(data.latitude, data.longitude, targetLat, targetLon);
       if (distance > radius) {
         isOutsideRadius = true;
       }
     }
-
     return await prisma.absensiPkl.update({
       where: { id: existing.id },
       data: {

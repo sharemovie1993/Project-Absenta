@@ -131,3 +131,28 @@
 2026-07: Public DNS Resolution & Deployment Scenario Adaptability
 - **Keputusan**: Mengimplementasikan resolusi DNS publik menggunakan `dns.promises.Resolver` dengan konfigurasi server DNS terpercaya (`1.1.1.1` dan `8.8.8.8`) di backend untuk mendeteksi IP publik Server Lisensi asli secara dinamis, menyelaraskan penamaan penentu mode deployment dari `deploy_mode` menjadi `deploy_scenario` sesuai dengan variabel `.env` (`DEPLOY_SCENARIO` / `VITE_DEPLOY_SCENARIO`) yang ditulis oleh skrip installer (`saas` / `hybrid`), serta menyembunyikan/menampilkan kartu Custom Domain di frontend berdasarkan status keaktifan Easy Tunnel.
 - **Rasional**: Menghindari kesalahan resolusi domain utama sekolah (split-brain DNS) pada jaringan lokal yang menghasilkan IP intranet lokal (`10.10.10.99`) alih-alih IP publik server lisensi (`103.196.155.87`), meniadakan inkonsistensi penamaan variabel yang dapat menghentikan fungsi kondisional tab Akses Online, serta meminimalkan kebingungan admin sekolah dengan menyembunyikan instruksi konfigurasi domain sebelum tunnel terverifikasi aktif.
+
+2026-07: Kurikulum & Jadwal Gap Optimization and Assessment Database Schema
+- **Keputusan**: 
+  1. Menutup gap pada API Struktur Kurikulum dengan mengekspos endpoint `GET /grouped` serta memperketat keamanan (RBAC) seluruh rute struktur kurikulum menggunakan middleware `requireCapability('academic.structure.manage')`.
+  2. Mengintegrasikan logika **Max Hours Guard** (maksimal mengajar guru 8 JP / 360 menit per hari) langsung di dalam `JadwalValidationService` serta mengekspos API validasi konflik jadwal via endpoint `POST /api/jadwal/validate` dengan pengaman `requireCapability('academic.manage.kbm')`.
+  3. Mengimplementasikan 4 tabel model baru di database (`Kkmp`, `JenisNilaiMaster`, `NilaiSiswa`, dan `RaporSiswa`) ke dalam file `schema.prisma` dan menyelaraskannya secara instan ke database PostgreSQL menggunakan `prisma db push`.
+- **Rasional**: Meningkatkan keamanan data kurikulum dari modifikasi tanpa izin, menyempurnakan otomatisasi validasi beban mengajar guru (mencegah kelelahan mengajar guru dan jadwal tumpang tindih), serta meletakkan fondasi model data yang andal untuk modul penilaian akademik dan e-Rapor yang akan dibangun ke depan.
+
+2026-07: Advanced Assessment Modules & KBM Direct Relation (UKK, SKL, Leger, & Sesi KBM Link)
+- **Keputusan**:
+  1. Menambahkan model database `SertifikatUkk`, `KelulusanSiswa`, `P5Projek`, dan `P5NilaiSiswa` ke `schema.prisma` dan menyinkronkannya ke PostgreSQL via `npx prisma db push`.
+  2. Membangun REST API lengkap untuk pengisian Rapor Siswa, rekapitulasi data Leger Nilai Kelas (mendukung perhitungan total, rata-rata, dan ranking kelas otomatis), serta sertifikat UKK dan SKL.
+  3. Mengimplementasikan e-Rapor Kemendikbud Excel Export Engine berbasis biner (`xlsx`) yang secara dinamis menyusun matriks nilai dan deskripsi capaian kompetensi sesuai interval KKM.
+  4. Menambahkan field **`sesi_absensi_id`** pada model `NilaiSiswa` untuk menghubungkan perolehan nilai harian siswa secara langsung dengan jurnal harian mengajar (`SesiAbsensi` / `ProgresMateri`) guru.
+  5. Membangun Excel Import Engine untuk mempermudah guru mengentri nilai massal secara offline.
+  6. Mengimplementasikan cetakan dokumen PDF premium untuk e-Rapor, SKL, UKK, dan PKL menggunakan Puppeteer.
+  7. Membangun modul Projek P5 untuk merekam penilaian profil pelajar Pancasila Kurikulum Merdeka.
+- **Rasional**: Melengkapi seluruh modul akhir masa pendidikan sekolah umum & kejuruan (SMK) di backend, memudahkan Tata Usaha (TU) mengarsipkan leger kelas dan mencetak SKL, serta menyatukan data absensi, jurnal KBM harian, dan nilai harian menjadi satu alur integrasi hulu-ke-hilir yang padu.
+2026-07: Decoupling Modul Rapor dari Kurikulum
+- **Keputusan**: Memisahkan modul Rapor sepenuhnya dari modul Kurikulum di tingkat backend (di bawah prefiks baru `/api/rapor`) dan frontend. Seluruh file penilaian, leger kelas, projek P5, dan dokumen kelulusan dikelompokkan di dalam folder modul tersendiri.
+- **Rasional**: Menyelaraskan arsitektur backend dengan antarmuka frontend (sesuai mockup dashboard menu "Rapor"). Meminimalkan overhead dan memisahkan isolasi concern antara modul master setup akademik kurikulum dengan data transaksi nilai/rapor harian siswa.
+
+2026-07: Modul RPP & Perangkat Ajar (Kurikulum)
+- **Keputusan**: Menambahkan model database `PerangkatAjar` untuk mengarsipkan berkas RPP/Modul Ajar guru, membangun REST API upload/review berhak-akses (capability guarded), serta menyediakan antarmuka terintegrasi `PerangkatAjarPage.tsx` di frontend.
+- **Rasional**: Menyelesaikan gap backlog untuk repositori administrasi persiapan mengajar guru serta proses penjaminan mutu pengajaran oleh Wakasek Kurikulum sekolah.

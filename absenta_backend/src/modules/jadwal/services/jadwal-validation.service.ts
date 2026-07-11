@@ -26,7 +26,7 @@ export interface ValidationParams {
 export interface ValidationResult {
   is_valid: boolean;
   error?: {
-    code: 'KELAS_CONFLICT' | 'GURU_CONFLICT' | 'INVALID_TIME';
+    code: 'KELAS_CONFLICT' | 'GURU_CONFLICT' | 'INVALID_TIME' | 'GURU_MAX_HOURS_EXCEEDED';
     message: string;
     details: any;
   };
@@ -77,6 +77,19 @@ export class JadwalValidationService {
             code: 'GURU_CONFLICT',
             message: `Guru memiliki jadwal lain pada jam ${jam_mulai} - ${jam_selesai}`,
             details: teacherConflict,
+          },
+        };
+      }
+
+      // 3. Check Teacher Max Hours (Max 8 JP / 360 Minutes per day)
+      const maxHoursExceeded = await this.checkTeacherMaxHours(params);
+      if (maxHoursExceeded) {
+        return {
+          is_valid: false,
+          error: {
+            code: 'GURU_MAX_HOURS_EXCEEDED',
+            message: `Guru mengajar melebihi batas maksimal 8 jam pelajaran (360 menit) per hari. Akumulasi saat ini: ${maxHoursExceeded.current_minutes} menit.`,
+            details: maxHoursExceeded,
           },
         };
       }
@@ -238,6 +251,77 @@ export class JadwalValidationService {
           waktu: `${this.formatTime(sesiConflict.waktu_mulai)} - ${this.formatTime(sesiConflict.waktu_selesai!)}`,
         };
       }
+    }
+
+    return null;
+  }
+
+  private async checkTeacherMaxHours(params: ValidationParams) {
+    const MAX_TEACHING_MINUTES = 360; // 8 JP @ 45 minutes
+
+    const [startH, startM] = params.jam_mulai.split(':').map(Number);
+    const [endH, endM] = params.jam_selesai.split(':').map(Number);
+    const requestedDuration = (endH * 60 + endM) - (startH * 60 + startM);
+
+    if (requestedDuration <= 0) return null;
+
+    let totalExistingMinutes = 0;
+
+    // A. Check in JadwalTemplate
+    const templates = await prisma.jadwalTemplate.findMany({
+      where: {
+        tenant_id: params.tenant_id,
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        semester_id: params.semester_id,
+        hari: params.hari,
+        guru_id: params.guru_id,
+        id: params.exclude_jadwal_template_id ? { not: params.exclude_jadwal_template_id } : undefined,
+      },
+    });
+
+    for (const temp of templates) {
+      const [sH, sM] = temp.jam_mulai.split(':').map(Number);
+      const [eH, eM] = temp.jam_selesai.split(':').map(Number);
+      const duration = (eH * 60 + eM) - (sH * 60 + sM);
+      if (duration > 0) totalExistingMinutes += duration;
+    }
+
+    // B. Check in SesiAbsensi (Manual KBM context)
+    if (params.tanggal) {
+      const startOfDay = new Date(params.tanggal);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(params.tanggal);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const sesis = await prisma.sesiAbsensi.findMany({
+        where: {
+          tenant_id: params.tenant_id,
+          guru_id: params.guru_id,
+          tanggal: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+          id: params.exclude_sesi_id ? { not: params.exclude_sesi_id } : undefined,
+        },
+      });
+
+      for (const sesi of sesis) {
+        if (sesi.waktu_mulai && sesi.waktu_selesai) {
+          const duration = Math.round((sesi.waktu_selesai.getTime() - sesi.waktu_mulai.getTime()) / 60000);
+          if (duration > 0) totalExistingMinutes += duration;
+        }
+      }
+    }
+
+    const grandTotal = totalExistingMinutes + requestedDuration;
+
+    if (grandTotal > MAX_TEACHING_MINUTES) {
+      return {
+        requested_minutes: requestedDuration,
+        existing_minutes: totalExistingMinutes,
+        current_minutes: grandTotal,
+        max_minutes: MAX_TEACHING_MINUTES,
+      };
     }
 
     return null;

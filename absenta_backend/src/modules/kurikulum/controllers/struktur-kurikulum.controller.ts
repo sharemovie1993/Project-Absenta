@@ -51,4 +51,23 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, 'Failed to delete data', error);
     }
   }
+
+  static async getByTingkatGrouped(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { tahun_pelajaran_id } = req.query;
+
+      if (!tahun_pelajaran_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'tahun_pelajaran_id query parameter is required'
+        });
+      }
+
+      const result = await StrukturKurikulumService.getByTingkatGrouped(tenant_id, tahun_pelajaran_id);
+      return sendResponse(reply, 200, true, 'Data struktur kurikulum grouped retrieved', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to retrieve grouped data', error);
+    }
+  }
 }

@@ -6,13 +6,13 @@
 - [x] **Penyelesaian Dashboard Monitoring**: Menghubungkan query `getRecentActivity` ke UI dashboard untuk pantauan timeline aktivitas HUBIN secara real-time.
 
 ## Medium Priority
-- [ ] **Advanced Geofencing Refinement**: Meningkatkan akurasi deteksi lokasi pada area dengan sinyal lemah menggunakan teknik *last known location caching*.
-- [ ] **Tracer Study Analytics**: Membangun visualisasi statistik hasil tracer study (grafik pie sebaran keterserapan lulusan).
-- [ ] **Timeline Lamaran BKK UI**: Menyelesaikan antarmuka pelacakan log status lamaran (Terkirim -> Interview -> Diterima/Ditolak) untuk siswa/alumni.
-- [ ] **Export PDF Sertifikat MoU**: Fitur untuk mencetak dokumen MoU Mitra ke dalam format PDF standar sekolah.
+- [x] **Advanced Geofencing Refinement**: Meningkatkan akurasi deteksi lokasi pada area dengan sinyal lemah menggunakan teknik *last known location caching*.
+- [x] **Tracer Study Analytics**: Membangun visualisasi statistik hasil tracer study (grafik pie sebaran keterserapan lulusan).
+- [x] **Timeline Lamaran BKK UI**: Menyelesaikan antarmuka pelacakan log status lamaran (Terkirim -> Interview -> Diterima/Ditolak) untuk siswa/alumni.
+- [x] **Export PDF Sertifikat MoU**: Fitur untuk mencetak dokumen MoU Mitra ke dalam format PDF standar sekolah.
 - [ ] **Integrasi Kalender Kunjungan**: Sinkronisasi jadwal kunjungan pembimbing dengan kalender internal di dashboard Guru.
 
 ## Low Priority
-- [ ] **Otomasi Sertifikat PKL**: Fitur untuk generate sertifikat PKL otomatis (PDF) berdasarkan nilai yang diinput pembimbing dan draf dari industri.
+- [x] **Otomasi Sertifikat PKL**: Fitur untuk generate sertifikat PKL otomatis (PDF) berdasarkan nilai yang diinput pembimbing dan draf dari industri.
 - [ ] **Tefa Billing Integration**: Menghubungkan modul TEFA dengan `BillingService` untuk penagihan pesanan produk/jasa ke mitra.
 - [x] **Mobile App Logbook V2**: Optimasi antarmuka pengisian logbook harian agar lebih ringan dan mendukung mode offline.

@@ -331,7 +331,7 @@ export class EasyTunnelService {
       throw new Error('Format domain tidak valid. Contoh: absen.smkn1.sch.id');
     }
 
-    // 2. Cek konflik dengan tenant lain di Absenta DB
+    // 2. Cek konflik dengan tenant lain di Cakola DB
     const conflict = await prisma.tenant.findFirst({
       where: { custom_domain: domainClean, id: { not: tenantId } }
     });

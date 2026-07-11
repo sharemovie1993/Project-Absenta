@@ -19,6 +19,12 @@ Completed:
 - **Reporting Engine PDF Generator**: Pembuatan modul generator PDF premium berbasis Puppeteer untuk Sertifikat Penghargaan Siswa, Invoice Tagihan central, dan Laporan Hasil Supervisi Akademik Guru.
 - **Kurikulum Zod Validation Layer**: Integrasi layer validasi Zod untuk Struktur Kurikulum (`StrukturKurikulum`) dan Supervisi Guru (`SupervisiGuru`) guna menyeleksi input data dan parameter kotor di level API.
 - **Kesiswaan Zod Validation Layer**: Integrasi layer validasi Zod untuk sub-modul Pelanggaran Siswa, Jenis Pelanggaran, Prestasi Siswa, Jenis Prestasi, dan Piket (Izin Keluar Siswa) guna menjamin integritas tipe data input.
+- **Pemisahan Modul Rapor (Decoupled)**: Pemisahan modul Rapor sepenuhnya dari modul Kurikulum di tingkat backend (di bawah prefix `/api/rapor`) dan frontend.
+- **Penilaian, Leger Kelas & Excel Impor/Ekspor**: Penambahan sistem KKM, pembobotan jenis penilaian, kalkulasi leger dinamis sekelas (rata-rata, total, ranking 1..N), ekspor Excel Leger (.xlsx), serta generator template nilai kosong & parser impor massal nilai via Excel toleran kesalahan baris.
+- **Rapor Projek P5 & Kualitatif**: CRUD Projek P5 master dan perekaman kualitatif checklist karakter profil pelajar Pancasila (`BB`, `MB`, `BSH`, `SB`) beserta catatan prosesnya per siswa.
+- **Generator PDF Premium Puppeteer**: Lembar e-Rapor resmi semester, Rapor Projek P5, Surat Keterangan Lulus (SKL), Sertifikat UKK Kejuruan (border emas landscape), dan Rapor PKL.
+- **Manajemen Perangkat Ajar & RPP**: Repositori berkas administrasi guru (RPP, silabus, dll.) lengkap dengan workflow persetujuan (APPROVED/REJECTED) dan umpan balik Wakasek Kurikulum.
+- **Frontend Pages Modul Rapor & RPP**: Halaman `InputNilaiPage.tsx`, `CetakRaporPage.tsx`, `P5Page.tsx` di modul Rapor, dan halaman `PerangkatAjarPage.tsx` di modul Kurikulum lengkap dengan integrasi Axios & React Query.
 - **Global & Module Documentation**: Seluruh modul backend (39 subdirektori modul) dan dokumentasi global telah terdokumentasi (Deep Verified & Cross-Synced) dengan standar Context Engineering AI.
 
 In Progress:

@@ -67,8 +67,8 @@ export const resolvePublicApiBaseUrl = (): string => {
     return `${finalProto}//${winHost}:${targetPort}/api`;
   }
 
-  // Default: use same origin as protected API (drop /api suffix)
-  return u.origin;
+  // Default: use same origin as protected API (keep /api suffix)
+  return API_URL.replace(/\/+$/, '');
 };
 
 // 3. Request Interceptor

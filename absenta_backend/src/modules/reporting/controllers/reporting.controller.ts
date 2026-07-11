@@ -1,6 +1,7 @@
 import { FinancialService } from '../services/financial.service';
 import { GeneralReportService } from '../services/general-report.service';
 import { PdfGeneratorService } from '../services/pdf-generator.service';
+import { PdfRaporService } from '../services/pdf-rapor.service';
 import { prisma } from '../../../utils/prisma';
 
 export class ReportingController {
@@ -418,6 +419,99 @@ export class ReportingController {
       
       reply.header('Content-Type', 'application/pdf');
       reply.header('Content-Disposition', 'inline; filename="laporan_bulanan_kesiswaan.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printRapor(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+      const { tahun_pelajaran_id, semester_id } = request.query;
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({ success: false, message: 'tahun_pelajaran_id dan semester_id wajib diisi' });
+      }
+
+      const pdfBuffer = await PdfRaporService.generateRaporPdf(tenantId, {
+        siswa_id: siswaId,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="rapor_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printSkl(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+
+      const pdfBuffer = await PdfRaporService.generateSklPdf(tenantId, siswaId);
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="skl_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printUkk(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+
+      const pdfBuffer = await PdfRaporService.generateUkkPdf(tenantId, siswaId);
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="sertifikat_ukk.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printPkl(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaPklId } = request.params;
+
+      const pdfBuffer = await PdfRaporService.generatePklPdf(tenantId, siswaPklId);
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="rapor_pkl_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printP5Rapor(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+      const { tahun_pelajaran_id, semester_id } = request.query;
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({ success: false, message: 'tahun_pelajaran_id dan semester_id wajib diisi' });
+      }
+
+      const pdfBuffer = await PdfRaporService.generateP5RaporPdf(tenantId, {
+        siswa_id: siswaId,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="rapor_p5_siswa.pdf"');
       return reply.send(pdfBuffer);
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

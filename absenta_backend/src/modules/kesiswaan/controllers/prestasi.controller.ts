@@ -124,4 +124,15 @@ export class PrestasiController {
       return sendError(reply, 500, 'Failed to seed default data', error);
     }
   }
+
+  static async getLeaderboard(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+      const result = await PrestasiService.getLeaderboard(tenant_id, limit);
+      return sendResponse(reply, 200, true, 'Leaderboard prestasi berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil leaderboard prestasi', error);
+    }
+  }
 }

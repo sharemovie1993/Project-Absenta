@@ -87,7 +87,7 @@ export default function EasyTunnelPage() {
   const [licenseKey, setLicenseKey] = useState('');
   const [subdomainSlug, setSubdomainSlug] = useState('');
   const [localPort, setLocalPort] = useState(443); // default port Caddy (HTTPS) on-premise
-  const [appName, setAppName] = useState('Absenta Local Portal');
+  const [appName, setAppName] = useState('Cakola Local Portal');
   const [setupLoading, setSetupLoading] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
 
@@ -227,7 +227,7 @@ export default function EasyTunnelPage() {
         if (tenantRes?.success && tenantRes.data) {
           const tenant = tenantRes.data;
           setSchoolName(tenant.name || '');
-          setAppName(tenant.name || 'Absenta Local Portal');
+          setAppName(tenant.name || 'Cakola Local Portal');
           const slug = resolveSmartSlug(tenant);
           setSubdomainSlug(slug);
           if (slug) {
@@ -482,7 +482,7 @@ export default function EasyTunnelPage() {
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Akses Online (Easy Tunnel)</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Hubungkan server portal sekolah Absenta ke internet luring menggunakan WireGuard VPN.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Hubungkan server portal sekolah Cakola ke internet luring menggunakan WireGuard VPN.</p>
         </div>
         <div className="flex gap-3">
           <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition" onClick={handleOpenOrder}>
@@ -1098,7 +1098,7 @@ export default function EasyTunnelPage() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Port Lokal Portal Absenta:</label>
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Port Lokal Portal Cakola:</label>
                   <input
                     type="number"
                     required
@@ -1153,7 +1153,7 @@ export default function EasyTunnelPage() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Port Lokal Portal Absenta:</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-400">Port Lokal Portal Cakola:</label>
                 <input
                   type="number"
                   required

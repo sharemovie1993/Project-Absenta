@@ -139,6 +139,14 @@ const CoopInventoryReport = lazy(() => import('./pages/cooperative/LaporanInvent
 const CoopAnnouncements = lazy(() => import('./pages/cooperative/Announcements'));
 const CoopTickets = lazy(() => import('./pages/cooperative/Tickets'));
 const CoopTicketDetail = lazy(() => import('./pages/cooperative/TicketDetail'));
+const KurikulumDashboard = lazy(() => import('./pages/kurikulum/Dashboard'));
+const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashboard'));
+const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
+const PerangkatAjarPage = lazy(() => import('./pages/kurikulum/PerangkatAjarPage'));
+const InputNilaiPage = lazy(() => import('./pages/rapor/InputNilaiPage'));
+const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
+const P5Page = lazy(() => import('./pages/rapor/P5Page'));
+const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
 const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
@@ -561,6 +569,11 @@ function App() {
                     } />
 
                     {/* Correspondence Routes */}
+                    <Route path="/correspondence/dashboard" element={
+                      <ProtectedRoute requiredCapability="correspondence.inbox.view">
+                        <CorrespondenceDashboard />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/correspondence/surat-masuk" element={
                       <ProtectedRoute requiredCapability="correspondence.inbox.view">
                         <SuratMasukPage />
@@ -737,6 +750,11 @@ function App() {
                     } />
 
                     {/* Kurikulum Routes */}
+                    <Route path="/kurikulum/dashboard" element={
+                      <ProtectedRoute requiredCapability="academic.structures.view.list">
+                        <KurikulumDashboard />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/kurikulum/supervisi" element={
                       <ProtectedRoute requiredCapability="curriculum.supervision.view.report">
                         <SupervisiPage />
@@ -752,11 +770,16 @@ function App() {
                         <MasterStrukturPage />
                       </ProtectedRoute>
                     } />
-                    {/* Jadwal Pelajaran consolidated into /attendance/jadwal-template */}
+                     {/* Jadwal Pelajaran consolidated into /attendance/jadwal-template */}
                     <Route path="/kurikulum/jadwal" element={<Navigate to="/attendance/jadwal-template" replace />} />
                     <Route path="/kurikulum/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="academic.structures.view.list">
                         <CetakBerkasKurikulumPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/perangkat" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <PerangkatAjarPage />
                       </ProtectedRoute>
                     } />
                     
@@ -789,6 +812,33 @@ function App() {
                     <Route path="/sarpras/catalog" element={
                       <ProtectedRoute requiredRoles={['SUPERADMIN', 'ADMIN']}>
                         <SarprasCatalogPage />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Rapor & CBT Routes */}
+                    <Route path="/rapor/dashboard" element={
+                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                        <RaporDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/nilai" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <InputNilaiPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/cetak" element={
+                      <ProtectedRoute requiredCapability="academic.view.wali.kelas">
+                        <CetakRaporPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/p5" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <P5Page />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cbt/dashboard" element={
+                      <ProtectedRoute requiredCapability="academic.students.view.list">
+                        <CbtDashboard />
                       </ProtectedRoute>
                     } />
                     

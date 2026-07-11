@@ -210,3 +210,40 @@ export const registerParentFcmToken = async (orangTuaId: string, fcmToken: strin
   });
   return data;
 };
+
+// 8. Rapor Online & P5
+export const getStudentRapor = async (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
+  const { data } = await parentAxiosInstance.get<ApiResponse<any>>(`/parent-app/siswa/${siswaId}/rapor`, {
+    params: { tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }
+  });
+  return data.data;
+};
+
+export const getStudentP5 = async (siswaId: string) => {
+  const { data } = await parentAxiosInstance.get<ApiResponse<any>>(`/parent-app/siswa/${siswaId}/p5`);
+  return data.data;
+};
+
+// 9. Chat Wali Kelas
+export const startChatSession = async (guruId: string) => {
+  const { data } = await parentAxiosInstance.post<ApiResponse<any>>('/parent-app/chat/session', { guru_id: guruId });
+  return data.data;
+};
+
+export const getParentChatSessions = async () => {
+  const { data } = await parentAxiosInstance.get<ApiResponse<any[]>>('/parent-app/chat/sessions');
+  return data.data;
+};
+
+export const getParentChatMessages = async (sessionId: string) => {
+  const { data } = await parentAxiosInstance.get<ApiResponse<any[]>>(`/parent-app/chat/messages/${sessionId}`);
+  return data.data;
+};
+
+export const sendParentChatMessage = async (sessionId: string, message: string) => {
+  const { data } = await parentAxiosInstance.post<ApiResponse<any>>('/parent-app/chat/message', {
+    session_id: sessionId,
+    message
+  });
+  return data.data;
+};

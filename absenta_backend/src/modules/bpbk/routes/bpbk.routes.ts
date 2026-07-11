@@ -1,5 +1,6 @@
 import { BpbkController } from '../controllers/bpbk.controller';
 import { BullyingReportController } from '../controllers/bullying-report.controller';
+import { BkKonsultasiController } from '../controllers/bk-konsultasi.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { organizationalScopeMiddleware, elevatedScopeMiddleware } from '@/middlewares/organizationalScope';
 
@@ -322,5 +323,20 @@ export async function bpbkRoutes(fastify: any) {
       organizationalScopeMiddleware
     ]
   }, BullyingReportController.updateStatus);
+
+  // === BK Consultation Bookings (Sisi Guru BK) ===
+  fastify.get('/bookings', {
+    preHandler: [
+      requireCapability('bk.cases.view.list'),
+      organizationalScopeMiddleware
+    ]
+  }, BkKonsultasiController.getAll);
+
+  fastify.put('/bookings/:id/status', {
+    preHandler: [
+      requireCapability('bk.cases.manage'),
+      organizationalScopeMiddleware
+    ]
+  }, BkKonsultasiController.updateStatus);
 }
 

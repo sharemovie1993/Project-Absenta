@@ -228,4 +228,39 @@ export class PrestasiService {
       console.error(`[SEED] Failed to seed Jenis Prestasi for tenant ${tenantId}:`, error);
     }
   }
+
+  static async getLeaderboard(tenantId: string, limit: number = 10) {
+    const students = await prisma.prestasiSiswa.groupBy({
+      by: ['siswa_id', 'kelas_id'],
+      where: { tenant_id: tenantId },
+      _sum: { poin: true },
+      orderBy: { _sum: { poin: 'desc' } },
+      take: limit,
+    });
+
+    const result = await Promise.all(
+      students.map(async (item) => {
+        const student = await prisma.siswa.findUnique({
+          where: { id: item.siswa_id },
+          select: { nama_siswa: true, nis: true },
+        });
+        const kelas = item.kelas_id
+          ? await prisma.kelas.findUnique({
+              where: { id: item.kelas_id },
+              select: { nama_kelas: true },
+            })
+          : null;
+
+        return {
+          siswa_id: item.siswa_id,
+          nama_siswa: student?.nama_siswa || 'Siswa Tidak Ditemukan',
+          nis: student?.nis || '',
+          nama_kelas: kelas?.nama_kelas || 'Umum',
+          total_poin: item._sum.poin || 0,
+        };
+      })
+    );
+
+    return result;
+  }
 }

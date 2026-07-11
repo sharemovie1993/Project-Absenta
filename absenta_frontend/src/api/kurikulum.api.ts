@@ -74,5 +74,41 @@ export const kurikulumApi = {
       params: { tanggal: dateParam }
     });
     return response.data;
-  }
+  },
+
+  // Dashboard Stats (agregasi data dari berbagai endpoint untuk dashboard)
+  getDashboardStats: async () => {
+    const response = await api.get('/dashboard/kurikulum/stats');
+    return response.data;
+  },
+
+  // Beban mengajar per guru (JP per minggu)
+  getBebanMengajar: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get('/kurikulum/struktur/beban-guru', { params });
+    return response.data;
+  },
+
+  // Progress supervisi semester berjalan
+  getProgressSupervisi: async () => {
+    const response = await api.get('/kurikulum/supervisi/progress');
+    return response.data;
+  },
+
+  // Perangkat Ajar / RPP
+  getPerangkatAjar: async (params?: { guru_id?: string; mapel_id?: string; tahun_pelajaran_id?: string; semester_id?: string; status?: string; jenis?: string }) => {
+    const response = await api.get('/kurikulum/perangkat', { params });
+    return response.data;
+  },
+  uploadPerangkatAjar: async (data: { guru_id: string; mapel_id: string; tahun_pelajaran_id: string; semester_id: string; judul: string; jenis: string; file_url: string }) => {
+    const response = await api.post('/kurikulum/perangkat', data);
+    return response.data;
+  },
+  reviewPerangkatAjar: async (id: string, data: { status: 'APPROVED' | 'REJECTED'; catatan_reviewer?: string | null }) => {
+    const response = await api.post(`/kurikulum/perangkat/${id}/review`, data);
+    return response.data;
+  },
+  deletePerangkatAjar: async (id: string) => {
+    const response = await api.delete(`/kurikulum/perangkat/${id}`);
+    return response.data;
+  },
 };

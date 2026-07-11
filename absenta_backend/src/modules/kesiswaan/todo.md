@@ -8,9 +8,9 @@
 ## Medium Priority
 - [x] **Fitur Cetak Surat Izin**: Menambahkan fungsi cetak surat izin keluar (thermal/A4) langsung dari dasbor guru piket.
 - [x] **Notifikasi Real-time Orang Tua**: Integrasi dengan `waGatewayService` untuk mengirimkan notifikasi instan saat siswa dicatat melakukan pelanggaran berat.
-- [ ] **Leaderboard Prestasi**: Membangun antarmuka peringkat siswa berprestasi di aplikasi siswa untuk meningkatkan motivasi.
+- [x] **Leaderboard Prestasi**: Membangun antarmuka peringkat siswa berprestasi di aplikasi siswa untuk meningkatkan motivasi.
 
 ## Low Priority
-- [ ] **Analitik Kedisiplinan**: Grafik tren pelanggaran per bulan untuk membantu sekolah mengidentifikasi waktu-waktu rawan gangguan disiplin.
+- [x] **Analitik Kedisiplinan**: Grafik tren pelanggaran per bulan untuk membantu sekolah mengidentifikasi waktu-waktu rawan gangguan disiplin.
 - [ ] **Mobile Entry for Piket**: Optimasi UI dasbor piket untuk penggunaan pada perangkat mobile/tablet bagi guru piket yang berkeliling.
 - [ ] **Custom Point Weighting**: Memberikan opsi bagi admin sekolah untuk mengubah bobot poin default pada jenis pelanggaran/prestasi tertentu melalui antarmuka pengaturan.

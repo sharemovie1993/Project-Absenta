@@ -226,6 +226,14 @@ export const hubinApi = {
   getMoUHistory: (mitraId: string) => requestWithFallback<any>('get', `/hubin/mitra/${mitraId}/mou`),
   createMoUHistory: (mitraId: string, data: any) => requestWithFallback<any>('post', `/hubin/mitra/${mitraId}/mou`, { data }),
   deleteMoUHistory: (id: string) => requestWithFallback<any>('delete', `/hubin/mou/${id}`),
+  generateMoUPdf: (data: {
+    title?: string;
+    description?: string;
+    tanggal?: string;
+    nomor?: string;
+    pihak_kedua_nama?: string;
+    pihak_kedua_alamat?: string;
+  }) => requestWithFallback<any>('post', '/documents/mou', { data }),
 
   // BKK Lowongan
   getLowongan: (params?: { search?: string; status?: string; page?: number; limit?: number }) => 

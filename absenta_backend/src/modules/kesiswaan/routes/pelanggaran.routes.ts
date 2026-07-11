@@ -32,11 +32,17 @@ export async function pelanggaranRoutes(fastify: any) {
       determineDataScope()
     ] 
   }, PelanggaranController.getAll);
-
   fastify.get('/:id', { 
     preHandler: [
       requireCapability('affairs.violations.view.detail'),
       organizationalScopeMiddleware
     ] 
   }, PelanggaranController.getById);
+
+  fastify.get('/analytics', {
+    preHandler: [
+      requireCapability('affairs.violations.view.list'),
+      organizationalScopeMiddleware
+    ]
+  }, PelanggaranController.getAnalytics);
 }

@@ -211,8 +211,6 @@ export class PelanggaranService {
       },
     };
   }
-
-
   static async getById(tenantId: string, id: string) {
     return prisma.pelanggaranSiswa.findFirst({
       where: { id, tenant_id: tenantId },
@@ -227,5 +225,53 @@ export class PelanggaranService {
         },
       },
     });
+  }
+
+  static async getAnalytics(tenantId: string, query: { year?: number }) {
+    const year = Number(query.year) || new Date().getFullYear();
+
+    const start = new Date(`${year}-01-01T00:00:00.000Z`);
+    const end = new Date(`${year}-12-31T23:59:59.999Z`);
+
+    const list = await prisma.pelanggaranSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: start, lte: end },
+      },
+      select: {
+        tanggal: true,
+        poin: true,
+        jenis_pelanggaran: true,
+      },
+    });
+
+    const months = Array.from({ length: 12 }, (_, i) => ({
+      bulan: i + 1,
+      nama_bulan: new Date(2026, i, 1).toLocaleString('id-ID', { month: 'long' }),
+      total_kasus: 0,
+      total_poin: 0,
+    }));
+
+    const kategoriMap = new Map<string, number>();
+
+    list.forEach((p) => {
+      const monthIdx = new Date(p.tanggal).getMonth();
+      if (monthIdx >= 0 && monthIdx < 12) {
+        months[monthIdx].total_kasus += 1;
+        months[monthIdx].total_poin += p.poin || 0;
+      }
+      const cat = p.jenis_pelanggaran || 'Umum';
+      kategoriMap.set(cat, (kategoriMap.get(cat) || 0) + 1);
+    });
+
+    const kategori = Array.from(kategoriMap.entries()).map(([name, count]) => ({
+      kategori: name,
+      jumlah: count,
+    }));
+
+    return {
+      trend_bulanan: months,
+      distribusi_kategori: kategori,
+    };
   }
 }

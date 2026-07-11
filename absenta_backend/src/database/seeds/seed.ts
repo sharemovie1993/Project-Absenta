@@ -250,8 +250,9 @@ async function main() {
     // --- KURIKULUM ---
     {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
+        { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.structures.view.list' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.view.schedule' },
-        { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'curriculum.structure.manage' },
+        { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.structures.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'CalendarDays', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.structures.view.list' },
       ]
@@ -260,12 +261,12 @@ async function main() {
     // --- KESISWAAN ---
     {
       label: 'KESISWAAN', icon: 'Users', path: null, required_features: ['CORE'], order: 15, children: [
+        { label: 'Dashboard Kesiswaan', icon: 'LayoutDashboard', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.violation.stats' },
         { label: 'Piket & Izin Keluar', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view' },
         { label: 'Kasus Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list' },
         { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'kesiswaan.prestasi.view' },
         { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.view.list' },
         { label: 'Pengaturan Poin', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.view.list' },
-        { label: 'Monitoring Kesiswaan', icon: 'Activity', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.violation.stats' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'affairs.violations.view.list' },
       ]
     },
@@ -293,6 +294,7 @@ async function main() {
     // --- PERSURATAN (CORRESPONDENCE) ---
     {
       label: 'PERSURATAN', icon: 'Mail', path: null, required_features: ['CORE'], order: 22, children: [
+        { label: 'Dashboard Persuratan', icon: 'LayoutDashboard', path: '/correspondence/dashboard', required_capability: 'correspondence.inbox.view' },
         { label: 'Surat Masuk', icon: 'Inbox', path: '/correspondence/surat-masuk', required_capability: 'correspondence.inbox.view' },
         { label: 'Surat Keluar', icon: 'Send', path: '/correspondence/surat-keluar', required_capability: 'correspondence.outbox.view' },
       ]
@@ -333,10 +335,25 @@ async function main() {
     // --- SARPRAS ---
     {
       label: 'SARPRAS', icon: 'Package', path: null, required_features: ['SARPRAS'], order: 35, children: [
+        { label: 'Dashboard Sarpras', icon: 'LayoutDashboard', path: '/sarpras/dashboard', required_capability: 'sarpras.inventory.view.list' },
         { label: 'Inventory Aset', icon: 'Archive', path: '/sarpras/inventory', required_capability: 'sarpras.inventory.view.list' },
         { label: 'Peminjaman', icon: 'ArrowUpCircle', path: '/sarpras/loans', required_capability: 'sarpras.loans.view.list' },
         { label: 'Pemeliharaan', icon: 'Tool', path: '/sarpras/maintenance', required_capability: 'sarpras.repairs.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/sarpras/cetak-berkas', required_capability: 'sarpras.inventory.view.list' },
+      ]
+    },
+
+    // --- RAPOR ---
+    {
+      label: 'RAPOR', icon: 'BookOpen', path: null, required_features: ['CORE'], order: 38, children: [
+        { label: 'Dashboard Rapor', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.students.view.list' }
+      ]
+    },
+
+    // --- CBT ---
+    {
+      label: 'CBT', icon: 'Laptop', path: null, required_features: ['CORE'], order: 39, children: [
+        { label: 'Dashboard CBT', icon: 'LayoutDashboard', path: '/cbt/dashboard', required_capability: 'academic.students.view.list' }
       ]
     },
 

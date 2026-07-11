@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { Lock, LayoutGrid } from 'lucide-react';
 import { useNavStore } from '../../store/navStore';
 import { cn } from '../../lib/utils';
@@ -18,7 +18,28 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
   const { activeHub, setActiveHub } = useNavStore();
   const { user, subscription } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const isDashboardActive = location.pathname === '/dashboard';
+
+  const handleHubClick = (hubId: any) => {
+    setActiveHub(hubId);
+    const paths: Record<string, string> = {
+      'AKADEMIK': '/academic',
+      'KURIKULUM': '/kurikulum/dashboard',
+      'KESISWAAN': '/kesiswaan/monitoring',
+      'SARPRAS': '/sarpras/dashboard',
+      'HUBIN': '/hubin/dashboard',
+      'BPBK': '/bpbk/dashboard',
+      'KOPERASI': '/cooperative/dashboard',
+      'ABSENSI': '/attendance/dashboard',
+      'PERSURATAN': '/correspondence/dashboard',
+      'RAPOR': '/rapor/dashboard',
+      'CBT': '/cbt/dashboard'
+    };
+    if (paths[hubId]) {
+      navigate(paths[hubId]);
+    }
+  };
 
   const isPlatformUser = useMemo(() => {
     const roleName = String(user?.role?.name || '').toUpperCase();
@@ -78,7 +99,7 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
             return (
               <button
                 key={hub.id}
-                onClick={() => setActiveHub(hub.id)}
+                onClick={() => handleHubClick(hub.id)}
                 aria-label={`Pindah ke modul ${hub.label}`}
                 aria-pressed={isActive}
                 title={hub.label}
@@ -140,7 +161,7 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
                 placement="right"
               >
                 <button
-                  onClick={() => setActiveHub(hub.id)}
+                  onClick={() => handleHubClick(hub.id)}
                   aria-label={`Pindah ke modul ${hub.label}`}
                   aria-pressed={isActive}
                   className={cn(

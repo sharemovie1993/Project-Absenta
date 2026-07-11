@@ -13,6 +13,7 @@ import { InfraErrorBoundary } from '../superadmin/infra/InfraErrorBoundary';
 import { HardeningInspector } from '../superadmin/infra/InfraSharedComponents';
 import { getHardeningConfig } from '../../config/hardeningRegistry';
 import auditReport from '../../config/hardeningAuditReport.json';
+import { useTvStore } from '@/store/tvStore';
 
 interface AcademicStat {
   title: string;
@@ -62,6 +63,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 }) => {
   const { setInstructionData } = useInstruction();
   const { isAdmin, user } = useAuth();
+  const { isTvMode } = useTvStore();
 
 
   // Resolve key secara otomatis berdasarkan URL browser jika tidak dilewatkan secara manual
@@ -171,17 +173,43 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   }
 
   return (
-    <div className="px-4 pt-2 pb-6 space-y-4 max-w-full overflow-x-hidden relative">
+    <div className={cn(
+      "space-y-4 max-w-full overflow-x-hidden relative transition-all duration-300",
+      isTvMode ? "p-6 min-h-screen" : "px-4 pt-2 pb-6"
+    )}>
+
+      {/* TV Mode Header Bar */}
+      {isTvMode && (title || toolbar) && (
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+          <div>
+            {title && (
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                {title}
+              </h1>
+            )}
+            {description && (
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {description}
+              </p>
+            )}
+          </div>
+          {toolbar && (
+            <div className="flex items-center gap-3">
+              {toolbar}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Responsive Breadcrumbs */}
-      {(breadcrumbs === undefined || breadcrumbs.length > 0) && (
+      {!isTvMode && (breadcrumbs === undefined || breadcrumbs.length > 0) && (
         <div className="flex items-center">
           <Breadcrumb items={breadcrumbs} />
         </div>
       )}
 
       {/* Page Header */}
-      {(title || description || toolbar) && (
+      {!isTvMode && (title || description || toolbar) && (
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
           <div>
             {title && (
@@ -204,7 +232,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       )}
 
       {/* Renders dynamic interactive certification badge at Layout-level */}
-      {hardeningConfig && resolvedKey && (
+      {!isTvMode && hardeningConfig && resolvedKey && (
         <div className="animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
           <HardeningInspector 
             pageName={hardeningConfig.displayName}

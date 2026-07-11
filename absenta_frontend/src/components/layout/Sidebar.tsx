@@ -21,6 +21,7 @@ import { useNavStore, type HubType } from '../../store/navStore';
 import { HubSwitcher } from './HubSwitcher';
 import { getHubByLabel } from '@/config/navigation.config';
 import { MODULE_REGISTRY } from '@/config/module.registry';
+import { useTvStore } from '@/store/tvStore';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -118,6 +119,7 @@ const hasBackendPathAccess = (
 
 export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false }: SidebarProps) => {
   const { user, subscription, token } = useAuthStore();
+  const { isTvMode } = useTvStore();
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
@@ -698,6 +700,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       setOpenSubmenus(prev => Array.from(new Set([...prev, ...folderIds])));
     }
   }, [activeHub, menuTree.length]);
+
+  if (isTvMode) return null;
 
   return (
     <>

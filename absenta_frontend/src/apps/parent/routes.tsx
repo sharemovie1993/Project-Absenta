@@ -7,6 +7,9 @@ import ParentMonthlyRecap from './pages/ParentMonthlyRecap';
 import ParentTracking from './pages/ParentTracking';
 import ParentNotificationDetail from './pages/ParentNotificationDetail';
 import ParentRootRedirect from './components/ParentRootRedirect';
+import ParentRapor from './pages/ParentRapor';
+import ParentP5 from './pages/ParentP5';
+import ParentChat from './pages/ParentChat';
 
 export const parentRoutes: RouteObject[] = [
   {
@@ -19,7 +22,11 @@ export const parentRoutes: RouteObject[] = [
       { path: 'rekap-bulanan', element: <ParentMonthlyRecap /> },
       { path: 'tracking-harian', element: <ParentTracking /> },
       { path: 'notification/:id', element: <ParentNotificationDetail /> },
+      { path: 'rapor', element: <ParentRapor /> },
+      { path: 'p5', element: <ParentP5 /> },
+      { path: 'chat', element: <ParentChat /> },
       { path: '', element: <ParentRootRedirect /> },
     ],
   },
 ];
+

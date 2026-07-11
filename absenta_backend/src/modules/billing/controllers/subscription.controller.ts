@@ -1030,14 +1030,14 @@ export const subscriptionController = {
       }
 
       const tenant = await prisma.tenant.findUnique({ where: { id: user.tenant_id } });
-      const schoolName = tenant ? tenant.name : 'Absenta School';
+      const schoolName = tenant ? tenant.name : 'Cakola School';
 
       console.log(`[ORDER PROXY] Requesting central invoice for plan: ${targetPlanId} from licensing server...`);
       const response = await axios.post(`${LICENSE_SERVER_URL}/api/license/request`, {
         school_name: schoolName,
         device_limit: localPlan.max_user || 100,
         is_unlimited: isUnlimited,
-        product_id: 'absenta',
+        product_id: 'cakola',
         plan_id: String(targetPlanId),
         price: targetPrice,
         payment_method: payment_method || 'QRIS2',

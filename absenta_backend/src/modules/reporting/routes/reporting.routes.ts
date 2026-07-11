@@ -197,4 +197,29 @@ export async function reportingRoutes(fastify: any) {
     preHandler: [requireCapability('reports.violation.view')],
     handler: reportingController.printKesiswaanBulanan.bind(reportingController),
   });
+
+  fastify.get('/pdf/rapor/:siswaId', {
+    preHandler: [requireCapability('academic.view.wali.kelas')],
+    handler: reportingController.printRapor.bind(reportingController),
+  });
+
+  fastify.get('/pdf/skl/:siswaId', {
+    preHandler: [requireCapability('academic.view.siswa')],
+    handler: reportingController.printSkl.bind(reportingController),
+  });
+
+  fastify.get('/pdf/ukk/:siswaId', {
+    preHandler: [requireCapability('academic.view.siswa')],
+    handler: reportingController.printUkk.bind(reportingController),
+  });
+
+  fastify.get('/pdf/pkl/:siswaPklId', {
+    preHandler: [requireCapability('academic.view.siswa')],
+    handler: reportingController.printPkl.bind(reportingController),
+  });
+
+  fastify.get('/pdf/p5/:siswaId', {
+    preHandler: [requireCapability('academic.view.wali.kelas')],
+    handler: reportingController.printP5Rapor.bind(reportingController),
+  });
 }

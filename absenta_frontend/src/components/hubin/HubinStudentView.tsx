@@ -243,11 +243,26 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = ({
                   {studentPkl?.jurnal_json?.file_url ? '✅ Sudah Terunggah' : '❌ Belum Terunggah'}
                 </p>
               </div>
-              <div className="p-5 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                <h5 className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 uppercase mb-2">Nilai Akhir</h5>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {studentPkl?.nilai_akhir || 'Dalam Proses'}
-                </p>
+              <div className="p-5 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col justify-between gap-3">
+                <div>
+                  <h5 className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 uppercase mb-2">Nilai Akhir</h5>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {studentPkl?.nilai_akhir || 'Dalam Proses'}
+                  </p>
+                </div>
+                {studentPkl?.nilai_akhir && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-[10px] h-8 font-black uppercase tracking-wider border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-900/30"
+                    onClick={() => {
+                      const apiRoot = (window as any).env?.REACT_APP_API_URL || '';
+                      window.open(`${apiRoot}/reports/pdf/pkl/${studentPkl.id}`, '_blank');
+                    }}
+                  >
+                    Unduh Rapor PKL (PDF)
+                  </Button>
+                )}
               </div>
             </div>
           </div>

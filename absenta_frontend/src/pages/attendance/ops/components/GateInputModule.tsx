@@ -63,6 +63,36 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const debouncedHidToken = useDebounce(hidToken, 300);
 
+  // Search logic for HID inputs (Smart Autocomplete)
+  useEffect(() => {
+    const searchSiswa = async () => {
+      const term = debouncedHidToken.trim();
+      // Hanya lakukan pencarian jika input adalah text pencarian (nama/NIS pendek)
+      // RFID atau barcode panjang biasanya > 10 digit angka dan di-auto-submit langsung
+      const isRfidOrBarcode = /^\d{8,}$/.test(term);
+      if (term.length < 2 || isRfidOrBarcode) {
+        setSearchCandidates([]);
+        setShowDropdown(false);
+        return;
+      }
+      try {
+        const res = await siswaApi.getAll({
+          search: term,
+          limit: 8,
+          search_fields: ['id', 'no_rfid', 'nis', 'nama_siswa'],
+          context: 'elevated'
+        } as any);
+        const list = (res.data || []).filter((s: Student) => s.status === 'AKTIF' || !s.status);
+        setSearchCandidates(list);
+        setShowDropdown(list.length > 0);
+      } catch (err) {
+        console.error('Failed to search student candidates:', err);
+      }
+    };
+
+    searchSiswa();
+  }, [debouncedHidToken]);
+
   // 3. Scanner / QR Logic
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('user');

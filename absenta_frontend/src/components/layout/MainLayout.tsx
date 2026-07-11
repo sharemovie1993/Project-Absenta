@@ -13,6 +13,8 @@ import { ChevronRight, HelpCircle } from 'lucide-react';
 // InstructionPanel is lazy loaded below
 import { InstructionProvider, useInstruction } from '@/contexts/InstructionContext';
 import { BottomNavigation } from './BottomNavigation';
+import { useTvStore } from '@/store/tvStore';
+import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { PendingPaymentBlocker } from '../billing/PendingPaymentBlocker';
@@ -40,6 +42,7 @@ function MainLayoutContent() {
   const { instructionData } = useInstruction();
   const [showInstruction, setShowInstruction] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isTvMode } = useTvStore();
   const isMobile = useIsMobile(1024);
   const isSmallDesktop = useIsMobile(1367); // 1366 and below
 
@@ -92,14 +95,16 @@ function MainLayoutContent() {
       
       <div className="flex flex-col min-h-screen">
         {/* Topbar fixed at top */}
-        <Topbar 
-          onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-          isSidebarOpen={isMobileMenuOpen} 
-        />
+        {!isTvMode && (
+          <Topbar 
+            onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            isSidebarOpen={isMobileMenuOpen} 
+          />
+        )}
 
         {/* Mobile Sidebar Drawer Overlay */}
         <AnimatePresence>
-          {isMobileMenuOpen && (
+          {isMobileMenuOpen && !isTvMode && (
             <>
               {/* Backdrop */}
               <motion.div
@@ -133,11 +138,19 @@ function MainLayoutContent() {
         </AnimatePresence>
         
         {/* Main Content Area - Below Topbar */}
-        <div className="flex-1 w-full pt-[72px] pb-20 lg:pb-12 px-4 relative">
-          <div className={`w-full grid grid-cols-1 lg:grid-cols-[320px_1fr] ${showInstruction ? 'xl:grid-cols-[320px_1fr_300px]' : 'xl:grid-cols-[320px_1fr_0px]'} gap-4 items-start transition-all duration-500`}>
+        <div className={cn(
+          "flex-1 w-full pb-20 lg:pb-12 px-4 relative transition-all duration-300",
+          isTvMode ? "pt-4" : "pt-[72px]"
+        )}>
+          <div className={cn(
+            "w-full gap-4 items-start transition-all duration-500",
+            isTvMode
+              ? "grid grid-cols-1"
+              : `grid grid-cols-1 lg:grid-cols-[320px_1fr] ${showInstruction ? 'xl:grid-cols-[320px_1fr_300px]' : 'xl:grid-cols-[320px_1fr_0px]'}`
+          )}>
             
             {/* Sidebar Kiri (Grid-Integrated) */}
-            {!isMobile && (
+            {!isMobile && !isTvMode && (
               <aside className="hidden lg:block w-80 flex-shrink-0">
                 <div className="sticky top-20">
                   <div className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.08)] bg-white dark:bg-slate-900 mb-8 flex flex-col min-h-[calc(100vh-160px)]">

@@ -76,4 +76,14 @@ export class PelanggaranController {
       return sendError(reply, 500, 'Failed to delete pelanggaran', error);
     }
   }
+
+  static async getAnalytics(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await PelanggaranService.getAnalytics(tenant_id, req.query);
+      return sendResponse(reply, 200, true, 'Analitik kedisiplinan berhasil diambil', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Gagal mengambil analitik kedisiplinan', error);
+    }
+  }
 }

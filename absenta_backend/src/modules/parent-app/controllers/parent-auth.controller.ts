@@ -1,6 +1,8 @@
 import { parentDataService } from '../services/parent-data.service';
 import { systemConfigService } from '../../system-config/services/system-config.service';
 import { gerbangService } from '@/modules/attendance/gerbang/services/gerbang.service';
+import { RaporService } from '../../rapor/services/rapor.service';
+import { P5Service } from '../../rapor/services/p5.service';
 
 export class ParentAppController {
   private async isFeatureEnabled(tenantId: string, action: string): Promise<boolean> {
@@ -368,6 +370,70 @@ export class ParentAppController {
       return reply.send({
         success: true,
         data,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // GET /siswa/:id/rapor
+  async getRapor(request: any, reply: any) {
+    try {
+      const parent = request.parent;
+      const { id: siswaId } = request.params;
+      const { tahun_pelajaran_id, semester_id } = request.query;
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Parameter tahun_pelajaran_id dan semester_id wajib disertakan',
+        });
+      }
+
+      const isLinked = parent.OrangTuaSiswa?.some(
+        (link: any) => link.Siswa?.id === siswaId && link.Siswa?.status === 'AKTIF'
+      );
+
+      if (!isLinked) {
+        return reply.status(403).send({ success: false, message: 'Access denied for this student' });
+      }
+
+      const result = await RaporService.getRaporDetail(parent.tenant_id, {
+        siswa_id: siswaId,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      return reply.send({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  // GET /siswa/:id/p5
+  async getP5(request: any, reply: any) {
+    try {
+      const parent = request.parent;
+      const { id: siswaId } = request.params;
+
+      const isLinked = parent.OrangTuaSiswa?.some(
+        (link: any) => link.Siswa?.id === siswaId && link.Siswa?.status === 'AKTIF'
+      );
+
+      if (!isLinked) {
+        return reply.status(403).send({ success: false, message: 'Access denied for this student' });
+      }
+
+      const result = await P5Service.getNilai(parent.tenant_id, {
+        siswa_id: siswaId,
+      });
+
+      return reply.send({
+        success: true,
+        data: result,
       });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
