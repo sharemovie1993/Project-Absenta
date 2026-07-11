@@ -139,9 +139,9 @@ export const TenantSettings: React.FC = () => {
         const rawLines = data.print_header_lines && data.print_header_lines.length > 0
           ? data.print_header_lines
           : [
-              'PEMERINTAH DAERAH PROPINSI JAWA BARAT',
+              'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
               'DINAS PENDIDIKAN',
-              'KANTOR CABANG DINAS PENDIDIKAN WILAYAH IV',
+              'CABANG DINAS PENDIDIKAN WILAYAH IV',
               data.name || 'SMK NEGERI 1 PLERED'
             ];
 
@@ -159,17 +159,27 @@ export const TenantSettings: React.FC = () => {
             // ignore and parse as plain text
           }
 
-          // Fallback styling based on Indonesia public school hierarchy
-          const isLast = idx === rawLines.length - 1;
-          const isSecondLast = idx === rawLines.length - 2 && rawLines.length > 1;
+          // Fallback styling based on Pergub Jabar No. 30 Tahun 2018
+          const textStr = typeof line === 'string' ? line : (line as any).text || '';
+          let fontSize = 12;
           
+          if (idx === 0) {
+            fontSize = 14;
+          } else if (idx === 1) {
+            fontSize = 14;
+          } else if (idx === 2) {
+            fontSize = 12;
+          } else if (idx === 3 || idx === rawLines.length - 1) {
+            fontSize = 18;
+          }
+
           return {
-            text: line,
-            fontSize: isLast ? 16 : isSecondLast ? 12 : 10,
+            text: textStr,
+            fontSize,
             bold: true,
             italic: false,
             underline: false,
-            fontFamily: isLast ? 'Outfit' : 'Inter'
+            fontFamily: 'Arial'
           };
         });
 
@@ -802,7 +812,7 @@ export const TenantSettings: React.FC = () => {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setHeaderLines([...headerLines, { text: '', fontSize: 10, bold: true, fontFamily: 'Inter' }])}
+                      onClick={() => setHeaderLines([...headerLines, { text: '', fontSize: 10, bold: true, fontFamily: 'Arial' }])}
                       className="border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                     >
                       <Plus className="h-4 w-4 mr-1" /> Tambah Baris Kedinasan/Kop

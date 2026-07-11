@@ -48,14 +48,14 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
   const rawLines = tenantInfo?.print_header_lines && tenantInfo.print_header_lines.length > 0
     ? tenantInfo.print_header_lines
     : [
-        tenantInfo?.nama_dinas_atas || 'PEMERINTAH DAERAH PROPINSI JAWA BARAT',
+        tenantInfo?.nama_dinas_atas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
         tenantInfo?.nama_dinas_bawah || 'DINAS PENDIDIKAN',
-        tenantInfo?.nama_cabang_dinas || 'KANTOR CABANG DINAS PENDIDIKAN WILAYAH IV',
+        tenantInfo?.nama_cabang_dinas || 'CABANG DINAS PENDIDIKAN WILAYAH IV',
         tenantInfo?.name || 'SMK NEGERI 1 PLERED'
       ];
 
   // 2. Parse Lines into formatted PrintHeaderLine objects
-  const parsedLines: PrintHeaderLine[] = rawLines.map(line => {
+  const parsedLines: PrintHeaderLine[] = rawLines.map((line, idx) => {
     if (typeof line === 'object' && line !== null) {
       return line as PrintHeaderLine;
     }
@@ -70,7 +70,27 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
       // Treat as plain text
     }
 
-    return { text: line };
+    const textStr = typeof line === 'string' ? line : (line as any).text || '';
+    let fontSize = 12;
+    
+    if (idx === 0) {
+      fontSize = 14;
+    } else if (idx === 1) {
+      fontSize = 14;
+    } else if (idx === 2) {
+      fontSize = 12;
+    } else if (idx === 3 || idx === rawLines.length - 1) {
+      fontSize = 18;
+    }
+
+    return { 
+      text: textStr,
+      fontSize,
+      bold: true,
+      italic: false,
+      underline: false,
+      fontFamily: 'Arial'
+    };
   });
 
   // 3. COMPACT THERMAL LAYOUT (Receipt rolls)
