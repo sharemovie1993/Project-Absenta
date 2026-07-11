@@ -75,48 +75,48 @@ export interface KelompokOption {
 
 export const KELOMPOK_MAPEL_BY_JENJANG: Record<string, KelompokOption[]> = {
   SMK: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
-    { value: 'KEJURUAN', label: 'MATA PELAJARAN KEJURUAN' },
-    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
+    { value: 'KEJURUAN', label: 'MAPEL KEJURUAN' },
+    { value: 'PILIHAN', label: 'MAPEL PILIHAN' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MAK: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
-    { value: 'KEJURUAN', label: 'MATA PELAJARAN KEJURUAN' },
-    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
+    { value: 'KEJURUAN', label: 'MAPEL KEJURUAN' },
+    { value: 'PILIHAN', label: 'MAPEL PILIHAN' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SMA: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
-    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
+    { value: 'PILIHAN', label: 'MAPEL PILIHAN' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MA: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
-    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
+    { value: 'PILIHAN', label: 'MAPEL PILIHAN' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SMP: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MTs: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SD: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MI: [
-    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'UMUM', label: 'MAPEL UMUM' },
     { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ]
 };
 
 export const DEFAULT_KELOMPOK_OPTIONS: KelompokOption[] = [
-  { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
-  { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+  { value: 'UMUM', label: 'MAPEL UMUM' },
+  { value: 'PILIHAN', label: 'MAPEL PILIHAN' },
   { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
 ];
 
