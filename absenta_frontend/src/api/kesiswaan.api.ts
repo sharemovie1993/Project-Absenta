@@ -139,5 +139,15 @@ export const kesiswaanApi = {
   deletePrestasiSiswa: async (id: string) => {
     const response = await api.delete(`/kesiswaan/prestasi/${id}`);
     return response.data;
+  },
+
+  getPrestasiLeaderboard: async (params?: { limit?: number }) => {
+    const response = await api.get('/kesiswaan/prestasi/leaderboard', { params });
+    return response.data;
+  },
+
+  getPelanggaranAnalytics: async (params?: { year?: number }) => {
+    const response = await api.get('/kesiswaan/pelanggaran/analytics', { params });
+    return response.data;
   }
 };
