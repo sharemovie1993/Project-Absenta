@@ -16,6 +16,7 @@ import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbm
 
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { guruApi, kelasApi, mapelApi, semesterApi, jurusanApi } from '@/api/academic.api';
+import { getJadwalTemplate } from '@/api/attendance/jadwalTemplate.api';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '@/hooks/useJenjang';
 import { cn } from '@/lib/utils';
@@ -138,6 +139,12 @@ export default function KurikulumDashboard() {
     queryKey: ['kurikulum', 'supervisi-dash'], queryFn: () => kurikulumApi.getSupervisi({ limit: 200 }),
     refetchInterval: REFETCH, staleTime: 30_000,
   });
+  const { data: jwR } = useQuery({
+    queryKey: ['attendance', 'jadwal-template-dash', semester?.id],
+    queryFn: () => getJadwalTemplate({ semester_id: semester?.id }),
+    enabled: !!semester?.id,
+    refetchInterval: REFETCH, staleTime: 30_000,
+  });
 
   React.useEffect(() => { if (strR) setLastRefresh(new Date()); }, [strR]);
 
@@ -152,22 +159,29 @@ export default function KurikulumDashboard() {
   const distribusi  = useMemo(() => buildDistribusi(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
   const beban       = useMemo(() => buildBeban(strRows, kelompokOptions), [strRows, kelompokOptions]);
 
-  // Realistis Guru Load calculation
+  // Realistis Guru Load calculation from actual JadwalTemplate data
   const teachersLoad = useMemo(() => {
     const teachers = safeArr(guruR);
+    const jadwalList = safeArr(jwR);
     if (teachers.length === 0) return [];
     
+    // Count KBM slots for each teacher
+    const jwMap: Record<string, number> = {};
+    for (const j of jadwalList) {
+      if (j.guru_id) {
+        jwMap[j.guru_id] = (jwMap[j.guru_id] || 0) + 1;
+      }
+    }
+    
     return teachers.map((teacher: any) => {
-      // Hash name to create a stable simulated teaching workload (8 - 28 JP)
-      const hash = teacher.nama_guru.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-      const jp = 8 + (hash % 21);
+      const jp = jwMap[teacher.id] || 0;
       return {
         id: teacher.id,
         nama: teacher.nama_guru,
         jp,
       };
     }).sort((a, b) => b.jp - a.jp);
-  }, [guruR]);
+  }, [guruR, jwR]);
 
   const supSelesai   = supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length;
   const supTerjadwal = supRows.filter(r => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length;
