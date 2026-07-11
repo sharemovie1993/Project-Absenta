@@ -9,6 +9,7 @@ import type { Supervisi } from '../../api/kurikulum.api';
 import { guruApi, kelasApi, mapelApi } from '../../api/academic.api';
 import type { Guru, Kelas, Mapel } from '../../types/academic';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { cn } from '../../lib/utils';
 import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, ChevronRight } from 'lucide-react';
 
 // Lazy load komponen berat (Pillar 11 – Optimasi Pemuatan)
@@ -226,6 +227,47 @@ export default function SupervisiPage() {
       )
     }
   ], [handleEdit, handleDelete]);
+
+  const stats = useMemo(() => {
+    const total = data.length;
+    const completed = data.filter(s => s.status === 'COMPLETED').length;
+    const scheduled = data.filter(s => s.status === 'SCHEDULED').length;
+    const graded = data.filter(s => s.status === 'COMPLETED' && s.nilai !== undefined && s.nilai !== null && s.nilai !== 0);
+    const avg = graded.length > 0 
+      ? Math.round(graded.reduce((acc, curr) => acc + (curr.nilai ?? 0), 0) / graded.length) 
+      : 0;
+
+    return [
+      {
+        title: 'Total Supervisi',
+        value: total,
+        icon: <ClipboardList size={14} />,
+        gradient: 'from-blue-500 to-indigo-650',
+        subtitle: 'Jadwal terdaftar'
+      },
+      {
+        title: 'Supervisi Selesai',
+        value: completed,
+        icon: <Badge variant="success">✓</Badge>,
+        gradient: 'from-emerald-500 to-teal-650',
+        subtitle: 'Sudah diobservasi'
+      },
+      {
+        title: 'Dijadwalkan',
+        value: scheduled,
+        icon: <Clock size={14} />,
+        gradient: 'from-indigo-500 to-indigo-650',
+        subtitle: 'Menunggu pelaksanaan'
+      },
+      {
+        title: 'Rata-rata Nilai',
+        value: avg > 0 ? `${avg}/100` : '-',
+        icon: <Award size={14} />,
+        gradient: 'from-amber-500 to-orange-650',
+        subtitle: 'Kinerja mengajar guru'
+      }
+    ];
+  }, [data]);
 
   const toolbarLeft = (
     <Input
