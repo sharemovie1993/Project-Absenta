@@ -166,8 +166,8 @@ export default function KurikulumDashboard() {
     }).sort((a, b) => b.jp - a.jp);
   }, [guruR]);
 
-  const supSelesai   = supRows.filter(r => r.status?.toUpperCase() === 'SELESAI').length;
-  const supTerjadwal = supRows.filter(r => r.status?.toUpperCase() === 'TERJADWAL').length;
+  const supSelesai   = supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length;
+  const supTerjadwal = supRows.filter(r => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length;
   const supBelum     = Math.max(0, supRows.length - supSelesai - supTerjadwal);
   const supPct       = supRows.length > 0 ? Math.round((supSelesai / supRows.length) * 100) : 0;
 
@@ -606,11 +606,11 @@ function SupervisiPanel({
               </div>
               <span className={cn(
                 'ml-2 flex-shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded-full',
-                st === 'SELESAI' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' :
-                st === 'TERJADWAL' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20' :
+                (st === 'COMPLETED' || st === 'SELESAI') ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' :
+                (st === 'SCHEDULED' || st === 'TERJADWAL') ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20' :
                 'bg-slate-100 text-slate-500'
               )}>
-                {st === 'SELESAI' ? 'Selesai' : st === 'TERJADWAL' ? 'Antrean' : 'Belum'}
+                {(st === 'COMPLETED' || st === 'SELESAI') ? 'Selesai' : (st === 'SCHEDULED' || st === 'TERJADWAL') ? 'Antrean' : 'Belum'}
               </span>
             </div>
           );

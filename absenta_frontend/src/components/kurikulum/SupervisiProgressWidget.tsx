@@ -18,7 +18,9 @@ interface SupervisiProgressWidgetProps {
 }
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+  COMPLETED:  { label: 'Selesai',   color: '#10b981', bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400', icon: <CheckCircle2 size={10} /> },
   SELESAI:    { label: 'Selesai',   color: '#10b981', bg: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400', icon: <CheckCircle2 size={10} /> },
+  SCHEDULED:  { label: 'Terjadwal', color: '#f59e0b', bg: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',     icon: <Clock size={10} /> },
   TERJADWAL:  { label: 'Terjadwal', color: '#f59e0b', bg: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400',     icon: <Clock size={10} /> },
   BELUM:      { label: 'Belum',     color: '#94a3b8', bg: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',         icon: <AlertCircle size={10} /> },
 };
@@ -32,8 +34,8 @@ const formatTanggal = (str: string) => {
 export const SupervisiProgressWidget: React.FC<SupervisiProgressWidgetProps> = ({
   items, isLoading = false,
 }) => {
-  const selesai    = items.filter(i => i.status?.toUpperCase() === 'SELESAI').length;
-  const terjadwal  = items.filter(i => i.status?.toUpperCase() === 'TERJADWAL').length;
+  const selesai    = items.filter(i => i.status?.toUpperCase() === 'COMPLETED' || i.status?.toUpperCase() === 'SELESAI').length;
+  const terjadwal  = items.filter(i => i.status?.toUpperCase() === 'SCHEDULED' || i.status?.toUpperCase() === 'TERJADWAL').length;
   const belum      = Math.max(0, items.length - selesai - terjadwal);
 
   const pieData = [
