@@ -390,9 +390,9 @@ const MasterStrukturPage: React.FC = () => {
                                 </div>
                             )}
                             
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-1.5 col-span-1">
-                                    <label htmlFor="jp_per_minggu" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Beban (JP)</label>
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <label htmlFor="jp_per_minggu" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Jam Pelajaran Per Minggu (JP)</label>
                                     <input 
                                         type="number" 
                                         id="jp_per_minggu"
@@ -405,8 +405,8 @@ const MasterStrukturPage: React.FC = () => {
                                         className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-black text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                     />
                                 </div>
-                                <div className="space-y-1.5 col-span-2">
-                                    <label htmlFor="kelompok" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Kelompok</label>
+                                <div className="space-y-1.5">
+                                    <label htmlFor="kelompok" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Kelompok Mata Pelajaran</label>
                                     <select 
                                         id="kelompok"
                                         name="kelompok"
