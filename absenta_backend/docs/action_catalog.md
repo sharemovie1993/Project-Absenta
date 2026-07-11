@@ -420,6 +420,11 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - kurikulum.manage.supervisi
 - kurikulum.view.supervisi
 - curriculum.supervision.view.schedule
+- curriculum.supervision.create.record
+- curriculum.supervision.update.record
+- curriculum.supervision.delete.record
+- curriculum.supervision.view.report
+- curriculum.supervision.manage
 
 ## notify
 

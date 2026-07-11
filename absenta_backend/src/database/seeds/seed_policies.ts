@@ -450,9 +450,13 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'payments.test.simulate',
     'core.tenants.view.list',
     'core.tenants.view.detail',
-    
     // Additional Hubs Capabilities
     'curriculum.supervision.view.schedule',
+    'curriculum.supervision.create.record',
+    'curriculum.supervision.update.record',
+    'curriculum.supervision.delete.record',
+    'curriculum.supervision.view.report',
+    'curriculum.supervision.manage',
     'reports.violation.view',
     'dashboard.view.kesiswaan',
     'hubin.partners.manage',
