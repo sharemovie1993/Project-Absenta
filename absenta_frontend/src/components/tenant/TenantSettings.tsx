@@ -807,7 +807,7 @@ export const TenantSettings: React.FC = () => {
                     </div>
                   ))}
                   
-                  <div className="pt-2 flex justify-start">
+                  <div className="pt-2 flex justify-start gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -816,6 +816,20 @@ export const TenantSettings: React.FC = () => {
                       className="border-dashed border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                     >
                       <Plus className="h-4 w-4 mr-1" /> Tambah Baris Kedinasan/Kop
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setHeaderLines([
+                        { text: 'PEMERINTAH DAERAH PROVINSI JAWA BARAT', fontSize: 14, bold: true, fontFamily: 'Arial', italic: false, underline: false },
+                        { text: 'DINAS PENDIDIKAN', fontSize: 14, bold: true, fontFamily: 'Arial', italic: false, underline: false },
+                        { text: 'CABANG DINAS PENDIDIKAN WILAYAH IV', fontSize: 12, bold: true, fontFamily: 'Arial', italic: false, underline: false },
+                        { text: name || 'SMK NEGERI 6 JAKARTA', fontSize: 18, bold: true, fontFamily: 'Arial', italic: false, underline: false }
+                      ])}
+                      className="border-indigo-200 text-indigo-600 hover:bg-indigo-50/50"
+                    >
+                      <Layers className="h-4 w-4 mr-1" /> Gunakan Preset Jabar Disdik
                     </Button>
                   </div>
                 </div>
