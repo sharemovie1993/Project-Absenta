@@ -254,6 +254,7 @@ async function main() {
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.view.schedule' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.structures.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'CalendarDays', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
+        { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.structures.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.structures.view.list' },
       ]
     },
@@ -346,7 +347,10 @@ async function main() {
     // --- RAPOR ---
     {
       label: 'RAPOR', icon: 'BookOpen', path: null, required_features: ['CORE'], order: 38, children: [
-        { label: 'Dashboard Rapor', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.students.view.list' }
+        { label: 'Dashboard Rapor', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.students.view.list' },
+        { label: 'Input Nilai', icon: 'Award', path: '/rapor/nilai', required_capability: 'academic.students.view.list' },
+        { label: 'Cetak Rapor & Wali', icon: 'Printer', path: '/rapor/cetak', required_capability: 'academic.students.view.list' },
+        { label: 'Projek P5', icon: 'Layers', path: '/rapor/p5', required_capability: 'academic.students.view.list' },
       ]
     },
 
