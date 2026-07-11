@@ -41,6 +41,7 @@ export const supervisiGuruCreateSchema = z.object({
   jam_ke: z.number().int().min(1, 'Jam ke minimal 1').nullable().optional().transform(v => v === null ? undefined : v),
   status: z.enum(['SCHEDULED', 'COMPLETED']).default('SCHEDULED').optional(),
   catatan: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  nilai: z.number().int().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100').nullable().optional().transform(v => v === null ? undefined : v),
   supervisor_id: z.string().uuid({
     message: 'supervisor_id harus berupa UUID yang valid'
   }).nullable().optional().transform(v => v === null ? undefined : v)

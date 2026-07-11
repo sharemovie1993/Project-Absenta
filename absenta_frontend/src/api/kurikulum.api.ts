@@ -25,6 +25,7 @@ export interface Supervisi {
   kelas?: string;
   mapel?: string;
   catatan?: string;
+  nilai?: number;
   status: string;
   is_verified?: boolean;
   Guru?: {

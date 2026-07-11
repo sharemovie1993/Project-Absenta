@@ -10,6 +10,7 @@ export class SupervisiService {
     jam_ke?: number;
     status?: string;
     catatan?: string;
+    nilai?: number;
     supervisor_id?: string;
   }) {
     return prisma.supervisiGuru.create({
@@ -22,6 +23,7 @@ export class SupervisiService {
         jam_ke: data.jam_ke,
         status: data.status || 'SCHEDULED',
         catatan: data.catatan,
+        nilai: data.nilai,
         supervisor_id: data.supervisor_id,
       },
     });

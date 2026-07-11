@@ -9,20 +9,19 @@ import type { Supervisi } from '../../api/kurikulum.api';
 import { guruApi, kelasApi, mapelApi } from '../../api/academic.api';
 import type { Guru, Kelas, Mapel } from '../../types/academic';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { ClipboardList, Plus } from 'lucide-react';
+import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, ChevronRight } from 'lucide-react';
 
 // Lazy load komponen berat (Pillar 11 – Optimasi Pemuatan)
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 const Table = lazy(() => import('../../components/ui/Table').then(m => ({ default: m.Table })));
-const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
-
-type FormState = {
+const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));type FormState = {
   guru_id: string;
   tanggal: string;
   jam_ke: number;
   kelas: string;
   mapel: string;
   catatan: string;
+  nilai: number | '';
   status: string;
 };
 
@@ -33,6 +32,7 @@ const DEFAULT_FORM: FormState = {
   kelas: '',
   mapel: '',
   catatan: '',
+  nilai: '',
   status: 'SCHEDULED'
 };
 
@@ -49,6 +49,7 @@ export default function SupervisiPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
   const [totalData, setTotalData] = useState(0);
+  const [selectedSupervisi, setSelectedSupervisi] = useState<Supervisi | null>(null);
 
   const confirm = useConfirm();
 
@@ -58,15 +59,24 @@ export default function SupervisiPage() {
     setLoading(true);
     try {
       const result = await kurikulumApi.getSupervisi({ limit: pageLimit, page: currentPage, search: debouncedSearch });
-      setData(result.data?.list ?? []);
+      const list = result.data?.list ?? [];
+      setData(list);
       setTotalData(result.data?.total ?? 0);
+
+      // Sinkronkan selectedSupervisi
+      if (selectedSupervisi) {
+        const found = list.find((s: Supervisi) => s.id === selectedSupervisi.id);
+        if (found) setSelectedSupervisi(found);
+      } else if (list.length > 0) {
+        setSelectedSupervisi(list[0]);
+      }
     } catch (err) {
       console.error(err);
       toast.error('Gagal mengambil data supervisi');
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, currentPage, pageLimit]);
+  }, [debouncedSearch, currentPage, pageLimit, selectedSupervisi]);
 
   const fetchReferenceData = useCallback(async () => {
     try {
@@ -94,11 +104,15 @@ export default function SupervisiPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        nilai: formData.nilai === '' ? null : Number(formData.nilai),
+      };
       if (selectedId) {
-        await kurikulumApi.updateSupervisi(selectedId, formData);
+        await kurikulumApi.updateSupervisi(selectedId, payload);
         toast.success('Jadwal supervisi berhasil diperbarui');
       } else {
-        await kurikulumApi.createSupervisi(formData);
+        await kurikulumApi.createSupervisi(payload);
         toast.success('Jadwal supervisi berhasil disimpan');
       }
       setModalOpen(false);
@@ -119,6 +133,7 @@ export default function SupervisiPage() {
       kelas: item.kelas ?? '',
       mapel: item.mapel ?? '',
       catatan: item.catatan ?? '',
+      nilai: item.nilai ?? '',
       status: item.status
     });
     setSelectedId(item.id);
@@ -160,8 +175,8 @@ export default function SupervisiPage() {
       sortable: true,
       render: (_: unknown, item: Supervisi) => (
         <div>
-          <div className="font-medium">{item.Guru?.nama_guru}</div>
-          <div className="text-xs text-gray-500">{item.Guru?.nip}</div>
+          <div className="font-medium text-slate-800 dark:text-slate-200">{item.Guru?.nama_guru}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.Guru?.nip || '-'}</div>
         </div>
       )
     },
@@ -170,8 +185,8 @@ export default function SupervisiPage() {
       label: 'Mapel / Kelas',
       render: (_: unknown, item: Supervisi) => (
         <div>
-          <div>{item.mapel}</div>
-          <div className="text-xs text-gray-500">{item.kelas}</div>
+          <div className="font-semibold text-slate-700 dark:text-slate-350">{item.mapel || '-'}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.kelas || '-'}</div>
         </div>
       )
     },
@@ -181,7 +196,9 @@ export default function SupervisiPage() {
       label: 'Status',
       sortable: true,
       render: (value: string) => (
-        <Badge variant={value === 'COMPLETED' ? 'success' : 'default'}>{value}</Badge>
+        <Badge variant={value === 'COMPLETED' ? 'success' : 'default'}>
+          {value === 'COMPLETED' ? 'SELESAI' : 'TERJADWAL'}
+        </Badge>
       )
     },
     {
@@ -189,22 +206,26 @@ export default function SupervisiPage() {
       label: 'Aksi',
       render: (_: unknown, item: Supervisi) => (
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)}>Edit</Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(item)}>Hapus</Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+            className="text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Edit
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+            className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-55/10 dark:hover:bg-rose-950/20"
+          >
+            Hapus
+          </Button>
         </div>
       )
     }
   ], [handleEdit, handleDelete]);
-
-  const dummyStats = useMemo(() => [
-    {
-      title: 'Total Supervisi',
-      value: data.length,
-      icon: <ClipboardList size={14} />,
-      gradient: 'from-blue-500 to-indigo-600',
-      subtitle: 'Jadwal terdaftar'
-    }
-  ], [data.length]);
 
   const toolbarLeft = (
     <Input
@@ -230,7 +251,7 @@ export default function SupervisiPage() {
     <AcademicPageLayout
       title="Jadwal Supervisi Guru"
       description="Kelola jadwal supervisi pembelajaran guru di setiap kelas dan mata pelajaran."
-      stats={dummyStats}
+      stats={stats}
       hardeningModuleKey="supervisipage"
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
@@ -248,30 +269,149 @@ export default function SupervisiPage() {
       }}
     >
       <div className="p-6 lg:p-8">
-        <SectionCard noPadding>
-          <Suspense fallback={<div className="flex items-center justify-center py-10"><Loader /></div>}>
-            <Table
-              columns={columns}
-              data={data ?? []}
-              loading={loading}
-              emptyMessage="Belum ada jadwal supervisi"
-              toolbarLeft={toolbarLeft}
-              toolbarRight={toolbarRight}
-              onSort={(key, direction) => {
-                // Client-side sort sudah di-handle oleh Table component
-                console.debug('Sort:', key, direction);
-              }}
-              pagination={{
-                currentPage: currentPage,
-                totalPages: Math.ceil(totalData / pageLimit),
-                totalItems: totalData,
-                itemsPerPage: pageLimit,
-                onPageChange: setCurrentPage,
-                onLimitChange: setPageLimit
-              }}
-            />
-          </Suspense>
-        </SectionCard>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          {/* Table Container (Kiri) */}
+          <div className="lg:col-span-7 flex">
+            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm flex flex-col justify-between w-full">
+              <Suspense fallback={<div className="flex items-center justify-center py-10"><Loader /></div>}>
+                <Table
+                  columns={columns}
+                  data={data ?? []}
+                  loading={loading}
+                  emptyMessage="Belum ada jadwal supervisi"
+                  toolbarLeft={toolbarLeft}
+                  toolbarRight={toolbarRight}
+                  onRowClick={(row: any) => setSelectedSupervisi(row)}
+                  rowClassName={(row: any) => cn(
+                    "cursor-pointer transition-all duration-200",
+                    selectedSupervisi?.id === row.id ? "bg-indigo-50/40 dark:bg-indigo-950/20 font-medium" : ""
+                  )}
+                  pagination={{
+                    currentPage: currentPage,
+                    totalPages: Math.ceil(totalData / pageLimit),
+                    totalItems: totalData,
+                    itemsPerPage: pageLimit,
+                    onPageChange: setCurrentPage,
+                    onLimitChange: setPageLimit
+                  }}
+                />
+              </Suspense>
+            </Card>
+          </div>
+
+          {/* Details & Coaching Panel (Kanan) */}
+          <div className="lg:col-span-5 flex">
+            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm flex flex-col justify-between w-full min-h-[500px]">
+              {selectedSupervisi ? (
+                <div className="space-y-6">
+                  {/* Header: Teacher Profile */}
+                  <div className="flex items-center gap-4 pb-4 border-b border-slate-50 dark:border-slate-850">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-lg shadow-inner">
+                      {selectedSupervisi.Guru?.nama_guru?.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="font-black text-base text-slate-850 dark:text-white uppercase leading-none">{selectedSupervisi.Guru?.nama_guru}</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">NIP: {selectedSupervisi.Guru?.nip || '-'}</p>
+                    </div>
+                  </div>
+
+                  {/* Observasi Details */}
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detail Observasi</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <BookOpen size={10} /> Mapel
+                        </span>
+                        <p className="text-xs font-black text-slate-850 dark:text-slate-200">{selectedSupervisi.mapel || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <User size={10} /> Kelas
+                        </span>
+                        <p className="text-xs font-black text-slate-850 dark:text-slate-200">{selectedSupervisi.kelas || '-'}</p>
+                      </div>
+                      <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Calendar size={10} /> Tanggal
+                        </span>
+                        <p className="text-xs font-black text-slate-850 dark:text-slate-200">
+                          {new Date(selectedSupervisi.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                          <Clock size={10} /> Jam Ke-
+                        </span>
+                        <p className="text-xs font-black text-slate-850 dark:text-slate-200">{selectedSupervisi.jam_ke || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Score & Evaluation */}
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hasil Kinerja Observasi</h4>
+                    {selectedSupervisi.status === 'COMPLETED' ? (
+                      <div className="flex items-center gap-5 p-4 rounded-xl border border-slate-100 dark:border-slate-850">
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl border-4 shadow-inner shrink-0",
+                          (selectedSupervisi.nilai ?? 0) >= 85 ? "border-emerald-500 bg-emerald-50/10 text-emerald-600" :
+                          (selectedSupervisi.nilai ?? 0) >= 70 ? "border-blue-500 bg-blue-50/10 text-blue-600" :
+                          (selectedSupervisi.nilai ?? 0) >= 55 ? "border-amber-500 bg-amber-50/10 text-amber-600" :
+                          "border-rose-500 bg-rose-50/10 text-rose-600"
+                        )}>
+                          {selectedSupervisi.nilai ?? '-'}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs font-black text-slate-850 dark:text-slate-200">
+                            {(selectedSupervisi.nilai ?? 0) >= 85 ? "SANGAT BAIK" :
+                             (selectedSupervisi.nilai ?? 0) >= 70 ? "BAIK" :
+                             (selectedSupervisi.nilai ?? 0) >= 55 ? "CUKUP" :
+                             "PERLU PEMBINAAN"}
+                          </p>
+                          <p className="text-[10px] text-gray-450 leading-relaxed">
+                            {(selectedSupervisi.nilai ?? 0) >= 85 ? "Guru menunjukkan kompetensi profesional yang luar biasa dalam pengelolaan kelas." :
+                             (selectedSupervisi.nilai ?? 0) >= 70 ? "Kombinasi instruksi dan penyampaian materi sudah berjalan baik dan terstruktur." :
+                             (selectedSupervisi.nilai ?? 0) >= 55 ? "Beberapa aspek pedagogis seperti interaksi siswa dan asesmen masih dapat ditingkatkan." :
+                             "Membutuhkan pendampingan intensif (coaching) guna menyelaraskan kembali modul ajar dengan implementasi kelas."}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl text-center border-2 border-dashed border-slate-100 dark:border-slate-850">
+                        <Clock size={24} className="mx-auto text-slate-400 mb-2" />
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-350">Supervisi Belum Terlaksana</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">Nilai dan rekomendasi tindak lanjut akan tampil setelah status diubah menjadi SELESAI.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Catatan */}
+                  <div className="space-y-2">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Penilai (Supervisor)</h4>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100/50 dark:border-slate-850 min-h-[80px]">
+                      <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-wrap italic">
+                        {selectedSupervisi.catatan ? `"${selectedSupervisi.catatan}"` : "Tidak ada catatan tambahan."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="my-auto text-center space-y-3">
+                  <ClipboardList size={40} className="mx-auto text-slate-200" />
+                  <p className="text-slate-400 font-bold uppercase text-[9px] tracking-widest">Pilih Jadwal Supervisi</p>
+                  <p className="text-[10px] text-slate-400 max-w-[200px] mx-auto">Klik salah satu baris jadwal supervisi di tabel untuk melihat detail observasi, nilai kinerja, dan rekomendasi tindak lanjut.</p>
+                </div>
+              )}
+
+              <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl">
+                <p className="text-[9px] text-slate-500 dark:text-slate-450 leading-relaxed font-semibold italic">
+                  * Indikator penilaian berdasarkan Standar Proses Kurikulum Merdeka: pembelajaran interaktif, asesmen otentik, dan diferensiasi materi.
+                </p>
+              </div>
+            </Card>
+          </div>
+        </div>
 
         <Suspense fallback={null}>
           <Modal
@@ -338,15 +478,16 @@ export default function SupervisiPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="catatan-input">Catatan (Opsional)</Label>
+                <Label htmlFor="catatan-input">Catatan Observasi (Opsional)</Label>
                 <Input
                   id="catatan-input"
                   value={formData.catatan}
                   onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
                   aria-label="Catatan hasil supervisi"
+                  placeholder="Contoh: Pembelajaran interaktif, perlu peningkatan manajemen kelas."
                 />
               </div>
-              {selectedId && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status-select">Status</Label>
                   <SearchableSelect
@@ -354,14 +495,27 @@ export default function SupervisiPage() {
                     value={formData.status}
                     onValueChange={(val) => setFormData({ ...formData, status: val })}
                     options={[
-                      { label: 'SCHEDULED', value: 'SCHEDULED' },
-                      { label: 'COMPLETED', value: 'COMPLETED' }
+                      { label: 'SCHEDULED (Terjadwal)', value: 'SCHEDULED' },
+                      { label: 'COMPLETED (Selesai)', value: 'COMPLETED' }
                     ]}
                     placeholder="Pilih Status"
                   />
                 </div>
-              )}
-              <div className="flex justify-end gap-2 mt-4">
+                <div>
+                  <Label htmlFor="nilai-input">Nilai Kinerja (0-100)</Label>
+                  <Input
+                    id="nilai-input"
+                    type="number"
+                    min="0"
+                    max="100"
+                    disabled={formData.status !== 'COMPLETED'}
+                    value={formData.nilai}
+                    onChange={(e) => setFormData({ ...formData, nilai: e.target.value === '' ? '' : Number(e.target.value) })}
+                    placeholder={formData.status !== 'COMPLETED' ? "Set SELESAI dulu" : "Skor 0-100"}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
                 <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Batal</Button>
                 <Button type="submit">Simpan</Button>
               </div>
