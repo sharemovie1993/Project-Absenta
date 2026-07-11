@@ -29,6 +29,7 @@ const safeArr = (v: any): any[] => {
   if (Array.isArray(v)) return v;
   if (Array.isArray(v?.data)) return v.data;
   if (Array.isArray(v?.data?.data)) return v.data.data;
+  if (Array.isArray(v?.data?.list)) return v.data.list;
   return [];
 };
 
@@ -40,6 +41,7 @@ const safeTotal = (v: any): number => {
   if (typeof v?.data?.pagination?.total === 'number') return v.data.pagination.total;
   if (Array.isArray(v?.data)) return v.data.length;
   if (Array.isArray(v?.data?.data)) return v.data.data.length;
+  if (Array.isArray(v?.data?.list)) return v.data.list.length;
   if (Array.isArray(v)) return v.length;
   return 0;
 };
