@@ -75,54 +75,48 @@ export interface KelompokOption {
 
 export const KELOMPOK_MAPEL_BY_JENJANG: Record<string, KelompokOption[]> = {
   SMK: [
-    { value: 'NASIONAL', label: 'NASIONAL (Muatan Umum)' },
-    { value: 'KEJURUAN', label: 'KEJURUAN (Produktif)' },
-    { value: 'PILIHAN', label: 'PILIHAN (Peminatan)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'KEJURUAN', label: 'MATA PELAJARAN KEJURUAN' },
+    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MAK: [
-    { value: 'NASIONAL', label: 'NASIONAL (Muatan Umum)' },
-    { value: 'KEJURUAN', label: 'KEJURUAN (Produktif)' },
-    { value: 'PILIHAN', label: 'PILIHAN (Peminatan)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'KEJURUAN', label: 'MATA PELAJARAN KEJURUAN' },
+    { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SMA: [
-    { value: 'UMUM', label: 'UMUM (Muatan Umum)' },
-    { value: 'PEMINATAN', label: 'PEMINATAN (Konsentrasi)' },
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
     { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MA: [
-    { value: 'UMUM', label: 'UMUM (Muatan Umum)' },
-    { value: 'PEMINATAN', label: 'PEMINATAN (Konsentrasi)' },
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
     { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SMP: [
-    { value: 'KELOMPOK_A', label: 'KELOMPOK A (Akademik)' },
-    { value: 'KELOMPOK_B', label: 'KELOMPOK B (Non-Akademik)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MTs: [
-    { value: 'KELOMPOK_A', label: 'KELOMPOK A (Akademik)' },
-    { value: 'KELOMPOK_B', label: 'KELOMPOK B (Non-Akademik)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   SD: [
-    { value: 'KELOMPOK_A', label: 'KELOMPOK A (Akademik)' },
-    { value: 'KELOMPOK_B', label: 'KELOMPOK B (Non-Akademik)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ],
   MI: [
-    { value: 'KELOMPOK_A', label: 'KELOMPOK A (Akademik)' },
-    { value: 'KELOMPOK_B', label: 'KELOMPOK B (Non-Akademik)' },
-    { value: 'LOKAL', label: 'MUATAN LOKAL' }
+    { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
+    { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
   ]
 };
 
 export const DEFAULT_KELOMPOK_OPTIONS: KelompokOption[] = [
-  { value: 'UMUM', label: 'UMUM / NASIONAL' },
+  { value: 'UMUM', label: 'MATA PELAJARAN UMUM' },
   { value: 'PILIHAN', label: 'MATA PELAJARAN PILIHAN' },
-  { value: 'LOKAL', label: 'MUATAN LOKAL' }
+  { value: 'MUATAN_LOKAL', label: 'MUATAN LOKAL' }
 ];
 

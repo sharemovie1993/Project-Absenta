@@ -88,7 +88,11 @@ const StrukturKurikulumPage: React.FC = () => {
         item.Mapel?.nama_mapel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.Mapel?.kode_mapel?.toLowerCase().includes(searchTerm.toLowerCase());
         
-      const matchesKelompok = selectedKelompok === 'ALL' || item.kelompok === selectedKelompok;
+      let itemKelompok = item.kelompok ?? 'UMUM';
+      if (itemKelompok === 'NASIONAL') itemKelompok = 'UMUM';
+      if (itemKelompok === 'LOKAL') itemKelompok = 'MUATAN_LOKAL';
+      
+      const matchesKelompok = selectedKelompok === 'ALL' || itemKelompok === selectedKelompok;
       
       return matchesSearch && matchesKelompok;
     });
@@ -104,7 +108,10 @@ const StrukturKurikulumPage: React.FC = () => {
       acc.totalJp += curr.jp_per_minggu ?? 0;
       acc.mapelCount++;
       
-      const kel = curr.kelompok ?? 'NASIONAL';
+      let kel = curr.kelompok ?? 'UMUM';
+      if (kel === 'NASIONAL') kel = 'UMUM';
+      if (kel === 'LOKAL') kel = 'MUATAN_LOKAL';
+      
       if (!acc.byKelompok[kel]) {
         acc.byKelompok[kel] = { jp: 0, count: 0 };
       }
@@ -282,10 +289,10 @@ const StrukturKurikulumPage: React.FC = () => {
                                   "font-bold border-none px-2 py-0.5 rounded text-[9px] uppercase",
                                   item.kelompok === 'KEJURUAN' ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400" :
                                   item.kelompok === 'PILIHAN' ? "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400" :
-                                  item.kelompok === 'LOKAL' ? "bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400" :
+                                  item.kelompok === 'LOKAL' || item.kelompok === 'MUATAN_LOKAL' ? "bg-sky-50 text-sky-700 dark:bg-sky-950/20 dark:text-sky-400" :
                                   "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/20 dark:text-indigo-400"
                                 )}>
-                                  {item.kelompok || 'NASIONAL'}
+                                  {item.kelompok === 'NASIONAL' ? 'UMUM' : item.kelompok === 'LOKAL' || item.kelompok === 'MUATAN_LOKAL' ? 'MUATAN LOKAL' : item.kelompok || 'UMUM'}
                                 </Badge>
                               </td>
                               <td className="px-4 py-3">
