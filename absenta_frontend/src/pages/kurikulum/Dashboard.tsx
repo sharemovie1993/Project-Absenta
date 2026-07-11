@@ -54,7 +54,9 @@ const getKelompokLabel = (kel: string | undefined, options: { value: string; lab
     (kUpper === 'NASIONAL' && opt.value === 'MATA PELAJARAN UMUM') ||
     (kUpper === 'UMUM' && opt.value === 'MATA PELAJARAN UMUM') ||
     (kUpper === 'LOKAL' && opt.value === 'MUATAN LOKAL') ||
-    (kUpper === 'MUATAN_LOKAL' && opt.value === 'MUATAN LOKAL')
+    (kUpper === 'MUATAN_LOKAL' && opt.value === 'MUATAN LOKAL') ||
+    (kUpper === 'KEJURUAN' && opt.value === 'MATA PELAJARAN KEJURUAN') ||
+    (kUpper === 'PILIHAN' && opt.value === 'MATA PELAJARAN PILIHAN')
   );
   return matched ? matched.label : kel;
 };
@@ -121,7 +123,8 @@ export default function KurikulumDashboard() {
     refetchInterval: REFETCH, staleTime: 30_000,
   });
 
-  const semester    = (semR as any)?.data ?? null;
+  const semesterRaw = (semR as any)?.data ?? null;
+  const semester    = Array.isArray(semesterRaw) ? semesterRaw[0] : semesterRaw;
   const semNama     = semester?.nama_semester ?? '';
   const tpTahun     = (semester?.TahunPelajaran as any)?.tahun ?? '';
 

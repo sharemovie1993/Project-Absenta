@@ -61,7 +61,9 @@ export const SemesterPage: React.FC = () => {
     },
     {
       title: "Semester Aktif",
-      value: stats?.active_semester || '-',
+      value: stats?.semester?.nama_semester 
+        ? `${stats.semester.nama_semester} (${stats.tahun_pelajaran?.tahun || ''})` 
+        : '-',
       icon: <Calendar size={14} />,
       gradient: "from-green-500 to-emerald-600",
       onClick: () => navigate('/academic/tahun-pelajaran')
