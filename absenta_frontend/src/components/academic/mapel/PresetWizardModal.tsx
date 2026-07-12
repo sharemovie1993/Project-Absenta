@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Button } from '../../ui';
 import { getPresetsByJenjang, initializeMapelPreset, type GlobalMapelPreset } from '../../../api/academic/mapel.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
-import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check } from 'lucide-react';
+import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PresetWizardModalProps {
@@ -28,7 +28,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   
   // Vocational specific data
   const [jurusans, setJurusans] = useState<any[]>([]);
-  const [activeJurusanId, setActiveJurusanId] = useState<string>('');
+  const [expandedJurusanId, setExpandedJurusanId] = useState<string | null>(null);
   const [vocationalPresets, setVocationalPresets] = useState<Record<string, GlobalMapelPreset[]>>({});
   const [loadingVocational, setLoadingVocational] = useState(false);
 
@@ -37,7 +37,38 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
   const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
   const isSmaMa = jenjang === 'SMA' || jenjang === 'MA';
-  const isSmpMts = jenjang === 'SMP' || jenjang === 'MTs';
+
+  // Helper to extract matched key for a department
+  const getMatchedKey = (jur: any) => {
+    const fields = [
+      jur.singkatan || '',
+      jur.kode || '',
+      jur.nama || ''
+    ].map(f => f.toLowerCase());
+
+    const checks = [
+      { key: 'RPL', regex: /rpl|rekayasa.*perangkat.*lunak/i },
+      { key: 'TKJ', regex: /tkj|komputer.*jaringan/i },
+      { key: 'AKL', regex: /akl|akuntansi/i },
+      { key: 'MPLB', regex: /mplb|perkantoran|administrasi.*perkantoran/i },
+      { key: 'DKV', regex: /dkv|multimedia|desain.*komunikasi.*visual/i },
+      { key: 'TBSM', regex: /tbsm|sepeda.*motor/i },
+      { key: 'TKR', regex: /tkr|kendaraan.*ringan/i },
+      { key: 'TP', regex: /\btp\b|pemesinan|mesin/i },
+      { key: 'PH', regex: /\bph\b|perhotelan/i },
+      { key: 'KL', regex: /\bkl\b|kuliner|jasa.*boga/i },
+      { key: 'TB', regex: /\btb\b|tata.*busana|busana/i },
+      { key: 'TAV', regex: /tav|audio.*video/i },
+      { key: 'TOI', regex: /toi|otomasi.*industri/i }
+    ];
+
+    for (const check of checks) {
+      if (fields.some(field => check.regex.test(field))) {
+        return check.key;
+      }
+    }
+    return '';
+  };
 
   // Load presets & jurusans
   useEffect(() => {
@@ -46,6 +77,8 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     // Reset state on open
     setStep(1);
     setSelectedIds(new Set());
+    setExpandedJurusanId(null);
+    setVocationalPresets({});
     
     const loadInitialData = async () => {
       try {
@@ -66,13 +99,73 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
         }
 
         if (isSmkMak) {
+          setLoadingVocational(true);
           const jurRes = await getJurusanList(1, 100);
           if (jurRes.success) {
             setJurusans(jurRes.data);
+            
+            // Map dan fetch preset untuk semua jurusan sekaligus secara paralel
+            const checks = [
+              { key: 'RPL', regex: /rpl|rekayasa.*perangkat.*lunak/i },
+              { key: 'TKJ', regex: /tkj|komputer.*jaringan/i },
+              { key: 'AKL', regex: /akl|akuntansi/i },
+              { key: 'MPLB', regex: /mplb|perkantoran|administrasi.*perkantoran/i },
+              { key: 'DKV', regex: /dkv|multimedia|desain.*komunikasi.*visual/i },
+              { key: 'TBSM', regex: /tbsm|sepeda.*motor/i },
+              { key: 'TKR', regex: /tkr|kendaraan.*ringan/i },
+              { key: 'TP', regex: /\btp\b|pemesinan|mesin/i },
+              { key: 'PH', regex: /\bph\b|perhotelan/i },
+              { key: 'KL', regex: /\bkl\b|kuliner|jasa.*boga/i },
+              { key: 'TB', regex: /\btb\b|tata.*busana|busana/i },
+              { key: 'TAV', regex: /tav|audio.*video/i },
+              { key: 'TOI', regex: /toi|otomasi.*industri/i }
+            ];
+
+            const presetPromises = jurRes.data.map(async (jur: any) => {
+              const fields = [
+                jur.singkatan || '',
+                jur.kode || '',
+                jur.nama || ''
+              ].map(f => f.toLowerCase());
+
+              let matchedKey = '';
+              for (const check of checks) {
+                if (fields.some(field => check.regex.test(field))) {
+                  matchedKey = check.key;
+                  break;
+                }
+              }
+
+              if (matchedKey) {
+                try {
+                  const presRes = await getPresetsByJenjang(matchedKey);
+                  if (presRes.success) {
+                    return {
+                      matchedKey,
+                      presets: presRes.data.filter(p => p.category === 'KEJURUAN')
+                    };
+                  }
+                } catch (e) {
+                  console.error(`Failed to load preset for ${matchedKey}:`, e);
+                }
+              }
+              return null;
+            });
+
+            const results = await Promise.all(presetPromises);
+            const newVocationalPresets: Record<string, GlobalMapelPreset[]> = {};
+            results.forEach(r => {
+              if (r) {
+                newVocationalPresets[r.matchedKey] = r.presets;
+              }
+            });
+            setVocationalPresets(newVocationalPresets);
+            
             if (jurRes.data.length > 0) {
-              setActiveJurusanId(jurRes.data[0].id);
+              setExpandedJurusanId(jurRes.data[0].id);
             }
           }
+          setLoadingVocational(false);
         }
       } catch (err: any) {
         console.error('Error loading wizard presets:', err);
@@ -85,100 +178,6 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     loadInitialData();
   }, [isOpen, jenjang, isSmkMak]);
 
-  // Load vocational presets dynamically when activeJurusanId changes
-  useEffect(() => {
-    if (!isOpen || !isSmkMak || !activeJurusanId) return;
-    
-    const selectedJur = jurusans.find(j => j.id === activeJurusanId);
-    if (!selectedJur) return;
-
-    // Determine target code for preset lookup (e.g. RPL, TKJ)
-    const fields = [
-      selectedJur.singkatan || '',
-      selectedJur.kode || '',
-      selectedJur.nama || ''
-    ].map(f => f.toLowerCase());
-
-    const checks = [
-      { key: 'RPL', regex: /rpl|rekayasa.*perangkat.*lunak/i },
-      { key: 'TKJ', regex: /tkj|komputer.*jaringan/i },
-      { key: 'AKL', regex: /akl|akuntansi/i },
-      { key: 'MPLB', regex: /mplb|perkantoran|administrasi.*perkantoran/i },
-      { key: 'DKV', regex: /dkv|multimedia|desain.*komunikasi.*visual/i },
-      { key: 'TBSM', regex: /tbsm|sepeda.*motor/i },
-      { key: 'TKR', regex: /tkr|kendaraan.*ringan/i },
-      { key: 'TP', regex: /\btp\b|pemesinan|mesin/i },
-      { key: 'PH', regex: /\bph\b|perhotelan/i },
-      { key: 'KL', regex: /\bkl\b|kuliner|jasa.*boga/i },
-      { key: 'TB', regex: /\btb\b|tata.*busana|busana/i },
-      { key: 'TAV', regex: /tav|audio.*video/i },
-      { key: 'TOI', regex: /toi|otomasi.*industri/i }
-    ];
-
-    let matchedKey = '';
-    for (const check of checks) {
-      if (fields.some(field => check.regex.test(field))) {
-        matchedKey = check.key;
-        break;
-      }
-    }
-
-    if (!matchedKey) return;
-    if (vocationalPresets[matchedKey]) return; // already loaded
-
-    const loadVocationalPresets = async () => {
-      try {
-        setLoadingVocational(true);
-        const res = await getPresetsByJenjang(matchedKey);
-        if (res.success) {
-          setVocationalPresets(prev => ({
-            ...prev,
-            [matchedKey]: res.data.filter(p => p.category === 'KEJURUAN')
-          }));
-        }
-      } catch (err) {
-        console.error('Failed to load vocational presets:', err);
-      } finally {
-        setLoadingVocational(false);
-      }
-    };
-
-    loadVocationalPresets();
-  }, [isOpen, activeJurusanId, isSmkMak, jurusans, vocationalPresets]);
-
-  // Determine current matched key for the active vocational department
-  const activeMatchedKey = useMemo(() => {
-    if (!isSmkMak || !activeJurusanId) return '';
-    const selectedJur = jurusans.find(j => j.id === activeJurusanId);
-    if (!selectedJur) return '';
-    const fields = [
-      selectedJur.singkatan || '',
-      selectedJur.kode || '',
-      selectedJur.nama || ''
-    ].map(f => f.toLowerCase());
-
-    const checks = [
-      { key: 'RPL', regex: /rpl/i },
-      { key: 'TKJ', regex: /tkj/i },
-      { key: 'AKL', regex: /akl/i },
-      { key: 'MPLB', regex: /mplb/i },
-      { key: 'DKV', regex: /dkv/i },
-      { key: 'TBSM', regex: /tbsm/i },
-      { key: 'TKR', regex: /tkr/i },
-      { key: 'TP', regex: /\btp\b/i },
-      { key: 'PH', regex: /\bph\b/i },
-      { key: 'KL', regex: /\bkl\b/i },
-      { key: 'TB', regex: /\btb\b/i },
-      { key: 'TAV', regex: /tav/i },
-      { key: 'TOI', regex: /toi/i }
-    ];
-
-    for (const check of checks) {
-      if (fields.some(field => check.regex.test(field))) return check.key;
-    }
-    return '';
-  }, [activeJurusanId, isSmkMak, jurusans]);
-
   // Filter Step 1 Presets (Wajib Umum & Keagamaan)
   const step1Presets = useMemo(() => {
     return presets.filter(p => 
@@ -190,18 +189,14 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
   // Filter Step 2 Presets (Pilihan Rumpun/Seni/Prakarya/Mulok)
   const step2Presets = useMemo(() => {
-    if (isSmkMak) {
-      // Vocational uses its own matching logic
-      return vocationalPresets[activeMatchedKey] || [];
-    }
-    // General schools use group categories
+    if (isSmkMak) return [];
     return presets.filter(p => 
       p.category === 'SENI_PILIHAN' ||
       p.category === 'PRAKARYA_PILIHAN' ||
       p.category.startsWith('PILIHAN_') ||
       p.category === 'MULOK'
     );
-  }, [presets, isSmkMak, vocationalPresets, activeMatchedKey]);
+  }, [presets, isSmkMak]);
 
   // Group step 2 presets by category/rumpun for SMA/MA/SMP/SD
   const step2Grouped = useMemo(() => {
@@ -264,7 +259,6 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
   // Get final summary lists
   const selectedPresetsList = useMemo(() => {
-    // Combine standard presets and vocational presets
     const allAvailable = [
       ...presets,
       ...Object.values(vocationalPresets).flat()
@@ -390,81 +384,118 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
               {/* STEP 2: Mapel Pilihan (Rumpun/Kejuruan/Seni/Prakarya) */}
               {step === 2 && (
                 <div className="space-y-4">
-                  {/* SMK / MAK Specific View */}
+                  {/* SMK / MAK Specific Accordion View */}
                   {isSmkMak && (
-                    <div className="space-y-4">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 rounded-2xl">
-                        <div className="space-y-1">
-                          <h5 className="text-xs font-black text-purple-950 dark:text-purple-300 uppercase tracking-wider">Mata Pelajaran Produktif Kejuruan</h5>
-                          <p className="text-[11px] text-purple-700 dark:text-purple-400 font-medium leading-relaxed">
-                            Pilih jurusan sekolah Anda untuk memuat daftar preset mata pelajaran produktif. Anda dapat memilih dari lebih dari satu jurusan secara bergantian.
-                          </p>
-                        </div>
-                        {jurusans.length > 0 && (
-                          <select
-                            value={activeJurusanId}
-                            onChange={(e) => setActiveJurusanId(e.target.value)}
-                            className="w-full sm:w-60 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 shadow-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          >
-                            {jurusans.map(j => (
-                              <option key={j.id} value={j.id}>{j.nama}</option>
-                            ))}
-                          </select>
-                        )}
+                    <div className="space-y-3">
+                      <div className="p-3.5 bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 rounded-2xl">
+                        <p className="text-xs text-purple-700 dark:text-purple-400 font-medium leading-relaxed">
+                          Pilih mata pelajaran produktif kejuruan dari jurusan yang terdaftar di sekolah Anda. Klik header jurusan untuk memperluas (expand) daftar mapel.
+                        </p>
                       </div>
 
                       {loadingVocational ? (
                         <div className="flex items-center justify-center py-10 gap-2 text-slate-400">
                           <RefreshCw className="w-5 h-5 animate-spin text-purple-600" />
-                          <span className="text-xs">Memuat mata pelajaran produktif...</span>
+                          <span className="text-xs">Memuat katalog kejuruan...</span>
                         </div>
-                      ) : step2Presets.length === 0 ? (
+                      ) : jurusans.length === 0 ? (
                         <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                          Preset belum tersedia untuk singkatan/nama jurusan ini.
+                          Belum ada jurusan terdaftar. Hubungi Admin Sekolah untuk menambahkan jurusan terlebih dahulu.
                         </div>
                       ) : (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between pb-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              Mapel Kejuruan Jurusan Terpilih
-                            </span>
-                            <div className="flex gap-2 text-[10px]">
-                              <button onClick={() => handleSelectAllStep(step2Presets, true)} className="text-purple-600 hover:underline font-bold">Pilih Semua</button>
-                              <span className="text-slate-300">|</span>
-                              <button onClick={() => handleSelectAllStep(step2Presets, false)} className="text-slate-500 hover:underline">Bersihkan</button>
-                            </div>
-                          </div>
+                        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                          {jurusans.map((jur) => {
+                            const matchedKey = getMatchedKey(jur);
+                            const jurPresets = vocationalPresets[matchedKey] || [];
+                            const selectedCount = jurPresets.filter(p => selectedIds.has(p.id)).length;
+                            const isOpenPanel = expandedJurusanId === jur.id;
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-                            {step2Presets.map((p) => {
-                              const isChecked = selectedIds.has(p.id);
-                              return (
+                            return (
+                              <div
+                                key={jur.id}
+                                className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-all duration-200 bg-white dark:bg-slate-950"
+                              >
+                                {/* Accordion Header */}
                                 <div
-                                  key={p.id}
-                                  onClick={() => handleToggleSelect(p.id)}
-                                  className={`flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-sm ${
-                                    isChecked
-                                      ? 'bg-purple-50/20 border-purple-500 dark:bg-purple-950/10'
-                                      : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                                  onClick={() => setExpandedJurusanId(isOpenPanel ? null : jur.id)}
+                                  className={`flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors ${
+                                    isOpenPanel 
+                                      ? 'bg-purple-50/40 dark:bg-purple-950/10 border-b border-slate-150 dark:border-slate-800' 
+                                      : 'hover:bg-slate-50/50 dark:hover:bg-slate-900/10'
                                   }`}
                                 >
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={() => {}} // handled by click
-                                    className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500"
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nama_mapel}</p>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                      <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
-                                      <span className="text-[9px] text-slate-400 font-medium">({activeMatchedKey})</span>
+                                  <div className="flex items-center gap-3">
+                                    <div className={`p-1.5 rounded-lg ${selectedCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                      <GraduationCap size={15} />
                                     </div>
+                                    <span className="text-xs font-bold text-slate-850 dark:text-slate-200">
+                                      {jur.nama} {selectedCount > 0 ? `(${selectedCount})` : ''}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {selectedCount > 0 && (
+                                      <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full">
+                                        {selectedCount} Terpilih
+                                      </span>
+                                    )}
+                                    {isOpenPanel ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                                   </div>
                                 </div>
-                              );
-                            })}
-                          </div>
+
+                                {/* Accordion Body */}
+                                {isOpenPanel && (
+                                  <div className="p-5 bg-slate-50/10 dark:bg-slate-950/5 space-y-4">
+                                    {jurPresets.length === 0 ? (
+                                      <p className="text-xs text-slate-400 italic text-center py-2">
+                                        Preset kurikulum belum tersedia untuk kompetensi keahlian ({matchedKey || 'Tidak teridentifikasi'}).
+                                      </p>
+                                    ) : (
+                                      <>
+                                        <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800">
+                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                            Daftar Mata Pelajaran Produktif
+                                          </span>
+                                          <div className="flex gap-2 text-[10px] font-bold">
+                                            <button onClick={() => handleSelectAllStep(jurPresets, true)} className="text-purple-600 dark:text-purple-400 hover:underline">Pilih Semua</button>
+                                            <span className="text-slate-300">|</span>
+                                            <button onClick={() => handleSelectAllStep(jurPresets, false)} className="text-slate-500 hover:underline">Bersihkan</button>
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          {jurPresets.map((p) => {
+                                            const isChecked = selectedIds.has(p.id);
+                                            return (
+                                              <div
+                                                key={p.id}
+                                                onClick={() => handleToggleSelect(p.id)}
+                                                className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all duration-200 ${
+                                                  isChecked
+                                                    ? 'bg-purple-50/10 border-purple-500 dark:bg-purple-950/5'
+                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-350'
+                                                }`}
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isChecked}
+                                                  onChange={() => {}} // handled by div click
+                                                  className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500"
+                                                />
+                                                <div className="min-w-0">
+                                                  <p className="text-xs font-semibold text-slate-850 dark:text-slate-300 truncate">{p.nama_mapel}</p>
+                                                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
