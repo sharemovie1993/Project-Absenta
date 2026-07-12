@@ -2,6 +2,8 @@ import { mapelService } from '../services/mapel.service';
 import { createMapelSchema, updateMapelSchema } from '../services/mapel.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
+import { prisma } from '../../../../utils/prisma';
+import { MAPEL_PRESETS } from '../../../../constants/mapel-presets';
 
 export const mapelController = {
   async getAllMapel(request: any, reply: any) {
@@ -334,6 +336,222 @@ export const mapelController = {
     } catch (error) {
       console.error('Error exporting mapel:', error);
       return reply.status(500).send({ success: false, message: 'Failed to export mapel' });
+    }
+  },
+  async initializePreset(request: any, reply: any) {
+    try {
+      const { tenantId } = request;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Tenant ID is required' });
+      }
+
+      const sekolah = await prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId }
+      });
+
+      if (!sekolah) {
+        return reply.status(404).send({ success: false, message: 'School profile not found' });
+      }
+
+      let presets: { nama_mapel: string; kode_mapel: string }[] = [];
+      let suffix = '';
+
+      const { jurusanId } = request.body || {};
+
+      if (jurusanId) {
+        // Handle vocational preset
+        const jurusan = await prisma.jurusan.findFirst({
+          where: { id: jurusanId, tenant_id: tenantId }
+        });
+
+        if (!jurusan) {
+          return reply.status(404).send({ success: false, message: 'Jurusan tidak ditemukan' });
+        }
+
+        // Run smart matching
+        const fields = [
+          jurusan.singkatan || '',
+          jurusan.kode || '',
+          jurusan.nama || ''
+        ].map(f => f.toLowerCase());
+
+        const checks = [
+          { key: 'RPL', regex: /rpl|rekayasa.*perangkat.*lunak/i },
+          { key: 'TKJ', regex: /tkj|komputer.*jaringan/i },
+          { key: 'AKL', regex: /akl|akuntansi/i },
+          { key: 'MPLB', regex: /mplb|perkantoran|administrasi.*perkantoran/i },
+          { key: 'DKV', regex: /dkv|multimedia|desain.*komunikasi.*visual/i },
+          { key: 'TBSM', regex: /tbsm|sepeda.*motor/i },
+          { key: 'TKR', regex: /tkr|kendaraan.*ringan/i },
+          { key: 'TP', regex: /\btp\b|pemesinan|mesin/i },
+          { key: 'PH', regex: /\bph\b|perhotelan/i },
+          { key: 'KL', regex: /\bkl\b|kuliner|jasa.*boga/i },
+          { key: 'TB', regex: /\btb\b|tata.*busana|busana/i },
+          { key: 'TAV', regex: /tav|audio.*video/i },
+          { key: 'TOI', regex: /toi|otomasi.*industri/i }
+        ];
+
+        let matchedKey: string | null = null;
+        for (const check of checks) {
+          if (fields.some(field => check.regex.test(field))) {
+            matchedKey = check.key;
+            break;
+          }
+        }
+
+        if (!matchedKey) {
+          return reply.status(400).send({
+            success: false,
+            message: `Preset tidak ditemukan untuk jurusan "${jurusan.nama}". Silakan tambahkan mata pelajaran kejuruan secara manual.`
+          });
+        }
+
+        // Query presets from GlobalMapelPreset table for this vocational matchedKey
+        const dbPresets = await prisma.globalMapelPreset.findMany({
+          where: { jenjang: matchedKey, category: 'KEJURUAN' }
+        });
+
+        if (dbPresets.length === 0) {
+          return reply.status(400).send({
+            success: false,
+            message: `Preset data tidak tersedia di database untuk jurusan "${jurusan.nama}" (${matchedKey}).`
+          });
+        }
+
+        presets = dbPresets;
+        suffix = `-${jurusan.singkatan || matchedKey}`;
+      } else {
+        // Handle general preset
+        const rawJenjang = (sekolah.jenjang || 'SMA').toUpperCase();
+        let dbPresets = await prisma.globalMapelPreset.findMany({
+          where: { jenjang: rawJenjang, category: 'UMUM' }
+        });
+
+        // Fallback to SMA if not found
+        if (dbPresets.length === 0) {
+          dbPresets = await prisma.globalMapelPreset.findMany({
+            where: { jenjang: 'SMA', category: 'UMUM' }
+          });
+        }
+
+        presets = dbPresets;
+      }
+
+      const dataToInsert = presets.map(p => ({
+        tenant_id: tenantId,
+        nama_mapel: p.nama_mapel,
+        kode_mapel: `${p.kode_mapel}${suffix}-${tenantId.substring(0, 4).toUpperCase()}`,
+        tingkat: null
+      }));
+
+      const result = await prisma.mapel.createMany({
+        data: dataToInsert,
+        skipDuplicates: true
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Preset subjects initialized successfully',
+        count: result.count
+      });
+    } catch (error: any) {
+      console.error('Error initializing mapel preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to initialize mapel preset', error: error.message });
+    }
+  },
+
+  // GET /presets - Get all global presets (superadmin only)
+  async getGlobalPresets(request: any, reply: any) {
+    try {
+      const presets = await prisma.globalMapelPreset.findMany({
+        orderBy: [
+          { category: 'asc' },
+          { jenjang: 'asc' },
+          { nama_mapel: 'asc' }
+        ]
+      });
+
+      return reply.status(200).send({
+        success: true,
+        data: presets
+      });
+    } catch (error: any) {
+      console.error('Error getting global mapel presets:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to get global mapel presets', error: error.message });
+    }
+  },
+
+  // POST /presets - Create new global preset (superadmin only)
+  async createGlobalPreset(request: any, reply: any) {
+    try {
+      const { jenjang, category, nama_mapel, kode_mapel } = request.body || {};
+      if (!jenjang || !category || !nama_mapel || !kode_mapel) {
+        return reply.status(400).send({ success: false, message: 'Semua field (jenjang, category, nama_mapel, kode_mapel) wajib diisi' });
+      }
+
+      const preset = await prisma.globalMapelPreset.create({
+        data: {
+          jenjang: jenjang.toUpperCase(),
+          category: category.toUpperCase(),
+          nama_mapel,
+          kode_mapel: kode_mapel.toUpperCase()
+        }
+      });
+
+      return reply.status(201).send({
+        success: true,
+        message: 'Preset mapel global berhasil dibuat',
+        data: preset
+      });
+    } catch (error: any) {
+      console.error('Error creating global mapel preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to create global mapel preset', error: error.message });
+    }
+  },
+
+  // PUT /presets/:id - Update global preset (superadmin only)
+  async updateGlobalPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      const { jenjang, category, nama_mapel, kode_mapel } = request.body || {};
+
+      const preset = await prisma.globalMapelPreset.update({
+        where: { id },
+        data: {
+          jenjang: jenjang?.toUpperCase(),
+          category: category?.toUpperCase(),
+          nama_mapel,
+          kode_mapel: kode_mapel?.toUpperCase()
+        }
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Preset mapel global berhasil diperbarui',
+        data: preset
+      });
+    } catch (error: any) {
+      console.error('Error updating global mapel preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to update global mapel preset', error: error.message });
+    }
+  },
+
+  // DELETE /presets/:id - Delete global preset (superadmin only)
+  async deleteGlobalPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+
+      await prisma.globalMapelPreset.delete({
+        where: { id }
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Preset mapel global berhasil dihapus'
+      });
+    } catch (error: any) {
+      console.error('Error deleting global mapel preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to delete global mapel preset', error: error.message });
     }
   }
 };

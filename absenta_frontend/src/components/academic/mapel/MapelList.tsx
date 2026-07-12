@@ -9,7 +9,9 @@ import {
   RefreshCw, 
   Download, 
   Upload,
-  AlertCircle 
+  AlertCircle,
+  Layers,
+  GraduationCap
 } from 'lucide-react';
 import { 
   Table, 
@@ -21,7 +23,8 @@ import {
   SearchableSelect
 } from '../../ui';
 import { BookOpen } from 'lucide-react';
-import { getMapelList, deleteMapel } from '../../../api/academic/mapel.api';
+import { getMapelList, deleteMapel, initializeMapelPreset } from '../../../api/academic/mapel.api';
+import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -67,9 +70,24 @@ const MapelList = React.memo<MapelListProps>(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   
   const { user, can } = useAuth();
-  const { tingkatList } = useJenjang();
+  const { jenjang, config, tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [initializingPreset, setInitializingPreset] = useState(false);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'UMUM' | 'KEJURUAN'>('ALL');
+  const [jurusans, setJurusans] = useState<any[]>([]);
+  const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
+  const [presetModalOpen, setPresetModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (jenjang === 'SMK' || jenjang === 'MAK') {
+      getJurusanList(1, 100).then(res => {
+        if (res.success) {
+          setJurusans(res.data);
+        }
+      }).catch(err => console.error('Error fetching jurusans:', err));
+    }
+  }, [jenjang]);
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -235,6 +253,25 @@ const MapelList = React.memo<MapelListProps>(({
     }
   }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
+  const handleInitializePreset = useCallback(async (jurusanId?: string) => {
+    try {
+      setInitializingPreset(true);
+      const res = await initializeMapelPreset(jurusanId);
+      if (res.success) {
+        toast.success(res.message || `Berhasil menginisialisasi ${res.count || 0} mata pelajaran preset!`);
+        setPresetModalOpen(false);
+        fetchMapels(1, debouncedSearchTerm);
+      } else {
+        toast.error(res.message || 'Gagal menginisialisasi preset');
+      }
+    } catch (err: any) {
+      console.error('Preset init error:', err);
+      toast.error(err.message || 'Gagal menginisialisasi preset');
+    } finally {
+      setInitializingPreset(false);
+    }
+  }, [fetchMapels, debouncedSearchTerm]);
+
   // Table columns configuration
   const columns = useMemo(() => [
     { 
@@ -311,33 +348,109 @@ const MapelList = React.memo<MapelListProps>(({
     },
   ].filter(Boolean) as any, [canManage, onEdit, onView, confirm, handleDelete, allVisibleSelected, selectedIds, mapels]);
 
+  const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
+
   return (
     <div className="flex flex-col">
-      {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
-        <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          <Input
-            placeholder="Cari mata pelajaran..."
-            aria-label="Cari Mata Pelajaran"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
-          />
+      {/* Tab Filter + Search Bar */}
+      <div className="flex flex-col gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10">
+        {/* Tab Buttons */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
+          {[
+            { key: 'ALL', label: 'Semua', icon: null },
+            { key: 'UMUM', label: 'Umum / Wajib', icon: <BookOpen size={12} /> },
+            { key: 'KEJURUAN', label: 'Kejuruan', icon: <GraduationCap size={12} /> },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                activeTab === tab.key
+                  ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <div className="w-full md:w-52">
-          <SearchableSelect
-            value={filterTingkat}
-            onValueChange={(val) => setFilterTingkat(val)}
-            options={[
-              { label: 'Semua Tingkat', value: 'ALL' },
-              ...tingkatList.map((t) => ({ label: `Kelas ${t}`, value: t.toString() }))
-            ]}
-            placeholder="Pilih Tingkat"
-            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
+
+        {/* Search + Filter Row */}
+        <div className="flex flex-col md:flex-row gap-3 items-center">
+          <div className="flex-1 relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Cari mata pelajaran..."
+              aria-label="Cari Mata Pelajaran"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full h-9 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+            />
+          </div>
+          <div className="w-full md:w-48">
+            <SearchableSelect
+              value={filterTingkat}
+              onValueChange={(val) => setFilterTingkat(val)}
+              options={[
+                { label: 'Semua Tingkat', value: 'ALL' },
+                ...tingkatList.map((t) => ({ label: `Kelas ${t}`, value: t.toString() }))
+              ]}
+              placeholder="Pilih Tingkat"
+              triggerClassName="h-9 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+          {/* Dropdown Jurusan - hanya muncul bila tab Kejuruan aktif & SMK/MAK */}
+          {activeTab === 'KEJURUAN' && isSmkMak && jurusans.length > 0 && (
+            <div className="w-full md:w-52">
+              <SearchableSelect
+                value={selectedJurusanId}
+                onValueChange={(val) => setSelectedJurusanId(val)}
+                options={[
+                  { label: 'Semua Jurusan', value: '' },
+                  ...jurusans.map((j) => ({ label: j.nama, value: j.id }))
+                ]}
+                placeholder="Filter Jurusan"
+                triggerClassName="h-9 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+              />
+            </div>
+          )}
         </div>
       </div>
+      
+      {/* Preset Banner */}
+      {totalItems === 0 && !loading && searchTerm === '' && filterTingkat === 'ALL' && canManage && (
+        <div className="mx-4 my-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-500 text-white p-2.5 rounded-xl mt-0.5 shadow-md shadow-blue-500/20">
+              <BookOpen size={20} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-black text-blue-900 dark:text-blue-300 uppercase tracking-wider">Mulai Cepat dengan Preset Kurikulum</h4>
+              <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium leading-relaxed max-w-xl">
+                Sekolah Anda berjenjang <strong className="text-blue-950 dark:text-white">{config.label} ({jenjang})</strong>.
+                {isSmkMak
+                  ? ' Muat preset mapel wajib, atau pilih jurusan untuk memuat mapel kejuruan.'
+                  : ' Klik tombol untuk memuat daftar mapel standar Kurikulum Merdeka.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:self-center flex-shrink-0">
+            <Button
+              onClick={() => isSmkMak ? setPresetModalOpen(true) : handleInitializePreset()}
+              disabled={initializingPreset}
+              variant="primary"
+              className="h-10 px-5 rounded-xl text-[11px] font-black tracking-wider uppercase bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 flex items-center gap-2"
+            >
+              {initializingPreset ? (
+                <><RefreshCw size={14} className="animate-spin" />Proses...</>
+              ) : (
+                <>{isSmkMak ? <Layers size={14} /> : <BookOpen size={14} />}Gunakan Preset</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
       
       <div className="bg-transparent overflow-hidden">
         <Table
@@ -467,6 +580,79 @@ const MapelList = React.memo<MapelListProps>(({
           </div>
           <div className="flex justify-end pt-2">
             <Button variant="outline" className="rounded-xl px-6" onClick={() => setBulkErrorModalOpen(false)}>Tutup</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Preset Jurusan (SMK/MAK) */}
+      <Modal
+        isOpen={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
+        title="Pilih Preset Mata Pelajaran"
+        size="md"
+      >
+        <div className="space-y-5">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Pilih jenis preset yang ingin dimuat. Preset <strong>Mapel Wajib</strong> berisi mata pelajaran umum (Pancasila, Bahasa Indonesia, dll). Preset <strong>Kejuruan</strong> berisi mapel produktif sesuai jurusan yang dipilih.
+          </p>
+
+          {/* Option A: Mapel Wajib Umum */}
+          <div
+            className="p-4 border-2 border-blue-100 dark:border-blue-900/40 rounded-2xl bg-blue-50/50 dark:bg-blue-950/10 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all group"
+            onClick={() => !initializingPreset && handleInitializePreset()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 p-2.5 rounded-xl">
+                <BookOpen size={18} />
+              </div>
+              <div>
+                <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Mapel Wajib Umum</h5>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Mapel standar nasional: Pancasila, B. Indonesia, MTK, dll.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Option B: Preset Kejuruan */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <GraduationCap size={15} className="text-purple-600" />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Preset Kejuruan (Pilih Jurusan)</span>
+            </div>
+            {jurusans.length === 0 ? (
+              <div className="p-4 text-center text-sm text-slate-400 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
+                Belum ada jurusan terdaftar. Tambahkan jurusan terlebih dahulu di menu <strong>Jurusan</strong>.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+                {jurusans.map((j) => (
+                  <button
+                    key={j.id}
+                    onClick={() => !initializingPreset && handleInitializePreset(j.id)}
+                    disabled={initializingPreset}
+                    className="flex items-center gap-2.5 p-3 rounded-xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/10 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:border-purple-400 dark:hover:border-purple-500 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed group"
+                  >
+                    <div className="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 p-1.5 rounded-lg flex-shrink-0">
+                      <GraduationCap size={13} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">{j.nama}</p>
+                      {j.kode && <p className="text-[10px] text-slate-400">{j.kode}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {initializingPreset && (
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-blue-600">
+              <RefreshCw size={14} className="animate-spin" />
+              Memuat preset...
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <Button variant="outline" className="rounded-xl px-5" onClick={() => setPresetModalOpen(false)} disabled={initializingPreset}>Batal</Button>
           </div>
         </div>
       </Modal>

@@ -65,6 +65,7 @@ const RevenueIntelligencePage = lazy(() => import('./pages/superadmin/intelligen
 const UpgradeIntelligencePage = lazy(() => import('./pages/superadmin/intelligence/UpgradeIntelligencePage'));
 const RevenueDashboardPage = lazy(() => import('./pages/superadmin/revenue/RevenueDashboardPage'));
 const BackupsPage = lazy(() => import('./pages/superadmin/BackupsPage'));
+const MapelPresetsPage = lazy(() => import('./pages/superadmin/MapelPresetsPage'));
 const SupportTicketPage = lazy(() => import('./pages/support/SupportTicketPage'));
 const AdminSupportTicketPage = lazy(() => import('./pages/superadmin/support/AdminSupportTicketPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
@@ -1094,6 +1095,11 @@ function App() {
                         <Route path="/superadmin/support" element={
                           <ProtectedRoute requiredCapability="admin.tickets.view.list">
                             <AdminSupportTicketPage />
+                          </ProtectedRoute>
+                        } />
+                        <Route path="/superadmin/mapel-presets" element={
+                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
+                            <MapelPresetsPage />
                           </ProtectedRoute>
                         } />
                       </>

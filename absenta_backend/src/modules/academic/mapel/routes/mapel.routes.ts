@@ -112,4 +112,73 @@ export default async function mapelRoutes(fastify: any) {
       return mapelController.deleteMapel(request, reply);
     }
   );
+
+  fastify.post(
+    '/initialize-preset',
+    {
+      preHandler: [
+        requireCapability('academic.subjects.create'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.initializePreset(request, reply);
+    }
+  );
+
+  // GET /presets - Get all global presets (superadmin only)
+  fastify.get(
+    '/presets',
+    {
+      preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.getGlobalPresets(request, reply);
+    }
+  );
+
+  // POST /presets - Create new global preset (superadmin only)
+  fastify.post(
+    '/presets',
+    {
+      preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.createGlobalPreset(request, reply);
+    }
+  );
+
+  // PUT /presets/:id - Update global preset (superadmin only)
+  fastify.put(
+    '/presets/:id',
+    {
+      preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.updateGlobalPreset(request, reply);
+    }
+  );
+
+  // DELETE /presets/:id - Delete global preset (superadmin only)
+  fastify.delete(
+    '/presets/:id',
+    {
+      preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.deleteGlobalPreset(request, reply);
+    }
+  );
 }

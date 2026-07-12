@@ -97,3 +97,48 @@ export const importMapelFromExcel = async (
 export const exportMapelToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/mapel/export');
 };
+
+// Initialize Mapel Preset (Supports optional jurusanId)
+export const initializeMapelPreset = async (jurusanId?: string): Promise<{ success: boolean; message: string; count?: number }> => {
+  return requestWithFallback<{ success: boolean; message: string; count?: number }>('post', '/academic/mapel/initialize-preset', { data: { jurusanId } });
+};
+
+// Global Mapel Preset CRUD (Superadmin only)
+export interface GlobalMapelPreset {
+  id: string;
+  jenjang: string;
+  category: string;
+  nama_mapel: string;
+  kode_mapel: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const getGlobalPresets = async (): Promise<{ success: boolean; data: GlobalMapelPreset[] }> => {
+  return requestWithFallback<{ success: boolean; data: GlobalMapelPreset[] }>('get', '/academic/mapel/presets');
+};
+
+export const createGlobalPreset = async (payload: {
+  jenjang: string;
+  category: string;
+  nama_mapel: string;
+  kode_mapel: string;
+}): Promise<{ success: boolean; message: string; data: GlobalMapelPreset }> => {
+  return requestWithFallback<{ success: boolean; message: string; data: GlobalMapelPreset }>('post', '/academic/mapel/presets', { data: payload });
+};
+
+export const updateGlobalPreset = async (
+  id: string,
+  payload: {
+    jenjang?: string;
+    category?: string;
+    nama_mapel?: string;
+    kode_mapel?: string;
+  }
+): Promise<{ success: boolean; message: string; data: GlobalMapelPreset }> => {
+  return requestWithFallback<{ success: boolean; message: string; data: GlobalMapelPreset }>('put', `/academic/mapel/presets/${id}`, { data: payload });
+};
+
+export const deleteGlobalPreset = async (id: string): Promise<{ success: boolean; message: string }> => {
+  return requestWithFallback<{ success: boolean; message: string }>('delete', `/academic/mapel/presets/${id}`);
+};

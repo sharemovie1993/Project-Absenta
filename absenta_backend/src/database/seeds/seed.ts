@@ -15,6 +15,7 @@ import { seedCore } from './seed_core';
 import { seedCooperative } from './seed_cooperative';
 import { seedJobdesk } from './seed_jobdesk';
 import { seedSarprasCatalog } from './seed_sarpras_catalog';
+import { seedMapelPresets } from './seed_mapel_presets';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 
 const prisma = new PrismaClient();
@@ -469,6 +470,7 @@ async function main() {
         { label: 'Status Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
         { label: 'Job & Scheduler Control', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
         { label: 'Arsip & Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'cadangan.view.cadangan' },
+        { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'core.system.config.view' },
       ],
     },
     {
@@ -890,6 +892,9 @@ async function main() {
 
   // 11️⃣ Seed Sarpras Global Catalog
   await seedSarprasCatalog(prisma);
+
+  // 12️⃣ Seed Global Mapel Presets
+  await seedMapelPresets(prisma);
 
   console.log('✨ Seed selesai!');
 }

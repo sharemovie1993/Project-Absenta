@@ -3803,4 +3803,17 @@ model ParentTeacherChatMessage {
   Session ParentTeacherChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
 }
 
+model GlobalMapelPreset {
+  id          String   @id @default(uuid())
+  jenjang     String   // SD, MI, SMP, MTs, SMA, MA, SMK, MAK, atau nama Jurusan (RPL, TKJ, AKL, dll.)
+  category    String   // "UMUM" atau "KEJURUAN"
+  nama_mapel  String
+  kode_mapel  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([jenjang, category, kode_mapel])
+  @@index([jenjang])
+}
+
 
