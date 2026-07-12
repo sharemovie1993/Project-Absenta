@@ -181,6 +181,13 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
     add('SMA', 'PILIHAN', mapel.nama, mapel.kode, 12, 5); // 5 JP per week in XII
   });
 
+  // Muatan Lokal & Koding/AI (SMA)
+  add('SMA', 'MULOK', 'Muatan Lokal', 'MULOK', 10, 2);
+  add('SMA', 'MULOK', 'Muatan Lokal', 'MULOK', 11, 2);
+  add('SMA', 'MULOK', 'Muatan Lokal', 'MULOK', 12, 2);
+
+  add('SMA', 'PILIHAN', 'Koding dan Kecerdasan Artifisial', 'KODING-AI', 10, 2);
+
   // =====================================================================
   // INSERT / UPSERT TO DB
   // =====================================================================
