@@ -39,7 +39,7 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
     principalName, principalNip, getJpValueForSemester, getKelompokTotal
   } = opts;
 
-  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -60,7 +60,7 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8);
     const leftX = 15;
-    const colonX = 70;
+    const colonX = 55; // Adjusted from 70 to 55 to suit portrait layout width
     doc.text('Bidang Keahlian', leftX, metaY);
     doc.text(`: ${selectedJurusan?.ProgramKeahlian?.bidang_keahlian || '-'}`, colonX, metaY);
     metaY += 4.5;
@@ -172,7 +172,7 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
   ]);
 
   // ---- RENDER TABLE ----
-  const colMapelWidth = pageWidth - 30 - 6 * 18;
+  const colMapelWidth = pageWidth - 30 - 6 * 15; // Set semester columns to 15mm
   autoTable(doc, {
     startY: metaY,
     head: head as any,
@@ -194,12 +194,12 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
     },
     columnStyles: {
       0: { cellWidth: colMapelWidth },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 18, halign: 'center' },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 18, halign: 'center' },
-      5: { cellWidth: 18, halign: 'center' },
-      6: { cellWidth: 18, halign: 'center' }
+      1: { cellWidth: 15, halign: 'center' },
+      2: { cellWidth: 15, halign: 'center' },
+      3: { cellWidth: 15, halign: 'center' },
+      4: { cellWidth: 15, halign: 'center' },
+      5: { cellWidth: 15, halign: 'center' },
+      6: { cellWidth: 15, halign: 'center' }
     }
   });
 
