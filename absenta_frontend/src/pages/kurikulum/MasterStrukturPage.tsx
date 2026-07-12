@@ -462,13 +462,14 @@ const MasterStrukturPage: React.FC = () => {
             const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
             const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
             const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+            const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
             
             if (selectedTingkat === 10) {
-                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
+                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut (kecuali koding)
                 if (isPkl || isPkk) return false;
                 
                 const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
                 if (isProduktifLanjut) return false;
             } else if (selectedTingkat === 11) {
                 // Kelas 11: Sembunyikan Dasar-dasar dan PKL
@@ -1036,14 +1037,15 @@ const MasterStrukturPage: React.FC = () => {
                                             const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
                                             const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
                                             const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+                                            const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
                                             
                                             // 2. Smart Filter Relevansi Tingkat
                                             if (selectedTingkat === 10) {
-                                                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
+                                                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut (kecuali koding)
                                                 if (isPkl || isPkk) return false;
                                                 
                                                 const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-                                                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                                                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
                                                 if (isProduktifLanjut) return false;
                                             } else if (selectedTingkat === 11) {
                                                 // Kelas 11: Sembunyikan Dasar-dasar dan PKL
