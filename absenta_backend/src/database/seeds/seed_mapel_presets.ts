@@ -13,6 +13,17 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     items.forEach(p => presetData.push({ jenjang, category: p.category, nama_mapel: p.nama_mapel, kode_mapel: p.kode_mapel }));
   }
 
+  // Standar muatan lokal riil di Indonesia
+  const mulokList: PresetItem[] = [
+    { category: 'MULOK', nama_mapel: 'Bahasa Sunda', kode_mapel: 'M-SUNDA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jawa', kode_mapel: 'M-JAWA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Madura', kode_mapel: 'M-MADURA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Bali', kode_mapel: 'M-BALI' },
+    { category: 'MULOK', nama_mapel: 'Pendidikan Lingkungan Hidup (PLH)', kode_mapel: 'M-PLH' },
+    { category: 'MULOK', nama_mapel: 'Kepariwisataan / Kebudayaan Lokal', kode_mapel: 'M-WISATA' },
+    { category: 'MULOK', nama_mapel: 'Kesenian Daerah', kode_mapel: 'M-SDR' },
+  ];
+
   // =====================================================================
   // SD / MI
   // =====================================================================
@@ -21,14 +32,14 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
     { category: 'UMUM', nama_mapel: 'Matematika', kode_mapel: 'MTK' },
-    { category: 'UMUM', nama_mapel: 'Ilmu Pengetahuan Alam dan Sosial', kode_mapel: 'IPAS' },
+    { category: 'UMUM', nama_mapel: 'Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Musik', kode_mapel: 'SMUS' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   push('MI', [
@@ -40,14 +51,14 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
     { category: 'UMUM', nama_mapel: 'Matematika', kode_mapel: 'MTK' },
-    { category: 'UMUM', nama_mapel: 'Ilmu Pengetahuan Alam dan Sosial', kode_mapel: 'IPAS' },
+    { category: 'UMUM', nama_mapel: 'Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Musik', kode_mapel: 'SMUS' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   // =====================================================================
@@ -73,7 +84,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Kerajinan', kode_mapel: 'PKKRJ' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Rekayasa', kode_mapel: 'PKREKY' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Pengolahan', kode_mapel: 'PKPNG' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   push('MTs', [
@@ -98,16 +109,13 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Kerajinan', kode_mapel: 'PKKRJ' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Rekayasa', kode_mapel: 'PKREKY' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Pengolahan', kode_mapel: 'PKPNG' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   // =====================================================================
   // SMA / MA
-  // Kelas 10: mapel wajib umum (IPA & IPS masih terintegrasi)
-  // Kelas 11-12: mapel wajib umum (Sejarah + Seni) + mapel PILIHAN per rumpun
   // =====================================================================
   push('SMA', [
-    // UMUM = Wajib semua kelas (10, 11, 12)
     { category: 'UMUM', nama_mapel: 'Pendidikan Agama dan Budi Pekerti', kode_mapel: 'PAIBP' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
@@ -115,29 +123,24 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Sejarah', kode_mapel: 'SEJ' },
-    // Kelas 10 wajib: IPA & IPS terintegrasi
     { category: 'UMUM_KELAS10', nama_mapel: 'Ilmu Pengetahuan Alam (Terintegrasi)', kode_mapel: 'IPA' },
     { category: 'UMUM_KELAS10', nama_mapel: 'Ilmu Pengetahuan Sosial (Terintegrasi)', kode_mapel: 'IPS' },
     { category: 'UMUM_KELAS10', nama_mapel: 'Informatika', kode_mapel: 'INF' },
-    // Pilihan Seni (wajib pilih 1)
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Musik', kode_mapel: 'SMUS' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Prakarya dan Kewirausahaan', kode_mapel: 'PKWU' },
-    // Mapel Pilihan Rumpun MIPA (kelas 11-12)
     { category: 'PILIHAN_MIPA', nama_mapel: 'Fisika', kode_mapel: 'FIS' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Kimia', kode_mapel: 'KIM' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Biologi', kode_mapel: 'BIO' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Matematika Tingkat Lanjut', kode_mapel: 'MTK-L' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Informatika', kode_mapel: 'INF-L' },
-    // Mapel Pilihan Rumpun IPS (kelas 11-12)
     { category: 'PILIHAN_IPS', nama_mapel: 'Ekonomi', kode_mapel: 'EKO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Sosiologi', kode_mapel: 'SOS' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Geografi', kode_mapel: 'GEO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Antropologi', kode_mapel: 'ANTRO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Sejarah Tingkat Lanjut', kode_mapel: 'SEJ-L' },
-    // Mapel Pilihan Rumpun Bahasa & Budaya (kelas 11-12)
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Indonesia Tingkat Lanjut', kode_mapel: 'IND-L' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Inggris Tingkat Lanjut', kode_mapel: 'ING-L' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Arab', kode_mapel: 'ARAB' },
@@ -146,19 +149,16 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Jerman', kode_mapel: 'DEU' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Perancis', kode_mapel: 'FRA' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Korea', kode_mapel: 'KOR' },
-    // Mapel Pilihan Rumpun Teknologi (kelas 11-12)
     { category: 'PILIHAN_TEKNOLOGI', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   push('MA', [
-    // Keagamaan wajib semua kelas
     { category: 'KEAGAMAAN', nama_mapel: "Al-Qur'an Hadis", kode_mapel: 'QURDIS' },
     { category: 'KEAGAMAAN', nama_mapel: 'Akidah Akhlak', kode_mapel: 'AKIDAH' },
     { category: 'KEAGAMAAN', nama_mapel: 'Fikih', kode_mapel: 'FIKIH' },
     { category: 'KEAGAMAAN', nama_mapel: 'Sejarah Kebudayaan Islam', kode_mapel: 'SKI' },
     { category: 'KEAGAMAAN', nama_mapel: 'Bahasa Arab', kode_mapel: 'ARAB' },
-    // Umum (sama dengan SMA)
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
     { category: 'UMUM', nama_mapel: 'Matematika', kode_mapel: 'MTK' },
@@ -168,37 +168,31 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM_KELAS10', nama_mapel: 'Ilmu Pengetahuan Alam (Terintegrasi)', kode_mapel: 'IPA' },
     { category: 'UMUM_KELAS10', nama_mapel: 'Ilmu Pengetahuan Sosial (Terintegrasi)', kode_mapel: 'IPS' },
     { category: 'UMUM_KELAS10', nama_mapel: 'Informatika', kode_mapel: 'INF' },
-    // Seni pilihan
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Musik', kode_mapel: 'SMUS' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Prakarya dan Kewirausahaan', kode_mapel: 'PKWU' },
-    // Pilihan Rumpun MIPA
     { category: 'PILIHAN_MIPA', nama_mapel: 'Fisika', kode_mapel: 'FIS' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Kimia', kode_mapel: 'KIM' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Biologi', kode_mapel: 'BIO' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Matematika Tingkat Lanjut', kode_mapel: 'MTK-L' },
     { category: 'PILIHAN_MIPA', nama_mapel: 'Informatika', kode_mapel: 'INF-L' },
-    // Pilihan Rumpun IPS
     { category: 'PILIHAN_IPS', nama_mapel: 'Ekonomi', kode_mapel: 'EKO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Sosiologi', kode_mapel: 'SOS' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Geografi', kode_mapel: 'GEO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Antropologi', kode_mapel: 'ANTRO' },
     { category: 'PILIHAN_IPS', nama_mapel: 'Sejarah Tingkat Lanjut', kode_mapel: 'SEJ-L' },
-    // Pilihan Rumpun Bahasa
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Indonesia Tingkat Lanjut', kode_mapel: 'IND-L' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Inggris Tingkat Lanjut', kode_mapel: 'ING-L' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Arab Tingkat Lanjut', kode_mapel: 'ARAB-L' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Jepang', kode_mapel: 'JPN' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'ZHO' },
-    // Pilihan Keagamaan Lanjut (khusus MA)
     { category: 'PILIHAN_KEAGAMAAN', nama_mapel: 'Ilmu Tafsir', kode_mapel: 'TAFSIR' },
     { category: 'PILIHAN_KEAGAMAAN', nama_mapel: 'Ilmu Hadis', kode_mapel: 'HADIS' },
     { category: 'PILIHAN_KEAGAMAAN', nama_mapel: 'Ushul Fikih', kode_mapel: 'USHULFQH' },
-    // Teknologi
     { category: 'PILIHAN_TEKNOLOGI', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    ...mulokList
   ]);
 
   // =====================================================================
@@ -212,10 +206,21 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Sejarah', kode_mapel: 'SEJ' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
+    { category: 'UMUM', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
     { category: 'UMUM', nama_mapel: 'Informatika', kode_mapel: 'INF' },
-    { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial', kode_mapel: 'IPAS' },
-    { category: 'SENI_PILIHAN', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
+    
+    // Mapel Pilihan Kejuruan / Lintas Minat SMK
+    { category: 'PILIHAN_SMK', nama_mapel: 'Desain Grafis (Lintas Minat)', kode_mapel: 'P-GRAF' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Digital Marketing (Lintas Minat)', kode_mapel: 'P-DMKT' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Internet of Things (Lintas Minat)', kode_mapel: 'P-IOT' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Aplikasi Pengolah Angka / Spreadsheet', kode_mapel: 'P-SPS' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'P-KAI' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jepang', kode_mapel: 'P-JPN' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'P-ZHO' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jerman', kode_mapel: 'P-DEU' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Korea', kode_mapel: 'P-KOR' },
+    ...mulokList
   ]);
 
   push('MAK', [
@@ -230,10 +235,21 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Sejarah', kode_mapel: 'SEJ' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
+    { category: 'UMUM', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
     { category: 'UMUM', nama_mapel: 'Informatika', kode_mapel: 'INF' },
-    { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial', kode_mapel: 'IPAS' },
-    { category: 'SENI_PILIHAN', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
-    { category: 'MULOK', nama_mapel: 'Muatan Lokal', kode_mapel: 'MULOK' },
+    { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
+    
+    // Mapel Pilihan Kejuruan / Lintas Minat MAK
+    { category: 'PILIHAN_SMK', nama_mapel: 'Desain Grafis (Lintas Minat)', kode_mapel: 'P-GRAF' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Digital Marketing (Lintas Minat)', kode_mapel: 'P-DMKT' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Internet of Things (Lintas Minat)', kode_mapel: 'P-IOT' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Aplikasi Pengolah Angka / Spreadsheet', kode_mapel: 'P-SPS' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'P-KAI' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jepang', kode_mapel: 'P-JPN' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'P-ZHO' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jerman', kode_mapel: 'P-DEU' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Korea', kode_mapel: 'P-KOR' },
+    ...mulokList
   ]);
 
   // =====================================================================
