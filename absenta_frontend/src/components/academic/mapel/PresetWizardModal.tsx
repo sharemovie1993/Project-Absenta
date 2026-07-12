@@ -179,6 +179,27 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
             const results = await Promise.all(presetPromises);
             const newVocationalPresets: Record<string, GlobalMapelPreset[]> = {};
+            
+            // Auto select PKL, PKK, and Dasar-dasar by default
+            setSelectedIds(prevSelected => {
+              const next = new Set(prevSelected);
+              results.forEach(r => {
+                if (r) {
+                  r.presets.forEach(p => {
+                    const name = p.nama_mapel.toLowerCase();
+                    if (
+                      name.includes('praktik kerja lapangan') ||
+                      name.includes('projek kreatif') ||
+                      name.includes('dasar-dasar')
+                    ) {
+                      next.add(p.id);
+                    }
+                  });
+                }
+              });
+              return next;
+            });
+
             results.forEach(r => {
               if (r) {
                 newVocationalPresets[r.matchedKey] = r.presets;
@@ -483,30 +504,66 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                                         <button onClick={() => handleSelectAllStep(jurPresets, false)} className="text-slate-500 hover:underline">Bersihkan</button>
                                       </div>
                                     </div>
-
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                       {jurPresets.map((p) => {
                                         const isChecked = selectedIds.has(p.id);
+                                        const nameLower = p.nama_mapel.toLowerCase();
+
+                                        let cardColorClass = '';
+                                        let badgeLabel = '';
+                                        let badgeClass = '';
+
+                                        if (nameLower.includes('praktik kerja lapangan')) {
+                                          cardColorClass = isChecked
+                                            ? 'bg-emerald-50/30 border-emerald-500 dark:bg-emerald-950/15'
+                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-300';
+                                          badgeLabel = 'PKL Wajib';
+                                          badgeClass = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400';
+                                        } else if (nameLower.includes('projek kreatif')) {
+                                          cardColorClass = isChecked
+                                            ? 'bg-indigo-50/30 border-indigo-500 dark:bg-indigo-950/15'
+                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300';
+                                          badgeLabel = 'PKK Wajib';
+                                          badgeClass = 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400';
+                                        } else if (nameLower.includes('dasar-dasar')) {
+                                          cardColorClass = isChecked
+                                            ? 'bg-amber-50/30 border-amber-500 dark:bg-amber-950/15'
+                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-300';
+                                          badgeLabel = 'Dasar Program';
+                                          badgeClass = 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+                                        } else {
+                                          cardColorClass = isChecked
+                                            ? 'bg-purple-50/20 border-purple-500 dark:bg-purple-950/10'
+                                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-purple-300';
+                                          badgeLabel = 'Konsentrasi';
+                                          badgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
+                                        }
+
                                         return (
                                           <div
                                             key={p.id}
                                             onClick={() => handleToggleSelect(p.id)}
-                                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all duration-200 ${
-                                              isChecked
-                                                ? 'bg-purple-50/10 border-purple-500 dark:bg-purple-950/5'
-                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-350'
-                                            }`}
+                                            className={`flex items-center justify-between p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-sm ${cardColorClass}`}
                                           >
-                                            <input
-                                              type="checkbox"
-                                              checked={isChecked}
-                                              onChange={() => {}} // handled by div click
-                                              className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500"
-                                            />
-                                            <div className="min-w-0">
-                                              <p className="text-xs font-semibold text-slate-850 dark:text-slate-300 truncate">{p.nama_mapel}</p>
-                                              <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                              <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {}} // handled by div click
+                                                className="rounded border-slate-300 dark:border-slate-700 text-slate-800 focus:ring-slate-500"
+                                              />
+                                              <div className="min-w-0">
+                                                <p className="text-xs font-semibold text-slate-850 dark:text-slate-200 truncate">{p.nama_mapel}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                                </div>
+                                              </div>
                                             </div>
+                                            {badgeLabel && (
+                                              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${badgeClass}`}>
+                                                {badgeLabel}
+                                              </span>
+                                            )}
                                           </div>
                                         );
                                       })}
