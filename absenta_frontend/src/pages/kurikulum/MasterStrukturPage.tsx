@@ -558,6 +558,49 @@ const MasterStrukturPage: React.FC = () => {
         return 2;
     }, []);
 
+    const renderJpCalculator = useCallback((jp: number, mapelName: string, mapelKode: string) => {
+        const weeks = selectedTingkat === 12 ? 32 : 36;
+        const annualIntra = jp * weeks;
+        const recommendedJp = detectDefaultJpForMapel(mapelKode, mapelName, selectedTingkat);
+        const recommendedAnnual = recommendedJp * weeks;
+        
+        let statusColor = "text-emerald-650 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40";
+        let statusText = "Sesuai Standar Permendikbud 12/2024";
+        
+        if (jp > recommendedJp) {
+            statusColor = "text-violet-650 dark:text-violet-450 bg-violet-50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-900/40";
+            statusText = `Otonomi Sekolah (+${jp - recommendedJp} JP/Minggu)`;
+        } else if (jp < recommendedJp) {
+            statusColor = "text-amber-650 dark:text-amber-450 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40";
+            statusText = `Di bawah Standar Permendikbud (-${recommendedJp - jp} JP/Minggu)`;
+        }
+        
+        return (
+            <div className="mt-2.5 p-3.5 rounded-xl border border-slate-200/60 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-1.5 text-left">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Kalkulator Konversi JP</span>
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border ${statusColor}`}>
+                        {statusText}
+                    </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                        <p className="text-gray-400 dark:text-gray-500 font-bold uppercase text-[9px] tracking-wide">Beban Setahun</p>
+                        <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">
+                            {annualIntra} JP <span className="text-[10px] font-normal text-gray-400">/ Tahun ({weeks} mg)</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-gray-400 dark:text-gray-500 font-bold uppercase text-[9px] tracking-wide">Acuan Permendikbud</p>
+                        <p className="font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                            {recommendedJp} JP/mg <span className="text-[10px] font-normal text-gray-400">({recommendedAnnual} JP/Thn)</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }, [selectedTingkat, detectDefaultJpForMapel]);
+
     const handleAddPreset = useCallback((type: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN') => {
         if (!subjects?.data) return;
         
@@ -1385,6 +1428,8 @@ const MasterStrukturPage: React.FC = () => {
                                             required
                                             className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-black text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                                         />
+                                        {/* JP Calculator & Standard Validator */}
+                                        {renderJpCalculator(Number(formData.jp_per_minggu || 0), editingItem?.Mapel?.nama_mapel || '', editingItem?.Mapel?.kode_mapel || '')}
                                     </div>
                                     <div className="space-y-1.5">
                                         <label htmlFor="kelompok" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Kelompok Mata Pelajaran</label>
@@ -1607,57 +1652,60 @@ const MasterStrukturPage: React.FC = () => {
                                                 if (!mapelObj) return null;
                                                 
                                                 return (
-                                                    <div key={id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-bold text-slate-850 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
-                                                            <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            {/* JP Input */}
-                                                            <div className="w-20">
-                                                                <input
-                                                                    type="number"
-                                                                    min={1}
-                                                                    max={40}
-                                                                    value={config.jp_per_minggu}
-                                                                    onChange={(e) => {
-                                                                        const copy = { ...bulkSelections };
-                                                                        copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
-                                                                        setBulkSelections(copy);
-                                                                    }}
-                                                                    className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500"
-                                                                    placeholder="JP"
-                                                                />
+                                                    <div key={id} className="flex flex-col gap-2.5 p-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs font-bold text-slate-855 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
+                                                                <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
                                                             </div>
-                                                            {/* Kelompok Dropdown */}
-                                                            <div className="w-40">
-                                                                <select
-                                                                    value={config.kelompok}
-                                                                    onChange={(e) => {
+                                                            <div className="flex items-center gap-3">
+                                                                {/* JP Input */}
+                                                                <div className="w-20">
+                                                                    <input
+                                                                        type="number"
+                                                                        min={1}
+                                                                        max={40}
+                                                                        value={config.jp_per_minggu}
+                                                                        onChange={(e) => {
+                                                                            const copy = { ...bulkSelections };
+                                                                            copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
+                                                                            setBulkSelections(copy);
+                                                                        }}
+                                                                        className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500"
+                                                                        placeholder="JP"
+                                                                    />
+                                                                </div>
+                                                                {/* Kelompok Dropdown */}
+                                                                <div className="w-40">
+                                                                    <select
+                                                                        value={config.kelompok}
+                                                                        onChange={(e) => {
+                                                                            const copy = { ...bulkSelections };
+                                                                            copy[id] = { ...copy[id], kelompok: e.target.value };
+                                                                            setBulkSelections(copy);
+                                                                        }}
+                                                                        className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 text-xs font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                                                    >
+                                                                        {kelompokOptions?.map(opt => (
+                                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                                {/* Delete Button */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
                                                                         const copy = { ...bulkSelections };
-                                                                        copy[id] = { ...copy[id], kelompok: e.target.value };
+                                                                        delete copy[id];
                                                                         setBulkSelections(copy);
                                                                     }}
-                                                                    className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950 text-xs font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                                                    className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
                                                                 >
-                                                                    {kelompokOptions?.map(opt => (
-                                                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                                    ))}
-                                                                </select>
+                                                                    <Trash2 size={16} />
+                                                                </button>
                                                             </div>
-                                                            {/* Delete Button */}
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const copy = { ...bulkSelections };
-                                                                    delete copy[id];
-                                                                    setBulkSelections(copy);
-                                                                }}
-                                                                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
                                                         </div>
+                                                        {renderJpCalculator(Number(config.jp_per_minggu || 0), mapelObj.nama_mapel, mapelObj.kode_mapel)}
                                                     </div>
                                                 );
                                             })
