@@ -256,8 +256,11 @@ const MasterStrukturPage: React.FC = () => {
         // 3. Pilihan
         const isPilihan = kode.includes('PILIHAN') || 
                           kode.includes('MAPEL-PILIHAN') || 
+                          kode.includes('KAI') ||
                           nama.includes('pilihan') ||
                           nama.includes('tingkat lanjut') ||
+                          nama.includes('koding') ||
+                          nama.includes('coding') ||
                           ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k);
 
         if (isKejuruan) return 'MATA PELAJARAN KEJURUAN';
