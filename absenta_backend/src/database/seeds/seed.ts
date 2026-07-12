@@ -430,6 +430,17 @@ async function main() {
       ],
     },
     {
+      label: 'PRESET GLOBAL',
+      icon: 'LayoutTemplate',
+      path: null,
+      required_capability: null,
+      order: 108,
+      children: [
+        { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Aset Global', icon: 'Package', path: '/superadmin/sarpras-catalog', required_capability: 'superadmin.tenants.manage' },
+      ],
+    },
+    {
       label: 'Billing Platform',
       icon: 'CreditCard',
       path: null,
@@ -470,7 +481,6 @@ async function main() {
         { label: 'Status Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
         { label: 'Job & Scheduler Control', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
         { label: 'Arsip & Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'cadangan.view.cadangan' },
-        { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'core.system.config.view' },
       ],
     },
     {
