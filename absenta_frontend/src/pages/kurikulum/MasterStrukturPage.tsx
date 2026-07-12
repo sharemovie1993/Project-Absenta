@@ -266,7 +266,7 @@ const MasterStrukturPage: React.FC = () => {
         return 'MATA PELAJARAN UMUM';
     }, []);
 
-    const handleAddPreset = useCallback((type: 'UMUM' | 'KEJURUAN' | 'MULOK') => {
+    const handleAddPreset = useCallback((type: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN') => {
         if (!subjects?.data) return;
         
         setBulkSelections(prev => {
@@ -305,6 +305,7 @@ const MasterStrukturPage: React.FC = () => {
                 if (type === 'UMUM' && group === 'MATA PELAJARAN UMUM') match = true;
                 if (type === 'KEJURUAN' && group === 'MATA PELAJARAN KEJURUAN') match = true;
                 if (type === 'MULOK' && group === 'MUATAN LOKAL') match = true;
+                if (type === 'PILIHAN' && group === 'MATA PELAJARAN PILIHAN') match = true;
                 
                 if (match) {
                     let defaultJp = 2;
@@ -482,12 +483,13 @@ const MasterStrukturPage: React.FC = () => {
     }, [subjects?.data, mapping?.data, selectedTingkat]);
 
     const presetSisaCount = useMemo(() => {
-        if (!subjects?.data || !mapping?.data) return { UMUM: 0, KEJURUAN: 0, MULOK: 0 };
+        if (!subjects?.data || !mapping?.data) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
         
         const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
         let umum = 0;
         let kejuruan = 0;
         let mulok = 0;
+        let pilihan = 0;
         
         subjects.data.forEach((s: Mapel) => {
             if (mappedMapelIds.has(s.id)) return;
@@ -515,9 +517,10 @@ const MasterStrukturPage: React.FC = () => {
             if (group === 'MATA PELAJARAN UMUM') umum++;
             else if (group === 'MATA PELAJARAN KEJURUAN') kejuruan++;
             else if (group === 'MUATAN LOKAL') mulok++;
+            else if (group === 'MATA PELAJARAN PILIHAN') pilihan++;
         });
         
-        return { UMUM: umum, KEJURUAN: kejuruan, MULOK: mulok };
+        return { UMUM: umum, KEJURUAN: kejuruan, MULOK: mulok, PILIHAN: pilihan };
     }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel]);
 
     const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
@@ -988,6 +991,20 @@ const MasterStrukturPage: React.FC = () => {
                                                     className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
                                                 >
                                                     + Paket Mulok ({presetSisaCount.MULOK})
+                                                </button>
+                                            )}
+
+                                            {presetSisaCount.PILIHAN === 0 ? (
+                                                <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none">
+                                                    ✓ Paket Pilihan Selesai
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddPreset('PILIHAN')}
+                                                    className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
+                                                >
+                                                    + Paket Pilihan ({presetSisaCount.PILIHAN})
                                                 </button>
                                             )}
 
