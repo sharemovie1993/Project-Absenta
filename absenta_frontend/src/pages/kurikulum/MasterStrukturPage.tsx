@@ -272,6 +272,10 @@ const MasterStrukturPage: React.FC = () => {
         setBulkSelections(prev => {
             const next = { ...prev };
             subjects.data.forEach((s: Mapel) => {
+                // Jangan masukkan mapel yang sudah dipetakan sebelumnya di tingkat kelas ini
+                const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
+                if (alreadyMapped) return;
+
                 const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
                 
                 let match = false;
@@ -293,7 +297,7 @@ const MasterStrukturPage: React.FC = () => {
             });
             return next;
         });
-    }, [subjects?.data, detectKelompokForMapel]);
+    }, [subjects?.data, mapping?.data, detectKelompokForMapel]);
 
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -924,6 +928,10 @@ const MasterStrukturPage: React.FC = () => {
                                             const matchesSearch = nama.includes(bulkSearchQuery.toLowerCase()) || 
                                                                   kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
                                             if (!matchesSearch) return false;
+                                            
+                                            // 3. Sembunyikan mapel yang sudah di-ploting sebelumnya di tingkat kelas ini
+                                            const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
+                                            if (alreadyMapped) return false;
                                             
                                             const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
                                             const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
