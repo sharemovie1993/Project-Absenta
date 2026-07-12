@@ -1296,7 +1296,6 @@ const MasterStrukturPage: React.FC = () => {
                             </table>
                         </div>
                     </Card>
-                </div>
 
             </div>
             </div>
