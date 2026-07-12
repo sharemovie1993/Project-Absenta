@@ -892,21 +892,32 @@ const MasterStrukturPage: React.FC = () => {
                                             const kode = (s.kode_mapel || '').toUpperCase();
                                             const nama = (s.nama_mapel || '').toLowerCase();
                                             
+                                            // 1. Text Search Filter
                                             const matchesSearch = nama.includes(bulkSearchQuery.toLowerCase()) || 
                                                                   kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
                                             if (!matchesSearch) return false;
                                             
+                                            // Indikator khusus
+                                            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar');
+                                            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan');
+                                            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif');
+                                            
+                                            // 2. Smart Filter Relevansi Tingkat
                                             if (selectedTingkat === 10) {
-                                                const isAdvanced = kode.includes('PKL') || 
-                                                                   kode.includes('PKK') || 
-                                                                   nama.includes('praktik kerja lapangan') || 
-                                                                   nama.includes('projek kreatif');
-                                                if (isAdvanced) return false;
+                                                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
+                                                if (isPkl || isPkk) return false;
+                                                
+                                                const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                                                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                                                if (isProduktifLanjut) return false;
+                                            } else if (selectedTingkat === 11) {
+                                                // Kelas 11: Sembunyikan Dasar-dasar dan PKL
+                                                if (isDasar || isPkl) return false;
                                             } else {
-                                                const isBasic = kode.includes('DAS-') || 
-                                                                nama.includes('dasar-dasar');
-                                                if (isBasic) return false;
+                                                // Kelas 12 & 13: Sembunyikan Dasar-dasar (PKL dan PKK boleh muncul)
+                                                if (isDasar) return false;
                                             }
+                                            
                                             return true;
                                         }).map((s: Mapel) => {
                                             const isChecked = !!bulkSelections[s.id];
