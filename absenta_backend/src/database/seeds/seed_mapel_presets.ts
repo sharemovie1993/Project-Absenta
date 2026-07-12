@@ -250,6 +250,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
   const kejuruanPresets: Record<string, { nama_mapel: string; kode_mapel: string }[]> = {
     RPL: [
       { nama_mapel: 'Dasar-dasar Pengembangan Perangkat Lunak dan Gim', kode_mapel: 'DAS-RPL' },
+      { nama_mapel: 'Konsentrasi Keahlian - Rekayasa Perangkat Lunak', kode_mapel: 'KK-RPL' },
       { nama_mapel: 'Pemrograman Web', kode_mapel: 'WEB-RPL' },
       { nama_mapel: 'Pemrograman Berorientasi Objek', kode_mapel: 'PBO-RPL' },
       { nama_mapel: 'Pemrograman Perangkat Bergerak', kode_mapel: 'MOB-RPL' },
@@ -259,6 +260,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TKJ: [
       { nama_mapel: 'Dasar-dasar Teknik Jaringan Komputer dan Telekomunikasi', kode_mapel: 'DAS-TKJ' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Komputer dan Jaringan', kode_mapel: 'KK-TKJ' },
       { nama_mapel: 'Administrasi Infrastruktur Jaringan', kode_mapel: 'AIJ-TKJ' },
       { nama_mapel: 'Administrasi Sistem Jaringan', kode_mapel: 'ASJ-TKJ' },
       { nama_mapel: 'Teknologi Layanan Jaringan', kode_mapel: 'TLJ-TKJ' },
@@ -268,6 +270,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     AKL: [
       { nama_mapel: 'Dasar-dasar Akuntansi dan Keuangan Lembaga', kode_mapel: 'DAS-AKL' },
+      { nama_mapel: 'Konsentrasi Keahlian - Akuntansi dan Keuangan Lembaga', kode_mapel: 'KK-AKL' },
       { nama_mapel: 'Akuntansi Keuangan', kode_mapel: 'AK-AKL' },
       { nama_mapel: 'Praktik Akuntansi Perusahaan Jasa, Dagang dan Manufaktur', kode_mapel: 'PRAK-AKL' },
       { nama_mapel: 'Komputer Akuntansi', kode_mapel: 'KOMP-AKL' },
@@ -278,6 +281,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     MPLB: [
       { nama_mapel: 'Dasar-dasar Manajemen Perkantoran dan Layanan Bisnis', kode_mapel: 'DAS-MPLB' },
+      { nama_mapel: 'Konsentrasi Keahlian - Manajemen Perkantoran dan Layanan Bisnis', kode_mapel: 'KK-MPLB' },
       { nama_mapel: 'Ekonomi Bisnis dan Administrasi Umum', kode_mapel: 'EKBIS-MPLB' },
       { nama_mapel: 'Pengelolaan Kearsipan', kode_mapel: 'ARSIP-MPLB' },
       { nama_mapel: 'Pengelolaan Hubungan Pelanggan', kode_mapel: 'CRM-MPLB' },
@@ -289,6 +293,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     DKV: [
       { nama_mapel: 'Dasar-dasar Desain Komunikasi Visual', kode_mapel: 'DAS-DKV' },
+      { nama_mapel: 'Konsentrasi Keahlian - Desain Komunikasi Visual', kode_mapel: 'KK-DKV' },
       { nama_mapel: 'Desain Grafis Percetakan', kode_mapel: 'GRAF-DKV' },
       { nama_mapel: 'Desain Grafis dan Ilustrasi', kode_mapel: 'ILUS-DKV' },
       { nama_mapel: 'Fotografi dan Videografi', kode_mapel: 'FOTO-DKV' },
@@ -298,6 +303,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TBSM: [
       { nama_mapel: 'Dasar-dasar Otomotif Sepeda Motor', kode_mapel: 'DAS-TBSM' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Sepeda Motor', kode_mapel: 'KK-TBSM' },
       { nama_mapel: 'Pemeliharaan Mesin Sepeda Motor', kode_mapel: 'MSN-TBSM' },
       { nama_mapel: 'Pemeliharaan Sasis Sepeda Motor', kode_mapel: 'SSS-TBSM' },
       { nama_mapel: 'Pemeliharaan Kelistrikan Sepeda Motor', kode_mapel: 'KLS-TBSM' },
@@ -307,6 +313,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TKR: [
       { nama_mapel: 'Dasar-dasar Otomotif Kendaraan Ringan', kode_mapel: 'DAS-TKR' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Kendaraan Ringan', kode_mapel: 'KK-TKR' },
       { nama_mapel: 'Pemeliharaan Mesin Kendaraan Ringan', kode_mapel: 'MSN-TKR' },
       { nama_mapel: 'Pemeliharaan Sasis dan Pemindah Tenaga Kendaraan Ringan', kode_mapel: 'SSS-TKR' },
       { nama_mapel: 'Pemeliharaan Kelistrikan Kendaraan Ringan', kode_mapel: 'KLS-TKR' },
@@ -315,6 +322,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TP: [
       { nama_mapel: 'Dasar-dasar Teknik Mesin', kode_mapel: 'DAS-TP' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Pemesinan', kode_mapel: 'KK-TP' },
       { nama_mapel: 'Gambar Teknik Manufaktur', kode_mapel: 'GTM-TP' },
       { nama_mapel: 'Teknik Pemesinan Bubut', kode_mapel: 'BUBUT-TP' },
       { nama_mapel: 'Teknik Pemesinan Frais', kode_mapel: 'FRAIS-TP' },
@@ -325,6 +333,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     PH: [
       { nama_mapel: 'Dasar-dasar Perhotelan', kode_mapel: 'DAS-PH' },
+      { nama_mapel: 'Konsentrasi Keahlian - Perhotelan', kode_mapel: 'KK-PH' },
       { nama_mapel: 'Front Office', kode_mapel: 'FO-PH' },
       { nama_mapel: 'Housekeeping', kode_mapel: 'HK-PH' },
       { nama_mapel: 'Laundry', kode_mapel: 'LD-PH' },
@@ -334,6 +343,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     KL: [
       { nama_mapel: 'Dasar-dasar Kuliner', kode_mapel: 'DAS-KL' },
+      { nama_mapel: 'Konsentrasi Keahlian - Kuliner', kode_mapel: 'KK-KL' },
       { nama_mapel: 'Pengolahan dan Penyajian Makanan', kode_mapel: 'KUL-KL' },
       { nama_mapel: 'Tata Hidang', kode_mapel: 'HIDANG-KL' },
       { nama_mapel: 'Produk Pastry dan Bakery', kode_mapel: 'PASTRY-KL' },
@@ -342,6 +352,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TB: [
       { nama_mapel: 'Dasar-dasar Busana', kode_mapel: 'DAS-TB' },
+      { nama_mapel: 'Konsentrasi Keahlian - Tata Busana', kode_mapel: 'KK-TB' },
       { nama_mapel: 'Desain Busana', kode_mapel: 'DESAIN-TB' },
       { nama_mapel: 'Pembuatan Hiasan Busana', kode_mapel: 'HIAS-TB' },
       { nama_mapel: 'Pembuatan Busana Custom Made', kode_mapel: 'CUSTOM-TB' },
@@ -351,6 +362,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TAV: [
       { nama_mapel: 'Dasar-dasar Teknik Elektronika (TAV)', kode_mapel: 'DAS-TAV' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Audio Video', kode_mapel: 'KK-TAV' },
       { nama_mapel: 'Penerapan Rangkaian Elektronika', kode_mapel: 'PTE-TAV' },
       { nama_mapel: 'Perencanaan dan Instalasi Sistem Audio', kode_mapel: 'AUDIO-TAV' },
       { nama_mapel: 'Perencanaan dan Instalasi Sistem Video', kode_mapel: 'VIDEO-TAV' },
@@ -360,6 +372,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     ],
     TOI: [
       { nama_mapel: 'Dasar-dasar Teknik Elektronika (TOI)', kode_mapel: 'DAS-TOI' },
+      { nama_mapel: 'Konsentrasi Keahlian - Teknik Otomasi Industri', kode_mapel: 'KK-TOI' },
       { nama_mapel: 'Sistem Kontrol Elektropneumatik dan Hidrolik', kode_mapel: 'PNEU-TOI' },
       { nama_mapel: 'Piranti Sensor dan Aktuator', kode_mapel: 'SENSOR-TOI' },
       { nama_mapel: 'Sistem Kontrol Berbasis PLC dan SCADA', kode_mapel: 'PLC-TOI' },
