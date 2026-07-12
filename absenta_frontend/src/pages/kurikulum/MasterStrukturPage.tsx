@@ -264,6 +264,27 @@ const MasterStrukturPage: React.FC = () => {
         }
     });
 
+    const isMapelBelongsToOtherJurusan = useCallback((s: Mapel): boolean => {
+        if (!isSmkOrMak) return false;
+        
+        const kode = (s.kode_mapel || '').toUpperCase();
+        const nama = (s.nama_mapel || '').toLowerCase();
+        
+        const otherJurusans = jurusans?.data?.filter(j => j.id !== selectedJurusanId) || [];
+        
+        return otherJurusans.some(j => {
+            const jKode = (j.kode || '').toUpperCase();
+            const jSingkatan = (j.singkatan || '').toUpperCase();
+            const jNama = (j.nama || '').toLowerCase();
+            
+            const hasOtherKode = jKode && (kode === jKode || kode.includes(`-${jKode}`) || kode.includes(`KK-${jKode}`));
+            const hasOtherSingkatan = jSingkatan && (kode === jSingkatan || kode.includes(`-${jSingkatan}`) || kode.includes(`KK-${jSingkatan}`));
+            const hasOtherNama = jNama && nama.includes(jNama);
+            
+            return hasOtherKode || hasOtherSingkatan || hasOtherNama;
+        });
+    }, [isSmkOrMak, jurusans?.data, selectedJurusanId]);
+
     const detectKelompokForMapel = useCallback((kodeMapel: string, namaMapel: string): string => {
         const kode = (kodeMapel || '').toUpperCase();
         const nama = (namaMapel || '').toLowerCase();
@@ -318,6 +339,8 @@ const MasterStrukturPage: React.FC = () => {
                 // 1. Jangan masukkan mapel yang sudah dipetakan sebelumnya di tingkat kelas ini
                 const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
                 if (alreadyMapped) return;
+
+                if (isMapelBelongsToOtherJurusan(s)) return;
 
                 const kode = (s.kode_mapel || '').toUpperCase();
                 const nama = (s.nama_mapel || '').toLowerCase();
@@ -377,7 +400,7 @@ const MasterStrukturPage: React.FC = () => {
             });
             return next;
         });
-    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel]);
+    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
 
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -518,6 +541,8 @@ const MasterStrukturPage: React.FC = () => {
         return subjects.data.filter((s: Mapel) => {
             if (mappedMapelIds.has(s.id)) return false;
             
+            if (isMapelBelongsToOtherJurusan(s)) return false;
+            
             const kode = (s.kode_mapel || '').toUpperCase();
             const nama = (s.nama_mapel || '').toLowerCase();
             
@@ -555,7 +580,7 @@ const MasterStrukturPage: React.FC = () => {
             
             return true;
         });
-    }, [subjects?.data, mapping?.data, selectedTingkat]);
+    }, [subjects?.data, mapping?.data, selectedTingkat, isMapelBelongsToOtherJurusan]);
 
     const presetSisaCount = useMemo(() => {
         if (!subjects?.data || !mapping?.data) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
@@ -568,6 +593,8 @@ const MasterStrukturPage: React.FC = () => {
         
         subjects.data.forEach((s: Mapel) => {
             if (mappedMapelIds.has(s.id)) return;
+            
+            if (isMapelBelongsToOtherJurusan(s)) return;
             
             const kode = (s.kode_mapel || '').toUpperCase();
             const nama = (s.nama_mapel || '').toLowerCase();
@@ -609,7 +636,7 @@ const MasterStrukturPage: React.FC = () => {
         });
         
         return { UMUM: umum, KEJURUAN: kejuruan, MULOK: mulok, PILIHAN: pilihan };
-    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel]);
+    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
 
     const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
         resetForm();
@@ -1277,6 +1304,8 @@ const MasterStrukturPage: React.FC = () => {
                                             // 3. Sembunyikan mapel yang sudah di-ploting sebelumnya di tingkat kelas ini
                                             const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
                                             if (alreadyMapped) return false;
+                                            
+                                            if (isMapelBelongsToOtherJurusan(s)) return false;
                                             
                                             const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
                                             const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
