@@ -9,7 +9,9 @@ import {
   Settings,
   ChevronRight,
   Info,
-  Search
+  Search,
+  Printer,
+  Loader2
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -27,8 +29,10 @@ import { useJenjang } from '../../hooks/useJenjang';
 import type { Mapel } from '../../types/academic';
 import { useAuth } from '../../hooks/useAuth';
 import { getTenantById } from '../../api/tenants.api';
-import { PrintHeader } from '../../components/ui/PrintHeader';
-import { createPortal } from 'react-dom';
+import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
+import { getStrukturList } from '../../api/academic/strukturOrganisasi.api';
+import { renderStrukturKurikulumPdf } from '../../utils/print/modules/pdfKurikulum';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(module => ({ default: module.Modal })));
 
@@ -825,221 +829,76 @@ const MasterStrukturPage: React.FC = () => {
         setIsModalOpen(true);
     }, [subjects?.data, unmappedSubjects, resetForm, detectKelompokForMapel]);
 
-    const renderPrintMatrix = () => {
-        if (!mapping?.data) return null;
-        return createPortal(
-            <div className="hidden print:block print-matrix-area bg-white text-black text-xs font-serif leading-normal">
-                {/* Kop Surat Dinamis */}
-                <PrintHeader variant="portrait" tenantInfo={tenantInfo} />
-                
-                {/* Judul & Metadata */}
-                <div className="text-center my-4 space-y-1">
-                    <h2 className="text-base font-bold uppercase tracking-wider text-black">STRUKTUR KURIKULUM SATUAN PENDIDIKAN</h2>
-                    <h3 className="text-sm font-bold uppercase tracking-wide text-black">{tenantInfo?.name || 'SMKS PLUS NURUL HAKIM KEDIRI'}</h3>
-                    <h4 className="text-xs font-semibold uppercase text-black">TAHUN AJARAN {selectedTahunNama || '2025/2026'}</h4>
-                </div>
+    // ============ PDF HANDLER ============
+    const [isPrinting, setIsPrinting] = useState(false);
 
-                {/* Metadata Bidang & Program Keahlian */}
-                {isSmkOrMak && (
-                    <div className="w-full text-xs text-black mb-6 space-y-1.5 font-bold border-b border-black pb-4">
-                        <div className="grid grid-cols-12">
-                            <span className="col-span-3">Bidang Keahlian</span>
-                            <span className="col-span-9">: {selectedJurusan?.ProgramKeahlian?.bidang_keahlian || 'Teknik Komunikasi'}</span>
-                        </div>
-                        <div className="grid grid-cols-12">
-                            <span className="col-span-3">Program Keahlian</span>
-                            <span className="col-span-9">: {selectedJurusan?.ProgramKeahlian?.nama || 'Teknik Jaringan Komputer dan Telekomunikasi'}</span>
-                        </div>
-                        <div className="grid grid-cols-12">
-                            <span className="col-span-3">Konsentrasi Keahlian</span>
-                            <span className="col-span-9">: {selectedJurusan?.nama || 'Teknik Komputer dan Jaringan'} (Kode {selectedJurusan?.kode || '66'})</span>
-                        </div>
-                    </div>
-                )}
+    const handleCetakPdf = useCallback(async () => {
+        if (!mapping?.data) {
+            toast.error('Tidak ada data struktur kurikulum untuk dicetak.');
+            return;
+        }
+        setIsPrinting(true);
+        try {
+            // 1. Load sekolah profile
+            let sekolah = null;
+            try { sekolah = await sekolahApi.getProfile(); } catch(e) {}
 
-                {/* Tabel Matrix Kurikulum */}
-                <table className="w-full border-collapse border border-black text-black">
-                    <thead>
-                        <tr className="bg-gray-100">
-                            <th rowSpan={3} className="border border-black px-2 py-3 text-center align-middle font-bold text-xs w-[40%]">MATA PELAJARAN</th>
-                            <th colSpan={6} className="border border-black px-2 py-1 text-center font-bold text-xs">KELAS</th>
-                        </tr>
-                        <tr className="bg-gray-100">
-                            <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">X</th>
-                            <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">XI</th>
-                            <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">XII</th>
-                        </tr>
-                        <tr className="bg-gray-100">
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
-                            <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* A. KELOMPOK UMUM */}
-                        <tr className="font-bold bg-gray-50">
-                            <td className="border border-black px-2 py-1 font-bold">A. UMUM</td>
-                            <td colSpan={6} className="border border-black"></td>
-                        </tr>
-                        {printRows.umum.map((m, idx) => (
-                            <React.Fragment key={m.id}>
-                                <tr>
-                                    <td className="border border-black px-4 py-1">{idx + 1}. {m.nama}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
-                                </tr>
-                                {/* Render Sub-rows if any */}
-                                {getSubRowsForMapel(m.nama, m.kode)?.map((sub, sIdx) => (
-                                    <tr key={sIdx} className="text-gray-600 italic">
-                                        <td className="border border-black px-8 py-0.5 text-xs">- {sub.nama}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
-                                    </tr>
-                                ))}
-                            </React.Fragment>
-                        ))}
-                        <tr className="font-bold bg-gray-50">
-                            <td className="border border-black px-2 py-1">Jumlah jam kelompok A</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 10, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 10, 2)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 11, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 11, 2)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 12, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 12, 2)}</td>
-                        </tr>
+            // 2. Load logos
+            let logoDaerahBase64: string | null = null;
+            let logoSekolahBase64: string | null = null;
+            const leftLogoUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url;
+            const rightLogoUrl = tenantInfo?.logo_url || sekolah?.logo_url;
+            try {
+                if (leftLogoUrl) logoDaerahBase64 = await getBase64ImageFromUrl(leftLogoUrl);
+                if (rightLogoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(rightLogoUrl);
+            } catch(e) {}
 
-                        {/* B. KEJURUAN */}
-                        <tr className="font-bold bg-gray-50">
-                            <td className="border border-black px-2 py-1 font-bold">B. KEJURUAN</td>
-                            <td colSpan={6} className="border border-black"></td>
-                        </tr>
-                        {printRows.kejuruan.map((m, idx) => (
-                            <React.Fragment key={m.id}>
-                                <tr>
-                                    <td className="border border-black px-4 py-1">{idx + 1}. {m.nama}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
-                                    <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
-                                </tr>
-                                {/* Render Sub-rows if any */}
-                                {getSubRowsForMapel(m.nama, m.kode)?.map((sub, sIdx) => (
-                                    <tr key={sIdx} className="text-gray-600 italic">
-                                        <td className="border border-black px-8 py-0.5 text-xs">- {sub.nama}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
-                                        <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
-                                    </tr>
-                                ))}
-                            </React.Fragment>
-                        ))}
+            // 3. Get principal name from struktur organisasi
+            let principalName = 'Kepala Sekolah';
+            let principalNip = '';
+            try {
+                const strukturRes = await getStrukturList({ is_active: true });
+                const kepala = strukturRes.data?.find((s: any) =>
+                    (s.jabatan || '').toLowerCase().includes('kepala sekolah') ||
+                    (s.jabatan || '').toLowerCase().includes('kepala')
+                );
+                if (kepala) {
+                    principalName = (kepala as any).nama_lengkap || (kepala as any).nama || (kepala as any).User?.Guru?.nama_guru || principalName;
+                    principalNip = (kepala as any).nip || '';
+                }
+            } catch(e) {}
 
-                        {/* C. KELOMPOK PILIHAN & MULOK */}
-                        {printRows.pilihan.length > 0 && (
-                            <>
-                                {printRows.pilihan.map((m, idx) => (
-                                    <React.Fragment key={m.id}>
-                                        <tr>
-                                            <td className="border border-black px-4 py-1">{printRows.kejuruan.length + idx + 1}. {m.nama}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
-                                        </tr>
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
+            // 4. Generate PDF blob
+            const blob = renderStrukturKurikulumPdf({
+                tenantInfo,
+                sekolah,
+                logoDaerahBase64,
+                logoSekolahBase64,
+                printRows,
+                selectedTahunNama,
+                selectedJurusan,
+                city,
+                principalName,
+                principalNip,
+                getJpValueForSemester,
+                getKelompokTotal
+            });
 
-                        {printRows.mulok.length > 0 && (
-                            <>
-                                {printRows.mulok.map((m, idx) => (
-                                    <React.Fragment key={m.id}>
-                                        <tr>
-                                            <td className="border border-black px-4 py-1">{printRows.kejuruan.length + printRows.pilihan.length + idx + 1}. {m.nama}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
-                                            <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
-                                        </tr>
-                                    </React.Fragment>
-                                ))}
-                            </>
-                        )}
-
-                        <tr className="font-bold bg-gray-50">
-                            <td className="border border-black px-2 py-1">Jumlah jam kelompok B + C</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 2)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 2)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 1)}</td>
-                            <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 2)}</td>
-                        </tr>
-
-                        <tr className="font-black bg-gray-100 text-sm">
-                            <td className="border border-black px-2 py-1 text-left font-black">Total Beban Belajar (A + B + C)</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 10, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 1)
-                            }</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 10, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 2)
-                            }</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 11, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 1)
-                            }</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 11, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 2)
-                            }</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 12, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 1)
-                            }</td>
-                            <td className="border border-black px-2 py-1 text-center">{
-                                getKelompokTotal(printRows.umum, 12, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 2)
-                            }</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                {/* Kolom Tanda Tangan */}
-                <div className="grid grid-cols-2 mt-12 text-center text-xs font-bold text-black bg-white break-inside-avoid">
-                    <div>
-                        <p>Mengetahui,</p>
-                        <p className="mb-20 mt-1">Wakasek Bidang Kurikulum</p>
-                        <p className="underline font-black">..................................................</p>
-                        <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
-                    </div>
-                    <div>
-                        <p>{city}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        <p className="mb-20 mt-1">Kepala Sekolah,</p>
-                        <p className="underline font-black">{tenantInfo?.kepala_sekolah || '..................................................'}</p>
-                        <p className="text-[10px] text-gray-500 mt-1">NIP. {tenantInfo?.nip_kepala || '....................................'}</p>
-                    </div>
-                </div>
-            </div>,
-            document.body
-        );
-    };
+            // 5. Open in new tab (mirrors CetakBerkasTemplate pattern)
+            const blobUrl = URL.createObjectURL(blob);
+            const printWindow = window.open(blobUrl);
+            if (printWindow) {
+                printWindow.addEventListener('load', () => {
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+                });
+            }
+        } catch (err) {
+            console.error('Gagal membuat PDF struktur kurikulum:', err);
+            toast.error('Gagal membuat PDF. Silakan coba lagi.');
+        } finally {
+            setIsPrinting(false);
+        }
+    }, [mapping?.data, tenantInfo, printRows, selectedTahunNama, selectedJurusan, city, getJpValueForSemester, getKelompokTotal]);
 
     const breadcrumbs = useMemo(() => [
         { label: 'Kurikulum' },
@@ -1132,6 +991,14 @@ const MasterStrukturPage: React.FC = () => {
                             >
                                 <Plus size={18} className="mr-2" />
                                 TAMBAH MAPEL
+                            </Button>
+                            <Button
+                                onClick={handleCetakPdf}
+                                disabled={isPrinting || !mapping?.data}
+                                className="w-full bg-white/20 hover:bg-white/30 text-white font-black rounded-xl border-none flex items-center justify-center gap-2"
+                            >
+                                {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                                {isPrinting ? 'Menyiapkan PDF...' : 'CETAK STRUKTUR'}
                             </Button>
                         </div>
                     </Card>
@@ -1458,8 +1325,6 @@ const MasterStrukturPage: React.FC = () => {
                     </Card>
                 </div>
 
-                {/* Print Matrix Area (Cetak Konsolidasi 3 Kelas Matrix) */}
-                {renderPrintMatrix()}
             </div>
             </div>
 

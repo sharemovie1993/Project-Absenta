@@ -1,6 +1,241 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
+import { drawKopSurat } from '../pdfGeneric';
+
+export interface StrukturPrintRow {
+  id: string;
+  nama: string;
+  kode: string;
+  jp: Record<number, number>;
+}
+
+export interface StrukturPrintData {
+  umum: StrukturPrintRow[];
+  kejuruan: StrukturPrintRow[];
+  mulok: StrukturPrintRow[];
+  pilihan: StrukturPrintRow[];
+}
+
+export interface RenderStrukturOptions {
+  tenantInfo: any;
+  sekolah: any;
+  logoDaerahBase64: string | null;
+  logoSekolahBase64: string | null;
+  printRows: StrukturPrintData;
+  selectedTahunNama: string;
+  selectedJurusan: any;
+  city: string;
+  principalName: string;
+  principalNip: string;
+  getJpValueForSemester: (nama: string, kode: string, tingkat: number, sem: 1 | 2, baseJp: number) => string;
+  getKelompokTotal: (list: StrukturPrintRow[], tingkat: number, sem: 1 | 2) => number;
+}
+
+export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob => {
+  const {
+    tenantInfo, sekolah, logoDaerahBase64, logoSekolahBase64,
+    printRows, selectedTahunNama, selectedJurusan, city,
+    principalName, principalNip, getJpValueForSemester, getKelompokTotal
+  } = opts;
+
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // ---- KOP SURAT ----
+  const headerEndY = drawKopSurat(doc, pageWidth, sekolah, tenantInfo, logoDaerahBase64, logoSekolahBase64, true);
+
+  // ---- JUDUL ----
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('STRUKTUR KURIKULUM SATUAN PENDIDIKAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
+  doc.setFontSize(9);
+  doc.text(`TAHUN AJARAN ${selectedTahunNama}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+
+  let metaY = headerEndY + 18;
+
+  // ---- METADATA JURUSAN (SMK) ----
+  if (selectedJurusan) {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    const leftX = 15;
+    const colonX = 70;
+    doc.text('Bidang Keahlian', leftX, metaY);
+    doc.text(`: ${selectedJurusan?.ProgramKeahlian?.bidang_keahlian || '-'}`, colonX, metaY);
+    metaY += 4.5;
+    doc.text('Program Keahlian', leftX, metaY);
+    doc.text(`: ${selectedJurusan?.ProgramKeahlian?.nama || '-'}`, colonX, metaY);
+    metaY += 4.5;
+    doc.text('Konsentrasi Keahlian', leftX, metaY);
+    doc.text(`: ${selectedJurusan?.nama || '-'}`, colonX, metaY);
+    metaY += 4;
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.2);
+    doc.line(15, metaY, pageWidth - 15, metaY);
+    metaY += 3;
+  }
+
+  // ---- BUILD TABLE DATA ----
+  const buildJpCells = (m: StrukturPrintRow) => {
+    const cells: any[] = [];
+    ([10, 11, 12] as const).forEach(tingkat => {
+      ([1, 2] as const).forEach(sem => {
+        const baseJp = m.jp[tingkat] || 0;
+        const val = baseJp > 0 ? getJpValueForSemester(m.nama, m.kode, tingkat, sem, baseJp) : '-';
+        cells.push({ content: val === '-' ? '-' : val, styles: { halign: 'center', fontSize: 7 } });
+      });
+    });
+    return cells;
+  };
+
+  const buildTotalCells = (list: StrukturPrintRow[]) => {
+    const cells: any[] = [];
+    ([10, 11, 12] as const).forEach(tingkat => {
+      ([1, 2] as const).forEach(sem => {
+        const total = getKelompokTotal(list, tingkat, sem);
+        cells.push({ content: total > 0 ? String(total) : '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7, fillColor: [241, 245, 249] } });
+      });
+    });
+    return cells;
+  };
+
+  const head = [
+    [
+      { content: 'MATA PELAJARAN', rowSpan: 3, styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fontSize: 8, fillColor: [241, 245, 249] } },
+      { content: 'KELAS', colSpan: 6, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8, fillColor: [241, 245, 249] } }
+    ],
+    [
+      { content: 'X', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8, fillColor: [241, 245, 249] } },
+      { content: 'XI', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8, fillColor: [241, 245, 249] } },
+      { content: 'XII', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold', fontSize: 8, fillColor: [241, 245, 249] } }
+    ],
+    [
+      { content: '1', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+      { content: '2', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+      { content: '1', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+      { content: '2', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+      { content: '1', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+      { content: '2', styles: { halign: 'center', fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } }
+    ]
+  ];
+
+  const body: any[] = [];
+
+  // A. UMUM
+  body.push([
+    { content: 'A. MATA PELAJARAN UMUM', colSpan: 7, styles: { fontStyle: 'bold', fontSize: 8, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
+  ]);
+  printRows.umum.forEach((m, idx) => {
+    body.push([{ content: `${idx + 1}.  ${m.nama}`, styles: { fontSize: 7.5 } }, ...buildJpCells(m)]);
+  });
+  body.push([
+    { content: 'Jumlah Jam Kelompok A', styles: { fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+    ...buildTotalCells(printRows.umum)
+  ]);
+
+  // B. KEJURUAN
+  body.push([
+    { content: 'B. MATA PELAJARAN KEJURUAN', colSpan: 7, styles: { fontStyle: 'bold', fontSize: 8, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
+  ]);
+  printRows.kejuruan.forEach((m, idx) => {
+    body.push([{ content: `${idx + 1}.  ${m.nama}`, styles: { fontSize: 7.5 } }, ...buildJpCells(m)]);
+  });
+
+  // C. PILIHAN & MULOK
+  if (printRows.pilihan.length > 0 || printRows.mulok.length > 0) {
+    body.push([
+      { content: 'C. MATA PELAJARAN PILIHAN & MUATAN LOKAL', colSpan: 7, styles: { fontStyle: 'bold', fontSize: 8, fillColor: [248, 250, 252], textColor: [15, 23, 42] } }
+    ]);
+    [...printRows.pilihan, ...printRows.mulok].forEach((m, idx) => {
+      body.push([{ content: `${idx + 1}.  ${m.nama}`, styles: { fontSize: 7.5 } }, ...buildJpCells(m)]);
+    });
+  }
+
+  const allKejuruanPlusMisc = [...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok];
+  body.push([
+    { content: 'Jumlah Jam Kelompok B + C', styles: { fontStyle: 'bold', fontSize: 7.5, fillColor: [241, 245, 249] } },
+    ...buildTotalCells(allKejuruanPlusMisc)
+  ]);
+
+  // TOTAL
+  const totalCells: any[] = [];
+  ([10, 11, 12] as const).forEach(tingkat => {
+    ([1, 2] as const).forEach(sem => {
+      const total = getKelompokTotal(printRows.umum, tingkat, sem) + getKelompokTotal(allKejuruanPlusMisc, tingkat, sem);
+      totalCells.push({ content: total > 0 ? String(total) : '-', styles: { halign: 'center', fontStyle: 'bold', fontSize: 8, fillColor: [220, 252, 231], textColor: [22, 101, 52] } });
+    });
+  });
+  body.push([
+    { content: 'TOTAL BEBAN BELAJAR (A + B + C)', styles: { fontStyle: 'bold', fontSize: 8, fillColor: [220, 252, 231], textColor: [22, 101, 52] } },
+    ...totalCells
+  ]);
+
+  // ---- RENDER TABLE ----
+  const colMapelWidth = pageWidth - 30 - 6 * 18;
+  autoTable(doc, {
+    startY: metaY,
+    head: head as any,
+    body: body as any,
+    theme: 'grid',
+    styles: {
+      font: 'Helvetica',
+      cellPadding: 2.5,
+      lineColor: [180, 180, 180],
+      lineWidth: 0.18,
+      fontSize: 7.5,
+      valign: 'middle'
+    },
+    headStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      lineWidth: 0.25
+    },
+    columnStyles: {
+      0: { cellWidth: colMapelWidth },
+      1: { cellWidth: 18, halign: 'center' },
+      2: { cellWidth: 18, halign: 'center' },
+      3: { cellWidth: 18, halign: 'center' },
+      4: { cellWidth: 18, halign: 'center' },
+      5: { cellWidth: 18, halign: 'center' },
+      6: { cellWidth: 18, halign: 'center' }
+    }
+  });
+
+  // ---- TANDA TANGAN ----
+  let finalY = (doc as any).lastAutoTable?.finalY ?? (pageHeight - 60);
+  if (finalY + 45 > pageHeight) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  const sigY = finalY + 12;
+  const leftSigX = pageWidth / 4;
+  const rightSigX = (pageWidth * 3) / 4;
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text('Mengetahui,', leftSigX, sigY, { align: 'center' });
+  doc.text('Wakasek Bidang Kurikulum', leftSigX, sigY + 4, { align: 'center' });
+  doc.text('.'.repeat(40), leftSigX, sigY + 26, { align: 'center' });
+  doc.setFontSize(7);
+  doc.text('NIP. ' + '.'.repeat(20), leftSigX, sigY + 30, { align: 'center' });
+
+  const dateStr = `${city}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  doc.setFontSize(8);
+  doc.text(dateStr, rightSigX, sigY, { align: 'center' });
+  doc.text('Kepala Sekolah,', rightSigX, sigY + 4, { align: 'center' });
+  doc.setFont('Helvetica', 'bold');
+  doc.text(principalName, rightSigX, sigY + 26, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(`NIP. ${principalNip}`, rightSigX, sigY + 30, { align: 'center' });
+
+  return doc.output('blob');
+};
+
+
 
 export const renderKurikulumCalendarPdf = (
   doc: jsPDF,
