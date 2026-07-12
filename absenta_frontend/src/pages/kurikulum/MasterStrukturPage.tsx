@@ -395,6 +395,69 @@ const MasterStrukturPage: React.FC = () => {
         return mapping?.data?.reduce((acc: number, curr: StrukturKurikulum) => acc + curr.jp_per_minggu, 0) || 0;
     }, [mapping?.data]);
 
+    // Standar JP kementerian berdasarkan Permendikbudristek No. 12 Tahun 2024
+    const STANDAR_JP_CONFIG = useMemo<Record<string, Record<number, number>>>(() => ({
+        SD:  { 1: 30, 2: 32, 3: 38, 4: 38, 5: 38, 6: 36 },
+        MI:  { 1: 30, 2: 32, 3: 38, 4: 38, 5: 38, 6: 36 },
+        SMP: { 7: 41, 8: 41, 9: 38 },
+        MTs: { 7: 41, 8: 41, 9: 38 },
+        SMA: { 10: 44, 11: 46, 12: 46 },
+        MA:  { 10: 44, 11: 46, 12: 46 },
+        SMK: { 10: 46, 11: 48, 12: 44, 13: 44 },
+        MAK: { 10: 46, 11: 48, 12: 44, 13: 44 }
+    }), []);
+
+    const targetJp = useMemo(() => {
+        const j = (jenjang || '').toUpperCase();
+        const config = STANDAR_JP_CONFIG[j];
+        if (config && config[selectedTingkat]) {
+            return config[selectedTingkat];
+        }
+        return 40; // Default fallback
+    }, [jenjang, selectedTingkat, STANDAR_JP_CONFIG]);
+
+    const gapJp = useMemo(() => {
+        return targetJp - totalJp;
+    }, [targetJp, totalJp]);
+
+    const unmappedSubjects = useMemo(() => {
+        if (!subjects?.data || !mapping?.data) return [];
+        const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
+        return subjects.data.filter((s: Mapel) => !mappedMapelIds.has(s.id));
+    }, [subjects?.data, mapping?.data]);
+
+    const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
+        resetForm();
+        
+        const newSelections: Record<string, { jp_per_minggu: number; kelompok: string }> = {};
+        
+        if (specificSubjectId) {
+            const s = subjects?.data?.find((subj: Mapel) => subj.id === specificSubjectId);
+            if (s) {
+                const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+                let defaultJp = 2;
+                const namaLower = s.nama_mapel.toLowerCase();
+                if (namaLower.includes('praktik kerja lapangan')) defaultJp = 4;
+                else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
+                
+                newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
+            }
+        } else {
+            unmappedSubjects.forEach((s: Mapel) => {
+                const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+                let defaultJp = 2;
+                const namaLower = s.nama_mapel.toLowerCase();
+                if (namaLower.includes('praktik kerja lapangan')) defaultJp = 4;
+                else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
+                
+                newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
+            });
+        }
+        
+        setBulkSelections(newSelections);
+        setIsModalOpen(true);
+    }, [subjects?.data, unmappedSubjects, resetForm, detectKelompokForMapel]);
+
     const breadcrumbs = useMemo(() => [
         { label: 'Kurikulum' },
         { label: 'Struktur Kurikulum' }
@@ -493,12 +556,115 @@ const MasterStrukturPage: React.FC = () => {
                                     {text}
                                 </li>
                             ))}
-                        </ul>
+        </ul>
                     </Card>
                 </div>
 
                 {/* Main Table View */}
-                <div className="lg:col-span-3">
+                <div className="lg:col-span-3 space-y-6">
+                    {/* JP Tracker & Gap Analysis Dashboard */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Progress JP Card */}
+                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Target Kurikulum</span>
+                                <Badge className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border-none text-[10px]">
+                                    Standar Baku
+                                </Badge>
+                            </div>
+                            <div className="mt-2 flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-slate-800 dark:text-white">{totalJp}</span>
+                                <span className="text-sm font-bold text-slate-400">/ {targetJp} JP</span>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="mt-3 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div 
+                                    className="bg-indigo-600 h-full rounded-full transition-all duration-500" 
+                                    style={{ width: `${Math.min(100, (totalJp / targetJp) * 100)}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2">Beban belajar per minggu tingkat kelas {selectedTingkat}.</p>
+                        </Card>
+
+                        {/* Status Gap Card */}
+                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Analisis Selisih</span>
+                                {gapJp > 0 ? (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                ) : gapJp === 0 ? (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                ) : (
+                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                )}
+                            </div>
+                            <div className="mt-2">
+                                {gapJp > 0 ? (
+                                    <div>
+                                        <p className="text-xl font-black text-amber-600 dark:text-amber-400">Kurang {gapJp} JP</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">Struktur jam pelajaran masih berada di bawah alokasi standar nasional.</p>
+                                    </div>
+                                ) : gapJp === 0 ? (
+                                    <div>
+                                        <p className="text-xl font-black text-emerald-600 dark:text-emerald-450">Sesuai Regulasi</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">Alokasi beban belajar telah memenuhi regulasi kementerian.</p>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <p className="text-xl font-black text-indigo-650 dark:text-indigo-400">Otonomi (+{Math.abs(gapJp)} JP)</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">Sekolah melakukan penyesuaian mandiri dengan menambah jam belajar.</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">
+                                Status: {gapJp > 0 ? '⚠️ Kurang Pemetaan' : gapJp === 0 ? '✅ Stabil' : 'ℹ️ Jam Tambahan'}
+                            </div>
+                        </Card>
+
+                        {/* Unmapped Mapels Card */}
+                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rekomendasi Mapel</span>
+                                <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border-none text-[10px]">
+                                    {unmappedSubjects.length} Belum Diplot
+                                </Badge>
+                            </div>
+                            <div className="mt-2 min-h-[44px]">
+                                {unmappedSubjects.length === 0 ? (
+                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Semua mata pelajaran sekolah telah dipetakan! 🎉</p>
+                                ) : (
+                                    <div className="flex flex-wrap gap-1.5 max-h-[50px] overflow-hidden">
+                                        {unmappedSubjects.slice(0, 2).map((s: Mapel) => (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => handleQuickPlotUnmapped(s.id)}
+                                                className="text-[9px] bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-600 dark:text-slate-300 hover:text-indigo-650 px-2 py-1 rounded-lg font-bold transition-all truncate max-w-[120px]"
+                                                title={`Klik untuk plot ${s.nama_mapel}`}
+                                            >
+                                                + {s.nama_mapel}
+                                            </button>
+                                        ))}
+                                        {unmappedSubjects.length > 2 && (
+                                            <span className="text-[9px] text-slate-400 font-bold self-center">
+                                                +{unmappedSubjects.length - 2} lainnya
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            {unmappedSubjects.length > 0 ? (
+                                <button
+                                    onClick={() => handleQuickPlotUnmapped()}
+                                    className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-705 text-left uppercase tracking-wider mt-3 flex items-center hover:underline"
+                                >
+                                    Plotting Massal Mapel Sisa &rarr;
+                                </button>
+                            ) : (
+                                <div className="text-[10px] text-slate-400 mt-3 font-bold uppercase tracking-wider">Pemetaan Bersih</div>
+                            )}
+                        </Card>
+                    </div>
+
                     <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
                         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2">
                             <div className="flex items-center gap-3">
