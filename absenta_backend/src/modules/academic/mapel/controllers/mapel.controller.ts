@@ -3,7 +3,6 @@ import { createMapelSchema, updateMapelSchema } from '../services/mapel.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { prisma } from '../../../../utils/prisma';
-import { MAPEL_PRESETS } from '../../../../constants/mapel-presets';
 
 export const mapelController = {
   async getAllMapel(request: any, reply: any) {
@@ -461,7 +460,7 @@ export const mapelController = {
   },
 
   // GET /presets - Get all global presets (superadmin only)
-  async getGlobalPresets(request: any, reply: any) {
+  async getGlobalPresets(_request: any, reply: any) {
     try {
       const presets = await prisma.globalMapelPreset.findMany({
         orderBy: [
