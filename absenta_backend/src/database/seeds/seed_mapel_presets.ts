@@ -74,12 +74,10 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Informatika', kode_mapel: 'INF' },
-    // Pilihan Seni (sekolah pilih ≥1)
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Musik', kode_mapel: 'SMUS' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
-    // Pilihan Prakarya (sekolah pilih ≥1)
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Budidaya', kode_mapel: 'PKBUD' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Kerajinan', kode_mapel: 'PKKRJ' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Rekayasa', kode_mapel: 'PKREKY' },
@@ -196,59 +194,53 @@ export async function seedMapelPresets(prisma: PrismaClient) {
   ]);
 
   // =====================================================================
-  // SMK / MAK
+  // SMK / MAK (Disesuaikan dengan Rapor Kurikulum Merdeka Otentik)
   // =====================================================================
   push('SMK', [
+    // 1. Mata Pelajaran Umum (Wajib)
     { category: 'UMUM', nama_mapel: 'Pendidikan Agama dan Budi Pekerti', kode_mapel: 'PAIBP' },
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
-    { category: 'UMUM', nama_mapel: 'Matematika', kode_mapel: 'MTK' },
-    { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Sejarah', kode_mapel: 'SEJ' },
-    { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
+    { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
     { category: 'UMUM', nama_mapel: 'Informatika', kode_mapel: 'INF' },
     { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
     
-    // Mapel Pilihan Kejuruan / Lintas Minat SMK
-    { category: 'PILIHAN_SMK', nama_mapel: 'Desain Grafis (Lintas Minat)', kode_mapel: 'P-GRAF' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Digital Marketing (Lintas Minat)', kode_mapel: 'P-DMKT' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Internet of Things (Lintas Minat)', kode_mapel: 'P-IOT' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Aplikasi Pengolah Angka / Spreadsheet', kode_mapel: 'P-SPS' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'P-KAI' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jepang', kode_mapel: 'P-JPN' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'P-ZHO' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jerman', kode_mapel: 'P-DEU' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Korea', kode_mapel: 'P-KOR' },
+    // 2. Mata Pelajaran Kejuruan (Matematika & B.Inggris di SMK masuk kelompok Kejuruan)
+    { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Projek Kreatif dan Kewirausahaan (PKK)', kode_mapel: 'PKK' },
+
+    // 3. Mata Pelajaran Pilihan (Satu item generik sesuai format cetak Rapor Resmi)
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
     ...mulokList
   ]);
 
   push('MAK', [
+    // Keagamaan Wajib
     { category: 'KEAGAMAAN', nama_mapel: "Al-Qur'an Hadis", kode_mapel: 'QURDIS' },
     { category: 'KEAGAMAAN', nama_mapel: 'Akidah Akhlak', kode_mapel: 'AKIDAH' },
     { category: 'KEAGAMAAN', nama_mapel: 'Fikih', kode_mapel: 'FIKIH' },
     { category: 'KEAGAMAAN', nama_mapel: 'Sejarah Kebudayaan Islam', kode_mapel: 'SKI' },
     { category: 'KEAGAMAAN', nama_mapel: 'Bahasa Arab', kode_mapel: 'ARAB' },
+
+    // 1. Mata Pelajaran Umum
     { category: 'UMUM', nama_mapel: 'Pendidikan Pancasila', kode_mapel: 'PP' },
     { category: 'UMUM', nama_mapel: 'Bahasa Indonesia', kode_mapel: 'IND' },
-    { category: 'UMUM', nama_mapel: 'Matematika', kode_mapel: 'MTK' },
-    { category: 'UMUM', nama_mapel: 'Bahasa Inggris', kode_mapel: 'ING' },
     { category: 'UMUM', nama_mapel: 'Sejarah', kode_mapel: 'SEJ' },
-    { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan', kode_mapel: 'PJOK' },
+    { category: 'UMUM', nama_mapel: 'Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)', kode_mapel: 'PJOK' },
     { category: 'UMUM', nama_mapel: 'Seni Budaya', kode_mapel: 'SENI' },
     { category: 'UMUM', nama_mapel: 'Informatika', kode_mapel: 'INF' },
     { category: 'UMUM', nama_mapel: 'Projek Ilmu Pengetahuan Alam dan Sosial (IPAS)', kode_mapel: 'IPAS' },
-    
-    // Mapel Pilihan Kejuruan / Lintas Minat MAK
-    { category: 'PILIHAN_SMK', nama_mapel: 'Desain Grafis (Lintas Minat)', kode_mapel: 'P-GRAF' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Digital Marketing (Lintas Minat)', kode_mapel: 'P-DMKT' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Internet of Things (Lintas Minat)', kode_mapel: 'P-IOT' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Aplikasi Pengolah Angka / Spreadsheet', kode_mapel: 'P-SPS' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'P-KAI' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jepang', kode_mapel: 'P-JPN' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'P-ZHO' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Jerman', kode_mapel: 'P-DEU' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Bahasa Korea', kode_mapel: 'P-KOR' },
+
+    // 2. Mata Pelajaran Kejuruan
+    { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Projek Kreatif dan Kewirausahaan (PKK)', kode_mapel: 'PKK' },
+
+    // 3. Mata Pelajaran Pilihan
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
     ...mulokList
   ]);
 
@@ -262,7 +254,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Pemrograman Berorientasi Objek', kode_mapel: 'PBO-RPL' },
       { nama_mapel: 'Pemrograman Perangkat Bergerak', kode_mapel: 'MOB-RPL' },
       { nama_mapel: 'Basis Data', kode_mapel: 'DB-RPL' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-RPL' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-RPL' },
     ],
     TKJ: [
@@ -271,7 +262,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Administrasi Sistem Jaringan', kode_mapel: 'ASJ-TKJ' },
       { nama_mapel: 'Teknologi Layanan Jaringan', kode_mapel: 'TLJ-TKJ' },
       { nama_mapel: 'Keamanan Jaringan', kode_mapel: 'SEC-TKJ' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TKJ' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TKJ' },
     ],
     AKL: [
@@ -281,7 +271,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Komputer Akuntansi', kode_mapel: 'KOMP-AKL' },
       { nama_mapel: 'Administrasi Pajak', kode_mapel: 'PAJAK-AKL' },
       { nama_mapel: 'Akuntansi Lembaga/Instansi Pemerintah', kode_mapel: 'GOV-AKL' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-AKL' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-AKL' },
     ],
     MPLB: [
@@ -292,7 +281,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Otomatisasi Tata Kelola Kepegawaian', kode_mapel: 'PEG-MPLB' },
       { nama_mapel: 'Otomatisasi Tata Kelola Keuangan', kode_mapel: 'KEU-MPLB' },
       { nama_mapel: 'Otomatisasi Tata Kelola Sarana dan Prasarana', kode_mapel: 'SARPAS-MPLB' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-MPLB' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-MPLB' },
     ],
     DKV: [
@@ -301,7 +289,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Desain Grafis dan Ilustrasi', kode_mapel: 'ILUS-DKV' },
       { nama_mapel: 'Fotografi dan Videografi', kode_mapel: 'FOTO-DKV' },
       { nama_mapel: 'Komputer Grafis', kode_mapel: 'KOMP-DKV' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-DKV' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-DKV' },
     ],
     TBSM: [
@@ -310,7 +297,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Pemeliharaan Sasis Sepeda Motor', kode_mapel: 'SSS-TBSM' },
       { nama_mapel: 'Pemeliharaan Kelistrikan Sepeda Motor', kode_mapel: 'KLS-TBSM' },
       { nama_mapel: 'Pengelolaan Bengkel Sepeda Motor', kode_mapel: 'BKL-TBSM' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TBSM' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TBSM' },
     ],
     TKR: [
@@ -318,7 +304,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Pemeliharaan Mesin Kendaraan Ringan', kode_mapel: 'MSN-TKR' },
       { nama_mapel: 'Pemeliharaan Sasis dan Pemindah Tenaga Kendaraan Ringan', kode_mapel: 'SSS-TKR' },
       { nama_mapel: 'Pemeliharaan Kelistrikan Kendaraan Ringan', kode_mapel: 'KLS-TKR' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TKR' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TKR' },
     ],
     TP: [
@@ -328,7 +313,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Teknik Pemesinan Frais', kode_mapel: 'FRAIS-TP' },
       { nama_mapel: 'Teknik Pemesinan Gerinda', kode_mapel: 'GERINDA-TP' },
       { nama_mapel: 'Teknik Pemesinan NC/CNC dan CAM', kode_mapel: 'CNC-TP' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TP' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TP' },
     ],
     PH: [
@@ -337,7 +321,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Housekeeping', kode_mapel: 'HK-PH' },
       { nama_mapel: 'Laundry', kode_mapel: 'LD-PH' },
       { nama_mapel: 'Food and Beverage Service', kode_mapel: 'FBS-PH' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-PH' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-PH' },
     ],
     KL: [
@@ -345,7 +328,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Pengolahan dan Penyajian Makanan', kode_mapel: 'KUL-KL' },
       { nama_mapel: 'Tata Hidang', kode_mapel: 'HIDANG-KL' },
       { nama_mapel: 'Produk Pastry dan Bakery', kode_mapel: 'PASTRY-KL' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-KL' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-KL' },
     ],
     TB: [
@@ -354,7 +336,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Pembuatan Hiasan Busana', kode_mapel: 'HIAS-TB' },
       { nama_mapel: 'Pembuatan Busana Custom Made', kode_mapel: 'CUSTOM-TB' },
       { nama_mapel: 'Pembuatan Busana Industri', kode_mapel: 'IND-TB' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TB' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TB' },
     ],
     TAV: [
@@ -363,7 +344,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Perencanaan dan Instalasi Sistem Audio', kode_mapel: 'AUDIO-TAV' },
       { nama_mapel: 'Perencanaan dan Instalasi Sistem Video', kode_mapel: 'VIDEO-TAV' },
       { nama_mapel: 'Pemeliharaan dan Perbaikan Peralatan Audio Video', kode_mapel: 'MAINT-TAV' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TAV' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TAV' },
     ],
     TOI: [
@@ -372,7 +352,6 @@ export async function seedMapelPresets(prisma: PrismaClient) {
       { nama_mapel: 'Piranti Sensor dan Aktuator', kode_mapel: 'SENSOR-TOI' },
       { nama_mapel: 'Sistem Kontrol Berbasis PLC dan SCADA', kode_mapel: 'PLC-TOI' },
       { nama_mapel: 'Instalasi Motor Listrik dan Kontrol Motor', kode_mapel: 'MOTOR-TOI' },
-      { nama_mapel: 'Projek Kreatif dan Kewirausahaan', kode_mapel: 'PKK-TOI' },
       { nama_mapel: 'Praktik Kerja Lapangan', kode_mapel: 'PKL-TOI' },
     ],
   };
