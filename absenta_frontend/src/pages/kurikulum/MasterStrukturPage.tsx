@@ -784,13 +784,66 @@ const MasterStrukturPage: React.FC = () => {
     }), []);
 
     const targetJp = useMemo(() => {
+        if (standardReferences?.data && Array.isArray(standardReferences.data)) {
+            const filteredRefs = standardReferences.data.filter(ref => ref.tingkat === selectedTingkat);
+            if (filteredRefs.length > 0) {
+                let sum = 0;
+                let addedReligion = false;
+                let addedSeni = false;
+                let electiveSum = 0;
+                
+                // Group by kode_mapel to ensure uniqueness
+                const uniqueRefs = new Map<string, typeof filteredRefs[0]>();
+                filteredRefs.forEach(ref => {
+                    uniqueRefs.set(ref.kode_mapel, ref);
+                });
+                
+                uniqueRefs.forEach(ref => {
+                    const kode = (ref.kode_mapel || '').toUpperCase();
+                    const name = (ref.nama_mapel || '').toLowerCase();
+                    const category = (ref.category || '').toUpperCase();
+                    
+                    const isReligion = ['PAI', 'PAKB', 'PAKatB', 'PAHB', 'PABB', 'PAKhB'].includes(kode) || name.includes('agama');
+                    const isSeniOrPrakarya = name.includes('seni ') || name.includes('prakarya');
+                    const isPKL = kode === 'PKL' || name.includes('praktik kerja lapangan');
+                    const isElective = category === 'PILIHAN';
+                    
+                    if (isPKL) {
+                        return;
+                    }
+                    
+                    if (isReligion) {
+                        if (!addedReligion) {
+                            sum += ref.jp_per_minggu;
+                            addedReligion = true;
+                        }
+                    } else if (isSeniOrPrakarya) {
+                        if (!addedSeni) {
+                            sum += ref.jp_per_minggu;
+                            addedSeni = true;
+                        }
+                    } else if (isElective) {
+                        electiveSum += ref.jp_per_minggu;
+                    } else {
+                        sum += ref.jp_per_minggu;
+                    }
+                });
+                
+                const cappedElectives = (jenjang === 'SMA' && selectedTingkat > 10) 
+                    ? Math.min(20, electiveSum) 
+                    : electiveSum;
+                    
+                return sum + cappedElectives;
+            }
+        }
+
         const j = (jenjang || '').toUpperCase();
         const config = STANDAR_JP_CONFIG[j];
         if (config && config[selectedTingkat]) {
             return config[selectedTingkat];
         }
         return 40; // Default fallback
-    }, [jenjang, selectedTingkat, STANDAR_JP_CONFIG]);
+    }, [jenjang, selectedTingkat, standardReferences?.data, STANDAR_JP_CONFIG]);
 
     const gapJp = useMemo(() => {
         return targetJp - totalJp;
