@@ -20,7 +20,7 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { mapelApi, tahunPelajaranApi } from '../../api/academic.api';
+import { mapelApi, tahunPelajaranApi, jurusanApi } from '../../api/academic.api';
 import { useConfirm } from '../../providers/ConfirmProvider';
 import { toast } from 'react-hot-toast';
 import { useJenjang } from '../../hooks/useJenjang';
@@ -33,9 +33,13 @@ type StrukturKurikulum = {
   mapel_id: string;
   tahun_pelajaran_id: string;
   tingkat: number;
+  jurusan_id?: string;
   jp_per_minggu: number;
   kelompok: string;
   Mapel?: Mapel;
+  Jurusan?: {
+    nama: string;
+  };
 };
 
 const MasterStrukturPage: React.FC = () => {
@@ -47,6 +51,7 @@ const MasterStrukturPage: React.FC = () => {
     // Filters
     const [selectedTahunId, setSelectedTahunId] = useState<string>('');
     const [selectedTingkat, setSelectedTingkat] = useState<number>(10);
+    const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
     
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -178,6 +183,33 @@ const MasterStrukturPage: React.FC = () => {
         queryFn: () => tahunPelajaranApi.getAll()
     });
 
+    const { data: jurusans } = useQuery({
+        queryKey: ['academic-jurusans'],
+        queryFn: () => jurusanApi.getAll()
+    });
+
+    const isSmkOrMak = useMemo(() => {
+        const j = (jenjang || '').toUpperCase();
+        return j === 'SMK' || j === 'MAK';
+    }, [jenjang]);
+
+    const selectedJurusanNama = useMemo(() => {
+        const j = jurusans?.data?.find(item => item.id === selectedJurusanId);
+        return j ? j.nama : '';
+    }, [jurusans, selectedJurusanId]);
+
+    const selectedTahunNama = useMemo(() => {
+        const t = years?.data?.find(item => item.id === selectedTahunId);
+        return t ? t.tahun : '';
+    }, [years, selectedTahunId]);
+
+    // Set default jurusan
+    React.useEffect(() => {
+        if (isSmkOrMak && jurusans?.data && jurusans.data.length > 0 && !selectedJurusanId) {
+            setSelectedJurusanId(jurusans.data[0].id);
+        }
+    }, [isSmkOrMak, jurusans, selectedJurusanId]);
+
     const activeYear = useMemo(() => 
         years?.data?.find(y => y.is_active) || years?.data?.[0], 
     [years]);
@@ -197,11 +229,17 @@ const MasterStrukturPage: React.FC = () => {
         }
     }, [tingkatList, selectedTingkat]);
 
+    // Reset table row selections when filters change
+    React.useEffect(() => {
+        setSelectedRowIds(new Set());
+    }, [selectedTahunId, selectedTingkat, selectedJurusanId]);
+
     const { data: mapping, isLoading: isLoadingMapping } = useQuery({
-        queryKey: ['kurikulum-struktur', selectedTahunId, selectedTingkat],
+        queryKey: ['kurikulum-struktur', selectedTahunId, selectedTingkat, selectedJurusanId],
         queryFn: () => kurikulumApi.getStruktur({ 
             tahun_pelajaran_id: selectedTahunId, 
-            tingkat: selectedTingkat 
+            tingkat: selectedTingkat,
+            jurusan_id: isSmkOrMak ? (selectedJurusanId || undefined) : undefined
         }),
         enabled: !!selectedTahunId
     });
@@ -345,23 +383,29 @@ const MasterStrukturPage: React.FC = () => {
         e.preventDefault();
         
         if (editingItem) {
+            const isKejuruanAtauPilihan = formData.kelompok === 'MATA PELAJARAN KEJURUAN' || formData.kelompok === 'MATA PELAJARAN PILIHAN';
             const data: Partial<StrukturKurikulum> = {
                 id: editingItem.id,
                 mapel_id: formData.mapel_id,
                 tahun_pelajaran_id: selectedTahunId,
                 tingkat: selectedTingkat,
+                jurusan_id: (isSmkOrMak && isKejuruanAtauPilihan) ? (selectedJurusanId || null) : null,
                 jp_per_minggu: Number(formData.jp_per_minggu),
                 kelompok: formData.kelompok
             };
             upsertMutation.mutate(data);
         } else {
-            const items = Object.entries(bulkSelections).map(([mapel_id, config]) => ({
-                mapel_id,
-                tahun_pelajaran_id: selectedTahunId,
-                tingkat: selectedTingkat,
-                jp_per_minggu: Number(config.jp_per_minggu),
-                kelompok: config.kelompok
-            }));
+            const items = Object.entries(bulkSelections).map(([mapel_id, config]) => {
+                const isKejuruanAtauPilihan = config.kelompok === 'MATA PELAJARAN KEJURUAN' || config.kelompok === 'MATA PELAJARAN PILIHAN';
+                return {
+                    mapel_id,
+                    tahun_pelajaran_id: selectedTahunId,
+                    tingkat: selectedTingkat,
+                    jurusan_id: (isSmkOrMak && isKejuruanAtauPilihan) ? (selectedJurusanId || null) : null,
+                    jp_per_minggu: Number(config.jp_per_minggu),
+                    kelompok: config.kelompok
+                };
+            });
             
             if (items.length === 0) {
                 toast.error('Pilih minimal satu mata pelajaran');
@@ -378,7 +422,7 @@ const MasterStrukturPage: React.FC = () => {
                 toast.error('Gagal menyimpan beberapa pemetaan');
             }
         }
-    }, [editingItem, formData, selectedTahunId, selectedTingkat, bulkSelections, upsertMutation, queryClient, closeModal]);
+    }, [editingItem, formData, selectedTahunId, selectedTingkat, selectedJurusanId, isSmkOrMak, bulkSelections, upsertMutation, queryClient, closeModal]);
 
     const handleToggleRowSelect = useCallback((id: string) => {
         setSelectedRowIds(prev => {
@@ -625,7 +669,7 @@ const MasterStrukturPage: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white hidden md:block">Struktur Kurikulum</h1>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl">
+                <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl no-print">
                     <select 
                         value={selectedTahunId}
                         onChange={(e) => setSelectedTahunId(e.target.value)}
@@ -635,6 +679,20 @@ const MasterStrukturPage: React.FC = () => {
                             <option key={y.id} value={y.id}>{y.tahun} {y.is_active ? '(Aktif)' : ''}</option>
                         ))}
                     </select>
+                    {isSmkOrMak && (
+                        <>
+                            <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
+                            <select 
+                                value={selectedJurusanId}
+                                onChange={(e) => setSelectedJurusanId(e.target.value)}
+                                className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer px-3 animate-in fade-in duration-350"
+                            >
+                                {jurusans?.data?.map(j => (
+                                    <option key={j.id} value={j.id}>{j.nama} ({j.singkatan || j.kode})</option>
+                                ))}
+                            </select>
+                        </>
+                    )}
                     <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 hidden md:block"></div>
                     <div className="flex gap-1 p-1">
                         {tingkatList.map((t) => (
@@ -806,27 +864,120 @@ const MasterStrukturPage: React.FC = () => {
                         </Card>
                     </div>
 
-                    <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2">
-                            <div className="flex items-center gap-3">
-                                <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center">
-                                    <BookOpen size={18} className="mr-2 text-indigo-500" />
-                                    Struktur Kurikulum - Tingkat {selectedTingkat}
-                                </h3>
-                                <Badge variant="secondary" className="font-bold">{mapping?.data?.length || 0} Mata Pelajaran</Badge>
-                            </div>
-                            {selectedRowIds.size > 0 && (
-                                <button
-                                    onClick={handleBulkDelete}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-xs font-black rounded-lg transition-all border border-red-200 dark:border-red-900 shadow-sm"
-                                >
-                                    <Trash2 size={13} />
-                                    HAPUS TERPILIH ({selectedRowIds.size})
-                                </button>
-                            )}
+                    <div className="print-area">
+                        {/* CSS khusus untuk print dokumen kedinasan */}
+                        <style>{`
+                            @media print {
+                                body * {
+                                    visibility: hidden;
+                                }
+                                .print-area, .print-area * {
+                                    visibility: visible;
+                                }
+                                .print-area {
+                                    position: absolute;
+                                    left: 0;
+                                    top: 0;
+                                    width: 100%;
+                                    background: white !important;
+                                    color: black !important;
+                                    padding: 24px;
+                                }
+                                .no-print, .no-print * {
+                                    display: none !important;
+                                    visibility: hidden !important;
+                                }
+                                .print-kop {
+                                    display: block !important;
+                                    text-align: center;
+                                    margin-bottom: 24px;
+                                    border-bottom: 3px double black;
+                                    padding-bottom: 12px;
+                                }
+                                .print-signatures {
+                                    display: grid !important;
+                                    grid-template-cols: 1fr 1fr;
+                                    margin-top: 50px;
+                                    text-align: center;
+                                    font-size: 12px;
+                                }
+                                table {
+                                    border-collapse: collapse !important;
+                                    width: 100% !important;
+                                    margin-top: 16px;
+                                }
+                                th, td {
+                                    border: 1px solid black !important;
+                                    padding: 8px !important;
+                                    color: black !important;
+                                    background: transparent !important;
+                                }
+                                th {
+                                    font-weight: bold !important;
+                                    text-transform: uppercase !important;
+                                    font-size: 10px !important;
+                                    text-align: left;
+                                }
+                                td {
+                                    font-size: 11px !important;
+                                }
+                                .badge-print {
+                                    border: none !important;
+                                    background: transparent !important;
+                                    color: black !important;
+                                    padding: 0 !important;
+                                    font-weight: bold !important;
+                                }
+                            }
+                        `}</style>
+
+                        {/* Kop Surat Cetakan Resmi */}
+                        <div className="hidden print-kop text-center">
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA</h2>
+                            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">DINAS PENDIDIKAN</h2>
+                            <h1 className="text-lg font-black uppercase tracking-wider text-black mt-1">SEKOLAH MENENGAH KEJURUAN ABSENTA</h1>
+                            <p className="text-[10px] text-gray-500 italic mt-0.5">Jalan Raya Absenta No. 99, Kota Jakarta, Email: info@absenta.sch.id</p>
                         </div>
 
-                        <div className="overflow-x-auto">
+                        {/* Judul Laporan Cetak */}
+                        <div className="hidden print:block text-center my-4">
+                            <h3 className="text-sm font-black uppercase tracking-wide text-black">STRUKTUR KURIKULUM SATUAN PENDIDIKAN</h3>
+                            <div className="text-xs text-slate-800 font-bold mt-1.5 space-y-1">
+                                <p>TAHUN PELAJARAN: {selectedTahunNama || '-'}</p>
+                                <p>TINGKAT KELAS: KELAS {selectedTingkat}</p>
+                                {isSmkOrMak && <p>PROGRAM KEAHLIAN: {selectedJurusanNama || '-'}</p>}
+                            </div>
+                        </div>
+
+                        <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
+                            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2 no-print">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center">
+                                        <BookOpen size={18} className="mr-2 text-indigo-500" />
+                                        Struktur Kurikulum - Tingkat {selectedTingkat}
+                                    </h3>
+                                    <Badge variant="secondary" className="font-bold">{mapping?.data?.length || 0} Mata Pelajaran</Badge>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black rounded-lg transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                                    >
+                                        🖨️ Cetak Struktur
+                                    </button>
+                                </div>
+                                {selectedRowIds.size > 0 && (
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-xs font-black rounded-lg transition-all border border-red-200 dark:border-red-900 shadow-sm"
+                                    >
+                                        <Trash2 size={13} />
+                                        HAPUS TERPILIH ({selectedRowIds.size})
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">
                                     <tr>
@@ -954,6 +1105,22 @@ const MasterStrukturPage: React.FC = () => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Print Only Signatures */}
+                        <div className="hidden print-signatures grid grid-cols-2 mt-12 text-center text-xs font-bold text-black bg-white">
+                            <div>
+                                <p>Mengetahui,</p>
+                                <p className="mb-20 mt-1">Kepala Sekolah</p>
+                                <p className="underline font-black">..................................................</p>
+                                <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
+                            </div>
+                            <div>
+                                <p>Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                <p className="mb-20 mt-1">Wakasek Bidang Kurikulum</p>
+                                <p className="underline font-black">..................................................</p>
+                                <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
+                            </div>
                         </div>
                     </Card>
                 </div>

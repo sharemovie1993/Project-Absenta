@@ -7,7 +7,12 @@ export class StrukturKurikulumService {
         tenant_id: tenantId,
         ...(filter.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
         ...(filter.tingkat ? { tingkat: Number(filter.tingkat) } : {}),
-        ...(filter.jurusan_id ? { jurusan_id: filter.jurusan_id } : {}),
+        ...(filter.jurusan_id ? {
+          OR: [
+            { jurusan_id: filter.jurusan_id },
+            { jurusan_id: null }
+          ]
+        } : {}),
       },
       include: {
         Mapel: true,
