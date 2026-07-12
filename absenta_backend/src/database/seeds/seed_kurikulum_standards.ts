@@ -53,9 +53,9 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   add('SMK', 'UMUM', 'Pendidikan Pancasila', 'PP', 12, 2);
 
   // Bahasa Indonesia (SMK)
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 10, 4);
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 11, 3);
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 12, 2);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 10, 3); // 108 / 36 = 3 JP
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 11, 3); // 90 / 36 = 2.5 (rounded to 3)
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 12, 2); // 32 / 16 = 2 JP (Semester basis)
 
   // PJOK (SMK)
   add('SMK', 'UMUM', 'Pendidikan Jasmani, Olahraga, dan Kesehatan', 'PJOK', 10, 3);
@@ -71,38 +71,43 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   });
 
   // Matematika (SMK)
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 10, 4);
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 11, 3);
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 12, 2);
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 10, 3); // 108 / 36 = 3 JP
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 11, 3); // 90 / 36 = 2.5 (rounded to 3)
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 12, 3); // 48 / 16 = 3 JP (Semester basis)
 
   // Bahasa Inggris (SMK)
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 10, 2);
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 11, 3);
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 12, 2);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 10, 3); // 108 / 36 = 3 JP
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 11, 3); // 108 / 36 = 3 JP
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 12, 4); // 64 / 16 = 4 JP (Semester basis)
 
   // Informatika (SMK)
-  add('SMK', 'KEJURUAN', 'Informatika', 'INF', 10, 4);
+  add('SMK', 'KEJURUAN', 'Informatika', 'INF', 10, 3); // 108 / 36 = 3 JP
 
   // Projek IPAS (SMK)
-  add('SMK', 'KEJURUAN', 'Projek Ilmu Pengetahuan Alam dan Sosial', 'IPAS', 10, 6);
+  add('SMK', 'KEJURUAN', 'Projek Ilmu Pengetahuan Alam dan Sosial', 'IPAS', 10, 5); // 180 / 36 = 5 JP
 
   // Dasar-dasar Program Keahlian (SMK)
   add('SMK', 'KEJURUAN', 'Dasar-dasar Program Keahlian', 'DASAR-KEJURUAN', 10, 12);
 
   // Konsentrasi Keahlian (SMK)
   add('SMK', 'KEJURUAN', 'Konsentrasi Keahlian', 'KK', 11, 18);
-  add('SMK', 'KEJURUAN', 'Konsentrasi Keahlian', 'KK', 12, 22);
+  add('SMK', 'KEJURUAN', 'Konsentrasi Keahlian', 'KK', 12, 22); // 352 / 16 = 22 JP (Semester basis)
 
   // Projek Kreatif dan Kewirausahaan (SMK)
   add('SMK', 'KEJURUAN', 'Projek Kreatif dan Kewirausahaan', 'PKK', 11, 5);
-  add('SMK', 'KEJURUAN', 'Projek Kreatif dan Kewirausahaan', 'PKK', 12, 5);
+  add('SMK', 'KEJURUAN', 'Projek Kreatif dan Kewirausahaan', 'PKK', 12, 5); // 80 / 16 = 5 JP (Semester basis)
 
   // Praktik Kerja Lapangan (SMK)
-  add('SMK', 'KEJURUAN', 'Praktik Kerja Lapangan', 'PKL', 12, 44);
+  add('SMK', 'KEJURUAN', 'Praktik Kerja Lapangan', 'PKL', 12, 46); // 736 / 16 = 46 JP (Semester basis)
 
   // Mata Pelajaran Pilihan (SMK)
   add('SMK', 'PILIHAN', 'Mata Pelajaran Pilihan', 'PILIHAN', 11, 4);
-  add('SMK', 'PILIHAN', 'Mata Pelajaran Pilihan', 'PILIHAN', 12, 6);
+  add('SMK', 'PILIHAN', 'Mata Pelajaran Pilihan', 'PILIHAN', 12, 4); // 64 / 16 = 4 JP (Semester basis)
+
+  // Muatan Lokal (SMK)
+  add('SMK', 'MULOK', 'Muatan Lokal', 'MULOK', 10, 2);
+  add('SMK', 'MULOK', 'Muatan Lokal', 'MULOK', 11, 2);
+  add('SMK', 'MULOK', 'Muatan Lokal', 'MULOK', 12, 2); // 32 / 16 = 2 JP (Semester basis)
 
 
   // =====================================================================
