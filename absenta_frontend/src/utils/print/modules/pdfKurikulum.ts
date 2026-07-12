@@ -48,32 +48,32 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
 
   // ---- JUDUL ----
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('STRUKTUR KURIKULUM SATUAN PENDIDIKAN', pageWidth / 2, headerEndY + 6, { align: 'center' });
-  doc.setFontSize(9);
-  doc.text(`TAHUN AJARAN ${selectedTahunNama}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+  doc.setFontSize(10.5);
+  doc.text('STRUKTUR KURIKULUM SATUAN PENDIDIKAN', pageWidth / 2, headerEndY + 5, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.text(`TAHUN AJARAN ${selectedTahunNama}`, pageWidth / 2, headerEndY + 9.5, { align: 'center' });
 
-  let metaY = headerEndY + 18;
+  let metaY = headerEndY + 14;
 
   // ---- METADATA JURUSAN (SMK) ----
   if (selectedJurusan) {
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8);
     const leftX = 15;
-    const colonX = 55; // Adjusted from 70 to 55 to suit portrait layout width
+    const colonX = 50; // Adjusted for portrait
     doc.text('Bidang Keahlian', leftX, metaY);
     doc.text(`: ${selectedJurusan?.ProgramKeahlian?.bidang_keahlian || '-'}`, colonX, metaY);
-    metaY += 4.5;
+    metaY += 3.8;
     doc.text('Program Keahlian', leftX, metaY);
     doc.text(`: ${selectedJurusan?.ProgramKeahlian?.nama || '-'}`, colonX, metaY);
-    metaY += 4.5;
+    metaY += 3.8;
     doc.text('Konsentrasi Keahlian', leftX, metaY);
     doc.text(`: ${selectedJurusan?.nama || '-'}`, colonX, metaY);
-    metaY += 4;
+    metaY += 3.5;
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.2);
     doc.line(15, metaY, pageWidth - 15, metaY);
-    metaY += 3;
+    metaY += 2.5;
   }
 
   // ---- BUILD TABLE DATA ----
@@ -180,10 +180,10 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
     theme: 'grid',
     styles: {
       font: 'Helvetica',
-      cellPadding: 2.5,
+      cellPadding: 1.4, // Reduced padding to fit 1 page
       lineColor: [180, 180, 180],
       lineWidth: 0.18,
-      fontSize: 7.5,
+      fontSize: 6.8,    // Slightly reduced font size for table
       valign: 'middle'
     },
     headStyles: {
@@ -204,33 +204,33 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
   });
 
   // ---- TANDA TANGAN ----
-  let finalY = (doc as any).lastAutoTable?.finalY ?? (pageHeight - 60);
-  if (finalY + 45 > pageHeight) {
+  let finalY = (doc as any).lastAutoTable?.finalY ?? (pageHeight - 50);
+  if (finalY + 32 > pageHeight) { // Reduced threshold
     doc.addPage();
     finalY = 20;
   }
 
-  const sigY = finalY + 12;
+  const sigY = finalY + 6; // Reduced gap from table
   const leftSigX = pageWidth / 4;
   const rightSigX = (pageWidth * 3) / 4;
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.text('Mengetahui,', leftSigX, sigY, { align: 'center' });
-  doc.text('Wakasek Bidang Kurikulum', leftSigX, sigY + 4, { align: 'center' });
-  doc.text('.'.repeat(40), leftSigX, sigY + 26, { align: 'center' });
+  doc.text('Wakasek Bidang Kurikulum', leftSigX, sigY + 3.8, { align: 'center' });
+  doc.text('.'.repeat(40), leftSigX, sigY + 18, { align: 'center' }); // Reduced gap to name
   doc.setFontSize(7);
-  doc.text('NIP. ' + '.'.repeat(20), leftSigX, sigY + 30, { align: 'center' });
+  doc.text('NIP. ' + '.'.repeat(20), leftSigX, sigY + 21.8, { align: 'center' });
 
   const dateStr = `${city}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
   doc.setFontSize(8);
   doc.text(dateStr, rightSigX, sigY, { align: 'center' });
-  doc.text('Kepala Sekolah,', rightSigX, sigY + 4, { align: 'center' });
+  doc.text('Kepala Sekolah,', rightSigX, sigY + 3.8, { align: 'center' });
   doc.setFont('Helvetica', 'bold');
-  doc.text(principalName, rightSigX, sigY + 26, { align: 'center' });
+  doc.text(principalName, rightSigX, sigY + 18, { align: 'center' }); // Reduced gap to name
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text(`NIP. ${principalNip}`, rightSigX, sigY + 30, { align: 'center' });
+  doc.text(`NIP. ${principalNip}`, rightSigX, sigY + 21.8, { align: 'center' });
 
   return doc.output('blob');
 };
