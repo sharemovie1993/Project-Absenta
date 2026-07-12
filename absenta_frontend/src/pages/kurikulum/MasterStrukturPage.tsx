@@ -1142,41 +1142,7 @@ const MasterStrukturPage: React.FC = () => {
                         </Card>
                     </div>
 
-                    <div className="print-area">
-                        {/* CSS khusus untuk print dokumen kedinasan */}
-                        <style>{`
-                            @media print {
-                                body > *:not(.print-matrix-area) {
-                                    display: none !important;
-                                }
-                                .print-matrix-area, .print-matrix-area * {
-                                    visibility: visible !important;
-                                    display: block !important;
-                                }
-                                .print-matrix-area table, .print-matrix-area table * {
-                                    visibility: visible !important;
-                                    display: table !important;
-                                }
-                                .print-matrix-area tr {
-                                    display: table-row !important;
-                                }
-                                .print-matrix-area th, .print-matrix-area td {
-                                    display: table-cell !important;
-                                    border: 1px solid black !important;
-                                    padding: 6px 8px !important;
-                                    color: black !important;
-                                }
-                                .print-matrix-area {
-                                    position: absolute;
-                                    left: 0;
-                                    top: 0;
-                                    width: 100%;
-                                    background: white !important;
-                                    color: black !important;
-                                    padding: 12px;
-                                }
-                            }
-                        `}</style>
+
 
                         <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2 no-print">
@@ -1187,13 +1153,7 @@ const MasterStrukturPage: React.FC = () => {
                                     </h3>
                                     <Badge variant="secondary" className="font-bold">{mappingFiltered.length} Mata Pelajaran</Badge>
                                     
-                                    <button
-                                        type="button"
-                                        onClick={() => window.print()}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black rounded-lg transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
-                                    >
-                                        🖨️ Cetak Struktur
-                                    </button>
+
                                 </div>
                                 {selectedRowIds.size > 0 && (
                                     <button
