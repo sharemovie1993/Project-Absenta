@@ -30,6 +30,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useJenjang } from '../../../hooks/useJenjang';
+import { PresetWizardModal } from './PresetWizardModal';
 
 interface MapelListProps {
   onEdit?: (mapel: Mapel) => void;
@@ -437,16 +438,11 @@ const MapelList = React.memo<MapelListProps>(({
           </div>
           <div className="flex items-center gap-2 sm:self-center flex-shrink-0">
             <Button
-              onClick={() => isSmkMak ? setPresetModalOpen(true) : handleInitializePreset()}
-              disabled={initializingPreset}
+              onClick={() => setPresetModalOpen(true)}
               variant="primary"
               className="h-10 px-5 rounded-xl text-[11px] font-black tracking-wider uppercase bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 flex items-center gap-2"
             >
-              {initializingPreset ? (
-                <><RefreshCw size={14} className="animate-spin" />Proses...</>
-              ) : (
-                <>{isSmkMak ? <Layers size={14} /> : <BookOpen size={14} />}Gunakan Preset</>
-              )}
+              <Layers size={14} />Gunakan Preset
             </Button>
           </div>
         </div>
@@ -584,78 +580,13 @@ const MapelList = React.memo<MapelListProps>(({
         </div>
       </Modal>
 
-      {/* Modal Preset Jurusan (SMK/MAK) */}
-      <Modal
+      {/* Wizard Multi-Step Preset Mapel */}
+      <PresetWizardModal
         isOpen={presetModalOpen}
         onClose={() => setPresetModalOpen(false)}
-        title="Pilih Preset Mata Pelajaran"
-        size="md"
-      >
-        <div className="space-y-5">
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Pilih jenis preset yang ingin dimuat. Preset <strong>Mapel Wajib</strong> berisi mata pelajaran umum (Pancasila, Bahasa Indonesia, dll). Preset <strong>Kejuruan</strong> berisi mapel produktif sesuai jurusan yang dipilih.
-          </p>
-
-          {/* Option A: Mapel Wajib Umum */}
-          <div
-            className="p-4 border-2 border-blue-100 dark:border-blue-900/40 rounded-2xl bg-blue-50/50 dark:bg-blue-950/10 cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all group"
-            onClick={() => !initializingPreset && handleInitializePreset()}
-          >
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 p-2.5 rounded-xl">
-                <BookOpen size={18} />
-              </div>
-              <div>
-                <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Mapel Wajib Umum</h5>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Mapel standar nasional: Pancasila, B. Indonesia, MTK, dll.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Option B: Preset Kejuruan */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <GraduationCap size={15} className="text-purple-600" />
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Preset Kejuruan (Pilih Jurusan)</span>
-            </div>
-            {jurusans.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-400 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                Belum ada jurusan terdaftar. Tambahkan jurusan terlebih dahulu di menu <strong>Jurusan</strong>.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
-                {jurusans.map((j) => (
-                  <button
-                    key={j.id}
-                    onClick={() => !initializingPreset && handleInitializePreset(j.id)}
-                    disabled={initializingPreset}
-                    className="flex items-center gap-2.5 p-3 rounded-xl border border-purple-100 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/10 hover:bg-purple-50 dark:hover:bg-purple-950/20 hover:border-purple-400 dark:hover:border-purple-500 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed group"
-                  >
-                    <div className="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 p-1.5 rounded-lg flex-shrink-0">
-                      <GraduationCap size={13} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">{j.nama}</p>
-                      {j.kode && <p className="text-[10px] text-slate-400">{j.kode}</p>}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {initializingPreset && (
-            <div className="flex items-center justify-center gap-2 py-2 text-sm text-blue-600">
-              <RefreshCw size={14} className="animate-spin" />
-              Memuat preset...
-            </div>
-          )}
-
-          <div className="flex justify-end pt-1">
-            <Button variant="outline" className="rounded-xl px-5" onClick={() => setPresetModalOpen(false)} disabled={initializingPreset}>Batal</Button>
-          </div>
-        </div>
-      </Modal>
+        jenjang={jenjang}
+        onSuccess={() => fetchMapels(1, debouncedSearchTerm)}
+      />
     </div>
   );
 });

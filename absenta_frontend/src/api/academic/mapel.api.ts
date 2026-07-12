@@ -98,9 +98,24 @@ export const exportMapelToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/mapel/export');
 };
 
-// Initialize Mapel Preset (Supports optional jurusanId)
-export const initializeMapelPreset = async (jurusanId?: string): Promise<{ success: boolean; message: string; count?: number }> => {
-  return requestWithFallback<{ success: boolean; message: string; count?: number }>('post', '/academic/mapel/initialize-preset', { data: { jurusanId } });
+// Initialize Mapel Preset (Supports array of selected preset IDs)
+export const initializeMapelPreset = async (selectedPresetIds: string[]): Promise<{ success: boolean; message: string; count?: number }> => {
+  return requestWithFallback<{ success: boolean; message: string; count?: number }>('post', '/academic/mapel/initialize-preset', { data: { selectedPresetIds } });
+};
+
+// Get Global Presets by Jenjang
+export const getPresetsByJenjang = async (jenjang: string): Promise<{
+  success: boolean;
+  jenjang: string;
+  data: GlobalMapelPreset[];
+  grouped: Record<string, GlobalMapelPreset[]>;
+}> => {
+  return requestWithFallback<{
+    success: boolean;
+    jenjang: string;
+    data: GlobalMapelPreset[];
+    grouped: Record<string, GlobalMapelPreset[]>;
+  }>('get', `/academic/mapel/presets/by-jenjang?jenjang=${encodeURIComponent(jenjang)}`);
 };
 
 // Global Mapel Preset CRUD (Superadmin only)

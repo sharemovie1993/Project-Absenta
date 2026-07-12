@@ -126,6 +126,20 @@ export default async function mapelRoutes(fastify: any) {
     }
   );
 
+  // GET /presets/by-jenjang - Get global presets by jenjang
+  fastify.get(
+    '/presets/by-jenjang',
+    {
+      preHandler: [
+        requireCapability('academic.subjects.create'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return mapelController.getPresetsByJenjang(request, reply);
+    }
+  );
+
   // GET /presets - Get all global presets (superadmin only)
   fastify.get(
     '/presets',

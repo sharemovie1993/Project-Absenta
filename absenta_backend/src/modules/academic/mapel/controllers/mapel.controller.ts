@@ -344,102 +344,27 @@ export const mapelController = {
         return reply.status(400).send({ success: false, message: 'Tenant ID is required' });
       }
 
-      const sekolah = await prisma.sekolah.findFirst({
-        where: { tenant_id: tenantId }
+      const { selectedPresetIds } = request.body || {};
+
+      if (!selectedPresetIds || !Array.isArray(selectedPresetIds) || selectedPresetIds.length === 0) {
+        return reply.status(400).send({ success: false, message: 'selectedPresetIds harus berupa array dan tidak boleh kosong' });
+      }
+
+      // Fetch all selected presets from GlobalMapelPreset
+      const presets = await prisma.globalMapelPreset.findMany({
+        where: { id: { in: selectedPresetIds } }
       });
 
-      if (!sekolah) {
-        return reply.status(404).send({ success: false, message: 'School profile not found' });
+      if (presets.length === 0) {
+        return reply.status(404).send({ success: false, message: 'Tidak ada preset yang ditemukan untuk ID yang diberikan' });
       }
 
-      let presets: { nama_mapel: string; kode_mapel: string }[] = [];
-      let suffix = '';
-
-      const { jurusanId } = request.body || {};
-
-      if (jurusanId) {
-        // Handle vocational preset
-        const jurusan = await prisma.jurusan.findFirst({
-          where: { id: jurusanId, tenant_id: tenantId }
-        });
-
-        if (!jurusan) {
-          return reply.status(404).send({ success: false, message: 'Jurusan tidak ditemukan' });
-        }
-
-        // Run smart matching
-        const fields = [
-          jurusan.singkatan || '',
-          jurusan.kode || '',
-          jurusan.nama || ''
-        ].map(f => f.toLowerCase());
-
-        const checks = [
-          { key: 'RPL', regex: /rpl|rekayasa.*perangkat.*lunak/i },
-          { key: 'TKJ', regex: /tkj|komputer.*jaringan/i },
-          { key: 'AKL', regex: /akl|akuntansi/i },
-          { key: 'MPLB', regex: /mplb|perkantoran|administrasi.*perkantoran/i },
-          { key: 'DKV', regex: /dkv|multimedia|desain.*komunikasi.*visual/i },
-          { key: 'TBSM', regex: /tbsm|sepeda.*motor/i },
-          { key: 'TKR', regex: /tkr|kendaraan.*ringan/i },
-          { key: 'TP', regex: /\btp\b|pemesinan|mesin/i },
-          { key: 'PH', regex: /\bph\b|perhotelan/i },
-          { key: 'KL', regex: /\bkl\b|kuliner|jasa.*boga/i },
-          { key: 'TB', regex: /\btb\b|tata.*busana|busana/i },
-          { key: 'TAV', regex: /tav|audio.*video/i },
-          { key: 'TOI', regex: /toi|otomasi.*industri/i }
-        ];
-
-        let matchedKey: string | null = null;
-        for (const check of checks) {
-          if (fields.some(field => check.regex.test(field))) {
-            matchedKey = check.key;
-            break;
-          }
-        }
-
-        if (!matchedKey) {
-          return reply.status(400).send({
-            success: false,
-            message: `Preset tidak ditemukan untuk jurusan "${jurusan.nama}". Silakan tambahkan mata pelajaran kejuruan secara manual.`
-          });
-        }
-
-        // Query presets from GlobalMapelPreset table for this vocational matchedKey
-        const dbPresets = await prisma.globalMapelPreset.findMany({
-          where: { jenjang: matchedKey, category: 'KEJURUAN' }
-        });
-
-        if (dbPresets.length === 0) {
-          return reply.status(400).send({
-            success: false,
-            message: `Preset data tidak tersedia di database untuk jurusan "${jurusan.nama}" (${matchedKey}).`
-          });
-        }
-
-        presets = dbPresets;
-        suffix = `-${jurusan.singkatan || matchedKey}`;
-      } else {
-        // Handle general preset
-        const rawJenjang = (sekolah.jenjang || 'SMA').toUpperCase();
-        let dbPresets = await prisma.globalMapelPreset.findMany({
-          where: { jenjang: rawJenjang, category: 'UMUM' }
-        });
-
-        // Fallback to SMA if not found
-        if (dbPresets.length === 0) {
-          dbPresets = await prisma.globalMapelPreset.findMany({
-            where: { jenjang: 'SMA', category: 'UMUM' }
-          });
-        }
-
-        presets = dbPresets;
-      }
+      const shortTenantId = tenantId.substring(0, 4).toUpperCase();
 
       const dataToInsert = presets.map(p => ({
         tenant_id: tenantId,
         nama_mapel: p.nama_mapel,
-        kode_mapel: `${p.kode_mapel}${suffix}-${tenantId.substring(0, 4).toUpperCase()}`,
+        kode_mapel: `${p.kode_mapel}-${shortTenantId}`,
         tingkat: null
       }));
 
@@ -450,12 +375,48 @@ export const mapelController = {
 
       return reply.status(200).send({
         success: true,
-        message: 'Preset subjects initialized successfully',
+        message: `Berhasil menambahkan ${result.count} mata pelajaran dari preset`,
         count: result.count
       });
     } catch (error: any) {
       console.error('Error initializing mapel preset:', error);
       return reply.status(500).send({ success: false, message: 'Failed to initialize mapel preset', error: error.message });
+    }
+  },
+
+  // GET /presets/by-jenjang?jenjang=SMA — load preset per jenjang untuk wizard frontend
+  async getPresetsByJenjang(request: any, reply: any) {
+    try {
+      const { jenjang } = request.query as { jenjang?: string };
+
+      if (!jenjang) {
+        return reply.status(400).send({ success: false, message: 'Parameter jenjang wajib diisi' });
+      }
+
+      const presets = await prisma.globalMapelPreset.findMany({
+        where: { jenjang: jenjang.toUpperCase() },
+        orderBy: [
+          { category: 'asc' },
+          { nama_mapel: 'asc' }
+        ]
+      });
+
+      // Group by category for convenience
+      const grouped = presets.reduce((acc: Record<string, any[]>, p) => {
+        if (!acc[p.category]) acc[p.category] = [];
+        acc[p.category].push(p);
+        return acc;
+      }, {});
+
+      return reply.status(200).send({
+        success: true,
+        jenjang: jenjang.toUpperCase(),
+        data: presets,
+        grouped
+      });
+    } catch (error: any) {
+      console.error('Error getting presets by jenjang:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to get presets', error: error.message });
     }
   },
 
