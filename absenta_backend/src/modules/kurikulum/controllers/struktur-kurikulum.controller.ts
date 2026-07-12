@@ -70,4 +70,21 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, 'Failed to retrieve grouped data', error);
     }
   }
+
+  static async getStandardReferences(req: any, reply: any) {
+    try {
+      const { jenjang } = req.query;
+      if (!jenjang) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jenjang query parameter is required'
+        });
+      }
+      
+      const result = await StrukturKurikulumService.getStandardReferences(String(jenjang));
+      return sendResponse(reply, 200, true, 'Global kurikulum standards retrieved', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to retrieve global kurikulum standards', error);
+    }
+  }
 }

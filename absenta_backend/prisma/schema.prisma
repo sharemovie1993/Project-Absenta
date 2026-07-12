@@ -3816,4 +3816,20 @@ model GlobalMapelPreset {
   @@index([jenjang])
 }
 
+model GlobalKurikulumStandard {
+  id             String   @id @default(uuid())
+  jenjang        String   // SD, SMP, SMA, SMK
+  category       String?  // UMUM, KEJURUAN, MULOK, PILIHAN
+  nama_mapel     String
+  kode_mapel     String
+  tingkat        Int      // 1 s/d 13
+  jp_per_minggu  Int      // Beban JP Standar Intrakurikuler per Minggu
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@unique([jenjang, kode_mapel, tingkat])
+  @@index([jenjang])
+}
+
+
 

@@ -16,6 +16,7 @@ import { seedCooperative } from './seed_cooperative';
 import { seedJobdesk } from './seed_jobdesk';
 import { seedSarprasCatalog } from './seed_sarpras_catalog';
 import { seedMapelPresets } from './seed_mapel_presets';
+import { seedKurikulumStandards } from './seed_kurikulum_standards';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 
 const prisma = new PrismaClient();
@@ -905,6 +906,9 @@ async function main() {
 
   // 12️⃣ Seed Global Mapel Presets
   await seedMapelPresets(prisma);
+
+  // 13️⃣ Seed Global Kurikulum Standards (Permendikbud 12/2024)
+  await seedKurikulumStandards(prisma);
 
   console.log('✨ Seed selesai!');
 }

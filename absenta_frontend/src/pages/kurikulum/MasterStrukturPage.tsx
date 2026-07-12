@@ -258,6 +258,12 @@ const MasterStrukturPage: React.FC = () => {
         enabled: !!selectedTahunId
     });
 
+    const { data: standardReferences } = useQuery({
+        queryKey: ['kurikulum-standard-references', jenjang],
+        queryFn: () => kurikulumApi.getStandardReferences(jenjang || 'SMK'),
+        enabled: !!jenjang
+    });
+
     const mappingFiltered = useMemo(() => {
         if (!mapping?.data) return [];
         return mapping.data.filter((item: any) => item.tingkat === selectedTingkat);
@@ -493,70 +499,59 @@ const MasterStrukturPage: React.FC = () => {
         const kode = (kodeMapel || '').toUpperCase();
         const nama = (namaMapel || '').toLowerCase();
         
-        // 1. Projek IPAS (Hanya di Kelas 10, 6 JP)
-        if (nama.includes('ipas') || nama.includes('ilmu pengetahuan alam') || kode.includes('IPAS')) {
-            return tingkat === 10 ? 6 : 2;
+        if (standardReferences?.data && Array.isArray(standardReferences.data)) {
+            // 1. Cari berdasarkan kecocokan kode mapel secara eksak terlebih dahulu
+            let match = standardReferences.data.find(ref => 
+                ref.tingkat === tingkat && 
+                (ref.kode_mapel || '').toUpperCase() === kode
+            );
+            
+            // 2. Jika tidak cocok eksak, cari berdasarkan nama mata pelajaran yang mengandung teks acuan
+            if (!match) {
+                match = standardReferences.data.find(ref => 
+                    ref.tingkat === tingkat && 
+                    (
+                        nama.includes((ref.nama_mapel || '').toLowerCase()) || 
+                        (ref.nama_mapel || '').toLowerCase().includes(nama)
+                    )
+                );
+            }
+            
+            // 3. Aturan khusus untuk mapel SMK yang kodenya dinamis (KK / Dasar-dasar Program Keahlian)
+            if (!match && isSmkOrMak) {
+                if (kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian') || nama.includes('kompetensi keahlian')) {
+                    const kkRef = standardReferences.data.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
+                    if (kkRef) return kkRef.jp_per_minggu;
+                }
+                if (nama.includes('dasar-dasar') || nama.includes('dasar dasar') || kode.includes('DAS-') || kode.includes('DK-')) {
+                    const dkRef = standardReferences.data.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
+                    if (dkRef) return dkRef.jp_per_minggu;
+                }
+            }
+            
+            if (match) {
+                return match.jp_per_minggu;
+            }
         }
-        // 2. Dasar-dasar Kejuruan (Hanya di Kelas 10, 12 JP)
-        if (nama.includes('dasar-dasar kejuruan') || nama.includes('dasar kejuruan') || kode.includes('DAS-') || kode.includes('DK-')) {
-            return tingkat === 10 ? 12 : 2;
+        
+        // Fallback default jika data preset belum ter-seed atau tidak ditemukan di DB
+        if (nama.includes('agama') || kode.includes('PAI') || kode.includes('AGAMA')) {
+            if (tingkat === 10 || tingkat === 11) return 3;
+            if (tingkat === 12) return 2;
         }
-        // 3. Konsentrasi Keahlian (Kelas 11: 18 JP, Kelas 12: 22 JP)
-        if (nama.includes('konsentrasi keahlian') || nama.includes('kompetensi keahlian') || kode === 'KK' || kode.startsWith('KK-')) {
-            if (tingkat === 11) return 18;
-            if (tingkat === 12) return 22;
-            return 2;
-        }
-        // 4. Projek Kreatif dan Kewirausahaan (PKK) (Kelas 11: 5 JP, Kelas 12: 5 JP)
-        if (nama.includes('projek kreatif') || nama.includes('kewirausahaan') || nama.includes('pkk') || kode.includes('PKK')) {
-            return (tingkat === 11 || tingkat === 12) ? 5 : 2;
-        }
-        // 5. Praktik Kerja Lapangan (PKL) (Kelas 12: 44 JP)
-        if (nama.includes('praktik kerja lapangan') || nama.includes('pkl') || kode.includes('PKL')) {
-            return tingkat === 12 ? 44 : 2;
-        }
-        // 6. Mata Pelajaran Pilihan (Kelas 11: 4 JP, Kelas 12: 6 JP)
-        if (nama.includes('pilihan') || kode.includes('PILIHAN')) {
-            if (tingkat === 11) return 4;
-            if (tingkat === 12) return 6;
-            return 2;
-        }
-        // 7. Informatika (Hanya di Kelas 10: 4 JP)
-        if (nama.includes('informatika') || kode.includes('INF') || kode.includes('TIK')) {
-            return tingkat === 10 ? 4 : 2;
-        }
-        // 8. PJOK (Kelas 10: 3 JP, Kelas 11: 2 JP)
-        if (nama.includes('jasmani') || nama.includes('olahraga') || nama.includes('pjok') || kode.includes('PJOK')) {
-            if (tingkat === 10) return 3;
-            if (tingkat === 11) return 2;
-            return 2;
-        }
-        // 9. Bahasa Indonesia (Kelas 10: 4 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
         if (nama.includes('bahasa indonesia') || kode.includes('IND')) {
             if (tingkat === 10) return 4;
             if (tingkat === 11) return 3;
             if (tingkat === 12) return 2;
         }
-        // 10. Matematika (Kelas 10: 4 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
-        if (nama.includes('matematika') || kode.includes('MAT')) {
+        if (nama.includes('matematika') || kode.includes('MAT') || kode.includes('MTK')) {
             if (tingkat === 10) return 4;
             if (tingkat === 11) return 3;
             if (tingkat === 12) return 2;
         }
-        // 11. Bahasa Inggris (Kelas 10: 2 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
-        if (nama.includes('bahasa inggris') || kode.includes('ING')) {
-            if (tingkat === 10) return 2;
-            if (tingkat === 11) return 3;
-            if (tingkat === 12) return 2;
-        }
-        // 12. Pend. Agama & Budi Pekerti (Kelas 10: 3 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
-        if (nama.includes('agama') || kode.includes('PAI') || kode.includes('AGAMA')) {
-            if (tingkat === 10 || tingkat === 11) return 3;
-            if (tingkat === 12) return 2;
-        }
         
         return 2;
-    }, []);
+    }, [standardReferences?.data, isSmkOrMak]);
 
     const renderJpCalculator = useCallback((jp: number, mapelName: string, mapelKode: string) => {
         const weeks = selectedTingkat === 12 ? 32 : 36;

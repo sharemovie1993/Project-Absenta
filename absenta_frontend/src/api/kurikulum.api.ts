@@ -112,4 +112,8 @@ export const kurikulumApi = {
     const response = await api.delete(`/kurikulum/perangkat/${id}`);
     return response.data;
   },
+  getStandardReferences: async (jenjang: string) => {
+    const response = await api.get('/kurikulum/struktur/standards', { params: { jenjang } });
+    return response.data;
+  },
 };

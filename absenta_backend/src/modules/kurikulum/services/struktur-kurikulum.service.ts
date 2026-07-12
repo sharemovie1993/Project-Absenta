@@ -79,4 +79,19 @@ export class StrukturKurikulumService {
       
       return grouped;
   }
+
+  static async getStandardReferences(jenjang: string) {
+    return prisma.globalKurikulumStandard.findMany({
+      where: {
+        jenjang: {
+          equals: jenjang,
+          mode: 'insensitive'
+        }
+      },
+      orderBy: [
+        { tingkat: 'asc' },
+        { nama_mapel: 'asc' }
+      ]
+    });
+  }
 }
