@@ -300,9 +300,11 @@ const MasterStrukturPage: React.FC = () => {
                                  nama.includes('kepariwisataan') ||
                                  nama.includes('sunda');
                 
+                const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+                
                 if (selectedTingkat === 10) {
-                    // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
-                    if (isPkl || isPkk) return;
+                    // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut
+                    if (isPkl || isPkk || isKk) return;
                     
                     const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
                     const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
@@ -490,9 +492,11 @@ const MasterStrukturPage: React.FC = () => {
                              nama.includes('kepariwisataan') ||
                              nama.includes('sunda');
             
+            const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+            
             if (selectedTingkat === 10) {
-                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut (kecuali koding)
-                if (isPkl || isPkk) return false;
+                // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut (kecuali koding)
+                if (isPkl || isPkk || isKk) return false;
                 
                 const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
                 const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
@@ -540,8 +544,10 @@ const MasterStrukturPage: React.FC = () => {
                              nama.includes('kepariwisataan') ||
                              nama.includes('sunda');
             
+            const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+            
             if (selectedTingkat === 10) {
-                if (isPkl || isPkk) return;
+                if (isPkl || isPkk || isKk) return;
                 const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
                 const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
                 if (isProduktifLanjut) return;
@@ -1119,10 +1125,12 @@ const MasterStrukturPage: React.FC = () => {
                                                              nama.includes('kepariwisataan') ||
                                                              nama.includes('sunda');
                                             
+                                            const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+                                            
                                             // 2. Smart Filter Relevansi Tingkat
                                             if (selectedTingkat === 10) {
-                                                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut (kecuali koding)
-                                                if (isPkl || isPkk) return false;
+                                                // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut (kecuali koding)
+                                                if (isPkl || isPkk || isKk) return false;
                                                 
                                                 const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
                                                 const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
