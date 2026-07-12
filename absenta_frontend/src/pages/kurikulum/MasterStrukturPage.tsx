@@ -25,6 +25,9 @@ import { useConfirm } from '../../providers/ConfirmProvider';
 import { toast } from 'react-hot-toast';
 import { useJenjang } from '../../hooks/useJenjang';
 import type { Mapel } from '../../types/academic';
+import { useAuth } from '../../hooks/useAuth';
+import { getTenantById } from '../../api/tenants.api';
+import { PrintHeader } from '../../components/ui/PrintHeader';
 
 const Modal = lazy(() => import('../../components/ui/Modal').then(module => ({ default: module.Modal })));
 
@@ -45,6 +48,13 @@ type StrukturKurikulum = {
 const MasterStrukturPage: React.FC = () => {
     const queryClient = useQueryClient();
     const { confirm } = useConfirm();
+    const { user } = useAuth();
+    const { data: tenantRes } = useQuery({
+        queryKey: ['tenant-profile', user?.tenant_id],
+        queryFn: () => getTenantById(user?.tenant_id || ''),
+        enabled: !!user?.tenant_id
+    });
+    const tenantInfo = tenantRes?.data;
     
     const { jenjang, tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
 
@@ -235,14 +245,158 @@ const MasterStrukturPage: React.FC = () => {
     }, [selectedTahunId, selectedTingkat, selectedJurusanId]);
 
     const { data: mapping, isLoading: isLoadingMapping } = useQuery({
-        queryKey: ['kurikulum-struktur', selectedTahunId, selectedTingkat, selectedJurusanId],
+        queryKey: ['kurikulum-struktur', selectedTahunId, selectedJurusanId],
         queryFn: () => kurikulumApi.getStruktur({ 
             tahun_pelajaran_id: selectedTahunId, 
-            tingkat: selectedTingkat,
             jurusan_id: isSmkOrMak ? (selectedJurusanId || undefined) : undefined
         }),
         enabled: !!selectedTahunId
     });
+
+    const mappingFiltered = useMemo(() => {
+        if (!mapping?.data) return [];
+        return mapping.data.filter((item: any) => item.tingkat === selectedTingkat);
+    }, [mapping?.data, selectedTingkat]);
+
+    const getJpValueForSemester = useCallback((mapelName: string, mapelKode: string, tingkat: number, semesterNum: 1 | 2, baseJp: number): string => {
+        const nama = mapelName.toLowerCase();
+        const kode = (mapelKode || '').toUpperCase();
+        
+        // 1. Praktik Kerja Lapangan (PKL) - Hanya di Kelas XII, Semester 1 (Sem 1 = baseJp, Sem 2 = -)
+        if (tingkat === 12 && (nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || kode.includes('PKL'))) {
+            return semesterNum === 1 ? `${baseJp}` : '-';
+        }
+        
+        // 2. Konsentrasi Keahlian (KK) - Hanya di Kelas XII, Semester 2 (Sem 1 = -, Sem 2 = baseJp)
+        if (tingkat === 12 && (nama.includes('konsentrasi keahlian') || kode === 'KK' || kode.startsWith('KK-'))) {
+            return semesterNum === 2 ? `${baseJp}` : '-';
+        }
+        
+        // 3. Projek Kreatif dan Kewirausahaan (PKK) - Di Kelas XII, hanya diajarkan di Semester 2 (Sem 1 = -, Sem 2 = baseJp)
+        if (tingkat === 12 && (nama.includes('projek kreatif') || nama.includes('project kreatif') || kode.includes('PKK'))) {
+            return semesterNum === 2 ? `${baseJp}` : '-';
+        }
+        
+        // 4. Mapel Pilihan - Di Kelas XII, hanya diajarkan di Semester 2 (Sem 1 = -, Sem 2 = baseJp)
+        if (tingkat === 12 && (nama.includes('pilihan') || kode.includes('PILIHAN') || kode.includes('MAPEL-PILIHAN'))) {
+            return semesterNum === 2 ? `${baseJp}` : '-';
+        }
+        
+        // Default: Tampilkan JP yang sama untuk kedua semester di tingkat tersebut
+        return baseJp > 0 ? `${baseJp}` : '-';
+    }, []);
+
+    const getSubRowsForMapel = useCallback((namaMapel: string, kodeMapel: string) => {
+        const nama = namaMapel.toLowerCase();
+        const kode = (kodeMapel || '').toUpperCase();
+        
+        if (nama.includes('dasar-dasar teknik jaringan') || nama.includes('dasar dasar teknik jaringan') || kode.includes('DAS-TKJ')) {
+            return [
+                { nama: 'Dasar Program Keahlian 1', jp: { 10: 4, 11: 0, 12: 0 } },
+                { nama: 'Dasar Program Keahlian 2', jp: { 10: 4, 11: 0, 12: 0 } },
+                { nama: 'Dasar Program Keahlian 3', jp: { 10: 4, 11: 0, 12: 0 } }
+            ];
+        }
+        
+        if (nama.includes('konsentrasi keahlian') || kode === 'KK' || kode.startsWith('KK-')) {
+            return [
+                { nama: 'Perencanaan dan pengalamatan jaringan', jp: { 10: 0, 11: 3, 12: 4 } },
+                { nama: 'Teknologi jaringan kabel dan nirkabel', jp: { 10: 0, 11: 3, 12: 4 } },
+                { nama: 'Keamanan Jaringan', jp: { 10: 0, 11: 4, 12: 4 } },
+                { nama: 'Pemasangan dan Konfigurasi perangkat jaringan', jp: { 10: 0, 11: 4, 12: 6 } },
+                { nama: 'Administrasi sistem jaringan', jp: { 10: 0, 11: 4, 12: 4 } }
+            ];
+        }
+        
+        return null;
+    }, []);
+
+    const printRows = useMemo(() => {
+        if (!mapping?.data) return { umum: [], kejuruan: [], mulok: [], pilihan: [] };
+        
+        const groups = {
+            umum: [] as any[],
+            kejuruan: [] as any[],
+            mulok: [] as any[],
+            pilihan: [] as any[]
+        };
+        
+        const mapelMap = new Map<string, {
+            id: string;
+            nama: string;
+            kode: string;
+            jp: Record<number, number>;
+        }>();
+        
+        mapping.data.forEach((item: any) => {
+            const mapelId = item.mapel_id;
+            const tingkat = item.tingkat;
+            const jp = item.jp_per_minggu;
+            
+            if (!mapelMap.has(mapelId)) {
+                mapelMap.set(mapelId, {
+                    id: mapelId,
+                    nama: item.Mapel?.nama_mapel || '',
+                    kode: item.Mapel?.kode_mapel || '',
+                    jp: { 10: 0, 11: 0, 12: 0 }
+                });
+            }
+            
+            const m = mapelMap.get(mapelId)!;
+            m.jp[tingkat] = jp;
+        });
+        
+        mapelMap.forEach((m) => {
+            const originalItem = mapping.data.find((item: any) => item.mapel_id === m.id);
+            const kelompokStr = (originalItem?.kelompok || 'MATA PELAJARAN UMUM').toUpperCase();
+            
+            if (kelompokStr === 'MATA PELAJARAN UMUM') {
+                groups.umum.push(m);
+            } else if (kelompokStr === 'MATA PELAJARAN KEJURUAN') {
+                groups.kejuruan.push(m);
+            } else if (kelompokStr === 'MUATAN LOKAL') {
+                groups.mulok.push(m);
+            } else if (kelompokStr === 'MATA PELAJARAN PILIHAN') {
+                groups.pilihan.push(m);
+            } else {
+                groups.umum.push(m);
+            }
+        });
+        
+        return groups;
+    }, [mapping?.data]);
+
+    const getKelompokTotal = useCallback((kelompokList: any[], tingkat: number, semesterNum: 1 | 2) => {
+        let sum = 0;
+        kelompokList.forEach(m => {
+            const baseJp = m.jp[tingkat] || 0;
+            if (baseJp === 0) return;
+            const jpVal = getJpValueForSemester(m.nama, m.kode, tingkat, semesterNum, baseJp);
+            if (jpVal !== '-') {
+                sum += Number(jpVal);
+            }
+        });
+        return sum > 0 ? sum : 0;
+    }, [getJpValueForSemester]);
+
+    const city = useMemo(() => {
+        if (!tenantInfo?.address) return 'Jakarta';
+        const addr = tenantInfo.address.toLowerCase();
+        if (addr.includes('kediri')) return 'Kediri';
+        if (addr.includes('cimahi')) return 'Cimahi';
+        if (addr.includes('plered')) return 'Plered';
+        if (addr.includes('jakarta')) return 'Jakarta';
+        
+        const parts = tenantInfo.address.split(',');
+        if (parts.length > 1) {
+            return parts[parts.length - 2].trim();
+        }
+        return 'Jakarta';
+    }, [tenantInfo?.address]);
+
+    const selectedJurusan = useMemo(() => {
+        return jurusans?.data?.find(item => item.id === selectedJurusanId);
+    }, [jurusans, selectedJurusanId]);
 
 
     // Mutations
@@ -337,7 +491,7 @@ const MasterStrukturPage: React.FC = () => {
             const next = { ...prev };
             subjects.data.forEach((s: Mapel) => {
                 // 1. Jangan masukkan mapel yang sudah dipetakan sebelumnya di tingkat kelas ini
-                const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
+                const alreadyMapped = mappingFiltered?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
                 if (alreadyMapped) return;
 
                 if (isMapelBelongsToOtherJurusan(s)) return;
@@ -400,7 +554,7 @@ const MasterStrukturPage: React.FC = () => {
             });
             return next;
         });
-    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
+    }, [subjects?.data, mappingFiltered, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
 
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -460,12 +614,12 @@ const MasterStrukturPage: React.FC = () => {
     }, []);
 
     const handleSelectAllRows = useCallback((checked: boolean) => {
-        if (checked && mapping?.data) {
-            setSelectedRowIds(new Set(mapping.data.map((item: StrukturKurikulum) => item.id)));
+        if (checked && mappingFiltered) {
+            setSelectedRowIds(new Set(mappingFiltered.map((item: StrukturKurikulum) => item.id)));
         } else {
             setSelectedRowIds(new Set());
         }
-    }, [mapping?.data]);
+    }, [mappingFiltered]);
 
     const handleBulkDelete = useCallback(async () => {
         if (selectedRowIds.size === 0) return;
@@ -506,8 +660,8 @@ const MasterStrukturPage: React.FC = () => {
     }, []);
 
     const totalJp = useMemo(() => {
-        return mapping?.data?.reduce((acc: number, curr: StrukturKurikulum) => acc + curr.jp_per_minggu, 0) || 0;
-    }, [mapping?.data]);
+        return mappingFiltered?.reduce((acc: number, curr: StrukturKurikulum) => acc + curr.jp_per_minggu, 0) || 0;
+    }, [mappingFiltered]);
 
     // Standar JP kementerian berdasarkan Permendikbudristek No. 12 Tahun 2024
     const STANDAR_JP_CONFIG = useMemo<Record<string, Record<number, number>>>(() => ({
@@ -535,8 +689,8 @@ const MasterStrukturPage: React.FC = () => {
     }, [targetJp, totalJp]);
 
     const unmappedSubjects = useMemo(() => {
-        if (!subjects?.data || !mapping?.data) return [];
-        const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
+        if (!subjects?.data || !mappingFiltered) return [];
+        const mappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
         
         return subjects.data.filter((s: Mapel) => {
             if (mappedMapelIds.has(s.id)) return false;
@@ -580,12 +734,12 @@ const MasterStrukturPage: React.FC = () => {
             
             return true;
         });
-    }, [subjects?.data, mapping?.data, selectedTingkat, isMapelBelongsToOtherJurusan]);
+    }, [subjects?.data, mappingFiltered, selectedTingkat, isMapelBelongsToOtherJurusan]);
 
     const presetSisaCount = useMemo(() => {
-        if (!subjects?.data || !mapping?.data) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
+        if (!subjects?.data || !mappingFiltered) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
         
-        const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
+        const mappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
         let umum = 0;
         let kejuruan = 0;
         let mulok = 0;
@@ -636,7 +790,7 @@ const MasterStrukturPage: React.FC = () => {
         });
         
         return { UMUM: umum, KEJURUAN: kejuruan, MULOK: mulok, PILIHAN: pilihan };
-    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
+    }, [subjects?.data, mappingFiltered, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
 
     const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
         resetForm();
@@ -898,83 +1052,42 @@ const MasterStrukturPage: React.FC = () => {
                                 body * {
                                     visibility: hidden;
                                 }
-                                .print-area, .print-area * {
+                                .print-matrix-area, .print-matrix-area * {
                                     visibility: visible;
+                                    display: block !important;
                                 }
-                                .print-area {
+                                .print-matrix-area table, .print-matrix-area table * {
+                                    visibility: visible;
+                                    display: table !important;
+                                }
+                                .print-matrix-area tr {
+                                    display: table-row !important;
+                                }
+                                .print-matrix-area th, .print-matrix-area td {
+                                    display: table-cell !important;
+                                    border: 1px solid black !important;
+                                    padding: 6px 8px !important;
+                                    color: black !important;
+                                }
+                                .print-matrix-area {
                                     position: absolute;
                                     left: 0;
                                     top: 0;
                                     width: 100%;
                                     background: white !important;
                                     color: black !important;
-                                    padding: 24px;
+                                    padding: 12px;
+                                }
+                                .print-area, .print-area * {
+                                    display: none !important;
+                                    visibility: hidden !important;
                                 }
                                 .no-print, .no-print * {
                                     display: none !important;
                                     visibility: hidden !important;
                                 }
-                                .print-kop {
-                                    display: block !important;
-                                    text-align: center;
-                                    margin-bottom: 24px;
-                                    border-bottom: 3px double black;
-                                    padding-bottom: 12px;
-                                }
-                                .print-signatures {
-                                    display: grid !important;
-                                    grid-template-cols: 1fr 1fr;
-                                    margin-top: 50px;
-                                    text-align: center;
-                                    font-size: 12px;
-                                }
-                                table {
-                                    border-collapse: collapse !important;
-                                    width: 100% !important;
-                                    margin-top: 16px;
-                                }
-                                th, td {
-                                    border: 1px solid black !important;
-                                    padding: 8px !important;
-                                    color: black !important;
-                                    background: transparent !important;
-                                }
-                                th {
-                                    font-weight: bold !important;
-                                    text-transform: uppercase !important;
-                                    font-size: 10px !important;
-                                    text-align: left;
-                                }
-                                td {
-                                    font-size: 11px !important;
-                                }
-                                .badge-print {
-                                    border: none !important;
-                                    background: transparent !important;
-                                    color: black !important;
-                                    padding: 0 !important;
-                                    font-weight: bold !important;
-                                }
                             }
                         `}</style>
-
-                        {/* Kop Surat Cetakan Resmi */}
-                        <div className="hidden print-kop text-center">
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">PEMERINTAH PROVINSI DAERAH KHUSUS IBUKOTA JAKARTA</h2>
-                            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-800">DINAS PENDIDIKAN</h2>
-                            <h1 className="text-lg font-black uppercase tracking-wider text-black mt-1">SEKOLAH MENENGAH KEJURUAN ABSENTA</h1>
-                            <p className="text-[10px] text-gray-500 italic mt-0.5">Jalan Raya Absenta No. 99, Kota Jakarta, Email: info@absenta.sch.id</p>
-                        </div>
-
-                        {/* Judul Laporan Cetak */}
-                        <div className="hidden print:block text-center my-4">
-                            <h3 className="text-sm font-black uppercase tracking-wide text-black">STRUKTUR KURIKULUM SATUAN PENDIDIKAN</h3>
-                            <div className="text-xs text-slate-800 font-bold mt-1.5 space-y-1">
-                                <p>TAHUN PELAJARAN: {selectedTahunNama || '-'}</p>
-                                <p>TINGKAT KELAS: KELAS {selectedTingkat}</p>
-                                {isSmkOrMak && <p>PROGRAM KEAHLIAN: {selectedJurusanNama || '-'}</p>}
-                            </div>
-                        </div>
 
                         <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2 no-print">
@@ -983,7 +1096,7 @@ const MasterStrukturPage: React.FC = () => {
                                         <BookOpen size={18} className="mr-2 text-indigo-500" />
                                         Struktur Kurikulum - Tingkat {selectedTingkat}
                                     </h3>
-                                    <Badge variant="secondary" className="font-bold">{mapping?.data?.length || 0} Mata Pelajaran</Badge>
+                                    <Badge variant="secondary" className="font-bold">{mappingFiltered.length} Mata Pelajaran</Badge>
                                     
                                     <button
                                         type="button"
@@ -1011,7 +1124,7 @@ const MasterStrukturPage: React.FC = () => {
                                         <th className="px-4 py-4 w-10 text-center">
                                             <input 
                                                 type="checkbox"
-                                                checked={mapping?.data && mapping.data.length > 0 && selectedRowIds.size === mapping.data.length}
+                                                checked={mappingFiltered && mappingFiltered.length > 0 && selectedRowIds.size === mappingFiltered.length}
                                                 onChange={(e) => handleSelectAllRows(e.target.checked)}
                                                 className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
                                             />
@@ -1029,7 +1142,7 @@ const MasterStrukturPage: React.FC = () => {
                                                 <td className="px-6 py-4" colSpan={5}><Skeleton className="h-10 w-full rounded-lg" /></td>
                                             </tr>
                                         ))
-                                    ) : !mapping?.data || mapping.data.length === 0 ? (
+                                    ) : !mappingFiltered || mappingFiltered.length === 0 ? (
                                         <tr>
                                             <td className="px-6 py-20 text-center" colSpan={5}>
                                                 <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
@@ -1046,7 +1159,7 @@ const MasterStrukturPage: React.FC = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        mapping.data.map((item: StrukturKurikulum) => {
+                                        mappingFiltered.map((item: StrukturKurikulum) => {
                                             const isRowChecked = selectedRowIds.has(item.id);
                                             return (
                                                 <tr key={item.id} className={`group transition-colors ${
@@ -1133,23 +1246,218 @@ const MasterStrukturPage: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </Card>
+                </div>
 
-                        {/* Print Only Signatures */}
-                        <div className="hidden print-signatures grid grid-cols-2 mt-12 text-center text-xs font-bold text-black bg-white">
-                            <div>
-                                <p>Mengetahui,</p>
-                                <p className="mb-20 mt-1">Kepala Sekolah</p>
-                                <p className="underline font-black">..................................................</p>
-                                <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
+                {/* Print Matrix Area (Cetak Konsolidasi 3 Kelas Matrix) */}
+                <div className="hidden print:block print-matrix-area bg-white text-black text-xs font-serif leading-normal">
+                    {/* Kop Surat Dinamis */}
+                    <PrintHeader variant="portrait" tenantInfo={tenantInfo} />
+                    
+                    {/* Judul & Metadata */}
+                    <div className="text-center my-4 space-y-1">
+                        <h2 className="text-base font-bold uppercase tracking-wider text-black">STRUKTUR KURIKULUM SATUAN PENDIDIKAN</h2>
+                        <h3 className="text-sm font-bold uppercase tracking-wide text-black">{tenantInfo?.name || 'SMKS PLUS NURUL HAKIM KEDIRI'}</h3>
+                        <h4 className="text-xs font-semibold uppercase text-black">TAHUN AJARAN {selectedTahunNama || '2025/2026'}</h4>
+                    </div>
+
+                    {/* Metadata Bidang & Program Keahlian */}
+                    {isSmkOrMak && (
+                        <div className="w-full text-xs text-black mb-6 space-y-1.5 font-bold border-b border-black pb-4">
+                            <div className="grid grid-cols-12">
+                                <span className="col-span-3">Bidang Keahlian</span>
+                                <span className="col-span-9">: {selectedJurusan?.ProgramKeahlian?.bidang_keahlian || 'Teknik Komunikasi'}</span>
                             </div>
-                            <div>
-                                <p>Jakarta, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                <p className="mb-20 mt-1">Wakasek Bidang Kurikulum</p>
-                                <p className="underline font-black">..................................................</p>
-                                <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
+                            <div className="grid grid-cols-12">
+                                <span className="col-span-3">Program Keahlian</span>
+                                <span className="col-span-9">: {selectedJurusan?.ProgramKeahlian?.nama || 'Teknik Jaringan Komputer dan Telekomunikasi'}</span>
+                            </div>
+                            <div className="grid grid-cols-12">
+                                <span className="col-span-3">Konsentrasi Keahlian</span>
+                                <span className="col-span-9">: {selectedJurusan?.nama || 'Teknik Komputer dan Jaringan'} (Kode {selectedJurusan?.kode || '66'})</span>
                             </div>
                         </div>
-                    </Card>
+                    )}
+
+                    {/* Tabel Matrix Kurikulum */}
+                    <table className="w-full border-collapse border border-black text-black">
+                        <thead>
+                            <tr className="bg-gray-100">
+                                <th rowSpan={3} className="border border-black px-2 py-3 text-center align-middle font-bold text-xs w-[40%]">MATA PELAJARAN</th>
+                                <th colSpan={6} className="border border-black px-2 py-1 text-center font-bold text-xs">KELAS</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                                <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">X</th>
+                                <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">XI</th>
+                                <th colSpan={2} className="border border-black px-2 py-1 text-center font-bold text-xs">XII</th>
+                            </tr>
+                            <tr className="bg-gray-100">
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">1</th>
+                                <th className="border border-black px-2 py-0.5 text-center font-bold text-[10px] w-[10%]">2</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* A. KELOMPOK UMUM */}
+                            <tr className="font-bold bg-gray-50">
+                                <td className="border border-black px-2 py-1 font-bold">A. UMUM</td>
+                                <td colSpan={6} className="border border-black"></td>
+                            </tr>
+                            {printRows.umum.map((m, idx) => (
+                                <React.Fragment key={m.id}>
+                                    <tr>
+                                        <td className="border border-black px-4 py-1">{idx + 1}. {m.nama}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
+                                    </tr>
+                                    {/* Render Sub-rows if any */}
+                                    {getSubRowsForMapel(m.nama, m.kode)?.map((sub, sIdx) => (
+                                        <tr key={sIdx} className="text-gray-600 italic">
+                                            <td className="border border-black px-8 py-0.5 text-xs">- {sub.nama}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                            <tr className="font-bold bg-gray-50">
+                                <td className="border border-black px-2 py-1">Jumlah jam kelompok A</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 10, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 10, 2)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 11, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 11, 2)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 12, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal(printRows.umum, 12, 2)}</td>
+                            </tr>
+
+                            {/* B. KEJURUAN */}
+                            <tr className="font-bold bg-gray-50">
+                                <td className="border border-black px-2 py-1 font-bold">B. KEJURUAN</td>
+                                <td colSpan={6} className="border border-black"></td>
+                            </tr>
+                            {printRows.kejuruan.map((m, idx) => (
+                                <React.Fragment key={m.id}>
+                                    <tr>
+                                        <td className="border border-black px-4 py-1">{idx + 1}. {m.nama}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
+                                        <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
+                                    </tr>
+                                    {/* Render Sub-rows if any */}
+                                    {getSubRowsForMapel(m.nama, m.kode)?.map((sub, sIdx) => (
+                                        <tr key={sIdx} className="text-gray-600 italic">
+                                            <td className="border border-black px-8 py-0.5 text-xs">- {sub.nama}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[10] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[11] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
+                                            <td className="border border-black px-2 py-0.5 text-center text-xs">{sub.jp[12] || '-'}</td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+
+                            {/* C. KELOMPOK PILIHAN & MULOK */}
+                            {printRows.pilihan.length > 0 && (
+                                <>
+                                    {printRows.pilihan.map((m, idx) => (
+                                        <React.Fragment key={m.id}>
+                                            <tr>
+                                                <td className="border border-black px-4 py-1">{printRows.kejuruan.length + idx + 1}. {m.nama}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))}
+                                </>
+                            )}
+
+                            {printRows.mulok.length > 0 && (
+                                <>
+                                    {printRows.mulok.map((m, idx) => (
+                                        <React.Fragment key={m.id}>
+                                            <tr>
+                                                <td className="border border-black px-4 py-1">{printRows.kejuruan.length + printRows.pilihan.length + idx + 1}. {m.nama}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 1, m.jp[10])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 10, 2, m.jp[10])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 1, m.jp[11])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 11, 2, m.jp[11])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 1, m.jp[12])}</td>
+                                                <td className="border border-black px-2 py-1 text-center">{getJpValueForSemester(m.nama, m.kode, 12, 2, m.jp[12])}</td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))}
+                                </>
+                            )}
+
+                            <tr className="font-bold bg-gray-50">
+                                <td className="border border-black px-2 py-1">Jumlah jam kelompok B + C</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 2)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 2)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 1)}</td>
+                                <td className="border border-black px-2 py-1 text-center">{getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 2)}</td>
+                            </tr>
+
+                            <tr className="font-black bg-gray-100 text-sm">
+                                <td className="border border-black px-2 py-1 text-left font-black">Total Beban Belajar (A + B + C)</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 10, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 1)
+                                }</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 10, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 10, 2)
+                                }</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 11, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 1)
+                                }</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 11, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 11, 2)
+                                }</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 12, 1) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 1)
+                                }</td>
+                                <td className="border border-black px-2 py-1 text-center">{
+                                    getKelompokTotal(printRows.umum, 12, 2) + getKelompokTotal([...printRows.kejuruan, ...printRows.pilihan, ...printRows.mulok], 12, 2)
+                                }</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    {/* Kolom Tanda Tangan */}
+                    <div className="grid grid-cols-2 mt-12 text-center text-xs font-bold text-black bg-white break-inside-avoid">
+                        <div>
+                            <p>Mengetahui,</p>
+                            <p className="mb-20 mt-1">Wakasek Bidang Kurikulum</p>
+                            <p className="underline font-black">..................................................</p>
+                            <p className="text-[10px] text-gray-500 mt-1">NIP. ....................................</p>
+                        </div>
+                        <div>
+                            <p>{city}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p className="mb-20 mt-1">Kepala Sekolah,</p>
+                            <p className="underline font-black">{tenantInfo?.kepala_sekolah || '..................................................'}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">NIP. {tenantInfo?.nip_kepala || '....................................'}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             </div>
@@ -1302,7 +1610,7 @@ const MasterStrukturPage: React.FC = () => {
                                             if (!matchesSearch) return false;
                                             
                                             // 3. Sembunyikan mapel yang sudah di-ploting sebelumnya di tingkat kelas ini
-                                            const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
+                                            const alreadyMapped = mappingFiltered?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
                                             if (alreadyMapped) return false;
                                             
                                             if (isMapelBelongsToOtherJurusan(s)) return false;
