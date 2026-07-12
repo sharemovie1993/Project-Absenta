@@ -1411,9 +1411,61 @@ const MasterStrukturPage: React.FC = () => {
                                                         })()}
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div>
-                                                            <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel}</p>
-                                                            <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel}</p>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div>
+                                                                <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel}</p>
+                                                                <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel}</p>
+                                                            </div>
+                                                            {(() => {
+                                                                if (!standardReferences?.data) return null;
+                                                                const code = (item.Mapel?.kode_mapel || '').toUpperCase();
+                                                                const name = (item.Mapel?.nama_mapel || '').toLowerCase();
+                                                                
+                                                                let match = standardReferences.data.find(ref => 
+                                                                    ref.tingkat === item.tingkat && 
+                                                                    (ref.kode_mapel || '').toUpperCase() === code
+                                                                );
+                                                                
+                                                                if (!match) {
+                                                                    match = standardReferences.data.find(ref => 
+                                                                        ref.tingkat === item.tingkat && 
+                                                                        (
+                                                                            name.includes(ref.nama_mapel.toLowerCase()) || 
+                                                                            ref.nama_mapel.toLowerCase().includes(name)
+                                                                        )
+                                                                    );
+                                                                }
+                                                                
+                                                                if (!match) {
+                                                                    const isKejuruan = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif');
+                                                                    if (isKejuruan) {
+                                                                        if (code.includes('PKL') || name.includes('praktik kerja')) {
+                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKL');
+                                                                        } else if (code.includes('PKK') || name.includes('kreatif')) {
+                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKK');
+                                                                        } else {
+                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'KK');
+                                                                        }
+                                                                    }
+                                                                }
+                                                                
+                                                                if (!match) return null;
+                                                                
+                                                                const isMatch = item.jp_per_minggu === match.jp_per_minggu;
+                                                                if (isMatch) {
+                                                                    return (
+                                                                        <Badge className="bg-emerald-50/70 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-350 border border-emerald-100/50 dark:border-emerald-900/30 text-[9px] font-black tracking-wider uppercase select-none rounded-lg">
+                                                                            ✓ Sesuai Standar
+                                                                        </Badge>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <Badge className="bg-amber-50/70 dark:bg-amber-950/20 text-amber-700 dark:text-amber-350 border border-amber-100/50 dark:border-amber-900/30 text-[9px] font-black tracking-wider uppercase select-none rounded-lg" title={`Standar kementerian: ${match.jp_per_minggu} JP`}>
+                                                                            ⚠ Harusnya {match.jp_per_minggu} JP
+                                                                        </Badge>
+                                                                    );
+                                                                }
+                                                            })()}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
