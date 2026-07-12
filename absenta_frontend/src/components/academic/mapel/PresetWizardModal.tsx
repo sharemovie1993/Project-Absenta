@@ -543,7 +543,9 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                         <div key={category} className="space-y-2 border-b border-slate-100 dark:border-slate-900 pb-3 last:border-0 last:pb-0">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                              {category.replace('PILIHAN_', 'RUMPUN ').replace('_', ' ')}
+                              {category === 'PILIHAN_SMK' 
+                                ? 'MAPEL PILIHAN KEJURUAN / MINAT' 
+                                : category.replace('PILIHAN_', 'RUMPUN ').replace('_', ' ')}
                             </span>
                             <div className="flex gap-2 text-[9px] font-bold">
                               <button onClick={() => handleSelectAllStep(list, true)} className="text-indigo-650 hover:underline">Pilih Semua</button>
