@@ -489,6 +489,75 @@ const MasterStrukturPage: React.FC = () => {
         return 'MATA PELAJARAN UMUM';
     }, []);
 
+    const detectDefaultJpForMapel = useCallback((kodeMapel: string, namaMapel: string, tingkat: number): number => {
+        const kode = (kodeMapel || '').toUpperCase();
+        const nama = (namaMapel || '').toLowerCase();
+        
+        // 1. Projek IPAS (Hanya di Kelas 10, 6 JP)
+        if (nama.includes('ipas') || nama.includes('ilmu pengetahuan alam') || kode.includes('IPAS')) {
+            return tingkat === 10 ? 6 : 2;
+        }
+        // 2. Dasar-dasar Kejuruan (Hanya di Kelas 10, 12 JP)
+        if (nama.includes('dasar-dasar kejuruan') || nama.includes('dasar kejuruan') || kode.includes('DAS-') || kode.includes('DK-')) {
+            return tingkat === 10 ? 12 : 2;
+        }
+        // 3. Konsentrasi Keahlian (Kelas 11: 18 JP, Kelas 12: 22 JP)
+        if (nama.includes('konsentrasi keahlian') || nama.includes('kompetensi keahlian') || kode === 'KK' || kode.startsWith('KK-')) {
+            if (tingkat === 11) return 18;
+            if (tingkat === 12) return 22;
+            return 2;
+        }
+        // 4. Projek Kreatif dan Kewirausahaan (PKK) (Kelas 11: 5 JP, Kelas 12: 5 JP)
+        if (nama.includes('projek kreatif') || nama.includes('kewirausahaan') || nama.includes('pkk') || kode.includes('PKK')) {
+            return (tingkat === 11 || tingkat === 12) ? 5 : 2;
+        }
+        // 5. Praktik Kerja Lapangan (PKL) (Kelas 12: 44 JP)
+        if (nama.includes('praktik kerja lapangan') || nama.includes('pkl') || kode.includes('PKL')) {
+            return tingkat === 12 ? 44 : 2;
+        }
+        // 6. Mata Pelajaran Pilihan (Kelas 11: 4 JP, Kelas 12: 6 JP)
+        if (nama.includes('pilihan') || kode.includes('PILIHAN')) {
+            if (tingkat === 11) return 4;
+            if (tingkat === 12) return 6;
+            return 2;
+        }
+        // 7. Informatika (Hanya di Kelas 10: 4 JP)
+        if (nama.includes('informatika') || kode.includes('INF') || kode.includes('TIK')) {
+            return tingkat === 10 ? 4 : 2;
+        }
+        // 8. PJOK (Kelas 10: 3 JP, Kelas 11: 2 JP)
+        if (nama.includes('jasmani') || nama.includes('olahraga') || nama.includes('pjok') || kode.includes('PJOK')) {
+            if (tingkat === 10) return 3;
+            if (tingkat === 11) return 2;
+            return 2;
+        }
+        // 9. Bahasa Indonesia (Kelas 10: 4 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
+        if (nama.includes('bahasa indonesia') || kode.includes('IND')) {
+            if (tingkat === 10) return 4;
+            if (tingkat === 11) return 3;
+            if (tingkat === 12) return 2;
+        }
+        // 10. Matematika (Kelas 10: 4 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
+        if (nama.includes('matematika') || kode.includes('MAT')) {
+            if (tingkat === 10) return 4;
+            if (tingkat === 11) return 3;
+            if (tingkat === 12) return 2;
+        }
+        // 11. Bahasa Inggris (Kelas 10: 2 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
+        if (nama.includes('bahasa inggris') || kode.includes('ING')) {
+            if (tingkat === 10) return 2;
+            if (tingkat === 11) return 3;
+            if (tingkat === 12) return 2;
+        }
+        // 12. Pend. Agama & Budi Pekerti (Kelas 10: 3 JP, Kelas 11: 3 JP, Kelas 12: 2 JP)
+        if (nama.includes('agama') || kode.includes('PAI') || kode.includes('AGAMA')) {
+            if (tingkat === 10 || tingkat === 11) return 3;
+            if (tingkat === 12) return 2;
+        }
+        
+        return 2;
+    }, []);
+
     const handleAddPreset = useCallback((type: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN') => {
         if (!subjects?.data) return;
         
@@ -546,11 +615,7 @@ const MasterStrukturPage: React.FC = () => {
                 if (type === 'PILIHAN' && group === 'MATA PELAJARAN PILIHAN') match = true;
                 
                 if (match) {
-                    let defaultJp = 2;
-                    const namaLower = s.nama_mapel.toLowerCase();
-                    if (namaLower.includes('praktik kerja lapangan') || namaLower.includes('praktek kerja lapangan')) defaultJp = 4;
-                    else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
-                    
+                    const defaultJp = detectDefaultJpForMapel(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
                     next[s.id] = {
                         jp_per_minggu: defaultJp,
                         kelompok: group
@@ -559,7 +624,7 @@ const MasterStrukturPage: React.FC = () => {
             });
             return next;
         });
-    }, [subjects?.data, mappingFiltered, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan]);
+    }, [subjects?.data, mappingFiltered, selectedTingkat, detectKelompokForMapel, isMapelBelongsToOtherJurusan, detectDefaultJpForMapel]);
 
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -806,28 +871,20 @@ const MasterStrukturPage: React.FC = () => {
             const s = subjects?.data?.find((subj: Mapel) => subj.id === specificSubjectId);
             if (s) {
                 const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
-                let defaultJp = 2;
-                const namaLower = s.nama_mapel.toLowerCase();
-                if (namaLower.includes('praktik kerja lapangan')) defaultJp = 4;
-                else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
-                
+                const defaultJp = detectDefaultJpForMapel(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
                 newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
             }
         } else {
             unmappedSubjects.forEach((s: Mapel) => {
                 const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
-                let defaultJp = 2;
-                const namaLower = s.nama_mapel.toLowerCase();
-                if (namaLower.includes('praktik kerja lapangan')) defaultJp = 4;
-                else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
-                
+                const defaultJp = detectDefaultJpForMapel(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
                 newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
             });
         }
         
         setBulkSelections(newSelections);
         setIsModalOpen(true);
-    }, [subjects?.data, unmappedSubjects, resetForm, detectKelompokForMapel]);
+    }, [subjects?.data, unmappedSubjects, resetForm, detectKelompokForMapel, selectedTingkat, detectDefaultJpForMapel]);
 
     // ============ PDF HANDLER ============
     const [isPrinting, setIsPrinting] = useState(false);
