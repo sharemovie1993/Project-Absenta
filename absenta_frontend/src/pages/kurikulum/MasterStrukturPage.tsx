@@ -232,14 +232,15 @@ const MasterStrukturPage: React.FC = () => {
         
         // 1. Kejuruan
         const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-        const isKejuruan = kode.includes('PKL') || 
-                           kode.includes('PKK') || 
-                           kode.includes('DAS-') || 
+        const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+        const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+        const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+
+        const isKejuruan = isPkl || 
+                           isPkk || 
+                           isDasar || 
                            kode.endsWith('-K') || 
-                           kejuruanSuffixes.some(s => kode.includes(s)) ||
-                           nama.includes('praktik kerja lapangan') || 
-                           nama.includes('projek kreatif') || 
-                           nama.includes('dasar-dasar');
+                           kejuruanSuffixes.some(s => kode.includes(s));
                            
         // 2. Muatan Lokal
         const isMulok = kode.startsWith('M-') || 
@@ -430,9 +431,9 @@ const MasterStrukturPage: React.FC = () => {
             const kode = (s.kode_mapel || '').toUpperCase();
             const nama = (s.nama_mapel || '').toLowerCase();
             
-            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar');
-            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan');
-            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif');
+            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
             
             if (selectedTingkat === 10) {
                 // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
@@ -924,10 +925,9 @@ const MasterStrukturPage: React.FC = () => {
                                                                   kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
                                             if (!matchesSearch) return false;
                                             
-                                            // Indikator khusus
-                                            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar');
-                                            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan');
-                                            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif');
+                                            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+                                            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+                                            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
                                             
                                             // 2. Smart Filter Relevansi Tingkat
                                             if (selectedTingkat === 10) {
