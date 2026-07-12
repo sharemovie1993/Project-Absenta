@@ -74,17 +74,63 @@ export class StrukturKurikulumController {
   static async getStandardReferences(req: any, reply: any) {
     try {
       const { jenjang } = req.query;
-      if (!jenjang) {
-        return reply.status(400).send({
-          success: false,
-          message: 'jenjang query parameter is required'
-        });
-      }
-      
-      const result = await StrukturKurikulumService.getStandardReferences(String(jenjang));
+      const result = await StrukturKurikulumService.getStandardReferences(jenjang ? String(jenjang) : undefined);
       return sendResponse(reply, 200, true, 'Global kurikulum standards retrieved', result);
     } catch (error) {
       return sendError(reply, 500, 'Failed to retrieve global kurikulum standards', error);
+    }
+  }
+
+  static async createStandardReference(req: any, reply: any) {
+    try {
+      const { jenjang, category, nama_mapel, kode_mapel, tingkat, jp_per_minggu } = req.body;
+      if (!jenjang || !nama_mapel || !kode_mapel || tingkat === undefined || jp_per_minggu === undefined) {
+        return reply.status(400).send({
+          success: false,
+          message: 'jenjang, nama_mapel, kode_mapel, tingkat, and jp_per_minggu are required fields'
+        });
+      }
+
+      const result = await StrukturKurikulumService.createStandardReference({
+        jenjang,
+        category,
+        nama_mapel,
+        kode_mapel,
+        tingkat: Number(tingkat),
+        jp_per_minggu: Number(jp_per_minggu)
+      });
+      return sendResponse(reply, 201, true, 'Global kurikulum standard created', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to create global kurikulum standard', error);
+    }
+  }
+
+  static async updateStandardReference(req: any, reply: any) {
+    try {
+      const { id } = req.params;
+      const { jenjang, category, nama_mapel, kode_mapel, tingkat, jp_per_minggu } = req.body;
+
+      const result = await StrukturKurikulumService.updateStandardReference(id, {
+        ...(jenjang ? { jenjang } : {}),
+        ...(category !== undefined ? { category } : {}),
+        ...(nama_mapel ? { nama_mapel } : {}),
+        ...(kode_mapel ? { kode_mapel } : {}),
+        ...(tingkat !== undefined ? { tingkat: Number(tingkat) } : {}),
+        ...(jp_per_minggu !== undefined ? { jp_per_minggu: Number(jp_per_minggu) } : {}),
+      });
+      return sendResponse(reply, 200, true, 'Global kurikulum standard updated', result);
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to update global kurikulum standard', error);
+    }
+  }
+
+  static async deleteStandardReference(req: any, reply: any) {
+    try {
+      const { id } = req.params;
+      await StrukturKurikulumService.deleteStandardReference(id);
+      return sendResponse(reply, 200, true, 'Global kurikulum standard deleted');
+    } catch (error) {
+      return sendError(reply, 500, 'Failed to delete global kurikulum standard', error);
     }
   }
 }

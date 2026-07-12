@@ -1,5 +1,17 @@
 import api from '../lib/axiosInstance';
 
+export interface GlobalKurikulumStandard {
+  id: string;
+  jenjang: string;
+  category?: string;
+  nama_mapel: string;
+  kode_mapel: string;
+  tingkat: number;
+  jp_per_minggu: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface StrukturKurikulum {
   id: string;
   mapel_id: string;
@@ -112,8 +124,20 @@ export const kurikulumApi = {
     const response = await api.delete(`/kurikulum/perangkat/${id}`);
     return response.data;
   },
-  getStandardReferences: async (jenjang: string) => {
+  getStandardReferences: async (jenjang?: string) => {
     const response = await api.get('/kurikulum/struktur/standards', { params: { jenjang } });
+    return response.data;
+  },
+  createStandardReference: async (data: any) => {
+    const response = await api.post('/kurikulum/struktur/standards', data);
+    return response.data;
+  },
+  updateStandardReference: async (id: string, data: any) => {
+    const response = await api.put(`/kurikulum/struktur/standards/${id}`, data);
+    return response.data;
+  },
+  deleteStandardReference: async (id: string) => {
+    const response = await api.delete(`/kurikulum/struktur/standards/${id}`);
     return response.data;
   },
 };

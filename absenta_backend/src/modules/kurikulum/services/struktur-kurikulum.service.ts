@@ -80,18 +80,50 @@ export class StrukturKurikulumService {
       return grouped;
   }
 
-  static async getStandardReferences(jenjang: string) {
+  static async getStandardReferences(jenjang?: string) {
     return prisma.globalKurikulumStandard.findMany({
-      where: {
+      where: jenjang ? {
         jenjang: {
           equals: jenjang,
           mode: 'insensitive'
         }
-      },
+      } : {},
       orderBy: [
+        { jenjang: 'asc' },
         { tingkat: 'asc' },
         { nama_mapel: 'asc' }
       ]
+    });
+  }
+
+  static async createStandardReference(data: {
+    jenjang: string;
+    category?: string;
+    nama_mapel: string;
+    kode_mapel: string;
+    tingkat: number;
+    jp_per_minggu: number;
+  }) {
+    return prisma.globalKurikulumStandard.create({ data });
+  }
+
+  static async updateStandardReference(id: string, data: {
+    jenjang?: string;
+    category?: string;
+    nama_mapel?: string;
+    kode_mapel?: string;
+    tingkat?: number;
+    jp_per_minggu?: number;
+  }) {
+    return prisma.globalKurikulumStandard.update({
+      where: { id },
+      data
+    });
+  }
+
+  static async deleteStandardReference(id: string) {
+    return prisma.globalKurikulumStandard.delete({
+      where: { id }
     });
   }
 }
