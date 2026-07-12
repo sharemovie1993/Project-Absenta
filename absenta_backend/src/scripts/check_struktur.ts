@@ -35,7 +35,7 @@ async function run() {
     // Cari apakah mapel ini mengandung kode/nama jurusan spesifik
     // Misal: PKK-AKL-B4B3 atau KK-AKL
     const matchedJurusan = jurusans.find(j => {
-      const kodeJurusan = j.kode.toUpperCase();
+      const kodeJurusan = (j.kode || '').toUpperCase();
       return kode.includes(`-${kodeJurusan}`) || kode.includes(`KK-${kodeJurusan}`) || nama.includes(j.nama.toLowerCase());
     });
     
