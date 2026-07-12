@@ -1125,6 +1125,7 @@ const MasterStrukturPage: React.FC = () => {
                     </Card>
                 </div>
             </div>
+            </div>
 
             {/* Upsert Modal */}
             <Suspense fallback={<Loader />}>
