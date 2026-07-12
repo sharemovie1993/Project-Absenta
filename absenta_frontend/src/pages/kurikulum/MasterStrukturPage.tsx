@@ -61,6 +61,9 @@ const MasterStrukturPage: React.FC = () => {
     // Bulk mode states
     const [bulkSelections, setBulkSelections] = useState<Record<string, { jp_per_minggu: number; kelompok: string }>>({});
     const [bulkSearchQuery, setBulkSearchQuery] = useState('');
+    
+    // Outer table row selections for bulk delete
+    const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
 
     const { data: subjects } = useQuery({
         queryKey: ['academic-subjects'],
@@ -75,8 +78,14 @@ const MasterStrukturPage: React.FC = () => {
         });
         setBulkSelections({});
         setBulkSearchQuery('');
+        setSelectedRowIds(new Set());
         setEditingItem(null);
     }, [kelompokOptions]);
+
+    // Reset table row selections when filters change
+    React.useEffect(() => {
+        setSelectedRowIds(new Set());
+    }, [selectedTahunId, selectedTingkat]);
 
     React.useEffect(() => {
         if (kelompokOptions?.length > 0 && !formData.kelompok) {
@@ -324,9 +333,56 @@ const MasterStrukturPage: React.FC = () => {
         }
     }, [editingItem, formData, selectedTahunId, selectedTingkat, bulkSelections, upsertMutation, queryClient, closeModal]);
 
+    const handleToggleRowSelect = useCallback((id: string) => {
+        setSelectedRowIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const handleSelectAllRows = useCallback((checked: boolean) => {
+        if (checked && mapping?.data) {
+            setSelectedRowIds(new Set(mapping.data.map((item: StrukturKurikulum) => item.id)));
+        } else {
+            setSelectedRowIds(new Set());
+        }
+    }, [mapping?.data]);
+
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedRowIds.size === 0) return;
+        
+        const count = selectedRowIds.size;
+        const confirmDelete = await confirm({
+            title: `Hapus ${count} Pemetaan?`,
+            description: `Apakah Anda yakin ingin menghapus alokasi jam pelajaran untuk ${count} mata pelajaran terpilih sekaligus?`
+        });
+        
+        if (confirmDelete) {
+            try {
+                await Promise.all(Array.from(selectedRowIds).map(id => kurikulumApi.deleteStruktur(id)));
+                queryClient.invalidateQueries({ queryKey: ['kurikulum-struktur'] });
+                setSelectedRowIds(new Set());
+                toast.success(`Berhasil menghapus ${count} pemetaan`);
+            } catch (err) {
+                console.error(err);
+                toast.error('Gagal menghapus beberapa pemetaan');
+            }
+        }
+    }, [selectedRowIds, confirm, queryClient]);
+
     const handleDelete = useCallback(async (id: string) => {
         if (await confirm({ title: 'Hapus Pemetaan?', description: 'Langkah ini akan menghapus alokasi jam pelajaran untuk mata pelajaran ini.' })) {
             deleteMutation.mutate(id);
+            setSelectedRowIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
         }
     }, [confirm, deleteMutation]);
 
@@ -444,18 +500,37 @@ const MasterStrukturPage: React.FC = () => {
                 {/* Main Table View */}
                 <div className="lg:col-span-3">
                     <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                            <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center">
-                                <BookOpen size={18} className="mr-2 text-indigo-500" />
-                                Struktur Kurikulum - Tingkat {selectedTingkat}
-                            </h3>
-                            <Badge variant="secondary" className="font-bold">{mapping?.data?.length || 0} Mata Pelajaran</Badge>
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2">
+                            <div className="flex items-center gap-3">
+                                <h3 className="font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center">
+                                    <BookOpen size={18} className="mr-2 text-indigo-500" />
+                                    Struktur Kurikulum - Tingkat {selectedTingkat}
+                                </h3>
+                                <Badge variant="secondary" className="font-bold">{mapping?.data?.length || 0} Mata Pelajaran</Badge>
+                            </div>
+                            {selectedRowIds.size > 0 && (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-xs font-black rounded-lg transition-all border border-red-200 dark:border-red-900 shadow-sm"
+                                >
+                                    <Trash2 size={13} />
+                                    HAPUS TERPILIH ({selectedRowIds.size})
+                                </button>
+                            )}
                         </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 dark:bg-slate-800/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">
                                     <tr>
+                                        <th className="px-4 py-4 w-10 text-center">
+                                            <input 
+                                                type="checkbox"
+                                                checked={mapping?.data && mapping.data.length > 0 && selectedRowIds.size === mapping.data.length}
+                                                onChange={(e) => handleSelectAllRows(e.target.checked)}
+                                                className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </th>
                                         <th className="px-6 py-4">Kelompok</th>
                                         <th className="px-6 py-4">Mata Pelajaran</th>
                                         <th className="px-6 py-4 text-center">Beban (JP)</th>
@@ -466,12 +541,12 @@ const MasterStrukturPage: React.FC = () => {
                                     {isLoadingMapping ? (
                                         [1,2,3,4,5].map(i => (
                                             <tr key={i}>
-                                                <td className="px-6 py-4" colSpan={4}><Skeleton className="h-10 w-full rounded-lg" /></td>
+                                                <td className="px-6 py-4" colSpan={5}><Skeleton className="h-10 w-full rounded-lg" /></td>
                                             </tr>
                                         ))
                                     ) : !mapping?.data || mapping.data.length === 0 ? (
                                         <tr>
-                                            <td className="px-6 py-20 text-center" colSpan={4}>
+                                            <td className="px-6 py-20 text-center" colSpan={5}>
                                                 <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                                                     <BookOpen size={48} />
                                                     <p className="text-sm font-bold">Belum ada data struktur kurikulum untuk tingkat ini</p>
@@ -486,41 +561,56 @@ const MasterStrukturPage: React.FC = () => {
                                             </td>
                                         </tr>
                                     ) : (
-                                        mapping.data.map((item: StrukturKurikulum) => (
-                                            <tr key={item.id} className="group hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <Badge className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold border-none">
-                                                        {item.kelompok || 'UMUM'}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div>
-                                                        <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel}</p>
-                                                        <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel}</p>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{item.jp_per_minggu}</span>
-                                                    <span className="text-[10px] font-bold text-gray-400 ml-1">JP</span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right space-x-2">
-                                                    <button 
-                                                        onClick={() => openEditModal(item)}
-                                                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-indigo-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                                                        aria-label="Edit Alokasi"
-                                                    >
-                                                        <Settings size={16} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDelete(item.id)}
-                                                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-red-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                                                        aria-label="Hapus Pemetaan"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
+                                        mapping.data.map((item: StrukturKurikulum) => {
+                                            const isRowChecked = selectedRowIds.has(item.id);
+                                            return (
+                                                <tr key={item.id} className={`group transition-colors ${
+                                                    isRowChecked 
+                                                    ? 'bg-indigo-55/10 dark:bg-indigo-950/20' 
+                                                    : 'hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10'
+                                                }`}>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={isRowChecked}
+                                                            onChange={() => handleToggleRowSelect(item.id)}
+                                                            className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                                                        />
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <Badge className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold border-none">
+                                                            {item.kelompok || 'UMUM'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div>
+                                                            <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel}</p>
+                                                            <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel}</p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{item.jp_per_minggu}</span>
+                                                        <span className="text-[10px] font-bold text-gray-400 ml-1">JP</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right space-x-2">
+                                                        <button 
+                                                            onClick={() => openEditModal(item)}
+                                                            className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-indigo-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                                                            aria-label="Edit Alokasi"
+                                                        >
+                                                            <Settings size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDelete(item.id)}
+                                                            className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-red-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                                                            aria-label="Hapus Pemetaan"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
                                     )}
                                 </tbody>
                             </table>
