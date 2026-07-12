@@ -42,7 +42,7 @@ const MasterStrukturPage: React.FC = () => {
     const queryClient = useQueryClient();
     const { confirm } = useConfirm();
     
-    const { tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
+    const { jenjang, tingkatList, kelompokOptions, isLoading: isLoadingJenjang } = useJenjang();
 
     // Filters
     const [selectedTahunId, setSelectedTahunId] = useState<string>('');
