@@ -423,8 +423,35 @@ const MasterStrukturPage: React.FC = () => {
     const unmappedSubjects = useMemo(() => {
         if (!subjects?.data || !mapping?.data) return [];
         const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
-        return subjects.data.filter((s: Mapel) => !mappedMapelIds.has(s.id));
-    }, [subjects?.data, mapping?.data]);
+        
+        return subjects.data.filter((s: Mapel) => {
+            if (mappedMapelIds.has(s.id)) return false;
+            
+            const kode = (s.kode_mapel || '').toUpperCase();
+            const nama = (s.nama_mapel || '').toLowerCase();
+            
+            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar');
+            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan');
+            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif');
+            
+            if (selectedTingkat === 10) {
+                // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
+                if (isPkl || isPkk) return false;
+                
+                const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                if (isProduktifLanjut) return false;
+            } else if (selectedTingkat === 11) {
+                // Kelas 11: Sembunyikan Dasar-dasar dan PKL
+                if (isDasar || isPkl) return false;
+            } else {
+                // Kelas 12 & 13: Sembunyikan Dasar-dasar
+                if (isDasar) return false;
+            }
+            
+            return true;
+        });
+    }, [subjects?.data, mapping?.data, selectedTingkat]);
 
     const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
         resetForm();
