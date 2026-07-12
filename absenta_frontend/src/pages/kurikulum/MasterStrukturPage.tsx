@@ -272,9 +272,32 @@ const MasterStrukturPage: React.FC = () => {
         setBulkSelections(prev => {
             const next = { ...prev };
             subjects.data.forEach((s: Mapel) => {
-                // Jangan masukkan mapel yang sudah dipetakan sebelumnya di tingkat kelas ini
+                // 1. Jangan masukkan mapel yang sudah dipetakan sebelumnya di tingkat kelas ini
                 const alreadyMapped = mapping?.data?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
                 if (alreadyMapped) return;
+
+                const kode = (s.kode_mapel || '').toUpperCase();
+                const nama = (s.nama_mapel || '').toLowerCase();
+                
+                // 2. Terapkan Smart Filter Relevansi Tingkat yang sama persis
+                const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+                const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+                const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+                
+                if (selectedTingkat === 10) {
+                    // Kelas 10: Sembunyikan PKL, PKK, dan mapel produktif tingkat lanjut
+                    if (isPkl || isPkk) return;
+                    
+                    const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                    const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                    if (isProduktifLanjut) return;
+                } else if (selectedTingkat === 11) {
+                    // Kelas 11: Sembunyikan Dasar-dasar dan PKL
+                    if (isDasar || isPkl) return;
+                } else {
+                    // Kelas 12 & 13: Sembunyikan Dasar-dasar
+                    if (isDasar) return;
+                }
 
                 const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
                 
@@ -286,7 +309,7 @@ const MasterStrukturPage: React.FC = () => {
                 if (match) {
                     let defaultJp = 2;
                     const namaLower = s.nama_mapel.toLowerCase();
-                    if (namaLower.includes('praktik kerja lapangan')) defaultJp = 4;
+                    if (namaLower.includes('praktik kerja lapangan') || namaLower.includes('praktek kerja lapangan')) defaultJp = 4;
                     else if (namaLower.includes('matematika') || namaLower.includes('bahasa indonesia')) defaultJp = 4;
                     
                     next[s.id] = {
@@ -297,7 +320,7 @@ const MasterStrukturPage: React.FC = () => {
             });
             return next;
         });
-    }, [subjects?.data, mapping?.data, detectKelompokForMapel]);
+    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel]);
 
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
