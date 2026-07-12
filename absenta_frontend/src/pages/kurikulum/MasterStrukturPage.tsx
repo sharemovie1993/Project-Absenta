@@ -87,18 +87,9 @@ const MasterStrukturPage: React.FC = () => {
         const kode = (selectedMapel.kode_mapel || '').toUpperCase();
         const nama = (selectedMapel.nama_mapel || '').toLowerCase();
         
-        let detectedKelompok = 'UMUM';
+        let detectedKelompok = 'MATA PELAJARAN UMUM';
         
-        // 1. Keagamaan
-        const keagamaanKodes = ['QURDIS', 'AKIDAH', 'FIKIH', 'SKI', 'ARAB', 'ARAB-L', 'TAFSIR', 'HADIS', 'USHULFQH'];
-        const isKeagamaan = keagamaanKodes.some(k => kode.includes(k)) || 
-                            nama.includes('al-qur\'an') || 
-                            nama.includes('hadis') || 
-                            nama.includes('akidah') || 
-                            nama.includes('fikih') || 
-                            nama.includes('sejarah kebudayaan islam');
-                            
-        // 2. Kejuruan
+        // 1. Kejuruan
         const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
         const isKejuruan = kode.includes('PKL') || 
                            kode.includes('PKK') || 
@@ -109,7 +100,7 @@ const MasterStrukturPage: React.FC = () => {
                            nama.includes('projek kreatif') || 
                            nama.includes('dasar-dasar');
                            
-        // 3. Muatan Lokal
+        // 2. Muatan Lokal
         const isMulok = kode.startsWith('M-') || 
                         nama.includes('bahasa sunda') || 
                         nama.includes('bahasa jawa') || 
@@ -120,7 +111,7 @@ const MasterStrukturPage: React.FC = () => {
                         nama.includes('kesenian daerah') ||
                         nama.includes('kepariwisataan');
                         
-        // 4. Pilihan
+        // 3. Pilihan
         const isPilihan = kode.includes('PILIHAN') || 
                           kode.includes('MAPEL-PILIHAN') || 
                           nama.includes('pilihan') ||
@@ -128,17 +119,14 @@ const MasterStrukturPage: React.FC = () => {
                           // mapel peminatan SMA
                           ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k);
 
-        if (isKeagamaan) {
-            detectedKelompok = 'KEAGAMAAN';
-        } else if (isKejuruan) {
-            detectedKelompok = 'KEJURUAN';
+        if (isKejuruan) {
+            detectedKelompok = 'MATA PELAJARAN KEJURUAN';
         } else if (isMulok) {
-            const hasMulokValue = kelompokOptions.some(opt => opt.value === 'MULOK');
-            detectedKelompok = hasMulokValue ? 'MULOK' : 'MUATAN_LOKAL';
+            detectedKelompok = 'MUATAN LOKAL';
         } else if (isPilihan) {
-            detectedKelompok = 'PILIHAN';
+            detectedKelompok = 'MATA PELAJARAN PILIHAN';
         } else {
-            detectedKelompok = 'UMUM';
+            detectedKelompok = 'MATA PELAJARAN UMUM';
         }
         
         // Pastikan detectedKelompok ada di kelompokOptions sebelum di-set
