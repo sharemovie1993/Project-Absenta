@@ -9,6 +9,8 @@ import {
   GraduationCap,
   Filter,
   Clock,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { kurikulumApi, GlobalKurikulumStandard } from '../../api/kurikulum.api';
 import { Button, Input, Modal, Badge } from '../../components/ui';
@@ -38,6 +40,7 @@ const EMPTY_FORM = { jenjang: '', category: 'UMUM', nama_mapel: '', kode_mapel: 
 
 export const KurikulumStandardsPage: React.FC = () => {
   const confirm = useConfirm();
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [standards, setStandards] = useState<GlobalKurikulumStandard[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -202,6 +205,35 @@ export const KurikulumStandardsPage: React.FC = () => {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </Button>
+            
+            {/* View Mode Toggle */}
+            <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 bg-slate-50 dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === 'grid' 
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+                title="Tampilan Grid"
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === 'table' 
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                }`}
+                title="Tampilan Tabel"
+              >
+                <List size={15} />
+              </button>
+            </div>
+
             <Button
               onClick={handleOpenCreate}
               className="h-9 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold flex items-center gap-1.5 flex-shrink-0"
@@ -235,58 +267,124 @@ export const KurikulumStandardsPage: React.FC = () => {
                   {Object.values(tingkatGroup).flat().length} acuan
                 </Badge>
               </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/60 p-5 space-y-6">
-                {Object.entries(tingkatGroup)
-                  .sort(([a], [b]) => Number(a) - Number(b))
-                  .map(([tingkat, items]) => (
-                    <div key={tingkat} className="pt-4 first:pt-0">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg">
-                          Kelas {tingkat}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                          ({items.length} mapel standar)
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {items.map(standard => (
-                          <div
-                            key={standard.id}
-                            className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/30 hover:border-indigo-200 dark:hover:border-indigo-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/60 transition-all group"
-                          >
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{standard.nama_mapel}</p>
-                                {getCategoryBadge(standard.category)}
+              {viewMode === 'table' ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/70 dark:bg-slate-900/60 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black tracking-wider text-slate-400 dark:text-slate-500">
+                        <th className="px-5 py-3.5 w-24">Kelas</th>
+                        <th className="px-3 py-3.5 w-28">Kode</th>
+                        <th className="px-3 py-3.5">Nama Mata Pelajaran</th>
+                        <th className="px-3 py-3.5 w-40">Kelompok</th>
+                        <th className="px-3 py-3.5 w-36 text-indigo-600 dark:text-indigo-400">Alokasi JP</th>
+                        <th className="px-5 py-3.5 w-24 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/50 dark:divide-slate-800/40">
+                      {Object.values(tingkatGroup)
+                        .flat()
+                        .sort((a, b) => {
+                          if (a.tingkat !== b.tingkat) return a.tingkat - b.tingkat;
+                          return a.nama_mapel.localeCompare(b.nama_mapel);
+                        })
+                        .map(standard => (
+                          <tr key={standard.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-all group">
+                            <td className="px-5 py-3.5">
+                              <span className="font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                                Kelas {standard.tingkat}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3.5">
+                              <span className="font-mono bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded font-bold text-[9px] border border-slate-200 dark:border-slate-700/50">
+                                {standard.kode_mapel}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3.5 font-bold text-slate-800 dark:text-slate-200">
+                              {standard.nama_mapel}
+                            </td>
+                            <td className="px-3 py-3.5">
+                              {getCategoryBadge(standard.category)}
+                            </td>
+                            <td className="px-3 py-3.5 font-extrabold text-slate-700 dark:text-slate-350">
+                              {standard.jp_per_minggu} JP <span className="text-[10px] text-slate-450 dark:text-slate-500 font-normal">/ Minggu</span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleOpenEdit(standard)}
+                                  className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-450 hover:text-indigo-650 transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(standard)}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-450 hover:text-red-650 transition-colors"
+                                  title="Hapus"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
                               </div>
-                              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
-                                <span className="font-mono bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1 py-0.2 rounded font-bold">{standard.kode_mapel}</span>
-                                <span>•</span>
-                                <span className="text-indigo-600 dark:text-indigo-400 font-black">{standard.jp_per_minggu} JP/Minggu</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => handleOpenEdit(standard)}
-                                className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-400 hover:text-indigo-650 transition-colors"
-                                title="Edit"
-                              >
-                                <Edit size={13} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(standard)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-400 hover:text-red-650 transition-colors"
-                                title="Hapus"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
+                            </td>
+                          </tr>
                         ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/60 p-5 space-y-6">
+                  {Object.entries(tingkatGroup)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([tingkat, items]) => (
+                      <div key={tingkat} className="pt-4 first:pt-0">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg">
+                            Kelas {tingkat}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
+                            ({items.length} mapel standar)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {items.map(standard => (
+                            <div
+                              key={standard.id}
+                              className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/30 hover:border-indigo-200 dark:hover:border-indigo-900/50 hover:bg-slate-100/50 dark:hover:bg-slate-800/60 transition-all group"
+                            >
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{standard.nama_mapel}</p>
+                                  {getCategoryBadge(standard.category)}
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
+                                  <span className="font-mono bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1 py-0.2 rounded font-bold">{standard.kode_mapel}</span>
+                                  <span>•</span>
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-black">{standard.jp_per_minggu} JP/Minggu</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => handleOpenEdit(standard)}
+                                  className="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-400 hover:text-indigo-650 transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(standard)}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-450 hover:text-red-650 transition-colors"
+                                  title="Hapus"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-              </div>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
