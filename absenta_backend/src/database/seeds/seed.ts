@@ -437,7 +437,7 @@ async function main() {
       order: 108,
       children: [
         { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Aset Global', icon: 'Package', path: '/superadmin/sarpras-catalog', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Aset Global', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
     },
     {
