@@ -374,7 +374,8 @@ const MasterStrukturPage: React.FC = () => {
                     isOpen={isModalOpen}
                     onClose={closeModal}
                     title={editingItem ? 'Edit Alokasi JP' : 'Tambah Alokasi JP'}
-                    size="md"
+                    size="2xl"
+                    contentClassName="!overflow-visible"
                 >
                     <form onSubmit={handleSave} className="space-y-4 pt-2">
                         <div className="space-y-4 p-1">
