@@ -888,10 +888,27 @@ const MasterStrukturPage: React.FC = () => {
 
                                     {/* Mapel List Checkboxes */}
                                     <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 space-y-2 border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50">
-                                        {subjects?.data?.filter((s: Mapel) => 
-                                            s.nama_mapel.toLowerCase().includes(bulkSearchQuery.toLowerCase()) || 
-                                            s.kode_mapel?.toLowerCase().includes(bulkSearchQuery.toLowerCase())
-                                        ).map((s: Mapel) => {
+                                        {subjects?.data?.filter((s: Mapel) => {
+                                            const kode = (s.kode_mapel || '').toUpperCase();
+                                            const nama = (s.nama_mapel || '').toLowerCase();
+                                            
+                                            const matchesSearch = nama.includes(bulkSearchQuery.toLowerCase()) || 
+                                                                  kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
+                                            if (!matchesSearch) return false;
+                                            
+                                            if (selectedTingkat === 10) {
+                                                const isAdvanced = kode.includes('PKL') || 
+                                                                   kode.includes('PKK') || 
+                                                                   nama.includes('praktik kerja lapangan') || 
+                                                                   nama.includes('projek kreatif');
+                                                if (isAdvanced) return false;
+                                            } else {
+                                                const isBasic = kode.includes('DAS-') || 
+                                                                nama.includes('dasar-dasar');
+                                                if (isBasic) return false;
+                                            }
+                                            return true;
+                                        }).map((s: Mapel) => {
                                             const isChecked = !!bulkSelections[s.id];
                                             return (
                                                 <div 
