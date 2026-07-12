@@ -254,10 +254,10 @@ const MapelList = React.memo<MapelListProps>(({
     }
   }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
-  const handleInitializePreset = useCallback(async (jurusanId?: string) => {
+  const handleInitializePreset = useCallback(async (selectedPresetIds: string[]) => {
     try {
       setInitializingPreset(true);
-      const res = await initializeMapelPreset(jurusanId);
+      const res = await initializeMapelPreset(selectedPresetIds);
       if (res.success) {
         toast.success(res.message || `Berhasil menginisialisasi ${res.count || 0} mata pelajaran preset!`);
         setPresetModalOpen(false);
