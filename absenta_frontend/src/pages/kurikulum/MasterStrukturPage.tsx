@@ -72,6 +72,77 @@ const MasterStrukturPage: React.FC = () => {
         }
     }, [kelompokOptions, formData.kelompok]);
 
+    // Auto-detect kelompok based on selected mapel
+    React.useEffect(() => {
+        if (!formData.mapel_id || !subjects?.data || !kelompokOptions?.length) return;
+        
+        const selectedMapel = subjects.data.find((s: Mapel) => s.id === formData.mapel_id);
+        if (!selectedMapel) return;
+        
+        const kode = (selectedMapel.kode_mapel || '').toUpperCase();
+        const nama = (selectedMapel.nama_mapel || '').toLowerCase();
+        
+        let detectedKelompok = 'UMUM';
+        
+        // 1. Keagamaan
+        const keagamaanKodes = ['QURDIS', 'AKIDAH', 'FIKIH', 'SKI', 'ARAB', 'ARAB-L', 'TAFSIR', 'HADIS', 'USHULFQH'];
+        const isKeagamaan = keagamaanKodes.some(k => kode.includes(k)) || 
+                            nama.includes('al-qur\'an') || 
+                            nama.includes('hadis') || 
+                            nama.includes('akidah') || 
+                            nama.includes('fikih') || 
+                            nama.includes('sejarah kebudayaan islam');
+                            
+        // 2. Kejuruan
+        const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+        const isKejuruan = kode.includes('PKL') || 
+                           kode.includes('PKK') || 
+                           kode.includes('DAS-') || 
+                           kode.endsWith('-K') || 
+                           kejuruanSuffixes.some(s => kode.includes(s)) ||
+                           nama.includes('praktik kerja lapangan') || 
+                           nama.includes('projek kreatif') || 
+                           nama.includes('dasar-dasar');
+                           
+        // 3. Muatan Lokal
+        const isMulok = kode.startsWith('M-') || 
+                        nama.includes('bahasa sunda') || 
+                        nama.includes('bahasa jawa') || 
+                        nama.includes('bahasa bali') || 
+                        nama.includes('bahasa madura') || 
+                        nama.includes('muatan lokal') || 
+                        nama.includes('plh') || 
+                        nama.includes('kesenian daerah') ||
+                        nama.includes('kepariwisataan');
+                        
+        // 4. Pilihan
+        const isPilihan = kode.includes('PILIHAN') || 
+                          kode.includes('MAPEL-PILIHAN') || 
+                          nama.includes('pilihan') ||
+                          nama.includes('tingkat lanjut') ||
+                          // mapel peminatan SMA
+                          ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k);
+
+        if (isKeagamaan) {
+            detectedKelompok = 'KEAGAMAAN';
+        } else if (isKejuruan) {
+            detectedKelompok = 'KEJURUAN';
+        } else if (isMulok) {
+            const hasMulokValue = kelompokOptions.some(opt => opt.value === 'MULOK');
+            detectedKelompok = hasMulokValue ? 'MULOK' : 'MUATAN_LOKAL';
+        } else if (isPilihan) {
+            detectedKelompok = 'PILIHAN';
+        } else {
+            detectedKelompok = 'UMUM';
+        }
+        
+        // Pastikan detectedKelompok ada di kelompokOptions sebelum di-set
+        const isValidOption = kelompokOptions.some(opt => opt.value === detectedKelompok);
+        if (isValidOption) {
+            setFormData(prev => ({ ...prev, kelompok: detectedKelompok }));
+        }
+    }, [formData.mapel_id, subjects?.data, kelompokOptions]);
+
     const openCreateModal = useCallback(() => {
         resetForm();
         setIsModalOpen(true);
