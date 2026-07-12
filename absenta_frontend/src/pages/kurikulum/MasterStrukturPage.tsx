@@ -458,6 +458,45 @@ const MasterStrukturPage: React.FC = () => {
         });
     }, [subjects?.data, mapping?.data, selectedTingkat]);
 
+    const presetSisaCount = useMemo(() => {
+        if (!subjects?.data || !mapping?.data) return { UMUM: 0, KEJURUAN: 0, MULOK: 0 };
+        
+        const mappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
+        let umum = 0;
+        let kejuruan = 0;
+        let mulok = 0;
+        
+        subjects.data.forEach((s: Mapel) => {
+            if (mappedMapelIds.has(s.id)) return;
+            
+            const kode = (s.kode_mapel || '').toUpperCase();
+            const nama = (s.nama_mapel || '').toLowerCase();
+            
+            // Terapkan filter tingkat relevansi yang sama persis agar hitungan akurat
+            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+            
+            if (selectedTingkat === 10) {
+                if (isPkl || isPkk) return;
+                const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk;
+                if (isProduktifLanjut) return;
+            } else if (selectedTingkat === 11) {
+                if (isDasar || isPkl) return;
+            } else {
+                if (isDasar) return;
+            }
+            
+            const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+            if (group === 'MATA PELAJARAN UMUM') umum++;
+            else if (group === 'MATA PELAJARAN KEJURUAN') kejuruan++;
+            else if (group === 'MUATAN LOKAL') mulok++;
+        });
+        
+        return { UMUM: umum, KEJURUAN: kejuruan, MULOK: mulok };
+    }, [subjects?.data, mapping?.data, selectedTingkat, detectKelompokForMapel]);
+
     const handleQuickPlotUnmapped = useCallback((specificSubjectId?: string) => {
         resetForm();
         
@@ -886,28 +925,49 @@ const MasterStrukturPage: React.FC = () => {
                                     {/* Presets Button Shortcuts */}
                                     <div className="space-y-1.5">
                                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">Paket Cepat (Presets)</span>
-                                        <div className="flex flex-wrap gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddPreset('UMUM')}
-                                                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-                                            >
-                                                + Paket Umum
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddPreset('KEJURUAN')}
-                                                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-                                            >
-                                                + Paket Kejuruan
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleAddPreset('MULOK')}
-                                                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-                                            >
-                                                + Paket Mulok
-                                            </button>
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            {presetSisaCount.UMUM === 0 ? (
+                                                <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none">
+                                                    ✓ Paket Umum Selesai
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddPreset('UMUM')}
+                                                    className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
+                                                >
+                                                    + Paket Umum ({presetSisaCount.UMUM})
+                                                </button>
+                                            )}
+
+                                            {presetSisaCount.KEJURUAN === 0 ? (
+                                                <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none">
+                                                    ✓ Paket Kejuruan Selesai
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddPreset('KEJURUAN')}
+                                                    className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
+                                                >
+                                                    + Paket Kejuruan ({presetSisaCount.KEJURUAN})
+                                                </button>
+                                            )}
+
+                                            {presetSisaCount.MULOK === 0 ? (
+                                                <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none">
+                                                    ✓ Paket Mulok Selesai
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddPreset('MULOK')}
+                                                    className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
+                                                >
+                                                    + Paket Mulok ({presetSisaCount.MULOK})
+                                                </button>
+                                            )}
+
                                             <button
                                                 type="button"
                                                 onClick={() => setBulkSelections({})}
