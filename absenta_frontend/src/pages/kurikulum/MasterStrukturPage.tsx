@@ -1427,6 +1427,14 @@ const MasterStrukturPage: React.FC = () => {
                                                                 );
                                                                 
                                                                 if (!match) {
+                                                                    const cleanCode = code.split('-')[0];
+                                                                    match = standardReferences.data.find(ref => 
+                                                                        ref.tingkat === item.tingkat && 
+                                                                        (ref.kode_mapel || '').toUpperCase() === cleanCode
+                                                                    );
+                                                                }
+                                                                
+                                                                if (!match) {
                                                                     match = standardReferences.data.find(ref => 
                                                                         ref.tingkat === item.tingkat && 
                                                                         (
@@ -1437,14 +1445,32 @@ const MasterStrukturPage: React.FC = () => {
                                                                 }
                                                                 
                                                                 if (!match) {
-                                                                    const isKejuruan = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif');
+                                                                    const isReligion = name.startsWith('pendidikan agama') || name.includes('agama');
+                                                                    const isSeniOrPrakarya = name.includes('seni ') || name.includes('seni') || name.includes('prakarya');
+                                                                    const isMulok = (item.kelompok || '').toUpperCase() === 'MUATAN LOKAL' || ['sunda', 'jawa', 'bali', 'madura'].some(lang => name.includes(lang));
+                                                                    
+                                                                    if (isReligion) {
+                                                                        match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama')));
+                                                                    } else if (isSeniOrPrakarya) {
+                                                                        match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni')));
+                                                                    } else if (isMulok) {
+                                                                        match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'MULOK');
+                                                                    }
+                                                                }
+                                                                
+                                                                if (!match) {
+                                                                    const isKejuruan = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif') || name.includes('dasar-dasar');
                                                                     if (isKejuruan) {
-                                                                        if (code.includes('PKL') || name.includes('praktik kerja')) {
-                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKL');
-                                                                        } else if (code.includes('PKK') || name.includes('kreatif')) {
-                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKK');
+                                                                        if (item.tingkat === 10) {
+                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
                                                                         } else {
-                                                                            match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'KK');
+                                                                            if (code.includes('PKL') || name.includes('praktik kerja')) {
+                                                                                match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKL');
+                                                                            } else if (code.includes('PKK') || name.includes('kreatif')) {
+                                                                                match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKK');
+                                                                            } else {
+                                                                                match = standardReferences.data.find(ref => ref.tingkat === item.tingkat && ref.kode_mapel === 'KK');
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
