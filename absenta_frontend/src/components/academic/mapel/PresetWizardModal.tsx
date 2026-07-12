@@ -12,13 +12,19 @@ interface PresetWizardModalProps {
   onSuccess: () => void;
 }
 
+interface WizardStep {
+  label: string;
+  categoryType: 'umum' | 'kejuruan' | 'pilihan' | 'mulok' | 'summary';
+}
+
 export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   isOpen,
   onClose,
   jenjang,
   onSuccess
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  // Track step dynamically using index
+  const [stepIndex, setStepIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -35,6 +41,28 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
+
+  // Define steps dynamically based on school type
+  const steps = useMemo<WizardStep[]>(() => {
+    if (isSmkMak) {
+      return [
+        { label: 'Mapel Umum', categoryType: 'umum' },
+        { label: 'Mapel Kejuruan', categoryType: 'kejuruan' },
+        { label: 'Mapel Pilihan', categoryType: 'pilihan' },
+        { label: 'Muatan Lokal', categoryType: 'mulok' },
+        { label: 'Ringkasan', categoryType: 'summary' }
+      ];
+    } else {
+      return [
+        { label: 'Mapel Umum', categoryType: 'umum' },
+        { label: 'Mapel Pilihan', categoryType: 'pilihan' },
+        { label: 'Muatan Lokal', categoryType: 'mulok' },
+        { label: 'Ringkasan', categoryType: 'summary' }
+      ];
+    }
+  }, [isSmkMak]);
+
+  const currentStepType = steps[stepIndex]?.categoryType || 'umum';
 
   // Helper to extract matched key for a department
   const getMatchedKey = (jur: any) => {
@@ -73,7 +101,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     if (!isOpen) return;
     
     // Reset state on open
-    setStep(1);
+    setStepIndex(0);
     setSelectedIds(new Set());
     setExpandedJurusanId(null);
     setVocationalPresets({});
@@ -273,39 +301,33 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
       size="5xl"
     >
       <div className="flex flex-col h-[580px]">
-        {/* Step Indicator Header */}
+        {/* Step Indicator Header (Dynamic based on school type) */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-slate-50/50 dark:bg-slate-900/10">
-          {[
-            { s: 1, label: 'Mapel Umum' },
-            { s: 2, label: 'Mapel Kejuruan' },
-            { s: 3, label: 'Mapel Pilihan' },
-            { s: 4, label: 'Muatan Lokal' },
-            { s: 5, label: 'Ringkasan' }
-          ].map((item) => (
-            <div key={item.s} className="flex items-center gap-2">
+          {steps.map((item, idx) => (
+            <div key={item.categoryType} className="flex items-center gap-2">
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all duration-300 ${
-                  step === item.s
+                  stepIndex === idx
                     ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900/30'
-                    : step > item.s
+                    : stepIndex > idx
                     ? 'bg-emerald-500 text-white'
                     : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                 }`}
               >
-                {step > item.s ? <Check size={12} /> : item.s}
+                {stepIndex > idx ? <Check size={12} /> : idx + 1}
               </div>
               <span
                 className={`text-xs font-semibold ${
-                  step === item.s
+                  stepIndex === idx
                     ? 'text-blue-600 dark:text-blue-400 font-bold'
-                    : step > item.s
+                    : stepIndex > idx
                     ? 'text-slate-600 dark:text-slate-300'
                     : 'text-slate-400'
                 }`}
               >
                 {item.label}
               </span>
-              {item.s < 5 && <ChevronRight size={14} className="text-slate-300 dark:text-slate-600 mx-2" />}
+              {idx < steps.length - 1 && <ChevronRight size={14} className="text-slate-300 dark:text-slate-600 mx-2" />}
             </div>
           ))}
         </div>
@@ -319,8 +341,8 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
             </div>
           ) : (
             <>
-              {/* STEP 1: Mapel Wajib / Keagamaan */}
-              {step === 1 && (
+              {/* STEP 1: Mapel Umum */}
+              {currentStepType === 'umum' && (
                 <div className="space-y-4">
                   <div className="p-3.5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex items-start gap-3">
                     <BookOpen className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
@@ -383,138 +405,126 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                 </div>
               )}
 
-              {/* STEP 2: Mapel Kejuruan */}
-              {step === 2 && (
+              {/* STEP 2: Mapel Kejuruan (Hanya tampil untuk SMK/MAK) */}
+              {currentStepType === 'kejuruan' && isSmkMak && (
                 <div className="space-y-4">
-                  {!isSmkMak ? (
-                    <div className="flex flex-col items-center justify-center h-72 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-6 text-center space-y-3">
-                      <GraduationCap className="text-slate-300 dark:text-slate-700 w-16 h-16" />
-                      <h4 className="text-sm font-bold text-slate-750 dark:text-slate-300">Tidak Berlaku untuk Jenjang {jenjang}</h4>
-                      <p className="text-xs text-slate-450 dark:text-slate-500 max-w-sm leading-relaxed">
-                        Mata pelajaran produktif kejuruan hanya ditujukan untuk sekolah berjenjang SMK/MAK. Anda dapat langsung melanjutkan ke langkah berikutnya.
-                      </p>
+                  <div className="p-3.5 bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 rounded-2xl flex items-start gap-3">
+                    <GraduationCap className="text-purple-600 mt-0.5 flex-shrink-0" size={16} />
+                    <p className="text-xs text-purple-700 dark:text-purple-400 font-medium leading-relaxed">
+                      Pilih mata pelajaran produktif kejuruan dari jurusan yang terdaftar di sekolah Anda. Klik header jurusan untuk memperluas (expand) daftar mapel.
+                    </p>
+                  </div>
+
+                  {loadingVocational ? (
+                    <div className="flex items-center justify-center py-10 gap-2 text-slate-400">
+                      <RefreshCw className="w-5 h-5 animate-spin text-purple-600" />
+                      <span className="text-xs">Memuat katalog kejuruan...</span>
+                    </div>
+                  ) : jurusans.length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                      Belum ada jurusan terdaftar. Hubungi Admin Sekolah untuk menambahkan jurusan terlebih dahulu.
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="p-3.5 bg-purple-50/30 dark:bg-purple-950/10 border border-purple-100 dark:border-purple-900/30 rounded-2xl flex items-start gap-3">
-                        <GraduationCap className="text-purple-600 mt-0.5 flex-shrink-0" size={16} />
-                        <p className="text-xs text-purple-700 dark:text-purple-400 font-medium leading-relaxed">
-                          Pilih mata pelajaran produktif kejuruan dari jurusan yang terdaftar di sekolah Anda. Klik header jurusan untuk memperluas (expand) daftar mapel.
-                        </p>
-                      </div>
+                    <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                      {jurusans.map((jur) => {
+                        const matchedKey = getMatchedKey(jur);
+                        const jurPresets = vocationalPresets[matchedKey] || [];
+                        const selectedCount = jurPresets.filter(p => selectedIds.has(p.id)).length;
+                        const isOpenPanel = expandedJurusanId === jur.id;
 
-                      {loadingVocational ? (
-                        <div className="flex items-center justify-center py-10 gap-2 text-slate-400">
-                          <RefreshCw className="w-5 h-5 animate-spin text-purple-600" />
-                          <span className="text-xs">Memuat katalog kejuruan...</span>
-                        </div>
-                      ) : jurusans.length === 0 ? (
-                        <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                          Belum ada jurusan terdaftar. Hubungi Admin Sekolah untuk menambahkan jurusan terlebih dahulu.
-                        </div>
-                      ) : (
-                        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                          {jurusans.map((jur) => {
-                            const matchedKey = getMatchedKey(jur);
-                            const jurPresets = vocationalPresets[matchedKey] || [];
-                            const selectedCount = jurPresets.filter(p => selectedIds.has(p.id)).length;
-                            const isOpenPanel = expandedJurusanId === jur.id;
-
-                            return (
-                              <div
-                                key={jur.id}
-                                className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-all duration-200 bg-white dark:bg-slate-950"
-                              >
-                                {/* Accordion Header */}
-                                <div
-                                  onClick={() => setExpandedJurusanId(isOpenPanel ? null : jur.id)}
-                                  className={`flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors ${
-                                    isOpenPanel 
-                                      ? 'bg-purple-50/40 dark:bg-purple-950/10 border-b border-slate-150 dark:border-slate-800' 
-                                      : 'hover:bg-slate-50/50 dark:hover:bg-slate-900/10'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className={`p-1.5 rounded-lg ${selectedCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                                      <GraduationCap size={15} />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-850 dark:text-slate-200">
-                                      {jur.nama} {selectedCount > 0 ? `(${selectedCount})` : ''}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {selectedCount > 0 && (
-                                      <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full">
-                                        {selectedCount} Terpilih
-                                      </span>
-                                    )}
-                                    {isOpenPanel ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
-                                  </div>
+                        return (
+                          <div
+                            key={jur.id}
+                            className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm transition-all duration-200 bg-white dark:bg-slate-950"
+                          >
+                            {/* Accordion Header */}
+                            <div
+                              onClick={() => setExpandedJurusanId(isOpenPanel ? null : jur.id)}
+                              className={`flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors ${
+                                isOpenPanel 
+                                  ? 'bg-purple-50/40 dark:bg-purple-950/10 border-b border-slate-150 dark:border-slate-800' 
+                                  : 'hover:bg-slate-50/50 dark:hover:bg-slate-900/10'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`p-1.5 rounded-lg ${selectedCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                  <GraduationCap size={15} />
                                 </div>
+                                <span className="text-xs font-bold text-slate-850 dark:text-slate-200">
+                                  {jur.nama} {selectedCount > 0 ? `(${selectedCount})` : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {selectedCount > 0 && (
+                                  <span className="text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-bold px-2 py-0.5 rounded-full">
+                                    {selectedCount} Terpilih
+                                  </span>
+                                )}
+                                {isOpenPanel ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                              </div>
+                            </div>
 
-                                {/* Accordion Body */}
-                                {isOpenPanel && (
-                                  <div className="p-5 bg-slate-50/10 dark:bg-slate-950/5 space-y-4">
-                                    {jurPresets.length === 0 ? (
-                                      <p className="text-xs text-slate-400 italic text-center py-2">
-                                        Preset kurikulum belum tersedia untuk kompetensi keahlian ({matchedKey || 'Tidak teridentifikasi'}).
-                                      </p>
-                                    ) : (
-                                      <>
-                                        <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800">
-                                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            Daftar Mata Pelajaran Produktif
-                                          </span>
-                                          <div className="flex gap-2 text-[10px] font-bold">
-                                            <button onClick={() => handleSelectAllStep(jurPresets, true)} className="text-purple-600 dark:text-purple-400 hover:underline">Pilih Semua</button>
-                                            <span className="text-slate-300">|</span>
-                                            <button onClick={() => handleSelectAllStep(jurPresets, false)} className="text-slate-500 hover:underline">Bersihkan</button>
+                            {/* Accordion Body */}
+                            {isOpenPanel && (
+                              <div className="p-5 bg-slate-50/10 dark:bg-slate-950/5 space-y-4">
+                                {jurPresets.length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic text-center py-2">
+                                    Preset kurikulum belum tersedia untuk kompetensi keahlian ({matchedKey || 'Tidak teridentifikasi'}).
+                                  </p>
+                                ) : (
+                                  <>
+                                    <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800">
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Daftar Mata Pelajaran Produktif
+                                      </span>
+                                      <div className="flex gap-2 text-[10px] font-bold">
+                                        <button onClick={() => handleSelectAllStep(jurPresets, true)} className="text-purple-600 dark:text-purple-400 hover:underline">Pilih Semua</button>
+                                        <span className="text-slate-300">|</span>
+                                        <button onClick={() => handleSelectAllStep(jurPresets, false)} className="text-slate-500 hover:underline">Bersihkan</button>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {jurPresets.map((p) => {
+                                        const isChecked = selectedIds.has(p.id);
+                                        return (
+                                          <div
+                                            key={p.id}
+                                            onClick={() => handleToggleSelect(p.id)}
+                                            className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all duration-200 ${
+                                              isChecked
+                                                ? 'bg-purple-50/10 border-purple-500 dark:bg-purple-950/5'
+                                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-350'
+                                            }`}
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={isChecked}
+                                              onChange={() => {}} // handled by div click
+                                              className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500"
+                                            />
+                                            <div className="min-w-0">
+                                              <p className="text-xs font-semibold text-slate-850 dark:text-slate-300 truncate">{p.nama_mapel}</p>
+                                              <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                            </div>
                                           </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          {jurPresets.map((p) => {
-                                            const isChecked = selectedIds.has(p.id);
-                                            return (
-                                              <div
-                                                key={p.id}
-                                                onClick={() => handleToggleSelect(p.id)}
-                                                className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all duration-200 ${
-                                                  isChecked
-                                                    ? 'bg-purple-50/10 border-purple-500 dark:bg-purple-950/5'
-                                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-350'
-                                                }`}
-                                              >
-                                                <input
-                                                  type="checkbox"
-                                                  checked={isChecked}
-                                                  onChange={() => {}} // handled by div click
-                                                  className="rounded border-slate-300 dark:border-slate-700 text-purple-600 focus:ring-purple-500"
-                                                />
-                                                <div className="min-w-0">
-                                                  <p className="text-xs font-semibold text-slate-850 dark:text-slate-300 truncate">{p.nama_mapel}</p>
-                                                  <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
                                 )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               )}
 
               {/* STEP 3: Mapel Pilihan */}
-              {step === 3 && (
+              {currentStepType === 'pilihan' && (
                 <div className="space-y-4">
                   <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3">
                     <Compass className="text-indigo-600 mt-0.5 flex-shrink-0" size={16} />
@@ -537,7 +547,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                             </span>
                             <div className="flex gap-2 text-[9px] font-bold">
                               <button onClick={() => handleSelectAllStep(list, true)} className="text-indigo-650 hover:underline">Pilih Semua</button>
-                              <span className="text-slate-350">|</span>
+                              <span className="text-slate-355">|</span>
                               <button onClick={() => handleSelectAllStep(list, false)} className="text-slate-500 hover:underline">Bersihkan</button>
                             </div>
                           </div>
@@ -558,7 +568,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => {}}
-                                    className="rounded border-slate-300 dark:border-slate-800 text-indigo-600 focus:ring-indigo-500"
+                                    className="rounded border-slate-300 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500"
                                   />
                                   <div className="min-w-0">
                                     <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">{p.nama_mapel}</p>
@@ -576,7 +586,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
               )}
 
               {/* STEP 4: Mapel Muatan Lokal */}
-              {step === 4 && (
+              {currentStepType === 'mulok' && (
                 <div className="space-y-4">
                   <div className="p-3.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-2xl flex items-start gap-3">
                     <Flag className="text-amber-600 mt-0.5 flex-shrink-0" size={16} />
@@ -626,7 +636,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                             className="rounded border-slate-300 dark:border-slate-700 text-amber-600 focus:ring-amber-500"
                           />
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-850 dark:text-slate-200 truncate">{p.nama_mapel}</p>
+                            <p className="text-xs font-semibold text-slate-855 dark:text-slate-200 truncate">{p.nama_mapel}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
                               <span className="text-[10px] text-slate-400 font-medium">({p.category})</span>
@@ -640,7 +650,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
               )}
 
               {/* STEP 5: Summary & Confirmation */}
-              {step === 5 && (
+              {currentStepType === 'summary' && (
                 <div className="space-y-4">
                   <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl flex items-center gap-3">
                     <div className="p-2 bg-emerald-500 text-white rounded-xl shadow-md shadow-emerald-500/20">
@@ -692,18 +702,18 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
         <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-slate-50/30 dark:bg-slate-900/10 flex items-center justify-between flex-shrink-0">
           <Button
             variant="outline"
-            onClick={step === 1 ? onClose : () => setStep((s) => (s - 1) as any)}
+            onClick={stepIndex === 0 ? onClose : () => setStepIndex((s) => (s - 1) as any)}
             disabled={saving}
             className="rounded-xl px-5 h-10 text-[11px] font-bold"
           >
-            {step === 1 ? 'Tutup' : <><ChevronLeft size={14} className="inline mr-1" />Kembali</>}
+            {stepIndex === 0 ? 'Tutup' : <><ChevronLeft size={14} className="inline mr-1" />Kembali</>}
           </Button>
 
           <div className="flex gap-2">
-            {step < 5 ? (
+            {stepIndex < steps.length - 1 ? (
               <Button
                 variant="primary"
-                onClick={() => setStep((s) => (s + 1) as any)}
+                onClick={() => setStepIndex((s) => (s + 1) as any)}
                 disabled={loading}
                 className="rounded-xl px-5 h-10 text-[11px] font-bold bg-blue-600 text-white flex items-center gap-1.5"
               >
