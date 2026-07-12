@@ -57,6 +57,11 @@ const MasterStrukturPage: React.FC = () => {
         kelompok: ''
     });
 
+    const { data: subjects } = useQuery({
+        queryKey: ['academic-subjects'],
+        queryFn: () => mapelApi.getAll({ limit: 1000 })
+    });
+
     const resetForm = useCallback(() => {
         setFormData({
             mapel_id: '',
@@ -197,10 +202,6 @@ const MasterStrukturPage: React.FC = () => {
         enabled: !!selectedTahunId
     });
 
-    const { data: subjects } = useQuery({
-        queryKey: ['academic-subjects'],
-        queryFn: () => mapelApi.getAll({ limit: 1000 })
-    });
 
     // Mutations
     const upsertMutation = useMutation({
