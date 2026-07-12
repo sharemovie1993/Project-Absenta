@@ -210,6 +210,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     // 2. Mata Pelajaran Kejuruan (Matematika & B.Inggris di SMK masuk kelompok Kejuruan)
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
@@ -236,6 +237,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     // 2. Mata Pelajaran Kejuruan
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },

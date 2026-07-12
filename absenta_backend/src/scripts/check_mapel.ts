@@ -1,27 +1,31 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
+const TARGET_TENANT_ID = 'b4b316ce-c4cf-4519-a7a1-c0d3284d8745';
+
 async function run() {
-  console.log("=== DETAIL STRUKTUR KURIKULUM & MAPEL KODING PROD ===");
-  const koding = await prisma.mapel.findFirst({
-    where: { nama_mapel: { contains: "Koding", mode: "insensitive" } }
+  console.log("=== SEEDING KONSENTRASI KEAHLIAN TO PRODUCTION DATA ===");
+  
+  // 1. Cek apakah mapel "Konsentrasi Keahlian" sudah terdaftar di master mapel tenant ini
+  let mapel = await prisma.mapel.findFirst({
+    where: {
+      tenant_id: TARGET_TENANT_ID,
+      nama_mapel: 'Konsentrasi Keahlian'
+    }
   });
   
-  if (!koding) {
-    console.log("Mapel Koding tidak ditemukan!");
-    return;
-  }
-  
-  console.log(`Mapel: ID: ${koding.id} | Nama: ${koding.nama_mapel} | Tenant: ${koding.tenant_id}`);
-  
-  const mappings = await prisma.strukturKurikulum.findMany({
-    where: { mapel_id: koding.id }
-  });
-  
-  console.log(`Jumlah Pemetaan Koding di database: ${mappings.length}`);
-  for (const m of mappings) {
-    const tp = await prisma.tahunPelajaran.findUnique({ where: { id: m.tahun_pelajaran_id } });
-    console.log(`- Mapping ID: ${m.id} | Tingkat: ${m.tingkat} | JP: ${m.jp_per_minggu} | Kelompok: ${m.kelompok} | TP: ${tp?.tahun} | Tenant: ${m.tenant_id}`);
+  if (mapel) {
+    console.log(`Mapel Konsentrasi Keahlian sudah ada di catalog master! ID: ${mapel.id}`);
+  } else {
+    // Buat mapel baru
+    mapel = await prisma.mapel.create({
+      data: {
+        tenant_id: TARGET_TENANT_ID,
+        nama_mapel: 'Konsentrasi Keahlian',
+        kode_mapel: 'KK-GLOBAL',
+      }
+    });
+    console.log(`SUKSES membuat mapel Konsentrasi Keahlian baru! ID: ${mapel.id}`);
   }
 }
 
