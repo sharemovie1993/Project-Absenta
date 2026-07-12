@@ -26,12 +26,6 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
     standardsData.push({ jenjang, category, nama_mapel, kode_mapel, tingkat, jp_per_minggu });
   }
 
-  // =====================================================================
-  // 1. SEKOLAH MENENGAH KEJURUAN (SMK) - PROGRAM 3 TAHUN
-  // =====================================================================
-
-  // PABP (Pendidikan Agama Islam, Kristen, Katolik, Buddha, Hindu, Khonghucu)
-  // Agama has 90 JP/year in X-XI, and 32 JP/year in XII.
   const agamaNames = [
     { nama: 'Pendidikan Agama Islam dan Budi Pekerti', kode: 'PAIBP' },
     { nama: 'Pendidikan Agama Kristen dan Budi Pekerti', kode: 'PAKB' },
@@ -41,10 +35,109 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
     { nama: 'Pendidikan Agama Khonghucu dan Budi Pekerti', kode: 'PAKhB' },
   ];
 
+  const seniTypes = ['Seni Musik', 'Seni Rupa', 'Seni Tari', 'Seni Teater'];
+
+  // =====================================================================
+  // 1. SEKOLAH DASAR (SD) / MADRASAH IBTIDAIYAH (MI)
+  // =====================================================================
+
+  // PABP (SD)
   agamaNames.forEach(ag => {
-    add('SMK', 'UMUM', ag.nama, ag.kode, 10, 3); // 90 JP / 36 weeks = 2.5 (rounded to 3)
-    add('SMK', 'UMUM', ag.nama, ag.kode, 11, 3); // 90 JP / 36 weeks = 2.5 (rounded to 3)
-    add('SMK', 'UMUM', ag.nama, ag.kode, 12, 2); // 32 JP / 32 weeks = 1 (often taught 2 JP in local configs)
+    for (let t = 1; t <= 6; t++) {
+      add('SD', 'UMUM', ag.nama, ag.kode, t, 3);
+    }
+  });
+
+  // Seni Budaya (SD)
+  seniTypes.forEach(seni => {
+    for (let t = 1; t <= 6; t++) {
+      add('SD', 'UMUM', seni, 'SENI', t, 3);
+    }
+  });
+
+  // Pancasila (SD)
+  for (let t = 1; t <= 6; t++) {
+    add('SD', 'UMUM', 'Pendidikan Pancasila', 'PP', t, 4);
+  }
+
+  // Bahasa Indonesia (SD)
+  add('SD', 'UMUM', 'Bahasa Indonesia', 'IND', 1, 7);
+  add('SD', 'UMUM', 'Bahasa Indonesia', 'IND', 2, 8);
+  for (let t = 3; t <= 6; t++) {
+    add('SD', 'UMUM', 'Bahasa Indonesia', 'IND', t, 6);
+  }
+
+  // Matematika (SD)
+  add('SD', 'UMUM', 'Matematika', 'MTK', 1, 4);
+  add('SD', 'UMUM', 'Matematika', 'MTK', 2, 5);
+  for (let t = 3; t <= 6; t++) {
+    add('SD', 'UMUM', 'Matematika', 'MTK', t, 5);
+  }
+
+  // IPAS (SD)
+  for (let t = 3; t <= 6; t++) {
+    add('SD', 'UMUM', 'Ilmu Pengetahuan Alam dan Sosial', 'IPAS', t, 5);
+  }
+
+  // PJOK (SD)
+  for (let t = 1; t <= 6; t++) {
+    add('SD', 'UMUM', 'Pendidikan Jasmani, Olahraga, dan Kesehatan', 'PJOK', t, 3);
+  }
+
+  // Bahasa Inggris (SD)
+  for (let t = 3; t <= 6; t++) {
+    add('SD', 'UMUM', 'Bahasa Inggris', 'ING', t, 2);
+  }
+
+  // Koding & AI (SD)
+  add('SD', 'PILIHAN', 'Koding dan Kecerdasan Artifisial', 'KODING-AI', 5, 2);
+  add('SD', 'PILIHAN', 'Koding dan Kecerdasan Artifisial', 'KODING-AI', 6, 2);
+
+  // Muatan Lokal (SD)
+  for (let t = 1; t <= 6; t++) {
+    add('SD', 'MULOK', 'Muatan Lokal', 'MULOK', t, 2);
+  }
+
+  // =====================================================================
+  // 2. SEKOLAH MENENGAH PERTAMA (SMP) / MADRASAH TSANAWIYAH (MTs)
+  // =====================================================================
+
+  // PABP (SMP)
+  agamaNames.forEach(ag => {
+    for (let t = 7; t <= 9; t++) {
+      add('SMP', 'UMUM', ag.nama, ag.kode, t, 2);
+    }
+  });
+
+  // Seni Budaya (SMP)
+  seniTypes.forEach(seni => {
+    for (let t = 7; t <= 9; t++) {
+      add('SMP', 'UMUM', seni, 'SENI', t, 2);
+    }
+  });
+
+  // Pancasila, Bahasa Indonesia, Matematika, IPA, IPS, Bahasa Inggris, PJOK, Informatika (SMP)
+  for (let t = 7; t <= 9; t++) {
+    add('SMP', 'UMUM', 'Pendidikan Pancasila', 'PP', t, 2);
+    add('SMP', 'UMUM', 'Bahasa Indonesia', 'IND', t, 5);
+    add('SMP', 'UMUM', 'Matematika', 'MTK', t, 4);
+    add('SMP', 'UMUM', 'Ilmu Pengetahuan Alam', 'IPA', t, 4);
+    add('SMP', 'UMUM', 'Ilmu Pengetahuan Sosial', 'IPS', t, 3);
+    add('SMP', 'UMUM', 'Bahasa Inggris', 'ING', t, 3);
+    add('SMP', 'UMUM', 'Pendidikan Jasmani, Olahraga, dan Kesehatan', 'PJOK', t, 2);
+    add('SMP', 'UMUM', 'Informatika', 'INF', t, 2);
+    add('SMP', 'PILIHAN', 'Koding dan Kecerdasan Artifisial', 'KODING-AI', t, 2);
+    add('SMP', 'MULOK', 'Muatan Lokal', 'MULOK', t, 2);
+  }
+
+  // =====================================================================
+  // 3. SEKOLAH MENENGAH KEJURUAN (SMK) - PROGRAM 3 TAHUN
+  // =====================================================================
+
+  agamaNames.forEach(ag => {
+    add('SMK', 'UMUM', ag.nama, ag.kode, 10, 3);
+    add('SMK', 'UMUM', ag.nama, ag.kode, 11, 3);
+    add('SMK', 'UMUM', ag.nama, ag.kode, 12, 2);
   });
 
   // Pendidikan Pancasila (SMK)
@@ -65,7 +158,6 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   add('SMK', 'UMUM', 'Sejarah', 'SEJ', 10, 2);
 
   // Seni Budaya (SMK)
-  const seniTypes = ['Seni Musik', 'Seni Rupa', 'Seni Tari', 'Seni Teater'];
   seniTypes.forEach(seni => {
     add('SMK', 'UMUM', seni, 'SENI', 10, 2);
   });
