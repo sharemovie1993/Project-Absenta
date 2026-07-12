@@ -838,6 +838,11 @@ const MasterStrukturPage: React.FC = () => {
             return;
         }
         setIsPrinting(true);
+
+        // Buka window SEKARANG (synchronous, dalam event handler) sebelum await
+        // agar tidak diblok popup blocker Chrome
+        const printWindow = window.open('about:blank', '_blank');
+
         try {
             // 1. Load sekolah profile
             let sekolah = null;
@@ -884,17 +889,25 @@ const MasterStrukturPage: React.FC = () => {
                 getKelompokTotal
             });
 
-            // 5. Open in new tab (mirrors CetakBerkasTemplate pattern)
+            // 5. Arahkan window yang sudah terbuka ke blob URL PDF
             const blobUrl = URL.createObjectURL(blob);
-            const printWindow = window.open(blobUrl);
-            if (printWindow) {
-                printWindow.addEventListener('load', () => {
-                    setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
-                });
+            if (printWindow && !printWindow.closed) {
+                printWindow.location.href = blobUrl;
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } else {
+                // fallback: download jika window di-block
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = `struktur-kurikulum-${selectedTahunNama || 'tp'}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
             }
         } catch (err) {
             console.error('Gagal membuat PDF struktur kurikulum:', err);
             toast.error('Gagal membuat PDF. Silakan coba lagi.');
+            if (printWindow && !printWindow.closed) printWindow.close();
         } finally {
             setIsPrinting(false);
         }
