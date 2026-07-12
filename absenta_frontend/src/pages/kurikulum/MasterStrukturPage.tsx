@@ -128,7 +128,7 @@ const MasterStrukturPage: React.FC = () => {
 
     const { data: subjects } = useQuery({
         queryKey: ['academic-subjects'],
-        queryFn: () => mapelApi.getAll()
+        queryFn: () => mapelApi.getAll({ limit: 1000 })
     });
 
     // Mutations
