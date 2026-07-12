@@ -271,7 +271,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Wizard Gunakan Preset Kurikulum — ${jenjang}`}
-      size="xl"
+      size="5xl"
     >
       <div className="flex flex-col h-[580px]">
         {/* Step Indicator Header */}
