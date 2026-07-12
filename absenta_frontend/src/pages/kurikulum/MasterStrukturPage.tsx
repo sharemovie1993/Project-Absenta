@@ -845,9 +845,42 @@ const MasterStrukturPage: React.FC = () => {
                                                         />
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <Badge className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold border-none">
-                                                            {item.kelompok || 'UMUM'}
-                                                        </Badge>
+                                                        {(() => {
+                                                            const k = (item.kelompok || 'MATA PELAJARAN UMUM').toUpperCase();
+                                                            if (k === 'MATA PELAJARAN UMUM') {
+                                                                return (
+                                                                    <span className="text-[9px] font-black tracking-wider uppercase bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-450 border border-blue-100 dark:border-blue-900/40 px-2.5 py-1 rounded-lg select-none">
+                                                                        Umum
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            if (k === 'MATA PELAJARAN KEJURUAN') {
+                                                                return (
+                                                                    <span className="text-[9px] font-black tracking-wider uppercase bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/40 px-2.5 py-1 rounded-lg select-none">
+                                                                        Kejuruan
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            if (k === 'MATA PELAJARAN PILIHAN') {
+                                                                return (
+                                                                    <span className="text-[9px] font-black tracking-wider uppercase bg-violet-50 dark:bg-violet-950/30 text-violet-650 dark:text-violet-400 border border-violet-100 dark:border-violet-900/40 px-2.5 py-1 rounded-lg select-none">
+                                                                        Pilihan
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            if (k === 'MUATAN LOKAL') {
+                                                                return (
+                                                                    <span className="text-[9px] font-black tracking-wider uppercase bg-amber-50 dark:bg-amber-950/30 text-amber-650 dark:text-amber-400 border border-amber-100 dark:border-amber-900/40 px-2.5 py-1 rounded-lg select-none">
+                                                                        Mulok
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return (
+                                                                <span className="text-[9px] font-black tracking-wider uppercase bg-slate-50 dark:bg-slate-900/30 text-slate-650 dark:text-slate-400 border border-slate-100 dark:border-slate-900/40 px-2.5 py-1 rounded-lg select-none">
+                                                                    {item.kelompok}
+                                                                </span>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div>
