@@ -661,19 +661,23 @@ const MasterStrukturPage: React.FC = () => {
                 
                 const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
                 
-                if (selectedTingkat === 10) {
-                    // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut
-                    if (isPkl || isPkk || isKk) return;
-                    
-                    const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-                    const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-                    if (isProduktifLanjut) return;
-                } else if (selectedTingkat === 11) {
-                    // Kelas 11: Sembunyikan Dasar-dasar, PKL, Koding, dan Mulok
-                    if (isDasar || isPkl || isKoding || isMulok) return;
+                if (s.tingkat !== null && s.tingkat !== undefined) {
+                    if (s.tingkat !== selectedTingkat) return;
                 } else {
-                    // Kelas 12 & 13: Sembunyikan Dasar-dasar, Koding, dan Mulok
-                    if (isDasar || isKoding || isMulok) return;
+                    if (selectedTingkat === 10) {
+                        // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut
+                        if (isPkl || isPkk || isKk) return;
+                        
+                        const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                        const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
+                        if (isProduktifLanjut) return;
+                    } else if (selectedTingkat === 11) {
+                        // Kelas 11: Sembunyikan Dasar-dasar, PKL, Koding, dan Mulok
+                        if (isDasar || isPkl || isKoding || isMulok) return;
+                    } else {
+                        // Kelas 12 & 13: Sembunyikan Dasar-dasar, Koding, dan Mulok
+                        if (isDasar || isKoding || isMulok) return;
+                    }
                 }
 
                 const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
@@ -910,19 +914,23 @@ const MasterStrukturPage: React.FC = () => {
             
             const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
             
-            if (selectedTingkat === 10) {
-                // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut (kecuali koding)
-                if (isPkl || isPkk || isKk) return false;
-                
-                const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-                if (isProduktifLanjut) return false;
-            } else if (selectedTingkat === 11) {
-                // Kelas 11: Sembunyikan Dasar-dasar, PKL, Koding, dan Mulok
-                if (isDasar || isPkl || isKoding || isMulok) return false;
+            if (s.tingkat !== null && s.tingkat !== undefined) {
+                if (s.tingkat !== selectedTingkat) return false;
             } else {
-                // Kelas 12 & 13: Sembunyikan Dasar-dasar, Koding, dan Mulok
-                if (isDasar || isKoding || isMulok) return false;
+                if (selectedTingkat === 10) {
+                    // Kelas 10: Sembunyikan PKL, PKK, KK, dan mapel produktif tingkat lanjut (kecuali koding)
+                    if (isPkl || isPkk || isKk) return false;
+                    
+                    const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                    const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
+                    if (isProduktifLanjut) return false;
+                } else if (selectedTingkat === 11) {
+                    // Kelas 11: Sembunyikan Dasar-dasar, PKL, Koding, dan Mulok
+                    if (isDasar || isPkl || isKoding || isMulok) return false;
+                } else {
+                    // Kelas 12 & 13: Sembunyikan Dasar-dasar, Koding, dan Mulok
+                    if (isDasar || isKoding || isMulok) return false;
+                }
             }
             
             return true;
@@ -964,15 +972,19 @@ const MasterStrukturPage: React.FC = () => {
             
             const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
             
-            if (selectedTingkat === 10) {
-                if (isPkl || isPkk || isKk) return;
-                const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-                const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-                if (isProduktifLanjut) return;
-            } else if (selectedTingkat === 11) {
-                if (isDasar || isPkl || isKoding || isMulok) return;
+            if (s.tingkat !== null && s.tingkat !== undefined) {
+                if (s.tingkat !== selectedTingkat) return;
             } else {
-                if (isDasar || isKoding || isMulok) return;
+                if (selectedTingkat === 10) {
+                    if (isPkl || isPkk || isKk) return;
+                    const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+                    const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
+                    if (isProduktifLanjut) return;
+                } else if (selectedTingkat === 11) {
+                    if (isDasar || isPkl || isKoding || isMulok) return;
+                } else {
+                    if (isDasar || isKoding || isMulok) return;
+                }
             }
             
             const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
