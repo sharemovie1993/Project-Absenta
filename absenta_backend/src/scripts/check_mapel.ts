@@ -2,27 +2,15 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function run() {
-  console.log("=== CHECKING KODING DAN KECERDASAN ARTIFISIAL ===");
-  const koding = await prisma.mapel.findFirst({
-    where: { nama_mapel: { contains: "Koding", mode: "insensitive" } }
+  console.log("=== LIST STRUKTUR KURIKULUM PLOTING KELAS 10 PROD ===");
+  const mappings = await prisma.strukturKurikulum.findMany({
+    where: { tingkat: 10 },
+    include: { Mapel: true }
   });
-  
-  if (!koding) {
-    console.log("Mapel Koding tidak ditemukan!");
-    return;
-  }
-  
-  console.log(`Katalog Mapel Koding ditemukan: ID: ${koding.id} | Nama: ${koding.nama_mapel} | Kode: ${koding.kode_mapel}`);
-  
-  const mapping = await prisma.strukturKurikulum.findFirst({
-    where: { mapel_id: koding.id }
+  console.log("Total Pemetaan Kelas 10:", mappings.length);
+  mappings.forEach(map => {
+    console.log(`- ID: ${map.id} | Mapel: ${map.Mapel?.nama_mapel} | Kode: ${map.Mapel?.kode_mapel} | JP: ${map.jp_per_minggu} | Kelompok: ${map.kelompok}`);
   });
-  
-  if (mapping) {
-    console.log(`SUDAH DIPETAKAN sebelumnya: ID: ${mapping.id} | Tingkat: ${mapping.tingkat} | JP: ${mapping.jp_per_minggu} | Kelompok: ${mapping.kelompok}`);
-  } else {
-    console.log("BELUM DIPETAKAN sama sekali!");
-  }
 }
 
 run().catch(console.error);
