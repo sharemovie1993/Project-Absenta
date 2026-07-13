@@ -29,7 +29,7 @@ import { useJenjang } from '../../hooks/useJenjang';
 import type { Mapel } from '../../types/academic';
 import { useAuth } from '../../hooks/useAuth';
 import { getTenantById } from '../../api/tenants.api';
-import { sekolahApi } from '../../api/academic/sekolah.api';
+import { sekolahApi, Sekolah } from '../../api/academic/sekolah.api';
 import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
 import { getStrukturList } from '../../api/academic/strukturOrganisasi.api';
 import { renderStrukturKurikulumPdf } from '../../utils/print/modules/pdfKurikulum';
@@ -48,6 +48,8 @@ type StrukturKurikulum = {
   Jurusan?: {
     nama: string;
   };
+};
+
 interface PrintRowItem {
     id: string;
     nama: string;
@@ -57,8 +59,8 @@ interface PrintRowItem {
 
 interface StrukturOrganisasiItem {
     jabatan?: string;
-    nama_lengkap?: string;
     nama?: string;
+    nama_lengkap?: string;
     nip?: string;
     User?: {
         Guru?: {
@@ -66,8 +68,6 @@ interface StrukturOrganisasiItem {
         };
     };
 }
-
-};
 
 const MasterStrukturPage: React.FC = () => {
     // Hardening audit engine satisfaction hook
@@ -1080,17 +1080,17 @@ const MasterStrukturPage: React.FC = () => {
 
         try {
             // 1. Load sekolah profile
-            let sekolah: Record<string, unknown> | null = null;
+            let sekolah: Sekolah | null = null;
             try { sekolah = await sekolahApi.getProfile(); } catch(e) {}
 
             // 2. Load logos
             let logoDaerahBase64: string | null = null;
             let logoSekolahBase64: string | null = null;
-            const leftLogoUrl = tenantInfo?.logo_daerah_url || (sekolah as Record<string, unknown> | null)?.logo_daerah_url;
+            const leftLogoUrl = tenantInfo?.logo_daerah_url || (sekolah as unknown as Record<string, unknown> | null)?.logo_daerah_url as string | undefined;
             const rightLogoUrl = tenantInfo?.logo_url || sekolah?.logo_url;
             try {
-                if (leftLogoUrl) logoDaerahBase64 = await getBase64ImageFromUrl(leftLogoUrl);
-                if (rightLogoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(rightLogoUrl);
+                if (leftLogoUrl) logoDaerahBase64 = await getBase64ImageFromUrl(leftLogoUrl as string);
+                if (rightLogoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(rightLogoUrl as string);
             } catch(e) {}
 
             // 3. Get principal name from struktur organisasi
@@ -1098,10 +1098,11 @@ const MasterStrukturPage: React.FC = () => {
             let principalNip = '';
             try {
                 const strukturRes = await getStrukturList({ is_active: true });
-                const kepala = strukturRes.data?.find((s: StrukturOrganisasiItem) =>
-                    (s.jabatan || '').toLowerCase().includes('kepala sekolah') ||
-                    (s.jabatan || '').toLowerCase().includes('kepala')
-                );
+                const kepala = strukturRes.data?.find((s) => {
+                    const item = s as unknown as StrukturOrganisasiItem;
+                    return (item.jabatan || item.nama || '').toLowerCase().includes('kepala sekolah') ||
+                           (item.jabatan || item.nama || '').toLowerCase().includes('kepala');
+                }) as unknown as StrukturOrganisasiItem | undefined;
                 if (kepala) {
                     principalName = kepala.nama_lengkap || kepala.nama || kepala.User?.Guru?.nama_guru || principalName;
                     principalNip = kepala.nip || '';
