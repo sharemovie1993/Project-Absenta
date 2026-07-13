@@ -1197,7 +1197,7 @@ const MasterStrukturPage: React.FC = () => {
                 {/* JP Tracker & Gap Analysis Dashboard */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
                     {/* Card 1: Total Beban Belajar (Indigo Card) */}
-                    <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative flex flex-col justify-between h-[145px]">
+                    <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative flex flex-col justify-between min-h-[160px]">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 blur-2xl -mr-12 -mt-12"></div>
                         <div className="relative z-10 flex flex-col justify-between h-full space-y-2">
                             <div className="flex items-center justify-between">
@@ -1264,7 +1264,7 @@ const MasterStrukturPage: React.FC = () => {
                     </Card>
 
                     {/* Card 2: Target Kurikulum */}
-                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[160px]">
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Target Kurikulum</span>
                             <Badge className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border-none text-[9px] px-1.5 py-0.5">
@@ -1286,7 +1286,7 @@ const MasterStrukturPage: React.FC = () => {
                     </Card>
 
                     {/* Card 3: Analisis Selisih */}
-                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[160px]">
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Analisis Selisih</span>
                             {gapJp > 0 ? (
@@ -1321,7 +1321,7 @@ const MasterStrukturPage: React.FC = () => {
                     </Card>
 
                     {/* Card 4: Rekomendasi Mapel */}
-                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[160px]">
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rekomendasi Mapel</span>
                             <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border-none text-[9px] px-1.5 py-0.5">
