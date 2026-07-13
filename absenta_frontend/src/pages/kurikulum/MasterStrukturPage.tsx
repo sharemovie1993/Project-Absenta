@@ -1193,203 +1193,181 @@ const MasterStrukturPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Stats / Info Side */}
-                <div className="space-y-4">
-                    <Card className="p-5 border-none shadow-sm bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl -mr-16 -mt-16"></div>
-                        <div className="relative z-10 space-y-4">
-                            <div className="p-3 bg-white/20 rounded-xl w-fit">
-                                <Layers size={24} />
+            <div className="space-y-6">
+                {/* JP Tracker & Gap Analysis Dashboard */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+                    {/* Card 1: Total Beban Belajar (Indigo Card) */}
+                    <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative flex flex-col justify-between h-[145px]">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 blur-2xl -mr-12 -mt-12"></div>
+                        <div className="relative z-10 flex flex-col justify-between h-full space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Total Beban Belajar</span>
+                                <Layers size={16} className="opacity-80" />
                             </div>
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Beban Belajar</p>
-                                <p className="text-4xl font-black">
-                                    {totalJp}
-                                    <span className="text-sm font-medium ml-2 opacity-80 uppercase tracking-widest">JP / Minggu</span>
-                                </p>
+                            <div className="flex items-baseline gap-1 mt-1">
+                                <span className="text-3xl font-black">{totalJp}</span>
+                                <span className="text-xs font-bold opacity-80">JP / Minggu</span>
                             </div>
-                            {showAddOptions ? (
-                                <div className="space-y-2 p-1.5 bg-white/10 rounded-2xl border border-white/10 backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <p className="text-[9px] font-black uppercase tracking-wider text-center text-indigo-100 opacity-90 pb-1">Pilih Mode Plotting</p>
+                            <div className="flex gap-2 pt-1.5 no-print relative">
+                                {showAddOptions ? (
+                                    <div className="absolute bottom-full left-0 right-0 mb-2 p-1.5 bg-indigo-900/95 dark:bg-slate-900/95 rounded-xl border border-indigo-500/20 backdrop-blur-sm z-30 space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-center text-indigo-150">Pilih Mode Plotting</p>
+                                        <div className="flex gap-1.5">
+                                            <Button 
+                                                onClick={() => {
+                                                    setAddMode('manual');
+                                                    openCreateModal();
+                                                    setShowAddOptions(false);
+                                                }}
+                                                className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[9px] h-7 border-none"
+                                            >
+                                                Manual
+                                            </Button>
+                                            <Button 
+                                                onClick={() => {
+                                                    setAddMode('massal');
+                                                    openCreateModal();
+                                                    setShowAddOptions(false);
+                                                }}
+                                                className="flex-1 bg-indigo-500/40 hover:bg-indigo-500/60 text-white font-black rounded-lg text-[9px] h-7 border-none"
+                                            >
+                                                Massal
+                                            </Button>
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowAddOptions(false)}
+                                            className="w-full text-center text-[9px] font-black text-indigo-200 hover:text-white"
+                                        >
+                                            Batal
+                                        </button>
+                                    </div>
+                                ) : (
                                     <Button 
-                                        onClick={() => {
-                                            setAddMode('manual');
-                                            openCreateModal();
-                                            setShowAddOptions(false);
-                                        }}
-                                        className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl border-none shadow-sm text-xs h-10"
+                                        onClick={() => setShowAddOptions(true)}
+                                        className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
                                     >
-                                        <Plus size={14} className="mr-1.5" />
-                                        Plotting Manual
+                                        <Plus size={12} className="mr-1" />
+                                        TAMBAH
                                     </Button>
-                                    <Button 
-                                        onClick={() => {
-                                            setAddMode('massal');
-                                            openCreateModal();
-                                            setShowAddOptions(false);
-                                        }}
-                                        className="w-full bg-indigo-500/30 hover:bg-indigo-500/50 text-white font-black rounded-xl border border-indigo-400/20 text-xs h-10"
-                                    >
-                                        <Layers size={14} className="mr-1.5" />
-                                        Plotting Massal
-                                    </Button>
-                                    <button 
-                                        type="button"
-                                        onClick={() => setShowAddOptions(false)}
-                                        className="w-full text-center text-[10px] font-black text-indigo-200 hover:text-white pt-1 select-none"
-                                    >
-                                        Batal
-                                    </button>
-                                </div>
-                            ) : (
-                                <Button 
-                                    onClick={() => setShowAddOptions(true)}
-                                    className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl border-none shadow-sm"
+                                )}
+                                <Button
+                                    onClick={handleCetakPdf}
+                                    disabled={isPrinting || !mapping?.data}
+                                    className="flex-1 bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none flex items-center justify-center gap-1"
                                 >
-                                    <Plus size={18} className="mr-2" />
-                                    TAMBAH MAPEL
+                                    {isPrinting ? <Loader2 size={12} className="animate-spin" /> : <Printer size={12} />}
+                                    CETAK
                                 </Button>
-                            )}
-                            <Button
-                                onClick={handleCetakPdf}
-                                disabled={isPrinting || !mapping?.data}
-                                className="w-full bg-white/20 hover:bg-white/30 text-white font-black rounded-xl border-none flex items-center justify-center gap-2"
-                            >
-                                {isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
-                                {isPrinting ? 'Menyiapkan PDF...' : 'CETAK STRUKTUR'}
-                            </Button>
+                            </div>
                         </div>
                     </Card>
 
-                    <Card className="p-5 border-none shadow-sm space-y-3">
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center">
-                            <Info size={14} className="mr-2" />
-                            Panduan Plotting
-                        </h4>
-                        <ul className="space-y-2">
-                            {[
-                                'Pilih Tahun Pelajaran yang aktif.',
-                                'Plotting dilakukan per tingkat (10, 11, 12).',
-                                'Pastikan total JP sesuai dengan regulasi kurikulum.',
-                                'Gunakan kelompok "Pilihan" untuk mapel peminatan.'
-                            ].map((text, i) => (
-                                <li key={i} className="text-xs text-gray-600 dark:text-gray-400 flex items-start">
-                                    <ChevronRight size={14} className="mr-1 text-indigo-500 flex-shrink-0 mt-0.5" />
-                                    {text}
-                                </li>
-                            ))}
-        </ul>
+                    {/* Card 2: Target Kurikulum */}
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Target Kurikulum</span>
+                            <Badge className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border-none text-[9px] px-1.5 py-0.5">
+                                Standar Baku
+                            </Badge>
+                        </div>
+                        <div className="mt-1 flex items-baseline gap-1">
+                            <span className="text-3xl font-black text-slate-800 dark:text-white">{totalJp}</span>
+                            <span className="text-xs font-bold text-slate-400">/ {targetJp} JP</span>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="mt-1 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div 
+                                className="bg-indigo-600 h-full rounded-full transition-all duration-500" 
+                                style={{ width: `${Math.min(100, (totalJp / targetJp) * 100)}%` }}
+                            ></div>
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-1">Beban belajar per minggu tingkat kelas {selectedTingkat}.</p>
+                    </Card>
+
+                    {/* Card 3: Analisis Selisih */}
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Analisis Selisih</span>
+                            {gapJp > 0 ? (
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            ) : gapJp === 0 ? (
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            ) : (
+                                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            )}
+                        </div>
+                        <div className="mt-1">
+                            {gapJp > 0 ? (
+                                <div>
+                                    <p className="text-lg font-black text-amber-600 dark:text-amber-400">Kurang {gapJp} JP</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">Struktur jam pelajaran masih berada di bawah alokasi standar nasional.</p>
+                                </div>
+                            ) : gapJp === 0 ? (
+                                <div>
+                                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-450">Sesuai Regulasi</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">Alokasi beban belajar telah memenuhi regulasi kementerian.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-lg font-black text-indigo-650 dark:text-indigo-400">Otonomi (+{Math.abs(gapJp)} JP)</p>
+                                    <p className="text-[9px] text-slate-400 leading-tight">Sekolah menyesuaikan mandiri dengan menambah jam belajar.</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-1">
+                            Status: {gapJp > 0 ? '⚠️ Kurang Pemetaan' : gapJp === 0 ? '✅ Stabil' : 'ℹ️ Jam Tambahan'}
+                        </div>
+                    </Card>
+
+                    {/* Card 4: Rekomendasi Mapel */}
+                    <Card className="border-none shadow-sm p-4 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between h-[145px]">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rekomendasi Mapel</span>
+                            <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border-none text-[9px] px-1.5 py-0.5">
+                                {unmappedSubjects.length} Belum Diplot
+                            </Badge>
+                        </div>
+                        <div className="mt-1 min-h-[36px]">
+                            {unmappedSubjects.length === 0 ? (
+                                <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Semua mata pelajaran sekolah telah dipetakan! 🎉</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-1 max-h-[38px] overflow-hidden">
+                                    {unmappedSubjects.slice(0, 2).map((s: any) => (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => handleQuickPlotUnmapped(s.id)}
+                                            className="text-[9px] bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-600 dark:text-slate-300 hover:text-indigo-650 px-1.5 py-0.5 rounded font-bold transition-all truncate max-w-[100px]"
+                                            title={`Klik untuk plot ${s.nama_mapel}`}
+                                        >
+                                            + {s.nama_mapel}
+                                        </button>
+                                    ))}
+                                    {unmappedSubjects.length > 2 && (
+                                        <span className="text-[9px] text-slate-400 font-bold self-center">
+                                            +{unmappedSubjects.length - 2}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {unmappedSubjects.length > 0 ? (
+                            <button
+                                type="button"
+                                onClick={() => handleQuickPlotUnmapped()}
+                                className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 text-left uppercase tracking-wider mt-1.5 flex items-center hover:underline border-none bg-transparent"
+                            >
+                                Plotting Massal Sisa &rarr;
+                            </button>
+                        ) : (
+                            <div className="text-[9px] text-slate-400 mt-1.5 font-bold uppercase tracking-wider">Pemetaan Bersih</div>
+                        )}
                     </Card>
                 </div>
 
                 {/* Main Table View */}
-                <div className="lg:col-span-3 space-y-6">
-                    {/* JP Tracker & Gap Analysis Dashboard */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Progress JP Card */}
-                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-indigo-50/20 to-white dark:from-indigo-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Target Kurikulum</span>
-                                <Badge className="bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold border-none text-[10px]">
-                                    Standar Baku
-                                </Badge>
-                            </div>
-                            <div className="mt-2 flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-slate-800 dark:text-white">{totalJp}</span>
-                                <span className="text-sm font-bold text-slate-400">/ {targetJp} JP</span>
-                            </div>
-                            {/* Progress bar */}
-                            <div className="mt-3 w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                <div 
-                                    className="bg-indigo-600 h-full rounded-full transition-all duration-500" 
-                                    style={{ width: `${Math.min(100, (totalJp / targetJp) * 100)}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-2">Beban belajar per minggu tingkat kelas {selectedTingkat}.</p>
-                        </Card>
-
-                        {/* Status Gap Card */}
-                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Analisis Selisih</span>
-                                {gapJp > 0 ? (
-                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                ) : gapJp === 0 ? (
-                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                ) : (
-                                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                )}
-                            </div>
-                            <div className="mt-2">
-                                {gapJp > 0 ? (
-                                    <div>
-                                        <p className="text-xl font-black text-amber-600 dark:text-amber-400">Kurang {gapJp} JP</p>
-                                        <p className="text-[10px] text-slate-400 mt-1">Struktur jam pelajaran masih berada di bawah alokasi standar nasional.</p>
-                                    </div>
-                                ) : gapJp === 0 ? (
-                                    <div>
-                                        <p className="text-xl font-black text-emerald-600 dark:text-emerald-450">Sesuai Regulasi</p>
-                                        <p className="text-[10px] text-slate-400 mt-1">Alokasi beban belajar telah memenuhi regulasi kementerian.</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <p className="text-xl font-black text-indigo-650 dark:text-indigo-400">Otonomi (+{Math.abs(gapJp)} JP)</p>
-                                        <p className="text-[10px] text-slate-400 mt-1">Sekolah melakukan penyesuaian mandiri dengan menambah jam belajar.</p>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-2">
-                                Status: {gapJp > 0 ? '⚠️ Kurang Pemetaan' : gapJp === 0 ? '✅ Stabil' : 'ℹ️ Jam Tambahan'}
-                            </div>
-                        </Card>
-
-                        {/* Unmapped Mapels Card */}
-                        <Card className="border-none shadow-sm p-5 bg-gradient-to-br from-slate-50/50 to-white dark:from-slate-950/5 dark:to-slate-900 flex flex-col justify-between min-h-[130px]">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Rekomendasi Mapel</span>
-                                <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold border-none text-[10px]">
-                                    {unmappedSubjects.length} Belum Diplot
-                                </Badge>
-                            </div>
-                            <div className="mt-2 min-h-[44px]">
-                                {unmappedSubjects.length === 0 ? (
-                                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Semua mata pelajaran sekolah telah dipetakan! 🎉</p>
-                                ) : (
-                                    <div className="flex flex-wrap gap-1.5 max-h-[50px] overflow-hidden">
-                                        {unmappedSubjects.slice(0, 2).map((s: Mapel) => (
-                                            <button
-                                                key={s.id}
-                                                onClick={() => handleQuickPlotUnmapped(s.id)}
-                                                className="text-[9px] bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-slate-600 dark:text-slate-300 hover:text-indigo-650 px-2 py-1 rounded-lg font-bold transition-all truncate max-w-[120px]"
-                                                title={`Klik untuk plot ${s.nama_mapel}`}
-                                            >
-                                                + {s.nama_mapel}
-                                            </button>
-                                        ))}
-                                        {unmappedSubjects.length > 2 && (
-                                            <span className="text-[9px] text-slate-400 font-bold self-center">
-                                                +{unmappedSubjects.length - 2} lainnya
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            {unmappedSubjects.length > 0 ? (
-                                <button
-                                    onClick={() => handleQuickPlotUnmapped()}
-                                    className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-705 text-left uppercase tracking-wider mt-3 flex items-center hover:underline"
-                                >
-                                    Plotting Massal Mapel Sisa &rarr;
-                                </button>
-                            ) : (
-                                <div className="text-[10px] text-slate-400 mt-3 font-bold uppercase tracking-wider">Pemetaan Bersih</div>
-                            )}
-                        </Card>
-                    </div>
-
-
-
+                <div className="w-full space-y-6">
                         <Card className="border-none shadow-sm overflow-hidden min-h-[500px]">
                             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50 flex-wrap gap-2 no-print">
                                 <div className="flex items-center gap-3">
