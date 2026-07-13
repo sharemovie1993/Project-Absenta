@@ -78,6 +78,10 @@ const MasterStrukturPage: React.FC = () => {
         kelompok: ''
     });
 
+    // Add Modes: 'manual' (satu per satu) vs 'massal' (bulk)
+    const [addMode, setAddMode] = useState<'manual' | 'massal'>('massal');
+    const [showAddOptions, setShowAddOptions] = useState(false);
+
     // Bulk mode states
     const [bulkSelections, setBulkSelections] = useState<Record<string, { jp_per_minggu: number; kelompok: string }>>({});
     const [bulkSearchQuery, setBulkSearchQuery] = useState('');
@@ -585,6 +589,17 @@ const MasterStrukturPage: React.FC = () => {
         return 2;
     }, [standardReferences?.data, isSmkOrMak]);
 
+    // Auto-detect default JP based on selected mapel and tingkat (for manual single add)
+    React.useEffect(() => {
+        if (!formData.mapel_id || !subjects?.data || !standardReferences?.data || editingItem) return;
+        
+        const selectedMapel = subjects.data.find((s: Mapel) => s.id === formData.mapel_id);
+        if (!selectedMapel) return;
+        
+        const defaultJp = detectDefaultJpForMapel(selectedMapel.kode_mapel || '', selectedMapel.nama_mapel, selectedTingkat);
+        setFormData(prev => ({ ...prev, jp_per_minggu: defaultJp }));
+    }, [formData.mapel_id, subjects?.data, standardReferences?.data, selectedTingkat, detectDefaultJpForMapel, editingItem]);
+
     const renderJpCalculator = useCallback((jp: number, mapelName: string, mapelKode: string) => {
         const weeks = selectedTingkat === 12 ? 32 : 36;
         const annualIntra = jp * weeks;
@@ -703,10 +718,14 @@ const MasterStrukturPage: React.FC = () => {
     const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
-        if (editingItem) {
+        if (editingItem || addMode === 'manual') {
+            if (addMode === 'manual' && !formData.mapel_id) {
+                toast.error('Pilih mata pelajaran terlebih dahulu');
+                return;
+            }
             const isKejuruanAtauPilihan = formData.kelompok === 'MATA PELAJARAN KEJURUAN' || formData.kelompok === 'MATA PELAJARAN PILIHAN';
             const data: Partial<StrukturKurikulum> = {
-                id: editingItem.id,
+                id: editingItem?.id,
                 mapel_id: formData.mapel_id,
                 tahun_pelajaran_id: selectedTahunId,
                 tingkat: selectedTingkat,
@@ -743,7 +762,7 @@ const MasterStrukturPage: React.FC = () => {
                 toast.error('Gagal menyimpan beberapa pemetaan');
             }
         }
-    }, [editingItem, formData, selectedTahunId, selectedTingkat, selectedJurusanId, isSmkOrMak, bulkSelections, upsertMutation, queryClient, closeModal]);
+    }, [editingItem, addMode, formData, selectedTahunId, selectedTingkat, selectedJurusanId, isSmkOrMak, bulkSelections, upsertMutation, queryClient, closeModal]);
 
     const handleToggleRowSelect = useCallback((id: string) => {
         setSelectedRowIds(prev => {
@@ -1190,13 +1209,48 @@ const MasterStrukturPage: React.FC = () => {
                                     <span className="text-sm font-medium ml-2 opacity-80 uppercase tracking-widest">JP / Minggu</span>
                                 </p>
                             </div>
-                            <Button 
-                                onClick={openCreateModal}
-                                className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl border-none"
-                            >
-                                <Plus size={18} className="mr-2" />
-                                TAMBAH MAPEL
-                            </Button>
+                            {showAddOptions ? (
+                                <div className="space-y-2 p-1.5 bg-white/10 rounded-2xl border border-white/10 backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <p className="text-[9px] font-black uppercase tracking-wider text-center text-indigo-100 opacity-90 pb-1">Pilih Mode Plotting</p>
+                                    <Button 
+                                        onClick={() => {
+                                            setAddMode('manual');
+                                            openCreateModal();
+                                            setShowAddOptions(false);
+                                        }}
+                                        className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl border-none shadow-sm text-xs h-10"
+                                    >
+                                        <Plus size={14} className="mr-1.5" />
+                                        Plotting Manual
+                                    </Button>
+                                    <Button 
+                                        onClick={() => {
+                                            setAddMode('massal');
+                                            openCreateModal();
+                                            setShowAddOptions(false);
+                                        }}
+                                        className="w-full bg-indigo-500/30 hover:bg-indigo-500/50 text-white font-black rounded-xl border border-indigo-400/20 text-xs h-10"
+                                    >
+                                        <Layers size={14} className="mr-1.5" />
+                                        Plotting Massal
+                                    </Button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowAddOptions(false)}
+                                        className="w-full text-center text-[10px] font-black text-indigo-200 hover:text-white pt-1 select-none"
+                                    >
+                                        Batal
+                                    </button>
+                                </div>
+                            ) : (
+                                <Button 
+                                    onClick={() => setShowAddOptions(true)}
+                                    className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl border-none shadow-sm"
+                                >
+                                    <Plus size={18} className="mr-2" />
+                                    TAMBAH MAPEL
+                                </Button>
+                            )}
                             <Button
                                 onClick={handleCetakPdf}
                                 disabled={isPrinting || !mapping?.data}
@@ -1576,8 +1630,8 @@ const MasterStrukturPage: React.FC = () => {
                 <Modal
                     isOpen={isModalOpen}
                     onClose={closeModal}
-                    title={editingItem ? 'Edit Alokasi JP' : 'Tambah Alokasi JP (Bulk Plotting)'}
-                    size={editingItem ? '2xl' : '5xl'}
+                    title={editingItem ? 'Edit Alokasi JP' : addMode === 'manual' ? 'Tambah Alokasi JP (Manual)' : 'Tambah Alokasi JP (Bulk Plotting)'}
+                    size={(editingItem || addMode === 'manual') ? '2xl' : '5xl'}
                     contentClassName="!overflow-visible"
                 >
                     <form onSubmit={handleSave} className="space-y-4 pt-2">
@@ -1600,6 +1654,61 @@ const MasterStrukturPage: React.FC = () => {
                                         />
                                         {/* JP Calculator & Standard Validator */}
                                         {renderJpCalculator(Number(formData.jp_per_minggu || 0), editingItem?.Mapel?.nama_mapel || '', editingItem?.Mapel?.kode_mapel || '')}
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="kelompok" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Kelompok Mata Pelajaran</label>
+                                        <select 
+                                            id="kelompok"
+                                            name="kelompok"
+                                            value={formData.kelompok}
+                                            onChange={handleInputChange}
+                                            className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                                        >
+                                            {kelompokOptions?.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : addMode === 'manual' ? (
+                            // SINGLE MANUAL ADD MODE (Satu per satu)
+                            <div className="space-y-4 p-1">
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="mapel_id" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pilih Mata Pelajaran</label>
+                                        <SearchableSelect 
+                                            id="mapel_id"
+                                            value={formData.mapel_id}
+                                            onValueChange={(val) => {
+                                                setFormData(prev => ({ ...prev, mapel_id: val }));
+                                            }}
+                                            options={unmappedSubjects.map(s => ({
+                                                value: s.id,
+                                                label: `${s.nama_mapel} (${s.kode_mapel || ''})`
+                                            }))}
+                                            placeholder="Pilih mata pelajaran yang belum di-plot..."
+                                            className="w-full animate-in fade-in duration-200"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label htmlFor="jp_per_minggu" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Jam Pelajaran Per Minggu (JP)</label>
+                                        <input 
+                                            type="number" 
+                                            id="jp_per_minggu"
+                                            name="jp_per_minggu"
+                                            value={formData.jp_per_minggu}
+                                            onChange={handleInputChange}
+                                            min={1}
+                                            max={40}
+                                            required
+                                            className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-black text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                        />
+                                        {/* JP Calculator & Standard Validator */}
+                                        {(() => {
+                                            const selMapel = subjects?.data?.find((s: Mapel) => s.id === formData.mapel_id);
+                                            return renderJpCalculator(Number(formData.jp_per_minggu || 0), selMapel?.nama_mapel || '', selMapel?.kode_mapel || '');
+                                        })()}
                                     </div>
                                     <div className="space-y-1.5">
                                         <label htmlFor="kelompok" className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Kelompok Mata Pelajaran</label>
@@ -1887,14 +1996,14 @@ const MasterStrukturPage: React.FC = () => {
 
                         <ModalFooter className="px-0 pt-4 mt-6">
                             <Button variant="ghost" type="button" onClick={closeModal} className="rounded-xl font-bold">BATAL</Button>
-                            <Button 
-                                type="submit" 
-                                isLoading={upsertMutation.isPending} 
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
-                            >
-                                <Save size={18} className="mr-2" />
-                                {editingItem ? 'SIMPAN PEMETAAN' : `SIMPAN ${Object.keys(bulkSelections).length} PEMETAAN`}
-                            </Button>
+                             <Button 
+                                 type="submit" 
+                                 isLoading={upsertMutation.isPending} 
+                                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
+                             >
+                                 <Save size={18} className="mr-2" />
+                                 {(editingItem || addMode === 'manual') ? 'SIMPAN PEMETAAN' : `SIMPAN ${Object.keys(bulkSelections).length} PEMETAAN`}
+                             </Button>
                         </ModalFooter>
                     </form>
                 </Modal>
