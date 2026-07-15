@@ -13,7 +13,7 @@ interface BulkPlottingFormProps {
   mappingFiltered: StrukturKurikulum[];
   selectedTingkat: number;
   isMapelBelongsToOtherJurusan: (s: Mapel) => boolean;
-  detectKelompokForMapel: (kode: string, nama: string) => string;
+  detectKelompokForMapel: (kode: string, nama: string, jenjang?: string) => string;
   detectDefaultJpForMapel: (kode: string, nama: string, tingkat: number) => number;
   presetSisaCount: { UMUM: number; KEJURUAN: number; MULOK: number; PILIHAN: number };
   handleAddPreset: (type: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN') => void;
@@ -195,7 +195,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
       }
 
       // 6. Must belong to the current step's kelompok category
-      const subjectKelompok = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+      const subjectKelompok = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel, jenjang);
       return subjectKelompok === currentStep.kelompok;
     });
   }, [subjects?.data, currentStep, bulkSearchQuery, mappingFiltered, isMapelBelongsToOtherJurusan, kurikulum, jenjang, selectedTingkat]);
@@ -530,7 +530,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
               ) : (
                 filteredSubjects.map((s: Mapel) => {
                   const isChecked = !!bulkSelections[s.id];
-                  const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+                  const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel, jenjang);
                   const hasStandard = checkMapelHasStandard(s, selectedTingkat, standardReferences?.data || [], isSmkOrMak, group);
                   return (
                     <div 

@@ -481,13 +481,13 @@ export const useMasterStrukturState = () => {
     if (specificSubjectId) {
       const s = subjects?.data?.find((subj: Mapel) => subj.id === specificSubjectId);
       if (s) {
-        const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+        const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel, jenjang);
         const defaultJp = detectDefaultJp(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
         newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
       }
     } else {
       unmappedSubjects.forEach((s: Mapel) => {
-        const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+        const group = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel, jenjang);
         const defaultJp = detectDefaultJp(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
         newSelections[s.id] = { jp_per_minggu: defaultJp, kelompok: group };
       });

@@ -34,7 +34,7 @@ export const STANDAR_JP_CONFIG: Record<string, Record<number, number>> = {
   SD: { 1: 30, 2: 32, 3: 34, 4: 36, 5: 36, 6: 36 }
 };
 
-export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string): string => {
+export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string, jenjang?: string): string => {
   const kode = (kodeMapel || '').toUpperCase();
   const nama = (namaMapel || '').toLowerCase();
   
@@ -56,12 +56,14 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string): st
                   nama.includes('kesenian daerah') ||
                   nama.includes('kepariwisataan');
                   
+  const isInggris = kode === 'ING' || kode.startsWith('ING-') || nama.includes('bahasa inggris') || nama.includes('english');
   const isPilihan = kode.includes('PILIHAN') || 
                     kode.includes('MAPEL-PILIHAN') || 
                     kode.includes('KAI') ||
                     kode.startsWith('SENI_') || // e.g. SENI_MUSIK, SENI_RUPA
                     ['seni musik', 'seni rupa', 'seni tari', 'seni teater', 'pilihan', 'tingkat lanjut', 'koding', 'coding'].some(t => nama.includes(t)) ||
-                    ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k);
+                    ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k) ||
+                    (jenjang === 'SD' && isInggris);
 
   if (isKejuruan) return 'MATA PELAJARAN KEJURUAN';
   if (isMulok) return 'MUATAN LOKAL';
