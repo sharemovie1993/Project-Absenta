@@ -23,14 +23,13 @@ import {
   SearchableSelect
 } from '../../ui';
 import { BookOpen } from 'lucide-react';
-import { getMapelList, deleteMapel, initializeMapelPreset } from '../../../api/academic/mapel.api';
+import { getMapelList, deleteMapel } from '../../../api/academic/mapel.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import type { Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useJenjang } from '../../../hooks/useJenjang';
-import { PresetWizardModal } from './PresetWizardModal';
 
 interface MapelListProps {
   onEdit?: (mapel: Mapel) => void;
@@ -74,11 +73,9 @@ const MapelList = React.memo<MapelListProps>(({
   const { jenjang, config, tingkatList } = useJenjang();
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [initializingPreset, setInitializingPreset] = useState(false);
   const [activeTab, setActiveTab] = useState<'ALL' | 'UMUM' | 'KEJURUAN'>('ALL');
   const [jurusans, setJurusans] = useState<any[]>([]);
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
-  const [presetModalOpen, setPresetModalOpen] = useState(false);
 
   useEffect(() => {
     if (jenjang === 'SMK' || jenjang === 'MAK') {
@@ -254,25 +251,6 @@ const MapelList = React.memo<MapelListProps>(({
     }
   }, [selectedIds, fetchMapels, currentPage, debouncedSearchTerm, confirm]);
 
-  const handleInitializePreset = useCallback(async (selectedPresetIds: string[]) => {
-    try {
-      setInitializingPreset(true);
-      const res = await initializeMapelPreset(selectedPresetIds);
-      if (res.success) {
-        toast.success(res.message || `Berhasil menginisialisasi ${res.count || 0} mata pelajaran preset!`);
-        setPresetModalOpen(false);
-        fetchMapels(1, debouncedSearchTerm);
-      } else {
-        toast.error(res.message || 'Gagal menginisialisasi preset');
-      }
-    } catch (err: any) {
-      console.error('Preset init error:', err);
-      toast.error(err.message || 'Gagal menginisialisasi preset');
-    } finally {
-      setInitializingPreset(false);
-    }
-  }, [fetchMapels, debouncedSearchTerm]);
-
   // Table columns configuration
   const columns = useMemo(() => [
     { 
@@ -419,34 +397,7 @@ const MapelList = React.memo<MapelListProps>(({
         </div>
       </div>
       
-      {/* Preset Banner */}
-      {totalItems === 0 && !loading && searchTerm === '' && filterTingkat === 'ALL' && canManage && (
-        <div className="mx-4 my-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-500 text-white p-2.5 rounded-xl mt-0.5 shadow-md shadow-blue-500/20">
-              <BookOpen size={20} />
-            </div>
-            <div className="space-y-1">
-              <h4 className="text-xs font-black text-blue-900 dark:text-blue-300 uppercase tracking-wider">Mulai Cepat dengan Preset Kurikulum</h4>
-              <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium leading-relaxed max-w-xl">
-                Sekolah Anda berjenjang <strong className="text-blue-950 dark:text-white">{config.label} ({jenjang})</strong>.
-                {isSmkMak
-                  ? ' Muat preset mapel wajib, atau pilih jurusan untuk memuat mapel kejuruan.'
-                  : ' Klik tombol untuk memuat daftar mapel standar Kurikulum Merdeka.'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:self-center flex-shrink-0">
-            <Button
-              onClick={() => setPresetModalOpen(true)}
-              variant="primary"
-              className="h-10 px-5 rounded-xl text-[11px] font-black tracking-wider uppercase bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 flex items-center gap-2"
-            >
-              <Layers size={14} />Gunakan Preset
-            </Button>
-          </div>
-        </div>
-      )}
+
       
       <div className="bg-transparent overflow-hidden">
         <Table
@@ -579,14 +530,6 @@ const MapelList = React.memo<MapelListProps>(({
           </div>
         </div>
       </Modal>
-
-      {/* Wizard Multi-Step Preset Mapel */}
-      <PresetWizardModal
-        isOpen={presetModalOpen}
-        onClose={() => setPresetModalOpen(false)}
-        jenjang={jenjang}
-        onSuccess={() => fetchMapels(1, debouncedSearchTerm)}
-      />
     </div>
   );
 });
