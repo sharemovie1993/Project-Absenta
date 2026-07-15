@@ -13,8 +13,8 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     items.forEach(p => presetData.push({ jenjang, category: p.category, nama_mapel: p.nama_mapel, kode_mapel: p.kode_mapel }));
   }
 
-  // Standar muatan lokal riil di Indonesia
-  const mulokList: PresetItem[] = [
+  // Standar muatan lokal riil di Indonesia - Dasar (SD/SMP)
+  const mulokDasar: PresetItem[] = [
     { category: 'MULOK', nama_mapel: 'Bahasa Sunda', kode_mapel: 'M-SUNDA' },
     { category: 'MULOK', nama_mapel: 'Bahasa Jawa', kode_mapel: 'M-JAWA' },
     { category: 'MULOK', nama_mapel: 'Bahasa Madura', kode_mapel: 'M-MADURA' },
@@ -22,6 +22,32 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'MULOK', nama_mapel: 'Pendidikan Lingkungan Hidup (PLH)', kode_mapel: 'M-PLH' },
     { category: 'MULOK', nama_mapel: 'Kepariwisataan / Kebudayaan Lokal', kode_mapel: 'M-WISATA' },
     { category: 'MULOK', nama_mapel: 'Kesenian Daerah', kode_mapel: 'M-SDR' },
+  ];
+
+  // Standar muatan lokal riil di Indonesia - Menengah Atas (SMA)
+  const mulokMenengahAtas: PresetItem[] = [
+    { category: 'MULOK', nama_mapel: 'Bahasa Sunda', kode_mapel: 'M-SUNDA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jawa', kode_mapel: 'M-JAWA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Madura', kode_mapel: 'M-MADURA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Bali', kode_mapel: 'M-BALI' },
+    { category: 'MULOK', nama_mapel: 'Pendidikan Lingkungan Hidup (PLH)', kode_mapel: 'M-PLH' },
+    { category: 'MULOK', nama_mapel: 'Kepariwisataan / Kebudayaan Lokal', kode_mapel: 'M-WISATA' },
+    { category: 'MULOK', nama_mapel: 'Kesenian Daerah', kode_mapel: 'M-SDR' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jepang', kode_mapel: 'M-JPN' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Mandarin', kode_mapel: 'M-ZHO' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jerman', kode_mapel: 'M-DEU' },
+  ];
+
+  // Standar muatan lokal riil di Indonesia - Menengah Kejuruan (SMK)
+  const mulokMenengahKejuruan: PresetItem[] = [
+    { category: 'MULOK', nama_mapel: 'Bahasa Sunda', kode_mapel: 'M-SUNDA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jawa', kode_mapel: 'M-JAWA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Madura', kode_mapel: 'M-MADURA' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Bali', kode_mapel: 'M-BALI' },
+    { category: 'MULOK', nama_mapel: 'Kesenian Daerah', kode_mapel: 'M-SDR' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Jepang (Penunjang Industri)', kode_mapel: 'M-JPN-IND' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Mandarin (Penunjang Industri)', kode_mapel: 'M-ZHO-IND' },
+    { category: 'MULOK', nama_mapel: 'Bahasa Korea (Penunjang Industri)', kode_mapel: 'M-KOR-IND' },
   ];
 
   // =====================================================================
@@ -39,7 +65,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
-    ...mulokList
+    ...mulokDasar
   ]);
 
   push('MI', [
@@ -58,7 +84,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Rupa', kode_mapel: 'SRPA' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Tari', kode_mapel: 'STAR' },
     { category: 'SENI_PILIHAN', nama_mapel: 'Seni Teater', kode_mapel: 'STER' },
-    ...mulokList
+    ...mulokDasar
   ]);
 
   // =====================================================================
@@ -82,7 +108,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Kerajinan', kode_mapel: 'PKKRJ' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Rekayasa', kode_mapel: 'PKREKY' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Pengolahan', kode_mapel: 'PKPNG' },
-    ...mulokList
+    ...mulokDasar
   ]);
 
   push('MTs', [
@@ -107,7 +133,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Kerajinan', kode_mapel: 'PKKRJ' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Rekayasa', kode_mapel: 'PKREKY' },
     { category: 'PRAKARYA_PILIHAN', nama_mapel: 'Prakarya - Pengolahan', kode_mapel: 'PKPNG' },
-    ...mulokList
+    ...mulokDasar
   ]);
 
   // =====================================================================
@@ -148,7 +174,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Perancis', kode_mapel: 'FRA' },
     { category: 'PILIHAN_BAHASA', nama_mapel: 'Bahasa Korea', kode_mapel: 'KOR' },
     { category: 'PILIHAN_TEKNOLOGI', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
-    ...mulokList
+    ...mulokMenengahAtas
   ]);
 
   push('MA', [
@@ -190,7 +216,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_KEAGAMAAN', nama_mapel: 'Ilmu Hadis', kode_mapel: 'HADIS' },
     { category: 'PILIHAN_KEAGAMAAN', nama_mapel: 'Ushul Fikih', kode_mapel: 'USHULFQH' },
     { category: 'PILIHAN_TEKNOLOGI', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
-    ...mulokList
+    ...mulokMenengahAtas
   ]);
 
   // =====================================================================
@@ -214,7 +240,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
-    ...mulokList
+    ...mulokMenengahKejuruan
   ]);
 
   push('MAK', [
@@ -241,7 +267,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
-    ...mulokList
+    ...mulokMenengahKejuruan
   ]);
 
   // =====================================================================
