@@ -189,10 +189,13 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
           }
           setPresets(filtered);
           
-          // Pre-select UMUM & KEAGAMAAN by default in step 1, BUT EXCLUDE already added ones!
+          // Pre-select UMUM & KEAGAMAAN by default in step 1, AND pre-select Seni Rupa (SRPA) as the default recommended Art subject!
           const initialSelection = new Set<string>();
           filtered.forEach(p => {
-            if (p.category === 'UMUM' || p.category === 'KEAGAMAAN' || p.category === 'UMUM_KELAS10') {
+            const isDefaultUmum = p.category === 'UMUM' || p.category === 'KEAGAMAAN' || p.category === 'UMUM_KELAS10';
+            const isDefaultSeni = p.kode_mapel === 'SRPA'; // Seni Rupa as default recommended Art subject
+            
+            if (isDefaultUmum || isDefaultSeni) {
               if (!checkPresetAdded(p)) {
                 initialSelection.add(p.id);
               }
