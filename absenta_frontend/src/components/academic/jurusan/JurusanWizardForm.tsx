@@ -15,7 +15,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   onSuccess,
   onCancel
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -124,6 +124,26 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     }).filter((p): p is typeof programPresets[0] => p !== null);
   }, [programPresets, selectedProgramKodes, searchQuery]);
 
+  // Get active selected programs based on selectedProgramKodes
+  const activeSelectedPrograms = useMemo(() => {
+    return programPresets.filter(p => selectedProgramKodes.includes(p.kode));
+  }, [programPresets, selectedProgramKodes]);
+
+  // Get active selected jurusans based on selectedJurusanCodes and selectedProgramKodes (strictly filtered)
+  const activeSelectedJurusans = useMemo(() => {
+    const list: Array<{ jur: typeof programPresets[0]['jurusans'][0]; prog: typeof programPresets[0] }> = [];
+    programPresets.forEach(prog => {
+      if (selectedProgramKodes.includes(prog.kode)) {
+        prog.jurusans.forEach(j => {
+          if (selectedJurusanCodes.includes(j.kode)) {
+            list.push({ jur: j, prog });
+          }
+        });
+      }
+    });
+    return list;
+  }, [programPresets, selectedProgramKodes, selectedJurusanCodes]);
+
   // Proceed to Step 2 and pre-select all Program Keahlian under chosen Bidang Keahlian
   const handleNextStep1 = () => {
     if (selectedBidangs.length === 0) return;
@@ -154,6 +174,13 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     setStep(3);
   };
 
+  // Proceed to Step 4 (Ringkasan)
+  const handleNextStep3 = () => {
+    if (selectedJurusanCodes.length === 0) return;
+    setSearchQuery('');
+    setStep(4);
+  };
+
   // Go back to Step 1
   const handlePrevStep2 = () => {
     setSearchQuery('');
@@ -164,6 +191,12 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   const handlePrevStep3 = () => {
     setSearchQuery('');
     setStep(2);
+  };
+
+  // Go back to Step 3
+  const handlePrevStep4 = () => {
+    setSearchQuery('');
+    setStep(3);
   };
 
   // Select/Deselect all jurusans under a specific program in Step 3
@@ -181,7 +214,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
 
   // Save changes
   const handleSave = async () => {
-    if (selectedJurusanCodes.length === 0) {
+    if (activeSelectedJurusans.length === 0) {
       setSubmitError('Pilih setidaknya satu Konsentrasi Keahlian (Jurusan) untuk disimpan.');
       return;
     }
@@ -190,34 +223,18 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       setLoading(true);
       setSubmitError('');
 
-      // Build payload for chosen programs and jurusans
-      const selectedProgramsMap = new Map<string, typeof programPresets[0]>();
-      const payloadJurusans: Array<{ nama: string; kode: string; singkatan: string; program_keahlian_kode: string }> = [];
-
-      programPresets.forEach(prog => {
-        let hasSelectedJurusan = false;
-        prog.jurusans.forEach(j => {
-          if (selectedJurusanCodes.includes(j.kode)) {
-            hasSelectedJurusan = true;
-            payloadJurusans.push({
-              nama: j.nama,
-              kode: j.kode,
-              singkatan: j.singkatan,
-              program_keahlian_kode: prog.kode
-            });
-          }
-        });
-
-        if (hasSelectedJurusan) {
-          selectedProgramsMap.set(prog.kode, prog);
-        }
-      });
-
-      const payloadPrograms = Array.from(selectedProgramsMap.values()).map(p => ({
+      const payloadPrograms = activeSelectedPrograms.map(p => ({
         nama: p.nama,
         kode: p.kode,
         singkatan: p.singkatan,
         bidang_keahlian: p.bidang_keahlian
+      }));
+
+      const payloadJurusans = activeSelectedJurusans.map(item => ({
+        nama: item.jur.nama,
+        kode: item.jur.kode,
+        singkatan: item.jur.singkatan,
+        program_keahlian_kode: item.prog.kode
       }));
 
       const response = await bulkWizardCreateJurusan({
@@ -257,31 +274,40 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       )}
 
       {/* Step Indicator */}
-      <div className="flex items-center justify-between px-1 mb-2 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-1 mb-2 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80 overflow-x-auto gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 1 ? 'bg-violet-600 text-white' : 'bg-emerald-500 text-white'}`}>
             {step === 1 ? '1' : '✓'}
           </span>
-          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 1 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500'}`}>
-            1. Bidang Keahlian
+          <span className={`text-[10px] font-black uppercase tracking-tight ${step === 1 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500'}`}>
+            1. Bidang
           </span>
         </div>
-        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-2"></div>
-        <div className="flex items-center gap-2">
-          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 2 ? 'bg-violet-600 text-white' : step === 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-            {step === 3 ? '✓' : '2'}
+        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 min-w-[15px]"></div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 2 ? 'bg-violet-600 text-white' : step > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+            {step > 2 ? '✓' : '2'}
           </span>
-          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 2 ? 'text-violet-600 dark:text-violet-400' : step === 3 ? 'text-slate-500' : 'text-slate-400 dark:text-slate-500'}`}>
-            2. Program Keahlian
+          <span className={`text-[10px] font-black uppercase tracking-tight ${step === 2 ? 'text-violet-600 dark:text-violet-400' : step > 2 ? 'text-slate-505' : 'text-slate-400 dark:text-slate-500'}`}>
+            2. Program
           </span>
         </div>
-        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-2"></div>
-        <div className="flex items-center gap-2">
-          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 3 ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-            3
+        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 min-w-[15px]"></div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 3 ? 'bg-violet-600 text-white' : step > 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+            {step > 3 ? '✓' : '3'}
           </span>
-          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 3 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500'}`}>
-            3. Konsentrasi Keahlian (Jurusan)
+          <span className={`text-[10px] font-black uppercase tracking-tight ${step === 3 ? 'text-violet-600 dark:text-violet-400' : step > 3 ? 'text-slate-505' : 'text-slate-400 dark:text-slate-500'}`}>
+            3. Jurusan
+          </span>
+        </div>
+        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 min-w-[15px]"></div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 4 ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+            4
+          </span>
+          <span className={`text-[10px] font-black uppercase tracking-tight ${step === 4 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500'}`}>
+            4. Ringkasan
           </span>
         </div>
       </div>
@@ -413,7 +439,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                       <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
                         {prog.nama}
                       </h6>
-                      <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                      <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-555 tracking-wider">
                         {prog.bidang_keahlian}
                       </p>
                     </div>
@@ -512,7 +538,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                               <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
                                 {jur.nama}
                               </h6>
-                              <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                              <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-555 tracking-wider">
                                 Singkatan: {jur.singkatan}
                               </p>
                             </div>
@@ -535,6 +561,83 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             )}
           </div>
         </>
+      )}
+
+      {/* Step 4 View (Summary / Confirmation) */}
+      {step === 4 && (
+        <div className="space-y-4">
+          {/* Info Card */}
+          <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 flex items-start gap-4">
+            <div className="bg-violet-100 dark:bg-violet-900/40 p-2 rounded-xl text-violet-600 dark:text-violet-400 mt-0.5 animate-pulse">
+              <Layers size={20} />
+            </div>
+            <div className="flex-1 space-y-1">
+              <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                Langkah 4: Konfirmasi & Ringkasan Pilihan
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Tinjau kembali ringkasan struktur keahlian sekolah Anda sebelum menekan tombol Simpan.
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 bg-white dark:bg-slate-950 space-y-4">
+            {/* Program Keahlian Section */}
+            <div className="space-y-2">
+              <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight flex items-center justify-between">
+                <span>Sekolah Anda Memiliki Program Keahlian</span>
+                <span className="bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400 px-2 py-0.5 rounded text-[10px] font-bold">
+                  {activeSelectedPrograms.length} Program
+                </span>
+              </h5>
+              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3 max-h-[120px] overflow-y-auto pr-1 scrollbar-thin">
+                {activeSelectedPrograms.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic">Tidak ada program keahlian terpilih.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {activeSelectedPrograms.map(p => (
+                      <li key={p.kode} className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-violet-500 rounded-full shrink-0"></span>
+                        <span className="truncate">{p.nama}</span>
+                        <span className="text-[9px] font-black uppercase text-slate-400 shrink-0">({p.kode})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Konsentrasi Keahlian Section */}
+            <div className="space-y-2">
+              <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight flex items-center justify-between">
+                <span>Konsentrasi Keahlian (Jurusan)</span>
+                <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">
+                  {activeSelectedJurusans.length} Jurusan
+                </span>
+              </h5>
+              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3 max-h-[160px] overflow-y-auto pr-1 scrollbar-thin">
+                {activeSelectedJurusans.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 italic">Tidak ada konsentrasi keahlian terpilih.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {activeSelectedJurusans.map(item => (
+                      <li key={item.jur.kode} className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-start gap-2 leading-tight">
+                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0 mt-1.5"></span>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-bold">{item.jur.nama}</span>
+                          <span className="text-[9px] font-black uppercase text-slate-400 ml-1.5">({item.jur.kode})</span>
+                          <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-555 mt-0.5 leading-none">
+                            Di bawah Program: {item.prog.nama}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Footer Actions */}
@@ -589,7 +692,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               <ChevronRight className="w-3.5 h-3.5 ml-2" />
             </Button>
           </>
-        ) : (
+        ) : step === 3 ? (
           <>
             <Button
               type="button"
@@ -606,8 +709,33 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               type="button"
               variant="toolbarPrimary"
               size="toolbar"
+              onClick={handleNextStep3}
+              disabled={selectedJurusanCodes.length === 0}
+              className="px-6"
+            >
+              Lanjut Ke Ringkasan
+              <ChevronRight className="w-3.5 h-3.5 ml-2" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={handlePrevStep4}
+              disabled={loading}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-2" />
+              Kembali
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              variant="toolbarPrimary"
+              size="toolbar"
               onClick={handleSave}
-              disabled={loading || selectedJurusanCodes.length === 0}
+              disabled={loading || activeSelectedJurusans.length === 0}
               className="px-8"
             >
               {loading ? (
@@ -615,7 +743,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               ) : (
                 <Save className="w-3.5 h-3.5 mr-2" />
               )}
-              Simpan Massal ({selectedJurusanCodes.length})
+              Simpan Massal ({activeSelectedJurusans.length})
             </Button>
           </>
         )}
