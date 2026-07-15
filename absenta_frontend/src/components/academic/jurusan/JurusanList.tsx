@@ -65,6 +65,9 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+  const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   
   const { can } = useAuth();
   
@@ -149,6 +152,53 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       confirm.setLoading(false);
     }
   }, [fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      setBulkDeleting(true);
+      const ids = Array.from(selectedIds);
+      const total = ids.length;
+      const succeeded: string[] = [];
+      const failed: { id: string; name: string; message: string }[] = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const jurusanItem = jurusans.find(j => j.id === id);
+        try {
+          const res = await deleteJurusan(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
+          succeeded.push(id);
+        } catch (e: any) {
+          failed.push({ id, name: jurusanItem?.nama || id, message: e?.message || 'Gagal menghapus' });
+        }
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
+
+      if (failed.length > 0) {
+        setBulkErrorDetails(failed);
+        setBulkErrorModalOpen(true);
+        if (succeeded.length > 0) {
+          toast(`Berhasil menghapus ${succeeded.length} jurusan, ${failed.length} gagal.`, { icon: '⚠️' });
+        }
+      } else {
+        toast.success(`Berhasil menghapus ${succeeded.length} jurusan`);
+      }
+
+      const next = new Set<string>(selectedIds);
+      succeeded.forEach(id => next.delete(id));
+      setSelectedIds(next);
+      
+      fetchJurusans(currentPage, debouncedSearchTerm);
+    } catch (err: any) {
+      console.error('Error bulk deleting jurusan:', err);
+      toast.error('Terjadi kesalahan saat menghapus data terpilih');
+    } finally {
+      setBulkDeleting(false);
+      confirm.setLoading(false);
+    }
+  }, [selectedIds, jurusans, fetchJurusans, currentPage, debouncedSearchTerm, confirm]);
 
   const columns = useMemo(() => [
     { 
@@ -306,6 +356,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
               loading={loading}
               emptyMessage="Tidak ada data jurusan ditemukan"
               className="border-none"
+              selectedRowKeys={selectedIds}
+              onSelectedRowKeysChange={setSelectedIds}
               pagination={{
                 currentPage,
                 totalPages,
@@ -374,11 +426,69 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
                     </Button>
                 </div>
               }
+              toolbarRight={
+                selectedIds.size > 0 && canManage && (
+                  <Button
+                    variant="toolbarDanger"
+                    size="toolbar"
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Hapus Jurusan Terpilih',
+                        description: `Anda yakin ingin menghapus ${selectedIds.size} jurusan terpilih? Tindakan ini tidak dapat dibatalkan.`,
+                        confirmText: 'Hapus',
+                        cancelText: 'Batal',
+                        style: 'danger',
+                        withProgress: true,
+                        progressLabel: `Menghapus ${selectedIds.size} jurusan...`,
+                      });
+                      if (ok) await handleBulkDelete();
+                    }}
+                    disabled={bulkDeleting}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Hapus Terpilih ({selectedIds.size})
+                  </Button>
+                )
+              }
               />
             </Suspense>
           </div>
         )}
       </div>
+      
+      <Modal
+        isOpen={bulkErrorModalOpen}
+        onClose={() => { setBulkErrorModalOpen(false); setBulkErrorDetails([]); }}
+        title="Gagal Menghapus Beberapa Jurusan"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm text-amber-700 dark:text-amber-300">
+              Ada {bulkErrorDetails.length} data gagal dihapus karena keterkaitan relasi database (misal: jurusan sudah digunakan dalam data kelas, guru, atau siswa).
+            </p>
+          </div>
+          <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+            <div className="max-h-64 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
+              {bulkErrorDetails?.map((e) => (
+                <div key={e.id} className="p-4 flex flex-col gap-1 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{e.name}</span>
+                    <span className="text-[10px] font-mono text-slate-400">ID: {e.id.substring(0, 8)}</span>
+                  </div>
+                  <span className="text-xs text-red-500 font-semibold">{e.message}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => { setBulkErrorModalOpen(false); setBulkErrorDetails([]); }}>
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 });
