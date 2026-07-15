@@ -88,7 +88,7 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
       onClose={onClose}
       title={editingItem ? 'Edit Alokasi JP' : addMode === 'manual' ? 'Tambah Alokasi JP (Manual)' : 'Tambah Alokasi JP (Bulk Plotting)'}
       size={isSingleMode ? '2xl' : '5xl'}
-      contentClassName="!overflow-visible"
+      contentClassName={isSingleMode ? "!overflow-visible" : ""}
     >
       <form onSubmit={handleSave} className="space-y-4 pt-2">
         {isSingleMode ? (
@@ -121,21 +121,25 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
             kelompokOptions={kelompokOptions}
             jenjang={jenjang}
             kurikulum={kurikulum}
+            isPendingSave={isPendingSave}
+            onClose={onClose}
           />
         )}
 
-        <ModalFooter className="px-0 pt-4 mt-6">
-          <Button variant="ghost" type="button" onClick={onClose} className="rounded-xl font-bold">
-            BATAL
-          </Button>
-          <Button 
-            type="submit" 
-            isLoading={isPendingSave} 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
-          >
-            {saveLabel}
-          </Button>
-        </ModalFooter>
+        {isSingleMode && (
+          <ModalFooter className="px-0 pt-4 mt-6">
+            <Button variant="ghost" type="button" onClick={onClose} className="rounded-xl font-bold">
+              BATAL
+            </Button>
+            <Button 
+              type="submit" 
+              isLoading={isPendingSave} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none"
+            >
+              {saveLabel}
+            </Button>
+          </ModalFooter>
+        )}
       </form>
     </Modal>
   );

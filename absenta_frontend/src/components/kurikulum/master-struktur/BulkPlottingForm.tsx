@@ -20,6 +20,8 @@ interface BulkPlottingFormProps {
   kelompokOptions: { value: string; label: string }[];
   jenjang: string;
   kurikulum: string;
+  isPendingSave?: boolean;
+  onClose?: () => void;
 }
 
 interface Step {
@@ -44,7 +46,9 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
   handleAddPreset,
   kelompokOptions,
   jenjang,
-  kurikulum
+  kurikulum,
+  isPendingSave,
+  onClose
 }) => {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
@@ -255,7 +259,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
           </div>
 
           <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
-            <div className="max-h-[380px] overflow-y-auto">
+            <div className="max-h-[250px] overflow-y-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-150 dark:border-slate-800">
@@ -356,7 +360,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
         </div>
       ) : (
         /* Regular Wizard Step Layout */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[440px] animate-in fade-in duration-200">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[330px] animate-in fade-in duration-200">
           {/* Panel Kiri: Pemilihan Mapel (Col 5) */}
           <div className="lg:col-span-5 border-r border-slate-100 dark:border-slate-800/80 pr-6 flex flex-col space-y-4">
             <div className="space-y-1.5">
@@ -393,7 +397,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
             )}
 
             {/* Mapel List Checkboxes */}
-            <div className="flex-1 overflow-y-auto max-h-[280px] pr-1 space-y-2 border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex-1 overflow-y-auto max-h-[200px] pr-1 space-y-2 border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50">
               {filteredSubjects.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 opacity-30 text-center space-y-2">
                   <BookOpen size={28} />
@@ -465,7 +469,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
             </div>
 
             {/* Selected Mapels Table List */}
-            <div className="flex-1 overflow-y-auto max-h-[350px] border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-white dark:bg-slate-950 space-y-3">
+            <div className="flex-1 overflow-y-auto max-h-[250px] border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-white dark:bg-slate-950 space-y-3">
               {selectedSubjectsInCurrentStep.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-2">
                   <BookOpen size={36} />
@@ -526,16 +530,26 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
 
       {/* Navigation Footer */}
       <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-4 px-1">
-        <Button
-          variant="outline"
-          type="button"
-          onClick={handleBack}
-          disabled={activeStepIndex === 0}
-          className="rounded-xl font-bold flex items-center gap-1.5 text-xs h-9"
-        >
-          <ChevronLeft size={14} />
-          KEMBALI
-        </Button>
+        {activeStepIndex === 0 ? (
+          <Button
+            variant="ghost"
+            type="button"
+            onClick={onClose}
+            className="rounded-xl font-bold text-xs h-9"
+          >
+            BATAL
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            type="button"
+            onClick={handleBack}
+            className="rounded-xl font-bold flex items-center gap-1.5 text-xs h-9"
+          >
+            <ChevronLeft size={14} />
+            KEMBALI
+          </Button>
+        )}
         
         {activeStepIndex < steps.length - 1 ? (
           <Button
@@ -547,10 +561,14 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
             <ChevronRight size={14} />
           </Button>
         ) : (
-          <div className="text-[10px] text-slate-400 font-bold uppercase select-none flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 px-3 py-1.5 rounded-lg">
-            <Check size={12} className="text-emerald-500" />
-            SIAP SIMPAN
-          </div>
+          <Button
+            type="submit"
+            isLoading={isPendingSave}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs h-9 border border-indigo-500 shadow-md shadow-indigo-150 dark:shadow-none flex items-center gap-1.5 animate-pulse"
+          >
+            SIMPAN PEMETAAN
+            <Check size={14} />
+          </Button>
         )}
       </div>
     </div>
