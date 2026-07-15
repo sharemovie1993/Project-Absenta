@@ -438,8 +438,8 @@ export class AuthService {
         }
       })();
 
-      // Hardening: Reject if NPSN not found in master data
-      if (!masterSekolah) {
+      // Hardening: Reject if NPSN not found in master data (skip in single-tenant/on-premise/hybrid mode)
+      if (!masterSekolah && !isSingleTenant) {
         throw new Error(`Data sekolah dengan NPSN ${normalizedNpsn} tidak ditemukan di database Kemdikbud. Pastikan NPSN benar.`);
       }
     }
