@@ -766,10 +766,13 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                 Tinjau Kembali
               </button>
               <button
-                type="submit"
-                form="bulk-plotting-form"
+                type="button"
                 disabled={isPendingSave}
-                onClick={() => setShowConfirmDialog(false)}
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  const form = document.getElementById('bulk-plotting-form') as HTMLFormElement | null;
+                  form?.requestSubmit();
+                }}
                 className="px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none transition-colors disabled:opacity-60 flex items-center gap-1.5"
               >
                 {isPendingSave ? (
