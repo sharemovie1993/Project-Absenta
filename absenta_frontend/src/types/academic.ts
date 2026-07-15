@@ -353,6 +353,8 @@ export interface Tenant {
   kepala_sekolah?: string | null;
   nip_kepala?: string | null;
   allow_manual_hadir_gate?: boolean;
+  jenjang?: string | null;
+  kurikulum?: string | null;
 }
 
 

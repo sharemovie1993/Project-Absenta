@@ -36,7 +36,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
   const [submitError, setSubmitError] = useState<string>('');
   const [presets, setPresets] = useState<GlobalMapelPreset[]>([]);
   
-  const { tingkatList, jenjang } = useJenjang();
+  const { tingkatList, jenjang, kurikulum } = useJenjang();
   
   const tingkatOptions = React.useMemo(() => {
     return [
@@ -50,12 +50,18 @@ export const MapelForm = React.memo<MapelFormProps>(({
       getPresetsByJenjang(jenjang)
         .then(res => {
           if (res.success && res.data) {
-            setPresets(res.data);
+            let filtered = res.data;
+            if (kurikulum === 'K13') {
+              filtered = res.data.filter(p => p.category !== 'SENI_PILIHAN');
+            } else {
+              filtered = res.data.filter(p => p.kode_mapel !== 'SENI');
+            }
+            setPresets(filtered);
           }
         })
         .catch(err => console.error('Failed to load global mapel presets:', err));
     }
-  }, [jenjang, mode]);
+  }, [jenjang, kurikulum, mode]);
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';

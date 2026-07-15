@@ -35,6 +35,7 @@ export interface UpdateTenantInput {
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
   jenjang?: string | null;
+  kurikulum?: string | null;
   kepala_sekolah_guru_id?: string | null;
 }
 
@@ -234,6 +235,7 @@ export class TenantService {
     // 2. Prioritas Kedua (Fallback): Cari dari data profile Sekolah
     let sekolahKota = null;
     let sekolahJenjang = null;
+    let sekolahKurikulum = null;
     try {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: id }
@@ -241,6 +243,7 @@ export class TenantService {
       if (sekolah) {
         sekolahKota = sekolah.kota;
         sekolahJenjang = sekolah.jenjang;
+        sekolahKurikulum = sekolah.kurikulum;
       }
 
       // Smart Fallback jika data jenjang di profil sekolah masih kosong/null
@@ -287,6 +290,7 @@ export class TenantService {
       kepala_sekolah_guru_id: kepalaSekolahGuruId || null,
       kota: sekolahKota || null,
       jenjang: sekolahJenjang || null,
+      kurikulum: sekolahKurikulum || 'MERDEKA',
       features: resolvedFeatures || [],
     } as any;
   }
@@ -378,6 +382,7 @@ export class TenantService {
       nip_kepala,
       allow_manual_hadir_gate,
       jenjang,
+      kurikulum,
       kepala_sekolah_guru_id,
       ...coreInput
     } = input;
@@ -421,8 +426,8 @@ export class TenantService {
       await upsertConfig('ALLOW_MANUAL_HADIR_GATE', allow_manual_hadir_gate ? 'true' : 'false');
     }
 
-    // Save kepala_sekolah, nip_kepala & jenjang in Sekolah table
-    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined) {
+    // Save kepala_sekolah, nip_kepala, jenjang & kurikulum in Sekolah table
+    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined || kurikulum !== undefined) {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: tenantId }
       });
@@ -432,7 +437,8 @@ export class TenantService {
           data: {
             kepala_sekolah: kepala_sekolah !== undefined ? kepala_sekolah : undefined,
             nip_kepala: nip_kepala !== undefined ? nip_kepala : undefined,
-            jenjang: jenjang !== undefined ? jenjang : undefined
+            jenjang: jenjang !== undefined ? jenjang : undefined,
+            kurikulum: kurikulum !== undefined ? kurikulum : undefined
           }
         });
       } else {
@@ -442,7 +448,8 @@ export class TenantService {
             nama: existingTenant.name,
             kepala_sekolah: kepala_sekolah || '',
             nip_kepala: nip_kepala || '',
-            jenjang: jenjang || null
+            jenjang: jenjang || null,
+            kurikulum: kurikulum || 'MERDEKA'
           }
         });
       }

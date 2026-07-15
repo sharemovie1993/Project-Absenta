@@ -58,8 +58,11 @@ export function useJenjang() {
     return KELOMPOK_MAPEL_BY_JENJANG[key] || DEFAULT_KELOMPOK_OPTIONS;
   }, [rawJenjang]);
 
+  const kurikulum = tenant?.kurikulum || 'MERDEKA';
+
   return {
     jenjang: rawJenjang,
+    kurikulum,
     config,
     tingkatList,
     kelompokOptions,

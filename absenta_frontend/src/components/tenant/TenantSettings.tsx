@@ -40,6 +40,7 @@ export const TenantSettings: React.FC = () => {
   const [kepalaSekolah, setKepalaSekolah] = useState('');
   const [nipKepala, setNipKepala] = useState('');
   const [jenjang, setJenjang] = useState('');
+  const [kurikulum, setKurikulum] = useState('MERDEKA');
   const [gurus, setGurus] = useState<any[]>([]);
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
 
@@ -134,6 +135,7 @@ export const TenantSettings: React.FC = () => {
         setNipKepala(data.nip_kepala || '');
         setSelectedGuruId((data as any).kepala_sekolah_guru_id || '');
         setJenjang(data.jenjang || '');
+        setKurikulum((data as any).kurikulum || 'MERDEKA');
         
         // Parse the dynamic lines from the database string array
         const rawLines = data.print_header_lines && data.print_header_lines.length > 0
@@ -239,6 +241,7 @@ export const TenantSettings: React.FC = () => {
         kepala_sekolah: kepalaSekolah,
         nip_kepala: nipKepala,
         jenjang: jenjang || null,
+        kurikulum: kurikulum || 'MERDEKA',
         kepala_sekolah_guru_id: selectedGuruId || null,
       };
 
@@ -475,6 +478,18 @@ export const TenantSettings: React.FC = () => {
                       <option value="MA">MA (Madrasah Aliyah)</option>
                       <option value="SMK">SMK (Sekolah Menengah Kejuruan)</option>
                       <option value="MAK">MAK (Madrasah Aliyah Kejuruan)</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="kurikulum" className="text-xs font-bold text-slate-500 uppercase">Kurikulum Utama <span className="text-rose-500">*</span></Label>
+                    <select
+                      id="kurikulum"
+                      value={kurikulum}
+                      onChange={(e) => setKurikulum(e.target.value)}
+                      className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300 font-bold text-slate-700 dark:text-slate-300"
+                    >
+                      <option value="MERDEKA">Kurikulum Merdeka</option>
+                      <option value="K13" disabled>Kurikulum 2013 (K13) - Belum Didukung</option>
                     </select>
                   </div>
                 </div>
@@ -982,6 +997,19 @@ export const TenantSettings: React.FC = () => {
                           <AlertTriangle className="h-3 w-3 inline" /> Harap tentukan jenjang!
                         </span>
                       )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Kurikulum */}
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                  <div className="p-3 bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 rounded-xl shrink-0">
+                    <School className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Kurikulum Utama</span>
+                    <p className="text-xs font-black text-indigo-600 dark:text-indigo-400">
+                      {tenant.kurikulum === 'K13' ? 'Kurikulum 2013 (K13)' : 'Kurikulum Merdeka'}
                     </p>
                   </div>
                 </div>

@@ -42,6 +42,7 @@ interface Tenant {
   nip_kepala?: string | null;
   kota?: string | null;
   jenjang?: string | null;
+  kurikulum?: string | null;
 }
 
 export interface CreateTenantRequest {

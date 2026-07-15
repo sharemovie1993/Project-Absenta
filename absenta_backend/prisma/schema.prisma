@@ -1112,6 +1112,7 @@ model Sekolah {
   nss            String?
   kode_sekolah   String?
   jenjang        String?
+  kurikulum      String?       @default("MERDEKA")
   akreditasi     String?
   alamat         String?
   kelurahan      String?

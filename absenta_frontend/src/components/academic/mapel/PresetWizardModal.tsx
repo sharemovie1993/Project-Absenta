@@ -4,6 +4,7 @@ import { getPresetsByJenjang, initializeMapelPreset, type GlobalMapelPreset } fr
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check, ChevronDown, ChevronUp, Compass, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 interface PresetWizardModalProps {
   isOpen: boolean;
@@ -40,27 +41,47 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   // Selection states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const { kurikulum } = useJenjang();
+
   const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
 
-  // Define steps dynamically based on school type
+  // Define steps dynamically based on school type and curriculum
   const steps = useMemo<WizardStep[]>(() => {
+    const isSmaOrKejuruan = ['SMA', 'MA', 'SMK', 'MAK'].includes(jenjang?.toUpperCase() || '');
+    const isK13 = kurikulum === 'K13';
+    
+    // For K13 SD/SMP, there is NO choices/Seni Pilihan (since it's SBdP in Mapel Umum)
+    const hasPilihanStep = isSmaOrKejuruan || (!isK13 && ['SD', 'MI', 'SMP', 'MTs'].includes(jenjang?.toUpperCase() || ''));
+    
+    const pilihanLabel = isSmaOrKejuruan ? 'Mapel Pilihan' : 'Seni Pilihan';
+
     if (isSmkMak) {
-      return [
+      const baseSteps: WizardStep[] = [
         { label: 'Mapel Umum', categoryType: 'umum' },
-        { label: 'Mapel Kejuruan', categoryType: 'kejuruan' },
-        { label: 'Mapel Pilihan', categoryType: 'pilihan' },
+        { label: 'Mapel Kejuruan', categoryType: 'kejuruan' }
+      ];
+      if (hasPilihanStep) {
+        baseSteps.push({ label: pilihanLabel, categoryType: 'pilihan' });
+      }
+      baseSteps.push(
         { label: 'Muatan Lokal', categoryType: 'mulok' },
         { label: 'Ringkasan', categoryType: 'summary' }
-      ];
+      );
+      return baseSteps;
     } else {
-      return [
-        { label: 'Mapel Umum', categoryType: 'umum' },
-        { label: 'Mapel Pilihan', categoryType: 'pilihan' },
+      const baseSteps: WizardStep[] = [
+        { label: 'Mapel Umum', categoryType: 'umum' }
+      ];
+      if (hasPilihanStep) {
+        baseSteps.push({ label: pilihanLabel, categoryType: 'pilihan' });
+      }
+      baseSteps.push(
         { label: 'Muatan Lokal', categoryType: 'mulok' },
         { label: 'Ringkasan', categoryType: 'summary' }
-      ];
+      );
+      return baseSteps;
     }
-  }, [isSmkMak]);
+  }, [isSmkMak, jenjang, kurikulum]);
 
   const currentStepType = steps[stepIndex]?.categoryType || 'umum';
 
@@ -111,11 +132,17 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
         setLoading(true);
         const res = await getPresetsByJenjang(jenjang);
         if (res.success) {
-          setPresets(res.data);
+          let filtered = res.data;
+          if (kurikulum === 'K13') {
+            filtered = res.data.filter(p => p.category !== 'SENI_PILIHAN');
+          } else {
+            filtered = res.data.filter(p => p.kode_mapel !== 'SENI');
+          }
+          setPresets(filtered);
           
           // Pre-select UMUM & KEAGAMAAN by default in step 1
           const initialSelection = new Set<string>();
-          res.data.forEach(p => {
+          filtered.forEach(p => {
             if (p.category === 'UMUM' || p.category === 'KEAGAMAAN' || p.category === 'UMUM_KELAS10') {
               initialSelection.add(p.id);
             }
@@ -222,7 +249,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     };
 
     loadInitialData();
-  }, [isOpen, jenjang, isSmkMak]);
+  }, [isOpen, jenjang, isSmkMak, kurikulum]);
 
   // Filter Step 1 Presets (Wajib Umum & Keagamaan)
   const step1Presets = useMemo(() => {
@@ -586,7 +613,9 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                   <div className="p-3.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3">
                     <Compass className="text-indigo-600 mt-0.5 flex-shrink-0" size={16} />
                     <p className="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed font-medium">
-                      Pilih mata pelajaran pilihan, kelompok minat rumpun (SMA/MA), atau pilihan Seni & Prakarya (SMP/MTs/SD) yang disediakan oleh sekolah Anda.
+                      {['SD', 'MI', 'SMP', 'MTs'].includes(jenjang?.toUpperCase() || '')
+                        ? 'Pilih cabang Seni & Prakarya yang diajarkan di sekolah Anda.'
+                        : 'Pilih mata pelajaran pilihan atau kelompok minat yang disediakan oleh sekolah Anda.'}
                     </p>
                   </div>
 
