@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, PieChart, Pie, Legend,
+  ResponsiveContainer, Cell, PieChart, Pie, Legend, LabelList,
 } from 'recharts';
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -142,7 +142,7 @@ export default function KurikulumDashboard() {
   const supRows     = useMemo(() => safeArr<SupervisiRecentItem>(supR), [supR]);
 
   const distribusi  = useMemo(() => buildDistribusi(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
-  const beban       = useMemo(() => buildBeban(strRows, kelompokOptions), [strRows, kelompokOptions]);
+  const beban       = useMemo(() => buildBeban(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
 
   // Realistis Guru Load calculation from actual JadwalTemplate data
   const teachersLoad = useMemo(() => {
@@ -560,15 +560,16 @@ export default function KurikulumDashboard() {
                   </div>
                 ) : beban.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 20 }}>
+                    <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                      <XAxis dataKey="nama" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} angle={-30} textAnchor="end" interval={0} />
+                      <XAxis dataKey="nama" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
-                      <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                       <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
                         {beban?.map((b, i) => (
                           <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                         ))}
+                        <LabelList dataKey="jp" position="top" style={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }} formatter={(v: number) => `${v} JP`} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ClipboardList, FileText } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, LabelList } from 'recharts';
 import { cn } from '@/lib/utils';
 
 /* ── Core Logic Helpers ── */
@@ -78,10 +78,33 @@ export function buildDistribusi(rows: RowItem[], options: SelectOption[], isVoca
   });
 }
 
-export function buildBeban(rows: RowItem[], options: SelectOption[]) {
+export const getKelompokLabelShort = (kel: string | undefined, isVocational: boolean) => {
+  if (!kel) return 'UMUM';
+  const kUpper = kel.toUpperCase();
+  
+  if (kUpper.includes('UMUM') || kUpper === 'NASIONAL' || kUpper === 'UMUM') {
+    return 'UMUM';
+  }
+  if (kUpper.includes('KEJURUAN')) {
+    return isVocational ? 'KEJURUAN' : 'UMUM';
+  }
+  if (kUpper.includes('PILIHAN')) {
+    return 'PILIHAN';
+  }
+  if (kUpper.includes('LOKAL') || kUpper.includes('MULOK') || kUpper.includes('MUATAN')) {
+    return 'MULOK';
+  }
+  return kUpper;
+};
+
+export function buildBeban(rows: RowItem[], options: SelectOption[], isVocational: boolean) {
   const map: Record<string, number> = {};
   for (const r of rows) {
-    const key = getKelompokLabel(r.kelompok, options);
+    const rawKelompok = r.kelompok ?? '';
+    if (!isVocational && rawKelompok.toUpperCase().includes('KEJURUAN')) {
+      continue;
+    }
+    const key = getKelompokLabelShort(r.kelompok, isVocational);
     map[key] = (map[key] || 0) + (r.jp_per_minggu || 0);
   }
   return Object.entries(map)?.map(([nama, jp]) => ({ nama, jp })).sort((a, b) => b.jp - a.jp);
@@ -129,6 +152,7 @@ export function DistribusiChart({ data, loading }: { data: { name: string; jp: n
         />
         <Bar dataKey="jp" radius={[5, 5, 0, 0]} maxBarSize={44}>
           {data?.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+          <LabelList dataKey="jp" position="top" style={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }} formatter={(v: number) => `${v} JP`} />
         </Bar>
       </BarChart>
     </ResponsiveContainer>
