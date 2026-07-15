@@ -334,26 +334,28 @@ const MapelList = React.memo<MapelListProps>(({
       {/* Tab Filter + Search Bar */}
       <div className="flex flex-col gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10">
         {/* Tab Buttons */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
-          {[
-            { key: 'ALL', label: 'Semua', icon: null },
-            { key: 'UMUM', label: 'Umum / Wajib', icon: <BookOpen size={12} /> },
-            { key: 'KEJURUAN', label: 'Kejuruan', icon: <GraduationCap size={12} /> },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                activeTab === tab.key
-                  ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {isSmkMak && (
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl p-1 w-fit">
+            {[
+              { key: 'ALL', label: 'Semua', icon: null },
+              { key: 'UMUM', label: 'Umum / Wajib', icon: <BookOpen size={12} /> },
+              { key: 'KEJURUAN', label: 'Kejuruan', icon: <GraduationCap size={12} /> },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  activeTab === tab.key
+                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-300 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Search + Filter Row */}
         <div className="flex flex-col md:flex-row gap-3 items-center">
