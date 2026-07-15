@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
+import { BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import type { Mapel } from '../../../types/academic';
 import { Button } from '../../ui/Button';
 import { StrukturKurikulum, isMapelRelevantForTingkat, getSubjectSortRank, checkMapelHasStandard } from '../../../utils/kurikulum/masterStrukturHelper';
@@ -454,21 +454,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[330px] animate-in fade-in duration-200">
           {/* Panel Kiri: Pemilihan Mapel (Col 5) */}
           <div className="lg:col-span-5 border-r border-slate-100 dark:border-slate-800/80 pr-6 flex flex-col space-y-4">
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Cari Mata Pelajaran</span>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={bulkSearchQuery}
-                  onChange={(e) => setBulkSearchQuery(e.target.value)}
-                  placeholder={`Cari mapel ${currentStep.label.toLowerCase()}...`}
-                  className="w-full h-10 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <Search size={14} />
-                </div>
-              </div>
-            </div>
+
 
             {/* Presets Button Contextual Shortcut */}
             {currentStep.presetType && presetSisaCount[currentStep.presetType] > 0 && (
@@ -515,9 +501,9 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                         }
                         setBulkSelections(copy);
                       }}
-                      className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                      className={`flex items-center gap-2.5 p-2 px-3 rounded-xl border cursor-pointer transition-all ${
                         isChecked 
-                        ? 'bg-indigo-50/20 border-indigo-500 dark:bg-indigo-950/10' 
+                        ? 'bg-indigo-50/30 border-indigo-400 dark:bg-indigo-950/20' 
                         : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
                       }`}
                     >
@@ -525,22 +511,20 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}} // handled by parent div click
-                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                        className="rounded text-indigo-600 focus:ring-indigo-500 shrink-0"
                       />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{s.nama_mapel}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[9px] text-slate-400 font-mono font-bold">{s.kode_mapel}</span>
-                          {!hasStandard && (
-                            <span
-                              title="Mapel ini tidak diatur dalam standar nasional Kemendikbud untuk kelas ini, sehingga tidak termasuk dalam Auto-Plot. Anda tetap dapat memilihnya secara manual."
-                              className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-450 border border-orange-200 dark:border-orange-900/40 select-none cursor-help"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                              Tidak Masuk Auto-Plot
-                            </span>
-                          )}
+                      <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{s.nama_mapel}</p>
                         </div>
+                        {!hasStandard && (
+                          <span
+                            title="Mapel ini tidak diatur dalam standar nasional Kemendikbud untuk kelas ini, sehingga tidak termasuk dalam Auto-Plot. Anda tetap dapat memilihnya secara manual."
+                            className="text-orange-500 hover:text-orange-600 cursor-help shrink-0 text-[10px]"
+                          >
+                            ⚠️
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -588,7 +572,6 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                     <div key={id} className="flex items-center justify-between gap-3 p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl hover:border-indigo-200 transition-all animate-in fade-in duration-200">
                       <div className="flex-1 min-w-0 flex items-center gap-2">
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
-                        <span className="text-[8px] bg-slate-250 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {/* JP Input */}
