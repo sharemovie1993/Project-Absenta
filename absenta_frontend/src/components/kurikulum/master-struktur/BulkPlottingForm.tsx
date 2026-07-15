@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import type { Mapel } from '../../../types/academic';
 import { Button } from '../../ui/Button';
-import { StrukturKurikulum } from '../../../utils/kurikulum/masterStrukturHelper';
+import { StrukturKurikulum, isMapelRelevantForTingkat } from '../../../utils/kurikulum/masterStrukturHelper';
 
 interface BulkPlottingFormProps {
   bulkSearchQuery: string;
@@ -147,32 +147,9 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
         }
       }
 
-      // 5. Respect tingkat/level relevance
-      const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-      const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
-      const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
-      const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
-      const isMulok = kode.startsWith('M-') || 
-                       nama.includes('bahasa sunda') || 
-                       nama.includes('bahasa jawa') || 
-                       nama.includes('bahasa bali') || 
-                       nama.includes('bahasa madura') || 
-                       nama.includes('muatan lokal') || 
-                       nama.includes('plh') || 
-                       nama.includes('kesenian daerah') ||
-                       nama.includes('kepariwisataan') ||
-                       nama.includes('sunda');
-      const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
-      
-      if (selectedTingkat === 10) {
-        if (isPkl || isPkk || isKk) return false;
-        const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-        const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-        if (isProduktifLanjut) return false;
-      } else if (selectedTingkat === 11) {
-        if (isDasar || isPkl || isKoding || isMulok) return false;
-      } else {
-        if (isDasar || isKoding || isMulok) return false;
+      // 5. Respect tingkat/level relevance using the shared helper
+      if (!isMapelRelevantForTingkat(s, selectedTingkat, jenjang === 'SMK' || jenjang === 'MAK', isMapelBelongsToOtherJurusan)) {
+        return false;
       }
 
       // 6. Must belong to the current step's kelompok category

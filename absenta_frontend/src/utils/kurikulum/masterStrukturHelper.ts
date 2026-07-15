@@ -59,10 +59,8 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string): st
   const isPilihan = kode.includes('PILIHAN') || 
                     kode.includes('MAPEL-PILIHAN') || 
                     kode.includes('KAI') ||
-                    nama.includes('pilihan') ||
-                    nama.includes('tingkat lanjut') ||
-                    nama.includes('koding') ||
-                    nama.includes('coding') ||
+                    kode.startsWith('SENI_') || // e.g. SENI_MUSIK, SENI_RUPA
+                    ['seni musik', 'seni rupa', 'seni tari', 'seni teater', 'pilihan', 'tingkat lanjut', 'koding', 'coding'].some(t => nama.includes(t)) ||
                     ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k);
 
   if (isKejuruan) return 'MATA PELAJARAN KEJURUAN';
@@ -189,15 +187,20 @@ export const isMapelRelevantForTingkat = (
   
   const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
   
-  if (tingkat === 10) {
-    if (isPkl || isPkk || isKk) return false;
-    const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-    const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-    if (isProduktifLanjut) return false;
-  } else if (tingkat === 11) {
-    if (isDasar || isPkl || isKoding || isMulok) return false;
+  if (isSmkOrMak) {
+    if (tingkat === 10) {
+      if (isPkl || isPkk || isKk) return false;
+      const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+      const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
+      if (isProduktifLanjut) return false;
+    } else if (tingkat === 11) {
+      if (isDasar || isPkl || isKoding || isMulok) return false;
+    } else {
+      if (isDasar || isKoding || isMulok) return false;
+    }
   } else {
-    if (isDasar || isKoding || isMulok) return false;
+    // For non-SMK (SD, SMP, SMA), hide vocational elements but keep everything else (like Mulok)
+    if (isPkl || isPkk || isKk || isDasar) return false;
   }
   
   return true;
