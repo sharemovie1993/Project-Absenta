@@ -315,7 +315,7 @@ export const JurusanPresetsPage: React.FC = () => {
                       </span>
                       <h3 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight flex items-center gap-2">
                         {prog.nama}
-                        <Badge variant="ghost" className="text-[9px] font-bold">
+                        <Badge variant="outline" className="text-[9px] font-bold">
                           {prog.kode}
                         </Badge>
                       </h3>
@@ -340,7 +340,7 @@ export const JurusanPresetsPage: React.FC = () => {
                     <Button
                       type="button"
                       variant="toolbarOutline"
-                      size="toolbarIconOnly"
+                      size="toolbarIcon"
                       onClick={() => handleOpenEditProgram(prog)}
                     >
                       <Edit2 size={12} />
@@ -348,7 +348,7 @@ export const JurusanPresetsPage: React.FC = () => {
                     <Button
                       type="button"
                       variant="toolbarOutline"
-                      size="toolbarIconOnly"
+                      size="toolbarIcon"
                       onClick={() => handleDeleteProgram(prog)}
                       className="text-red-500 hover:text-red-600 dark:hover:text-red-400"
                     >
