@@ -86,7 +86,7 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
       {!isViewMode && presets.length > 0 && (
         <div className="space-y-2 md:col-span-2 p-4 bg-violet-50/40 dark:bg-violet-950/15 rounded-2xl border border-violet-100 dark:border-violet-900/40 mb-2">
           <label className="text-[11px] font-bold text-violet-750 dark:text-violet-300 uppercase tracking-wider block mb-1">
-            🚀 Gunakan Preset Global (Autofill Cepat)
+            🚀 Preset Konsentrasi Keahlian (Autofill Cepat)
           </label>
           <select
             onChange={(e) => {
@@ -136,7 +136,7 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
             }}
             className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
           >
-            <option value="">— Cari & Pilih Jurusan Preset untuk Autofill —</option>
+            <option value="">— Pilih Preset Konsentrasi Keahlian —</option>
             {presets.map(p => (
               <option key={p.id} value={p.id}>
                 {p.nama} ({p.program_nama} · {p.bidang_keahlian})
