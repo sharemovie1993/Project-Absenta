@@ -14,7 +14,7 @@ export class KalenderAkademikController {
         where,
         orderBy: { tanggal_mulai: 'asc' },
         include: {
-          TahunPelajaran: { select: { nama: true, tahun_mulai: true, tahun_selesai: true } },
+          TahunPelajaran: { select: { id: true, tahun: true } },
           CreatedBy: { select: { full_name: true } }
         }
       });
@@ -86,7 +86,7 @@ export class KalenderAkademikController {
           created_by: userId ?? null,
         },
         include: {
-          TahunPelajaran: { select: { nama: true } },
+          TahunPelajaran: { select: { id: true, tahun: true } },
           CreatedBy: { select: { full_name: true } }
         }
       });
