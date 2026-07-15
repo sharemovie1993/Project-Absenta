@@ -15,6 +15,7 @@ import { Badge } from '../../components/ui/Badge';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { Modal } from '../../components/ui/Modal';
 import { useMasterStrukturState } from '../../hooks/kurikulum/useMasterStrukturState';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
 import type { Mapel } from '../../types/academic';
@@ -201,48 +202,13 @@ const MasterStrukturPage: React.FC = () => {
                                         <span className="text-xs font-bold opacity-80">JP / Minggu</span>
                                     </div>
                                     <div className="flex gap-2 pt-1.5 no-print relative">
-                                        {showAddOptions ? (
-                                            <div className="absolute bottom-full left-0 right-0 mb-2 p-1.5 bg-indigo-900/95 dark:bg-slate-900/95 rounded-xl border border-indigo-500/20 backdrop-blur-sm z-30 space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                                <p className="text-[9px] font-black uppercase tracking-wider text-center text-indigo-200">Pilih Mode Plotting</p>
-                                                <div className="flex gap-1.5">
-                                                    <Button 
-                                                        onClick={() => {
-                                                            setAddMode('manual');
-                                                            openCreateModal();
-                                                            setShowAddOptions(false);
-                                                        }}
-                                                        className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[9px] h-7 border-none"
-                                                    >
-                                                        Manual
-                                                    </Button>
-                                                    <Button 
-                                                        onClick={() => {
-                                                            setAddMode('massal');
-                                                            openCreateModal();
-                                                            setShowAddOptions(false);
-                                                        }}
-                                                        className="flex-1 bg-indigo-500/40 hover:bg-indigo-500/60 text-white font-black rounded-lg text-[9px] h-7 border-none"
-                                                    >
-                                                        Massal
-                                                    </Button>
-                                                </div>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setShowAddOptions(false)}
-                                                    className="w-full text-center text-[9px] font-black text-indigo-200 hover:text-white"
-                                                >
-                                                    Batal
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <Button 
-                                                onClick={() => setShowAddOptions(true)}
-                                                className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
-                                            >
-                                                <Plus size={12} className="mr-1" />
-                                                TAMBAH
-                                            </Button>
-                                        )}
+                                        <Button 
+                                            onClick={() => setShowAddOptions(true)}
+                                            className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
+                                        >
+                                            <Plus size={12} className="mr-1" />
+                                            TAMBAH
+                                        </Button>
                                         <Button
                                             onClick={handleCetakPdf}
                                             disabled={isPrinting || !mappingFiltered}
@@ -430,6 +396,52 @@ const MasterStrukturPage: React.FC = () => {
                         />
                     )}
                 </Suspense>
+
+                {/* Add Mode Options Modal */}
+                {showAddOptions && (
+                    <Modal
+                        isOpen={showAddOptions}
+                        onClose={() => setShowAddOptions(false)}
+                        title="Pilih Metode Plotting"
+                        size="md"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                            {/* Option 1: Standar Baku / Massal */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAddMode('massal');
+                                    openCreateModal();
+                                    setShowAddOptions(false);
+                                }}
+                                className="flex flex-col items-center justify-center p-6 bg-indigo-50/30 hover:bg-indigo-50 dark:bg-slate-900/30 dark:hover:bg-slate-900 rounded-2xl border border-indigo-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700 transition-all text-center group"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-all">
+                                    <Layers size={24} />
+                                </div>
+                                <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Plotting Massal</span>
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase mt-1">Preset Standar Nasional</span>
+                            </button>
+
+                            {/* Option 2: Tambah Manual */}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setAddMode('manual');
+                                    openCreateModal();
+                                    setShowAddOptions(false);
+                                }}
+                                className="flex flex-col items-center justify-center p-6 bg-slate-50/50 hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700 transition-all text-center group"
+                            >
+                                <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-indigo-950 flex items-center justify-center text-slate-500 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-all">
+                                    <Plus size={24} />
+                                </div>
+                                <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Plotting Manual</span>
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase mt-1">Tambah Satu Per Satu</span>
+                            </button>
+                        </div>
+                    </Modal>
+                )}
             </div>
         </AcademicPageLayout>
     );
