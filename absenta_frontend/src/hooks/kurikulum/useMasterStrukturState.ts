@@ -266,6 +266,48 @@ export const useMasterStrukturState = () => {
         if (type === 'PILIHAN' && group === 'MATA PELAJARAN PILIHAN') match = true;
         
         if (match) {
+          // Check if this mapel has a valid standard reference for the active tingkat
+          let hasStandard = false;
+          if (standardReferences?.data && Array.isArray(standardReferences.data) && standardReferences.data.length > 0) {
+            const code = (s.kode_mapel || '').toUpperCase();
+            const cleanCode = code.split('-')[0];
+            const name = (s.nama_mapel || '').toLowerCase();
+            
+            hasStandard = standardReferences.data.some((ref: any) => {
+              if (ref.tingkat !== selectedTingkat) return false;
+              
+              if ((ref.kode_mapel || '').toUpperCase() === code) return true;
+              if ((ref.kode_mapel || '').toUpperCase() === cleanCode) return true;
+              if (name.includes(ref.nama_mapel.toLowerCase()) || ref.nama_mapel.toLowerCase().includes(name)) return true;
+              
+              const isReligion = name.startsWith('pendidikan agama') || name.includes('agama');
+              const isSeniOrPrakarya = name.includes('seni ') || name.includes('seni') || name.includes('prakarya');
+              const isMulok = (group === 'MUATAN LOKAL') || ['sunda', 'jawa', 'bali', 'madura'].some(lang => name.includes(lang));
+              
+              if (isReligion && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama'))) return true;
+              if (isSeniOrPrakarya && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni'))) return true;
+              if (isMulok && ref.kode_mapel === 'MULOK') return true;
+              
+              if (isSmkOrMak) {
+                const isKejuruanMapel = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif') || name.includes('dasar-dasar');
+                if (isKejuruanMapel) {
+                  if (selectedTingkat === 10 && ref.kode_mapel === 'DASAR-KEJURUAN') return true;
+                  if (selectedTingkat > 10) {
+                    if ((code.includes('PKL') || name.includes('praktik kerja')) && ref.kode_mapel === 'PKL') return true;
+                    if ((code.includes('PKK') || name.includes('kreatif')) && ref.kode_mapel === 'PKK') return true;
+                    if (!code.includes('PKL') && !name.includes('praktik kerja') && !code.includes('PKK') && !name.includes('kreatif') && ref.kode_mapel === 'KK') return true;
+                  }
+                }
+              }
+              
+              return false;
+            });
+          } else {
+            hasStandard = true;
+          }
+
+          if (!hasStandard) return;
+
           const defaultJp = detectDefaultJp(s.kode_mapel || '', s.nama_mapel, selectedTingkat);
           next[s.id] = {
             jp_per_minggu: defaultJp,
@@ -275,7 +317,7 @@ export const useMasterStrukturState = () => {
       });
       return next;
     });
-  }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, detectDefaultJp]);
+  }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, detectDefaultJp, standardReferences]);
 
   const handleSave = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
