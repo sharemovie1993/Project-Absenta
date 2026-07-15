@@ -362,7 +362,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    groupedSelections.map(([kelompok, list]) => {
+                    groupedSelections.flatMap(([kelompok, list]) => {
                       const sortedList = [...list].sort((a, b) => {
                         const sA = subjects?.data?.find((s: Mapel) => s.id === a[0]);
                         const sB = subjects?.data?.find((s: Mapel) => s.id === b[0]);
@@ -374,34 +374,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                         return (sA?.nama_mapel || '').localeCompare(sB?.nama_mapel || '');
                       });
 
-                      const totalJpKelompok = list.reduce((sum, [_, config]) => sum + Number(config.jp_per_minggu), 0);
-
-                      let badgeClass = '';
-                      if (kelompok === 'MATA PELAJARAN UMUM') {
-                        badgeClass = 'bg-blue-100 text-blue-850 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/30';
-                      } else if (kelompok === 'MATA PELAJARAN KEJURUAN') {
-                        badgeClass = 'bg-purple-100 text-purple-850 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/50 dark:border-purple-900/30';
-                      } else if (kelompok === 'MUATAN LOKAL') {
-                        badgeClass = 'bg-emerald-100 text-emerald-850 dark:bg-emerald-950/30 dark:text-emerald-450 border border-emerald-200/50 dark:border-emerald-900/30';
-                      } else {
-                        badgeClass = 'bg-indigo-100 text-indigo-850 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30';
-                      }
-
-                      return (
-                        <React.Fragment key={kelompok}>
-                          <tr className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-t border-slate-100 dark:border-slate-850">
-                            <td colSpan={5} className="px-4 py-2">
-                              <div className="flex items-center justify-between">
-                                <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg ${badgeClass}`}>
-                                  {kelompok}
-                                </span>
-                                <span className="text-[9px] text-slate-500 font-black uppercase">
-                                  Subtotal: {totalJpKelompok} JP / Minggu
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                          {sortedList.map(([id, config]) => {
+                      return sortedList.map(([id, config]) => {
                             const mapel = subjects?.data?.find((s: Mapel) => s.id === id);
                             if (!mapel) return null;
                             
@@ -478,9 +451,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                                 </td>
                               </tr>
                             );
-                          })}
-                        </React.Fragment>
-                      );
+                          });
                     })
                   )}
                 </tbody>
