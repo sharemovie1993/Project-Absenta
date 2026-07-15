@@ -26,6 +26,10 @@ Completed:
 - **Manajemen Perangkat Ajar & RPP**: Repositori berkas administrasi guru (RPP, silabus, dll.) lengkap dengan workflow persetujuan (APPROVED/REJECTED) dan umpan balik Wakasek Kurikulum.
 - **Frontend Pages Modul Rapor & RPP**: Halaman `InputNilaiPage.tsx`, `CetakRaporPage.tsx`, `P5Page.tsx` di modul Rapor, dan halaman `PerangkatAjarPage.tsx` di modul Kurikulum lengkap dengan integrasi Axios & React Query.
 - **Global & Module Documentation**: Seluruh modul backend (39 subdirektori modul) dan dokumentasi global telah terdokumentasi (Deep Verified & Cross-Synced) dengan standar Context Engineering AI.
+- **Global Program & Jurusan Presets**: CRUD dan model data global untuk preset Program Keahlian dan Konsentrasi Keahlian (Jurusan) tingkat superadmin/platform, serta seeder standar nasional Kurikulum Merdeka.
+- **Wizard Tambah Massal Jurusan (2-Step)**: Wizard tambah massal jurusan di level tenant/sekolah yang dibagi menjadi 2 langkah (langkah 1: Program Keahlian, langkah 2: Jurusan terfilter).
+- **Adaptasi Jenjang Sekolah (useJenjang)**: Halaman CRUD Kelas, tabel kelas, filter kelas, dan menu sidebar Jurusan otomatis disembunyikan/disederhanakan untuk sekolah jenjang SD/SMP/MI/MTs yang tidak menerapkan penjurusan. Properti `jurusan_id` di database kini opsional/nullable.
+
 
 In Progress:
 - None

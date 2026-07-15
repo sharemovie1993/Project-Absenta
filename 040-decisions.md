@@ -156,3 +156,11 @@
 2026-07: Modul RPP & Perangkat Ajar (Kurikulum)
 - **Keputusan**: Menambahkan model database `PerangkatAjar` untuk mengarsipkan berkas RPP/Modul Ajar guru, membangun REST API upload/review berhak-akses (capability guarded), serta menyediakan antarmuka terintegrasi `PerangkatAjarPage.tsx` di frontend.
 - **Rasional**: Menyelesaikan gap backlog untuk repositori administrasi persiapan mengajar guru serta proses penjaminan mutu pengajaran oleh Wakasek Kurikulum sekolah.
+
+2026-07: Global Presets, 2-Step Wizard & Adaptive School Levels (useJenjang)
+- **Keputusan**:
+  1. Menambahkan model `GlobalProgramPreset` dan `GlobalJurusanPreset` di database schema, serta memuat seeder standar nasional program/konsentrasi kejuruan untuk superadmin.
+  2. Merancang ulang modul "Tambah Massal Jurusan" menjadi alur 2 langkah (Langkah 1: Pilih Program Keahlian, Langkah 2: Pilih Jurusan spesifik terfilter) dengan auto-checklist default.
+  3. Mengubah properti `jurusan_id` di model `Kelas` database menjadi opsional (nullable), serta secara dinamis menyembunyikan kolom, filter pencarian, form input pilihan Jurusan di CRUD kelas, dan menu navigasi Jurusan di sidebar bagi sekolah dengan jenjang SD/MI/SMP/MTs.
+- **Rasional**: Menyediakan preset referensi data nasional program keahlian secara global dari level platform untuk kemudahan tenant sekolah, menyederhanakan alur pemilihan wizard bagi admin sekolah, serta memfasilitasi sekolah dasar dan menengah pertama (SD/SMP) agar platform dapat digunakan secara relevan tanpa memaksakan struktur penjurusan SMK/SMA.
+
