@@ -80,11 +80,22 @@ export const detectDefaultJpForMapel = (
   const nama = (namaMapel || '').toLowerCase();
   
   if (standardReferencesData && Array.isArray(standardReferencesData)) {
+    // 1. Exact match by code
     let match = standardReferencesData.find(ref => 
       ref.tingkat === tingkat && 
       (ref.kode_mapel || '').toUpperCase() === kode
     );
     
+    // 2. Clean match by base code prefix (e.g. PAI-3C74 -> PAI)
+    if (!match) {
+      const cleanCode = kode.split('-')[0];
+      match = standardReferencesData.find(ref => 
+        ref.tingkat === tingkat && 
+        (ref.kode_mapel || '').toUpperCase() === cleanCode
+      );
+    }
+    
+    // 3. Match by name contains
     if (!match) {
       match = standardReferencesData.find(ref => 
         ref.tingkat === tingkat && 
@@ -95,14 +106,36 @@ export const detectDefaultJpForMapel = (
       );
     }
     
-    if (!match && isSmkOrMak) {
-      if (kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian') || nama.includes('kompetensi keahlian')) {
-        const kkRef = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
-        if (kkRef) return kkRef.jp_per_minggu;
+    // 4. Semantic match by category fallbacks (Religion, Arts, Mulok)
+    if (!match) {
+      const isReligion = nama.startsWith('pendidikan agama') || nama.includes('agama');
+      const isSeniOrPrakarya = nama.includes('seni ') || nama.includes('seni') || nama.includes('prakarya');
+      const isMulok = ['sunda', 'jawa', 'bali', 'madura'].some(lang => nama.includes(lang));
+      
+      if (isReligion) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama')));
+      } else if (isSeniOrPrakarya) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni')));
+      } else if (isMulok) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'MULOK');
       }
-      if (nama.includes('dasar-dasar') || nama.includes('dasar dasar') || kode.includes('DAS-') || kode.includes('DK-')) {
-        const dkRef = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
-        if (dkRef) return dkRef.jp_per_minggu;
+    }
+    
+    // 5. Match by kejuruan rules (SMK/MAK)
+    if (!match && isSmkOrMak) {
+      const isKejuruan = kode.includes('PKL') || kode.includes('PKK') || kode.includes('DAS-') || nama.includes('praktik kerja') || nama.includes('kreatif') || nama.includes('dasar-dasar');
+      if (isKejuruan) {
+        if (tingkat === 10) {
+          match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
+        } else {
+          if (kode.includes('PKL') || nama.includes('praktik kerja')) {
+            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKL');
+          } else if (kode.includes('PKK') || nama.includes('kreatif')) {
+            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKK');
+          } else {
+            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
+          }
+        }
       }
     }
     
