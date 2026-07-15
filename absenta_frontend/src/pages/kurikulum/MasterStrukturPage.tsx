@@ -92,47 +92,34 @@ const MasterStrukturPage: React.FC = () => {
     }, [selectedTahunId, selectedTingkat, selectedJurusanId]);
 
     const cardGradientClass = React.useMemo(() => {
-        const gradientMap: Record<number, string> = {
-            1: 'from-emerald-500 to-teal-700',
-            2: 'from-indigo-500 to-violet-700',
-            3: 'from-purple-500 to-fuchsia-700',
-            4: 'from-amber-500 to-orange-600',
-            5: 'from-rose-500 to-pink-700',
-            6: 'from-cyan-500 to-blue-700',
-            7: 'from-blue-500 to-indigo-700',
-            8: 'from-teal-500 to-emerald-700',
-            9: 'from-violet-500 to-purple-700',
-            10: 'from-sky-500 to-indigo-700',
-            11: 'from-fuchsia-500 to-pink-700',
-            12: 'from-orange-500 to-red-700',
-            13: 'from-lime-500 to-green-700'
-        };
-        return gradientMap[selectedTingkat] || 'from-indigo-600 to-violet-700';
-    }, [selectedTingkat]);
+        const idx = tingkatList?.indexOf(selectedTingkat) ?? 0;
+        const gradientList = [
+            'from-emerald-500 to-teal-700',   // Index 0 (Kelas 1, Kelas 7, Kelas 10)
+            'from-indigo-500 to-violet-700',   // Index 1 (Kelas 2, Kelas 8, Kelas 11)
+            'from-purple-500 to-fuchsia-700',  // Index 2 (Kelas 3, Kelas 9, Kelas 12)
+            'from-amber-500 to-orange-600',    // Index 3 (Kelas 4, Kelas 13)
+            'from-rose-500 to-pink-700',       // Index 4 (Kelas 5)
+            'from-cyan-500 to-blue-700'        // Index 5 (Kelas 6)
+        ];
+        return gradientList[idx] || 'from-indigo-600 to-violet-700';
+    }, [selectedTingkat, tingkatList]);
 
     const renderedTingkatButtons = React.useMemo(() => {
-        return tingkatList?.map((t) => {
+        return tingkatList?.map((t, idx) => {
             const isActive = selectedTingkat === t;
             
-            // Custom vibrant active colors depending on the class level
+            // Custom vibrant active colors depending on the index of class in current jenjang
             let activeColorClass = 'bg-white text-indigo-600 dark:text-indigo-400 shadow-sm';
             if (isActive) {
-              const colorMap: Record<number, string> = {
-                1: 'bg-emerald-600 text-white shadow-md shadow-emerald-100 dark:shadow-none',
-                2: 'bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none',
-                3: 'bg-purple-600 text-white shadow-md shadow-purple-100 dark:shadow-none',
-                4: 'bg-amber-500 text-white shadow-md shadow-amber-100 dark:shadow-none',
-                5: 'bg-rose-600 text-white shadow-md shadow-rose-100 dark:shadow-none',
-                6: 'bg-cyan-600 text-white shadow-md shadow-cyan-100 dark:shadow-none',
-                7: 'bg-blue-600 text-white shadow-md shadow-blue-100 dark:shadow-none',
-                8: 'bg-teal-600 text-white shadow-md shadow-teal-100 dark:shadow-none',
-                9: 'bg-violet-600 text-white shadow-md shadow-violet-100 dark:shadow-none',
-                10: 'bg-sky-600 text-white shadow-md shadow-sky-100 dark:shadow-none',
-                11: 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-100 dark:shadow-none',
-                12: 'bg-orange-600 text-white shadow-md shadow-orange-100 dark:shadow-none',
-                13: 'bg-lime-600 text-white shadow-md shadow-lime-100 dark:shadow-none'
-              };
-              activeColorClass = colorMap[t] || 'bg-indigo-600 text-white shadow-md';
+              const colorList = [
+                'bg-emerald-600 text-white shadow-md shadow-emerald-100 dark:shadow-none',
+                'bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none',
+                'bg-purple-600 text-white shadow-md shadow-purple-100 dark:shadow-none',
+                'bg-amber-500 text-white shadow-md shadow-amber-100 dark:shadow-none',
+                'bg-rose-600 text-white shadow-md shadow-rose-100 dark:shadow-none',
+                'bg-cyan-600 text-white shadow-md shadow-cyan-100 dark:shadow-none'
+              ];
+              activeColorClass = colorList[idx] || 'bg-indigo-600 text-white shadow-md';
             }
 
             return (
