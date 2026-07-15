@@ -277,6 +277,9 @@ export class KelasService {
       throw new Error('Tenant ID is required for creating kelas');
     }
 
+    // Normalize empty string to null to prevent Postgres foreign key constraint error
+    const normalizedJurusanId = input.jurusan_id && input.jurusan_id.trim() !== '' ? input.jurusan_id : null;
+
     // Check if kelas name is unique within tenant and tingkat
     const existingKelas = await prisma.kelas.findFirst({
       where: {
@@ -291,10 +294,10 @@ export class KelasService {
     }
 
     // Check if jurusan exists and is in the same tenant (if provided)
-    if (input.jurusan_id) {
+    if (normalizedJurusanId) {
       const jurusan = await prisma.jurusan.findFirst({
         where: {
-          id: input.jurusan_id,
+          id: normalizedJurusanId,
           tenant_id: tenantId,
         },
       });
@@ -350,7 +353,7 @@ export class KelasService {
           tenant_id: tenantId,
           nama_kelas: input.nama_kelas,
           tingkat: input.tingkat,
-          jurusan_id: input.jurusan_id,
+          jurusan_id: normalizedJurusanId,
           jam_masuk: input.jam_masuk,
           jam_pulang: input.jam_pulang,
           is_active: input.is_active !== undefined ? input.is_active : true,
@@ -420,7 +423,7 @@ export class KelasService {
             where: { id: existingLoc.id },
             data: {
               kelas_id: kelas.id,
-              unit_id: kelas.jurusan_id,
+              unit_id: normalizedJurusanId,
               deleted_at: null
             }
           });
@@ -430,7 +433,7 @@ export class KelasService {
               tenant_id: tenantId,
               nama: `Ruang Kelas ${kelas.nama_kelas}`,
               kelas_id: kelas.id,
-              unit_id: kelas.jurusan_id,
+              unit_id: normalizedJurusanId,
               deskripsi: `Ruang kelas untuk ${kelas.nama_kelas} tingkat ${kelas.tingkat}`
             }
           });
@@ -471,6 +474,11 @@ export class KelasService {
     // Check if kelas exists and user has permission
     const whereClause: any = { id: kelasId, tenant_id: tenantId };
 
+    // Normalize empty string to null to prevent Postgres foreign key constraint error
+    const normalizedJurusanId = input.jurusan_id !== undefined
+      ? (input.jurusan_id && input.jurusan_id.trim() !== '' ? input.jurusan_id : null)
+      : undefined;
+
     // Apply Isolate/Scope filter from Organization Engine
     if (org && org.tenant_wide !== true) {
       if (!Array.isArray(org.kelas_ids) || !org.kelas_ids.includes(kelasId)) {
@@ -503,10 +511,10 @@ export class KelasService {
     }
 
     // Check if jurusan exists and is in the same tenant (if provided)
-    if (input.jurusan_id) {
+    if (normalizedJurusanId) {
       const jurusan = await prisma.jurusan.findFirst({
         where: {
-          id: input.jurusan_id,
+          id: normalizedJurusanId,
           tenant_id: existingKelas.tenant_id,
         },
       });
@@ -561,7 +569,7 @@ export class KelasService {
       const updateData: any = {};
       if (input.nama_kelas !== undefined) updateData.nama_kelas = input.nama_kelas;
       if (input.tingkat !== undefined) updateData.tingkat = input.tingkat;
-      if (input.jurusan_id !== undefined) updateData.jurusan_id = input.jurusan_id;
+      if (normalizedJurusanId !== undefined) updateData.jurusan_id = normalizedJurusanId;
       if (input.jam_masuk !== undefined) updateData.jam_masuk = input.jam_masuk;
       if (input.jam_pulang !== undefined) updateData.jam_pulang = input.jam_pulang;
       if (input.is_active !== undefined) updateData.is_active = input.is_active;
@@ -635,7 +643,7 @@ export class KelasService {
         });
         const targetName = `Ruang Kelas ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas}`;
         const targetDesc = `Ruang kelas untuk ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas} tingkat ${input.tingkat !== undefined ? input.tingkat : existingKelas.tingkat}`;
-        const targetUnitId = input.jurusan_id !== undefined ? input.jurusan_id : existingKelas.jurusan_id;
+        const targetUnitId = normalizedJurusanId !== undefined ? normalizedJurusanId : existingKelas.jurusan_id;
 
         if (existingLoc) {
           await tx.sarprasLocation.update({
