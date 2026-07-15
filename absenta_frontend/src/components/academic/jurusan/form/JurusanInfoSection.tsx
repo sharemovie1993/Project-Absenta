@@ -3,7 +3,7 @@ import { BookOpen, Info as InfoIcon, Hash, Layers } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { SectionCard, DetailRow } from './FormShared';
-import { getProgramKeahlianList } from '../../../../api/academic/program-keahlian.api';
+import { getProgramKeahlianList, createProgramKeahlian } from '../../../../api/academic/program-keahlian.api';
 import { getGlobalPresets } from '../../../../api/academic/jurusan-presets.api';
 import type { ProgramKeahlian } from '../../../../types/academic';
 import toast from 'react-hot-toast';
@@ -106,7 +106,30 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
                     setValue('program_keahlian_id', matchedPK.id);
                     toast.success(`Autofill berhasil untuk jurusan ${preset.nama}`);
                   } else {
-                    toast(`Autofill berhasil untuk ${preset.nama}, namun Program Keahlian "${preset.program_nama}" belum terdaftar di database sekolah Anda. Silakan pilih atau buat induknya secara manual.`, { icon: 'ℹ️', duration: 6000 });
+                    // Create Program Keahlian automatically in the background
+                    const toastId = toast.loading(`Mendaftarkan Program Keahlian induk "${preset.program_nama}" otomatis...`);
+                    createProgramKeahlian({
+                      nama: preset.program_nama,
+                      kode: preset.program_kode || null,
+                      singkatan: preset.program_singkatan || null,
+                      bidang_keahlian: preset.bidang_keahlian || null
+                    }).then(newPKRes => {
+                      toast.dismiss(toastId);
+                      if (newPKRes && newPKRes.data) {
+                        const newPK = newPKRes.data;
+                        // Add new PK to local select options state
+                        setProgramKeahlianList(prev => [...prev, newPK]);
+                        // Set the value
+                        setValue('program_keahlian_id', newPK.id);
+                        toast.success(`Autofill berhasil! Program Keahlian "${newPK.nama}" otomatis didaftarkan.`);
+                      } else {
+                        toast.error("Gagal mendaftarkan Program Keahlian induk otomatis.");
+                      }
+                    }).catch(err => {
+                      toast.dismiss(toastId);
+                      console.error("Auto PK creation failed:", err);
+                      toast.error("Gagal mendaftarkan Program Keahlian induk otomatis.");
+                    });
                   }
                 }
               }
