@@ -7,7 +7,8 @@ import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Mapel } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { BookOpen, Target } from 'lucide-react';
+import { BookOpen, Target, FileText, Sparkles, ChevronRight } from 'lucide-react';
+import { PresetWizardModal } from '../../components/academic/mapel/PresetWizardModal';
 import { 
   importMapelFromExcel, 
   downloadMapelImportTemplate, 
@@ -34,9 +35,11 @@ export const MapelPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
 
   const navigate = useNavigate();
-  const { tingkatList: hookTingkatList } = useJenjang();
+  const { tingkatList: hookTingkatList, jenjang } = useJenjang();
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [subMode, setSubMode] = useState<'manual' | null>(null);
+  const [presetOpen, setPresetOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -83,10 +86,16 @@ export const MapelPage: React.FC = () => {
     }
   ], [stats, navigate]);
 
-  const handleCreateMapel = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
+  const handleCreateMapel = useCallback(() => {
+    setModalState({ mode: 'create', isOpen: true });
+    setSubMode(null);
+  }, []);
   const handleEditMapel = useCallback((m: Mapel) => setModalState({ mode: 'edit', mapelId: m.id, isOpen: true }), []);
   const handleViewMapel = useCallback((m: Mapel) => setModalState({ mode: 'view', mapelId: m.id, isOpen: true }), []);
-  const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
+  const handleCloseModal = useCallback(() => {
+    setModalState({ mode: null, isOpen: false });
+    setSubMode(null);
+  }, []);
 
   const handleFormSuccess = useCallback(() => {
     handleCloseModal();
@@ -212,20 +221,67 @@ export const MapelPage: React.FC = () => {
       <Modal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? 'Tambah Mapel' : 'Data Mapel'}
+        title={modalState.mode === 'create' ? (subMode === 'manual' ? 'Tambah Mata Pelajaran' : 'Pilih Metode Tambah Mapel') : 'Data Mata Pelajaran'}
         size="lg"
       >
-        {modalState.mode && (
-          <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
-            <MapelForm
-              mapelId={modalState.mapelId}
-              mode={modalState.mode}
-              onSuccess={handleFormSuccess}
-              onCancel={handleCloseModal}
-            />
-          </Suspense>
-        )}
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
+          {modalState.mode === 'create' && !subMode ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              <button
+                onClick={() => setSubMode('manual')}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <FileText size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Isi data mata pelajaran secara manual satu per satu. Cocok untuk mapel kustom/lokal.
+                </p>
+                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Mulai Mengisi <ChevronRight size={14} />
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleCloseModal();
+                  setPresetOpen(true);
+                }}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <Sparkles size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Preset Kurikulum</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Pilih cepat dari katalog preset kurikulum nasional (wajib & kejuruan) secara massal.
+                </p>
+                <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Mulai Wizard <ChevronRight size={14} />
+                </span>
+              </button>
+            </div>
+          ) : (
+            modalState.mode && (
+              <MapelForm
+                mapelId={modalState.mapelId}
+                mode={modalState.mode}
+                onSuccess={handleFormSuccess}
+                onCancel={handleCloseModal}
+              />
+            )
+          )}
+        </Suspense>
       </Modal>
+
+      {/* Wizard Multi-Step Preset Mapel */}
+      <PresetWizardModal
+        isOpen={presetOpen}
+        onClose={() => setPresetOpen(false)}
+        jenjang={jenjang}
+        onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+      />
     </AcademicPageLayout>
   );
 };
