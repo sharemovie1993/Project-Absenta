@@ -104,31 +104,71 @@ export class TahunPelajaranService {
       throw new Error('Tahun pelajaran must be consecutive years (e.g., 2023/2024)');
     }
 
-    if (input.is_active) {
-      await prisma.tahunPelajaran.updateMany({
-        where: {
-          tenant_id: tenantId,
-        },
+    // Wrap in a transaction to ensure atomic creation of Tahun Pelajaran and its two semesters
+    const tahunPelajaran = await prisma.$transaction(async (tx) => {
+      if (input.is_active) {
+        // Deactivate all other school years in the same tenant
+        await tx.tahunPelajaran.updateMany({
+          where: {
+            tenant_id: tenantId,
+          },
+          data: {
+            is_active: false,
+          },
+        });
+
+        // Deactivate all other semesters in the same tenant
+        await tx.semester.updateMany({
+          where: {
+            tenant_id: tenantId,
+          },
+          data: {
+            is_active: false,
+          },
+        });
+      }
+
+      // Create new Tahun Pelajaran
+      const createdTahun = await tx.tahunPelajaran.create({
         data: {
-          is_active: false,
+          tenant_id: tenantId,
+          tahun: input.tahun,
+          is_active: input.is_active ? true : false,
         },
       });
-    }
 
-    const tahunPelajaran = await prisma.tahunPelajaran.create({
-      data: {
-        tenant_id: tenantId,
-        tahun: input.tahun,
-        is_active: input.is_active ? true : false,
-      },
-      include: {
-        _count: {
-          select: {
-            Siswa: true,
-            Semester: true,
+      // Create Semester Ganjil
+      await tx.semester.create({
+        data: {
+          tenant_id: tenantId,
+          nama_semester: 'Ganjil',
+          tahun_pelajaran_id: createdTahun.id,
+          is_active: input.is_active ? true : false, // Active if Year is active
+        },
+      });
+
+      // Create Semester Genap
+      await tx.semester.create({
+        data: {
+          tenant_id: tenantId,
+          nama_semester: 'Genap',
+          tahun_pelajaran_id: createdTahun.id,
+          is_active: false, // Always inactive at start of school year
+        },
+      });
+
+      // Fetch the created year with counts for response
+      return await tx.tahunPelajaran.findUnique({
+        where: { id: createdTahun.id },
+        include: {
+          _count: {
+            select: {
+              Siswa: true,
+              Semester: true,
+            },
           },
         },
-      },
+      });
     });
 
     return tahunPelajaran as TahunPelajaranResponse;
