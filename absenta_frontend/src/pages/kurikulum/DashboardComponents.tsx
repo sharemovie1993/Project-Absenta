@@ -70,11 +70,11 @@ export function buildDistribusi(rows: RowItem[], options: SelectOption[], isVoca
   }
   return Object.entries(map)?.map(([name, jp]) => ({ name, jp })).sort((a, b) => {
     if (!isVocational) {
-      const numA = parseInt(a[0].replace(/\D/g, '')) || 0;
-      const numB = parseInt(b[0].replace(/\D/g, '')) || 0;
+      const numA = parseInt(a.name.replace(/\D/g, '')) || 0;
+      const numB = parseInt(b.name.replace(/\D/g, '')) || 0;
       return numA - numB;
     }
-    return b[1] - a[1];
+    return b.jp - a.jp;
   });
 }
 
