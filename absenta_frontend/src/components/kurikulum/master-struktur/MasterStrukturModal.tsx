@@ -46,6 +46,7 @@ interface ModalProps {
   isPendingSave: boolean;
   jenjang?: string;
   kurikulum?: string;
+  targetJp?: number;
 }
 
 export const MasterStrukturModal: React.FC<ModalProps> = ({
@@ -75,7 +76,8 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
   handleSave,
   isPendingSave,
   jenjang = 'SMA',
-  kurikulum = 'MERDEKA'
+  kurikulum = 'MERDEKA',
+  targetJp = 40
 }) => {
   const isSingleMode = editingItem || addMode === 'manual';
   const saveLabel = isSingleMode 
@@ -123,6 +125,7 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
             kurikulum={kurikulum}
             isPendingSave={isPendingSave}
             onClose={onClose}
+            targetJp={targetJp}
           />
         )}
 

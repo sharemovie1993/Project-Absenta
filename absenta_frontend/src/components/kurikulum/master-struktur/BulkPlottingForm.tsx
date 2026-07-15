@@ -22,6 +22,7 @@ interface BulkPlottingFormProps {
   kurikulum: string;
   isPendingSave?: boolean;
   onClose?: () => void;
+  targetJp?: number;
 }
 
 interface Step {
@@ -48,7 +49,8 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
   jenjang,
   kurikulum,
   isPendingSave,
-  onClose
+  onClose,
+  targetJp = 40
 }) => {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [canSubmit, setCanSubmit] = useState(false);
@@ -79,6 +81,24 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
       setCanSubmit(false);
     }
   }, [activeStepIndex, steps.length]);
+
+  // JP Projected calculation
+  const existingMappedJp = useMemo(() => {
+    if (!mappingFiltered) return 0;
+    return mappingFiltered.reduce((sum, item) => {
+      if (bulkSelections[item.mapel_id]) {
+        return sum;
+      }
+      return sum + item.jp_per_minggu;
+    }, 0);
+  }, [mappingFiltered, bulkSelections]);
+
+  const bulkSelectedJp = useMemo(() => {
+    return Object.values(bulkSelections).reduce((sum, item) => sum + Number(item.jp_per_minggu || 0), 0);
+  }, [bulkSelections]);
+
+  const projectedTotalJp = existingMappedJp + bulkSelectedJp;
+  const projectedGap = targetJp - projectedTotalJp;
 
   const currentStep = steps[activeStepIndex];
 
@@ -262,13 +282,49 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
       {currentStep.id === 'summary' ? (
         /* Ringkasan Step Layout */
         <div className="flex-1 space-y-4 animate-in fade-in duration-300">
-          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 p-4 rounded-2xl flex items-start gap-3">
-            <Info size={18} className="text-indigo-600 mt-0.5" />
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Verifikasi Plotting Beban Belajar</h3>
-              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
-                Berikut adalah ringkasan seluruh mata pelajaran yang Anda plot secara massal. Silakan periksa kembali alokasi JP. Jika sudah sesuai, klik tombol <strong className="text-indigo-600 dark:text-indigo-400">SIMPAN PEMETAAN</strong> di pojok kanan bawah untuk menyimpan perubahan.
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-8 bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 p-4 rounded-2xl flex items-start gap-3">
+              <Info size={18} className="text-indigo-650 mt-0.5" />
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Verifikasi Plotting Beban Belajar</h3>
+                <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                  Berikut adalah ringkasan seluruh mata pelajaran yang Anda plot secara massal. Silakan periksa kembali alokasi JP. Jika sudah sesuai, klik tombol <strong className="text-indigo-650 dark:text-indigo-400">SIMPAN PEMETAAN</strong> di pojok kanan bawah untuk menyimpan perubahan.
+                </p>
+              </div>
+            </div>
+            
+            <div className="md:col-span-4 flex">
+              {projectedGap > 0 ? (
+                <div className="w-full bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl flex items-start gap-3 animate-pulse">
+                  <span className="text-lg">⚠️</span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-amber-800 dark:text-amber-400 tracking-wider">Kurang {projectedGap} JP</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-450 mt-1 leading-normal">
+                      Beban belajar saat ini (<strong>{projectedTotalJp} JP</strong>) masih berada di bawah target standar kementerian (<strong>{targetJp} JP</strong>).
+                    </p>
+                  </div>
+                </div>
+              ) : projectedGap === 0 ? (
+                <div className="w-full bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/50 p-4 rounded-2xl flex items-start gap-3">
+                  <span className="text-lg">✅</span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-emerald-800 dark:text-emerald-450 tracking-wider">Sesuai Regulasi</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-450 mt-1 leading-normal">
+                      Total beban belajar telah pas dan memenuhi target standar nasional (<strong>{targetJp} JP</strong>).
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full bg-indigo-50/50 dark:bg-indigo-950/10 border border-indigo-200 dark:border-indigo-900/50 p-4 rounded-2xl flex items-start gap-3">
+                  <span className="text-lg">ℹ️</span>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-indigo-800 dark:text-indigo-400 tracking-wider">Otonomi (+{Math.abs(projectedGap)} JP)</h4>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-450 mt-1 leading-normal">
+                      Beban belajar saat ini (<strong>{projectedTotalJp} JP</strong>) melampaui standar kementerian (<strong>{targetJp} JP</strong>) sebagai jam pelajaran tambahan.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -366,9 +422,24 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-t border-slate-150 dark:border-slate-800 flex justify-between items-center text-xs font-black">
               <span className="text-slate-500 uppercase">Ringkasan Beban Belajar:</span>
-              <span className="text-indigo-600 dark:text-indigo-400 uppercase">
-                Total: {Object.values(bulkSelections).reduce((sum, item) => sum + Number(item.jp_per_minggu), 0)} JP / Minggu
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-slate-400 dark:text-slate-550 font-bold uppercase">
+                  Proyeksi Total: {projectedTotalJp} / {targetJp} JP
+                </span>
+                {projectedGap > 0 ? (
+                  <span className="bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                    Kurang {projectedGap} JP
+                  </span>
+                ) : projectedGap === 0 ? (
+                  <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border border-emerald-100 dark:border-emerald-900/30 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                    Pas Regulasi
+                  </span>
+                ) : (
+                  <span className="bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 px-2 py-0.5 rounded text-[9px] font-black uppercase">
+                    Otonomi (+{Math.abs(projectedGap)} JP)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

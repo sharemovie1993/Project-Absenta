@@ -397,6 +397,7 @@ const MasterStrukturPage: React.FC = () => {
                             isPendingSave={upsertMutation.isPending}
                             jenjang={jenjang}
                             kurikulum={kurikulum}
+                            targetJp={targetJp}
                         />
                     )}
                 </Suspense>
