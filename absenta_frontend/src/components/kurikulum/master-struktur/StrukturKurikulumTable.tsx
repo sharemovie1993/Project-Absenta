@@ -192,7 +192,13 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
                           }
                         }
                         
-                        if (!match) return null;
+                        if (!match) {
+                          return (
+                            <Badge className="bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 text-[9px] font-black tracking-wider uppercase select-none rounded-lg" title="Mata pelajaran ini tidak diatur dalam standar nasional tingkat kelas ini. Beban JP sepenuhnya ditentukan oleh kebijakan sekolah.">
+                              Otonomi Sekolah
+                            </Badge>
+                          );
+                        }
                         
                         const isMatch = item.jp_per_minggu === match.jp_per_minggu;
                         if (isMatch) {
