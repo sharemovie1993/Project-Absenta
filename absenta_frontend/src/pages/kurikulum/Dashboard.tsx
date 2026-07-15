@@ -524,9 +524,14 @@ export default function KurikulumDashboard() {
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                    Distribusi JP per Jurusan / Kelompok
+                    {isVocational ? 'Distribusi JP per Jurusan / Kelompok' : 'Beban JP per Kelas / Tingkat'}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Total jam pelajaran per minggu dari struktur kurikulum aktif</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isVocational 
+                      ? 'Total jam pelajaran per minggu dari struktur kurikulum aktif' 
+                      : 'Total alokasi jam pelajaran per minggu di setiap tingkat kelas'
+                    }
+                  </p>
                 </div>
                 <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
                   <TrendingUp size={15} className="text-teal-600 dark:text-teal-400" />

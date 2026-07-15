@@ -49,6 +49,7 @@ export interface RowItem {
   Jurusan?: { nama?: string };
   kelompok?: string;
   jp_per_minggu?: number;
+  tingkat?: number;
 }
 
 export interface SelectOption {
@@ -63,11 +64,18 @@ export function buildDistribusi(rows: RowItem[], options: SelectOption[], isVoca
     if (isVocational) {
       key = r.Jurusan?.nama || 'Umum';
     } else {
-      key = getKelompokLabel(r.kelompok, options);
+      key = `Kelas ${r.tingkat}`;
     }
     map[key] = (map[key] || 0) + (r.jp_per_minggu || 0);
   }
-  return Object.entries(map)?.map(([name, jp]) => ({ name, jp })).sort((a, b) => b.jp - a.jp);
+  return Object.entries(map)?.map(([name, jp]) => ({ name, jp })).sort((a, b) => {
+    if (!isVocational) {
+      const numA = parseInt(a[0].replace(/\D/g, '')) || 0;
+      const numB = parseInt(b[0].replace(/\D/g, '')) || 0;
+      return numA - numB;
+    }
+    return b[1] - a[1];
+  });
 }
 
 export function buildBeban(rows: RowItem[], options: SelectOption[]) {
