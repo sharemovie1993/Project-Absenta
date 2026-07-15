@@ -498,17 +498,39 @@ export class JurusanService {
 
           // Provision default Sarpras Lab location
           const abbr = jur.singkatan || jur.kode || jur.nama.substring(0, 5).toUpperCase();
-          try {
-            await tx.sarprasLocation.create({
-              data: {
-                tenant_id: tenantId,
-                nama: `Lab Utama ${abbr}`,
-                unit_id: newJur.id,
-                deskripsi: `Lokasi inventaris utama untuk jurusan ${jur.nama}`
-              }
-            });
-          } catch (err) {
-            console.warn('Failed to create automatic Sarpras Location in bulk:', err);
+          const locationName = `Lab Utama ${abbr}`;
+
+          // Check if location already exists to prevent Postgres unique constraint error aborting transaction
+          const existingLoc = await tx.sarprasLocation.findFirst({
+            where: {
+              tenant_id: tenantId,
+              nama: locationName
+            }
+          });
+
+          if (!existingLoc) {
+            try {
+              await tx.sarprasLocation.create({
+                data: {
+                  tenant_id: tenantId,
+                  nama: locationName,
+                  unit_id: newJur.id,
+                  deskripsi: `Lokasi inventaris utama untuk jurusan ${jur.nama}`
+                }
+              });
+            } catch (err) {
+              console.warn('Failed to create automatic Sarpras Location in bulk:', err);
+            }
+          } else {
+            // Update the existing location to associate with this new unit
+            try {
+              await tx.sarprasLocation.update({
+                where: { id: existingLoc.id },
+                data: { unit_id: newJur.id }
+              });
+            } catch (err) {
+              console.warn('Failed to update automatic Sarpras Location in bulk:', err);
+            }
           }
         }
       }
