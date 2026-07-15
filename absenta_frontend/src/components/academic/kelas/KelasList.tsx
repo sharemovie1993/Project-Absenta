@@ -85,7 +85,8 @@ const KelasList = React.memo<KelasListProps>(({
   const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
 
   const { user, can } = useAuth();
-  const { tingkatList } = useJenjang();
+  const { tingkatList, jenjang } = useJenjang();
+  const hasJurusan = ['SMA', 'MA', 'SMK', 'MAK'].includes(String(jenjang || '').toUpperCase());
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
@@ -316,27 +317,34 @@ const KelasList = React.memo<KelasListProps>(({
   }, [selectedIds, fetchKelas, currentPage, searchTerm, confirm]);
 
   // Table columns configuration
-  const columns = useMemo(() => [
-    { 
-      key: 'nama_kelas', 
-      label: 'Nama Kelas',
-      sortable: true,
-      render: (value: string, kelas: Kelas) => (
-        <div>
-          <div className="font-semibold text-gray-900 dark:text-gray-100">{value}</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">Tingkat {kelas.tingkat}</div>
-        </div>
-      )
-    },
-    { 
-      key: 'Jurusan', 
-      label: 'Jurusan',
-      render: (jurusan: any) => (
-        <Badge variant="info">
-          {jurusan?.nama || 'Umum'}
-        </Badge>
-      )
-    },
+  const columns = useMemo(() => {
+    const cols = [
+      { 
+        key: 'nama_kelas', 
+        label: 'Nama Kelas',
+        sortable: true,
+        render: (value: string, kelas: Kelas) => (
+          <div>
+            <div className="font-semibold text-gray-900 dark:text-gray-100">{value}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Tingkat {kelas.tingkat}</div>
+          </div>
+        )
+      }
+    ];
+
+    if (hasJurusan) {
+      cols.push({ 
+        key: 'Jurusan', 
+        label: 'Jurusan',
+        render: (jurusan: any) => (
+          <Badge variant="info">
+            {jurusan?.nama || 'Umum'}
+          </Badge>
+        )
+      });
+    }
+
+    cols.push(
 
     { 
       key: 'WaliKelas', 
@@ -436,8 +444,10 @@ const KelasList = React.memo<KelasListProps>(({
           )}
         </div>
       )
-    },
-  ].filter(Boolean) as any, [canManage, onEdit, onView, confirm, handleDelete, allVisibleSelected, selectedIds, kelasList, togglingId]);
+    });
+
+    return cols.filter(Boolean) as any;
+  }, [canManage, onEdit, onView, confirm, handleDelete, allVisibleSelected, selectedIds, kelasList, togglingId, hasJurusan]);
 
   return (
     <div className="flex flex-col">
@@ -465,18 +475,20 @@ const KelasList = React.memo<KelasListProps>(({
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        <div className="w-full md:w-52">
-          <SearchableSelect 
-            value={filterJurusan}
-            onValueChange={setFilterJurusan}
-            options={[
-              { label: "Semua Jurusan", value: "" },
-              ...(jurusanList || [])?.map(j => ({ label: j.nama, value: j.id }))
-            ]}
-            placeholder="Pilih Jurusan"
-            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
-          />
-        </div>
+        {hasJurusan && (
+          <div className="w-full md:w-52">
+            <SearchableSelect 
+              value={filterJurusan}
+              onValueChange={setFilterJurusan}
+              options={[
+                { label: "Semua Jurusan", value: "" },
+                ...(jurusanList || [])?.map(j => ({ label: j.nama, value: j.id }))
+              ]}
+              placeholder="Pilih Jurusan"
+              triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+            />
+          </div>
+        )}
         <div className="w-full md:w-52">
           <SearchableSelect 
             value={filterStatus}

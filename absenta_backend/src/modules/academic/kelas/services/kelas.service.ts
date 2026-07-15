@@ -4,7 +4,7 @@ import { findBestMatch } from '@/utils/normalization';
 export interface CreateKelasInput {
   nama_kelas: string;
   tingkat: number;
-  jurusan_id: string;
+  jurusan_id?: string | null;
   guru_id?: string | null; // For wali kelas assignment
   jam_masuk?: string | null;
   jam_pulang?: string | null;
@@ -14,7 +14,7 @@ export interface CreateKelasInput {
 export interface UpdateKelasInput {
   nama_kelas?: string;
   tingkat?: number;
-  jurusan_id?: string;
+  jurusan_id?: string | null;
   guru_id?: string | null; // For wali kelas assignment
   jam_masuk?: string | null;
   jam_pulang?: string | null;

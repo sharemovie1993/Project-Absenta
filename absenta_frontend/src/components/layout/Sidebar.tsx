@@ -22,6 +22,7 @@ import { HubSwitcher } from './HubSwitcher';
 import { getHubByLabel } from '@/config/navigation.config';
 import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
+import { useJenjang } from '../../hooks/useJenjang';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -120,6 +121,7 @@ const hasBackendPathAccess = (
 export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false }: SidebarProps) => {
   const { user, subscription, token } = useAuthStore();
   const { isTvMode } = useTvStore();
+  const { jenjang } = useJenjang();
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
@@ -187,7 +189,19 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
   };
 
   const mapToNavItems = (nodes: BackendMenuItem[]): NavItem[] => {
-    return nodes.map((n) => {
+    const isSdSmp = ['SD', 'MI', 'SMP', 'MTs'].includes(String(jenjang || '').toUpperCase());
+    const filteredNodes = nodes.filter(n => {
+      const rawPath = String(n.path ?? '').trim().toLowerCase();
+      const rawName = String(n.name ?? '').trim().toLowerCase();
+      if (isSdSmp) {
+        if (rawPath === '/academic/jurusan' || rawName === 'jurusan' || rawName.includes('jurusan')) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    return filteredNodes.map((n) => {
       const rawPath = String(n.path ?? '').trim();
       const children = n.children ? mapToNavItems(n.children as BackendMenuItem[]) : undefined;
       const hasChildren = !!children && children.length > 0;

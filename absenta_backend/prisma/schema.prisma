@@ -721,7 +721,7 @@ model Kelas {
   tenant_id  String
   nama_kelas String
   tingkat    Int
-  jurusan_id String
+  jurusan_id String?
 
   // Konfigurasi Absensi Spesifik Kelas (Override Tenant)
   jam_masuk  String? // Opsional: "13:00" untuk shift siang
@@ -730,7 +730,7 @@ model Kelas {
 
   created_at                DateTime                   @default(now())
   updated_at                DateTime                   @updatedAt
-  Jurusan                   Jurusan                    @relation(fields: [jurusan_id], references: [id])
+  Jurusan                   Jurusan?                   @relation(fields: [jurusan_id], references: [id])
   tenant                    Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   KelasMapel                KelasMapel[]
   SesiAbsensi               SesiAbsensi[]

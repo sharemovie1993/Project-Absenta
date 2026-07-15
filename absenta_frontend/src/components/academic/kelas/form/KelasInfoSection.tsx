@@ -5,6 +5,7 @@ import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Controller } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
+import { useJenjang } from '../../../hooks/useJenjang';
 
 interface KelasInfoSectionProps {
   register: any;
@@ -27,6 +28,9 @@ export const KelasInfoSection = React.memo<KelasInfoSectionProps>(({
   tingkatOptions = [],
   loadingDropdowns
 }) => {
+  const { jenjang } = useJenjang();
+  const hasJurusan = ['SMA', 'MA', 'SMK', 'MAK'].includes(String(jenjang || '').toUpperCase());
+
   if (isViewMode) {
     const selectedTingkat = tingkatOptions?.find(opt => opt.value === watch('tingkat'));
     const selectedJurusan = jurusanList?.find(j => j.id === watch('jurusan_id'));
@@ -36,7 +40,9 @@ export const KelasInfoSection = React.memo<KelasInfoSectionProps>(({
       <SectionCard title="Informasi Kelas" icon={Building2}>
         <DetailRow icon={<Building2 size={16} />} label="Nama Kelas" value={watch('nama_kelas')} />
         <DetailRow icon={<Layers size={16} />} label="Tingkat" value={selectedTingkat?.label} />
-        <DetailRow icon={<Hash size={16} />} label="Jurusan" value={selectedJurusan ? `${selectedJurusan.nama} (${selectedJurusan.singkatan || selectedJurusan.kode || ''})` : '-'} />
+        {hasJurusan && (
+          <DetailRow icon={<Hash size={16} />} label="Jurusan" value={selectedJurusan ? `${selectedJurusan.nama} (${selectedJurusan.singkatan || selectedJurusan.kode || ''})` : '-'} />
+        )}
         <DetailRow 
           icon={<Building2 size={16} />} 
           label="Status Keaktifan" 
@@ -100,31 +106,33 @@ export const KelasInfoSection = React.memo<KelasInfoSectionProps>(({
         )}
       </div>
 
-      <div className="space-y-2 group">
-        <div className="flex items-center justify-between px-1">
-          <Label htmlFor="jurusan_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-            Jurusan <span className="text-rose-500">*</span>
-          </Label>
-        </div>
-        <Controller
-          control={control}
-          name="jurusan_id"
-          render={({ field }) => (
-            <SearchableSelect
-              id="jurusan_id"
-              value={field.value}
-              onValueChange={field.onChange}
-              options={jurusanList?.map((j) => ({ value: j.id, label: `${j.nama} ${j.singkatan || j.kode ? `(${j.singkatan || j.kode || ''})` : ''}` }))}
-              placeholder="Pilih Jurusan"
-              disabled={isViewMode || loadingDropdowns}
-              triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.jurusan_id ? 'border-red-500' : ''}`}
-            />
+      {hasJurusan && (
+        <div className="space-y-2 group">
+          <div className="flex items-center justify-between px-1">
+            <Label htmlFor="jurusan_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+              Jurusan <span className="text-rose-500">*</span>
+            </Label>
+          </div>
+          <Controller
+            control={control}
+            name="jurusan_id"
+            render={({ field }) => (
+              <SearchableSelect
+                id="jurusan_id"
+                value={field.value || ''}
+                onValueChange={field.onChange}
+                options={jurusanList?.map((j) => ({ value: j.id, label: `${j.nama} ${j.singkatan || j.kode ? `(${j.singkatan || j.kode || ''})` : ''}` }))}
+                placeholder="Pilih Jurusan"
+                disabled={isViewMode || loadingDropdowns}
+                triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.jurusan_id ? 'border-red-500' : ''}`}
+              />
+            )}
+          />
+          {errors.jurusan_id && (
+            <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.jurusan_id.message}</p>
           )}
-        />
-        {errors.jurusan_id && (
-          <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.jurusan_id.message}</p>
-        )}
-      </div>
+        </div>
+      )}
 
       <Controller
         control={control}
