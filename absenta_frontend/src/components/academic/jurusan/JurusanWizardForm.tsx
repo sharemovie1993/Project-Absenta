@@ -364,7 +364,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                     </button>
                   </div>
 
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800/60 px-4">
                     {prog.jurusans.map(jur => {
                       const isSelected = selectedJurusanCodes.includes(jur.kode);
                       return (
@@ -372,26 +372,27 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                           key={jur.kode}
                           type="button"
                           onClick={() => toggleJurusan(jur.kode)}
-                          className={`flex items-center text-left p-3 rounded-xl border transition-all group ${
-                            isSelected
-                              ? 'border-violet-500 bg-violet-50/10 dark:bg-violet-950/10 shadow-sm'
-                              : 'border-slate-100 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
-                          }`}
+                          className="flex items-center text-left w-full py-3.5 transition-colors group hover:bg-slate-50/50 dark:hover:bg-slate-900/30 px-2 rounded-lg"
                         >
                           <div className="mr-3">
                             {isSelected ? (
-                              <CheckSquare className="w-4.5 h-4.5 text-violet-600 dark:text-violet-400" />
+                              <CheckSquare className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                             ) : (
-                              <Square className="w-4.5 h-4.5 text-slate-300 dark:text-slate-750 group-hover:text-slate-400" />
+                              <Square className="w-5 h-5 text-slate-300 dark:text-slate-700 group-hover:text-slate-400" />
                             )}
                           </div>
-                          <div className="space-y-0.5 min-w-0 flex-1">
-                            <h6 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight truncate">
-                              {jur.nama}
-                            </h6>
-                            <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500">
-                              Singkatan: {jur.singkatan} · Kode: {jur.kode}
-                            </p>
+                          <div className="min-w-0 flex-1 flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                                {jur.nama}
+                              </h6>
+                              <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                                Singkatan: {jur.singkatan}
+                              </p>
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-md ml-2 shrink-0">
+                              {jur.kode}
+                            </span>
                           </div>
                         </button>
                       );
