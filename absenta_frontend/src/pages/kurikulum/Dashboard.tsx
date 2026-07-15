@@ -48,7 +48,7 @@ const STANDAR_MIN = 12;
 export default function KurikulumDashboard() {
   const { isTvMode } = useTvStore();
   const [lastRefresh, setLastRefresh] = React.useState(new Date());
-  const { jenjang, kelompokOptions } = useJenjang();
+  const { jenjang, kelompokOptions, tingkatList } = useJenjang();
   const isVocational = useMemo(() => ['SMK', 'MAK'].includes(jenjang || ''), [jenjang]);
   const [currentScene, setCurrentScene] = React.useState(0);
 
@@ -138,7 +138,10 @@ export default function KurikulumDashboard() {
   const totalKelas  = safeTotal(kelasR);
   const totalMapel  = safeTotal(mapelR);
 
-  const strRows     = useMemo(() => safeArr<RowItem>(strR), [strR]);
+  const strRows     = useMemo(() => {
+    const raw = safeArr<RowItem>(strR);
+    return raw.filter(r => tingkatList.includes(Number(r.tingkat)));
+  }, [strR, tingkatList]);
   const supRows     = useMemo(() => safeArr<SupervisiRecentItem>(supR), [supR]);
 
   const distribusi  = useMemo(() => buildDistribusi(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
