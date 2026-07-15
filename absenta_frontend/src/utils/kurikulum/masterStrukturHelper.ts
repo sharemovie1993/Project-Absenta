@@ -394,3 +394,28 @@ export const performStrukturPrint = async ({
     setIsPrinting(false);
   }
 };
+
+export const getSubjectSortRank = (item: any) => {
+  const code = (item.Mapel?.kode_mapel || item.kode_mapel || '').toUpperCase();
+  const cleanCode = code.split('-')[0];
+  const name = (item.Mapel?.nama_mapel || item.nama_mapel || '').toLowerCase();
+  const kelompok = (item.kelompok || '').toUpperCase();
+  
+  if (['PAI', 'PAKB', 'PAKatB', 'PAHB', 'PABB', 'PAKhB', 'PAIBP'].includes(cleanCode) || name.includes('agama')) return 1;
+  if (cleanCode === 'PP' || name.includes('pancasila')) return 2;
+  if (cleanCode === 'IND' || name.includes('bahasa indonesia')) return 3;
+  if (cleanCode === 'PJOK' || name.includes('jasmani') || name.includes('pjok')) return 4;
+  if (cleanCode === 'SEJ' || name.includes('sejarah')) return 5;
+  if (cleanCode === 'SENI' || name.includes('seni') || name.includes('prakarya')) return 6;
+  if (cleanCode === 'MTK' || name.includes('matematika')) return 7;
+  if (['IPA', 'IPAS', 'FIS', 'KIM', 'BIO'].includes(cleanCode) || name.includes('projek ipas') || name.includes('ilmu pengetahuan alam')) return 8;
+  if (['IPS', 'GEO', 'SOS', 'EKO', 'ANTRO'].includes(cleanCode) || name.includes('ilmu pengetahuan sosial')) return 9;
+  if (cleanCode === 'ING' || name.includes('bahasa inggris')) return 10;
+  if (cleanCode === 'INF' || name.includes('informatika')) return 11;
+  
+  if (kelompok === 'MATA PELAJARAN KEJURUAN' || ['DASAR-KEJURUAN', 'KK', 'PKK', 'PKL'].includes(cleanCode) || name.includes('konsentrasi') || name.includes('praktik kerja') || name.includes('dasar-dasar')) return 12;
+  if (kelompok === 'MATA PELAJARAN PILIHAN' || cleanCode === 'KODING-AI' || cleanCode === 'PILIHAN' || name.includes('pilihan')) return 13;
+  if (kelompok === 'MUATAN LOKAL' || cleanCode === 'MULOK' || name.includes('muatan lokal')) return 14;
+  
+  return 15;
+};

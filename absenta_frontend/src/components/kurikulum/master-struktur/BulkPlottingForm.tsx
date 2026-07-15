@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import type { Mapel } from '../../../types/academic';
 import { Button } from '../../ui/Button';
-import { StrukturKurikulum, isMapelRelevantForTingkat } from '../../../utils/kurikulum/masterStrukturHelper';
+import { StrukturKurikulum, isMapelRelevantForTingkat, getSubjectSortRank } from '../../../utils/kurikulum/masterStrukturHelper';
 
 interface BulkPlottingFormProps {
   bulkSearchQuery: string;
@@ -163,6 +163,27 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
     return Object.entries(bulkSelections).filter(([_, config]) => config.kelompok === currentStep.kelompok);
   }, [bulkSelections, currentStep]);
 
+  // Grouped selections for summary step
+  const groupedSelections = useMemo(() => {
+    const groups: Record<string, Array<[string, { jp_per_minggu: number; kelompok: string }]>> = {
+      'MATA PELAJARAN UMUM': [],
+      'MATA PELAJARAN KEJURUAN': [],
+      'MUATAN LOKAL': [],
+      'MATA PELAJARAN PILIHAN': [],
+    };
+
+    Object.entries(bulkSelections).forEach(([id, config]) => {
+      const kelompok = config.kelompok;
+      if (!groups[kelompok]) {
+        groups[kelompok] = [];
+      }
+      groups[kelompok].push([id, config]);
+    });
+
+    // Remove empty groups
+    return Object.entries(groups).filter(([_, list]) => list.length > 0);
+  }, [bulkSelections]);
+
   return (
     <div className="flex flex-col space-y-6 min-h-[500px]">
       {/* Step Indicators */}
@@ -245,46 +266,82 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-                  {Object.keys(bulkSelections).length === 0 ? (
+                  {groupedSelections.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="p-12 text-center text-slate-400 dark:text-slate-600 font-bold text-xs">
                         Belum ada mata pelajaran yang terpilih untuk di-plot.
                       </td>
                     </tr>
                   ) : (
-                    Object.entries(bulkSelections)
-                      .sort((a, b) => {
+                    groupedSelections.map(([kelompok, list]) => {
+                      const sortedList = [...list].sort((a, b) => {
                         const sA = subjects?.data?.find((s: Mapel) => s.id === a[0]);
                         const sB = subjects?.data?.find((s: Mapel) => s.id === b[0]);
+                        
+                        const rankA = getSubjectSortRank({ Mapel: sA, kelompok });
+                        const rankB = getSubjectSortRank({ Mapel: sB, kelompok });
+                        
+                        if (rankA !== rankB) return rankA - rankB;
                         return (sA?.nama_mapel || '').localeCompare(sB?.nama_mapel || '');
-                      })
-                      .map(([id, config]) => {
-                        const mapel = subjects?.data?.find((s: Mapel) => s.id === id);
-                        if (!mapel) return null;
-                        
-                        const weeks = selectedTingkat === 12 ? 32 : 36;
-                        const annualIntra = config.jp_per_minggu * weeks;
-                        
-                        return (
-                          <tr key={id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
-                            <td className="p-3">
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{mapel.nama_mapel}</p>
-                              <span className="text-[9px] text-slate-400 font-mono font-bold">{mapel.kode_mapel}</span>
-                            </td>
-                            <td className="p-3">
-                              <span className="text-[9px] bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-350 px-2 py-0.5 rounded-lg font-black uppercase">
-                                {config.kelompok.replace('MATA PELAJARAN ', '')}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span className="text-xs font-black text-indigo-650 dark:text-indigo-400">{config.jp_per_minggu} JP</span>
-                            </td>
-                            <td className="p-3 text-xs text-slate-500 font-bold">
-                              {annualIntra} JP / Tahun ({weeks} Minggu)
+                      });
+
+                      const totalJpKelompok = list.reduce((sum, [_, config]) => sum + Number(config.jp_per_minggu), 0);
+
+                      let badgeClass = '';
+                      if (kelompok === 'MATA PELAJARAN UMUM') {
+                        badgeClass = 'bg-blue-100 text-blue-850 dark:bg-blue-950/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/30';
+                      } else if (kelompok === 'MATA PELAJARAN KEJURUAN') {
+                        badgeClass = 'bg-purple-100 text-purple-850 dark:bg-purple-950/30 dark:text-purple-400 border border-purple-200/50 dark:border-purple-900/30';
+                      } else if (kelompok === 'MUATAN LOKAL') {
+                        badgeClass = 'bg-emerald-100 text-emerald-850 dark:bg-emerald-950/30 dark:text-emerald-450 border border-emerald-200/50 dark:border-emerald-900/30';
+                      } else {
+                        badgeClass = 'bg-indigo-100 text-indigo-850 dark:bg-indigo-950/30 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30';
+                      }
+
+                      return (
+                        <React.Fragment key={kelompok}>
+                          <tr className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-t border-slate-100 dark:border-slate-850">
+                            <td colSpan={4} className="px-4 py-2">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg ${badgeClass}`}>
+                                  {kelompok}
+                                </span>
+                                <span className="text-[9px] text-slate-500 font-black uppercase">
+                                  Subtotal: {totalJpKelompok} JP / Minggu
+                                </span>
+                              </div>
                             </td>
                           </tr>
-                        );
-                      })
+                          {sortedList.map(([id, config]) => {
+                            const mapel = subjects?.data?.find((s: Mapel) => s.id === id);
+                            if (!mapel) return null;
+                            
+                            const weeks = selectedTingkat === 12 ? 32 : 36;
+                            const annualIntra = config.jp_per_minggu * weeks;
+                            
+                            return (
+                              <tr key={id} className="hover:bg-slate-50/30 dark:hover:bg-slate-900/25 transition-colors">
+                                <td className="p-3 pl-6">
+                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{mapel.nama_mapel}</p>
+                                  <span className="text-[9px] text-slate-400 font-mono font-bold">{mapel.kode_mapel}</span>
+                                </td>
+                                <td className="p-3">
+                                  <span className="text-[9px] text-slate-450 dark:text-slate-400 font-bold uppercase">
+                                    {config.kelompok.replace('MATA PELAJARAN ', '')}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-center">
+                                  <span className="text-xs font-black text-indigo-650 dark:text-indigo-400">{config.jp_per_minggu} JP</span>
+                                </td>
+                                <td className="p-3 text-xs text-slate-500 font-bold">
+                                  {annualIntra} JP / Tahun ({weeks} Minggu)
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
