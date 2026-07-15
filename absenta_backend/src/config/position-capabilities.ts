@@ -27,6 +27,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'curriculum.supervision.update.record',
     'curriculum.supervision.delete.record',
     'curriculum.structure.manage',
+    'academic.structure.manage',
     'academic.teachers.view.list',
     'academic.teachers.view.detail',
     'academic.teachers.view.history', // Pantau histori mengajar
