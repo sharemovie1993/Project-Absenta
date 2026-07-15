@@ -47,6 +47,7 @@ interface ModalProps {
   jenjang?: string;
   kurikulum?: string;
   targetJp?: number;
+  standardReferences?: any;
 }
 
 export const MasterStrukturModal: React.FC<ModalProps> = ({
@@ -77,7 +78,8 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
   isPendingSave,
   jenjang = 'SMA',
   kurikulum = 'MERDEKA',
-  targetJp = 40
+  targetJp = 40,
+  standardReferences
 }) => {
   const isSingleMode = editingItem || addMode === 'manual';
   const saveLabel = isSingleMode 
@@ -88,7 +90,13 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editingItem ? 'Edit Alokasi JP' : addMode === 'manual' ? 'Tambah Alokasi JP (Manual)' : 'Tambah Alokasi JP (Bulk Plotting)'}
+      title={
+        editingItem
+          ? 'Edit Alokasi JP'
+          : addMode === 'manual'
+          ? 'Tambah Alokasi JP (Manual)'
+          : `Bulk Plotting — ${jenjang} · Kelas ${selectedTingkat}`
+      }
       size={isSingleMode ? '2xl' : '5xl'}
       contentClassName={isSingleMode ? "!overflow-visible" : ""}
     >
@@ -126,6 +134,7 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
             isPendingSave={isPendingSave}
             onClose={onClose}
             targetJp={targetJp}
+            standardReferences={standardReferences}
           />
         )}
 
