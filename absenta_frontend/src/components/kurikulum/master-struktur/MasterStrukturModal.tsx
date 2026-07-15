@@ -100,7 +100,7 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
       size={isSingleMode ? '2xl' : '5xl'}
       contentClassName={isSingleMode ? "!overflow-visible" : ""}
     >
-      <form onSubmit={handleSave} className="space-y-4 pt-2">
+      <form id="bulk-plotting-form" onSubmit={handleSave} className="space-y-4 pt-2">
         {isSingleMode ? (
           <SinglePlottingForm
             editingItem={editingItem}

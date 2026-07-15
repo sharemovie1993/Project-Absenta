@@ -57,6 +57,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
   const isSmkOrMak = jenjang === 'SMK' || jenjang === 'MAK';
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [canSubmit, setCanSubmit] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Define steps dynamically based on jenjang
   const steps = useMemo<Step[]>(() => {
@@ -697,8 +698,9 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
           </Button>
         ) : (
           <Button
-            type={canSubmit ? "submit" : "button"}
-            isLoading={isPendingSave}
+            type="button"
+            disabled={isPendingSave}
+            onClick={() => setShowConfirmDialog(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs h-9 border border-indigo-500 shadow-md shadow-indigo-150 dark:shadow-none flex items-center gap-1.5 animate-pulse"
           >
             SIMPAN PEMETAAN
@@ -706,6 +708,80 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
           </Button>
         )}
       </div>
+
+      {/* ─── Confirmation Dialog ──────────────────────────────────────── */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowConfirmDialog(false)}
+          />
+          {/* Dialog Box */}
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-amber-200 dark:border-amber-800/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-amber-50 dark:bg-amber-950/30 px-6 py-4 border-b border-amber-200 dark:border-amber-800/40 flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">Konfirmasi Penyimpanan</h2>
+                <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold mt-0.5 uppercase tracking-wider">
+                  Bulk Plotting — {jenjang} · Kelas {selectedTingkat}
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Warning notice */}
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 space-y-2">
+                <p className="text-xs font-black text-amber-900 dark:text-amber-300 uppercase tracking-wider">📋 Perhatian untuk Penyusun Struktur Kurikulum</p>
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-400/90 leading-relaxed">
+                  Hasil yang disajikan dalam proses <strong>Auto-Plot</strong> ini dihitung berdasarkan
+                  estimasi dan perkiraan standar Kemendikbud. Alokasi JP yang ditampilkan
+                  <strong> belum tentu sesuai</strong> dengan kondisi riil sekolah Anda.
+                </p>
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-400/90 leading-relaxed">
+                  Sebelum data ini berlaku sebagai struktur kurikulum resmi, pastikan Anda telah:
+                </p>
+                <ul className="text-[10px] text-amber-800 dark:text-amber-400 font-bold space-y-1 pl-3">
+                  <li className="flex items-start gap-1.5"><span className="mt-0.5 shrink-0">▸</span> Memeriksa kesesuaian alokasi JP dengan beban belajar aktual</li>
+                  <li className="flex items-start gap-1.5"><span className="mt-0.5 shrink-0">▸</span> Memastikan tidak ada mata pelajaran yang seharusnya ditambahkan atau dihapus</li>
+                  <li className="flex items-start gap-1.5"><span className="mt-0.5 shrink-0">▸</span> Mengkonfirmasi data ini bersama Tim Kurikulum / Kepala Sekolah</li>
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Anda akan menyimpan <strong className="text-slate-700 dark:text-slate-200">{Object.keys(bulkSelections).length} mata pelajaran</strong> sekaligus.
+                Data yang telah tersimpan dapat diedit kembali melalui halaman Struktur Kurikulum.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Tinjau Kembali
+              </button>
+              <button
+                type="submit"
+                form="bulk-plotting-form"
+                disabled={isPendingSave}
+                onClick={() => setShowConfirmDialog(false)}
+                className="px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none transition-colors disabled:opacity-60 flex items-center gap-1.5"
+              >
+                {isPendingSave ? (
+                  <><span className="animate-spin">⏳</span> Menyimpan...</>
+                ) : (
+                  <><Check size={12} /> Ya, Simpan Sekarang</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
