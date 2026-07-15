@@ -66,7 +66,8 @@ export const transformManagementToTree = (
 export const transformDataToTree = (
   groupCodes: string[], 
   data: GroupedStruktur, 
-  jurusans: Record<string, string>
+  jurusans: Record<string, string>,
+  tingkatList?: number[]
 ): TopologyNodeData | null => {
   if (!data) return null;
   let allRoots: TopologyNodeData[] = [];
@@ -81,9 +82,13 @@ export const transformDataToTree = (
     if (isAcademicOrService) {
       if (['WALIKELAS', 'PETUGAS_KELAS', 'PETUGAS_ABSENSI'].includes(kode)) {
         // Logika Grouping per Tingkat (10, 11, 12)
-        const levels = Array.from(new Set(nodes.map((n: any) => n.tingkat)))
+        let levels = Array.from(new Set(nodes.map((n: any) => n.tingkat)))
           .filter(t => t !== null && t !== undefined)
           .sort((a: any, b: any) => Number(a) - Number(b));
+
+        if (tingkatList && tingkatList.length > 0) {
+          levels = levels.filter(t => tingkatList.includes(Number(t)));
+        }
 
         const levelNodes = levels.map(tingkat => {
           const nodesInLevel = nodes.filter((n: any) => n.tingkat === tingkat);

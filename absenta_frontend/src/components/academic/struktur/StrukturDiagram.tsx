@@ -31,7 +31,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   const [editingNode, setEditingNode] = useState<{ node: TopologyNodeData; element: HTMLElement | null } | null>(null);
 
   const { confirm } = useConfirm();
-  const { jenjang } = useJenjang();
+  const { jenjang, tingkatList } = useJenjang();
 
   const rawJenjang = useMemo(() => (jenjang || 'SMA').toUpperCase(), [jenjang]);
 
@@ -135,7 +135,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     const map: Record<string, any> = {};
     if (!data || Object.keys(data).length === 0) return map;
 
-    const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
+    const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans, tingkatList);
     const managementTree1 = transformManagementToTree(group1Codes, data, jurusans);
     const managementTree2 = transformManagementToTree(group2Codes, data, jurusans);
     
@@ -155,24 +155,24 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       }
     }
 
-    map['G2_TOP'] = transformDataToTree(['KAPROG', 'KABENG', 'TOOLMAN'], data, jurusans);
-    map['G2_BOTTOM'] = transformDataToTree(['WALIKELAS'], data, jurusans);
-    map['G3_TOP'] = transformDataToTree(['BPBK', 'BKK', 'GERBANG'], data, jurusans);
-    map['G3_BOTTOM'] = transformDataToTree(['PETUGAS_KELAS', 'PETUGAS_ABSENSI'], data, jurusans);
+    map['G2_TOP'] = transformDataToTree(['KAPROG', 'KABENG', 'TOOLMAN'], data, jurusans, tingkatList);
+    map['G2_BOTTOM'] = transformDataToTree(['WALIKELAS'], data, jurusans, tingkatList);
+    map['G3_TOP'] = transformDataToTree(['BPBK', 'BKK', 'GERBANG'], data, jurusans, tingkatList);
+    map['G3_BOTTOM'] = transformDataToTree(['PETUGAS_KELAS', 'PETUGAS_ABSENSI'], data, jurusans, tingkatList);
 
     const handledCodes = (GROUP_CONFIG || []).flatMap(g => g.codes);
     const otherCodes = Object.keys(data || {}).filter(kode => !handledCodes.includes(kode));
     if (otherCodes.length > 0) {
-      map['other'] = transformDataToTree(otherCodes, data, jurusans);
+      map['other'] = transformDataToTree(otherCodes, data, jurusans, tingkatList);
     }
     
     return map;
-  }, [data, jurusans, group1Codes, group2Codes]);
+  }, [data, jurusans, group1Codes, group2Codes, tingkatList]);
 
   const currentTreeData1 = useMemo(() => {
     if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
 
-    const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans);
+    const kepalaSekolahTree = transformDataToTree(['KEPALA_SEKOLAH'], data, jurusans, tingkatList);
     const managementTree1 = transformManagementToTree(group1Codes, data, jurusans);
     
     if (!kepalaSekolahTree) return null;
@@ -180,7 +180,7 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       ...kepalaSekolahTree,
       children: managementTree1?.children || []
     };
-  }, [data, jurusans, activeTab, group1Codes]);
+  }, [data, jurusans, activeTab, group1Codes, tingkatList]);
 
   const currentTreeData2 = useMemo(() => {
     if (!data || Object.keys(data).length === 0 || activeTab !== 'PIMPINAN') return null;
@@ -203,8 +203,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
       return null;
     }
 
-    return transformDataToTree(activeCodes, data, jurusans);
-  }, [data, jurusans, activeCodes, activeTab]);
+    return transformDataToTree(activeCodes, data, jurusans, tingkatList);
+  }, [data, jurusans, activeCodes, activeTab, tingkatList]);
 
   const handleNodeAction = useCallback(async (node: TopologyNodeData | null | undefined, actionType: string = 'EDIT', element: HTMLElement | null = null) => {
     if (!node) {
