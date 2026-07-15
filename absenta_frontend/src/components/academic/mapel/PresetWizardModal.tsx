@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Modal, Button } from '../../ui';
-import { getPresetsByJenjang, initializeMapelPreset, type GlobalMapelPreset } from '../../../api/academic/mapel.api';
+import { getPresetsByJenjang, initializeMapelPreset, getMapelList, type GlobalMapelPreset } from '../../../api/academic/mapel.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
 import { BookOpen, GraduationCap, ChevronRight, ChevronLeft, Save, RefreshCw, Layers, Check, ChevronDown, ChevronUp, Compass, Flag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useJenjang } from '../../../hooks/useJenjang';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface PresetWizardModalProps {
   isOpen: boolean;
@@ -42,6 +43,32 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { kurikulum } = useJenjang();
+  const { user } = useAuth();
+  
+  // Existing mapels state
+  const [existingMapels, setExistingMapels] = useState<any[]>([]);
+
+  // Computed set of already added mapel codes and names
+  const existingMapelCodesAndNames = useMemo(() => {
+    const shortTenantId = user?.tenant_id ? user.tenant_id.substring(0, 4).toUpperCase() : '';
+    const set = new Set<string>();
+    existingMapels.forEach((m: any) => {
+      if (m.kode_mapel) set.add(m.kode_mapel.toUpperCase());
+      if (m.nama_mapel) set.add(m.nama_mapel.toLowerCase().trim());
+      // Also add the base code if it has tenant suffix (e.g. "MAT-DEMO" -> "MAT")
+      if (m.kode_mapel && m.kode_mapel.endsWith(`-${shortTenantId}`)) {
+        const baseKode = m.kode_mapel.substring(0, m.kode_mapel.length - (shortTenantId.length + 1));
+        set.add(baseKode.toUpperCase());
+      }
+    });
+    return set;
+  }, [existingMapels, user?.tenant_id]);
+
+  const isPresetAlreadyAdded = useCallback((p: GlobalMapelPreset) => {
+    const pKode = p.kode_mapel.toUpperCase();
+    const pName = p.nama_mapel.toLowerCase().trim();
+    return existingMapelCodesAndNames.has(pKode) || existingMapelCodesAndNames.has(pName);
+  }, [existingMapelCodesAndNames]);
 
   const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
 
@@ -126,10 +153,30 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     setSelectedIds(new Set());
     setExpandedJurusanId(null);
     setVocationalPresets({});
+    setExistingMapels([]);
     
     const loadInitialData = async () => {
       try {
         setLoading(true);
+
+        // Fetch existing mapels for tenant
+        const existingRes = await getMapelList(1, 1000);
+        const mapels = existingRes.success ? existingRes.data : [];
+        setExistingMapels(mapels);
+
+        // Helper to check if a preset is already added based on local mapels
+        const shortTenantId = user?.tenant_id ? user.tenant_id.substring(0, 4).toUpperCase() : '';
+        const checkPresetAdded = (p: GlobalMapelPreset) => {
+          const pKode = p.kode_mapel.toUpperCase();
+          const pName = p.nama_mapel.toLowerCase().trim();
+          const pKodeWithSuffix = `${pKode}-${shortTenantId}`.toUpperCase();
+          return mapels.some((m: any) => {
+            const mKode = (m.kode_mapel || '').toUpperCase();
+            const mName = (m.nama_mapel || '').toLowerCase().trim();
+            return mKode === pKode || mKode === pKodeWithSuffix || mName === pName;
+          });
+        };
+
         const res = await getPresetsByJenjang(jenjang);
         if (res.success) {
           let filtered = res.data;
@@ -142,11 +189,13 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
           }
           setPresets(filtered);
           
-          // Pre-select UMUM & KEAGAMAAN by default in step 1
+          // Pre-select UMUM & KEAGAMAAN by default in step 1, BUT EXCLUDE already added ones!
           const initialSelection = new Set<string>();
           filtered.forEach(p => {
             if (p.category === 'UMUM' || p.category === 'KEAGAMAAN' || p.category === 'UMUM_KELAS10') {
-              initialSelection.add(p.id);
+              if (!checkPresetAdded(p)) {
+                initialSelection.add(p.id);
+              }
             }
           });
           setSelectedIds(initialSelection);
@@ -212,6 +261,7 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
             // Auto select PKL, PKK, and Dasar-dasar by default
             setSelectedIds(prevSelected => {
               const next = new Set(prevSelected);
+              const shortTenantId = user?.tenant_id ? user.tenant_id.substring(0, 4).toUpperCase() : '';
               results.forEach(r => {
                 if (r) {
                   r.presets.forEach(p => {
@@ -221,7 +271,18 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                       name.includes('projek kreatif') ||
                       name.includes('dasar-dasar')
                     ) {
-                      next.add(p.id);
+                      // Only select if not already added
+                      const pKode = p.kode_mapel.toUpperCase();
+                      const pName = p.nama_mapel.toLowerCase().trim();
+                      const pKodeWithSuffix = `${pKode}-${shortTenantId}`.toUpperCase();
+                      const alreadyAdded = mapels.some((m: any) => {
+                        const mKode = (m.kode_mapel || '').toUpperCase();
+                        const mName = (m.nama_mapel || '').toLowerCase().trim();
+                        return mKode === pKode || mKode === pKodeWithSuffix || mName === pName;
+                      });
+                      if (!alreadyAdded) {
+                        next.add(p.id);
+                      }
                     }
                   });
                 }
@@ -286,7 +347,8 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     return presets.filter(p => p.category === 'MULOK');
   }, [presets]);
 
-  const handleToggleSelect = (id: string) => {
+  const handleToggleSelect = (id: string, alreadyAdded: boolean) => {
+    if (alreadyAdded) return;
     const next = new Set(selectedIds);
     if (next.has(id)) {
       next.delete(id);
@@ -300,7 +362,9 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
     const next = new Set(selectedIds);
     presetsList.forEach(p => {
       if (select) {
-        next.add(p.id);
+        if (!isPresetAlreadyAdded(p)) {
+          next.add(p.id);
+        }
       } else {
         next.delete(p.id);
       }
@@ -424,30 +488,39 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
                     {step1Presets.map((p) => {
-                      const isChecked = selectedIds.has(p.id);
+                      const alreadyAdded = isPresetAlreadyAdded(p);
+                      const isChecked = selectedIds.has(p.id) || alreadyAdded;
                       return (
                         <div
                           key={p.id}
-                          onClick={() => handleToggleSelect(p.id)}
-                          className={`flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-sm ${
-                            isChecked
-                              ? 'bg-blue-50/20 border-blue-500 dark:bg-blue-950/10'
-                              : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                          onClick={() => handleToggleSelect(p.id, alreadyAdded)}
+                          className={`flex items-center gap-3 p-3.5 border rounded-2xl transition-all duration-200 hover:shadow-sm ${
+                            alreadyAdded
+                              ? 'bg-emerald-50/10 border-emerald-300 dark:bg-emerald-950/5 opacity-75 cursor-not-allowed'
+                              : isChecked
+                                ? 'bg-blue-50/20 border-blue-500 dark:bg-blue-950/10 cursor-pointer'
+                                : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 cursor-pointer'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
+                            disabled={alreadyAdded}
                             onChange={() => {}} // handled by div click
-                            className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                           />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nama_mapel}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
                               <span className="text-[10px] text-slate-400 font-medium">({p.category})</span>
                             </div>
                           </div>
+                          {alreadyAdded && (
+                            <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 font-black px-1.5 py-0.5 rounded-lg ml-auto">
+                              SUDAH ADA
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -567,19 +640,25 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                                           badgeLabel = 'Konsentrasi';
                                           badgeClass = 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
                                         }
-
+                                        const alreadyAdded = isPresetAlreadyAdded(p);
+                                        const finalChecked = isChecked || alreadyAdded;
                                         return (
                                           <div
                                             key={p.id}
-                                            onClick={() => handleToggleSelect(p.id)}
-                                            className={`flex items-center justify-between p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-sm ${cardColorClass}`}
+                                            onClick={() => handleToggleSelect(p.id, alreadyAdded)}
+                                            className={`flex items-center justify-between p-3.5 border rounded-2xl transition-all duration-200 hover:shadow-sm ${
+                                              alreadyAdded
+                                                ? 'bg-emerald-50/10 border-emerald-300 dark:bg-emerald-950/5 opacity-75 cursor-not-allowed'
+                                                : cardColorClass
+                                            }`}
                                           >
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                               <input
                                                 type="checkbox"
-                                                checked={isChecked}
+                                                checked={finalChecked}
+                                                disabled={alreadyAdded}
                                                 onChange={() => {}} // handled by div click
-                                                className="rounded border-slate-300 dark:border-slate-700 text-slate-800 focus:ring-slate-500"
+                                                className="rounded border-slate-300 dark:border-slate-700 text-slate-800 focus:ring-slate-500 disabled:opacity-50"
                                               />
                                               <div className="min-w-0">
                                                 <p className="text-xs font-semibold text-slate-850 dark:text-slate-200 truncate">{p.nama_mapel}</p>
@@ -588,7 +667,11 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                                                 </div>
                                               </div>
                                             </div>
-                                            {badgeLabel && (
+                                            {alreadyAdded ? (
+                                              <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 font-black px-2 py-0.5 rounded-full flex-shrink-0 ml-2">
+                                                SUDAH ADA
+                                              </span>
+                                            ) : badgeLabel && (
                                               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${badgeClass}`}>
                                                 {badgeLabel}
                                               </span>
@@ -643,27 +726,38 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {list.map((p) => {
-                              const isChecked = selectedIds.has(p.id);
+                              const alreadyAdded = isPresetAlreadyAdded(p);
+                              const isChecked = selectedIds.has(p.id) || alreadyAdded;
                               return (
                                 <div
                                   key={p.id}
-                                  onClick={() => handleToggleSelect(p.id)}
-                                  className={`flex items-center gap-2.5 p-2.5 border rounded-xl cursor-pointer transition-all duration-155 ${
-                                    isChecked
-                                      ? 'bg-indigo-50/10 border-indigo-400 dark:bg-indigo-950/10'
-                                      : 'bg-white dark:bg-slate-950 border-slate-150 dark:border-slate-900 hover:border-slate-250'
+                                  onClick={() => handleToggleSelect(p.id, alreadyAdded)}
+                                  className={`flex items-center gap-3 p-3.5 border rounded-2xl transition-all duration-200 hover:shadow-sm ${
+                                    alreadyAdded
+                                      ? 'bg-emerald-50/10 border-emerald-300 dark:bg-emerald-950/5 opacity-75 cursor-not-allowed'
+                                      : isChecked
+                                        ? 'bg-blue-50/20 border-blue-500 dark:bg-blue-950/10 cursor-pointer'
+                                        : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 cursor-pointer'
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
-                                    onChange={() => {}}
-                                    className="rounded border-slate-300 dark:border-slate-800 text-indigo-650 focus:ring-indigo-500"
+                                    disabled={alreadyAdded}
+                                    onChange={() => {}} // handled by div click
+                                    className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                                   />
-                                  <div className="min-w-0">
-                                    <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate">{p.nama_mapel}</p>
-                                    <span className="text-[8px] bg-slate-50 dark:bg-slate-900 text-slate-450 px-1 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nama_mapel}</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
+                                    </div>
                                   </div>
+                                  {alreadyAdded && (
+                                    <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 font-black px-1.5 py-0.5 rounded-lg ml-auto">
+                                      SUDAH ADA
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
@@ -708,30 +802,38 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
                     {step4Presets.map((p) => {
-                      const isChecked = selectedIds.has(p.id);
+                      const alreadyAdded = isPresetAlreadyAdded(p);
+                      const isChecked = selectedIds.has(p.id) || alreadyAdded;
                       return (
                         <div
                           key={p.id}
-                          onClick={() => handleToggleSelect(p.id)}
-                          className={`flex items-center gap-3 p-3.5 border rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-sm ${
-                            isChecked
-                              ? 'bg-amber-50/20 border-amber-500 dark:bg-amber-950/10'
-                              : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                          onClick={() => handleToggleSelect(p.id, alreadyAdded)}
+                          className={`flex items-center gap-3 p-3.5 border rounded-2xl transition-all duration-200 hover:shadow-sm ${
+                            alreadyAdded
+                              ? 'bg-emerald-50/10 border-emerald-300 dark:bg-emerald-950/5 opacity-75 cursor-not-allowed'
+                              : isChecked
+                                ? 'bg-blue-50/20 border-blue-500 dark:bg-blue-950/10 cursor-pointer'
+                                : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-slate-300 cursor-pointer'
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
+                            disabled={alreadyAdded}
                             onChange={() => {}} // handled by div click
-                            className="rounded border-slate-300 dark:border-slate-700 text-amber-600 focus:ring-amber-500"
+                            className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                           />
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-855 dark:text-slate-200 truncate">{p.nama_mapel}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{p.nama_mapel}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase">{p.kode_mapel}</span>
-                              <span className="text-[10px] text-slate-400 font-medium">({p.category})</span>
                             </div>
                           </div>
+                          {alreadyAdded && (
+                            <span className="text-[9px] bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-450 font-black px-1.5 py-0.5 rounded-lg ml-auto">
+                              SUDAH ADA
+                            </span>
+                          )}
                         </div>
                       );
                     })}
