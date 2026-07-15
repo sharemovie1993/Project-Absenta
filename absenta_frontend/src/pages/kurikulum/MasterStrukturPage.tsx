@@ -72,7 +72,9 @@ const MasterStrukturPage: React.FC = () => {
         isMapelBelongsToOtherJurusanLocal,
         tingkatList,
         kelompokOptions,
-        upsertMutation
+        upsertMutation,
+        jenjang,
+        kurikulum
     } = useMasterStrukturState();
 
     const breadcrumbs = React.useMemo(() => [
@@ -393,6 +395,8 @@ const MasterStrukturPage: React.FC = () => {
                             handleAddPreset={handleAddPreset}
                             handleSave={handleSave}
                             isPendingSave={upsertMutation.isPending}
+                            jenjang={jenjang}
+                            kurikulum={kurikulum}
                         />
                     )}
                 </Suspense>

@@ -591,6 +591,8 @@ export const useMasterStrukturState = () => {
     isMapelBelongsToOtherJurusanLocal,
     tingkatList,
     kelompokOptions,
-    upsertMutation
+    upsertMutation,
+    jenjang,
+    kurikulum
   };
 };

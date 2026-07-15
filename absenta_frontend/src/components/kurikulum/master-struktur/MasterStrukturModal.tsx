@@ -44,6 +44,8 @@ interface ModalProps {
   // Form submission and mutators
   handleSave: (e: React.FormEvent<HTMLFormElement>) => void;
   isPendingSave: boolean;
+  jenjang?: string;
+  kurikulum?: string;
 }
 
 export const MasterStrukturModal: React.FC<ModalProps> = ({
@@ -71,7 +73,9 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
   handleAddPreset,
   
   handleSave,
-  isPendingSave
+  isPendingSave,
+  jenjang = 'SMA',
+  kurikulum = 'MERDEKA'
 }) => {
   const isSingleMode = editingItem || addMode === 'manual';
   const saveLabel = isSingleMode 
@@ -115,6 +119,8 @@ export const MasterStrukturModal: React.FC<ModalProps> = ({
             presetSisaCount={presetSisaCount}
             handleAddPreset={handleAddPreset}
             kelompokOptions={kelompokOptions}
+            jenjang={jenjang}
+            kurikulum={kurikulum}
           />
         )}
 

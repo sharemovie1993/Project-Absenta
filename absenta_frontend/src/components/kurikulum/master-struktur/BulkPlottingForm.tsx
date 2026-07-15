@@ -1,7 +1,7 @@
-import React from 'react';
-import { Search, BookOpen, Trash2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import type { Mapel } from '../../../types/academic';
-
+import { Button } from '../../ui/Button';
 import { StrukturKurikulum } from '../../../utils/kurikulum/masterStrukturHelper';
 
 interface BulkPlottingFormProps {
@@ -18,6 +18,15 @@ interface BulkPlottingFormProps {
   presetSisaCount: { UMUM: number; KEJURUAN: number; MULOK: number; PILIHAN: number };
   handleAddPreset: (type: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN') => void;
   kelompokOptions: { value: string; label: string }[];
+  jenjang: string;
+  kurikulum: string;
+}
+
+interface Step {
+  id: 'umum' | 'kejuruan' | 'mulok' | 'pilihan' | 'summary';
+  label: string;
+  kelompok: string;
+  presetType?: 'UMUM' | 'KEJURUAN' | 'MULOK' | 'PILIHAN';
 }
 
 export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
@@ -33,8 +42,47 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
   detectDefaultJpForMapel,
   presetSisaCount,
   handleAddPreset,
-  kelompokOptions
+  kelompokOptions,
+  jenjang,
+  kurikulum
 }) => {
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+
+  // Define steps dynamically based on jenjang
+  const steps = useMemo<Step[]>(() => {
+    const list: Step[] = [
+      { id: 'umum', label: 'Mapel Umum', kelompok: 'MATA PELAJARAN UMUM', presetType: 'UMUM' }
+    ];
+    if (jenjang === 'SMK' || jenjang === 'MAK') {
+      list.push({ id: 'kejuruan', label: 'Mapel Kejuruan', kelompok: 'MATA PELAJARAN KEJURUAN', presetType: 'KEJURUAN' });
+    }
+    list.push({ id: 'mulok', label: 'Muatan Lokal', kelompok: 'MUATAN LOKAL', presetType: 'MULOK' });
+    list.push({ id: 'pilihan', label: 'Mapel Pilihan', kelompok: 'MATA PELAJARAN PILIHAN', presetType: 'PILIHAN' });
+    list.push({ id: 'summary', label: 'Ringkasan', kelompok: 'SUMMARY' });
+    return list;
+  }, [jenjang]);
+
+  const currentStep = steps[activeStepIndex];
+
+  // Helper to check if a step is completed (has at least 1 selection, or doesn't have any preset left)
+  const isStepCompleted = (step: Step) => {
+    if (step.id === 'summary') return false;
+    const selectedCount = Object.values(bulkSelections).filter(s => s.kelompok === step.kelompok).length;
+    return selectedCount > 0;
+  };
+
+  const handleNext = () => {
+    if (activeStepIndex < steps.length - 1) {
+      setActiveStepIndex(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (activeStepIndex > 0) {
+      setActiveStepIndex(prev => prev - 1);
+    }
+  };
+
   const renderJpCalculator = (jp: number, mapelName: string, mapelKode: string) => {
     const weeks = selectedTingkat === 12 ? 32 : 36;
     const annualIntra = jp * weeks;
@@ -42,14 +90,14 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
     const recommendedAnnual = recommendedJp * weeks;
     
     let statusColor = "text-emerald-650 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40";
-    let statusText = "Sesuai Standar Permendikbud 12/2024";
+    let statusText = "Sesuai Standar Kemendikbud";
     
     if (jp > recommendedJp) {
       statusColor = "text-violet-650 dark:text-violet-455 bg-violet-50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-900/40";
-      statusText = `Otonomi Sekolah (+${jp - recommendedJp} JP/Minggu)`;
+      statusText = `Otonomi (+${jp - recommendedJp} JP)`;
     } else if (jp < recommendedJp) {
       statusColor = "text-amber-650 dark:text-amber-455 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40";
-      statusText = `Di bawah Standar Permendikbud (-${recommendedJp - jp} JP/Minggu)`;
+      statusText = `Di bawah Standar (-${recommendedJp - jp} JP)`;
     }
     
     return (
@@ -61,272 +109,415 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
           </span>
         </div>
         <div className="flex gap-4">
-          <p className="text-gray-500">Intra/Thn: <strong className="text-slate-700 dark:text-slate-350">{annualIntra} JP</strong></p>
-          <p className="text-gray-550">Standar: <strong className="text-slate-700 dark:text-slate-350">{recommendedAnnual} JP</strong></p>
+          <p className="text-gray-500 font-bold">Intra/Thn: <strong className="text-slate-700 dark:text-slate-350">{annualIntra} JP</strong></p>
+          <p className="text-gray-500 font-bold">Standar: <strong className="text-slate-700 dark:text-slate-350">{recommendedAnnual} JP</strong></p>
         </div>
       </div>
     );
   };
 
+  // Filter subjects for the current step
+  const filteredSubjects = useMemo(() => {
+    if (!subjects?.data) return [];
+    return subjects.data.filter((s: Mapel) => {
+      const kode = (s.kode_mapel || '').toUpperCase();
+      const nama = (s.nama_mapel || '').toLowerCase();
+      
+      // 1. Text Search Filter
+      const matchesSearch = nama.includes(bulkSearchQuery.toLowerCase()) || 
+                            kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+      
+      // 2. Hide already mapped structure items
+      const alreadyMapped = mappingFiltered?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
+      if (alreadyMapped) return false;
+      
+      // 3. Hide other majors' specific subjects (SMK)
+      if (isMapelBelongsToOtherJurusan(s)) return false;
+      
+      // 4. Respect active curriculum
+      if (kurikulum === 'K13') {
+        const isSeniPilihan = ['SENI_MUSIK', 'SENI_RUPA', 'SENI_TARI', 'SENI_TEATER'].includes(kode) ||
+          ['seni musik', 'seni rupa', 'seni tari', 'seni teater'].some(t => nama.includes(t));
+        if (isSeniPilihan) return false;
+      } else if (kurikulum === 'MERDEKA') {
+        if (jenjang !== 'SMK' && jenjang !== 'MAK') {
+          const isGeneralSeniBudaya = kode === 'SENI' || nama === 'seni budaya';
+          if (isGeneralSeniBudaya) return false;
+        }
+      }
+
+      // 5. Respect tingkat/level relevance
+      const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+      const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+      const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+      const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
+      const isMulok = kode.startsWith('M-') || 
+                       nama.includes('bahasa sunda') || 
+                       nama.includes('bahasa jawa') || 
+                       nama.includes('bahasa bali') || 
+                       nama.includes('bahasa madura') || 
+                       nama.includes('muatan lokal') || 
+                       nama.includes('plh') || 
+                       nama.includes('kesenian daerah') ||
+                       nama.includes('kepariwisataan') ||
+                       nama.includes('sunda');
+      const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+      
+      if (selectedTingkat === 10) {
+        if (isPkl || isPkk || isKk) return false;
+        const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+        const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
+        if (isProduktifLanjut) return false;
+      } else if (selectedTingkat === 11) {
+        if (isDasar || isPkl || isKoding || isMulok) return false;
+      } else {
+        if (isDasar || isKoding || isMulok) return false;
+      }
+
+      // 6. Must belong to the current step's kelompok category
+      const subjectKelompok = detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel);
+      return subjectKelompok === currentStep.kelompok;
+    });
+  }, [subjects?.data, currentStep, bulkSearchQuery, mappingFiltered, isMapelBelongsToOtherJurusan, kurikulum, jenjang, selectedTingkat]);
+
+  // Selected subjects in the current step
+  const selectedSubjectsInCurrentStep = useMemo(() => {
+    return Object.entries(bulkSelections).filter(([_, config]) => config.kelompok === currentStep.kelompok);
+  }, [bulkSelections, currentStep]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[480px]">
-      {/* Panel Kiri: Pemilihan Mapel (Col 5) */}
-      <div className="lg:col-span-5 border-r border-slate-100 dark:border-slate-800 pr-6 flex flex-col space-y-4">
-        <div className="space-y-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pencarian Mapel</span>
-          <div className="relative">
-            <input
-              type="text"
-              value={bulkSearchQuery}
-              onChange={(e) => setBulkSearchQuery(e.target.value)}
-              placeholder="Cari mata pelajaran..."
-              className="w-full h-10 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            />
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Search size={16} />
-            </div>
-          </div>
-        </div>
-
-        {/* Presets Button Shortcuts */}
-        <div className="space-y-1.5">
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">Paket Cepat (Presets)</span>
-          <div className="flex flex-wrap gap-2 items-center">
-            {presetSisaCount.UMUM === 0 ? (
-              <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none animate-in fade-in duration-200">
-                ✓ Paket Umum Selesai
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleAddPreset('UMUM')}
-                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-              >
-                + Paket Umum ({presetSisaCount.UMUM})
-              </button>
-            )}
-
-            {presetSisaCount.KEJURUAN === 0 ? (
-              <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none animate-in fade-in duration-200">
-                ✓ Paket Kejuruan Selesai
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleAddPreset('KEJURUAN')}
-                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-              >
-                + Paket Kejuruan ({presetSisaCount.KEJURUAN})
-              </button>
-            )}
-
-            {presetSisaCount.MULOK === 0 ? (
-              <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none animate-in fade-in duration-200">
-                ✓ Paket Mulok Selesai
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleAddPreset('MULOK')}
-                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-              >
-                + Paket Mulok ({presetSisaCount.MULOK})
-              </button>
-            )}
-
-            {presetSisaCount.PILIHAN === 0 ? (
-              <span className="text-[9px] bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 px-2.5 py-1.5 rounded-lg font-black border border-emerald-200 dark:border-emerald-900 shadow-sm cursor-default select-none animate-in fade-in duration-200">
-                ✓ Paket Pilihan Selesai
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleAddPreset('PILIHAN')}
-                className="text-[10px] bg-slate-150 dark:bg-slate-800 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-950/20 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg font-bold transition-all"
-              >
-                + Paket Pilihan ({presetSisaCount.PILIHAN})
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setBulkSelections({})}
-              className="text-[10px] text-red-500 hover:underline px-2 py-1.5 font-bold ml-auto"
-            >
-              Kosongkan
-            </button>
-          </div>
-        </div>
-
-        {/* Mapel List Checkboxes */}
-        <div className="flex-1 overflow-y-auto max-h-[300px] pr-1 space-y-2 border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50">
-          {subjects?.data?.filter((s: Mapel) => {
-            const kode = (s.kode_mapel || '').toUpperCase();
-            const nama = (s.nama_mapel || '').toLowerCase();
-            
-            // 1. Text Search Filter
-            const matchesSearch = nama.includes(bulkSearchQuery.toLowerCase()) || 
-                                  kode.toLowerCase().includes(bulkSearchQuery.toLowerCase());
-            if (!matchesSearch) return false;
-            
-            // 3. Sembunyikan mapel yang sudah di-ploting sebelumnya di tingkat kelas ini
-            const alreadyMapped = mappingFiltered?.some((m: StrukturKurikulum) => m.mapel_id === s.id);
-            if (alreadyMapped) return false;
-            
-            if (isMapelBelongsToOtherJurusan(s)) return false;
-            
-            const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-            const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
-            const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
-            const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
-            const isMulok = kode.startsWith('M-') || 
-                             nama.includes('bahasa sunda') || 
-                             nama.includes('bahasa jawa') || 
-                             nama.includes('bahasa bali') || 
-                             nama.includes('bahasa madura') || 
-                             nama.includes('muatan lokal') || 
-                             nama.includes('plh') || 
-                             nama.includes('kesenian daerah') ||
-                             nama.includes('kepariwisataan') ||
-                             nama.includes('sunda');
-            
-            const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
-            
-            // 2. Smart Filter Relevansi Tingkat
-            if (selectedTingkat === 10) {
-              if (isPkl || isPkk || isKk) return false;
-              const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-              const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-              if (isProduktifLanjut) return false;
-            } else if (selectedTingkat === 11) {
-              if (isDasar || isPkl || isKoding || isMulok) return false;
-            } else {
-              if (isDasar || isKoding || isMulok) return false;
-            }
-            
-            return true;
-          }).map((s: Mapel) => {
-            const isChecked = !!bulkSelections[s.id];
-            return (
-              <div 
-                key={s.id}
-                onClick={() => {
-                  const copy = { ...bulkSelections };
-                  if (isChecked) {
-                    delete copy[s.id];
-                  } else {
-                    copy[s.id] = {
-                      jp_per_minggu: detectDefaultJpForMapel(s.kode_mapel || '', s.nama_mapel, selectedTingkat),
-                      kelompok: detectKelompokForMapel(s.kode_mapel || '', s.nama_mapel)
-                    };
-                  }
-                  setBulkSelections(copy);
-                }}
-                className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
-                  isChecked 
-                  ? 'bg-indigo-50/20 border-indigo-500 dark:bg-indigo-950/10' 
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => {}} // handled by parent div click
-                  className="rounded text-indigo-600 focus:ring-indigo-500"
+    <div className="flex flex-col space-y-6 min-h-[500px]">
+      {/* Step Indicators */}
+      <div className="relative flex justify-between items-center w-full max-w-4xl mx-auto px-4 py-2 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800/80">
+        {steps.map((step, idx) => {
+          const isActive = idx === activeStepIndex;
+          const isCompleted = idx < activeStepIndex || isStepCompleted(step);
+          
+          return (
+            <React.Fragment key={step.id}>
+              {/* Connector line between steps */}
+              {idx > 0 && (
+                <div 
+                  className={`flex-1 h-0.5 mx-2 transition-all duration-300 ${
+                    idx <= activeStepIndex ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-800'
+                  }`}
                 />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{s.nama_mapel}</p>
-                  <span className="text-[9px] text-slate-400 font-mono font-bold">{s.kode_mapel}</span>
+              )}
+              
+              {/* Step circle */}
+              <button
+                type="button"
+                onClick={() => setActiveStepIndex(idx)}
+                className="flex items-center gap-2 focus:outline-none group relative"
+              >
+                <div 
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
+                    isActive 
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none scale-105' 
+                      : isCompleted 
+                        ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-300 dark:border-emerald-900' 
+                        : 'bg-white dark:bg-slate-950 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-850 hover:border-slate-350'
+                  }`}
+                >
+                  {isCompleted && step.id !== 'summary' ? (
+                    <Check size={14} className="stroke-[3]" />
+                  ) : (
+                    idx + 1
+                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+                <span 
+                  className={`text-[10px] font-black uppercase tracking-wider hidden sm:block ${
+                    isActive 
+                      ? 'text-indigo-600 dark:text-indigo-400' 
+                      : isCompleted 
+                        ? 'text-emerald-600 dark:text-emerald-450' 
+                        : 'text-slate-400 dark:text-slate-500'
+                  }`}
+                >
+                  {step.label}
+                </span>
+              </button>
+            </React.Fragment>
+          );
+        })}
       </div>
 
-      {/* Panel Kanan: Setting JP & Kelompok Massal (Col 7) */}
-      <div className="lg:col-span-7 flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Mapel Terpilih ({Object.keys(bulkSelections).length})</span>
-          {Object.keys(bulkSelections).length > 0 && (
-            <span className="text-xs bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black px-2.5 py-1 rounded-lg animate-in fade-in duration-200">
-              Total JP: {Object.values(bulkSelections).reduce((sum, item) => sum + Number(item.jp_per_minggu), 0)} JP
-            </span>
-          )}
-        </div>
-
-        {/* Selected Mapels Table List */}
-        <div className="flex-1 overflow-y-auto max-h-[350px] border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900 space-y-3">
-          {Object.keys(bulkSelections).length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-2">
-              <BookOpen size={36} />
-              <p className="text-xs font-bold">Pilih mata pelajaran di panel kiri untuk mulai plotting</p>
+      {currentStep.id === 'summary' ? (
+        /* Ringkasan Step Layout */
+        <div className="flex-1 space-y-4 animate-in fade-in duration-300">
+          <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 p-4 rounded-2xl flex items-start gap-3">
+            <Info size={18} className="text-indigo-600 mt-0.5" />
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">Verifikasi Plotting Beban Belajar</h3>
+              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                Berikut adalah ringkasan seluruh mata pelajaran yang Anda plot secara massal. Silakan periksa kembali alokasi JP. Jika sudah sesuai, klik tombol <strong className="text-indigo-600 dark:text-indigo-400">SIMPAN PEMETAAN</strong> di pojok kanan bawah untuk menyimpan perubahan.
+              </p>
             </div>
-          ) : (
-            Object.entries(bulkSelections).map(([id, config]) => {
-              const mapelObj = subjects?.data?.find((s: Mapel) => s.id === id);
-              if (!mapelObj) return null;
-              
-              return (
-                <div key={id} className="flex flex-col gap-2.5 p-3.5 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl animate-in fade-in duration-250">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
-                      <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* JP Input */}
-                      <div className="w-20">
-                        <input
-                          type="number"
-                          min={1}
-                          max={40}
-                          value={config.jp_per_minggu}
-                          onChange={(e) => {
-                            const copy = { ...bulkSelections };
-                            copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
-                            setBulkSelections(copy);
-                          }}
-                          className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-855 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
-                      {/* Kelompok select */}
-                      <div className="w-44">
-                        <select
-                          value={config.kelompok}
-                          onChange={(e) => {
-                            const copy = { ...bulkSelections };
-                            copy[id] = { ...copy[id], kelompok: e.target.value };
-                            setBulkSelections(copy);
-                          }}
-                          className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-855 bg-white dark:bg-slate-950 text-xs font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                        >
-                          {kelompokOptions?.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                      {/* Delete item button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const copy = { ...bulkSelections };
-                          delete copy[id];
-                          setBulkSelections(copy);
-                        }}
-                        className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  {/* JP calculator */}
-                  {renderJpCalculator(Number(config.jp_per_minggu || 0), mapelObj.nama_mapel, mapelObj.kode_mapel)}
-                </div>
-              );
-            })
-          )}
+          </div>
+
+          <div className="border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
+            <div className="max-h-[380px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-150 dark:border-slate-800">
+                    <th className="p-3 text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Mata Pelajaran</th>
+                    <th className="p-3 text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kelompok</th>
+                    <th className="p-3 text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider text-center">Alokasi JP</th>
+                    <th className="p-3 text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Kalkulasi Tahunan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                  {Object.keys(bulkSelections).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-12 text-center text-slate-400 dark:text-slate-600 font-bold text-xs">
+                        Belum ada mata pelajaran yang terpilih untuk di-plot.
+                      </td>
+                    </tr>
+                  ) : (
+                    Object.entries(bulkSelections)
+                      .sort((a, b) => {
+                        const sA = subjects?.data?.find((s: Mapel) => s.id === a[0]);
+                        const sB = subjects?.data?.find((s: Mapel) => s.id === b[0]);
+                        return (sA?.nama_mapel || '').localeCompare(sB?.nama_mapel || '');
+                      })
+                      .map(([id, config]) => {
+                        const mapel = subjects?.data?.find((s: Mapel) => s.id === id);
+                        if (!mapel) return null;
+                        
+                        const weeks = selectedTingkat === 12 ? 32 : 36;
+                        const annualIntra = config.jp_per_minggu * weeks;
+                        
+                        return (
+                          <tr key={id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
+                            <td className="p-3">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{mapel.nama_mapel}</p>
+                              <span className="text-[9px] text-slate-400 font-mono font-bold">{mapel.kode_mapel}</span>
+                            </td>
+                            <td className="p-3">
+                              <span className="text-[9px] bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-350 px-2 py-0.5 rounded-lg font-black uppercase">
+                                {config.kelompok.replace('MATA PELAJARAN ', '')}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="text-xs font-black text-indigo-650 dark:text-indigo-400">{config.jp_per_minggu} JP</span>
+                            </td>
+                            <td className="p-3 text-xs text-slate-500 font-bold">
+                              {annualIntra} JP / Tahun ({weeks} Minggu)
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-t border-slate-150 dark:border-slate-800 flex justify-between items-center text-xs font-black">
+              <span className="text-slate-500 uppercase">Ringkasan Beban Belajar:</span>
+              <span className="text-indigo-600 dark:text-indigo-400 uppercase">
+                Total: {Object.values(bulkSelections).reduce((sum, item) => sum + Number(item.jp_per_minggu), 0)} JP / Minggu
+              </span>
+            </div>
+          </div>
         </div>
+      ) : (
+        /* Regular Wizard Step Layout */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[440px] animate-in fade-in duration-200">
+          {/* Panel Kiri: Pemilihan Mapel (Col 5) */}
+          <div className="lg:col-span-5 border-r border-slate-100 dark:border-slate-800/80 pr-6 flex flex-col space-y-4">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Cari Mata Pelajaran</span>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={bulkSearchQuery}
+                  onChange={(e) => setBulkSearchQuery(e.target.value)}
+                  placeholder={`Cari mapel ${currentStep.label.toLowerCase()}...`}
+                  className="w-full h-10 pl-9 pr-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-slate-900 text-xs font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <Search size={14} />
+                </div>
+              </div>
+            </div>
+
+            {/* Presets Button Contextual Shortcut */}
+            {currentStep.presetType && presetSisaCount[currentStep.presetType] > 0 && (
+              <div className="bg-indigo-50/30 dark:bg-slate-900 p-3 rounded-2xl border border-indigo-100/50 dark:border-slate-800/80 flex items-center justify-between gap-3 animate-in slide-in-from-top-1 duration-200">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase text-indigo-900 dark:text-indigo-300">Tersedia Preset Baku</p>
+                  <p className="text-[9px] text-slate-400 font-bold mt-0.5">Plot cepat semua mapel {currentStep.label.toLowerCase()} standar Kemendikbud.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddPreset(currentStep.presetType!)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[9px] px-3 py-1.5 rounded-lg shadow-sm transition-colors whitespace-nowrap uppercase tracking-wider"
+                >
+                  Auto-Plot ({presetSisaCount[currentStep.presetType]})
+                </button>
+              </div>
+            )}
+
+            {/* Mapel List Checkboxes */}
+            <div className="flex-1 overflow-y-auto max-h-[280px] pr-1 space-y-2 border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-slate-50/50 dark:bg-slate-900/50">
+              {filteredSubjects.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 opacity-30 text-center space-y-2">
+                  <BookOpen size={28} />
+                  <p className="text-[10px] font-black uppercase">Tidak ada mapel {currentStep.label.toLowerCase()}</p>
+                  <p className="text-[9px] font-bold">Semua mapel kategori ini sudah di-plot atau belum dibuat.</p>
+                </div>
+              ) : (
+                filteredSubjects.map((s: Mapel) => {
+                  const isChecked = !!bulkSelections[s.id];
+                  return (
+                    <div 
+                      key={s.id}
+                      onClick={() => {
+                        const copy = { ...bulkSelections };
+                        if (isChecked) {
+                          delete copy[s.id];
+                        } else {
+                          copy[s.id] = {
+                            jp_per_minggu: detectDefaultJpForMapel(s.kode_mapel || '', s.nama_mapel, selectedTingkat),
+                            kelompok: currentStep.kelompok
+                          };
+                        }
+                        setBulkSelections(copy);
+                      }}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer transition-all ${
+                        isChecked 
+                        ? 'bg-indigo-50/20 border-indigo-500 dark:bg-indigo-950/10' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => {}} // handled by parent div click
+                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{s.nama_mapel}</p>
+                        <span className="text-[9px] text-slate-400 font-mono font-bold">{s.kode_mapel}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Panel Kanan: Setting JP & Kelompok Massal (Col 7) */}
+          <div className="lg:col-span-7 flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                Terpilih di {currentStep.label} ({selectedSubjectsInCurrentStep.length})
+              </span>
+              {selectedSubjectsInCurrentStep.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const copy = { ...bulkSelections };
+                    selectedSubjectsInCurrentStep.forEach(([id]) => {
+                      delete copy[id];
+                    });
+                    setBulkSelections(copy);
+                  }}
+                  className="text-[9px] text-red-500 font-black uppercase hover:underline"
+                >
+                  Kosongkan Kategori Ini
+                </button>
+              )}
+            </div>
+
+            {/* Selected Mapels Table List */}
+            <div className="flex-1 overflow-y-auto max-h-[350px] border border-slate-100 dark:border-slate-850 rounded-xl p-3 bg-white dark:bg-slate-950 space-y-3">
+              {selectedSubjectsInCurrentStep.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 opacity-30 space-y-2">
+                  <BookOpen size={36} />
+                  <p className="text-xs font-bold text-center">Pilih mata pelajaran di panel kiri untuk mulai plotting {currentStep.label.toLowerCase()}</p>
+                </div>
+              ) : (
+                selectedSubjectsInCurrentStep.map(([id, config]) => {
+                  const mapelObj = subjects?.data?.find((s: Mapel) => s.id === id);
+                  if (!mapelObj) return null;
+                  
+                  return (
+                    <div key={id} className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
+                          <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {/* JP Input */}
+                          <div className="w-24">
+                            <input
+                              type="number"
+                              min={1}
+                              max={40}
+                              value={config.jp_per_minggu}
+                              onChange={(e) => {
+                                const copy = { ...bulkSelections };
+                                copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
+                                setBulkSelections(copy);
+                              }}
+                              className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-855 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                          {/* Delete item button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = { ...bulkSelections };
+                              delete copy[id];
+                              setBulkSelections(copy);
+                            }}
+                            className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                      {/* JP calculator */}
+                      {renderJpCalculator(Number(config.jp_per_minggu || 0), mapelObj.nama_mapel, mapelObj.kode_mapel)}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Footer */}
+      <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-4 px-1">
+        <Button
+          variant="outline"
+          type="button"
+          onClick={handleBack}
+          disabled={activeStepIndex === 0}
+          className="rounded-xl font-bold flex items-center gap-1.5 text-xs h-9"
+        >
+          <ChevronLeft size={14} />
+          KEMBALI
+        </Button>
+        
+        {activeStepIndex < steps.length - 1 ? (
+          <Button
+            type="button"
+            onClick={handleNext}
+            className="bg-slate-100 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 dark:bg-slate-800 dark:hover:bg-indigo-950/20 font-black rounded-xl text-xs h-9 border border-indigo-100 dark:border-slate-700 flex items-center gap-1.5"
+          >
+            SELANJUTNYA
+            <ChevronRight size={14} />
+          </Button>
+        ) : (
+          <div className="text-[10px] text-slate-400 font-bold uppercase select-none flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 px-3 py-1.5 rounded-lg">
+            <Check size={12} className="text-emerald-500" />
+            SIAP SIMPAN
+          </div>
+        )}
       </div>
     </div>
   );
