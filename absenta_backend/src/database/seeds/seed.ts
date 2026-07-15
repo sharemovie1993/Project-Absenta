@@ -17,6 +17,7 @@ import { seedJobdesk } from './seed_jobdesk';
 import { seedSarprasCatalog } from './seed_sarpras_catalog';
 import { seedMapelPresets } from './seed_mapel_presets';
 import { seedKurikulumStandards } from './seed_kurikulum_standards';
+import { seedJurusanPresets } from './seed_jurusan_presets';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 
 const prisma = new PrismaClient();
@@ -438,6 +439,7 @@ async function main() {
       order: 108,
       children: [
         { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Aset Global', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
@@ -910,6 +912,9 @@ async function main() {
 
   // 13️⃣ Seed Global Kurikulum Standards (Permendikbud 12/2024)
   await seedKurikulumStandards(prisma);
+
+  // 14️⃣ Seed Global Program & Jurusan Presets
+  await seedJurusanPresets(prisma);
 
   console.log('✨ Seed selesai!');
 }

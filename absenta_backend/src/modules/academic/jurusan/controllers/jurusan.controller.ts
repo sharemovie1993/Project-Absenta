@@ -2,6 +2,7 @@ import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { JurusanService, CreateJurusanInput, UpdateJurusanInput } from '../services/jurusan.service';
 import { createJurusanSchema, updateJurusanSchema } from '../services/jurusan.schema';
+import { prisma } from '@/utils/prisma';
 
 const jurusanService = new JurusanService();
 
@@ -320,6 +321,141 @@ export const jurusanController = {
         message: error.message || 'Internal server error',
         data: null
       });
+    }
+  },
+
+  // =========================================================================
+  // GLOBAL PRESETS (SUPERADMIN ONLY)
+  // =========================================================================
+  async getGlobalPresets(_request: any, reply: any) {
+    try {
+      const presets = await prisma.globalProgramPreset.findMany({
+        include: {
+          jurusans: {
+            orderBy: { nama: 'asc' }
+          }
+        },
+        orderBy: { nama: 'asc' }
+      });
+      return reply.status(200).send({ success: true, data: presets });
+    } catch (error: any) {
+      console.error('Error getting global program presets:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to get global presets', error: error.message });
+    }
+  },
+
+  async createGlobalProgramPreset(request: any, reply: any) {
+    try {
+      const { bidang_keahlian, nama, kode, singkatan } = request.body;
+      if (!bidang_keahlian || !nama || !kode || !singkatan) {
+        return reply.status(400).send({ success: false, message: 'Missing required fields' });
+      }
+
+      const preset = await prisma.globalProgramPreset.create({
+        data: {
+          bidang_keahlian,
+          nama,
+          kode: kode.toUpperCase(),
+          singkatan: singkatan.toUpperCase()
+        }
+      });
+
+      return reply.status(201).send({ success: true, message: 'Global program preset created', data: preset });
+    } catch (error: any) {
+      console.error('Error creating global program preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to create program preset', error: error.message });
+    }
+  },
+
+  async updateGlobalProgramPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      const { bidang_keahlian, nama, kode, singkatan } = request.body;
+
+      const preset = await prisma.globalProgramPreset.update({
+        where: { id },
+        data: {
+          bidang_keahlian,
+          nama,
+          kode: kode?.toUpperCase(),
+          singkatan: singkatan?.toUpperCase()
+        }
+      });
+
+      return reply.status(200).send({ success: true, message: 'Global program preset updated', data: preset });
+    } catch (error: any) {
+      console.error('Error updating global program preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to update program preset', error: error.message });
+    }
+  },
+
+  async deleteGlobalProgramPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      await prisma.globalProgramPreset.delete({
+        where: { id }
+      });
+      return reply.status(200).send({ success: true, message: 'Global program preset deleted' });
+    } catch (error: any) {
+      console.error('Error deleting global program preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to delete program preset', error: error.message });
+    }
+  },
+
+  async createGlobalJurusanPreset(request: any, reply: any) {
+    try {
+      const { program_preset_id, nama, kode, singkatan } = request.body;
+      if (!program_preset_id || !nama || !kode || !singkatan) {
+        return reply.status(400).send({ success: false, message: 'Missing required fields' });
+      }
+
+      const preset = await prisma.globalJurusanPreset.create({
+        data: {
+          program_preset_id,
+          nama,
+          kode: kode.toUpperCase(),
+          singkatan: singkatan.toUpperCase()
+        }
+      });
+
+      return reply.status(201).send({ success: true, message: 'Global jurusan preset created', data: preset });
+    } catch (error: any) {
+      console.error('Error creating global jurusan preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to create jurusan preset', error: error.message });
+    }
+  },
+
+  async updateGlobalJurusanPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      const { nama, kode, singkatan } = request.body;
+
+      const preset = await prisma.globalJurusanPreset.update({
+        where: { id },
+        data: {
+          nama,
+          kode: kode?.toUpperCase(),
+          singkatan: singkatan?.toUpperCase()
+        }
+      });
+
+      return reply.status(200).send({ success: true, message: 'Global jurusan preset updated', data: preset });
+    } catch (error: any) {
+      console.error('Error updating global jurusan preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to update jurusan preset', error: error.message });
+    }
+  },
+
+  async deleteGlobalJurusanPreset(request: any, reply: any) {
+    try {
+      const { id } = request.params;
+      await prisma.globalJurusanPreset.delete({
+        where: { id }
+      });
+      return reply.status(200).send({ success: true, message: 'Global jurusan preset deleted' });
+    } catch (error: any) {
+      console.error('Error deleting global jurusan preset:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to delete jurusan preset', error: error.message });
     }
   }
 };

@@ -92,4 +92,78 @@ export default async function jurusanRoutes(fastify: any) {
   }, async (request: any, reply: any) => {
     return jurusanController.removeJurusan(request, reply);
   });
+
+  // =========================================================================
+  // GLOBAL PRESETS (SUPERADMIN ONLY)
+  // =========================================================================
+
+  // GET /jurusan/presets - Get all global presets (superadmin only)
+  fastify.get('/presets', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.getGlobalPresets(request, reply);
+  });
+
+  // POST /jurusan/presets - Create program preset (superadmin only)
+  fastify.post('/presets', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.createGlobalProgramPreset(request, reply);
+  });
+
+  // PUT /jurusan/presets/:id - Update program preset (superadmin only)
+  fastify.put('/presets/:id', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.updateGlobalProgramPreset(request, reply);
+  });
+
+  // DELETE /jurusan/presets/:id - Delete program preset (superadmin only)
+  fastify.delete('/presets/:id', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.deleteGlobalProgramPreset(request, reply);
+  });
+
+  // POST /jurusan/presets/jurusans - Create child jurusan preset (superadmin only)
+  fastify.post('/presets/jurusans', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.createGlobalJurusanPreset(request, reply);
+  });
+
+  // PUT /jurusan/presets/jurusans/:id - Update child jurusan preset (superadmin only)
+  fastify.put('/presets/jurusans/:id', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.updateGlobalJurusanPreset(request, reply);
+  });
+
+  // DELETE /jurusan/presets/jurusans/:id - Delete child jurusan preset (superadmin only)
+  fastify.delete('/presets/jurusans/:id', {
+    preHandler: [
+        requireCapability('superadmin.tenants.manage'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.deleteGlobalJurusanPreset(request, reply);
+  });
 }

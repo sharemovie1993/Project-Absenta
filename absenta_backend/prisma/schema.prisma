@@ -3831,5 +3831,30 @@ model GlobalKurikulumStandard {
   @@index([jenjang])
 }
 
+model GlobalProgramPreset {
+  id              String   @id @default(uuid())
+  bidang_keahlian String
+  nama            String
+  kode            String   @unique
+  singkatan       String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  jurusans        GlobalJurusanPreset[]
+}
+
+model GlobalJurusanPreset {
+  id                      String              @id @default(uuid())
+  program_preset_id       String
+  nama                    String
+  kode                    String              @unique
+  singkatan               String
+  created_at              DateTime            @default(now())
+  updated_at              DateTime            @updatedAt
+
+  Program                 GlobalProgramPreset @relation(fields: [program_preset_id], references: [id], onDelete: Cascade)
+}
+
+
 
 

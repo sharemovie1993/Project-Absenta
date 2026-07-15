@@ -82,6 +82,8 @@ import {
   Sparkles,
   Building2,
   Hammer,
+  Layers,
+  LayoutTemplate,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -93,6 +95,8 @@ const iconMap: Record<string, LucideIcon> = {
   Users,
   User,
   CreditCard,
+  Layers,
+  LayoutTemplate,
   FileText,
   BarChart3,
   Settings,
