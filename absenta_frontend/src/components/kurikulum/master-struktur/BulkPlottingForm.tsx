@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, BookOpen, Trash2, ChevronLeft, ChevronRight, Check, Info } from 'lucide-react';
 import type { Mapel } from '../../../types/academic';
 import { Button } from '../../ui/Button';
@@ -51,6 +51,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
   onClose
 }) => {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const [canSubmit, setCanSubmit] = useState(false);
 
   // Define steps dynamically based on jenjang
   const steps = useMemo<Step[]>(() => {
@@ -65,6 +66,19 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
     list.push({ id: 'summary', label: 'Ringkasan', kelompok: 'SUMMARY' });
     return list;
   }, [jenjang]);
+
+  // Prevent accidental double-click form submission when entering the summary step
+  useEffect(() => {
+    if (activeStepIndex === steps.length - 1) {
+      setCanSubmit(false);
+      const timer = setTimeout(() => {
+        setCanSubmit(true);
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      setCanSubmit(false);
+    }
+  }, [activeStepIndex, steps.length]);
 
   const currentStep = steps[activeStepIndex];
 
@@ -562,7 +576,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
           </Button>
         ) : (
           <Button
-            type="submit"
+            type={canSubmit ? "submit" : "button"}
             isLoading={isPendingSave}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs h-9 border border-indigo-500 shadow-md shadow-indigo-150 dark:shadow-none flex items-center gap-1.5 animate-pulse"
           >
