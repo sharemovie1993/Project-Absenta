@@ -251,13 +251,15 @@ async function main() {
     },
 
     // --- KURIKULUM ---
+    // Urutan berdasarkan flow operasional persiapan kurikulum sekolah:
+    // 1. Dashboard (overview) → 2. Struktur (fondasi) → 3. Jadwal → 4. Perangkat Ajar → 5. Supervisi → 6. Cetak
     {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
         { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.structures.view.list' },
-        { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.view.schedule' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.structures.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'CalendarDays', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
-        { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.structures.view.list' },
+        { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view' },
+        { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.view.schedule' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.structures.view.list' },
       ]
     },
