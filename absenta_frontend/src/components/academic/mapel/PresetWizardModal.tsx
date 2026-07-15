@@ -135,8 +135,6 @@ export const PresetWizardModal: React.FC<PresetWizardModalProps> = ({
           let filtered = res.data;
           if (kurikulum === 'K13') {
             filtered = res.data.filter(p => p.category !== 'SENI_PILIHAN');
-          } else {
-            filtered = res.data.filter(p => p.kode_mapel !== 'SENI');
           }
           setPresets(filtered);
           

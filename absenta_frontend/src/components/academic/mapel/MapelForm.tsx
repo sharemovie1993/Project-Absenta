@@ -53,8 +53,6 @@ export const MapelForm = React.memo<MapelFormProps>(({
             let filtered = res.data;
             if (kurikulum === 'K13') {
               filtered = res.data.filter(p => p.category !== 'SENI_PILIHAN');
-            } else {
-              filtered = res.data.filter(p => p.kode_mapel !== 'SENI');
             }
             setPresets(filtered);
           }
