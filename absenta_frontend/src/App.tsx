@@ -195,6 +195,8 @@ const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
 const JadwalPelajaranPage = lazy(() => import('./pages/kurikulum/JadwalPelajaranPage'));
+const KalenderAkademikPage = lazy(() => import('./pages/kurikulum/KalenderAkademikPage'));
+const RekapKBMPage = lazy(() => import('./pages/kurikulum/RekapKBMPage'));
 const SarprasInventoryPage = lazy(() => import('./pages/sarpras/SarprasInventoryPage'));
 const SarprasLoansPage = lazy(() => import('./pages/sarpras/SarprasLoansPage'));
 const SarprasMaintenancePage = lazy(() => import('./pages/sarpras/SarprasMaintenancePage'));
@@ -775,6 +777,16 @@ function App() {
                     } />
                      {/* Jadwal Pelajaran consolidated into /attendance/jadwal-template */}
                     <Route path="/kurikulum/jadwal" element={<Navigate to="/attendance/jadwal-template" replace />} />
+                    <Route path="/kurikulum/kalender" element={
+                      <ProtectedRoute requiredCapability="academic.years.view.list">
+                        <KalenderAkademikPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/rekap-kbm" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.rekap">
+                        <RekapKBMPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/kurikulum/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="academic.structures.view.list">
                         <CetakBerkasKurikulumPage />

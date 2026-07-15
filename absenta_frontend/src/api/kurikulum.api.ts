@@ -140,4 +140,36 @@ export const kurikulumApi = {
     const response = await api.delete(`/kurikulum/struktur/standards/${id}`);
     return response.data;
   },
+  // Kalender Akademik
+  getKalenderAkademik: async (tahun_pelajaran_id) => {
+    const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
+    const response = await api.get(`/kurikulum/kalender${params}`);
+    return response.data;
+  },
+  getKalenderStats: async (tahun_pelajaran_id) => {
+    const params = tahun_pelajaran_id ? `?tahun_pelajaran_id=${tahun_pelajaran_id}` : '';
+    const response = await api.get(`/kurikulum/kalender/stats${params}`);
+    return response.data;
+  },
+  createKalender: async (data) => {
+    const response = await api.post('/kurikulum/kalender', data);
+    return response.data;
+  },
+  updateKalender: async (id, data) => {
+    const response = await api.put(`/kurikulum/kalender/${id}`, data);
+    return response.data;
+  },
+  deleteKalender: async (id) => {
+    const response = await api.delete(`/kurikulum/kalender/${id}`);
+    return response.data;
+  },
+
+  // Rekap KBM
+  getRekapKBM: async (params) => {
+    const qs = new URLSearchParams();
+    if (params?.semester_id) qs.set('semester_id', params.semester_id);
+    if (params?.tahun_pelajaran_id) qs.set('tahun_pelajaran_id', params.tahun_pelajaran_id);
+    const response = await api.get(`/kurikulum/rekap-kbm${qs.toString() ? '?' + qs.toString() : ''}`);
+    return response.data;
+  },
 };

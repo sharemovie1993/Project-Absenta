@@ -125,6 +125,7 @@ model Tenant {
   P5Projek          P5Projek[]
   P5NilaiSiswa      P5NilaiSiswa[]
   PerangkatAjar     PerangkatAjar[]
+  KalenderAkademik  KalenderAkademik[]
   ParentTeacherChatSession ParentTeacherChatSession[]
   TemplateSurat     TemplateSurat[]
   BkKonsultasiBooking BkKonsultasiBooking[]
@@ -411,6 +412,7 @@ model User {
   documentActivities        DocumentActivity[]         @relation("DocumentActivityActorUser")
   documentVersionsCreated   DocumentVersion[]          @relation("DocumentVersionCreatedBy")
   reviewedPerangkat         PerangkatAjar[]            @relation("ReviewerPerangkat")
+  KalenderAkademik          KalenderAkademik[]         @relation("KalenderCreatedBy")
   Guru                      Guru?
   Siswa                     Siswa?
   SesiAbsensiCreated        SesiAbsensi[]              @relation("SesiAbsensiCreatedBy")
@@ -827,6 +829,7 @@ model TahunPelajaran {
   RaporSiswa        RaporSiswa[]
   P5Projek          P5Projek[]
   PerangkatAjar     PerangkatAjar[]
+  KalenderAkademik  KalenderAkademik[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -3859,3 +3862,29 @@ model GlobalJurusanPreset {
 
 
 
+
+// =============================================================================
+// KALENDER AKADEMIK � Modul Kurikulum
+// Menyimpan event kalender akademik per tahun pelajaran per tenant
+// =============================================================================
+model KalenderAkademik {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  tahun_pelajaran_id String
+  judul              String
+  jenis              String
+  tanggal_mulai      DateTime @db.Date
+  tanggal_selesai    DateTime @db.Date
+  keterangan         String?  @db.Text
+  created_by         String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  CreatedBy      User?          @relation("KalenderCreatedBy", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id])
+  @@index([tahun_pelajaran_id])
+  @@index([tanggal_mulai, tanggal_selesai])
+}
