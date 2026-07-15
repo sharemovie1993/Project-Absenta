@@ -76,7 +76,8 @@ npx tsc-alias -p tsconfig.json --dir $shadowDist
 
 # Shadow Build Frontend
 cd "$appRoot\absenta_frontend"
-npm run build # Frontend biasanya aman karena Vite membangun ke folder 'dist' yang tidak dikunci Node
+# Gunakan build:force untuk melewati audit statis (audit dilakukan di CI terpisah)
+npm run build:force
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build Frontend Gagal!" -ForegroundColor Red
     exit 1
