@@ -4,7 +4,9 @@ import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { SectionCard, DetailRow } from './FormShared';
 import { getProgramKeahlianList } from '../../../../api/academic/program-keahlian.api';
+import { getGlobalPresets } from '../../../../api/academic/jurusan-presets.api';
 import type { ProgramKeahlian } from '../../../../types/academic';
+import toast from 'react-hot-toast';
 
 interface JurusanInfoSectionProps {
   register: any;
@@ -25,8 +27,35 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
   const selectedPKId = watch('program_keahlian_id');
   const selectedPK = programKeahlianList.find(p => p.id === selectedPKId);
 
+  const [presets, setPresets] = useState<any[]>([]);
+
   useEffect(() => {
     getProgramKeahlianList(1, 100).then(res => setProgramKeahlianList(res.data)).catch(() => {});
+    
+    getGlobalPresets()
+      .then(res => {
+        if (res.success && res.data) {
+          const flat: any[] = [];
+          res.data.forEach(prog => {
+            if (prog.jurusans) {
+              prog.jurusans.forEach(jur => {
+                flat.push({
+                  id: jur.id,
+                  nama: jur.nama,
+                  kode: jur.kode,
+                  singkatan: jur.singkatan,
+                  program_nama: prog.nama,
+                  program_kode: prog.kode,
+                  program_singkatan: prog.singkatan,
+                  bidang_keahlian: prog.bidang_keahlian
+                });
+              });
+            }
+          });
+          setPresets(flat);
+        }
+      })
+      .catch(err => console.error('Failed to load global presets in form:', err));
   }, []);
 
   useEffect(() => {
@@ -53,6 +82,50 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
 
   return (
     <SectionCard title="Informasi Jurusan (Konsentrasi Keahlian)" icon={BookOpen}>
+      {/* Option to load from Global Preset (Autofill) */}
+      {!isViewMode && presets.length > 0 && (
+        <div className="space-y-2 md:col-span-2 p-4 bg-violet-50/40 dark:bg-violet-950/15 rounded-2xl border border-violet-100 dark:border-violet-900/40 mb-2">
+          <label className="text-[11px] font-bold text-violet-750 dark:text-violet-300 uppercase tracking-wider block mb-1">
+            🚀 Gunakan Preset Global (Autofill Cepat)
+          </label>
+          <select
+            onChange={(e) => {
+              const selectedPresetId = e.target.value;
+              if (selectedPresetId) {
+                const preset = presets.find(p => p.id === selectedPresetId);
+                if (preset && setValue) {
+                  setValue('nama', preset.nama);
+                  setValue('singkatan', preset.singkatan || '');
+                  setValue('kode', preset.kode || '');
+                  
+                  const matchedPK = programKeahlianList.find(
+                    pk => pk.nama.toUpperCase() === preset.program_nama.toUpperCase() ||
+                          (pk.kode && pk.kode.toUpperCase() === preset.program_kode.toUpperCase())
+                  );
+                  if (matchedPK) {
+                    setValue('program_keahlian_id', matchedPK.id);
+                    toast.success(`Autofill berhasil untuk jurusan ${preset.nama}`);
+                  } else {
+                    toast(`Autofill berhasil untuk ${preset.nama}, namun Program Keahlian "${preset.program_nama}" belum terdaftar di database sekolah Anda. Silakan pilih atau buat induknya secara manual.`, { icon: 'ℹ️', duration: 6000 });
+                  }
+                }
+              }
+            }}
+            className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+          >
+            <option value="">— Cari & Pilih Jurusan Preset untuk Autofill —</option>
+            {presets.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.nama} ({p.program_nama} · {p.bidang_keahlian})
+              </option>
+            ))}
+          </select>
+          <p className="text-[9px] text-slate-500 italic mt-1">
+            * Memilih salah satu preset akan mengisi otomatis semua field di bawah. Anda masih bisa mengeditnya secara manual.
+          </p>
+        </div>
+      )}
+
       {/* Nama */}
       <div className="space-y-2 md:col-span-2 group">
         <div className="flex items-center justify-between px-1">
@@ -67,10 +140,18 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
         <Input
           id="nama"
           {...register('nama')}
+          list="preset-jurusans-list"
           placeholder="Contoh: Teknik Komputer Jaringan..."
           disabled={isViewMode}
           className={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.nama ? 'border-red-500 focus:ring-red-500/20' : ''}`}
         />
+        <datalist id="preset-jurusans-list">
+          {presets.map(p => (
+            <option key={p.id} value={p.nama}>
+              {p.program_nama} · {p.bidang_keahlian}
+            </option>
+          ))}
+        </datalist>
         {errors.nama && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.nama.message}</p>}
       </div>
 
