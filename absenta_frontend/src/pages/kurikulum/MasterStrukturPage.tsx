@@ -91,6 +91,25 @@ const MasterStrukturPage: React.FC = () => {
         });
     }, [selectedTahunId, selectedTingkat, selectedJurusanId]);
 
+    const cardGradientClass = React.useMemo(() => {
+        const gradientMap: Record<number, string> = {
+            1: 'from-emerald-500 to-teal-700',
+            2: 'from-indigo-500 to-violet-700',
+            3: 'from-purple-500 to-fuchsia-700',
+            4: 'from-amber-500 to-orange-600',
+            5: 'from-rose-500 to-pink-700',
+            6: 'from-cyan-500 to-blue-700',
+            7: 'from-blue-500 to-indigo-700',
+            8: 'from-teal-500 to-emerald-700',
+            9: 'from-violet-500 to-purple-700',
+            10: 'from-sky-500 to-indigo-700',
+            11: 'from-fuchsia-500 to-pink-700',
+            12: 'from-orange-500 to-red-700',
+            13: 'from-lime-500 to-green-700'
+        };
+        return gradientMap[selectedTingkat] || 'from-indigo-600 to-violet-700';
+    }, [selectedTingkat]);
+
     const renderedTingkatButtons = React.useMemo(() => {
         return tingkatList?.map((t) => {
             const isActive = selectedTingkat === t;
@@ -219,8 +238,8 @@ const MasterStrukturPage: React.FC = () => {
                         <AnalyticsCard
                             title="Total Beban Belajar"
                             icon={<Layers size={16} className="text-white opacity-80" />}
-                            gradient="from-indigo-600 to-violet-700"
-                            className="border-none shadow-sm min-h-[160px] bg-gradient-to-br from-indigo-600 to-violet-700 text-white overflow-hidden relative [&>div]:border-none [&>div]:bg-transparent"
+                            gradient={cardGradientClass}
+                            className={`border-none shadow-sm min-h-[160px] bg-gradient-to-br ${cardGradientClass} text-white overflow-hidden relative [&>div]:border-none [&>div]:bg-transparent transition-all duration-500`}
                             variant="ghost"
                             value={
                                 <div className="flex flex-col justify-between h-full min-h-[96px] text-white">
