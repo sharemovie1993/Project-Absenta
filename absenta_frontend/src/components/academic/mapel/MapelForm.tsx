@@ -51,8 +51,13 @@ export const MapelForm = React.memo<MapelFormProps>(({
         .then(res => {
           if (res.success && res.data) {
             let filtered = res.data;
+            const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
             if (kurikulum === 'K13') {
               filtered = res.data.filter(p => p.category !== 'SENI_PILIHAN');
+            } else {
+              if (!isSmkMak) {
+                filtered = res.data.filter(p => p.kode_mapel !== 'SENI');
+              }
             }
             setPresets(filtered);
           }
