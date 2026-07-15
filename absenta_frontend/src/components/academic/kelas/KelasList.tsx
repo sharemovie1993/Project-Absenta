@@ -113,11 +113,15 @@ const KelasList = React.memo<KelasListProps>(({
   }, [kelasList, selectedIds]);
 
   const mappedKelasList = useMemo(() => {
-    return kelasList.map(k => ({
+    let list = kelasList;
+    if (tingkatList && tingkatList.length > 0) {
+      list = kelasList.filter(k => tingkatList.includes(Number(k.tingkat)));
+    }
+    return list.map(k => ({
       ...k,
       jumlah_siswa: k._count?.Siswa || 0
     }));
-  }, [kelasList]);
+  }, [kelasList, tingkatList]);
 
   // Fetch jurusan list for filter
   useEffect(() => {

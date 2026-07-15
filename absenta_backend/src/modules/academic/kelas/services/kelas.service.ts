@@ -85,11 +85,44 @@ export class KelasService {
   async getAllKelas(tenantId: string, org: any, params?: PaginationParams): Promise<PaginatedKelasResponse> {
     const whereClause: any = { tenant_id: tenantId };
 
+    // Filter tingkat based on sekolah's jenjang
+    const sekolah = await prisma.sekolah.findFirst({
+      where: { tenant_id: tenantId }
+    });
+
+    if (sekolah && sekolah.jenjang) {
+      const jg = sekolah.jenjang.toUpperCase();
+      let allowedTingkat: number[] = [];
+      if (jg === 'SD' || jg === 'MI') {
+        allowedTingkat = [1, 2, 3, 4, 5, 6];
+      } else if (jg === 'SMP' || jg === 'MTs') {
+        allowedTingkat = [7, 8, 9];
+      } else if (jg === 'SMA' || jg === 'MA') {
+        allowedTingkat = [10, 11, 12];
+      } else if (jg === 'SMK' || jg === 'MAK') {
+        allowedTingkat = [10, 11, 12, 13];
+      }
+
+      if (allowedTingkat.length > 0) {
+        if (params?.tingkat !== undefined) {
+          const reqTingkat = Number(params.tingkat);
+          if (allowedTingkat.includes(reqTingkat)) {
+            whereClause.tingkat = reqTingkat;
+          } else {
+            whereClause.tingkat = -1; // Force empty result if requested levels don't match the jenjang
+          }
+        } else {
+          whereClause.tingkat = { in: allowedTingkat };
+        }
+      }
+    } else {
+      if (params?.tingkat !== undefined) {
+        whereClause.tingkat = Number(params.tingkat);
+      }
+    }
+
     if (params?.is_active !== undefined) {
       whereClause.is_active = params.is_active;
-    }
-    if (params?.tingkat !== undefined) {
-      whereClause.tingkat = params.tingkat;
     }
     if (params?.jurusan_id !== undefined) {
       whereClause.jurusan_id = params.jurusan_id;
@@ -245,6 +278,29 @@ export class KelasService {
     
     if (!params?.includeInactive) {
       whereClause.is_active = true;
+    }
+
+    // Filter tingkat based on sekolah's jenjang
+    const sekolah = await prisma.sekolah.findFirst({
+      where: { tenant_id: tenantId }
+    });
+
+    if (sekolah && sekolah.jenjang) {
+      const jg = sekolah.jenjang.toUpperCase();
+      let allowedTingkat: number[] = [];
+      if (jg === 'SD' || jg === 'MI') {
+        allowedTingkat = [1, 2, 3, 4, 5, 6];
+      } else if (jg === 'SMP' || jg === 'MTs') {
+        allowedTingkat = [7, 8, 9];
+      } else if (jg === 'SMA' || jg === 'MA') {
+        allowedTingkat = [10, 11, 12];
+      } else if (jg === 'SMK' || jg === 'MAK') {
+        allowedTingkat = [10, 11, 12, 13];
+      }
+
+      if (allowedTingkat.length > 0) {
+        whereClause.tingkat = { in: allowedTingkat };
+      }
     }
     
     // Apply Isolate/Scope filter from Organization Engine

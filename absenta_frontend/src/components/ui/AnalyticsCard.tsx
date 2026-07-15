@@ -106,12 +106,12 @@ export function AnalyticsCard({
                   {title}
                 </p>
                  {variant === 'sub-cards' && subCards && subCards.length > 0 ? (
-                  <div className="flex flex-wrap gap-2 mt-2 w-full">
+                  <div className="flex gap-1 mt-2 w-full flex-nowrap justify-between">
                     {subCards.map((card, index) => (
                       <div 
                         key={index} 
                         className={cn(
-                          "rounded-xl px-2 py-2 flex flex-col items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex-1 min-w-[50px] border transition-all duration-250 hover:-translate-y-0.5",
+                          "rounded-xl px-1 py-1.5 flex flex-col items-center justify-center shadow-[0_1px_3px_rgba(0,0,0,0.01)] flex-1 min-w-0 border transition-all duration-250 hover:-translate-y-0.5",
                           card.bgClass || "bg-slate-50/50 dark:bg-slate-800/40",
                           card.borderClass || "border-slate-150 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700"
                         )}
