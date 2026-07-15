@@ -612,6 +612,7 @@ const KelasList = React.memo<KelasListProps>(({
             <div className="p-6">
               <KelasTreeDiagram
                 data={mappedKelasList}
+                tingkatList={tingkatList}
                 onAdd={canManage && onAdd ? (tingkat) => onAdd(tingkat) : undefined}
                 onEdit={canManage && onEdit ? onEdit : undefined}
                 onDelete={canManage ? handleDelete : undefined}

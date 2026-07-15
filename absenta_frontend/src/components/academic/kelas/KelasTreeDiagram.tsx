@@ -6,6 +6,7 @@ import { cn } from '../../../lib/utils';
 
 interface KelasTreeDiagramProps {
   data: Kelas[];
+  tingkatList?: number[];
   onAdd?: (tingkat?: number) => void;
   onEdit?: (kelas: Kelas) => void;
   onDelete?: (kelas: Kelas) => void;
@@ -105,6 +106,7 @@ const getTingkatTheme = (tingkatNum: number, tingkatList: number[]) => {
 
 export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
   data,
+  tingkatList: propTingkatList,
   onAdd,
   onEdit,
   onDelete,
@@ -133,12 +135,15 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
     return map;
   }, [data]);
 
-  // Extract unique tingkat values sorted ascending
+  // Extract unique tingkat values sorted ascending, prioritized by prop list
   const tingkatList = useMemo(() => {
+    if (propTingkatList && propTingkatList.length > 0) {
+      return propTingkatList.slice().sort((a, b) => a - b);
+    }
     return Object.keys(classesByTingkat)
       .map(Number)
       .sort((a, b) => a - b);
-  }, [classesByTingkat]);
+  }, [classesByTingkat, propTingkatList]);
 
   // Chunk levels into rows of max 3 columns to support SD/MI/SMP/SMA layout on one screen
   const tingkatChunks = useMemo(() => {
