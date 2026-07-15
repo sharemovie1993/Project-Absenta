@@ -142,8 +142,8 @@ export const jurusanController = {
 
   async getImportTemplate(_request: any, reply: any) {
     try {
-      const headers = ['nama', 'kode', 'singkatan'];
-      const sample = [{ nama: 'Ilmu Pengetahuan Alam', kode: 'IPA_001', singkatan: 'IPA' }];
+      const headers = ['nama', 'kode', 'singkatan', 'program_keahlian'];
+      const sample = [{ nama: 'Ilmu Pengetahuan Alam', kode: 'IPA_001', singkatan: 'IPA', program_keahlian: 'Matematika dan Ilmu Pengetahuan Alam' }];
 
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(sample, { header: headers });
@@ -160,7 +160,7 @@ export const jurusanController = {
         if (cell) cell.s = reqStyle;
       });
 
-      ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }];
+      ws['!cols'] = [{ wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 35 }];
 
       XLSX.utils.book_append_sheet(wb, ws, 'Data Jurusan');
 
@@ -168,10 +168,11 @@ export const jurusanController = {
       const instructions = [
         ['PETUNJUK PENGISIAN IMPORT JURUSAN'],
         [''],
-        ['1. SEMUA KOLOM WAJIB DIISI'],
-        ['2. nama: Nama lengkap jurusan (Contoh: Ilmu Pengetahuan Alam)'],
+        ['1. KOLOM NAMA, KODE, DAN SINGKATAN WAJIB DIISI'],
+        ['2. nama: Nama lengkap jurusan/konsentrasi keahlian (Contoh: Ilmu Pengetahuan Alam atau Rekayasa Perangkat Lunak)'],
         ['3. kode: Kode teknis/Dapodik (Contoh: 10293 atau IPA_001)'],
-        ['4. singkatan: Singkatan/Akronim untuk tampilan (Contoh: IPA)']
+        ['4. singkatan: Singkatan/Akronim untuk tampilan (Contoh: IPA atau RPL)'],
+        ['5. program_keahlian: Nama atau Kode Program Keahlian Induk (Contoh: MIPA atau Teknik Komputer dan Informatika) [Opsional]']
       ];
       const petunjukWs = XLSX.utils.aoa_to_sheet(instructions);
       petunjukWs['A1'].s = { font: { bold: true, sz: 14, color: { rgb: "4F46E5" } } };
@@ -234,6 +235,7 @@ export const jurusanController = {
         'Nama Jurusan': j.nama,
         Kode: j.kode || '-',
         Singkatan: j.singkatan || '-',
+        'Program Keahlian': j.ProgramKeahlian?.nama || '-',
         'Jumlah Kelas': j._count?.Kelas || 0
       }));
 
@@ -270,7 +272,7 @@ export const jurusanController = {
             ws[cell_address].s = headerStyle;
           } else {
             ws[cell_address].s = cellStyle;
-            if (C === 0 || C === 2 || C === 3) { // No, Kode, Jumlah Kelas
+            if (C === 0 || C === 2 || C === 3 || C === 5) { // No, Kode, Singkatan, Jumlah Kelas
               ws[cell_address].s = { ...cellStyle, alignment: { horizontal: "center", vertical: "center" } };
             }
           }
@@ -282,6 +284,7 @@ export const jurusanController = {
         { wch: 40 }, // Nama
         { wch: 15 }, // Kode
         { wch: 15 }, // Singkatan
+        { wch: 25 }, // Program Keahlian
         { wch: 15 }  // Jumlah Kelas
       ];
       ws['!rows'] = [{ hpt: 30 }];

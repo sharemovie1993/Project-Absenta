@@ -118,13 +118,15 @@ export const JurusanPage: React.FC = () => {
         [
           { header: 'Nama Jurusan', key: 'nama', width: 35, required: true },
           { header: 'Kode', key: 'kode', width: 15, required: true },
-          { header: 'Singkatan', key: 'singkatan', width: 15 }
+          { header: 'Singkatan', key: 'singkatan', width: 15 },
+          { header: 'Program Keahlian', key: 'program_keahlian', width: 30 }
         ],
         {
           fileName: 'template_impor_jurusan',
           instructions: [
-            'Nama Jurusan harus diisi lengkap (contoh: Rekayasa Perangkat Lunak).',
+            'Nama Jurusan (Konsentrasi Keahlian) harus diisi lengkap (contoh: Rekayasa Perangkat Lunak).',
             'Kode Jurusan digunakan sebagai pengenal unik (contoh: RPL).',
+            'Program Keahlian adalah induk dari Jurusan tersebut (contoh: Teknik Komputer dan Informatika).',
             'Kolom Kuning Emas wajib diisi.'
           ]
         }
@@ -144,7 +146,8 @@ export const JurusanPage: React.FC = () => {
         exportDataToExcel<Jurusan>(response.data, [
           { header: 'Nama Jurusan', accessor: (row: Jurusan) => row.nama, width: 30 },
           { header: 'Kode', accessor: (row: Jurusan) => row.kode || '', width: 15 },
-          { header: 'Singkatan', accessor: (row: Jurusan) => row.singkatan || '', width: 15 }
+          { header: 'Singkatan', accessor: (row: Jurusan) => row.singkatan || '', width: 15 },
+          { header: 'Program Keahlian', accessor: (row: Jurusan) => row.ProgramKeahlian?.nama || '-', width: 25 }
         ], 'Laporan_Jurusan', 'DATA MASTER JURUSAN SEKOLAH');
         toast.success('Data jurusan berhasil diekspor.');
       } else {

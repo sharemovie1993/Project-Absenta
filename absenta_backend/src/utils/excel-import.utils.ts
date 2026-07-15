@@ -38,6 +38,7 @@ const HEADER_MAP: Record<string, string> = {
   'NAMA JURUSAN': 'nama_jurusan',
   'KODE JURUSAN': 'kode_jurusan',
   'SINGKATAN': 'singkatan',
+  'PROGRAM KEAHLIAN': 'program_keahlian',
 
   // Guru Mapel / Kelas
   'NAMA GURU': 'nama_guru',

@@ -363,9 +363,42 @@ export class JurusanService {
       try {
         const nama = row.nama ? String(row.nama).trim() : '';
         const kode = row.kode ? String(row.kode).trim() : undefined;
+        const singkatan = row.singkatan ? String(row.singkatan).trim() : undefined;
+        const programKeahlianInput = row.program_keahlian ? String(row.program_keahlian).trim() : '';
 
         if (!nama) {
           throw new Error('Missing required field: nama');
+        }
+
+        // Handle Program Keahlian lookup/auto-creation
+        let programKeahlianId: string | null = null;
+        if (programKeahlianInput) {
+          let pk = await prisma.programKeahlian.findFirst({
+            where: {
+              tenant_id: tenantId,
+              OR: [
+                { kode: { equals: programKeahlianInput, mode: 'insensitive' } },
+                { nama: { equals: programKeahlianInput, mode: 'insensitive' } }
+              ]
+            }
+          });
+
+          if (!pk) {
+            // Auto-generate code based on first letters of words
+            const generatedKode = programKeahlianInput.split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 5);
+            const codeConflict = await prisma.programKeahlian.findFirst({
+              where: { tenant_id: tenantId, kode: generatedKode }
+            });
+
+            pk = await prisma.programKeahlian.create({
+              data: {
+                tenant_id: tenantId,
+                nama: programKeahlianInput,
+                kode: codeConflict ? null : generatedKode
+              }
+            });
+          }
+          programKeahlianId = pk.id;
         }
 
         // Check if exists
@@ -391,11 +424,11 @@ export class JurusanService {
 
         if (existingJurusan) {
           // Update
-          await this.updateJurusan(existingJurusan.id, { nama, kode }, RoleName.ADMIN, tenantId);
+          await this.updateJurusan(existingJurusan.id, { nama, kode, singkatan, program_keahlian_id: programKeahlianId }, RoleName.ADMIN, tenantId);
           updated++;
         } else {
           // Create
-          await this.createJurusan({ nama, kode }, tenantId);
+          await this.createJurusan({ nama, kode, singkatan, program_keahlian_id: programKeahlianId }, tenantId);
           created++;
         }
       } catch (err: any) {
