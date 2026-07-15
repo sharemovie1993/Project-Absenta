@@ -24,8 +24,8 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   const [programPresets, setProgramPresets] = useState<GlobalProgramPreset[]>([]);
   const [loadingPresets, setLoadingPresets] = useState(true);
 
-  // Step 1: Selected Program Keahlian codes
-  const [selectedProgramKodes, setSelectedProgramKodes] = useState<string[]>([]);
+  // Step 1: Selected Bidang Keahlian names
+  const [selectedBidangs, setSelectedBidangs] = useState<string[]>([]);
 
   // Step 2: Selected Jurusan codes
   const [selectedJurusanCodes, setSelectedJurusanCodes] = useState<string[]>([]);
@@ -53,10 +53,16 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     loadPresets();
   }, []);
 
-  // Toggle Program Keahlian selection (Step 1)
-  const toggleProgram = (kode: string) => {
-    setSelectedProgramKodes(prev =>
-      prev.includes(kode) ? prev.filter(k => k !== kode) : [...prev, kode]
+  // Unique Bidang Keahlian list from loaded presets
+  const bidangKeahlians = useMemo(() => {
+    const bids = programPresets.map(p => p.bidang_keahlian);
+    return Array.from(new Set(bids)).filter(Boolean);
+  }, [programPresets]);
+
+  // Toggle Bidang Keahlian selection (Step 1)
+  const toggleBidang = (name: string) => {
+    setSelectedBidangs(prev =>
+      prev.includes(name) ? prev.filter(b => b !== name) : [...prev, name]
     );
   };
 
@@ -67,20 +73,16 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     );
   };
 
-  // Filter programs based on search query (Step 1)
-  const filteredPrograms = useMemo(() => {
-    if (!searchQuery.trim()) return programPresets;
+  // Filter Bidang Keahlian based on search query (Step 1)
+  const filteredBidangs = useMemo(() => {
+    if (!searchQuery.trim()) return bidangKeahlians;
     const query = searchQuery.toLowerCase();
-    return programPresets.filter(prog =>
-      prog.nama.toLowerCase().includes(query) ||
-      prog.kode.toLowerCase().includes(query) ||
-      prog.bidang_keahlian.toLowerCase().includes(query)
-    );
-  }, [programPresets, searchQuery]);
+    return bidangKeahlians.filter(bid => bid.toLowerCase().includes(query));
+  }, [bidangKeahlians, searchQuery]);
 
-  // Filter programs and their jurusans based on selected programs and search query (Step 2)
+  // Filter programs and their jurusans based on selected Bidang Keahlian and search query (Step 2)
   const step2Data = useMemo(() => {
-    const selectedProgs = programPresets.filter(p => selectedProgramKodes.includes(p.kode));
+    const selectedProgs = programPresets.filter(p => selectedBidangs.includes(p.bidang_keahlian));
     if (!searchQuery.trim()) return selectedProgs;
 
     const query = searchQuery.toLowerCase();
@@ -99,21 +101,19 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       }
       return null;
     }).filter((p): p is typeof programPresets[0] => p !== null);
-  }, [programPresets, selectedProgramKodes, searchQuery]);
+  }, [programPresets, selectedBidangs, searchQuery]);
 
-  // Proceed to step 2 and pre-select all jurusans under chosen programs
+  // Proceed to step 2 and pre-select all jurusans under chosen Bidang Keahlian
   const handleNextStep = () => {
-    if (selectedProgramKodes.length === 0) return;
+    if (selectedBidangs.length === 0) return;
 
-    // Pre-populate jurusans under selected programs
+    // Pre-populate jurusans under selected Bidang Keahlian
     const initialJurusans: string[] = [];
-    selectedProgramKodes.forEach(kode => {
-      const prog = programPresets.find(p => p.kode === kode);
-      if (prog) {
-        prog.jurusans.forEach(j => {
-          initialJurusans.push(j.kode);
-        });
-      }
+    const selectedProgs = programPresets.filter(p => selectedBidangs.includes(p.bidang_keahlian));
+    selectedProgs.forEach(prog => {
+      prog.jurusans.forEach(j => {
+        initialJurusans.push(j.kode);
+      });
     });
 
     setSelectedJurusanCodes(initialJurusans);
@@ -224,7 +224,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             {step === 1 ? '1' : '✓'}
           </span>
           <span className={`text-[11px] font-black uppercase tracking-tight ${step === 1 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500'}`}>
-            1. Program Keahlian
+            1. Bidang Keahlian
           </span>
         </div>
         <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-4"></div>
@@ -248,10 +248,10 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             </div>
             <div className="flex-1 space-y-1">
               <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                Langkah 1: Pilih Program Keahlian
+                Langkah 1: Pilih Bidang Keahlian
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Tentukan Program Keahlian yang ada di sekolah Anda. Di langkah berikutnya, Anda akan memfilter spesifik Konsentrasi/Jurusan di bawah program tersebut.
+                Tentukan Bidang Keahlian yang ada di sekolah Anda. Di langkah berikutnya, Anda akan memfilter spesifik Konsentrasi/Jurusan di bawah bidang tersebut.
               </p>
             </div>
           </div>
@@ -263,21 +263,21 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama program keahlian, kode, atau bidang keahlian..."
+              placeholder="Cari nama bidang keahlian..."
               className="w-full pl-10 pr-4 h-10 text-[12px] font-semibold border-2 border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 transition-colors"
             />
           </div>
 
-          {/* Program Keahlian List */}
+          {/* Bidang Keahlian List */}
           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin flex flex-col">
-            {filteredPrograms.map(prog => {
-              const isSelected = selectedProgramKodes.includes(prog.kode);
+            {filteredBidangs.map(bid => {
+              const isSelected = selectedBidangs.includes(bid);
               return (
                 <button
-                  key={prog.kode}
+                  key={bid}
                   type="button"
-                  onClick={() => toggleProgram(prog.kode)}
-                  className={`flex items-center text-left p-3 rounded-xl border transition-all group ${
+                  onClick={() => toggleBidang(bid)}
+                  className={`flex items-center text-left p-3.5 rounded-xl border transition-all group ${
                     isSelected
                       ? 'border-violet-500 bg-violet-50/10 dark:bg-violet-950/10 shadow-sm'
                       : 'border-slate-100 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
@@ -292,19 +292,16 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                   </div>
                   <div className="min-w-0 flex-1 flex items-center justify-between">
                     <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
-                      {prog.nama}
+                      {bid}
                     </h6>
-                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-md ml-2 shrink-0">
-                      {prog.kode}
-                    </span>
                   </div>
                 </button>
               );
             })}
 
-            {filteredPrograms.length === 0 && (
+            {filteredBidangs.length === 0 && (
               <div className="text-center py-8 text-slate-400 text-[11px] font-semibold">
-                Tidak ada program keahlian yang cocok dengan pencarian Anda.
+                Tidak ada bidang keahlian yang cocok dengan pencarian Anda.
               </div>
             )}
           </div>
@@ -324,7 +321,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                 Langkah 2: Pilih Konsentrasi Keahlian (Jurusan)
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Tentukan jurusan spesifik di bawah Program Keahlian yang Anda pilih sebelumnya. Jurusan yang tidak dibuka di sekolah Anda dapat dide-check.
+                Tentukan jurusan spesifik di bawah Bidang Keahlian yang Anda pilih sebelumnya. Jurusan yang tidak dibuka di sekolah Anda dapat dide-check.
               </p>
             </div>
           </div>
@@ -341,7 +338,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             />
           </div>
 
-          {/* Jurusan List (Filtered by selected Programs in Step 1) */}
+          {/* Jurusan List (Filtered by selected Bidangs in Step 1) */}
           <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
             {step2Data.map(prog => {
               const allJurusansSelected = prog.jurusans.every(j => selectedJurusanCodes.includes(j.kode));
@@ -433,7 +430,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               variant="toolbarPrimary"
               size="toolbar"
               onClick={handleNextStep}
-              disabled={selectedProgramKodes.length === 0}
+              disabled={selectedBidangs.length === 0}
               className="px-6"
             >
               Lanjut
