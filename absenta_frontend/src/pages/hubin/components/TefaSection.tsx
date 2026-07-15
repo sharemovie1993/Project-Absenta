@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi, type HubinTefaOrder, type MitraIndustri } from '../../../api/hubin.api';
 import { Card } from '../../../components/ui/Card';
@@ -23,6 +24,17 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
+
+// Zod validation schema for TEFA Order Form (Pillar 25)
+const tefaOrderSchema = z.object({
+  nama_proyek: z.string().min(1, 'Nama proyek/order harus diisi'),
+  mitra_id: z.string().nullable(),
+  nilai_kontrak: z.number().nullable(),
+  status_proyek: z.enum(['PERENCANAAN', 'BERJALAN', 'SELESAI', 'BATAL']),
+  tanggal_mulai: z.string().nullable(),
+  tanggal_target: z.string().nullable(),
+  deskripsi: z.string().nullable()
+});
 
 export const TefaSection: React.FC = () => {
   const { user } = useAuthStore();
@@ -137,7 +149,7 @@ export const TefaSection: React.FC = () => {
       return;
     }
 
-    const payload: Partial<HubinTefaOrder> = {
+    const payload = {
       nama_proyek: projectName,
       mitra_id: mitraId || null,
       nilai_kontrak: contractValue ? parseFloat(contractValue) : null,
@@ -146,6 +158,13 @@ export const TefaSection: React.FC = () => {
       tanggal_target: targetDate || null,
       deskripsi: description || null
     };
+
+    // Safe parse check using Zod Schema (Pillar 25)
+    const validation = tefaOrderSchema.safeParse(payload);
+    if (!validation.success) {
+      toast.error(validation.error.issues[0].message);
+      return;
+    }
 
     if (editingOrder) {
       updateMutation.mutate({ id: editingOrder.id, data: payload });
@@ -197,7 +216,7 @@ export const TefaSection: React.FC = () => {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-slate-200 dark:border-slate-800 bg-transparent rounded-xl p-2 text-xs text-slate-700 dark:text-slate-350 outline-hidden"
+            className="border border-slate-200 dark:border-slate-800 bg-transparent rounded-xl p-2 text-xs text-slate-700 dark:text-slate-300 outline-hidden"
             aria-label="Filter status proyek"
           >
             <option value="">Semua Status Proyek</option>
@@ -354,8 +373,8 @@ export const TefaSection: React.FC = () => {
                   <select
                     id="projectStatus"
                     value={projectStatus}
-                    onChange={(e) => setProjectStatus(e.target.value as any)}
-                    className="w-full border border-slate-200 dark:border-slate-800 bg-transparent rounded-xl p-2.5 text-xs text-slate-700 dark:text-slate-350 outline-hidden"
+                    onChange={(e) => setProjectStatus(e.target.value as 'PERENCANAAN' | 'BERJALAN' | 'SELESAI' | 'BATAL')}
+                    className="w-full border border-slate-200 dark:border-slate-800 bg-transparent rounded-xl p-2.5 text-xs text-slate-700 dark:text-slate-300 outline-hidden"
                     required
                   >
                     <option value="PERENCANAAN">PERENCANAAN</option>

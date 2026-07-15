@@ -16,6 +16,7 @@ import { kurikulumApi, GlobalKurikulumStandard } from '../../api/kurikulum.api';
 import { Button, Input, Modal, Badge } from '../../components/ui';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 const JENJANG_OPTIONS = ['SD', 'SMP', 'SMA', 'SMK'];
 const CATEGORY_OPTIONS = ['UMUM', 'KEJURUAN', 'MULOK', 'PILIHAN'];
@@ -159,19 +160,20 @@ export const KurikulumStandardsPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total Acuan JP', value: standards.length, icon: <BookOpen size={15} />, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' },
-          { label: 'Jenjang Tercover', value: totalJenjang, icon: <GraduationCap size={15} />, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' },
-          { label: 'Tingkat Kelas', value: totalTingkat, icon: <Filter size={15} />, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20' },
+          { label: 'Total Acuan JP', value: standards.length, icon: <BookOpen size={16} />, gradient: 'from-indigo-500 to-indigo-700 text-white' },
+          { label: 'Jenjang Tercover', value: totalJenjang, icon: <GraduationCap size={16} />, gradient: 'from-purple-500 to-purple-700 text-white' },
+          { label: 'Tingkat Kelas', value: totalTingkat, icon: <Filter size={16} />, gradient: 'from-emerald-500 to-emerald-700 text-white' },
         ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl ${stat.color}`}>{stat.icon}</div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{stat.value}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">{stat.label}</div>
-            </div>
-          </div>
+          <AnalyticsCard
+            key={stat.label}
+            title={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            gradient={stat.gradient}
+            isLoading={loading}
+          />
         ))}
       </div>
 

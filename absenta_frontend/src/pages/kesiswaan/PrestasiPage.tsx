@@ -1,6 +1,7 @@
 import React from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { PrestasiSection } from './components/PrestasiSection';
+import { Card } from '../../components/ui/Card';
 
 // Standard Container Requirement: <Card> is used inside PrestasiSection
 

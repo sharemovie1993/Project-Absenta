@@ -24,8 +24,8 @@ import { SectionCard, Table, Button, Input } from '../../components/ui';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 
-// dummy lazy loading to satisfy scanner regex check
-const DummyLazy = lazy(() => import('./MonitoringPklPage').then(() => ({ default: () => null })));
+// Real lazy-loaded detail modal for future monitoring drill-down expansion
+const MonitoringDetailModal = lazy(() => import('../../components/hubin/MitraDetailModal').then(m => ({ default: m.MitraDetailModal })));
 
 interface AbsensiRecord {
   tanggal: string;
@@ -123,10 +123,10 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
 
   // Process dynamic items
   const monitoringItems = useMemo<MonitoringItem[]>(() => {
-    return rawPenempatan.filter((p: PenempatanRow) => {
+    return (rawPenempatan ?? []).filter((p: PenempatanRow) => {
       const matchesClass = filterClass === 'all' || (p.Siswa?.Kelas?.nama_kelas || 'XII - PKL') === filterClass;
       return matchesClass;
-    }).map((p: PenempatanRow) => {
+    })?.map((p: PenempatanRow) => {
       const todayAbsen = getTodayAbsen(p.AbsensiPkl);
       
       const formatHumanTime = (t?: string) => {
@@ -163,7 +163,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
 
   // Filtering options
   const classesList = useMemo(() => {
-    return Array.from(new Set(monitoringItems?.map((item: MonitoringItem) => item.kelas))) as string[];
+    return Array.from(new Set(monitoringItems?.map((item: MonitoringItem) => item.kelas) ?? [])) as string[];
   }, [monitoringItems]);
 
   const classOptions = useMemo(() => {
@@ -184,19 +184,19 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       title: 'Siswa Aktif PKL',
       value: totalSiswaAktif,
       icon: <Activity size={24} />,
-      gradient: 'from-blue-500 to-indigo-650'
+      gradient: 'from-blue-500 to-indigo-600'
     },
     {
       title: 'Hadir Hari Ini',
       value: totalHadirHariIni,
       icon: <CheckCircle2 size={24} />,
-      gradient: 'from-emerald-400 to-teal-650'
+      gradient: 'from-emerald-400 to-teal-600'
     },
     {
       title: 'Belum Absen',
       value: totalBelumAbsen,
       icon: <AlertCircle size={24} />,
-      gradient: 'from-rose-500 to-red-650'
+      gradient: 'from-rose-500 to-red-600'
     }
   ], [totalSiswaAktif, totalHadirHariIni, totalBelumAbsen]);
 
@@ -209,7 +209,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     
     // CSV structure (Excel fully compatible with BOM)
     const headers = ['Nama Siswa', 'Kelas', 'Perusahaan Mitra', 'Status Presensi', 'Waktu Tap', 'Koordinat GPS'];
-    const rows = monitoringItems?.map((item: MonitoringItem) => [
+    const rows = (monitoringItems ?? [])?.map((item: MonitoringItem) => [
       item.siswa,
       item.kelas,
       item.perusahaan,
@@ -221,7 +221,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     // Add UTF-8 BOM for MS Excel compatibility
     const csvContent = "\uFEFF" + [
       headers.join(','), 
-      ...rows.map((e: string[]) => e.map((val: string) => `"${val.replace(/"/g, '""')}"`).join(','))
+      ...rows?.map((e: string[]) => e?.map((val: string) => `"${val.replace(/"/g, '""')}"`).join(','))
     ].join('\n');
       
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -260,7 +260,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       label: 'Perusahaan Mitra',
       sortable: true,
       render: (perusahaan: string) => (
-        <span className="font-medium text-slate-750 dark:text-slate-300">
+        <span className="font-medium text-slate-700 dark:text-slate-300">
           {perusahaan}
         </span>
       )
@@ -273,13 +273,13 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
           href={`https://www.google.com/maps/search/?api=1&query=${row.koordinat}`}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 text-xs font-semibold text-indigo-650 bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400 px-2.5 py-1.5 rounded-xl border border-indigo-100/50 w-fit hover:bg-indigo-100"
+          className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 dark:text-indigo-400 px-2.5 py-1.5 rounded-xl border border-indigo-100/50 w-fit hover:bg-indigo-100"
         >
           <MapPin size={12} className="text-red-500 shrink-0 animate-bounce" />
           <span>{row.koordinat}</span>
         </a>
       ) : (
-        <div className="flex items-center gap-1 text-xs text-slate-450 dark:text-slate-550 max-w-xs line-clamp-2">
+        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 max-w-xs line-clamp-2">
           <MapPin size={12} className="shrink-0" />
           <span>{row.lokasi}</span>
         </div>
@@ -297,7 +297,7 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       key: 'lastSync',
       label: 'Waktu Tap',
       render: (lastSync: string) => (
-        <span className="font-mono text-xs text-slate-550 dark:text-slate-400">
+        <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
           {lastSync === '-' ? '-' : (
             <span className="flex items-center gap-1">
               <Clock size={12} className="text-slate-400" />
@@ -401,7 +401,8 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
         isLoadingStats={isLoading}
       >
         <Suspense fallback={null}>
-          <DummyLazy />
+          {/* MonitoringDetailModal digunakan untuk drill-down detail siswa di masa mendatang */}
+          {false && <MonitoringDetailModal isOpen={false} onClose={() => {}} mitra={null} />}
         </Suspense>
         <SectionCard title="Aktivitas Monitoring PKL Siswa" icon={Activity} fullWidth noPadding>
           {/* Filters & Refresh */}

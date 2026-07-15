@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi, type HubinTracerStudy } from '../../../api/hubin.api';
 import { Card } from '../../../components/ui/Card';
@@ -9,6 +10,7 @@ import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { useAuthStore } from '../../../store/authStore';
+import { TracerFormSubfields } from './tracer/TracerFormSubfields';
 import { 
   GraduationCap, 
   Search, 
@@ -23,6 +25,19 @@ import {
   FileWarning
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+
+// Zod validation schema for Tracer Study Alumni Survey (Pillar 25)
+const tracerSurveySchema = z.object({
+  tahun_lulus: z.number().min(2000, 'Tahun kelulusan tidak valid'),
+  status_alumni: z.enum(['BEKERJA', 'KULIAH', 'WIRAUSAHA', 'MENCARI_KERJA']),
+  perusahaan_nama: z.string().optional(),
+  posisi: z.string().optional(),
+  gaji_estimasi: z.string().optional(),
+  universitas_nama: z.string().optional(),
+  program_studi: z.string().optional(),
+  usaha_nama: z.string().optional(),
+  usaha_bidang: z.string().optional(),
+});
 
 export const TracerStudySection: React.FC = () => {
   const { user } = useAuthStore();
@@ -70,7 +85,7 @@ export const TracerStudySection: React.FC = () => {
 
   const { data: myTracerData, isLoading: loadingMyTracer } = useQuery({
     queryKey: ['my-tracer', user?.id],
-    queryFn: () => hubinApi.getTracerStudy({ search: (user as any)?.nis || user?.username, page: 1, limit: 1 }),
+    queryFn: () => hubinApi.getTracerStudy({ search: (user as { nis?: string; username: string })?.nis || user?.username, page: 1, limit: 1 }),
     enabled: !isHubin && !!user?.id
   });
 
@@ -133,6 +148,13 @@ export const TracerStudySection: React.FC = () => {
     } else if (statusAlumni === 'WIRAUSAHA') {
       surveyPayload.usaha_nama = usahaNama;
       surveyPayload.usaha_bidang = usahaBidang;
+    }
+
+    // Safe parse check using Zod Schema (Pillar 25)
+    const validation = tracerSurveySchema.safeParse(surveyPayload);
+    if (!validation.success) {
+      toast.error(validation.error.issues[0].message);
+      return;
     }
 
     submitSurveyMutation.mutate(surveyPayload);
@@ -200,7 +222,7 @@ export const TracerStudySection: React.FC = () => {
                 {statsList?.map((st, idx) => {
                   const pct = Math.round((st.val / totalStats) * 100) || 0;
                   return (
-                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
                       <div className="flex justify-between items-center">
                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{st.label}</span>
                         <div className={`p-1.5 rounded-lg ${st.color}`}>
@@ -279,7 +301,7 @@ export const TracerStudySection: React.FC = () => {
                     {listData?.map((study: HubinTracerStudy) => (
                       <tr key={study.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                         <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{study.Siswa?.nama_siswa}</td>
-                        <td className="py-3 px-3 text-slate-555">{study.Siswa?.nis}</td>
+                        <td className="py-3 px-3 text-slate-500">{study.Siswa?.nis}</td>
                         <td className="py-3 px-3 font-semibold text-slate-600 dark:text-slate-400">{study.tahun_lulus}</td>
                         <td className="py-3 px-3">
                            <Badge 
@@ -295,20 +317,20 @@ export const TracerStudySection: React.FC = () => {
                         </td>
                         <td className="py-3 px-3 max-w-xs truncate">
                           {study.status_alumni === 'BEKERJA' && (
-                            <span className="text-slate-600 dark:text-slate-350">{study.posisi} di <strong>{study.perusahaan_nama}</strong></span>
+                            <span className="text-slate-600 dark:text-slate-300">{study.posisi} di <strong>{study.perusahaan_nama}</strong></span>
                           )}
                           {study.status_alumni === 'KULIAH' && (
-                            <span className="text-slate-600 dark:text-slate-350">{study.program_studi} di <strong>{study.universitas_nama}</strong></span>
+                            <span className="text-slate-600 dark:text-slate-300">{study.program_studi} di <strong>{study.universitas_nama}</strong></span>
                           )}
                           {study.status_alumni === 'WIRAUSAHA' && (
-                            <span className="text-slate-600 dark:text-slate-350">Usaha <strong>{study.usaha_nama}</strong> ({study.usaha_bidang})</span>
+                            <span className="text-slate-600 dark:text-slate-300">Usaha <strong>{study.usaha_nama}</strong> ({study.usaha_bidang})</span>
                           )}
                           {study.status_alumni === 'MENCARI_KERJA' && (
                             <span className="text-slate-400 italic">Mencari Lowongan Kerja</span>
                           )}
                         </td>
                         <td className="py-3 px-3 text-right text-slate-400">
-                           {new Date((study as any).created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                           {new Date(study.created_at || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
                       </tr>
                     ))}
@@ -362,116 +384,31 @@ export const TracerStudySection: React.FC = () => {
                     <SearchableSelect
                       id="statusAlumni"
                       value={statusAlumni}
-                      onValueChange={(val) => setStatusAlumni(val as any)}
+                      onValueChange={(val) => setStatusAlumni(val as 'BEKERJA' | 'KULIAH' | 'WIRAUSAHA' | 'MENCARI_KERJA')}
                       options={statusAlumniOptions}
                       placeholder="Pilih Status Serapan"
                     />
                   </div>
                 </div>
 
-                {/* Subfields: BEKERJA */}
-                {statusAlumni === 'BEKERJA' && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                    <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest border-b pb-1">Detail Pekerjaan</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label htmlFor="companyName" className="font-bold text-slate-600 dark:text-slate-450">Nama Perusahaan / Tempat Kerja *</label>
-                        <Input 
-                          id="companyName"
-                          type="text" 
-                          value={companyName} 
-                          onChange={(e) => setCompanyName(e.target.value)} 
-                          placeholder="e.g. PT Toyota Motor" 
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="position" className="font-bold text-slate-600 dark:text-slate-455">Posisi / Jabatan Pekerjaan *</label>
-                        <Input 
-                          id="position"
-                          type="text" 
-                          value={position} 
-                          onChange={(e) => setPosition(e.target.value)} 
-                          placeholder="e.g. Operator Produksi" 
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label htmlFor="gaji" className="font-bold text-slate-600 dark:text-slate-450">Rentang Pendapatan Bulanan (Opsional)</label>
-                      <SearchableSelect
-                        id="gaji"
-                        value={gaji}
-                        onValueChange={(val) => setGaji(val)}
-                        options={gajiOptions}
-                        placeholder="Pilih Rentang Gaji"
-                        clearable
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Subfields: KULIAH */}
-                {statusAlumni === 'KULIAH' && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                    <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest border-b pb-1">Detail Pendidikan</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label htmlFor="university" className="font-bold text-slate-600 dark:text-slate-450">Nama Universitas / Perguruan Tinggi *</label>
-                        <Input 
-                          id="university"
-                          type="text" 
-                          value={university} 
-                          onChange={(e) => setUniversity(e.target.value)} 
-                          placeholder="e.g. Universitas Indonesia" 
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="major" className="font-bold text-slate-600 dark:text-slate-450">Program Studi / Jurusan *</label>
-                        <Input 
-                          id="major"
-                          type="text" 
-                          value={major} 
-                          onChange={(e) => setMajor(e.target.value)} 
-                          placeholder="e.g. S1 Teknik Informatika" 
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Subfields: WIRAUSAHA */}
-                {statusAlumni === 'WIRAUSAHA' && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                    <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest border-b pb-1">Detail Usaha Mandiri</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label htmlFor="usahaNama" className="font-bold text-slate-600 dark:text-slate-455">Nama Usaha / Toko *</label>
-                        <Input 
-                          id="usahaNama"
-                          type="text" 
-                          value={usahaNama} 
-                          onChange={(e) => setUsahaNama(e.target.value)} 
-                          placeholder="e.g. Toko Kelontong Sejahtera / CV Maju Berkah" 
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="usahaBidang" className="font-bold text-slate-600 dark:text-slate-455">Bidang Usaha *</label>
-                        <Input 
-                          id="usahaBidang"
-                          type="text" 
-                          value={usahaBidang} 
-                          onChange={(e) => setUsahaBidang(e.target.value)} 
-                          placeholder="e.g. Perdagangan Sembako / Jasa Fotografi" 
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <TracerFormSubfields
+                  statusAlumni={statusAlumni}
+                  companyName={companyName}
+                  setCompanyName={setCompanyName}
+                  position={position}
+                  setPosition={setPosition}
+                  gaji={gaji}
+                  setGaji={setGaji}
+                  gajiOptions={gajiOptions}
+                  university={university}
+                  setUniversity={setUniversity}
+                  major={major}
+                  setMajor={setMajor}
+                  usahaNama={usahaNama}
+                  setUsahaNama={setUsahaNama}
+                  usahaBidang={usahaBidang}
+                  setUsahaBidang={setUsahaBidang}
+                />
 
                 <div className="flex justify-end pt-4">
                   <Button type="submit" disabled={submitSurveyMutation.isPending} className="rounded-xl flex items-center gap-2">

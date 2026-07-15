@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
 import { getPrepChecklist, type PrepChecklistData } from '../../api/academic/cetak-berkas.api';
 
@@ -209,67 +210,51 @@ const AcademicDashboard: React.FC = () => {
         </div>
 
         {/* 2. Grid metrics cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
               label: "Tenaga Pendidik",
               value: stats?.total_guru || 0,
-              subtitle: "Total Guru & Staf",
-              icon: Users,
-              color: "text-blue-500",
-              bgColor: "bg-blue-50 dark:bg-blue-950/50",
+              subtitle: "Total guru & staf",
+              icon: <Users />,
+              gradient: "from-blue-500 to-blue-700 text-white",
               onClick: () => navigate('/academic/guru')
             },
             {
               label: "Peserta Didik",
               value: stats?.total_siswa || 0,
-              subtitle: "Siswa Aktif Terdaftar",
-              icon: GraduationCap,
-              color: "text-emerald-500",
-              bgColor: "bg-emerald-50 dark:bg-emerald-950/50",
+              subtitle: "Total siswa aktif",
+              icon: <GraduationCap />,
+              gradient: "from-emerald-500 to-emerald-700 text-white",
               onClick: () => navigate('/academic/siswa')
             },
             {
               label: "Rombongan Belajar",
               value: stats?.total_kelas || 0,
-              subtitle: `${stats?.total_jurusan || 0} Bidang Kompetensi`,
-              icon: School,
-              color: "text-purple-500",
-              bgColor: "bg-purple-50 dark:bg-purple-950/50",
+              subtitle: `${stats?.total_jurusan || 0} bidang kompetensi`,
+              icon: <School />,
+              gradient: "from-purple-500 to-purple-700 text-white",
               onClick: () => navigate('/academic/kelas')
             },
             {
               label: "Mata Pelajaran",
               value: stats?.total_mapel || 0,
-              subtitle: "Kurikulum Terdaftar",
-              icon: BookOpen,
-              color: "text-amber-500",
-              bgColor: "bg-amber-50 dark:bg-amber-950/50",
+              subtitle: "Total mapel terdaftar",
+              icon: <BookOpen />,
+              gradient: "from-amber-500 to-amber-700 text-white",
               onClick: () => navigate('/academic/mapel')
             }
           ].map((card, idx) => (
-            <motion.div
+            <AnalyticsCard
               key={idx}
-              whileHover={{ y: -4 }}
+              title={card.label}
+              value={card.value}
+              subtitle={card.subtitle}
+              icon={card.icon}
+              gradient={card.gradient}
               onClick={card.onClick}
-              className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer group flex flex-col justify-between"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className={`w-10 h-10 rounded-xl ${card.bgColor} flex items-center justify-center ${card.color} group-hover:scale-110 transition-transform duration-300`}>
-                  <card.icon size={20} />
-                </div>
-                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {card.label}
-                </span>
-              </div>
-              <div>
-                <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{card.value}</div>
-                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 group-hover:text-blue-500 transition-colors">
-                  <span>{card.subtitle}</span>
-                  <ChevronRight size={10} className="group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </motion.div>
+              isLoading={isLoading}
+            />
           ))}
         </div>
 

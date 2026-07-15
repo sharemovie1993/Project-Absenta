@@ -21,6 +21,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import SuperAdminPageLayout from '@/components/layout/SuperAdminPageLayout';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { 
   Button, 
   Loader, 
@@ -413,109 +414,45 @@ const BillingDashboardPage: React.FC = () => {
 
       {/* Grid Status Detail Anomali & SLA Penagihan */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card 
+        <AnalyticsCard 
           onClick={() => navigate('/billing/subscriptions?status=ACTIVE')}
-          className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-950 p-5 cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Active No Invoice</span>
-              <h3 className="text-2xl font-black font-mono mt-1 text-slate-800 dark:text-slate-100">
-                {healthSummary ? formatNumber(healthSummary.active_without_paid_invoice_count) : '0'}
-              </h3>
-              <p className="text-[10px] text-slate-500 mt-1">Tenant aktif bermasalah</p>
-            </div>
-            <div className={cn(
-              "p-2.5 rounded-xl transition-colors",
-              (healthSummary?.active_without_paid_invoice_count ?? 0) > 0 
-                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400" 
-                : "bg-slate-50 dark:bg-slate-900 text-slate-400"
-            )}>
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowRight className="w-4 h-4 text-indigo-500" />
-          </div>
-        </Card>
+          title="Active No Invoice" 
+          value={healthSummary ? formatNumber(healthSummary.active_without_paid_invoice_count) : '0'} 
+          icon={<ShieldAlert className="w-5 h-5" />} 
+          gradient={(healthSummary?.active_without_paid_invoice_count ?? 0) > 0 ? "from-rose-500 to-rose-700 text-white" : "from-slate-500 to-slate-700 text-white"}
+          subtitle="Tenant aktif bermasalah"
+          isLoading={loading && !healthSummary}
+        />
 
-        <Card 
+        <AnalyticsCard 
           onClick={() => navigate('/invoice/list?status=PAID')}
-          className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-950 p-5 cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Lunas Belum Apply</span>
-              <h3 className="text-2xl font-black font-mono mt-1 text-slate-800 dark:text-slate-100">
-                {healthSummary ? formatNumber(healthSummary.paid_not_applied_count) : '0'}
-              </h3>
-              <p className="text-[10px] text-slate-500 mt-1">Perlu rekonsiliasi manual</p>
-            </div>
-            <div className={cn(
-              "p-2.5 rounded-xl transition-colors",
-              (healthSummary?.paid_not_applied_count ?? 0) > 0 
-                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400" 
-                : "bg-slate-50 dark:bg-slate-900 text-slate-400"
-            )}>
-              <FileText className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowRight className="w-4 h-4 text-indigo-500" />
-          </div>
-        </Card>
+          title="Lunas Belum Apply" 
+          value={healthSummary ? formatNumber(healthSummary.paid_not_applied_count) : '0'} 
+          icon={<FileText className="w-5 h-5" />} 
+          gradient={(healthSummary?.paid_not_applied_count ?? 0) > 0 ? "from-rose-500 to-rose-700 text-white" : "from-slate-500 to-slate-700 text-white"}
+          subtitle="Perlu rekonsiliasi manual"
+          isLoading={loading && !healthSummary}
+        />
 
-        <Card 
+        <AnalyticsCard 
           onClick={() => navigate('/invoice/list?invalid_period=1')}
-          className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-950 p-5 cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Periode Tidak Valid</span>
-              <h3 className="text-2xl font-black font-mono mt-1 text-slate-800 dark:text-slate-100">
-                {healthSummary ? formatNumber(healthSummary.invalid_invoice_period_count) : '0'}
-              </h3>
-              <p className="text-[10px] text-slate-500 mt-1">Missing start/end date</p>
-            </div>
-            <div className={cn(
-              "p-2.5 rounded-xl transition-colors",
-              (healthSummary?.invalid_invoice_period_count ?? 0) > 0 
-                ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400" 
-                : "bg-slate-50 dark:bg-slate-900 text-slate-400"
-            )}>
-              <Calendar className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowRight className="w-4 h-4 text-indigo-500" />
-          </div>
-        </Card>
+          title="Periode Tidak Valid" 
+          value={healthSummary ? formatNumber(healthSummary.invalid_invoice_period_count) : '0'} 
+          icon={<Calendar className="w-5 h-5" />} 
+          gradient={(healthSummary?.invalid_invoice_period_count ?? 0) > 0 ? "from-amber-500 to-amber-700 text-white" : "from-slate-500 to-slate-700 text-white"}
+          subtitle="Missing start/end date"
+          isLoading={loading && !healthSummary}
+        />
 
-        <Card 
+        <AnalyticsCard 
           onClick={() => navigate('/billing/payments?status=FAILED')}
-          className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-300 bg-white dark:bg-slate-950 p-5 cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Webhook Gagal (1 Jam)</span>
-              <h3 className="text-2xl font-black font-mono mt-1 text-slate-800 dark:text-slate-100">
-                {healthSummary ? formatNumber(healthSummary.webhook_failures_last_1h) : '0'}
-              </h3>
-              <p className="text-[10px] text-slate-500 mt-1">Error respon Tripay/Xendit</p>
-            </div>
-            <div className={cn(
-              "p-2.5 rounded-xl transition-colors",
-              (healthSummary?.webhook_failures_last_1h ?? 0) > 0 
-                ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400" 
-                : "bg-slate-50 dark:bg-slate-900 text-slate-400"
-            )}>
-              <Activity className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowRight className="w-4 h-4 text-indigo-500" />
-          </div>
-        </Card>
+          title="Webhook Gagal (1 Jam)" 
+          value={healthSummary ? formatNumber(healthSummary.webhook_failures_last_1h) : '0'} 
+          icon={<Activity className="w-5 h-5" />} 
+          gradient={(healthSummary?.webhook_failures_last_1h ?? 0) > 0 ? "from-amber-500 to-amber-700 text-white" : "from-slate-500 to-slate-700 text-white"}
+          subtitle="Error respon Tripay/Xendit"
+          isLoading={loading && !healthSummary}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

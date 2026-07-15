@@ -31,7 +31,7 @@ const JadwalPelajaranPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [navigate]);
 
-  const dummyStats = useMemo(() => [
+  const redirectStats = useMemo(() => [
     {
       title: 'Mengalihkan...',
       value: 'Jadwal Pelajaran',
@@ -45,7 +45,7 @@ const JadwalPelajaranPage: React.FC = () => {
     <AcademicPageLayout
       title="Jadwal Pelajaran"
       description="Halaman ini telah dipindahkan. Anda akan diarahkan secara otomatis ke Jadwal Template."
-      stats={dummyStats}
+      stats={redirectStats}
       hardeningModuleKey="jadwalpelajaranpage"
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },

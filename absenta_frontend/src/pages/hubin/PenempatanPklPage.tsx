@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
 import { guruApi } from '../../api/academic.api';
@@ -32,86 +33,15 @@ import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
 
-export interface SiswaData {
-  id: string;
-  nama_siswa: string;
-  nis: string;
-  no_hp?: string;
-  Kelas?: {
-    id: string;
-    nama_kelas: string;
-  };
-}
-
-export interface MitraData {
-  id: string;
-  nama: string;
-  alamat?: string;
-  kontak?: string;
-}
-
-export interface PembimbingData {
-  id: string;
-  nama_guru: string;
-  full_name?: string;
-  user_id?: string;
-}
-
-export interface SiswaPkl {
-  id: string;
-  siswa_id: string;
-  mitra_id: string;
-  pembimbing_id: string;
-  status: HubinPklStatus;
-  tanggal_mulai: string;
-  tanggal_selesai: string;
-  Siswa?: SiswaData;
-  Mitra?: MitraData;
-  Pembimbing?: PembimbingData;
-  kunjungan_json?: Array<{
-    catatan: string;
-    foto_url?: string;
-    latitude?: number;
-    longitude?: number;
-    tanggal?: string;
-  }>;
-  nilai_json?: {
-    soft_skills: number;
-    technical_skills: number;
-    discipline: number;
-    catatan?: string;
-    nilai_akhir: number;
-  };
-  jurnal_json?: {
-    file_url?: string;
-    status?: HubinJurnalStatus;
-    catatan_revisi?: string;
-  };
-}
-
-export interface CreatePenempatanPayload {
-  siswa_id: string;
-  mitra_id: string;
-  pembimbing_id: string | null;
-  tanggal_mulai: string;
-  tanggal_selesai: string | null;
-  status: string;
-}
-
-export interface PenilaianPayload {
-  soft_skills: number;
-  technical_skills: number;
-  discipline: number;
-  catatan: string;
-  nilai_akhir: number;
-}
-
-export interface KunjunganPayload {
-  catatan: string;
-  foto_url?: string;
-  latitude?: number;
-  longitude?: number;
-}
+import type {
+  SiswaData,
+  MitraData,
+  PembimbingData,
+  SiswaPkl,
+  CreatePenempatanPayload,
+  PenilaianPayload,
+  KunjunganPayload
+} from './types/penempatan.types';
 
 const HubinPklPlottingModal = lazy(() => import('../../components/hubin/HubinPklPlottingModal').then(m => ({ default: m.HubinPklPlottingModal })));
 const HubinPklBulkPlottingModal = lazy(() => import('../../components/hubin/HubinPklBulkPlottingModal').then(m => ({ default: m.HubinPklBulkPlottingModal })));
@@ -120,7 +50,18 @@ const HubinPklKunjunganModal = lazy(() => import('../../components/hubin/HubinPk
 const HubinPklReviewJurnalModal = lazy(() => import('../../components/hubin/HubinPklReviewJurnalModal').then(m => ({ default: m.HubinPklReviewJurnalModal })));
 const HubinPklPrintSurat = lazy(() => import('../../components/hubin/HubinPklPrintSurat').then(m => ({ default: m.HubinPklPrintSurat })));
 
-export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
+// ─── Zod Schema Validation Guard (Pilar 25) ───
+const penempatanSchema = z.object({
+  siswa_id: z.string().min(1, 'Siswa harus dipilih'),
+  mitra_id: z.string().min(1, 'Mitra industri harus dipilih'),
+  pembimbing_id: z.string().nullable(),
+  tanggal_mulai: z.string().min(1, 'Tanggal mulai harus diisi'),
+  tanggal_selesai: z.string().nullable(),
+  status: z.string().min(1),
+});
+type PenempatanFormValues = z.infer<typeof penempatanSchema>;
+
+export const PenempatanPklSection: React.FC = () => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -242,7 +183,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => hubinApi.updatePenempatan(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<SiswaPkl> }) => hubinApi.updatePenempatan(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       toast.success('Perubahan penempatan berhasil disimpan');
@@ -259,7 +200,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   });
 
   const bulkCreateMutation = useMutation({
-    mutationFn: (payload: any) => hubinApi.bulkCreatePenempatan(payload),
+    mutationFn: (payload: CreatePenempatanPayload[]) => hubinApi.bulkCreatePenempatan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       toast.success('Plotting penempatan kolektif berhasil dibuat');
@@ -365,13 +306,27 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     }
   }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, createMutation, updateMutation]);
 
-  const handleBulkPlottingSubmit = useCallback((payload: any) => {
+  const handleBulkPlottingSubmit = useCallback((data: {
+    siswa_ids: string[];
+    mitra_id: string;
+    pembimbing_id: string | null;
+    tanggal_mulai: string;
+    tanggal_selesai: string | null;
+  }) => {
+    const payload: CreatePenempatanPayload[] = data.siswa_ids.map(siswa_id => ({
+      siswa_id,
+      mitra_id: data.mitra_id,
+      pembimbing_id: data.pembimbing_id,
+      tanggal_mulai: data.tanggal_mulai,
+      tanggal_selesai: data.tanggal_selesai,
+      status: 'AKTIF',
+    }));
     bulkCreateMutation.mutate(payload);
   }, [bulkCreateMutation]);
 
   const placedStudentIds = useMemo(() => {
-    const list = Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as any)?.data || [];
-    return new Set<string>(list.filter((p: SiswaPkl) => p.status === 'AKTIF').map((p: SiswaPkl) => p.siswa_id));
+    const list = Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as { data?: SiswaPkl[] })?.data || [];
+    return new Set<string>(list.filter((p: SiswaPkl) => p.status === 'AKTIF')?.map((p: SiswaPkl) => p.siswa_id));
   }, [allActivePenempatan]);
 
   // Penilaian Submit Handler
@@ -416,8 +371,8 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     kunjunganMutation.mutate({ id: selectedPkl.id, data });
   }, [selectedPkl, kunjunganMutation]);
 
-  const rawMitra = useMemo(() => Array.isArray(mitraList) ? (mitraList as MitraData[]) : ((mitraList as any)?.data as MitraData[]) || [], [mitraList]);
-  const rawGuru = useMemo(() => Array.isArray(guruList) ? (guruList as PembimbingData[]) : ((guruList as any)?.data as PembimbingData[]) || [], [guruList]);
+  const rawMitra = useMemo(() => Array.isArray(mitraList) ? (mitraList as MitraData[]) : ((mitraList as { data?: MitraData[] })?.data) || [], [mitraList]);
+  const rawGuru = useMemo(() => Array.isArray(guruList) ? (guruList as PembimbingData[]) : ((guruList as { data?: PembimbingData[] })?.data) || [], [guruList]);
 
   const activeGuruId = useMemo(() => {
     if (user?.guru_profile?.id) return user.guru_profile.id;
@@ -469,17 +424,17 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       title: 'Total Penempatan',
       value: rawPenempatan?.length || 0,
       icon: <ClipboardList size={24} />,
-      gradient: 'from-blue-500 to-indigo-605'
+      gradient: 'from-blue-500 to-indigo-600'
     },
     {
       title: 'Penempatan Aktif',
       value: rawPenempatan?.filter((p: SiswaPkl) => p.status === 'AKTIF').length || 0,
       icon: <CheckCircle2 size={24} />,
-      gradient: 'from-emerald-450 to-teal-600'
+      gradient: 'from-emerald-400 to-teal-600'
     },
     {
       title: 'Mitra Terlibat',
-      value: Array.from(new Set(rawPenempatan?.map((p: SiswaPkl) => p.mitra_id))).length || 0,
+      value: Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0,
       icon: <Building2 size={24} />,
       gradient: 'from-amber-400 to-orange-600'
     }
@@ -520,14 +475,14 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   ) : null;
 
   const mitraOptions = useMemo(() => {
-    return rawMitra?.map((m: MitraData) => ({
+    return (rawMitra ?? [])?.map((m: MitraData) => ({
       label: m.nama,
       value: m.id
     })) || [];
   }, [rawMitra]);
 
   const guruOptions = useMemo(() => {
-    return rawGuru?.map((g: PembimbingData) => ({
+    return (rawGuru ?? [])?.map((g: PembimbingData) => ({
       label: g.nama_guru || g.full_name || '',
       value: g.id
     })) || [];
@@ -618,7 +573,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
                     className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'MY_GUIDANCE'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-550 hover:text-slate-800 dark:hover:text-slate-250'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
                     }`}
                   >
                     <User size={14} />
@@ -630,7 +585,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
                     className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'ALL'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-550 hover:text-slate-800 dark:hover:text-slate-250'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
                     }`}
                   >
                     <ClipboardList size={14} />
@@ -645,7 +600,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
                     className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'ALL'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-550 hover:text-slate-800 dark:hover:text-slate-250'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
                     }`}
                   >
                     <ClipboardList size={14} />
@@ -657,7 +612,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
                     className={`flex-1 md:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'MY_GUIDANCE'
                         ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-550 hover:text-slate-800 dark:hover:text-slate-250'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
                     }`}
                   >
                     <User size={14} />
@@ -671,6 +626,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
           <div className="flex-1 relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
+              aria-label="Cari nama siswa atau mitra industri"
               placeholder="Cari nama siswa atau nama mitra industri..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -800,9 +756,6 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     </>
   );
 
-  if (hideLayout) {
-    return <div className="space-y-6">{content}</div>;
-  }
 
   return (
     <PremiumFeatureGate
@@ -833,5 +786,7 @@ export const PenempatanPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
   );
 };
 
-const PenempatanPklPage = () => <PenempatanPklSection hideLayout={false} />;
+const PenempatanPklPage = () => <PenempatanPklSection />;
 export default PenempatanPklPage;
+// Re-export types for backward compatibility
+export type { SiswaData, MitraData, PembimbingData, SiswaPkl, CreatePenempatanPayload, PenilaianPayload, KunjunganPayload } from './types/penempatan.types';

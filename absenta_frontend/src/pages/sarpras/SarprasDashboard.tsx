@@ -10,7 +10,9 @@ import {
   Box,
   TrendingUp,
   Clock,
-  MapPin
+  MapPin,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { requestWithFallback } from '@/api/apiUtils';
 import type { StandardApiResponse } from '@/api/apiUtils';
@@ -21,8 +23,20 @@ import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { useTvStore } from '@/store/tvStore';
+import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { sarprasApi } from '@/api/sarpras.api';
+import { 
+  Divider, 
+  UnreturnedLoansList, 
+  RecentTransactionsList, 
+  MaintenanceAlertsList,
+  type LoanRecord,
+  type RepairRecord
+} from './components/SarprasDashboardComponents';
+import { SarprasTvModeLayout } from './components/SarprasTvModeLayout';
 
-interface AssetStats {
+export interface AssetStats {
   total: number;
   available: number;
   borrowed: number;
@@ -45,10 +59,22 @@ interface SubscriptionFeature {
 
 const SarprasDashboard: React.FC = () => {
   const { user, subscription } = useAuthStore();
+  const { isTvMode } = useTvStore();
+  const [currentScene, setCurrentScene] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
   const [stats, setStats] = useState<AssetStats | null>(null);
+  const [loans, setLoans] = useState<LoanRecord[]>([]);
+  const [repairs, setRepairs] = useState<RepairRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const dummyCallback = useCallback(() => {}, []);
+  // TV Mode Auto Rotation
+  useEffect(() => {
+    if (!isTvMode) return;
+    const interval = setInterval(() => {
+      setCurrentScene((prev) => (prev + 1) % 4);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isTvMode]);
 
   // Gating Logic
   const features = useMemo(() => {
@@ -60,23 +86,47 @@ const SarprasDashboard: React.FC = () => {
     return !Array.isArray(features) || !features.includes('SARPRAS');
   }, [features]);
 
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [statsRes, loansRes, repairsRes] = await Promise.all([
+        requestWithFallback<StandardApiResponse<AssetStats>>('get', '/sarpras/assets/stats'),
+        sarprasApi.getLoans({ limit: 50 }),
+        sarprasApi.getRepairs({ limit: 50, status: 'PROSES' })
+      ]);
+
+      if (statsRes.success && statsRes.data) {
+        setStats(statsRes.data);
+      }
+      if (loansRes.success && loansRes.data) {
+        const list = Array.isArray(loansRes.data) ? loansRes.data : (loansRes.data?.list || []);
+        setLoans(list);
+      }
+      if (repairsRes.success && repairsRes.data) {
+        const list = Array.isArray(repairsRes.data) ? repairsRes.data : (repairsRes.data?.list || []);
+        setRepairs(list);
+      }
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (subscription === undefined) return;
+    fetchDashboardData();
+  }, [subscription, fetchDashboardData]);
 
-    const fetchStats = async () => {
-      try {
-        const res = await requestWithFallback<StandardApiResponse<AssetStats>>('get', '/sarpras/assets/stats');
-        if (res.success && res.data) {
-          setStats(res.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch stats:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchStats();
-  }, [subscription]);
+  // Auto-refresh in TV Mode
+  useEffect(() => {
+    if (!isTvMode) return;
+    const timer = setInterval(() => {
+      fetchDashboardData();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [isTvMode, fetchDashboardData]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },
@@ -99,30 +149,52 @@ const SarprasDashboard: React.FC = () => {
       value: stats?.total || 0, 
       icon: Package, 
       color: 'blue',
-      desc: 'Seluruh aset di yurisdiksi Anda'
+      desc: 'Total aset terdaftar'
     },
     { 
       label: 'Tersedia', 
       value: stats?.available || 0, 
       icon: CheckCircle2, 
       color: 'emerald',
-      desc: 'Ready untuk dipinjamkan'
+      desc: 'Aset siap dipinjam'
     },
     { 
       label: 'Sedang Dipinjam', 
       value: stats?.borrowed || 0, 
       icon: History, 
       color: 'amber',
-      desc: 'Saat ini dibawa oleh siswa/guru'
+      desc: 'Aset sedang dipinjam'
     },
     { 
       label: 'Kondisi Rusak', 
       value: stats?.repair || 0, 
       icon: AlertCircle, 
       color: 'rose',
-      desc: 'Membutuhkan perbaikan segera'
+      desc: 'Perlu perbaikan segera'
     },
   ], [stats]);
+
+  const scenes = useMemo(() => [
+    { title: "Statistik & Ketersediaan Aset Gudang", desc: "Kondisi keseluruhan inventori sarana prasarana sekolah" },
+    { title: "Log Transaksi & Penagihan Aset (OUT/IN)", desc: "Status peminjaman terbaru dan daftar barang belum kembali" },
+    { title: "Peringatan Pemeliharaan & Perbaikan Aktif", desc: "Daftar aset rusak yang dalam proses maintenance" },
+    { title: "Status Operasional & Yurisdiksi Gudang", desc: "Detail unit akses yurisdiksi sarpras" }
+  ], []);
+
+  if (isTvMode) {
+    return (
+      <SarprasTvModeLayout
+        currentScene={currentScene}
+        setCurrentScene={setCurrentScene}
+        scenes={scenes}
+        lastRefresh={lastRefresh}
+        stats={stats}
+        loans={loans}
+        repairs={repairs}
+        statCards={statCards}
+      />
+    );
+  }
 
   return (
     <PremiumFeatureGate
@@ -137,18 +209,20 @@ const SarprasDashboard: React.FC = () => {
         instruction={instruction}
         hardeningModuleKey="sarpras_dashboard"
         toolbar={
-          <div className="bg-white/60 backdrop-blur-md border border-white p-1 rounded-xl flex gap-1 shadow-sm">
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-1 shadow-sm items-center">
              <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span className="text-xs font-bold text-primary uppercase tracking-wider">
                   {stats?.jurisdiction?.type === 'unit' ? `Unit: ${stats.jurisdiction.name}` : 'Global Access'}
                 </span>
              </div>
+             <TvModeToggle />
           </div>
         }
       >
         <div className="space-y-8">
-          {/* Stats Grid */}
+          {/* Bagian I: Ringkasan Aset & Kondisi Terkini */}
+          <Divider title="Bagian I: Ringkasan Aset & Kondisi Terkini" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {statCards?.map((card, i) => (
               <motion.div
@@ -178,9 +252,37 @@ const SarprasDashboard: React.FC = () => {
             ))}
           </div>
 
+          {/* Bagian II: Transaksi Peminjaman Terbaru & Aset Belum Kembali */}
+          <Divider title="Bagian II: Transaksi Peminjaman Terbaru & Aset Belum Kembali" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <RecentTransactionsList loans={loans} />
+            <UnreturnedLoansList loans={loans} />
+          </div>
+
+          {/* Bagian III: Peringatan Aset Rusak & Pemeliharaan */}
+          <Divider title="Bagian III: Peringatan Aset Rusak & Pemeliharaan" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Actions & Activity */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2">
+              <MaintenanceAlertsList repairs={repairs} />
+            </div>
+            <div className="space-y-6">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-xl flex items-start gap-4">
+                <div className="bg-emerald-500 p-2 rounded-xl text-white">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-800">Sistem Online</h4>
+                  <p className="text-[11px] text-emerald-600 mt-1 leading-relaxed">Pencatatan dilakukan secara real-time. Laporkan jika ada kendala sistem.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bagian IV: Aksi Cepat Operasional Toolman */}
+          <Divider title="Bagian IV: Aksi Cepat Operasional Toolman" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Actions */}
+            <div className="lg:col-span-2">
               <SectionCard title="Aktivitas Cepat" icon={TrendingUp} fullWidth>
                 <div className="p-8">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,39 +298,7 @@ const SarprasDashboard: React.FC = () => {
                   </div>
                 </div>
               </SectionCard>
-
-              {/* Recent Logs Placeholder */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between px-2">
-                  <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Transaksi Terakhir
-                  </h3>
-                  <Button variant="ghost" size="sm" className="text-xs text-primary font-bold">
-                    Lihat Semua <ArrowRight className="w-3 h-3 ml-1" />
-                  </Button>
-                </div>
-                
-                {[1, 2, 3]?.map((_, i) => (
-                  <div key={i} className="bg-white/40 backdrop-blur-sm border border-white/60 p-4 rounded-xl flex items-center justify-between hover:bg-white/60 transition-all cursor-default group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                        <Box size={24} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800">Kameramen Kit #0{i+1}</h4>
-                        <p className="text-xs text-slate-500">Dipinjam oleh Ahmad (XI TKJ 1)</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">OUT</Badge>
-                      <p className="text-[10px] text-slate-400 mt-1">2 jam yang lalu</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
-
             {/* Sidebar Info */}
             <div className="space-y-6">
               <Card className="border-primary/20 shadow-2xl bg-primary shadow-primary/20 text-white rounded-xl overflow-hidden relative">
@@ -244,16 +314,6 @@ const SarprasDashboard: React.FC = () => {
                     </Button>
                  </div>
               </Card>
-              
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-xl flex items-start gap-4">
-                <div className="bg-emerald-500 p-2 rounded-xl text-white">
-                  <CheckCircle2 size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-emerald-800">Sistem Online</h4>
-                  <p className="text-[11px] text-emerald-600 mt-1 leading-relaxed">Pencatatan dilakukan secara real-time. Laporkan jika ada kendala sistem.</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>

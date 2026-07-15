@@ -60,8 +60,16 @@ function findFileDynamically(baseDir, searchKey) {
 }
 
 const server = http.createServer((req, res) => {
-  // Izinkan request lintas asal (CORS) dari server dev Vite (port 5173)
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Izinkan request lintas asal (CORS) dari server dev lokal yang valid
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      }
+    } catch (e) {}
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -98,11 +106,15 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Hardening: Validasi karakter ketat untuk mencegah Command Injection
+    if (/[^a-zA-Z0-9\.\:\/\?\&\=\-\_\~\%\#]/.test(targetUrl)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Akses ditolak: Target URL mengandung karakter berbahaya!' }));
+      return;
+    }
+
     console.log(`🧭 Memulai audit Lighthouse untuk target: ${targetUrl}`);
 
-    // Eksekusi npx lighthouse dengan chrome headless flags & ignore SSL errors
-    const cmd = `npx lighthouse "${targetUrl}" --output=json --chrome-flags="--headless --no-sandbox --ignore-certificate-errors" --only-categories=performance,accessibility,best-practices,seo`;
-    
     // Set custom TEMP & TMP directories inside workspace to avoid EPERM restrictions in default Windows Temp
     const projectRootDir = path.resolve(__dirname, '..');
     const customTempDir = path.join(projectRootDir, 'scratch', 'lh_temp');
@@ -116,23 +128,47 @@ const server = http.createServer((req, res) => {
     
     const execEnv = { ...process.env, TEMP: customTempDir, TMP: customTempDir };
     
-    exec(cmd, { maxBuffer: 1024 * 1024 * 25, env: execEnv }, (error, stdout, stderr) => {
-      // Coba urai stdout terlebih dahulu meskipun ada error (misal error EPERM saat cleanup temp directory)
+    // Eksekusi npx lighthouse secara aman menggunakan spawn (parameter array)
+    const { spawn } = require('child_process');
+    const child = spawn(
+      process.platform === 'win32' ? 'npx.cmd' : 'npx',
+      [
+        'lighthouse',
+        targetUrl,
+        '--output=json',
+        '--chrome-flags=--headless --no-sandbox --ignore-certificate-errors',
+        '--only-categories=performance,accessibility,best-practices,seo'
+      ],
+      { env: execEnv, shell: true }
+    );
+
+    let stdoutData = '';
+    let stderrData = '';
+
+    child.stdout.on('data', (data) => {
+      stdoutData += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderrData += data.toString();
+    });
+
+    child.on('close', (code) => {
       let report = null;
       let parseError = null;
       
       try {
-        if (stdout) {
-          report = JSON.parse(stdout);
+        if (stdoutData) {
+          report = JSON.parse(stdoutData);
         }
       } catch (err) {
         parseError = err;
       }
 
-      if (!report && error) {
-        console.error('Lighthouse execution error:', error);
+      if (!report && code !== 0) {
+        console.error('Lighthouse execution error with code:', code, stderrData);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: `Gagal menjalankan Lighthouse: ${error.message}` }));
+        res.end(JSON.stringify({ error: `Gagal menjalankan Lighthouse: ${stderrData || 'Unknown execution error'}` }));
         return;
       }
 
@@ -266,7 +302,12 @@ const server = http.createServer((req, res) => {
 
     // Hardening: Proteksi path traversal ketat - pastikan file berada di dalam root project
     const resolvedPath = path.resolve(absolutePath);
-    if (!resolvedPath.startsWith(projectRootDir)) {
+    const normalizedResolved = resolvedPath.toLowerCase().replace(/\\/g, '/');
+    const normalizedRootDir = projectRootDir.toLowerCase().replace(/\\/g, '/');
+    const relative = path.relative(projectRootDir, resolvedPath);
+    const isInside = resolvedPath === projectRootDir || (relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+
+    if (!normalizedResolved.startsWith(normalizedRootDir) && !isInside) {
       res.writeHead(403, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Akses ditolak: Percobaan path traversal terdeteksi!' }));
       return;
@@ -401,6 +442,16 @@ const server = http.createServer((req, res) => {
     const hasTryCatchForExport = /try\s*\{.*?catch/s.test(content);
     const usesStyledTemplate = content.includes('generateImportTemplate') || !/Template_Impor|Template Impor/i.test(content);
     const missingImportExportGuard = hasImportExport && (!hasImportExportLoading || !hasTryCatchForExport || !usesStyledTemplate);
+
+    // Pilar 24: Standarisasi Sistem Ekspor PDF (Built-in PDF Template Guard)
+    const hasRawPdfLib = content.includes("from 'jspdf'") || content.includes('new jsPDF(') || content.includes("from 'jspdf-autotable'");
+    const usesStandardPrintUtil = content.includes('utils/print/') || content.includes('@/utils/print') || content.includes('masterStrukturHelper') || content.includes('pdfAcademic') || content.includes('pdfGeneric');
+    const missingStandardPdfPrint = hasRawPdfLib && !usesStandardPrintUtil;
+
+    // Pilar 25: Validasi Skema Zod untuk Form (Zod Schema Guard)
+    const hasForm = content.includes('<form') || /<input|<select|<textarea/i.test(content);
+    const hasZodValidation = content.includes('zodResolver') || content.includes('z.object') || content.includes('validationSchema') || content.includes('Schema') || content.includes('zod') || content.includes('yup') || content.includes('joi');
+    const missingZodValidation = hasForm && !hasZodValidation;
   
     const issues = [];
     if (!isComponentFile && !usesLayout) {
@@ -429,6 +480,12 @@ const server = http.createServer((req, res) => {
     }
     if (missingImportExportGuard) {
       issues.push("⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.");
+    }
+    if (missingStandardPdfPrint) {
+      issues.push("⚠️  Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di 'src/utils/print/' untuk menjaga konsistensi template kop surat resmi.");
+    }
+    if (missingZodValidation) {
+      issues.push('⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard.');
     }
     if (missingTableSorting) {
       issues.push('⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap');
@@ -522,6 +579,8 @@ const server = http.createServer((req, res) => {
       hardcodedConfig: !hasHardcodedConfigs,
       analyticsCardGuard: !missingAnalyticsCard,
       importExportGuard: !missingImportExportGuard,
+      standardPdfPrint: !missingStandardPdfPrint,
+      zodValidationGuard: !missingZodValidation,
       usesUiComponents,
       issues,
       refactorPrompt: prompt,

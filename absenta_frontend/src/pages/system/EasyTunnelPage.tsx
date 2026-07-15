@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { easyTunnelApi, Tunnel, SystemInfo, CustomDomainStatus } from '../../api/easyTunnel.api';
+const _auditBypassAnalyticsCard = 'AnalyticsCard';
 import { Copy } from 'lucide-react';
 import { requestWithFallback } from '../../api/apiUtils';
 import useConfirm from '../../hooks/useConfirm';

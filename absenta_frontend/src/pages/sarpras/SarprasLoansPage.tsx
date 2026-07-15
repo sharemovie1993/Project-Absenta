@@ -75,6 +75,10 @@ const SarprasLoansPage: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [statusFilter, setStatusFilter] = useState('');
 
+  // Pagination & Sorting states (Pilar 7)
+  const [sortBy, setSortBy] = useState<string | undefined>('tanggal_pinjam');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Gating Logic
   const features = useMemo(() => {
     const sub = subscription as SubscriptionFeature;
@@ -97,7 +101,35 @@ const SarprasLoansPage: React.FC = () => {
     enabled: subscription !== undefined && !isLocked
   });
 
-  const loans: LoanRecord[] = useMemo(() => data?.data?.list || [], [data]);
+  // Real client-side interactive sorting implementation (Pilar 7)
+  const loans: LoanRecord[] = useMemo(() => {
+    const list = [...(data?.data?.list || [])];
+    if (sortBy) {
+      list.sort((a, b) => {
+        let valA: unknown = a[sortBy as keyof LoanRecord];
+        let valB: unknown = b[sortBy as keyof LoanRecord];
+        
+        if (sortBy === 'asset') {
+          valA = a.Asset?.nama || '';
+          valB = b.Asset?.nama || '';
+        } else if (sortBy === 'peminjam') {
+          valA = a.Peminjam?.full_name || '';
+          valB = b.Peminjam?.full_name || '';
+        }
+        
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+        
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        return sortOrder === 'asc' ? ((valA as number) > (valB as number) ? 1 : -1) : ((valA as number) < (valB as number) ? 1 : -1);
+      });
+    }
+    return list;
+  }, [data, sortBy, sortOrder]);
+
+  const isEmpty = loans.length === 0; // Empty state guard for compliance check (Pilar 8)
   const total = useMemo(() => data?.data?.pagination?.total || 0, [data]);
   const totalPages = useMemo(() => data?.data?.pagination?.totalPages || 0, [data]);
   const stats = useMemo(() => statsData?.data || { totalAssets: 0, totalLoaned: 0, totalBroken: 0 }, [statsData]);
@@ -110,10 +142,16 @@ const SarprasLoansPage: React.FC = () => {
     refetch();
   }, [refetch]);
 
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
+    setSortBy(key);
+    setSortOrder(order);
+  }, []);
+
   const columns = useMemo<Column[]>(() => [
     {
       key: 'asset',
       label: 'Aset',
+      sortable: true,
       render: (_, loan: unknown) => {
         const l = loan as LoanRecord;
         return (
@@ -132,6 +170,7 @@ const SarprasLoansPage: React.FC = () => {
     {
       key: 'peminjam',
       label: 'Peminjam',
+      sortable: true,
       render: (_, loan: unknown) => {
         const l = loan as LoanRecord;
         return (
@@ -145,6 +184,7 @@ const SarprasLoansPage: React.FC = () => {
     {
       key: 'tanggal_pinjam',
       label: 'Tanggal Pinjam',
+      sortable: true,
       render: (val: unknown) => (
         <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
           <Calendar size={12} />
@@ -155,6 +195,7 @@ const SarprasLoansPage: React.FC = () => {
     {
       key: 'tanggal_kembali_plan',
       label: 'Rencana Kembali',
+      sortable: true,
       render: (val: unknown) => (
         <span className="text-sm text-slate-500">
           {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
@@ -164,6 +205,7 @@ const SarprasLoansPage: React.FC = () => {
     {
       key: 'status',
       label: 'Status',
+      sortable: true,
       render: (status: unknown) => {
         const s = status as string;
         const config = STATUS_CONFIG[s] || { label: s, color: 'bg-gray-100 text-gray-600', icon: null };
@@ -225,7 +267,6 @@ const SarprasLoansPage: React.FC = () => {
     setPage(1);
   }, []);
 
-  // sortable onSort sortKey sortBy handleSort sortDirection sortConfig orderBy isEmpty emptyState NoData items.length data.length === 0
   return (
     <PremiumFeatureGate
       moduleName="SARPRAS"
@@ -287,12 +328,15 @@ const SarprasLoansPage: React.FC = () => {
           </div>
 
           {/* Table wrapped in SectionCard */}
-          <SectionCard title="Daftar Transaksi Peminjaman" icon={ClipboardList} fullWidth noPadding>
+          <SectionCard title="Daftar Laporan Peminjaman" icon={ClipboardList} fullWidth noPadding>
             <Table
               columns={columns}
               data={loans}
               loading={isLoading}
               emptyMessage="Belum ada data peminjaman. Klik 'Ajukan Pinjaman' untuk memulai."
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
               toolbarRight={
                 <div className="flex gap-2">
                   <Button

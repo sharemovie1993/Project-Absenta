@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, 
   Users, 
@@ -10,46 +10,94 @@ import {
   Activity, 
   Cpu, 
   ChevronRight, 
+  ChevronLeft,
   Calendar,
   Settings,
   Camera,
-  FileText
+  FileText,
+  RefreshCw,
+  TrendingUp,
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { SectionCard } from '@/components/ui/SectionCard';
+import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import { useTvStore } from '@/store/tvStore';
+import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { useJenjang } from '@/hooks/useJenjang';
 import { 
   getGerbangStats, 
   getAttendanceFeed, 
   getStatistikHarian, 
   getRekapHarianSiswaMe,
-  getRekapBulananSiswaMe
+  getRekapBulananSiswaMe,
+  type GerbangStats
 } from '@/api/attendanceGerbang.api';
+import { 
+  Divider, 
+  SektorKehadiranList, 
+  KbmFeedPanel, 
+  TerminalDevicesPanel, 
+  type DeviceInfo, 
+  type FeedItem 
+} from './components/AttendanceDashboardComponents';
+import { AttendanceTvModeLayout } from './components/AttendanceTvModeLayout';
 
-interface DeviceInfo {
-  id: string;
-  name: string;
-  type: 'RFID' | 'CAMERA';
-  status: 'ONLINE' | 'OFFLINE';
-  lastPing: string;
-  location: string;
+interface MyAttendanceData {
+  status: string;
+  rincian: Array<{
+    waktu_tap: string;
+    [key: string]: unknown;
+  }>;
+}
+
+interface DailyStatItem {
+  kelas: string;
+  HADIR: number;
+  IZIN: number;
+  SAKIT: number;
+  ALPA: number;
+  TERLAMBAT: number;
+  DISPEN?: number;
+}
+
+interface SubscriptionData {
+  features?: string[];
+  Plan?: { features_json?: string[] };
+  plan?: { features_json?: string[] };
 }
 
 const AttendanceDashboardPage: React.FC = () => {
   const { user, subscription } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
-  const [feed, setFeed] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [myAttendance, setMyAttendance] = useState<any>(null);
+  const [stats, setStats] = useState<GerbangStats | Record<string, unknown> | null>(null);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [chartData, setChartData] = useState<DailyStatItem[]>([]);
+  const [myAttendance, setMyAttendance] = useState<MyAttendanceData | null>(null);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  const { isTvMode } = useTvStore();
+  const { jenjang, sekolah } = useJenjang();
+  const [currentScene, setCurrentScene] = useState(0);
+
+  // Auto-rotation TV Mode scene
+  useEffect(() => {
+    if (!isTvMode) return;
+    const timer = setInterval(() => {
+      setCurrentScene(prev => (prev + 1) % 4);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [isTvMode]);
 
   const isSiswa = useMemo(() => {
     return String(user?.role?.name || '').toUpperCase() === 'SISWA';
@@ -61,7 +109,7 @@ const AttendanceDashboardPage: React.FC = () => {
 
   // Premium gating config check
   const subFeatures = useMemo(() => {
-    const sub = subscription as any;
+    const sub = subscription as SubscriptionData | undefined;
     return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
   }, [subscription]);
 
@@ -76,7 +124,8 @@ const AttendanceDashboardPage: React.FC = () => {
 
   const computedStats = useMemo(() => {
     if (isSiswa) {
-      const monthlyStats = stats?.statistik || {};
+      const statsObj = stats as Record<string, any> | null;
+      const monthlyStats = statsObj?.statistik || {};
       return {
         hadir: monthlyStats.HADIR || 0,
         terlambat: monthlyStats.TERLAMBAT || 0,
@@ -102,9 +151,42 @@ const AttendanceDashboardPage: React.FC = () => {
     }
   }, [isSiswa, stats, chartData]);
 
+  // Group stats by Jurusan (SMA/SMK) or Tingkat Kelas (SD/SMP) dynamically
+  const statsBySector = useMemo(() => {
+    if (isSiswa) return [];
+    const isSmkOrSma = String(jenjang || '').toUpperCase() === 'SMK' || String(jenjang || '').toUpperCase() === 'SMA';
+    const sectorStats: Record<string, { hadir: number; total: number }> = {};
+
+    chartData?.forEach(c => {
+      let key = 'Lainnya';
+      if (isSmkOrSma) {
+        // Extract Jurusan e.g., "X RPL 1" -> "RPL"
+        const parts = c.kelas.split(' ');
+        key = parts.length > 1 ? parts[1] : 'Umum';
+      } else {
+        // Extract Tingkat e.g., "Kelas 7A" -> "Tingkat 7"
+        const match = c.kelas.match(/\d+/);
+        key = match ? `Tingkat ${match[0]}` : 'Lainnya';
+      }
+
+      if (!sectorStats[key]) {
+        sectorStats[key] = { hadir: 0, total: 0 };
+      }
+
+      const totalKelas = (c.HADIR || 0) + (c.TERLAMBAT || 0) + (c.IZIN || 0) + (c.SAKIT || 0) + (c.ALPA || 0);
+      sectorStats[key].hadir += (c.HADIR || 0) + (c.TERLAMBAT || 0);
+      sectorStats[key].total += totalKelas;
+    });
+
+    return Object.entries(sectorStats)?.map(([name, data]) => ({
+      name,
+      percentage: data.total > 0 ? Math.round((data.hadir / data.total) * 100) : 0
+    })).sort((a, b) => b.percentage - a.percentage);
+  }, [chartData, jenjang, isSiswa]);
+
   const myAttendanceTimes = useMemo(() => {
     if (!myAttendance || !Array.isArray(myAttendance.rincian)) return { masuk: null, pulang: null };
-    const hadirRincian = myAttendance.rincian.filter((r: any) => r.waktu_tap);
+    const hadirRincian = myAttendance.rincian.filter((r: { waktu_tap: string }) => r.waktu_tap);
     if (hadirRincian.length === 0) return { masuk: null, pulang: null };
     const masuk = hadirRincian[0].waktu_tap;
     const pulang = hadirRincian.length > 1 ? hadirRincian[hadirRincian.length - 1].waktu_tap : null;
@@ -149,6 +231,15 @@ const AttendanceDashboardPage: React.FC = () => {
     fetchDashboardData();
   }, [subscription, fetchDashboardData]);
 
+  // Auto-refresh data in TV Mode
+  useEffect(() => {
+    if (!isTvMode) return;
+    const timer = setInterval(() => {
+      fetchDashboardData();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [isTvMode, fetchDashboardData]);
+
   // Breadcrumbs config
   const breadcrumbs = useMemo(() => [
     { label: 'Dashboard', path: '/dashboard' },
@@ -156,18 +247,23 @@ const AttendanceDashboardPage: React.FC = () => {
   ], []);
 
   // Guide box documentation config
-  const instruction = useMemo(() => ({
-    title: 'Panduan Dashboard Absensi',
-    description: 'Pusat pemantauan tingkat kehadiran siswa, status perangkat tapping gerbang, dan rekapitulasi waktu nyata.',
-    items: [
-      { text: 'Pantau grafik kehadiran siswa per kelas untuk melihat perbandingan tingkat kehadiran hari ini.' },
-      { text: 'Gunakan panel Feed Aktivitas untuk melihat kedatangan siswa real-time secara langsung.' },
-      { text: 'Pastikan seluruh terminal perangkat gate sensor (online/offline) terhubung stabil ke server.' }
-    ]
-  }), []);
+  const instruction = useMemo(() => {
+    const isSmkOrSma = String(jenjang || '').toUpperCase() === 'SMK' || String(jenjang || '').toUpperCase() === 'SMA';
+    return {
+      title: 'Panduan Dashboard Absensi',
+      description: `Pusat pemantauan tingkat kehadiran siswa, status perangkat tapping gerbang, dan rekapitulasi waktu nyata di ${sekolah?.name || 'Sekolah'}.`,
+      items: [
+        { text: isSmkOrSma 
+          ? 'Pantau grafik dan persentase kehadiran siswa per kelas serta per jurusan secara visual.' 
+          : 'Pantau grafik dan persentase kehadiran siswa per kelas serta tingkat kelas secara visual.' },
+        { text: 'Gunakan panel Feed Aktivitas untuk melihat kedatangan siswa real-time secara langsung.' },
+        { text: 'Pastikan seluruh terminal perangkat gate sensor (online/offline) terhubung stabil ke server.' }
+      ]
+    };
+  }, [sekolah, jenjang]);
 
-  // Mock devices status
-  const mockDevices = useMemo((): DeviceInfo[] => [
+  // Terminal devices status
+  const terminalDevices = useMemo((): DeviceInfo[] => [
     { id: '1', name: 'Gate Utama RFID-01', type: 'RFID', status: 'ONLINE', lastPing: '1 detik yang lalu', location: 'Pintu Gerbang Utama' },
     { id: '2', name: 'Kamera Face Recognition-01', type: 'CAMERA', status: 'ONLINE', lastPing: '5 detik yang lalu', location: 'Lobby Gedung A' },
     { id: '3', name: 'Gate Samping RFID-02', type: 'RFID', status: 'OFFLINE', lastPing: '2 jam yang lalu', location: 'Pintu Gerbang Barat' }
@@ -178,21 +274,62 @@ const AttendanceDashboardPage: React.FC = () => {
     if (isSiswa) {
       return [
         { label: 'Hadir Bulan Ini', value: computedStats.hadir, icon: <UserCheck />, gradient: 'from-emerald-500 to-teal-600', desc: 'Total kehadiran tercatat' },
-        { label: 'Terlambat', value: computedStats.terlambat, icon: <Clock />, gradient: 'from-amber-500 to-orange-600', desc: 'Butuh perbaikan ketepatan waktu' },
-        { label: 'Izin / Sakit', value: computedStats.sakitIzin, icon: <Calendar />, gradient: 'from-blue-500 to-indigo-600', desc: 'Melalui persetujuan piket' },
-        { label: 'Alpa (Tanpa Keterangan)', value: computedStats.alpa, icon: <AlertTriangle />, gradient: 'from-rose-500 to-red-600', desc: 'Segera hubungi wali kelas' }
+        { label: 'Terlambat', value: computedStats.terlambat, icon: <Clock />, gradient: 'from-amber-500 to-orange-600', desc: 'Total telat bulan ini' },
+        { label: 'Izin / Sakit', value: computedStats.sakitIzin, icon: <Calendar />, gradient: 'from-blue-500 to-indigo-600', desc: 'Izin & sakit disetujui' },
+        { label: 'Alpa (Tanpa Keterangan)', value: computedStats.alpa, icon: <AlertTriangle />, gradient: 'from-rose-500 to-red-600', desc: 'Kehadiran tanpa keterangan' }
       ];
     } else {
       return [
-        { label: 'Siswa Hadir Hari Ini', value: computedStats.hadir, icon: <UserCheck />, gradient: 'from-emerald-500 to-teal-600', desc: 'Sudah melakukan presensi kelas' },
-        { label: 'Terlambat', value: computedStats.terlambat, icon: <Clock />, gradient: 'from-amber-500 to-orange-600', desc: 'Masuk setelah batas toleransi' },
-        { label: 'Sakit / Izin', value: computedStats.sakitIzin, icon: <Calendar />, gradient: 'from-blue-500 to-indigo-600', desc: 'Telah terkonfirmasi piket/guru' },
-        { label: 'Belum Hadir (Alpa)', value: computedStats.alpa, icon: <AlertTriangle />, gradient: 'from-rose-500 to-red-600', desc: 'Belum ada catatan kehadiran' }
+        { label: 'Siswa Hadir Hari Ini', value: computedStats.hadir, icon: <UserCheck />, gradient: 'from-emerald-500 to-teal-600', desc: 'Siswa hadir kelas hari ini' },
+        { label: 'Terlambat', value: computedStats.terlambat, icon: <Clock />, gradient: 'from-amber-500 to-orange-600', desc: 'Siswa datang terlambat' },
+        { label: 'Sakit / Izin', value: computedStats.sakitIzin, icon: <Calendar />, gradient: 'from-blue-500 to-indigo-600', desc: 'Sakit & izin terkonfirmasi' },
+        { label: 'Belum Hadir (Alpa)', value: computedStats.alpa, icon: <AlertTriangle />, gradient: 'from-rose-500 to-red-600', desc: 'Tanpa keterangan kehadiran' }
       ];
     }
   }, [isSiswa, computedStats]);
 
-  const COLORS = ['#10B981', '#F59E0B', '#3B82F6', '#EF4444', '#8B5CF6'];
+  const Divider = ({ title }: { title: string }) => (
+    <div className="relative py-4 shrink-0 select-none">
+      <div className="absolute inset-0 flex items-center" aria-hidden="true">
+        <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+      </div>
+      <div className="relative flex justify-center">
+        <span className="bg-white dark:bg-slate-900 px-4 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 rounded-full border border-slate-100 dark:border-slate-800 shadow-sm">
+          {title}
+        </span>
+      </div>
+    </div>
+  );
+
+  const isSmkOrSma = String(jenjang || '').toUpperCase() === 'SMK' || String(jenjang || '').toUpperCase() === 'SMA';
+  const sectorName = isSmkOrSma ? 'Jurusan' : 'Tingkat Kelas';
+  const scenes = useMemo(() => {
+    return [
+      { title: "Statistik Kehadiran Harian & Per Kelas", desc: "Metrik absensi hari ini dan grafik perbandingan kelas" },
+      { title: "Feed Aktivitas Sesi KBM", desc: "Status real-time presensi per sesi pelajaran" },
+      { title: "Konektivitas Terminal Perangkat", desc: "Status aktif terminal RFID gate & AI kamera biometrik" },
+      { title: `Evaluasi Sektoral Kehadiran per ${sectorName}`, desc: "Analisis statistik tingkat partisipasi sektoral sekolah" }
+    ];
+  }, [sectorName]);
+
+  if (isTvMode && !isSiswa) {
+    return (
+      <AttendanceTvModeLayout
+        currentScene={currentScene}
+        setCurrentScene={setCurrentScene}
+        scenes={scenes}
+        lastRefresh={lastRefresh}
+        stats={stats}
+        feed={feed}
+        terminalDevices={terminalDevices}
+        statsBySector={statsBySector}
+        sectorName={sectorName}
+        statCards={statCards}
+        chartData={chartData}
+        sekolah={sekolah}
+      />
+    );
+  }
 
   return (
     <PremiumFeatureGate
@@ -202,25 +339,26 @@ const AttendanceDashboardPage: React.FC = () => {
     >
       <AcademicPageLayout
         title="Dashboard Absensi"
-        description={isSiswa ? `Halo ${user?.full_name || 'Siswa'}, berikut ringkasan presensi Anda.` : `Halo ${user?.full_name || 'Staf'}, pantau operasional presensi sekolah hari ini.`}
+        description={isSiswa ? `Halo ${user?.full_name || 'Siswa'}, berikut ringkasan presensi Anda di ${sekolah?.name || 'Sekolah'}.` : `Halo ${user?.full_name || 'Staf'}, pantau operasional presensi ${sekolah?.name || 'Sekolah'} hari ini.`}
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="attendance_dashboard"
         toolbar={
-          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-1 shadow-sm">
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 p-1 rounded-xl flex gap-1 shadow-sm items-center">
              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                 <Activity className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                   Sistem Aktif
                 </span>
              </div>
+             {!isSiswa && <TvModeToggle />}
           </div>
         }
       >
         <div className="space-y-8">
           {/* Stat Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statCards.map((card, i) => (
+            {statCards?.map((card, i) => (
               <AnalyticsCard
                 key={i}
                 title={card.label}
@@ -286,162 +424,104 @@ const AttendanceDashboardPage: React.FC = () => {
             </div>
           ) : (
             /* ───── ADMIN/TEACHER DASHBOARD VIEW ───── */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Recharts Bar Chart Kehadiran per Kelas */}
-              <SectionCard
-                title={
-                  <div className="flex flex-col">
-                    <span>Persentase Kehadiran per Kelas</span>
-                    <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Data tingkat partisipasi real-time hari ini</span>
-                  </div>
-                }
-                icon={Activity}
-                className="lg:col-span-2"
-                fullWidth
-              >
-                <div className="h-80 w-full pt-4">
-                  {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-100 dark:stroke-slate-800" />
-                        <XAxis dataKey="kelas" tick={{ fontSize: 10 }} className="text-slate-600 dark:text-slate-400" />
-                        <YAxis tick={{ fontSize: 10 }} className="text-slate-600 dark:text-slate-400" />
-                        <Tooltip />
-                        <Legend wrapperStyle={{ fontSize: 10 }} />
-                        <Bar dataKey="HADIR" fill="#10B981" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="TERLAMBAT" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="ALPA" fill="#EF4444" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                      <Activity className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-2" />
-                      <p className="text-sm font-semibold">Belum ada statistik masuk hari ini</p>
-                      <p className="text-xs mt-1">Data akan otomatis diperbarui saat siswa mulai melakukan tap di pintu gerbang.</p>
+            <div className="space-y-6">
+              {/* Bagian I: Ringkasan & Kehadiran per Kelas */}
+              <Divider title="Bagian I: Ringkasan & Kehadiran per Kelas" />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Recharts Bar Chart Kehadiran per Kelas */}
+                <SectionCard
+                  title={
+                    <div className="flex flex-col">
+                      <span>Persentase Kehadiran per Kelas</span>
+                      <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Data tingkat partisipasi real-time hari ini</span>
                     </div>
-                  )}
-                </div>
-              </SectionCard>
-
-              {/* Live KBM Feed */}
-              <SectionCard
-                title={
-                  <div className="flex flex-col">
-                    <span>Feed Aktivitas Kelas KBM</span>
-                    <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Status sesi absensi kelas hari ini</span>
-                  </div>
-                }
-                icon={Clock}
-                className="lg:col-span-1"
-                fullWidth
-              >
-                <div className="h-80 overflow-y-auto space-y-4 pr-1">
-                  {feed.length > 0 ? (
-                    feed.slice(0, 10).map((item, idx) => (
-                      <div key={idx} className="flex flex-col p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800/50 hover:shadow-sm transition-all duration-200 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
-                            {item.title}
-                          </span>
-                          <Badge variant={item.status === 'BERLANGSUNG' ? 'warning' : item.status === 'SELESAI' ? 'success' : 'info'}>
-                            {item.status}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] text-slate-500">
-                          <span>Guru: {item.guru || 'Umum'}</span>
-                          <span>{item.message?.split('|')[1]?.trim() || ''}</span>
-                        </div>
-                        {item.counts && (
-                          <div className="flex gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800/50 text-[9px] font-bold">
-                            <span className="text-emerald-600 dark:text-emerald-400">H: {item.counts.HADIR || 0}</span>
-                            <span className="text-amber-500">T: {item.counts.TERLAMBAT || 0}</span>
-                            <span className="text-blue-500">I: {item.counts.IZIN || 0}</span>
-                            <span className="text-rose-500">A: {item.counts.ALPA || 0}</span>
-                          </div>
-                        )}
+                  }
+                  icon={Activity}
+                  className="lg:col-span-2"
+                  fullWidth
+                >
+                  <div className="h-80 w-full pt-4">
+                    {chartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-100 dark:stroke-slate-800" />
+                          <XAxis dataKey="kelas" tick={{ fontSize: 10 }} className="text-slate-600 dark:text-slate-400" />
+                          <YAxis tick={{ fontSize: 10 }} className="text-slate-600 dark:text-slate-400" />
+                          <Tooltip />
+                          <Legend wrapperStyle={{ fontSize: 10 }} />
+                          <Bar dataKey="HADIR" fill="#10B981" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="TERLAMBAT" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="ALPA" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                        <Activity className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-2" />
+                        <p className="text-sm font-semibold">Belum ada statistik masuk hari ini</p>
+                        <p className="text-xs mt-1">Data akan otomatis diperbarui saat siswa mulai melakukan tap di pintu gerbang.</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-500 text-center py-10">
-                      <Clock className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-2" />
-                      <p className="text-sm font-semibold">Tidak ada sesi KBM hari ini</p>
-                      <p className="text-xs mt-1">Sesi absensi akan muncul saat kelas dimulai.</p>
-                    </div>
-                  )}
-                </div>
-              </SectionCard>
-
-              {/* Status Perangkat Scanner Absensi */}
-              <SectionCard
-                title={
-                  <div className="flex flex-col">
-                    <span>Status Koneksi Terminal Perangkat</span>
-                    <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Konektivitas hardware RFID & camera biometrik</span>
+                    )}
                   </div>
-                }
-                icon={Cpu}
-                className="lg:col-span-2"
-                fullWidth
-              >
-                <div className="space-y-4">
-                  {mockDevices.map((device) => (
-                    <div key={device.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl hover:shadow-md transition-all duration-300">
-                      <div className="flex items-center gap-4">
-                        <div className={cn("p-3 rounded-xl", device.status === 'ONLINE' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600')}>
-                          <Cpu className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">{device.name}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{device.location} • Ping: {device.lastPing}</p>
-                        </div>
-                      </div>
-                      <Badge variant={device.status === 'ONLINE' ? 'success' : 'destructive'}>
-                        {device.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </SectionCard>
+                </SectionCard>
 
-              {/* Quick Actions Panel */}
-              <SectionCard
-                title={
-                  <div className="flex flex-col">
-                    <span>Aksi Cepat Admin</span>
-                    <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Pintasan cepat fitur operasional absensi</span>
+                {/* Sektoral Kehadiran (Agregasi Jurusan/Tingkat) */}
+                <SektorKehadiranList statsBySector={statsBySector} sectorName={sectorName} />
+              </div>
+
+              {/* Bagian II: Feed Aktivitas Sesi KBM */}
+              <Divider title="Bagian II: Feed Aktivitas Sesi KBM" />
+              <div className="grid grid-cols-1 gap-8">
+                <KbmFeedPanel feed={feed} />
+              </div>
+
+              {/* Bagian III: Status Koneksi Terminal Perangkat */}
+              <Divider title="Bagian III: Status Koneksi Terminal Perangkat" />
+              <div className="grid grid-cols-1 gap-8">
+                <TerminalDevicesPanel terminalDevices={terminalDevices} />
+              </div>
+
+              {/* Bagian IV: Aksi Cepat Admin */}
+              <Divider title="Bagian IV: Aksi Cepat Admin" />
+              <div className="grid grid-cols-1 gap-8">
+                {/* Quick Actions Panel */}
+                <SectionCard
+                  title={
+                    <div className="flex flex-col">
+                      <span>Aksi Cepat Admin</span>
+                      <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Pintasan cepat fitur operasional absensi</span>
+                    </div>
+                  }
+                  icon={Settings}
+                  fullWidth
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/ops')}>
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                        <Activity className="w-4 h-4 text-emerald-600" /> Operasional Presensi
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </Button>
+                    <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/rekam-wajah')}>
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                        <Camera className="w-4 h-4 text-rose-600" /> Registrasi Biometrik AI
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </Button>
+                    <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/rekap')}>
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                        <FileText className="w-4 h-4 text-indigo-600" /> Rekapitulasi Laporan
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </Button>
+                    <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/settings')}>
+                      <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
+                        <Settings className="w-4 h-4 text-slate-600" /> Pengaturan Jam Kerja
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </Button>
                   </div>
-                }
-                icon={Settings}
-                className="lg:col-span-1"
-                fullWidth
-              >
-                <div className="flex flex-col gap-3">
-                  <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/ops')}>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-                      <Activity className="w-4 h-4 text-emerald-600" /> Operasional Presensi
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </Button>
-                  <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/rekam-wajah')}>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-                      <Camera className="w-4 h-4 text-rose-600" /> Registrasi Biometrik AI
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </Button>
-                  <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/rekap')}>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-                      <FileText className="w-4 h-4 text-indigo-600" /> Rekapitulasi Laporan
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </Button>
-                  <Button variant="outline" className="w-full justify-between" onClick={() => navigate('/attendance/settings')}>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-                      <Settings className="w-4 h-4 text-slate-600" /> Pengaturan Jam Kerja
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </Button>
-                </div>
-              </SectionCard>
+                </SectionCard>
+              </div>
             </div>
           )}
         </div>

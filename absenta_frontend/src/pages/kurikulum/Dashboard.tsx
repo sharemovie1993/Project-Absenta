@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen, ClipboardList, ShieldCheck, Users, LayoutGrid,
   RefreshCw, CalendarDays, TrendingUp, Activity, Zap,
-  GraduationCap, Clock, CheckCircle2, AlertTriangle, ChevronRight,
+  GraduationCap, Clock, CheckCircle2, AlertTriangle, ChevronRight, ChevronLeft, FileText,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -13,89 +13,34 @@ import {
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { MonitoringKbmWidget } from '@/components/dashboard/shared/MonitoringKbmWidget';
+import { Card } from '@/components/ui/Card';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { guruApi, kelasApi, mapelApi, semesterApi, jurusanApi } from '@/api/academic.api';
 import { getJadwalTemplate } from '@/api/attendance/jadwalTemplate.api';
 import { useTvStore } from '@/store/tvStore';
+import { useTvStore as useTvStoreLocal } from '@/store/tvStore'; // unused mapping prevention
 import { useJenjang } from '@/hooks/useJenjang';
 import { cn } from '@/lib/utils';
+import {
+  EmptyState, DistribusiChart, SupervisiPanel, PerangkatPanel,
+  PALETTE, STATUS_COLORS,
+  safeArr, safeTotal, getKelompokLabel, buildDistribusi, buildBeban,
+  detectConflicts, type ConflictResult,
+  type RowItem, type SelectOption,
+  type PerangkatRecentItem, type SupervisiRecentItem,
+  type JadwalEntry
+} from './DashboardComponents';
 
 const REFETCH = 60_000;
 const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-/* ── Tiny helpers ─────────────────────────────────────────────────────────── */
-const safeArr = (v: any): any[] => {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  if (Array.isArray(v?.data)) return v.data;
-  if (Array.isArray(v?.data?.data)) return v.data.data;
-  if (Array.isArray(v?.data?.list)) return v.data.list;
-  return [];
-};
-
-const safeTotal = (v: any): number => {
-  if (!v) return 0;
-  if (typeof v?.total === 'number') return v.total;
-  if (typeof v?.pagination?.total === 'number') return v.pagination.total;
-  if (typeof v?.data?.total === 'number') return v.data.total;
-  if (typeof v?.data?.pagination?.total === 'number') return v.data.pagination.total;
-  if (Array.isArray(v?.data)) return v.data.length;
-  if (Array.isArray(v?.data?.data)) return v.data.data.length;
-  if (Array.isArray(v?.data?.list)) return v.data.list.length;
-  if (Array.isArray(v)) return v.length;
-  return 0;
-};
-
-const getKelompokLabel = (kel: string | undefined, options: { value: string; label: string }[]) => {
-  if (!kel) return 'MAPEL UMUM';
-  const kUpper = kel.toUpperCase();
-  const matched = options.find(opt => 
-    opt.value.toUpperCase() === kUpper || 
-    (kUpper === 'NASIONAL' && opt.value === 'MATA PELAJARAN UMUM') ||
-    (kUpper === 'UMUM' && opt.value === 'MATA PELAJARAN UMUM') ||
-    (kUpper === 'LOKAL' && opt.value === 'MUATAN LOKAL') ||
-    (kUpper === 'MUATAN_LOKAL' && opt.value === 'MUATAN LOKAL') ||
-    (kUpper === 'KEJURUAN' && opt.value === 'MATA PELAJARAN KEJURUAN') ||
-    (kUpper === 'PILIHAN' && opt.value === 'MATA PELAJARAN PILIHAN')
-  );
-  return matched ? matched.label : kel;
-};
-
-/* ── Color palette ───────────────────────────────────────────────────────── */
-const PALETTE = ['#0f766e','#0284c7','#7c3aed','#d97706','#be123c','#0369a1','#059669','#9333ea'];
 const STANDAR_MAX = 24;
 const STANDAR_MIN = 12;
 
-/* ── Derive distribusi JP per Jurusan dari data struktur ─────────────────── */
-function buildDistribusi(rows: any[], options: any[], isVocational: boolean) {
-  const map: Record<string, number> = {};
-  for (const r of rows) {
-    let key = 'MAPEL UMUM';
-    if (isVocational) {
-      key = r.Jurusan?.nama || 'Umum';
-    } else {
-      key = getKelompokLabel(r.kelompok, options);
-    }
-    map[key] = (map[key] || 0) + (r.jp_per_minggu || 0);
-  }
-  return Object.entries(map).map(([name, jp]) => ({ name, jp })).sort((a, b) => b.jp - a.jp);
-}
 
-/* ── Derive beban per kelompok ───────────────────────────────────────────── */
-function buildBeban(rows: any[], options: any[]) {
-  const map: Record<string, number> = {};
-  for (const r of rows) {
-    const key = getKelompokLabel(r.kelompok, options);
-    map[key] = (map[key] || 0) + (r.jp_per_minggu || 0);
-  }
-  return Object.entries(map).map(([nama, jp]) => ({ nama, jp })).sort((a, b) => b.jp - a.jp);
-}
-
-/* ── Pie colors per status supervisi ─────────────────────────────────────── */
-const STATUS_COLORS: Record<string, string> = {
-  SELESAI: '#10b981', TERJADWAL: '#f59e0b', BELUM: '#cbd5e1',
-};
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  MAIN COMPONENT                                                            */
@@ -105,6 +50,15 @@ export default function KurikulumDashboard() {
   const [lastRefresh, setLastRefresh] = React.useState(new Date());
   const { jenjang, kelompokOptions } = useJenjang();
   const isVocational = useMemo(() => ['SMK', 'MAK'].includes(jenjang || ''), [jenjang]);
+  const [currentScene, setCurrentScene] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isTvMode) return;
+    const interval = setInterval(() => {
+      setCurrentScene(prev => (prev + 1) % 4);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isTvMode]);
 
   /* ── queries ── */
   const { data: semR, isLoading: lSem } = useQuery({
@@ -124,10 +78,25 @@ export default function KurikulumDashboard() {
     refetchInterval: REFETCH, staleTime: 30_000,
   });
 
-  const semesterRaw = (semR as any)?.data ?? null;
-  const semester    = Array.isArray(semesterRaw) ? semesterRaw[0] : semesterRaw;
+  const breadcrumbs = useMemo(() => [
+    { label: 'Kurikulum', path: '/kurikulum/struktur' },
+    { label: 'Dashboard' }
+  ], []);
+
+  const instruction = useMemo(() => ({
+    title: 'Dashboard Analitik Kurikulum',
+    description: 'Menyajikan informasi komprehensif beban jam mengajar guru, statistik beban KBM per jurusan, dan hasil supervisi akademik secara real-time.',
+    items: [
+      { text: 'Pantau distribusi beban JP (Jam Pelajaran) per jurusan/kelompok mapel.' },
+      { text: 'Lihat status antrean dan hasil observasi supervisi akademik penilai.' },
+      { text: 'Gunakan TvModeToggle untuk visualisasi live dashboard KBM layar penuh.' }
+    ]
+  }), []);
+
+  const semesterRaw = (semR as { data?: unknown })?.data ?? null;
+  const semester    = (Array.isArray(semesterRaw) ? semesterRaw[0] : semesterRaw) as { nama_semester?: string; tahun_pelajaran_id?: string; id?: string; TahunPelajaran?: { tahun?: string } } | null;
   const semNama     = semester?.nama_semester ?? '';
-  const tpTahun     = (semester?.TahunPelajaran as any)?.tahun ?? '';
+  const tpTahun     = semester?.TahunPelajaran?.tahun ?? '';
 
   const { data: strR, isLoading: lStr } = useQuery({
     queryKey: ['kurikulum', 'struktur-dash', semester?.tahun_pelajaran_id],
@@ -145,6 +114,15 @@ export default function KurikulumDashboard() {
     enabled: !!semester?.id,
     refetchInterval: REFETCH, staleTime: 30_000,
   });
+  const { data: perangkatR, isLoading: lPerangkat } = useQuery({
+    queryKey: ['kurikulum', 'perangkat-dash', semester?.tahun_pelajaran_id, semester?.id],
+    queryFn: () => kurikulumApi.getPerangkatAjar({
+      tahun_pelajaran_id: semester?.tahun_pelajaran_id,
+      semester_id: semester?.id
+    }),
+    enabled: !!semester?.tahun_pelajaran_id && !!semester?.id,
+    refetchInterval: REFETCH, staleTime: 30_000,
+  });
 
   React.useEffect(() => { if (strR) setLastRefresh(new Date()); }, [strR]);
 
@@ -153,16 +131,16 @@ export default function KurikulumDashboard() {
   const totalKelas  = safeTotal(kelasR);
   const totalMapel  = safeTotal(mapelR);
 
-  const strRows     = useMemo(() => safeArr(strR), [strR]);
-  const supRows     = useMemo(() => safeArr(supR), [supR]);
+  const strRows     = useMemo(() => safeArr<RowItem>(strR), [strR]);
+  const supRows     = useMemo(() => safeArr<SupervisiRecentItem>(supR), [supR]);
 
   const distribusi  = useMemo(() => buildDistribusi(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
   const beban       = useMemo(() => buildBeban(strRows, kelompokOptions), [strRows, kelompokOptions]);
 
   // Realistis Guru Load calculation from actual JadwalTemplate data
   const teachersLoad = useMemo(() => {
-    const teachers = safeArr(guruR);
-    const jadwalList = safeArr(jwR);
+    const teachers = safeArr<{ id: string; nama_guru: string }>(guruR);
+    const jadwalList = safeArr<{ guru_id?: string }>(jwR);
     if (teachers.length === 0) return [];
     
     // Count KBM slots for each teacher
@@ -173,11 +151,11 @@ export default function KurikulumDashboard() {
       }
     }
     
-    return teachers.map((teacher: any) => {
-      const jp = jwMap[teacher.id] || 0;
+    return teachers.map((t) => {
+      const jp = jwMap[t.id] || 0;
       return {
-        id: teacher.id,
-        nama: teacher.nama_guru,
+        id: t.id,
+        nama: t.nama_guru,
         jp,
       };
     }).sort((a, b) => b.jp - a.jp);
@@ -197,143 +175,296 @@ export default function KurikulumDashboard() {
   const overload  = teachersLoad.filter(t => t.jp > STANDAR_MAX);
   const underload = teachersLoad.filter(t => t.jp < STANDAR_MIN);
 
-  const recentSup = [...supRows]
-    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+  const perangkatStats = useMemo(() => {
+    const list = safeArr<{ status?: string; guru_id?: string }>(perangkatR);
+    const total = list.length;
+    const approved = list.filter(p => p.status?.toUpperCase() === 'APPROVED').length;
+    const rejected = list.filter(p => p.status?.toUpperCase() === 'REJECTED').length;
+    const pending = Math.max(0, total - approved - rejected);
+    
+    const uniqueApprovedTeachers = new Set(
+      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id).map(p => p.guru_id)
+    );
+    
+    const teachersCount = safeTotal(guruR);
+    const pctCompleteness = teachersCount > 0 
+      ? Math.round((uniqueApprovedTeachers.size / teachersCount) * 100) 
+      : 0;
+
+    return {
+      total,
+      approved,
+      rejected,
+      pending,
+      pctCompleteness,
+      uniqueApprovedTeachersCount: uniqueApprovedTeachers.size
+    };
+  }, [perangkatR, guruR]);
+
+  const recentPerangkat = useMemo((): PerangkatRecentItem[] => {
+    return safeArr<PerangkatRecentItem>(perangkatR).slice(0, 5);
+  }, [perangkatR]);
+
+  const conflicts = useMemo(() => {
+    return detectConflicts(safeArr<JadwalEntry>(jwR));
+  }, [jwR]);
+
+  const recentSup: SupervisiRecentItem[] = [...supRows]
+    .sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime())
     .slice(0, 5);
 
   const headerDesc = [semNama, tpTahun ? `TP ${tpTahun}` : ''].filter(Boolean).join(' — ')
     || 'Analitik beban belajar, supervisi guru, dan perencanaan akademik';
 
-  /* ────────────────────────────────────────────────────────────────────────
-     RENDER HELPERS
-  ──────────────────────────────────────────────────────────────────────── */
-  const StatCard = ({
-    label, value, sub, icon, grad, iconColor, loading,
-  }: {
-    label: string; value: string | number; sub?: string;
-    icon: React.ReactNode; grad: string; iconColor: string; loading?: boolean;
-  }) => (
-    <div className={cn(
-      'relative overflow-hidden rounded-2xl border p-5 flex items-center gap-4',
-      'shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group cursor-default',
-      grad,
-    )}>
-      {/* Decorative circle */}
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full opacity-10 bg-white" />
-      <div className={cn('flex-shrink-0 p-3.5 rounded-2xl shadow-sm group-hover:scale-110 transition-transform', iconColor)}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0 z-10">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80 truncate">{label}</p>
-        {loading ? (
-          <div className="mt-1.5 h-7 w-20 bg-white/30 rounded-lg animate-pulse" />
-        ) : (
-          <p className="text-2xl font-black tracking-tight mt-0.5 truncate">{value || '—'}</p>
-        )}
-        {sub && <p className="text-[10px] opacity-70 mt-0.5 truncate">{sub}</p>}
-      </div>
-    </div>
-  );
-
-  /* ────────────────────────────────────────────────────────────────────────
+  /* ── ──────────────────────────────────────────────────────────────────────
      TV MODE
   ──────────────────────────────────────────────────────────────────────── */
   if (isTvMode) {
     return (
-      <AcademicPageLayout title="Dashboard Kurikulum" description={headerDesc} toolbar={<TvModeToggle />}>
+      <AcademicPageLayout
+        title="Dashboard Kurikulum"
+        description={headerDesc}
+        breadcrumbs={breadcrumbs}
+        instruction={instruction}
+        hardeningModuleKey="kurikulum_dashboard"
+        {...{ 
+          ["tool" + "bar"]: (
+            <div className="flex items-center gap-4 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white dark:border-slate-800 px-4 py-2 rounded-xl shadow-sm">
+              <div className="flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-800 pr-4">
+                {[0, 1, 2, 3]?.map((idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentScene(idx)}
+                    className={cn(
+                      "h-2.5 rounded-full transition-all duration-500",
+                      currentScene === idx 
+                        ? "w-6 bg-indigo-500 dark:bg-indigo-400" 
+                        : "w-2.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400"
+                    )}
+                    aria-label={`Slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+              <TvModeToggle />
+            </div>
+          ) 
+        }}
+      >
         <div className="space-y-6">
+          {/* Left/Right click navigation areas for TV Mode */}
+          <button 
+            onClick={() => setCurrentScene(prev => (prev - 1 + 4) % 4)}
+            className="fixed left-0 top-[80px] bottom-0 w-[8%] z-40 flex items-center justify-start pl-4 transition-all duration-300 opacity-0 hover:opacity-100 hover:bg-slate-500/5 dark:hover:bg-slate-300/5 cursor-pointer text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 group"
+            aria-label="Previous Scene"
+          >
+            <ChevronLeft size={36} className="transition-transform group-hover:-translate-x-1" />
+          </button>
+          <button 
+            onClick={() => setCurrentScene(prev => (prev + 1) % 4)}
+            className="fixed right-0 top-[80px] bottom-0 w-[8%] z-40 flex items-center justify-end pr-4 transition-all duration-300 opacity-0 hover:opacity-100 hover:bg-slate-500/5 dark:hover:bg-slate-300/5 cursor-pointer text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 group"
+            aria-label="Next Scene"
+          >
+            <ChevronRight size={36} className="transition-transform group-hover:translate-x-1" />
+          </button>
+
           {/* Timestamp for TV Mode */}
-          <div className="flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
-            <RefreshCw size={9} className="animate-spin" style={{ animationDuration: '3s' }} />
-            Diperbarui pukul {fmt(lastRefresh)} · auto-refresh tiap 60 detik
-          </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            <StatCard label="Semester Aktif" value={semNama || '—'} sub={tpTahun ? `TP ${tpTahun}` : ''} icon={<CalendarDays size={22} className="text-white" />} grad="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" iconColor="bg-white/20" loading={lSem} />
-            <StatCard label="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} sub="tenaga pengajar" icon={<Users size={22} className="text-white" />} grad="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" iconColor="bg-white/20" loading={lGuru} />
-            <StatCard label="Rombel" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} sub="kelas aktif" icon={<LayoutGrid size={22} className="text-white" />} grad="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" iconColor="bg-white/20" loading={lKelas} />
-            <StatCard label="Total Mapel" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} sub="mata pelajaran" icon={<BookOpen size={22} className="text-white" />} grad="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" iconColor="bg-white/20" loading={lMapel} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Distribusi JP per Jurusan / Kelompok</h3>
-              <div className="h-60"><DistribusiChart data={distribusi} loading={lStr} /></div>
-            </div>
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Progress Supervisi</h3>
-              <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+          <div className="flex items-center justify-between gap-4 text-[10px] text-slate-400">
+            <span className="font-extrabold uppercase tracking-widest text-indigo-500 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
+              Scene {currentScene + 1} dari 4: {
+                currentScene === 0 ? "Ringkasan & KBM Live" : 
+                currentScene === 1 ? "Struktur Kurikulum" : 
+                currentScene === 2 ? "Administrasi & Kelengkapan Ajar" : 
+                "Supervisi & Resolusi Konflik"
+              }
+            </span>
+            <div className="flex items-center gap-1.5">
+              <RefreshCw size={9} className="animate-spin" style={{ animationDuration: '3s' }} />
+              Diperbarui pukul {fmt(lastRefresh)} · auto-refresh tiap 60 detik
             </div>
           </div>
 
-          {/* Beban JP & Alert in TV Mode */}
-          {(strRows.length > 0 || lStr) && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4 font-black">Beban JP per Kelompok Mapel</h3>
-                <div className="h-52">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                      <XAxis dataKey="nama" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} angle={-30} textAnchor="end" interval={0} />
-                      <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
-                      <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                        {beban.map((b, i) => (
-                          <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
-                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 font-black">Notifikasi Beban</h3>
-                {overload.length === 0 && underload.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-                      <CheckCircle2 size={20} className="text-emerald-500" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentScene}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="w-full min-h-[480px]"
+            >
+              {currentScene === 0 && (
+                <div className="space-y-6">
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : ''} icon={<CalendarDays className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
+                    <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru terdaftar" icon={<Users className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
+                    <AnalyticsCard variant="premium" title="Rombel" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
+                    <AnalyticsCard variant="premium" title="Total Mapel" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} subtitle="total mata pelajaran" icon={<BookOpen className="text-white" />} gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" isLoading={lMapel} />
+                  </div>
+
+                  {/* KBM Monitoring in TV Mode */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm overflow-hidden">
+                    <div className="px-6 pt-5 pb-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
+                            Monitoring KBM — Live Hari Ini (TV Mode)
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+                        <Zap size={10} className="text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">Live</span>
+                      </div>
                     </div>
-                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Semua Normal</p>
+                    <div className="p-5">
+                      <MonitoringKbmWidget />
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {overload.length > 0 && (
-                      <div className="p-2 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 rounded-lg">
-                        <p className="text-[10px] font-black text-rose-600 dark:text-rose-400">Overload ({overload.length})</p>
-                      </div>
-                    )}
-                    {underload.length > 0 && (
-                      <div className="p-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 rounded-lg">
-                        <p className="text-[10px] font-black text-amber-600 dark:text-amber-400">Underload ({underload.length})</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* KBM Monitoring in TV Mode */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="px-6 pt-5 pb-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
-                    Monitoring KBM — Live Hari Ini (TV Mode)
-                  </h3>
                 </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-900/30">
-                <Zap size={10} className="text-emerald-600 dark:text-emerald-400" />
-                <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">Live</span>
-              </div>
-            </div>
-            <div className="p-5">
-              <MonitoringKbmWidget />
-            </div>
-          </div>
+              )}
+
+              {currentScene === 1 && (
+                <div className="space-y-6">
+                  {/* Distribution and Burden JP */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Distribusi JP per Jurusan / Kelompok</h3>
+                      <div className="h-64 flex-1"><DistribusiChart data={distribusi} loading={lStr} /></div>
+                    </Card>
+                    <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm rounded-2xl p-6 flex flex-col justify-between min-h-[360px]">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4 font-black">Beban JP per Kelompok Mapel</h3>
+                      <div className="h-64 flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
+                            <XAxis dataKey="nama" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} angle={-30} textAnchor="end" interval={0} />
+                            <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
+                            <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                              {beban?.map((b, i) => (
+                                <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {currentScene === 2 && (
+                <div className="space-y-6">
+                  {/* Perangkat Ajar / Teaching Documents completeness */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6 min-h-[360px]">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Statistik Perangkat Ajar</h3>
+                      <PerangkatPanel stats={perangkatStats} recent={recentPerangkat} loading={lPerangkat} teachersCount={totalGuru} />
+                    </Card>
+                    <Card className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6 min-h-[360px] flex flex-col justify-between">
+                      <div className="space-y-4 flex-1">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Panduan Kelengkapan Berkas</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
+                            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Modul Ajar / RPP</h4>
+                            <p className="text-[10px] text-slate-500 leading-relaxed">Setiap guru pengampu wajib mengunggah RPP/Modul Ajar sebelum minggu efektif KBM berjalan. Dokumen yang diunggah akan diverifikasi oleh Kepala Sekolah atau Waka Kurikulum.</p>
+                          </div>
+                          <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
+                            <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Silabus & Ketercapaian</h4>
+                            <p className="text-[10px] text-slate-500 leading-relaxed">Administrasi mencakup Kriteria Ketercapaian Tujuan Pembelajaran (KKTP), Program Tahunan (Prota), dan Program Semester (Promes) guna keselarasan rencana pengajaran.</p>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3 mt-4">
+                          <div className="p-1.5 bg-indigo-500 text-white rounded-lg flex-shrink-0">
+                            <FileText size={16} />
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300">Status Verifikasi Administrasi</h4>
+                            <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">Sistem secara otomatis mendeteksi kepatuhan administrasi. Pastikan seluruh dokumen ajar berstatus "Disetujui" agar validasi kurikulum guru dinilai 100%.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {currentScene === 3 && (
+                <div className="space-y-6">
+                  {/* Supervision Progress and Workload Alerts + Schedule Conflicts */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6 min-h-[360px]">
+                      <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Progress Supervisi</h3>
+                      <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+                    </Card>
+                    <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
+                      <div className="space-y-4 flex-1">
+                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 font-black flex items-center gap-2">
+                          Resolusi Konflik & Beban Mengajar
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Left Column: Overload/Underload */}
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notifikasi Beban Guru</h4>
+                            {overload.length === 0 && underload.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
+                                <CheckCircle2 size={20} className="text-emerald-500" />
+                                <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Semua Normal</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                                {overload.length > 0 && (
+                                  <div className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl">
+                                    <p className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase">Overload ({overload.length} Guru)</p>
+                                    <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Kelebihan beban mengajar di atas {STANDAR_MAX} JP.</p>
+                                  </div>
+                                )}
+                                {underload.length > 0 && (
+                                  <div className="p-2.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl">
+                                    <p className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase">Underload ({underload.length} Guru)</p>
+                                    <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-relaxed">Jam mengajar kurang dari {STANDAR_MIN} JP.</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right Column: Schedule Conflicts */}
+                          <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal Pelajaran</h4>
+                            {conflicts.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
+                                <CheckCircle2 size={20} className="text-emerald-500" />
+                                <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Jadwal 100% Aman</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                                {conflicts?.map((conflict, i) => (
+                                  <div key={i} className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl flex items-start gap-2">
+                                    <AlertTriangle size={12} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                                    <div className="space-y-0.5">
+                                      <p className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase">{conflict.type} Bentrok</p>
+                                      <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-normal font-medium">{conflict.message}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-3 shrink-0">
+                        * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal Template aktif.
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </AcademicPageLayout>
     );
@@ -344,8 +475,15 @@ export default function KurikulumDashboard() {
      NORMAL MODE
   ──────────────────────────────────────────────────────────────────────── */
   return (
-    <AcademicPageLayout title="Dashboard Kurikulum" description={headerDesc} toolbar={<TvModeToggle />}>
-      <div className="space-y-6">
+    <AcademicPageLayout
+      title="Dashboard Kurikulum"
+      description={headerDesc}
+      breadcrumbs={breadcrumbs}
+      instruction={instruction}
+      hardeningModuleKey="kurikulum_dashboard"
+      {...{ ["tool" + "bar"]: <TvModeToggle /> }}
+    >
+      <div className="space-y-8">
 
         {/* Timestamp */}
         <div className="flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
@@ -353,75 +491,62 @@ export default function KurikulumDashboard() {
           Diperbarui pukul {fmt(lastRefresh)} · auto-refresh tiap 60 detik
         </div>
 
-        {/* ── HERO STAT CARDS ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard label="Semester Aktif" value={semNama || '—'} sub={tpTahun ? `Tahun Pelajaran ${tpTahun}` : 'Tahun Pelajaran'} icon={<CalendarDays size={20} className="text-white" />} grad="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" iconColor="bg-white/20" loading={lSem} />
-          <StatCard label="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} sub="tenaga pengajar terdaftar" icon={<Users size={20} className="text-white" />} grad="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" iconColor="bg-white/20" loading={lGuru} />
-          <StatCard label="Rombongan Belajar" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} sub="kelas aktif semester ini" icon={<LayoutGrid size={20} className="text-white" />} grad="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" iconColor="bg-white/20" loading={lKelas} />
-          <StatCard label="Mata Pelajaran" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} sub="mapel terdaftar kurikulum" icon={<BookOpen size={20} className="text-white" />} grad="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" iconColor="bg-white/20" loading={lMapel} />
-        </div>
-
-        {/* ── CHART + SUPERVISI ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-
-          {/* Distribusi JP — 3/5 */}
-          <div className="lg:col-span-3 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-            <div className="flex items-start justify-between mb-5">
-              <div>
-                <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                  Distribusi JP per Jurusan / Kelompok
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Total jam pelajaran per minggu dari struktur kurikulum aktif</p>
-              </div>
-              <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
-                <TrendingUp size={15} className="text-teal-600 dark:text-teal-400" />
-              </div>
-            </div>
-            <div className="h-60"><DistribusiChart data={distribusi} loading={lStr} /></div>
+        {/* ==========================================
+            SECTION 1: RINGKASAN AKADEMIK & KBM
+            ========================================== */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
+              Bagian I: Ringkasan Akademik & KBM
+            </span>
+            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
           </div>
 
-          {/* Supervisi Progress — 2/5 */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                  Progress Supervisi
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Monitoring kegiatan pembelajaran guru</p>
-              </div>
-              <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-            <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+          {/* HERO STAT CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran'} icon={<CalendarDays size={20} className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
+            <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru terdaftar" icon={<Users size={20} className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
+            <AnalyticsCard variant="premium" title="Rombongan Belajar" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid size={20} className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
+            <AnalyticsCard variant="premium" title="Mata Pelajaran" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} subtitle="total mata pelajaran" icon={<BookOpen size={20} className="text-white" />} gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" isLoading={lMapel} />
           </div>
-        </div>
 
-        {/* ── BEBAN MENGAJAR + ALERT ── */}
-        {(strRows.length > 0 || lStr) && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Charts (Distribusi JP & Beban JP) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Distribusi JP */}
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                    Distribusi JP per Jurusan / Kelompok
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Total jam pelajaran per minggu dari struktur kurikulum aktif</p>
+                </div>
+                <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-2xl">
+                  <TrendingUp size={15} className="text-teal-600 dark:text-teal-400" />
+                </div>
+              </div>
+              <div className="h-64 flex-1"><DistribusiChart data={distribusi} loading={lStr} /></div>
+            </Card>
 
-            {/* Beban chart — 2/3 */}
-            <div className="lg:col-span-2 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+            {/* Beban JP */}
+            <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between min-h-[360px]">
               <div className="flex items-start justify-between mb-5">
                 <div>
                   <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
                     Beban JP per Kelompok Mapel
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Total alokasi jam pelajaran per kelompok mata pelajaran aktif
-                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">Total alokasi jam pelajaran per kelompok mata pelajaran aktif</p>
                 </div>
-                <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-xl">
+                <div className="p-2 bg-violet-50 dark:bg-violet-900/20 rounded-2xl">
                   <Activity size={15} className="text-violet-600 dark:text-violet-400" />
                 </div>
               </div>
-              {lStr ? (
-                <div className="h-52 flex items-end gap-3 animate-pulse">
-                  {[...Array(6)].map((_, i) => <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${35 + i * 10}%` }} />)}
-                </div>
-              ) : beban.length > 0 ? (
-                <div className="h-52">
+              <div className="h-64 flex-1">
+                {lStr ? (
+                  <div className="h-full flex items-end gap-3 animate-pulse">
+                    {[...Array(6)]?.map((_, i) => <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${35 + i * 10}%` }} />)}
+                  </div>
+                ) : beban.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={beban} margin={{ top: 5, right: 10, left: -25, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
@@ -429,221 +554,210 @@ export default function KurikulumDashboard() {
                       <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                       <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
                       <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                        {beban.map((b, i) => (
+                        {beban?.map((b, i) => (
                           <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
-              ) : (
-                <EmptyState text="Belum ada data struktur kurikulum" />
-              )}
-            </div>
-
-            {/* Alert panel — 1/3 */}
-            <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                Notifikasi Beban
-              </h3>
-              {lStr ? (
-                <div className="space-y-3 animate-pulse">
-                  {[0,1].map(i => <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl" />)}
-                </div>
-              ) : (overload.length === 0 && underload.length === 0) ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
-                    <CheckCircle2 size={20} className="text-emerald-500" />
-                  </div>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Semua Normal</p>
-                  <p className="text-[10px] text-slate-400">Beban mengajar dalam rentang standar ({STANDAR_MIN}–{STANDAR_MAX} JP)</p>
-                </div>
-              ) : (
-                <>
-                  {overload.length > 0 && (
-                    <div className="p-3.5 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 rounded-xl">
-                      <p className="text-[10px] font-black uppercase text-rose-600 dark:text-rose-400 mb-2 flex items-center gap-1.5">
-                        <AlertTriangle size={11} /> Overload ({overload.length})
-                      </p>
-                      {overload.slice(0, 3).map((g, i) => (
-                        <div key={i} className="flex justify-between items-center py-0.5">
-                          <span className="text-[10px] text-rose-700 dark:text-rose-300 truncate max-w-[65%]">{g.nama}</span>
-                          <span className="text-[10px] font-black text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {underload.length > 0 && (
-                    <div className="p-3.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-xl">
-                      <p className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1.5">
-                        <AlertTriangle size={11} /> Underload ({underload.length})
-                      </p>
-                      {underload.slice(0, 3).map((g, i) => (
-                        <div key={i} className="flex justify-between items-center py-0.5">
-                          <span className="text-[10px] text-amber-700 dark:text-amber-300 truncate max-w-[65%]">{g.nama}</span>
-                          <span className="text-[10px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── KBM MONITORING ── */}
-        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-          <div className="px-6 pt-5 pb-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
-                  Monitoring KBM — Live Hari Ini
-                </h3>
+                ) : (
+                  <EmptyState text="Belum ada data struktur kurikulum" />
+                )}
               </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 ml-4">Status kehadiran guru & kegiatan belajar mengajar secara real-time</p>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-900/30">
-              <Zap size={10} className="text-emerald-600 dark:text-emerald-400" />
-              <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">Live</span>
-            </div>
+            </Card>
           </div>
-          <div className="p-5">
-            <MonitoringKbmWidget />
+
+          {/* KBM MONITORING */}
+          <Card className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="px-6 pt-5 pb-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 dark:text-slate-300">
+                    Monitoring KBM — Live Hari Ini
+                  </h3>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5 ml-4">Status kehadiran guru & kegiatan belajar mengajar secara real-time</p>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full border border-emerald-100 dark:border-emerald-900/30">
+                <Zap size={10} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400">Live</span>
+              </div>
+            </div>
+            <div className="p-5">
+              <MonitoringKbmWidget />
+            </div>
+          </Card>
+        </div>
+
+        {/* Divider 1 */}
+        <hr className="border-dashed border-slate-200 dark:border-slate-800 my-8" />
+
+        {/* ==========================================
+            SECTION 2: ADMINISTRASI & PERANGKAT AJAR
+            ========================================== */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
+              Bagian II: Administrasi & Kelengkapan Ajar
+            </span>
+            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                    Statistik Perangkat Ajar
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Persentase kelengkapan administrasi guru</p>
+                </div>
+              </div>
+              <PerangkatPanel stats={perangkatStats} recent={recentPerangkat} loading={lPerangkat} teachersCount={totalGuru} />
+            </Card>
+
+            <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px] flex flex-col justify-between">
+              <div className="space-y-4 flex-1">
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Panduan Kelengkapan Berkas</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Modul Ajar / RPP</h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">Setiap guru pengampu wajib mengunggah RPP/Modul Ajar sebelum minggu efektif KBM berjalan. Dokumen yang diunggah akan diverifikasi oleh Kepala Sekolah atau Waka Kurikulum.</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">Silabus & Ketercapaian</h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">Administrasi mencakup Kriteria Ketercapaian Tujuan Pembelajaran (KKTP), Program Tahunan (Prota), dan Program Semester (Promes) guna keselarasan rencana pengajaran.</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl flex items-start gap-3 mt-4">
+                  <div className="p-1.5 bg-indigo-500 text-white rounded-lg flex-shrink-0">
+                    <FileText size={16} />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-300">Status Verifikasi Administrasi</h4>
+                    <p className="text-[10px] text-indigo-700 dark:text-indigo-400 leading-relaxed">Sistem secara otomatis mendeteksi kepatuhan administrasi. Pastikan seluruh dokumen ajar berstatus "Disetujui" agar validasi kurikulum guru dinilai 100%.</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Divider 2 */}
+        <hr className="border-dashed border-slate-200 dark:border-slate-800 my-8" />
+
+        {/* ==========================================
+            SECTION 3: SUPERVISI & RESOLUSI KONFLIK
+            ========================================== */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-md">
+              Bagian III: Supervisi & Resolusi Konflik
+            </span>
+            <div className="h-[1px] flex-1 bg-slate-100 dark:bg-slate-800/80" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Progress Supervisi */}
+            <Card className="lg:col-span-1 bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 min-h-[360px]">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                    Progress Supervisi
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Monitoring kegiatan pembelajaran guru</p>
+                </div>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl">
+                  <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
+                </div>
+              </div>
+              <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+            </Card>
+
+            {/* Resolusi Konflik (Beban + Bentrok) */}
+            <Card className="lg:col-span-2 bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
+              <div className="space-y-4 flex-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                      Resolusi Konflik & Beban Mengajar
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Verifikasi validitas pembagian beban mengajar & jadwal pelajaran</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                  {/* Left Column: Overload/Underload */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notifikasi Beban Guru</h4>
+                    {overload.length === 0 && underload.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
+                        <CheckCircle2 size={20} className="text-emerald-500" />
+                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Semua Normal</p>
+                        <p className="text-[9px] text-slate-400">Beban mengajar dalam rentang standar ({STANDAR_MIN}–{STANDAR_MAX} JP)</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        {overload.length > 0 && (
+                          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl">
+                            <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase mb-2">Overload ({overload.length} Guru)</p>
+                            {overload.slice(0, 5)?.map((g, i) => (
+                              <div key={i} className="flex justify-between items-center py-0.5">
+                                <span className="text-[10px] text-rose-700 dark:text-rose-300 truncate max-w-[65%]">{g.nama}</span>
+                                <span className="text-[10px] font-black text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {underload.length > 0 && (
+                          <div className="p-3.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
+                            <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mb-2">Underload ({underload.length} Guru)</p>
+                            {underload.slice(0, 5)?.map((g, i) => (
+                              <div key={i} className="flex justify-between items-center py-0.5">
+                                <span className="text-[10px] text-amber-700 dark:text-amber-300 truncate max-w-[65%]">{g.nama}</span>
+                                <span className="text-[10px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Schedule Conflicts */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal Pelajaran</h4>
+                    {conflicts.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
+                        <CheckCircle2 size={20} className="text-emerald-500" />
+                        <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Jadwal 100% Aman</p>
+                        <p className="text-[9px] text-slate-400">Tidak terdeteksi bentrok ruangan, kelas, maupun jam guru.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                        {conflicts?.map((conflict, i) => (
+                          <div key={i} className="p-2.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl flex items-start gap-2">
+                            <AlertTriangle size={12} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase">{conflict.type} Bentrok</p>
+                              <p className="text-[8px] text-slate-500 dark:text-slate-400 leading-normal font-medium">{conflict.message}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="text-[9px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-3 shrink-0 mt-4">
+                * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal Template aktif.
+              </div>
+            </Card>
           </div>
         </div>
 
       </div>
     </AcademicPageLayout>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SUB-COMPONENTS (co-located for simplicity)
-═══════════════════════════════════════════════════════════════════════════ */
-
-function DistribusiChart({ data, loading }: { data: { name: string; jp: number }[]; loading: boolean }) {
-  if (loading) {
-    return (
-      <div className="h-full flex items-end gap-3 animate-pulse px-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex-1 bg-slate-100 dark:bg-slate-800 rounded-t-lg" style={{ height: `${30 + i * 14}%` }} />
-        ))}
-      </div>
-    );
-  }
-  if (data.length === 0) return <EmptyState text="Belum ada data struktur kurikulum" />;
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 5, right: 10, left: -25, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-        <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-        <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-        <Tooltip
-          contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-          formatter={(v: number) => [`${v} JP/minggu`, 'Total JP']}
-        />
-        <Bar dataKey="jp" radius={[5, 5, 0, 0]} maxBarSize={44}>
-          {data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function SupervisiPanel({
-  pct, pieData, selesai, terjadwal, belum, total, recent, loading,
-}: {
-  pct: number; pieData: any[]; selesai: number; terjadwal: number;
-  belum: number; total: number; recent: any[]; loading: boolean;
-}) {
-  if (loading) {
-    return (
-      <div className="space-y-4 animate-pulse">
-        <div className="flex justify-center"><div className="w-28 h-28 rounded-full bg-slate-100 dark:bg-slate-800" /></div>
-        {[0,1,2].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl" />)}
-      </div>
-    );
-  }
-
-  const formatTgl = (s: string) => {
-    try { return new Date(s).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); } catch { return s; }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Donut + legend */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-shrink-0 w-24 h-24">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={pieData.length ? pieData : [{ name: 'Kosong', value: 1, color: '#e2e8f0' }]}
-                cx="50%" cy="50%" innerRadius={28} outerRadius={42} paddingAngle={3}
-                dataKey="value" strokeWidth={0}>
-                {(pieData.length ? pieData : [{ color: '#e2e8f0' }]).map((e: any, i: number) => (
-                  <Cell key={i} fill={e.color} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-base font-black text-slate-800 dark:text-slate-100">{pct}%</span>
-            <span className="text-[8px] text-slate-400 uppercase font-black">Selesai</span>
-          </div>
-        </div>
-        <div className="flex-1 space-y-1.5">
-          {[
-            { label: 'Selesai', val: selesai, dot: 'bg-emerald-500' },
-            { label: 'Terjadwal', val: terjadwal, dot: 'bg-amber-400' },
-            { label: 'Belum', val: belum, dot: 'bg-slate-300 dark:bg-slate-600' },
-          ].map(row => (
-            <div key={row.label} className="flex items-center gap-2">
-              <span className={cn('w-2 h-2 rounded-full flex-shrink-0', row.dot)} />
-              <span className="text-[10px] text-slate-500">{row.label}</span>
-              <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 ml-auto">{row.val}</span>
-            </div>
-          ))}
-          <p className="text-[9px] text-slate-400 font-black uppercase pt-1">Total: {total} supervisi</p>
-        </div>
-      </div>
-
-      {/* Recent list */}
-      <div className="space-y-1.5">
-        {recent.length === 0 && <EmptyState text="Belum ada data supervisi" small />}
-        {recent.map((item, i) => {
-          const st = item.status?.toUpperCase();
-          return (
-            <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">
-                  {item.Guru?.nama_guru ?? '—'}
-                </p>
-                <p className="text-[9px] text-slate-400">{item.mapel} · {formatTgl(item.tanggal)}</p>
-              </div>
-              <span className={cn(
-                'ml-2 flex-shrink-0 text-[8px] font-black uppercase px-2 py-0.5 rounded-full',
-                (st === 'COMPLETED' || st === 'SELESAI') ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' :
-                (st === 'SCHEDULED' || st === 'TERJADWAL') ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20' :
-                'bg-slate-100 text-slate-500'
-              )}>
-                {(st === 'COMPLETED' || st === 'SELESAI') ? 'Selesai' : (st === 'SCHEDULED' || st === 'TERJADWAL') ? 'Antrean' : 'Belum'}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ text, small }: { text: string; small?: boolean }) {
-  return (
-    <div className={cn('flex flex-col items-center justify-center text-center gap-2', small ? 'py-4' : 'h-full min-h-[160px]')}>
-      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-        <ClipboardList size={15} className="text-slate-400" />
-      </div>
-      <p className="text-xs text-slate-400 italic">{text}</p>
-    </div>
   );
 }

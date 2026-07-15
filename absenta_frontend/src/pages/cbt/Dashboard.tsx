@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 const mockChartData = [
   { name: 'MAT', Peserta: 180 },
@@ -19,50 +20,6 @@ const mockActiveExams = [
   { id: 2, nama: 'Kuis Harian - Bahasa Indonesia', mapel: 'Bahasa Indonesia', sisaWaktu: '10 Menit', status: 'SEDANG BERJALAN', peserta: 54 },
   { id: 3, nama: 'Ujian Kejuruan - Pemrograman Web', mapel: 'Pemrograman Web', sisaWaktu: 'Selesai', status: 'SELESAI', peserta: 72 },
 ];
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; subtext?: string }> = ({ title, value, icon, color, subtext }) => {
-  const colorMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
-    'bg-purple-600': { 
-      bg: 'from-purple-500/10 via-purple-600/5', 
-      border: 'border-purple-100/40 dark:border-purple-900/20', 
-      text: 'text-purple-600 dark:text-purple-400',
-      iconBg: 'bg-purple-50 dark:bg-purple-950/40'
-    },
-    'bg-blue-600': { 
-      bg: 'from-blue-500/10 via-blue-600/5', 
-      border: 'border-blue-100/40 dark:border-blue-900/20', 
-      text: 'text-blue-600 dark:text-blue-400',
-      iconBg: 'bg-blue-50 dark:bg-blue-950/40'
-    },
-    'bg-indigo-600': { 
-      bg: 'from-indigo-500/10 via-indigo-600/5', 
-      border: 'border-indigo-100/40 dark:border-indigo-900/20', 
-      text: 'text-indigo-600 dark:text-indigo-400',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-950/40'
-    },
-    'bg-amber-600': { 
-      bg: 'from-amber-500/10 via-amber-600/5', 
-      border: 'border-amber-100/40 dark:border-amber-900/20', 
-      text: 'text-amber-600 dark:text-amber-400',
-      iconBg: 'bg-amber-50 dark:bg-amber-950/40'
-    },
-  };
-
-  const style = colorMap[color] || colorMap['bg-purple-600'];
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${style.bg} to-transparent border ${style.border} p-5 flex items-center justify-between shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}>
-      <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h3>
-        <p className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{value}</p>
-        {subtext && <p className="text-[10px] text-slate-400">{subtext}</p>}
-      </div>
-      <div className={`p-3.5 ${style.iconBg} ${style.text} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-        {icon}
-      </div>
-    </div>
-  );
-};
 
 export default function CbtDashboard() {
   const [chartData, setChartData] = React.useState(mockChartData);
@@ -90,10 +47,34 @@ export default function CbtDashboard() {
         
         {/* Metrik Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Ujian Aktif Hari Ini" value="3 Ujian" icon={<Laptop size={20} />} color="bg-purple-600" subtext="Sedang berjalan" />
-          <StatCard title="Total Peserta Ujian" value="234 Siswa" icon={<Users size={20} />} color="bg-blue-600" subtext="Siswa aktif login ujian" />
-          <StatCard title="Total Bank Soal" value="1,248 Soal" icon={<BookOpen size={20} />} color="bg-indigo-600" subtext="Dalam 12 rumpun mapel" />
-          <StatCard title="Tingkat Kelulusan" value="88.4%" icon={<ShieldCheck size={20} />} color="bg-amber-600" subtext="Di atas Kriteria Minimal" />
+          <AnalyticsCard 
+            title="Ujian Aktif Hari Ini" 
+            value="3 Ujian" 
+            icon={<Laptop />} 
+            gradient="from-purple-500 to-purple-700 text-white" 
+            subtitle="Sedang berjalan" 
+          />
+          <AnalyticsCard 
+            title="Total Peserta Ujian" 
+            value="234 Siswa" 
+            icon={<Users />} 
+            gradient="from-blue-500 to-blue-700 text-white" 
+            subtitle="Siswa aktif login" 
+          />
+          <AnalyticsCard 
+            title="Total Bank Soal" 
+            value="1,248 Soal" 
+            icon={<BookOpen />} 
+            gradient="from-indigo-500 to-indigo-700 text-white" 
+            subtitle="Dalam 12 rumpun mapel" 
+          />
+          <AnalyticsCard 
+            title="Tingkat Kelulusan" 
+            value="88.4%" 
+            icon={<ShieldCheck />} 
+            gradient="from-amber-500 to-amber-700 text-white" 
+            subtitle="Di atas KKM" 
+          />
         </div>
 
         {/* Chart & Active Exams */}

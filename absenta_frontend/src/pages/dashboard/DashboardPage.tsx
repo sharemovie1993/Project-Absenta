@@ -12,6 +12,7 @@ import { isSystemSuperAdmin } from '@/utils/rbac';
 import { LogService } from '@/utils/LogService';
 import { Globe, Activity, TrendingUp, CreditCard } from 'lucide-react';
 import { SuperAdminPageLayout } from '@/components/layout/SuperAdminPageLayout';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 const TenantGrowthChart = lazy(() => import('./components/TenantGrowthChart'));
 const RevenueGrowthChart = lazy(() => import('./components/RevenueGrowthChart'));
@@ -378,15 +379,18 @@ function DashboardContent() {
             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Billing Overview</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Total Invoices', val: billingOverview.total_billings, color: 'text-slate-900', bg: 'bg-slate-50' },
-                { label: 'Paid Invoices', val: billingOverview.paid_billings, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                { label: 'Pending Invoices', val: billingOverview.pending_billings, color: 'text-amber-600', bg: 'bg-amber-50' },
-                { label: 'Overdue Invoices', val: billingOverview.overdue_billings, color: 'text-red-600', bg: 'bg-red-50' }
-              ].map((item) => (
-                <div key={item.label} className={`rounded-2xl p-4 border border-transparent hover:border-indigo-100 transition-all ${item.bg} dark:bg-slate-900/50`}>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.label}</div>
-                  <div className={`text-2xl font-black mt-1 ${item.color} dark:text-white`}>{item.val.toLocaleString('id-ID')}</div>
-                </div>
+                { label: 'Total Invoices', val: billingOverview.total_billings, gradient: 'from-slate-500 to-slate-700 text-white' },
+                { label: 'Paid Invoices', val: billingOverview.paid_billings, gradient: 'from-emerald-500 to-emerald-700 text-white' },
+                { label: 'Pending Invoices', val: billingOverview.pending_billings, gradient: 'from-amber-500 to-amber-700 text-white' },
+                { label: 'Overdue Invoices', val: billingOverview.overdue_billings, gradient: 'from-rose-500 to-rose-700 text-white' }
+              ]?.map((item) => (
+                <AnalyticsCard
+                  key={item.label}
+                  title={item.label}
+                  value={item.val.toLocaleString('id-ID')}
+                  gradient={item.gradient}
+                  isLoading={loading}
+                />
               ))}
             </div>
           </div>

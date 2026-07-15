@@ -1182,6 +1182,32 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
           : 'Gagal: Terdeteksi fitur ekspor/impor data tanpa loading guard (isExporting/loading), blok penanganan kesalahan (try-catch), atau template unduhan belum menggunakan utilitas standar ter-style \'generateImportTemplate\'.'
       });
     }
+
+    // 25. Audit Kriteria: Standarisasi Sistem Ekspor PDF (Built-in PDF Template Guard)
+    if (auditData.standardPdfPrint !== undefined && auditData.standardPdfPrint !== null) {
+      config.standards.push({
+        id: 'architectural_pdf_print',
+        name: 'Standarisasi Sistem Ekspor PDF (Built-in PDF Template Guard)',
+        description: 'Memverifikasi apakah ekspor PDF menggunakan modul cetak PDF terstandar di src/utils/print/ untuk menjaga konsistensi template kop surat resmi.',
+        status: auditData.standardPdfPrint ? 'VERIFIED' : 'WARNING',
+        details: auditData.standardPdfPrint
+          ? 'Tervalidasi: Menggunakan modul cetak PDF terstandar.'
+          : 'Peringatan: Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di \'src/utils/print/\'.'
+      });
+    }
+
+    // 26. Audit Kriteria: Validasi Skema Zod untuk Form (Zod Schema Guard)
+    if (auditData.zodValidationGuard !== undefined && auditData.zodValidationGuard !== null) {
+      config.standards.push({
+        id: 'architectural_zod_validation',
+        name: 'Validasi Skema Zod untuk Form (Zod Schema Guard)',
+        description: 'Memverifikasi apakah elemen form didukung oleh skema validasi Zod untuk mencegah input data kotor.',
+        status: auditData.zodValidationGuard ? 'VERIFIED' : 'WARNING',
+        details: auditData.zodValidationGuard
+          ? 'Tervalidasi: Form dilindungi oleh skema validasi Zod.'
+          : 'Peringatan: Terdeteksi elemen form input tanpa skema validasi Zod.'
+      });
+    }
   }
 
   // Append any specific hand-written functional standards from original registry

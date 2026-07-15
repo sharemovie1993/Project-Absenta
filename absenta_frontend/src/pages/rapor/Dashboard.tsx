@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 const mockChartData = [
   { name: 'X-RPL-1', Nilai: 84 },
@@ -19,50 +20,6 @@ const mockRecentReports = [
   { id: 2, kelas: 'XI-TKJ-1', wali: 'Hendra Saputra, S.Pd', inputStatus: '85% Input', totalSiswa: 34 },
   { id: 3, kelas: 'X-RPL-1', wali: 'Amalia Rahma, S.Pd', inputStatus: '60% Input', totalSiswa: 32 },
 ];
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; subtext?: string }> = ({ title, value, icon, color, subtext }) => {
-  const colorMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
-    'bg-sky-600': { 
-      bg: 'from-sky-500/10 via-sky-600/5', 
-      border: 'border-sky-100/40 dark:border-sky-900/20', 
-      text: 'text-sky-600 dark:text-sky-400',
-      iconBg: 'bg-sky-50 dark:bg-sky-950/40'
-    },
-    'bg-indigo-600': { 
-      bg: 'from-indigo-500/10 via-indigo-600/5', 
-      border: 'border-indigo-100/40 dark:border-indigo-900/20', 
-      text: 'text-indigo-600 dark:text-indigo-400',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-950/40'
-    },
-    'bg-emerald-600': { 
-      bg: 'from-emerald-500/10 via-emerald-600/5', 
-      border: 'border-emerald-100/40 dark:border-emerald-900/20', 
-      text: 'text-emerald-600 dark:text-emerald-400',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40'
-    },
-    'bg-amber-600': { 
-      bg: 'from-amber-500/10 via-amber-600/5', 
-      border: 'border-amber-100/40 dark:border-amber-900/20', 
-      text: 'text-amber-600 dark:text-amber-400',
-      iconBg: 'bg-amber-50 dark:bg-amber-950/40'
-    },
-  };
-
-  const style = colorMap[color] || colorMap['bg-sky-600'];
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${style.bg} to-transparent border ${style.border} p-5 flex items-center justify-between shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}>
-      <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h3>
-        <p className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{value}</p>
-        {subtext && <p className="text-[10px] text-slate-400">{subtext}</p>}
-      </div>
-      <div className={`p-3.5 ${style.iconBg} ${style.text} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-        {icon}
-      </div>
-    </div>
-  );
-};
 
 export default function RaporDashboard() {
   const [chartData, setChartData] = React.useState(mockChartData);
@@ -90,10 +47,34 @@ export default function RaporDashboard() {
         
         {/* Metrik Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Rapor Terproses" value="12 Kelas" icon={<FileText size={20} />} color="bg-sky-600" subtext="Dari total 18 kelas" />
-          <StatCard title="Siswa Dinilai" value="384 / 412" icon={<Users size={20} />} color="bg-indigo-600" subtext="93% siswa selesai diinput" />
-          <StatCard title="Rata-rata Nilai" value="84.2" icon={<Award size={20} />} color="bg-emerald-600" subtext="+2.4% peningkatan KBM" />
-          <StatCard title="Status Cetak Rapor" value="Siap 6 Kelas" icon={<CheckSquare size={20} />} color="bg-amber-600" subtext="Menunggu lock wali kelas" />
+          <AnalyticsCard 
+            title="Rapor Terproses" 
+            value="12 Kelas" 
+            icon={<FileText />} 
+            gradient="from-sky-500 to-sky-700 text-white" 
+            subtitle="Total 18 kelas" 
+          />
+          <AnalyticsCard 
+            title="Siswa Dinilai" 
+            value="384 / 412" 
+            icon={<Users />} 
+            gradient="from-indigo-500 to-indigo-700 text-white" 
+            subtitle="93% nilai terinput" 
+          />
+          <AnalyticsCard 
+            title="Rata-rata Nilai" 
+            value="84.2" 
+            icon={<Award />} 
+            gradient="from-emerald-500 to-emerald-700 text-white" 
+            subtitle="+2.4% dibanding semester lalu" 
+          />
+          <AnalyticsCard 
+            title="Status Cetak Rapor" 
+            value="Siap 6 Kelas" 
+            icon={<CheckSquare />} 
+            gradient="from-amber-500 to-amber-700 text-white" 
+            subtitle="Menunggu lock wali" 
+          />
         </div>
 
         {/* Chart & Status Wali Kelas */}

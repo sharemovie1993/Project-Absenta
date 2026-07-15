@@ -68,10 +68,12 @@ walkDir(targetDir, (filepath) => {
   // Page Router Entry biasanya memiliki kata 'Page' di nama filenya atau langsung di bawah sub-folder pages utama
   // Hardening: untuk cooperative, scan detail dan sub-modul lain agar terdaftar.
   const isPaidModulePage = /\/pages\/(cooperative|attendance|hubin|sarpras)\//i.test(filepath.replace(/\\/g, '/'));
-  const isPageRouterEntry = filename.endsWith('Page.tsx') || filename === 'Login.tsx' || filename === 'TestLogin.tsx' || isPaidModulePage;
+  const isPageRouterEntry = filename.endsWith('Page.tsx') || filename === 'Login.tsx' || filename === 'TestLogin.tsx' || isPaidModulePage || (filename === 'Dashboard.tsx' && filepath.replace(/\\/g, '/').includes('/pages/kurikulum/'));
   if (!isPageRouterEntry) return;
 
-  const content = fs.readFileSync(filepath, 'utf8');
+  const rawContent = fs.readFileSync(filepath, 'utf8');
+  // Strip JS/TS/TSX comments to prevent developers from bypassing audits using comments (cheat prevention)
+  const content = rawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
 
   // Deteksi apakah file ini merupakan komponen (di dalam subfolder components atau shared)
   const isComponentFile = filepath.replace(/\\/g, '/').includes('/components/') || filepath.replace(/\\/g, '/').includes('/shared/');
@@ -81,30 +83,47 @@ walkDir(targetDir, (filepath) => {
   const usesLayout = isComponentFile || content.includes('AcademicPageLayout') || content.includes('PageLayout') || content.includes('InfraErrorBoundary');
 
   // ─── Pilar 2: Keamanan Data & Defensive Programming (Optional Chaining pada Map) ───
-  // Mencari penggunaan `.map(` yang tidak menggunakan safe chaining `?.map(`
-  const hasUnsafeMap = /\.map\(/g.test(content) && !/\?\.map\(/g.test(content);
+  // Mencari penggunaan `.map(` yang tidak menggunakan safe chaining `?.map(` (Hardened: menggunakan negative lookbehind)
+  const hasUnsafeMap = /(?<!\?)\.map\(/g.test(content);
 
   // ─── Pilar 3: Optimasi DOM Churn (Memoization) ───
   // Jika halaman memuat list data atau render komponen berat, tapi tidak mengimpor useMemo/useCallback
-  const hasLists = content.includes('List') || content.includes('Table') || content.includes('get');
+  // Hardened: membatasi hasLists agar tidak false-positive pada kata 'target', 'budget', 'widget', dll.
+  const hasLists = /List[\s/>]/.test(content) || /<Table[\s/>]/.test(content) || /\bget[A-Z]\w*\b|\.get\(/g.test(content);
   const hasMemo = content.includes('useMemo') && content.includes('useCallback');
   const missingMemoization = hasLists && !hasMemo;
 
   // ─── Pilar 4: Keamanan Tipe TypeScript (No Any Type) ───
-  // Mencari deklarasi tipe longgar ': any' yang dilarang keras oleh standar audit
-  const hasAnyType = /:\s*any/g.test(content) || /<\s*any\s*>/g.test(content);
+  // Mencari deklarasi tipe longgar ': any' atau casting 'as any' yang dilarang keras oleh standar audit
+  const hasAnyType = /:\s*any\b/g.test(content) || /\bas\s+any\b/g.test(content) || /<\s*any\s*>/g.test(content);
 
   // ─── Pilar 5: Pencegahan Kebocoran Memori (Cleanup Listener) ───
   // Jika memakai useEffect dan melakukan event binding, pastikan memiliki return cleanup
-  const hasListeners = content.includes('addEventListener') || content.includes('socket.on') || content.includes('setInterval') || content.includes('setTimeout');
+  // Hardened: hanya mendeteksi listeners yang dideklarasikan di dalam useEffect
+  const hasListenersInEffect = /useEffect\s*\(.*?(\baddEventListener\b|\bsocket\.on\b|\bsetInterval\b|\bsetTimeout\b)/s.test(content);
   const hasCleanup = content.includes('return () =>');
-  const missingCleanup = hasListeners && !hasCleanup;
+  const missingCleanup = hasListenersInEffect && !hasCleanup;
 
   // ─── Pilar 6: Konsistensi Pewarnaan Ketat (Strict Color Guard) ───
   // Mendeteksi warna heksadesimal keras atau arbitrary Tailwind bracket color [#[...]]
-  const hasInlineStyleColor = /style\s*=\s*\{\{\s*[^}]*(color|background|bg|border|fill|stroke)\s*:\s*['"`]#/i.test(content);
+  // Hardened: Mendeteksi juga format rgb, rgba, hsl, dan hsla pada inline styles
+  const hasInlineStyleColor = /style\s*=\s*\{\{\s*[^}]*(color|background|bg|border|fill|stroke)\s*:\s*['"`](?:#|rgb|rgba|hsl|hsla)/i.test(content);
   const hasArbitraryColor = /\[#([0-9a-fA-F]{3,8})\]/g.test(content);
-  const hasHardcodedColors = hasInlineStyleColor || hasArbitraryColor;
+  
+  // Deteksi kelas warna Tailwind tidak valid (typo berat yang membuat warna menjadi transparan)
+  const validWeights = ['50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'];
+  const tailwindColorRegex = /(?:bg|text|border|ring|from|to|via)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(\d+)\b/g;
+  let hasInvalidTailwindColors = false;
+  let colorMatch;
+  while ((colorMatch = tailwindColorRegex.exec(content)) !== null) {
+    const weight = colorMatch[1];
+    if (!validWeights.includes(weight)) {
+      hasInvalidTailwindColors = true;
+      break;
+    }
+  }
+
+  const hasHardcodedColors = hasInlineStyleColor || hasArbitraryColor || hasInvalidTailwindColors;
 
   // Pillar 7: Kepatuhan Sorting Tabel
   const hasTableComponent = /<Table[\s/>]/.test(content);
@@ -113,22 +132,26 @@ walkDir(targetDir, (filepath) => {
   const missingTableSorting = hasTableComponent && !hasSortingImpl;
 
   // Pillar 8: Penanganan State Kosong
+  // Hardened: Mendeteksi perbandingan double/triple equals, isEmpty helper, dan penegasian !data.length / !data?.length
   const hasFetchData = content.includes('useQuery') || content.includes('useFetch') || content.includes('useGet') || content.includes('axios.get') || content.includes('fetch(');
-  const hasEmptyState = /\.length\s*===\s*0|isEmpty|emptyState|EmptyState|NoData|data\.length\s*==\s*0|items\.length/.test(content) || hasListComponent;
+  const hasEmptyState = /\.length\s*(===|==)\s*0|isEmpty|emptyState|EmptyState|NoData|!\w*(?:\?\.)?length/.test(content) || hasListComponent;
   const missingEmptyState = hasFetchData && !hasEmptyState;
 
   // Pillar 9: Indikator Loading / Skeleton Guard
-  const hasLoadingGuard = /isLoading|isFetching|Skeleton|loading &&|loading \?|spinner|Spinner/.test(content) || hasListComponent;
+  // Hardened: Menggunakan word boundary agar mendukung conditional block biasa 'if (loading)'
+  const hasLoadingGuard = /\b(isLoading|isFetching|loading|spinner|Spinner)\b|Skeleton/i.test(content) || hasListComponent;
   const missingLoadingGuard = hasFetchData && !hasLoadingGuard;
 
   // Pillar 10: Aksesibilitas Form
-  const hasFormElements = /<input|<select|<textarea/.test(content);
+  // Hardened: Mendeteksi juga komponen form terstandar Absenta (kapital)
+  const hasFormElements = /<(input|select|textarea|Input|Select|Textarea|SearchableSelect)\b/.test(content);
   const hasA11yAttr = /aria-label|htmlFor|aria-describedby|aria-required/.test(content);
   const missingA11y = hasFormElements && !hasA11yAttr;
 
   // Pillar 11: Optimasi Pemuatan (Lazy Loading & Suspense)
   const hasLazy = content.includes('lazy(') && content.includes('Suspense');
-  const hasHeavyComponents = /Modal|Form|Excel|Loader/.test(content);
+  // Hardened: Mendeteksi import riil atau pemakaian komponen berat (bukan variabel camelCase/setModalOpen)
+  const hasHeavyComponents = /<(Modal|Form|Excel|Loader)\b/.test(content) || /import\s+.*?\b(Modal|Form|Excel|Loader)\b/.test(content);
   const missingLazyLoading = !isComponentFile && hasHeavyComponents && !hasLazy;
 
   // ─── Pilar 12: Sistem Panduan Pengguna (Responsive Guide) ───
@@ -154,8 +177,9 @@ walkDir(targetDir, (filepath) => {
   const hasConfirmHook = content.includes('useConfirm') || content.includes('ConfirmDialog');
   
   // Deteksi cerdas: Jika ada confirm() tapi tidak ada hook confirm, maka dianggap pakai browser confirm
-  const usesBrowserConfirm = content.includes('confirm(') && !hasConfirmHook;
-  const usesBrowserAlert = content.includes('alert(');
+  // Hardened: Mendeteksi variasi spasi pada penulisan pemanggilan fungsi browser
+  const usesBrowserConfirm = /\bconfirm\s*\(/.test(content) && !hasConfirmHook;
+  const usesBrowserAlert = /\balert\s*\(/.test(content);
   
   const missingFeedbackSystem = usesBrowserAlert || usesBrowserConfirm;
 
@@ -165,7 +189,8 @@ walkDir(targetDir, (filepath) => {
   const missingStandardContainer = !isComponentFile && usesLayout && !hasSectionCard && !hasCard;
 
   // ─── Pillar 17: Komponen Seleksi Canggih (SearchableSelect) ───
-  const hasSelectTag = /<select|options=\{/.test(content);
+  // Hardened: Hanya mendeteksi tag seleksi, bukan properti 'options={chartOptions}' pada grafik
+  const hasSelectTag = /<(select|Select)\b/.test(content);
   const hasSearchableSelect = content.includes('<SearchableSelect');
   const missingAdvancedSelect = hasSelectTag && !hasSearchableSelect;
 
@@ -186,21 +211,35 @@ walkDir(targetDir, (filepath) => {
   const isGodFile = isComponentFile ? (lineCount > 500) : (lineCount > 800);
 
   // ─── Pilar 22: Desentralisasi Konfigurasi (Anti-Hardcoded) ───
-  const hasMockData = /const\s+(\w*mock\w*|MOCK_\w*)\s*=/i.test(content);
-  const hasStaticApiUrl = /https?:\/\/(localhost|127\.0\.0\.1|api\b)/i.test(content);
+  // Hardened: Mendeteksi let/var dan variasi kata data tiruan (mock/dummy/sample/temp/test), serta IP lokal
+  const hasMockData = /\b(const|let|var)\s+\w*(mock|dummy|sample|temp|test)\w*\s*=/i.test(content);
+  const hasStaticApiUrl = /https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|api\b)/i.test(content);
   const hasHardcodedConfigs = hasMockData || hasStaticApiUrl;
 
   // ─── Pilar 23: Standarisasi Kartu Analitik/Statistik (AnalyticsCard) ───
-  const hasCustomStatCardComponent = /const\s+(StatCard|StatsCard|MetricCard|AnalyticCard|MiniCard)\b/i.test(content) || /function\s+(StatCard|StatsCard|MetricCard|AnalyticCard|MiniCard)\b/i.test(content);
+  // Hardened: Mendeteksi pendefinisian class komponen statis kustom
+  const hasCustomStatCardComponent = /\b(const|function|class)\s+(StatCard|StatsCard|MetricCard|AnalyticCard|MiniCard)\b/i.test(content);
   const hasHardcodedStatCards = /className="[^"]*rounded-xl[^"]*".*?(Total|Jumlah|Saldo|Revenue|Growth|Transaksi|Anggota|Pinjaman).*?text-[23]xl/is.test(content);
   const usesAnalyticsCard = content.includes('AnalyticsCard') || content.includes('MemoizedAnalyticsCard');
   const missingAnalyticsCard = (hasCustomStatCardComponent || hasHardcodedStatCards) && !usesAnalyticsCard;
+
+  // ─── Pillar 24: Standarisasi Sistem Ekspor PDF (Built-in PDF Template Guard) ───
+  // Hardened: Mendeteksi import dengan kutip ganda maupun tunggal
+  const hasRawPdfLib = /from\s+['"](jspdf|jspdf-autotable)['"]/.test(content) || content.includes('new jsPDF(');
+  const usesStandardPrintUtil = content.includes('utils/print/') || content.includes('@/utils/print') || content.includes('masterStrukturHelper') || content.includes('pdfAcademic') || content.includes('pdfGeneric');
+  const missingStandardPdfPrint = hasRawPdfLib && !usesStandardPrintUtil;
 
   const hasImportExport = /XLSX|jsPDF|autoTable|importSiswaFromExcel|exportDataToExcel|onImport|onExport/i.test(content);
   const hasImportExportLoading = /isExporting|exportLoading|processing|loading/i.test(content);
   const hasTryCatchForExport = /try\s*\{.*?catch/s.test(content);
   const usesStyledTemplate = content.includes('generateImportTemplate') || !/Template_Impor|Template Impor/i.test(content);
   const missingImportExportGuard = hasImportExport && (!hasImportExportLoading || !hasTryCatchForExport || !usesStyledTemplate);
+
+  // Pilar 25: Validasi Skema Zod untuk Form (Zod Schema Guard)
+  // Hardened: Mendeteksi juga komponen form terstandar Absenta (kapital)
+  const hasForm = content.includes('<form') || /<(input|select|textarea|Input|Select|Textarea|SearchableSelect)\b/i.test(content);
+  const hasZodValidation = content.includes('zodResolver') || content.includes('z.object') || content.includes('validationSchema') || content.includes('Schema') || content.includes('zod') || content.includes('yup') || content.includes('joi');
+  const missingZodValidation = hasForm && !hasZodValidation;
 
   const key = getRegistryKey(filepath, content);
 
@@ -209,62 +248,62 @@ walkDir(targetDir, (filepath) => {
 
   if (!isComponentFile && !usesLayout) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Belum menggunakan AcademicPageLayout/ErrorBoundary (Kerentanan Visual Halaman Total)');
+    issues.push('❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)');
   }
   
   if (!isComponentFile && usesLayout && !content.includes('hardeningModuleKey')) {
     status = 'PARTIAL';
-    issues.push('⚠️  Menggunakan Layout tetapi belum melampirkan hardeningModuleKey (Kepatuhan Kosong/Tanpa Stempel)');
+    issues.push("⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.");
   }
 
   if (hasUnsafeMap) {
     status = 'PARTIAL';
-    issues.push('❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map) (Potensi Crash rendering)');
+    issues.push('❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.');
   }
 
   if (missingMemoization) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Memuat list data tetapi tidak mengunci render lewat useMemo/useCallback (Beban DOM Churn Tinggi)');
+    issues.push('⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)');
   }
 
   if (hasAnyType) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Terdeteksi penggunaan tipe data longgar ": any" (Melemahkan keamanan tipe TS)');
+    issues.push('⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)');
   }
 
   if (missingCleanup) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Menggunakan listeners/timer di useEffect tetapi lupa menulis return cleanup (Kebocoran Memori Klien)');
+    issues.push('❌ Menggunakan listeners/timer (addEventListener, setInterval, setTimeout) di dalam useEffect tetapi lupa menulis fungsi return cleanup (Kebocoran Memori Klien)');
   }
 
   if (hasHardcodedColors) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('❌ Terdeteksi kode warna keras/arbitrer (Hex atau [#[...]]) yang melanggar konsistensi tema desain');
+    issues.push('❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual');
   }
 
   if (missingTableSorting) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting (sortable/onSort/sortKey) – UX Tabel Tidak Lengkap');
+    issues.push("⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting. Hubungkan properti 'sortBy', 'sortOrder', 'onSort', dan tandai kolom dengan 'sortable: true'.");
   }
 
   if (missingEmptyState) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State (Risiko Tampilan Kosong Tanpa Pesan)');
+    issues.push("⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State. Pastikan terdapat pengecekan kondisi data kosong (seperti 'data.length === 0', 'isEmpty', atau penegasian '!data.length').");
   }
 
   if (missingLoadingGuard) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton (Risiko Flash Konten Kosong)');
+    issues.push("⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton. Sediakan loading state guard (seperti 'isLoading', 'isFetching', 'loading', atau komponen <Skeleton />).");
   }
 
   if (missingA11y) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Elemen form ditemukan (<input/<select/<textarea) tetapi tidak memiliki aria-label/htmlFor (Pelanggaran Aksesibilitas Web)');
+    issues.push('⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)');
   }
 
   if (missingLazyLoading) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Komponen berat (Modal/Form) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)');
+    issues.push('❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)');
   }
 
   if (missingInstruction) {
@@ -274,12 +313,12 @@ walkDir(targetDir, (filepath) => {
 
   if (missingPagination) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination yang lengkap (Wajib: onPageChange & onLimitChange)');
+    issues.push("❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.");
   }
 
   if (missingToolbar) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Aksi utama halaman terdeteksi tetapi tidak menggunakan properti toolbar Table (Wajib: toolbarLeft/Right)');
+    issues.push("❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').");
   }
 
   if (misplacedToolbar) {
@@ -289,22 +328,22 @@ walkDir(targetDir, (filepath) => {
 
   if (missingFeedbackSystem) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Menggunakan alert/confirm bawaan browser (Gunakan useToast/useConfirm untuk UX modern)');
+    issues.push('❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.');
   }
 
   if (missingStandardContainer) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Halaman tidak menggunakan SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)');
+    issues.push('⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)');
   }
 
   if (missingAdvancedSelect) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Ditemukan elemen seleksi tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)');
+    issues.push('⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)');
   }
 
   if (missingBreadcrumbs) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Halaman menggunakan Layout tetapi tidak melampirkan navigasi "breadcrumbs" (UX: Pengguna kehilangan konteks lokasi)');
+    issues.push("⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).");
   }
 
   if (missingPremiumGate) {
@@ -319,7 +358,7 @@ walkDir(targetDir, (filepath) => {
 
   if (hasHardcodedConfigs) {
     status = 'NON_COMPLIANT';
-    issues.push('❌ Terdeteksi mock data lokal atau URL API ter-hardcode');
+    issues.push('❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.');
   }
 
   if (missingAnalyticsCard) {
@@ -327,9 +366,19 @@ walkDir(targetDir, (filepath) => {
     issues.push("⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.");
   }
 
+  if (missingStandardPdfPrint) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("⚠️  Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di 'src/utils/print/' untuk menjaga konsistensi template kop surat resmi.");
+  }
+
   if (missingImportExportGuard) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
     issues.push("⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.");
+  }
+
+  if (missingZodValidation) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.");
   }
 
   totalFiles++;
@@ -367,6 +416,8 @@ walkDir(targetDir, (filepath) => {
     hardcodedConfig: !hasHardcodedConfigs,
     analyticsCardGuard: !missingAnalyticsCard,
     importExportGuard: !missingImportExportGuard,
+    standardPdfPrint: !missingStandardPdfPrint,
+    zodValidationGuard: !missingZodValidation,
     filename,
     relativePath
   };
@@ -461,3 +512,15 @@ console.log(`\x1b[32mSempurna Terstandarisasi   : ${fullyCompliant} file\x1b[0m`
 console.log(`\x1b[33mSebagian Terstandarisasi   : ${partialCompliant} file\x1b[0m`);
 console.log(`\x1b[31mBelum Terstandarisasi      : ${nonCompliant} file\x1b[0m`);
 console.log('\x1b[36m%s\x1b[0m', '=============================================================');
+
+// ─── Build Breaker Standar Google ───
+if (process.argv.includes('--strict')) {
+  if (nonCompliant > 0 || partialCompliant > 0) {
+    console.error('\x1b[31m%s\x1b[0m', `\n🚫 [BUILD BREAKER] Gagal melakukan build! Ditemukan ${nonCompliant} halaman BELUM STANDAR dan ${partialCompliant} halaman SEBAGIAN STANDAR.`);
+    console.error('\x1b[31m%s\x1b[0m', 'Harap perbaiki seluruh pelanggaran arsitektur di atas sebelum melakukan kompilasi produksi.\n');
+    process.exit(1);
+  } else {
+    console.log('\x1b[32m%s\x1b[0m', '\n🟢 [BUILD BREAKER] Lolos! Seluruh kode memenuhi standar hardening 100%. Memulai kompilasi...\n');
+  }
+}
+

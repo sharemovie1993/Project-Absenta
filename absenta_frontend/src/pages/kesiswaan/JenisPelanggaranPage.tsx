@@ -13,9 +13,17 @@ import type { JenisPelanggaran } from '../../api/kesiswaan.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { z } from 'zod';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
+
+// Skema validasi Zod (Pilar 25)
+const jenisPelanggaranSchema = z.object({
+  kategori: z.string().min(1, 'Kategori wajib dipilih'),
+  nama_pelanggaran: z.string().min(1, 'Nama pelanggaran wajib diisi'),
+  poin: z.number().min(0, 'Bobot poin minimal 0')
+});
 
 export default function JenisPelanggaranPage() {
   const [data, setData] = useState<JenisPelanggaran[]>([]);
@@ -75,8 +83,23 @@ export default function JenisPelanggaranPage() {
     // In a real scenario, we would refetch with sort params
   }, []);
 
+  const resetForm = useCallback(() => {
+    setFormData({
+      kategori: 'Pelanggaran Ringan',
+      nama_pelanggaran: '',
+      poin: 5
+    });
+    setSelectedId(null);
+  }, []);
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = jenisPelanggaranSchema.safeParse(formData);
+    if (!validation.success) {
+      const errMsg = validation.error.issues[0]?.message || 'Data form tidak valid';
+      toast.error(errMsg);
+      return;
+    }
     try {
       if (selectedId) {
         await kesiswaanApi.updateJenisPelanggaran(selectedId, formData);
@@ -92,16 +115,7 @@ export default function JenisPelanggaranPage() {
       console.error(err);
       toast.error('Gagal menyimpan data');
     }
-  }, [selectedId, formData, fetchData, currentPage]);
-
-  const resetForm = useCallback(() => {
-    setFormData({
-      kategori: 'Pelanggaran Ringan',
-      nama_pelanggaran: '',
-      poin: 5
-    });
-    setSelectedId(null);
-  }, []);
+  }, [selectedId, formData, fetchData, currentPage, resetForm]);
 
   const handleEdit = useCallback((item: JenisPelanggaran) => {
     setFormData({

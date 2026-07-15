@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle, Badge, Loader, Table, SectionCard,
 import { SuperAdminPageLayout } from '../../../components/layout/SuperAdminPageLayout';
 import { TrendingUp, Coins, BarChart3, RefreshCcw, Search } from 'lucide-react';
 import { superadminIntelligenceApi } from '@/api/superadmin-intelligence.api';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 interface CohortRow {
   cohort_month: string;
@@ -244,36 +245,42 @@ function RevenueIntelligenceContent() {
               Ringkasan angka utama yang dipakai sebagai dasar simulasi dan proyeksi pertumbuhan platform Absenta.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 w-full">
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">MRR Saat Ini</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Total pendapatan langganan bulan berjalan.</div>
-                <div className="text-lg font-black mt-2 text-slate-900 dark:text-white tracking-tight">{formatCurrency(statsData.currentMrr)}</div>
-              </div>
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Estimasi MRR</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Estimasi pendapatan bulan berikutnya.</div>
-                <div className="text-lg font-black mt-2 text-slate-900 dark:text-white tracking-tight">{formatCurrency(statsData.forecastMrr)}</div>
-              </div>
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pasca Risiko</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Pendapatan dikurangi potensi risiko.</div>
-                <div className="text-lg font-black mt-2 text-slate-900 dark:text-white tracking-tight">{formatCurrency(statsData.riskAdjusted)}</div>
-              </div>
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Proyeksi ARR</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Estimasi total pendapatan 1 tahun.</div>
-                <div className="text-lg font-black mt-2 text-slate-900 dark:text-white tracking-tight">{formatCurrency(statsData.forecastArr)}</div>
-              </div>
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Net Growth</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Selisih pertumbuhan bersih.</div>
-                <div className="text-lg font-black mt-2 text-emerald-600 dark:text-emerald-400 tracking-tight">{formatPct(statsData.netGrowthPct)}</div>
-              </div>
-              <div className="space-y-1 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-colors">
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Risk Loss</div>
-                <div className="text-[10px] text-slate-500 min-h-[30px] mt-1 leading-tight">Estimasi pendapatan berisiko hilang.</div>
-                <div className="text-lg font-black mt-2 text-rose-600 dark:text-rose-400 tracking-tight">{formatPct(statsData.riskLossPct)}</div>
-              </div>
+              <AnalyticsCard 
+                title="MRR Saat Ini" 
+                subtitle="Pendapatan langganan berjalan" 
+                value={formatCurrency(statsData.currentMrr)} 
+                gradient="from-slate-500 to-slate-700 text-white" 
+              />
+              <AnalyticsCard 
+                title="Estimasi MRR" 
+                subtitle="Estimasi bulan berikutnya" 
+                value={formatCurrency(statsData.forecastMrr)} 
+                gradient="from-blue-500 to-blue-700 text-white" 
+              />
+              <AnalyticsCard 
+                title="Pasca Risiko" 
+                subtitle="Pendapatan setelah risiko" 
+                value={formatCurrency(statsData.riskAdjusted)} 
+                gradient="from-purple-500 to-purple-700 text-white" 
+              />
+              <AnalyticsCard 
+                title="Proyeksi ARR" 
+                subtitle="Estimasi pendapatan 1 tahun" 
+                value={formatCurrency(statsData.forecastArr)} 
+                gradient="from-pink-500 to-pink-700 text-white" 
+              />
+              <AnalyticsCard 
+                title="Net Growth" 
+                subtitle="Pertumbuhan bersih" 
+                value={formatPct(statsData.netGrowthPct)} 
+                gradient="from-emerald-500 to-emerald-700 text-white" 
+              />
+              <AnalyticsCard 
+                title="Risk Loss" 
+                subtitle="Pendapatan berisiko hilang" 
+                value={formatPct(statsData.riskLossPct)} 
+                gradient="from-rose-500 to-rose-700 text-white" 
+              />
             </div>
           </div>
         </SectionCard>
@@ -284,18 +291,21 @@ function RevenueIntelligenceContent() {
           fullWidth
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
-            <div className="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/50">
-              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1">Kenaikan Upgrade</div>
-              <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">{formatCurrency(statsData.projectedUpgrade)}</div>
-            </div>
-            <div className="p-5 rounded-2xl bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/50">
-              <div className="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1">Kehilangan Churn</div>
-              <div className="text-2xl font-black text-rose-700 dark:text-rose-400 tracking-tight">{formatCurrency(statsData.projectedChurn)}</div>
-            </div>
-            <div className="p-5 rounded-2xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/50">
-              <div className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-1">Risiko Kehilangan</div>
-              <div className="text-2xl font-black text-amber-700 dark:text-amber-400 tracking-tight">{formatCurrency(statsData.riskLoss)}</div>
-            </div>
+            <AnalyticsCard 
+              title="Kenaikan Upgrade" 
+              value={formatCurrency(statsData.projectedUpgrade)} 
+              gradient="from-emerald-500 to-emerald-700 text-white" 
+            />
+            <AnalyticsCard 
+              title="Kehilangan Churn" 
+              value={formatCurrency(statsData.projectedChurn)} 
+              gradient="from-rose-500 to-rose-700 text-white" 
+            />
+            <AnalyticsCard 
+              title="Risiko Kehilangan" 
+              value={formatCurrency(statsData.riskLoss)} 
+              gradient="from-amber-500 to-amber-700 text-white" 
+            />
           </div>
         </SectionCard>
 

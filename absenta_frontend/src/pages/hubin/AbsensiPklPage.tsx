@@ -129,6 +129,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
   const rawPenempatan = useMemo(() => {
     return Array.isArray(penempatanData?.data) ? (penempatanData.data as SiswaPklWithAbsensi[]) : (penempatanData as { data?: SiswaPklWithAbsensi[] })?.data || [];
   }, [penempatanData]);
+  // Empty state guard: deteksi kondisi data PKL kosong untuk Pilar 8
+  const isEmpty = !isLoading && rawPenempatan.length === 0 && !isStudent;
 
   const studentPkl = useMemo(() => {
     if (isStudent) return (myPenempatan as { data?: SiswaPklWithAbsensi })?.data || myPenempatan;
@@ -368,13 +370,13 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
   const stats = useMemo(() => {
     if (isStudent) {
       return [
-        { title: 'Mitra PKL', value: studentPkl?.Mitra?.nama || 'Belum Ditempatkan', icon: <ClipIcon size={24} />, gradient: 'from-blue-500 to-indigo-655' },
-        { title: 'Total Kehadiran', value: rawAbsensiHistory.filter((a: AbsensiPkl) => a.status === 'HADIR').length, icon: <Calendar size={24} />, gradient: 'from-emerald-400 to-teal-655' },
+        { title: 'Mitra PKL', value: studentPkl?.Mitra?.nama || 'Belum Ditempatkan', icon: <ClipIcon size={24} />, gradient: 'from-blue-500 to-indigo-600' },
+        { title: 'Total Kehadiran', value: rawAbsensiHistory.filter((a: AbsensiPkl) => a.status === 'HADIR').length, icon: <Calendar size={24} />, gradient: 'from-emerald-400 to-teal-600' },
         { 
           title: 'Sisa Hari Estimasi', 
           value: studentPkl?.tanggal_selesai ? Math.max(0, Math.ceil((new Date(studentPkl.tanggal_selesai).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : '-', 
           icon: <Clock size={24} />, 
-          gradient: 'from-amber-400 to-orange-655' 
+          gradient: 'from-amber-400 to-orange-600' 
         }
       ];
     }
@@ -384,13 +386,13 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
         title: 'Hadir Hari Ini', 
         value: rawPenempatan.filter((p: SiswaPklWithAbsensi) => p.AbsensiPkl?.some((a: AbsensiPkl) => format(new Date(a.tanggal), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && a.status === 'HADIR')).length, 
         icon: <CheckSquare size={24} />, 
-        gradient: 'from-emerald-450 to-teal-655' 
+        gradient: 'from-emerald-400 to-teal-600' 
       },
       { 
         title: 'Perlu Verifikasi', 
         value: rawPenempatan.reduce((sum: number, p: SiswaPklWithAbsensi) => sum + (p.AbsensiPkl?.filter((a: AbsensiPkl) => !a.is_verified).length || 0), 0), 
         icon: <ShieldCheck size={24} />, 
-        gradient: 'from-rose-500 to-red-655' 
+        gradient: 'from-rose-500 to-red-600' 
       }
     ];
   }, [isStudent, studentPkl, rawAbsensiHistory, rawPenempatan]);
@@ -407,14 +409,14 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayo
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mitra PKL Anda</span>
             <div className="flex items-center gap-2">
               <Building2 size={16} className="text-indigo-600" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-250">{studentPkl.Mitra?.nama}</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-300">{studentPkl.Mitra?.nama}</span>
             </div>
           </div>
           <div className="flex-1 min-w-[150px]">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guru Pembimbing</span>
             <div className="flex items-center gap-2">
               <UserCheck size={16} className="text-emerald-600" />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-250">{studentPkl.Pembimbing?.nama_guru || '-'}</span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-300">{studentPkl.Pembimbing?.nama_guru || '-'}</span>
             </div>
           </div>
         </div>

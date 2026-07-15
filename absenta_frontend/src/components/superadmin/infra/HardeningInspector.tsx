@@ -267,6 +267,20 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
               ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi.'
               : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
 
+        case 'architectural_pdf_print':
+          return { ...std,
+            status: safe((liveAuditResult as any).standardPdfPrint) ? 'VERIFIED' as const : 'WARNING' as const,
+            details: safe((liveAuditResult as any).standardPdfPrint)
+              ? 'Tervalidasi: Menggunakan modul cetak PDF terstandar.'
+              : 'Peringatan: Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di \'src/utils/print/\'.' };
+
+        case 'architectural_zod_validation':
+          return { ...std,
+            status: safe((liveAuditResult as any).zodValidationGuard) ? 'VERIFIED' as const : 'WARNING' as const,
+            details: safe((liveAuditResult as any).zodValidationGuard)
+              ? 'Tervalidasi: Form dilindungi oleh skema validasi Zod.'
+              : 'Peringatan: Terdeteksi elemen form input tanpa skema validasi Zod.' };
+
         default:
           return std;
       }

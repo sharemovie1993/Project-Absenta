@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Card } from '@/components/ui/Card';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 
 const mockChartData = [
   { name: 'Jan', Masuk: 12, Keluar: 8 },
@@ -19,50 +20,6 @@ const mockRecentInbox = [
   { id: 2, pengirim: 'Kementerian Pendidikan', perihal: 'Pemberitahuan Akreditasi Sekolah', tanggal: '10 Juli 2026', urgensi: 'Biasa' },
   { id: 3, pengirim: 'PT. Telkom Indonesia', perihal: 'MOU Kerja Sama Magang Industri', tanggal: '08 Juli 2026', urgensi: 'PENTING' },
 ];
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; subtext?: string }> = ({ title, value, icon, color, subtext }) => {
-  const colorMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
-    'bg-blue-600': { 
-      bg: 'from-blue-500/10 via-blue-600/5', 
-      border: 'border-blue-100/40 dark:border-blue-900/20', 
-      text: 'text-blue-600 dark:text-blue-400',
-      iconBg: 'bg-blue-50 dark:bg-blue-950/40'
-    },
-    'bg-purple-600': { 
-      bg: 'from-purple-500/10 via-purple-600/5', 
-      border: 'border-purple-100/40 dark:border-purple-900/20', 
-      text: 'text-purple-600 dark:text-purple-400',
-      iconBg: 'bg-purple-50 dark:bg-purple-950/40'
-    },
-    'bg-emerald-600': { 
-      bg: 'from-emerald-500/10 via-emerald-600/5', 
-      border: 'border-emerald-100/40 dark:border-emerald-900/20', 
-      text: 'text-emerald-600 dark:text-emerald-400',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40'
-    },
-    'bg-rose-600': { 
-      bg: 'from-rose-500/10 via-rose-600/5', 
-      border: 'border-rose-100/40 dark:border-rose-900/20', 
-      text: 'text-rose-600 dark:text-rose-400',
-      iconBg: 'bg-rose-50 dark:bg-rose-950/40'
-    },
-  };
-
-  const style = colorMap[color] || colorMap['bg-blue-600'];
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${style.bg} to-transparent border ${style.border} p-5 flex items-center justify-between shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}>
-      <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h3>
-        <p className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{value}</p>
-        {subtext && <p className="text-[10px] text-slate-400">{subtext}</p>}
-      </div>
-      <div className={`p-3.5 ${style.iconBg} ${style.text} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-        {icon}
-      </div>
-    </div>
-  );
-};
 
 export default function CorrespondenceDashboard() {
   const [chartData, setChartData] = React.useState(mockChartData);
@@ -91,10 +48,34 @@ export default function CorrespondenceDashboard() {
         
         {/* Metrik Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Surat Masuk Baru" value="14 Surat" icon={<Inbox size={20} />} color="bg-blue-600" subtext="Belum didisposisikan" />
-          <StatCard title="Surat Keluar Disetujui" value="38 Surat" icon={<Send size={20} />} color="bg-emerald-600" subtext="Siap dikirim/distribusikan" />
-          <StatCard title="Menunggu Tanda Tangan" value="5 Dokumen" icon={<UserCheck size={20} />} color="bg-purple-600" subtext="Menunggu Kepala Sekolah" />
-          <StatCard title="Total Arsip" value="324 Dokumen" icon={<FileText size={20} />} color="bg-rose-600" subtext="Terarsip secara digital" />
+          <AnalyticsCard 
+            title="Surat Masuk Baru" 
+            value="14 Surat" 
+            icon={<Inbox />} 
+            gradient="from-blue-500 to-blue-700 text-white" 
+            subtitle="Belum didisposisikan" 
+          />
+          <AnalyticsCard 
+            title="Surat Keluar Disetujui" 
+            value="38 Surat" 
+            icon={<Send />} 
+            gradient="from-emerald-500 to-emerald-700 text-white" 
+            subtitle="Siap didistribusikan" 
+          />
+          <AnalyticsCard 
+            title="Menunggu Tanda Tangan" 
+            value="5 Dokumen" 
+            icon={<UserCheck />} 
+            gradient="from-purple-500 to-purple-700 text-white" 
+            subtitle="Menunggu ttd kepala sekolah" 
+          />
+          <AnalyticsCard 
+            title="Total Arsip" 
+            value="324 Dokumen" 
+            icon={<FileText />} 
+            gradient="from-rose-500 to-rose-700 text-white" 
+            subtitle="Terarsip secara digital" 
+          />
         </div>
 
         {/* Chart & Recent Inbox */}

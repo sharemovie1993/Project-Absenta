@@ -5,7 +5,7 @@ import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Controller } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
-import { useJenjang } from '../../../hooks/useJenjang';
+import { useJenjang } from '@/hooks/useJenjang';
 
 interface KelasInfoSectionProps {
   register: any;

@@ -88,7 +88,7 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ on
         } else {
           setError('Gagal memuat statistik HUBIN');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : 'Koneksi bermasalah saat memuat statistik';
         setError(errMsg);
       } finally {
@@ -101,7 +101,7 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = ({ on
         if (actRes.success) {
           setActivities(actRes.data);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to load recent activities:', err);
       } finally {
         setActivitiesLoading(false);

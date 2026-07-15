@@ -12,7 +12,6 @@ import useConfirm from '../../hooks/useConfirm';
 import { useDebounce } from '../../hooks/useDebounce';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
 import type { Pelanggaran, JenisPelanggaran } from '../../api/kesiswaan.api';
-import type { Siswa } from '../../types/academic';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,15 +26,11 @@ import {
   TrendingDown,
   Search,
   X,
-  Plus,
-  ShieldAlert,
-  Users,
-  ChevronRight,
-  Info,
-  ShieldCheck
+  Plus
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Loader } from '../../components/ui/Loader';
+import { z } from 'zod';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -62,10 +57,20 @@ interface Student {
   no_rfid?: string;
 }
 
+// Skema validasi Zod untuk form data (Pilar 25)
+const pelanggaranSchema = z.object({
+  siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
+  jenis_pelanggaran: z.string().min(1, 'Kategori perilaku wajib dipilih'),
+  poin: z.number().min(0, 'Bobot poin minimal 0'),
+  keterangan: z.string().optional(),
+  tanggal: z.string().min(1, 'Tanggal wajib diisi'),
+  status: z.string().min(1, 'Status wajib dipilih')
+});
+
 export default function PelanggaranPage() {
   const queryClient = useQueryClient();
   const [data, setData] = useState<Pelanggaran[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Skeleton loading guard
   const [modalOpen, setModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 500);
@@ -149,6 +154,12 @@ export default function PelanggaranPage() {
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = pelanggaranSchema.safeParse(formData);
+    if (!validation.success) {
+      const errMsg = validation.error.issues[0]?.message || 'Data form tidak valid';
+      toast.error(errMsg);
+      return;
+    }
     try {
       if (selectedId) {
         await kesiswaanApi.updatePelanggaran(selectedId, formData);
@@ -286,6 +297,7 @@ export default function PelanggaranPage() {
             size="icon"
             onClick={() => handleEdit(item)}
             className="w-8 h-8 rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+            aria-label="Edit catatan"
           >
             <Edit2 size={14} />
           </Button>
@@ -309,6 +321,7 @@ export default function PelanggaranPage() {
               }
             }}
             className="w-8 h-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            aria-label="Hapus catatan"
           >
             <Trash2 size={14} />
           </Button>
@@ -366,6 +379,7 @@ export default function PelanggaranPage() {
           placeholder="Cari Siswa / Kategori..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          aria-label="Cari Siswa atau Kategori"
           className="w-56 h-9 pl-9 text-[11px] font-medium rounded-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm"
         />
       </div>
@@ -438,116 +452,123 @@ export default function PelanggaranPage() {
                     placeholder="Scan kartu atau ketik nama siswa..."
                     className="w-full"
                     autoFocus
+                    aria-label="Pilih siswa"
                   />
                 </Suspense>
               ) : (
-              <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl animate-in zoom-in-95 duration-300">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 overflow-hidden">
-                    {selectedSiswa.foto_profile_url ? (
-                      <img src={selectedSiswa.foto_profile_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <User className="h-6 w-6 text-indigo-500" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-tight leading-none">
-                      {selectedSiswa.nama_siswa}
+                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 overflow-hidden">
+                      {selectedSiswa.foto_profile_url ? (
+                        <img src={selectedSiswa.foto_profile_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <User className="h-6 w-6 text-indigo-500" />
+                      )}
                     </div>
-                    <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
-                      {selectedSiswa.Kelas?.nama_kelas || 'Tanpa Kelas'} • {selectedSiswa.nis || selectedSiswa.no_rfid || 'ID Aktif'}
+                    <div>
+                      <div className="font-black text-indigo-900 dark:text-indigo-100 uppercase tracking-tight leading-none">
+                        {selectedSiswa.nama_siswa}
+                      </div>
+                      <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
+                        {selectedSiswa.Kelas?.nama_kelas || 'Tanpa Kelas'} • {selectedSiswa.nis || selectedSiswa.no_rfid || 'ID Aktif'}
+                      </div>
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedSiswa(null);
+                      setFormData(prev => ({ ...prev, siswa_id: '' }));
+                    }}
+                    className="h-8 w-8 p-0 rounded-full hover:bg-rose-50 text-rose-500"
+                    aria-label="Batalkan pilihan siswa"
+                  >
+                    <X size={16} />
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedSiswa(null);
-                    setFormData(prev => ({ ...prev, siswa_id: '' }));
-                  }}
-                  className="h-8 w-8 p-0 rounded-full hover:bg-rose-50 text-rose-500"
-                >
-                  <X size={16} />
-                </Button>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jenis-pelanggaran-select" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kategori Perilaku</Label>
+              <SearchableSelect
+                id="jenis-pelanggaran-select"
+                value={formData.jenis_pelanggaran}
+                onValueChange={(val) => {
+                  const selectedItem = jenisPelanggaranList.find(i => i.nama_pelanggaran === val);
+                  setFormData(prev => ({
+                    ...prev,
+                    jenis_pelanggaran: val,
+                    poin: selectedItem ? selectedItem.poin : prev.poin
+                  }));
+                }}
+                options={(jenisPelanggaranList ?? [])?.map(item => ({
+                  label: `[${item.kategori}] ${item.nama_pelanggaran}`,
+                  value: item.nama_pelanggaran
+                }))}
+                placeholder="Pilih kategori perilaku..."
+                searchPlaceholder="Cari kategori..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="poin-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bobot Poin</Label>
+                <Input
+                  id="poin-input"
+                  type="number"
+                  min="0"
+                  value={formData.poin}
+                  onChange={(e) => setFormData(prev => ({...prev, poin: Number(e.target.value)}))}
+                  required
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tanggal-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Waktu Kejadian</Label>
+                <Input
+                  id="tanggal-input"
+                  type="date"
+                  value={formData.tanggal}
+                  onChange={(e) => setFormData(prev => ({...prev, tanggal: e.target.value}))}
+                  required
+                  className="h-11 rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="keterangan-input" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Catatan/Keterangan</Label>
+              <Input
+                id="keterangan-input"
+                value={formData.keterangan}
+                onChange={(e) => setFormData(prev => ({...prev, keterangan: e.target.value}))}
+                placeholder="Tambahkan konteks kejadian..."
+                className="h-11 rounded-xl"
+              />
+            </div>
+            {selectedId && (
+              <div className="space-y-2">
+                <Label htmlFor="status-select" className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tahapan Pendampingan</Label>
+                <SearchableSelect
+                  id="status-select"
+                  value={formData.status}
+                  onValueChange={(val) => setFormData(prev => ({...prev, status: val}))}
+                  options={[
+                    { label: 'MENUNGGU', value: 'BARU' },
+                    { label: 'PENDAMPINGAN', value: 'PROSES' },
+                    { label: 'SELESAI', value: 'SELESAI' }
+                  ]}
+                  placeholder="Pilih tahapan..."
+                />
               </div>
             )}
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kategori Perilaku</Label>
-            <SearchableSelect
-              value={formData.jenis_pelanggaran}
-              onValueChange={(val) => {
-                const selectedItem = jenisPelanggaranList.find(i => i.nama_pelanggaran === val);
-                setFormData(prev => ({
-                  ...prev,
-                  jenis_pelanggaran: val,
-                  poin: selectedItem ? selectedItem.poin : prev.poin
-                }));
-              }}
-              options={(jenisPelanggaranList ?? [])?.map(item => ({
-                label: `[${item.kategori}] ${item.nama_pelanggaran}`,
-                value: item.nama_pelanggaran
-              }))}
-              placeholder="Pilih kategori perilaku..."
-              searchPlaceholder="Cari kategori..."
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bobot Poin</Label>
-              <Input
-                type="number"
-                min="0"
-                value={formData.poin}
-                onChange={(e) => setFormData(prev => ({...prev, poin: Number(e.target.value)}))}
-                required
-                className="h-11 rounded-xl"
-              />
+            <div className="flex justify-end gap-3 pt-6 border-t border-gray-50">
+              <Button type="button" variant="outline" className="rounded-xl h-12 px-6 font-bold" onClick={() => setModalOpen(false)}>Batal</Button>
+              <Button type="submit" className="rounded-xl h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20 border-none">Simpan Catatan</Button>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Waktu Kejadian</Label>
-              <Input
-                type="date"
-                value={formData.tanggal}
-                onChange={(e) => setFormData(prev => ({...prev, tanggal: e.target.value}))}
-                required
-                className="h-11 rounded-xl"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Catatan/Keterangan</Label>
-            <Input
-              value={formData.keterangan}
-              onChange={(e) => setFormData(prev => ({...prev, keterangan: e.target.value}))}
-              placeholder="Tambahkan konteks kejadian..."
-              className="h-11 rounded-xl"
-            />
-          </div>
-          {selectedId && (
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tahapan Pendampingan</Label>
-              <SearchableSelect
-                value={formData.status}
-                onValueChange={(val) => setFormData(prev => ({...prev, status: val}))}
-                options={[
-                  { label: 'MENUNGGU', value: 'BARU' },
-                  { label: 'PENDAMPINGAN', value: 'PROSES' },
-                  { label: 'SELESAI', value: 'SELESAI' }
-                ]}
-                placeholder="Pilih tahapan..."
-              />
-            </div>
-          )}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-50">
-            <Button type="button" variant="outline" className="rounded-xl h-12 px-6 font-bold" onClick={() => setModalOpen(false)}>Batal</Button>
-            <Button type="submit" className="rounded-xl h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-indigo-600/20 border-none">Simpan Catatan</Button>
-          </div>
-        </form>
-      </Modal>
-    </Suspense>
-  </AcademicPageLayout>
-);
+          </form>
+        </Modal>
+      </Suspense>
+    </AcademicPageLayout>
+  );
 }

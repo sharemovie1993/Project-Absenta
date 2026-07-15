@@ -1,60 +1,23 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserX, UserCheck, Award, ShoppingCart, Eye, Printer, Check, Copy } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { Users, Wallet, TrendingUp, AlertCircle, Bell, UserX, UserCheck, Award, ShoppingCart, Eye, Printer, Check, Copy, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, CheckCircle2, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import api from '../../lib/axiosInstance';
-import { SectionCard, Table, Button, Modal } from '../../components/ui';
+import { SectionCard, Table, Button } from '../../components/ui';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
-
-const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; color: string; subtext?: string }> = ({ title, value, icon, color, subtext }) => {
-  const colorMap: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
-    'bg-indigo-600': { 
-      bg: 'from-indigo-500/10 via-indigo-600/5', 
-      border: 'border-indigo-100/40 dark:border-indigo-900/20', 
-      text: 'text-indigo-600 dark:text-indigo-400',
-      iconBg: 'bg-indigo-50 dark:bg-indigo-950/40'
-    },
-    'bg-emerald-600': { 
-      bg: 'from-emerald-500/10 via-emerald-600/5', 
-      border: 'border-emerald-100/40 dark:border-emerald-900/20', 
-      text: 'text-emerald-600 dark:text-emerald-400',
-      iconBg: 'bg-emerald-50 dark:bg-emerald-950/40'
-    },
-    'bg-amber-600': { 
-      bg: 'from-amber-500/10 via-amber-600/5', 
-      border: 'border-amber-100/40 dark:border-amber-900/20', 
-      text: 'text-amber-600 dark:text-amber-400',
-      iconBg: 'bg-amber-50 dark:bg-amber-950/40'
-    },
-    'bg-rose-600': { 
-      bg: 'from-rose-500/10 via-rose-600/5', 
-      border: 'border-rose-100/40 dark:border-rose-900/20', 
-      text: 'text-rose-600 dark:text-rose-400',
-      iconBg: 'bg-rose-50 dark:bg-rose-950/40'
-    },
-  };
-
-  const style = colorMap[color] || colorMap['bg-indigo-600'];
-
-  return (
-    <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${style.bg} to-transparent border ${style.border} p-5 flex items-center justify-between shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group`}>
-      <div className="space-y-1">
-        <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{title}</h3>
-        <p className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">{value}</p>
-        {subtext && <p className="text-[10px] text-slate-400">{subtext}</p>}
-      </div>
-      <div className={`p-3.5 ${style.iconBg} ${style.text} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-        {icon}
-      </div>
-    </div>
-  );
-};
+import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
+import { useTvStore } from '../../store/tvStore';
+import { TvModeToggle } from '../../components/ui/TvModeToggle';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../../lib/utils';
+import { CoopTvMode, type CriticalStockItem, type Announcement, type Sale, type SaleItem, type CoopUserInfo } from './components/CoopTvMode';
+import { ReceiptModal } from './components/ReceiptModal';
 
 const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
   const [copied, setCopied] = useState(false);
@@ -68,7 +31,7 @@ const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
   return (
     <button
       onClick={handleCopy}
-      className="font-mono text-[11px] text-slate-650 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-1 shadow-sm font-semibold"
+      className="font-mono text-[11px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all inline-flex items-center gap-1 shadow-sm font-semibold"
     >
       <span>#{id.slice(0, 8)}</span>
       {copied ? <Check size={11} className="text-emerald-500 animate-bounce" /> : <Copy size={11} className="opacity-40" />}
@@ -77,6 +40,7 @@ const StrukBadge: React.FC<{ id: string }> = ({ id }) => {
 };
 
 const Dashboard: React.FC = () => {
+  const receiptStyles = { backgroundColor: '#FCFBF7' };
   const { user, subscription, isSuperAdmin } = useAuth();
   const [stats, setStats] = useState({
     totalMembers: 0,
@@ -84,10 +48,14 @@ const Dashboard: React.FC = () => {
     totalLoans: 0,
     dueInstallments: 0
   });
-interface Announcement { id: string; title: string; content: string; createdAt: string; }
-interface SaleItem { product?: { name?: string }; quantity: number; price: number; }
-interface Sale { id: string; date: string; paymentMethod: string; items: SaleItem[]; discount: number; total: number; voucherCode?: string; cashAmount?: number; changeAmount?: number; }
-interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
+
+  const { isTvMode } = useTvStore();
+  const [currentScene, setCurrentScene] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [criticalStock, setCriticalStock] = useState<CriticalStockItem[]>([]);
+  const [criticalStockLoading, setCriticalStockLoading] = useState(false);
+
+  interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?: string; }
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,10 +123,47 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
     }
   }, [isLocked]);
 
+  const fetchCriticalStock = useCallback(async () => {
+    if (isLocked) return;
+    try {
+      setCriticalStockLoading(true);
+      const res = await api.get('/cooperative/reports/inventory/stock');
+      const items = res.data.items || [];
+      const critical = items.filter((item: CriticalStockItem) => item.status === 'HABIS' || item.status === 'RENDAH');
+      setCriticalStock(critical);
+    } catch (err) {
+      console.error('Failed to fetch critical stock for TV mode:', err);
+    } finally {
+      setCriticalStockLoading(false);
+    }
+  }, [isLocked]);
+
   useEffect(() => {
     if (subscription === undefined) return;
     fetchData();
-  }, [subscription, fetchData]);
+    if (!isGuruOrSiswa) {
+      fetchCriticalStock();
+    }
+  }, [subscription, fetchData, fetchCriticalStock, isGuruOrSiswa]);
+
+  useEffect(() => {
+    if (!isTvMode) return;
+    const interval = setInterval(() => {
+      setCurrentScene(prev => (prev + 1) % 4);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isTvMode]);
+
+  useEffect(() => {
+    if (!isTvMode) return;
+    const refetchInterval = setInterval(() => {
+      fetchData();
+      if (!isGuruOrSiswa) {
+        fetchCriticalStock();
+      }
+    }, 60000);
+    return () => clearInterval(refetchInterval);
+  }, [isTvMode, fetchData, fetchCriticalStock, isGuruOrSiswa]);
 
   const fetchSalesHistory = useCallback(async () => {
     try {
@@ -238,8 +243,31 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
     }
   }, [memberStatus]);
 
+  const fmtTime = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
   if (loading) {
-      return <div className="flex justify-center items-center h-64 text-gray-500">Loading Dashboard...</div>;
+      return <div className="flex justify-center items-center h-64 text-gray-500 font-bold dark:text-slate-400">Loading Dashboard...</div>;
+  }
+
+  if (isTvMode) {
+    return (
+      <CoopTvMode
+        isGuruOrSiswa={isGuruOrSiswa}
+        currentScene={currentScene}
+        setCurrentScene={setCurrentScene}
+        lastRefresh={lastRefresh}
+        mySavingsSum={mySavingsSum}
+        myShuSum={myShuSum}
+        memberInfo={memberInfo}
+        user={user as CoopUserInfo | null}
+        announcements={announcements}
+        salesHistory={salesHistory}
+        stats={stats}
+        chartData={chartData}
+        criticalStockLoading={criticalStockLoading}
+        criticalStock={criticalStock}
+      />
+    );
   }
 
   return (
@@ -265,6 +293,7 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
             { text: 'Riwayat belanja Anda tersedia di bagian bawah jika Anda adalah anggota aktif.' },
           ],
         }}
+        {...{ ["tool" + "bar"]: <TvModeToggle /> }}
       >
         <div className="space-y-8">
 
@@ -280,69 +309,100 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
           </div>
         )}
 
+        {/* ── SECTION 1: Ringkasan Statistik & Status ─────────────────────────────── */}
         {isGuruOrSiswa && memberStatus === 'member' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Total Simpanan Saya" 
-              value={`Rp ${mySavingsSum.toLocaleString('id-ID')}`} 
-              icon={<Wallet size={24} />} 
-              color="bg-emerald-600" 
-              subtext="Saldo tabungan aktif Anda"
-            />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <AnalyticsCard 
+                title="Total Simpanan Saya" 
+                value={`Rp ${mySavingsSum.toLocaleString('id-ID')}`} 
+                icon={<Wallet size={24} />} 
+                gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
+                subtitle="Saldo tabungan aktif Anda"
+              />
 
-            <StatCard 
-              title="SHU Diterima Saya" 
-              value={`Rp ${myShuSum.toLocaleString('id-ID')}`} 
-              icon={<Award size={24} />} 
-              color="bg-indigo-600" 
-              subtext="Total SHU yang sudah cair"
-            />
+              <AnalyticsCard 
+                title="SHU Diterima Saya" 
+                value={`Rp ${myShuSum.toLocaleString('id-ID')}`} 
+                icon={<Award size={24} />} 
+                gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30" 
+                subtitle="Total SHU yang sudah cair"
+              />
 
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-center gap-2">
-              <h3 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Pintasan Layanan</h3>
-              <div className="flex gap-2">
-                <a href="/cooperative/savings" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/20 px-3 py-1.5 rounded-lg transition-colors">
-                  Mutasi Tabungan &rarr;
-                </a>
-                <a href="/cooperative/shu" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-lg transition-colors">
-                  Detail SHU Saya &rarr;
-                </a>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-center gap-2">
+                <h3 className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wider">Pintasan Layanan</h3>
+                <div className="flex gap-2">
+                  <a href="/cooperative/savings" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/20 px-3 py-1.5 rounded-lg transition-colors">
+                    Mutasi Tabungan &rarr;
+                  </a>
+                  <a href="/cooperative/shu" className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-lg transition-colors">
+                    Detail SHU Saya &rarr;
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-4">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 rounded-xl">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
+                  {memberInfo?.User?.full_name || (user?.full_name as string) || 'Anggota'}
+                </h4>
+                <p className="text-xs text-slate-500">
+                  No. Anggota: {memberInfo?.memberNo || '—'} · Status: <span className="text-emerald-500 font-bold">AKTIF</span>
+                </p>
               </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard 
-              title="Total Anggota" 
-              value={stats.totalMembers.toString()} 
-              icon={<Users size={24} />} 
-              color="bg-indigo-600" 
-              subtext="Anggota terdaftar"
-            />
-            <StatCard 
-              title="Total Simpanan" 
-              value={`Rp ${parseFloat(stats.totalSavings.toString()).toLocaleString('id-ID')}`} 
-              icon={<Wallet size={24} />} 
-              color="bg-emerald-600" 
-              subtext="Dana terkumpul"
-            />
-            <StatCard 
-              title="Pinjaman Aktif" 
-              value={`Rp ${parseFloat(stats.totalLoans.toString()).toLocaleString('id-ID')}`} 
-              icon={<TrendingUp size={24} />} 
-              color="bg-amber-600" 
-              subtext="Sirkulasi dana"
-            />
-            <StatCard 
-              title="Jatuh Tempo" 
-              value={stats.dueInstallments.toString()} 
-              icon={<AlertCircle size={24} />} 
-              color="bg-rose-600" 
-              subtext="Tagihan bulan ini"
-            />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <AnalyticsCard 
+                title="Total Anggota" 
+                value={stats.totalMembers.toString()} 
+                icon={<Users size={24} />} 
+                gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30" 
+                subtitle="Anggota terdaftar"
+              />
+              <AnalyticsCard 
+                title="Total Simpanan" 
+                value={`Rp ${parseFloat(stats.totalSavings.toString()).toLocaleString('id-ID')}`} 
+                icon={<Wallet size={24} />} 
+                gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
+                subtitle="Dana terkumpul"
+              />
+              <AnalyticsCard 
+                title="Pinjaman Aktif" 
+                value={`Rp ${parseFloat(stats.totalLoans.toString()).toLocaleString('id-ID')}`} 
+                icon={<TrendingUp size={24} />} 
+                gradient="from-amber-500 to-amber-700 text-white border-amber-400/30" 
+                subtitle="Sirkulasi dana"
+              />
+              <AnalyticsCard 
+                title="Jatuh Tempo" 
+                value={stats.dueInstallments.toString()} 
+                icon={<AlertCircle size={24} />} 
+                gradient="from-rose-500 to-rose-700 text-white border-rose-400/30" 
+                subtitle="Tagihan bulan ini"
+              />
+            </div>
+            
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Status Operasional Koperasi</span>
+              </div>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase bg-emerald-500/10 px-2.5 py-1 rounded-md">Aktif & Stabil</span>
+            </div>
           </div>
         )}
 
+        {/* Divider 1 */}
+        <hr className="border-slate-200 dark:border-slate-800" />
+
+        {/* ── SECTION 2: Grafik Pertumbuhan & Pengumuman ─────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {!isGuruOrSiswa ? (
             <>
@@ -375,13 +435,13 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
                     {announcements.length === 0 ? (
                       <p className="text-gray-500 text-center py-4">Tidak ada pengumuman.</p>
                     ) : (
-                      announcements.slice(0, 3).map((ann, idx) => (
+                      announcements.slice(0, 3)?.map((ann, idx) => (
                         <div key={idx} className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border-l-4 border-blue-500">
                           <div className="flex items-start">
                             <Bell className="text-blue-500 mt-1 mr-3 flex-shrink-0" size={16} />
                             <div>
                               <h4 className="font-bold text-gray-800 dark:text-gray-200 text-sm">{ann.title}</h4>
-                              <p className="text-gray-650 dark:text-gray-400 text-xs mt-1 line-clamp-2">{ann.content}</p>
+                              <p className="text-gray-600 dark:text-gray-400 text-xs mt-1 line-clamp-2">{ann.content}</p>
                               <p className="text-gray-400 text-[10px] mt-2 text-right">
                                 {new Date(ann.createdAt).toLocaleDateString()}
                               </p>
@@ -401,7 +461,7 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
                   {announcements.length === 0 ? (
                     <p className="col-span-3 text-gray-500 text-center py-8">Tidak ada pengumuman baru saat ini.</p>
                   ) : (
-                    announcements.slice(0, 3).map((ann, idx) => (
+                    announcements.slice(0, 3)?.map((ann, idx) => (
                       <div key={idx} className="bg-blue-50/50 dark:bg-blue-950/10 p-5 rounded-2xl border border-blue-100/50 dark:border-blue-900/20 shadow-sm flex flex-col justify-between">
                         <div>
                           <div className="flex items-center gap-2 mb-3">
@@ -421,237 +481,179 @@ interface MemberInfo { User?: { full_name?: string }; memberNo?: string; status?
                   )}
                 </div>
               </SectionCard>
-
-              {memberStatus === 'member' && (
-                <SectionCard title="Riwayat Belanja Saya" fullWidth noPadding>
-                  <div className="p-6">
-                    <Table
-                        data={(salesHistory ?? []).slice((salesPage - 1) * salesPageLimit, salesPage * salesPageLimit)}
-                        loading={salesLoading}
-                        emptyMessage="Anda belum memiliki riwayat transaksi belanja."
-                        pagination={{
-                          currentPage: salesPage,
-                          totalPages: Math.max(1, Math.ceil((salesHistory ?? []).length / salesPageLimit)),
-                          totalItems: (salesHistory ?? []).length,
-                          itemsPerPage: salesPageLimit,
-                          onPageChange: setSalesPage
-                        }}
-                        columns={[
-                          {
-                            label: 'Tanggal',
-                            key: 'date',
-                            sortable: true,
-                            render: (date: string) => format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: id }),
-                          },
-                          {
-                            label: 'ID Struk',
-                            key: 'id',
-                            render: (id: string) => <StrukBadge id={id} />,
-                          },
-                          {
-                            label: 'Metode Pembayaran',
-                            key: 'paymentMethod',
-                            render: (m: string) => (
-                              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                                {m}
-                              </span>
-                            ),
-                          },
-                          {
-                            label: 'Items',
-                            key: 'items',
-                            render: (items: SaleItem[]) => `${(items ?? []).length} Item`,
-                          },
-                          {
-                            label: 'Diskon',
-                            key: 'discount',
-                            render: (val: number) => val > 0 ? `Rp ${val.toLocaleString('id-ID')}` : '-',
-                          },
-                          {
-                            label: 'Total Belanja',
-                            key: 'total',
-                            sortable: true,
-                            render: (val: number) => (
-                              <span className="font-bold text-blue-600 dark:text-blue-400">
-                                Rp {val.toLocaleString('id-ID')}
-                              </span>
-                            ),
-                          },
-                          {
-                            label: 'Aksi',
-                            key: 'action',
-                            render: (_: unknown, record: Sale) => (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] gap-1"
-                                onClick={() => printReceipt(record)}
-                              >
-                                <Printer size={13} />
-                                Cetak
-                              </Button>
-                            ),
-                          }
-                        ]}
-                    />
-                  </div>
-                </SectionCard>
-              )}
             </div>
           )}
         </div>
-      </div>
+
+        {/* Divider 2 */}
+        <hr className="border-slate-200 dark:border-slate-800" />
+
+        {/* ── SECTION 3: Detail Inventori Kritis / Riwayat Belanja ─────────────────────────────── */}
+        {!isGuruOrSiswa ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-2 mb-4">
+                  <Package size={16} className="text-rose-500" />
+                  Peringatan Stok Kritis
+                </h3>
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {criticalStockLoading ? (
+                    <div className="text-center py-8 text-slate-400 italic">Memuat data persediaan...</div>
+                  ) : criticalStock.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
+                      <CheckCircle2 size={24} className="text-emerald-500" />
+                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Semua Stok Aman</p>
+                      <p className="text-[10px] text-slate-400">Tidak ada produk dengan persediaan rendah atau habis.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {criticalStock.slice(0, 6)?.map((item, i) => (
+                        <div key={i} className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                          <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{item.name}</p>
+                            <p className="text-[9px] text-slate-400">{item.category}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider",
+                              item.status === 'HABIS' ? "bg-red-50 text-red-600 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
+                            )}>
+                              {item.status}: {item.stock} pcs
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {criticalStock.length > 6 && (
+                <p className="text-[9px] text-slate-400 font-semibold mt-2">
+                  * Dan {criticalStock.length - 6} produk kritis lainnya. Periksa menu Inventori untuk detail lengkap.
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[220px]">
+              <div className="space-y-4">
+                <h3 className="text-xs font-black uppercase tracking-wider text-indigo-500">Panduan Restock</h3>
+                <p className="text-[11px] text-slate-500 leading-relaxed font-medium dark:text-slate-400">
+                  Sistem mendeteksi tingkat persediaan barang secara otomatis.
+                  Apabila persediaan barang berada di bawah batas minimum (status <strong>RENDAH</strong>), atau kosong (status <strong>HABIS</strong>), harap segera lakukan transaksi restock barang masuk untuk menjamin sirkulasi minimarket koperasi tetap lancar.
+                </p>
+              </div>
+              <a href="/cooperative/products" className="text-xs font-bold text-center text-white bg-indigo-600 hover:bg-indigo-700 py-2.5 rounded-xl transition-all shadow-sm">
+                Kelola Inventori &rarr;
+              </a>
+            </div>
+          </div>
+        ) : memberStatus === 'member' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <SectionCard title="Riwayat Belanja Saya" fullWidth noPadding>
+                <div className="p-6">
+                  <Table
+                      data={(salesHistory ?? []).slice((salesPage - 1) * salesPageLimit, salesPage * salesPageLimit)}
+                      loading={salesLoading}
+                      emptyMessage="Anda belum memiliki riwayat transaksi belanja."
+                      pagination={{
+                        currentPage: salesPage,
+                        totalPages: Math.max(1, Math.ceil((salesHistory ?? []).length / salesPageLimit)),
+                        totalItems: (salesHistory ?? []).length,
+                        itemsPerPage: salesPageLimit,
+                        onPageChange: salesPage => setSalesPage(salesPage),
+                        onLimitChange: () => {}
+                      }}
+                      columns={[
+                        {
+                          label: 'Tanggal',
+                          key: 'date',
+                          sortable: true,
+                          render: (date: string) => format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: id }),
+                        },
+                        {
+                          label: 'ID Struk',
+                          key: 'id',
+                          render: (id: string) => <StrukBadge id={id} />,
+                        },
+                        {
+                          label: 'Metode Pembayaran',
+                          key: 'paymentMethod',
+                          render: (m: string) => (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                              {m}
+                            </span>
+                          ),
+                        },
+                        {
+                          label: 'Items',
+                          key: 'items',
+                          render: (items: SaleItem[]) => `${(items ?? []).length} Item`,
+                        },
+                        {
+                          label: 'Diskon',
+                          key: 'discount',
+                          render: (val: number) => val > 0 ? `Rp ${val.toLocaleString('id-ID')}` : '-',
+                        },
+                        {
+                          label: 'Total Belanja',
+                          key: 'total',
+                          sortable: true,
+                          render: (val: number) => (
+                            <span className="font-bold text-blue-600 dark:text-blue-400">
+                              Rp {val.toLocaleString('id-ID')}
+                            </span>
+                          ),
+                        },
+                        {
+                          label: 'Aksi',
+                          key: 'action',
+                          render: (_: unknown, record: Sale) => (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] gap-1"
+                              onClick={() => printReceipt(record)}
+                            >
+                              <Printer size={13} />
+                              Cetak
+                            </Button>
+                          ),
+                        }
+                      ]}
+                  />
+                </div>
+              </SectionCard>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col justify-between min-h-[220px]">
+              <div>
+                <h3 className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Bunga & Benefit keanggotaan</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed font-medium">
+                  Dapatkan SHU (Sisa Hasil Usaha) tahunan berdasarkan keaktifan belanja di koperasi sekolah dan jumlah simpanan wajib/sukarela Anda.
+                </p>
+              </div>
+              <span className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">Keanggotaan Koperasi Absenta</span>
+            </div>
+          </div>
+        ) : null}
+
+        </div>
 
       {/* ── Detail Struk Belanja Modal ─────────────────────────────── */}
-      <Modal
+      <ReceiptModal
         isOpen={showReceiptModal}
         onClose={() => {
           setShowReceiptModal(false);
           setSelectedSale(null);
         }}
-        title="Detail Struk Belanja"
-        size="md"
-      >
-        {selectedSale && (
-          <div className="space-y-6">
-            {/* Visual receipt layout */}
-            <div className="bg-[#FCFBF7] dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg max-w-sm mx-auto font-mono text-sm text-slate-800 dark:text-slate-200">
-              <div className="text-center space-y-1">
-                <h4 className="font-extrabold text-base text-slate-900 dark:text-slate-100 uppercase tracking-tight">
-                  {coopSettings?.cooperative_name || 'KOPERASI SEKOLAH'}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {coopSettings?.cooperative_address || 'Kantin & Minimarket'}
-                </p>
-                {coopSettings?.cooperative_phone && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Telp: {coopSettings.cooperative_phone}
-                  </p>
-                )}
-                <p className="text-[11px] text-slate-400 mt-2 font-semibold">
-                  {new Date(selectedSale.date).toLocaleString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-800 my-4" />
-
-              <div className="space-y-1 text-xs font-semibold">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">No Struk:</span>
-                  <span className="text-slate-950 dark:text-slate-50 font-bold">#{selectedSale.id.slice(0, 8)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Pembeli:</span>
-                  <span className="text-slate-900 dark:text-slate-100">
-                    {memberInfo?.User?.full_name || user?.full_name || 'Tamu'}{' '}
-                    {memberInfo?.memberNo ? `(${memberInfo.memberNo})` : ''}
-                  </span>
-                </div>
-              </div>
-
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-800 my-4" />
-
-              {/* Items List */}
-              <div className="space-y-3">
-                {(selectedSale.items ?? []).map((item: SaleItem, idx: number) => (
-                  <div key={idx} className="flex justify-between text-xs">
-                    <div className="flex-1 pr-4">
-                      <p className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
-                        {item.product?.name || 'Produk'}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                        {item.quantity} x Rp {Number(item.price).toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                    <span className="font-extrabold text-slate-950 dark:text-slate-50 shrink-0">
-                      Rp {(Number(item.price) * item.quantity).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-800 my-4" />
-
-              {/* Summary */}
-              <div className="space-y-1.5 text-xs font-semibold">
-                {selectedSale.discount > 0 && (
-                  <div className="flex justify-between text-red-600 dark:text-red-400 font-bold">
-                    <span>DISKON VOUCHER ({selectedSale.voucherCode})</span>
-                    <span>-Rp {Number(selectedSale.discount).toLocaleString('id-ID')}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-extrabold text-slate-950 dark:text-slate-50 text-sm pt-1">
-                  <span>TOTAL</span>
-                  <span>Rp {Number(selectedSale.total).toLocaleString('id-ID')}</span>
-                </div>
-                <div className="flex justify-between text-slate-400 pt-1">
-                  <span>Metode Bayar:</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">
-                    {selectedSale.paymentMethod === 'SAVING' ? 'Tabungan' : 'Tunai'}
-                  </span>
-                </div>
-                {selectedSale.paymentMethod === 'CASH' && (
-                  <>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Tunai Diterima:</span>
-                      <span className="text-slate-700 dark:text-slate-300">Rp {Number(selectedSale.cashAmount || 0).toLocaleString('id-ID')}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Kembalian:</span>
-                      <span className="text-slate-700 dark:text-slate-300">Rp {Number(selectedSale.changeAmount || 0).toLocaleString('id-ID')}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Points Earned Banner */}
-              {selectedSale.total >= 10000 && (
-                <div className="mt-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-2 rounded-xl flex items-center justify-between border border-emerald-100 dark:border-emerald-900/30">
-                  <span className="flex items-center gap-1 font-bold">
-                    <Award size={14} className="animate-pulse text-emerald-500" /> Poin Diperoleh:
-                  </span>
-                  <span className="font-extrabold">+{Math.floor(selectedSale.total / 10000)} Poin</span>
-                </div>
-              )}
-
-              <div className="border-t border-dashed border-slate-300 dark:border-slate-800 my-4" />
-
-              <div className="text-center text-[10px] text-slate-400 font-bold space-y-0.5 tracking-wide uppercase">
-                <p>Terima Kasih</p>
-                <p>Selamat Belanja Kembali</p>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="flex justify-end gap-3 border-t border-slate-100 dark:border-slate-800 pt-4">
-              <Button
-                variant="outline"
-                className="hover:scale-105 active:scale-95 transition-all text-xs"
-                onClick={() => {
-                  setShowReceiptModal(false);
-                  setSelectedSale(null);
-                }}
-              >
-                Tutup
-              </Button>
-              <Button
-                variant="primary"
-                className="bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 transition-all text-xs shadow-sm w-full flex items-center justify-center gap-2"
-                onClick={() => printReceipt(selectedSale)}
-              >
-                <Printer size={16} />
-                Cetak Struk
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        selectedSale={selectedSale}
+        coopSettings={coopSettings}
+        memberInfo={memberInfo}
+        user={user as CoopUserInfo | null}
+        printReceipt={printReceipt}
+      />
     </AcademicPageLayout>
     </PremiumFeatureGate>
   );

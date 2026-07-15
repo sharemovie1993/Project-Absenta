@@ -24,7 +24,8 @@ import {
   Badge, 
   Input,
   Modal,
-  Loader
+  Loader,
+  type Column
 } from '../../ui';
 import { getKelasList, deleteKelas, updateKelas } from '../../../api/academic/kelas.api';
 import { getJurusanList } from '../../../api/academic/jurusan.api';
@@ -318,7 +319,7 @@ const KelasList = React.memo<KelasListProps>(({
 
   // Table columns configuration
   const columns = useMemo(() => {
-    const cols = [
+    const cols: Column[] = [
       { 
         key: 'nama_kelas', 
         label: 'Nama Kelas',

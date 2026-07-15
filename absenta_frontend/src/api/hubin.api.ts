@@ -103,6 +103,7 @@ export interface HubinTracerStudy {
   program_studi?: string;
   usaha_nama?: string;
   usaha_bidang?: string;
+  created_at?: string;
   Siswa?: {
     nama_siswa: string;
     nis: string;

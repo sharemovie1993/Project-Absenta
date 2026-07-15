@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import absentaHardening from './config/eslint-plugin-absenta-hardening.js'
 
 export default defineConfig([
   globalIgnores(['dist', 'android/**/build/**']),
@@ -128,6 +129,16 @@ export default defineConfig([
     files: ['src/debug/**/*.{ts,tsx}'],
     rules: {
       'no-empty': ['warn', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ['src/pages/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
+    plugins: {
+      'absenta-hardening': absentaHardening,
+    },
+    rules: {
+      'absenta-hardening/safe-map-chaining': 'error',
+      'absenta-hardening/no-unsafe-as-any': 'error',
     },
   },
 ])

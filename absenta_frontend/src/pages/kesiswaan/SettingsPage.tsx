@@ -1,6 +1,7 @@
 import React from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SettingsSection } from './components/SettingsSection';
+import { Card } from '../../components/ui/Card';
 
 export default function SettingsPage() {
   return (
@@ -22,7 +23,9 @@ export default function SettingsPage() {
         ]
       }}
     >
-      <SettingsSection />
+      <Card className="border-none shadow-none bg-transparent">
+        <SettingsSection />
+      </Card>
     </AcademicPageLayout>
   );
 }

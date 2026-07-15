@@ -53,6 +53,12 @@ interface PenempatanItem {
   pembimbing_id?: string;
 }
 
+interface JurusanItem {
+  id: string;
+  nama_jurusan: string;
+  kode?: string;
+}
+
 export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideLayout = false }) => {
   const { subscription, user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -106,10 +112,10 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     queryFn: () => jurusanApi.getAll({ limit: 100 }),
   });
 
-  const jurusanList = useMemo(() => {
-    if (Array.isArray(jurusanListQuery)) return jurusanListQuery;
+  const jurusanList = useMemo((): JurusanItem[] => {
+    if (Array.isArray(jurusanListQuery)) return (jurusanListQuery as unknown as JurusanItem[]);
     if (jurusanListQuery && typeof jurusanListQuery === 'object' && 'data' in jurusanListQuery) {
-      return (jurusanListQuery as { data: any[] }).data || [];
+      return ((jurusanListQuery as unknown as { data: JurusanItem[] }).data) || [];
     }
     return [];
   }, [jurusanListQuery]);
@@ -198,10 +204,10 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       // PKL Capacity
       kuota_pkl: parseInt(formData.get('kuota_pkl') as string) || 0,
       kompetensi_keahlian: (() => {
-        const checkedKeahlian = formData.getAll('kompetensi_keahlian')
-          .map(val => (val as string).split(','))
+        const checkedKeahlian = (formData.getAll('kompetensi_keahlian') ?? [])
+          ?.map(val => (val as string).split(','))
           .flat()
-          .map(s => s.trim())
+          ?.map(s => s.trim())
           .filter(Boolean);
         return checkedKeahlian.length > 0 ? checkedKeahlian.join(', ') : null;
       })(),
@@ -288,7 +294,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
         sortable: true,
         render: (nama: string, row: MitraIndustri) => (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-650 dark:text-indigo-400 font-bold uppercase shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold uppercase shrink-0">
               {nama.substring(0, 2)}
             </div>
             <div>
@@ -305,7 +311,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
         key: 'alamat',
         label: 'Bidang/Alamat',
         render: (alamat: string) => (
-          <div className="flex items-start gap-1 max-w-xs text-sm text-slate-650 dark:text-slate-350">
+          <div className="flex items-start gap-1 max-w-xs text-sm text-slate-600 dark:text-slate-400">
             <MapPin size={16} className="mt-0.5 text-slate-400 shrink-0" />
             <span className="line-clamp-2">{alamat || '-'}</span>
           </div>
@@ -315,7 +321,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
         key: 'kontak',
         label: 'Kontak',
         render: (kontak: string) => (
-          <div className="flex items-center gap-1 text-sm text-slate-650 dark:text-slate-350">
+          <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400">
             <Phone size={14} className="text-slate-400" />
             {kontak || '-'}
           </div>
@@ -350,7 +356,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+            className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
             onClick={() => setSelectedDetailMitra(row)}
             title="Lihat Detail"
           >
@@ -374,7 +380,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                className="h-8 w-8 p-0 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                 onClick={() => setSelectedMoUMitra(row)}
                 title="Riwayat MoU"
               >
@@ -422,15 +428,15 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
       </div>
       <div className="flex items-center">
         {isHubin ? (
-          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-150/60 dark:border-indigo-900/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
             Manajemen Penuh (Hubin)
           </span>
         ) : isPembimbing ? (
-          <span className="text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-150/60 dark:border-amber-900/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
             Peninjau (Pembimbing Aktif)
           </span>
         ) : (
-          <span className="text-[10px] font-bold bg-slate-100 text-slate-650 dark:bg-slate-900 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/40 px-2.5 py-1 rounded-full uppercase tracking-wider">
             Peninjau (Guru Akademik)
           </span>
         )}
@@ -443,6 +449,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = ({ hideL
     <div className="relative w-72 sm:w-80 md:w-96">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
       <Input
+        aria-label="Cari nama mitra atau bidang industri"
         placeholder="Cari nama mitra atau bidang..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}

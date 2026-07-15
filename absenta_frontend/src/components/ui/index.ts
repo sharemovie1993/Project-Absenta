@@ -10,7 +10,8 @@ export { ModalFooter } from './Modal';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as SectionHeader } from './SectionHeader';
 export { default as Table } from './Table';
-export { TableCell, TableActions } from './Table';
+export { TableCell, TableActions, type Column } from './Table';
+
 export { 
   default as Badge, 
   StatusBadge, 

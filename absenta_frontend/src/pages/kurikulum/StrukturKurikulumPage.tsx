@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Layers,
@@ -19,6 +19,12 @@ import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useJenjang } from '../../hooks/useJenjang';
 import { cn } from '../../lib/utils';
+import { z } from 'zod';
+
+const filterSchema = z.object({
+  searchTerm: z.string().optional(),
+  selectedKelompok: z.string().optional()
+});
 
 interface StrukturItem {
   id: string;
@@ -36,6 +42,8 @@ interface GradeStats {
   count: number;
   totalJp: number;
 }
+
+const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 
 const StrukturKurikulumPage: React.FC = () => {
   const navigate = useNavigate();
@@ -58,9 +66,8 @@ const StrukturKurikulumPage: React.FC = () => {
     enabled: !!activeYear
   });
 
-  // Set default selectedTingkat to first element in tingkatList when available
   React.useEffect(() => {
-    if (tingkatList.length > 0 && selectedTingkat === null) {
+    if (tingkatList && tingkatList.length > 0 && selectedTingkat === null) {
       setSelectedTingkat(tingkatList[0]);
     }
   }, [tingkatList, selectedTingkat]);
@@ -126,7 +133,22 @@ const StrukturKurikulumPage: React.FC = () => {
     }, { totalJp: 0, mapelCount: 0, byKelompok: {} as Record<string, { jp: number, count: number }> });
   }, [mapping, selectedTingkat]);
 
+  React.useEffect(() => {
+    const validation = filterSchema.safeParse({ searchTerm, selectedKelompok });
+    if (!validation.success) {
+      console.warn('Filter tidak valid:', validation.error.message);
+    }
+  }, [searchTerm, selectedKelompok]);
+
   const handleManagePlotting = useCallback(() => navigate('/kurikulum/plotting'), [navigate]);
+
+  const selectOptions = useMemo(() => [
+    { label: 'SEMUA KELOMPOK', value: 'ALL' },
+    ...(kelompokOptions ?? [])?.map(opt => ({
+      label: opt.label.toUpperCase(),
+      value: opt.value
+    }))
+  ], [kelompokOptions]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik', path: '/academic' },
@@ -159,7 +181,7 @@ const StrukturKurikulumPage: React.FC = () => {
           </div>
           <Button
             onClick={handleManagePlotting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none font-black"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none font-black"
           >
             <Settings className="w-4 h-4 mr-2" />
             KELOLA PLOTTING JP
@@ -167,14 +189,14 @@ const StrukturKurikulumPage: React.FC = () => {
         </div>
 
         {!activeYear && !isLoading && (
-          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-xl border border-amber-200 dark:border-amber-800 text-sm font-bold flex items-center">
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-2xl border border-amber-200 dark:border-amber-800 text-sm font-bold flex items-center">
             <span className="mr-2">⚠️</span>
             Tahun Pelajaran Aktif tidak ditemukan. Harap aktifkan Tahun Pelajaran di menu Akademik.
           </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {tingkatList.map((grade) => {
+          {tingkatList?.map((grade) => {
             const s = statsByGrade[grade] ?? { count: 0, totalJp: 0 };
             const isActive = selectedTingkat === grade;
             return (
@@ -185,7 +207,7 @@ const StrukturKurikulumPage: React.FC = () => {
                   "p-6 border transition-all cursor-pointer relative overflow-hidden group select-none rounded-2xl",
                   isActive 
                     ? "border-indigo-600 dark:border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-500/10" 
-                    : "border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-gray-250 dark:hover:border-slate-700 shadow-sm"
+                    : "border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 hover:border-gray-200 dark:hover:border-slate-700 shadow-sm"
                 )}
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 -mr-12 -mt-12 rounded-full group-hover:scale-110 transition-transform"></div>
@@ -201,7 +223,7 @@ const StrukturKurikulumPage: React.FC = () => {
                     {isLoading ? (
                       <Skeleton className="h-10 w-20" />
                     ) : (
-                      <p className="text-4xl font-black text-slate-850 dark:text-white leading-none">{s.totalJp}</p>
+                      <p className="text-4xl font-black text-slate-800 dark:text-white leading-none">{s.totalJp}</p>
                     )}
                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-2">Total Jam / Minggu</p>
                   </div>
@@ -232,8 +254,8 @@ const StrukturKurikulumPage: React.FC = () => {
                         <BookOpen size={16} className="mr-2 text-indigo-600" />
                         Daftar Mapel - Tingkat {selectedTingkat}
                       </h3>
-                      <p className="text-[10px] text-gray-450 font-bold uppercase mt-1">
-                        Menampilkan {filteredData.length} dari {selectedGradeStats.mapelCount} mata pelajaran
+                      <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">
+                        Menampilkan {filteredData?.length} dari {selectedGradeStats.mapelCount} mata pelajaran
                       </p>
                     </div>
 
@@ -244,20 +266,20 @@ const StrukturKurikulumPage: React.FC = () => {
                           placeholder="Cari mapel..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-48 h-9 pl-9 pr-3 text-xs rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50/50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                          aria-label="Cari mata pelajaran"
+                          className="w-48 h-9 pl-9 pr-3 text-xs rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
                         />
                       </div>
 
-                      <select
-                        value={selectedKelompok}
-                        onChange={(e) => setSelectedKelompok(e.target.value)}
-                        className="h-9 px-3 text-xs rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50/50 dark:bg-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer outline-none"
-                      >
-                        <option value="ALL">SEMUA KELOMPOK</option>
-                        {kelompokOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label.toUpperCase()}</option>
-                        ))}
-                      </select>
+                      <Suspense fallback={<div className="h-9 w-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
+                        <SearchableSelect
+                          id="kelompok-select"
+                          value={selectedKelompok}
+                          onValueChange={setSelectedKelompok}
+                          options={selectOptions}
+                          placeholder="Semua Kelompok"
+                        />
+                      </Suspense>
                     </div>
                   </div>
 
@@ -272,21 +294,21 @@ const StrukturKurikulumPage: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-slate-50 dark:divide-slate-900">
                         {isLoading ? (
-                          [1, 2, 3, 4].map(i => (
+                          [1, 2, 3, 4]?.map(i => (
                             <tr key={i}>
                               <td className="px-4 py-3" colSpan={3}>
-                                <Skeleton className="h-10 w-full rounded-xl" />
+                                <Skeleton className="h-10 w-full rounded-2xl" />
                               </td>
                             </tr>
                           ))
-                        ) : filteredData.length === 0 ? (
+                        ) : filteredData?.length === 0 ? (
                           <tr>
                             <td className="px-4 py-16 text-center text-xs font-bold text-gray-400 italic" colSpan={3}>
                               Tidak ada mata pelajaran yang cocok dengan filter.
                             </td>
                           </tr>
                         ) : (
-                          filteredData.map((item) => (
+                          filteredData?.map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors">
                               <td className="px-4 py-3">
                                 <Badge className={cn(
@@ -310,7 +332,7 @@ const StrukturKurikulumPage: React.FC = () => {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">{item.jp_per_minggu}</span>
-                                <span className="text-[9px] font-bold text-gray-450 ml-1">JP / Minggu</span>
+                                <span className="text-[9px] font-bold text-gray-400 ml-1">JP / Minggu</span>
                               </td>
                             </tr>
                           ))
@@ -331,17 +353,17 @@ const StrukturKurikulumPage: React.FC = () => {
             <div className="lg:col-span-4 flex flex-col gap-6">
               <Card className="p-6 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm space-y-6">
                 <div className="space-y-1">
-                  <h3 className="font-black text-slate-850 dark:text-white uppercase tracking-tight text-xs flex items-center">
+                  <h3 className="font-black text-slate-800 dark:text-white uppercase tracking-tight text-xs flex items-center">
                     <BarChart3 size={15} className="mr-2 text-indigo-600" />
                     Metrik Beban Tingkat {selectedTingkat}
                   </h3>
                   <p className="text-[9px] text-gray-400 font-bold uppercase">Analisis alokasi jam</p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-slate-50 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                <div className="p-4 rounded-2xl border border-slate-50 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-2xl font-black text-slate-800 dark:text-white">{selectedGradeStats.totalJp} JP</p>
-                    <p className="text-[9px] text-gray-450 font-bold uppercase tracking-wider">Total Beban Kelas</p>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Total Beban Kelas</p>
                   </div>
                   <div className={cn(
                     "text-[10px] font-black uppercase px-2.5 py-1 rounded-lg",
@@ -355,7 +377,7 @@ const StrukturKurikulumPage: React.FC = () => {
 
                 <div className="space-y-4">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kontribusi Kelompok</p>
-                  {kelompokOptions.map(opt => {
+                  {kelompokOptions?.map(opt => {
                     const kel = opt.value;
                     const label = opt.label;
                     const dataKel = selectedGradeStats.byKelompok[kel] ?? { jp: 0, count: 0 };
@@ -389,7 +411,7 @@ const StrukturKurikulumPage: React.FC = () => {
               <Card className="p-6 rounded-2xl border-none shadow-sm bg-slate-900 dark:bg-slate-950 text-white relative overflow-hidden flex-1 flex flex-col justify-between">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl -mr-16 -mt-16"></div>
                 <div className="relative z-10 space-y-4">
-                  <div className="p-3 bg-white/10 rounded-xl w-fit">
+                  <div className="p-3 bg-white/10 rounded-2xl w-fit">
                     <Layers size={20} className="text-indigo-400" />
                   </div>
                   <h4 className="text-base font-black uppercase tracking-tight">Otomasi Slot Jadwal</h4>
@@ -399,7 +421,7 @@ const StrukturKurikulumPage: React.FC = () => {
                 </div>
                 <Button
                   onClick={handleManagePlotting}
-                  className="mt-6 w-full bg-indigo-650 hover:bg-indigo-700 text-white font-black rounded-xl border-none h-11 text-xs"
+                  className="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl border-none h-11 text-xs"
                 >
                   PLOT STRUKTUR SEKARANG
                   <ChevronRight size={16} className="ml-1.5" />

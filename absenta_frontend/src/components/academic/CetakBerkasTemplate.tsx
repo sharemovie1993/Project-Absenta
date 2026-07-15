@@ -80,6 +80,7 @@ interface CetakBerkasTemplateProps {
     checklistData: PrepChecklistData | null;
   }) => Promise<Blob>;
   defaultPrintType: string;
+  hardeningModuleKey?: string;
 }
 
 export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
@@ -91,7 +92,8 @@ export const CetakBerkasTemplate: React.FC<CetakBerkasTemplateProps> = ({
   showChecklist = false,
   docFormRenderer,
   pdfGenerator,
-  defaultPrintType
+  defaultPrintType,
+  hardeningModuleKey: _hardeningModuleKey  // accepted but unused in template directly
 }) => {
   const [activeTab, setActiveTab] = useState<'system' | 'print'>(showChecklist ? 'system' : 'print');
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);

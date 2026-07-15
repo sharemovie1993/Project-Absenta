@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   BookOpen,
   Plus,
@@ -18,6 +18,7 @@ import {
 import type { GlobalMapelPreset } from '../../api/academic/mapel.api';
 import { Button, Input, Modal, Badge } from '../../components/ui';
 import toast from 'react-hot-toast';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import useConfirm from '../../hooks/useConfirm';
 
 const JENJANG_OPTIONS = ['SMP', 'MTs', 'SMA', 'MA', 'SMK', 'MAK'];
@@ -153,19 +154,20 @@ export const MapelPresetsPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total Preset', value: presets.length, icon: <BookOpen size={15} />, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' },
-          { label: 'Jenjang', value: totalJenjang, icon: <GraduationCap size={15} />, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' },
-          { label: 'Kategori', value: totalCategories, icon: <Filter size={15} />, color: 'text-green-600 bg-green-50 dark:bg-green-900/20' },
+          { label: 'Total Preset', value: presets.length, icon: <BookOpen size={16} />, gradient: 'from-blue-500 to-blue-700 text-white' },
+          { label: 'Jenjang', value: totalJenjang, icon: <GraduationCap size={16} />, gradient: 'from-purple-500 to-purple-700 text-white' },
+          { label: 'Kategori', value: totalCategories, icon: <Filter size={16} />, gradient: 'from-emerald-500 to-emerald-700 text-white' },
         ].map(stat => (
-          <div key={stat.label} className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl ${stat.color}`}>{stat.icon}</div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{stat.value}</div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold tracking-wider">{stat.label}</div>
-            </div>
-          </div>
+          <AnalyticsCard
+            key={stat.label}
+            title={stat.label}
+            value={stat.value}
+            icon={stat.icon}
+            gradient={stat.gradient}
+            isLoading={loading}
+          />
         ))}
       </div>
 
