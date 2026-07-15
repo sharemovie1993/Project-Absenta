@@ -125,38 +125,6 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
     }
   };
 
-  const renderJpCalculator = (jp: number, mapelName: string, mapelKode: string) => {
-    const weeks = selectedTingkat === 12 ? 32 : 36;
-    const annualIntra = jp * weeks;
-    const recommendedJp = detectDefaultJpForMapel(mapelKode, mapelName, selectedTingkat);
-    const recommendedAnnual = recommendedJp * weeks;
-    
-    let statusColor = "text-emerald-650 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40";
-    let statusText = "Sesuai Standar Kemendikbud";
-    
-    if (jp > recommendedJp) {
-      statusColor = "text-violet-650 dark:text-violet-455 bg-violet-50 dark:bg-violet-950/20 border-violet-100 dark:border-violet-900/40";
-      statusText = `Otonomi (+${jp - recommendedJp} JP)`;
-    } else if (jp < recommendedJp) {
-      statusColor = "text-amber-650 dark:text-amber-455 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40";
-      statusText = `Di bawah Standar (-${recommendedJp - jp} JP)`;
-    }
-    
-    return (
-      <div className="mt-1 p-2 rounded-xl border border-slate-200/50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-1 text-left text-[10px]">
-        <div className="flex items-center justify-between">
-          <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Kalkulator JP</span>
-          <span className={`text-[8px] font-black tracking-wider uppercase border px-1.5 py-0.5 rounded ${statusColor}`}>
-            {statusText}
-          </span>
-        </div>
-        <div className="flex gap-4">
-          <p className="text-gray-500 font-bold">Intra/Thn: <strong className="text-slate-700 dark:text-slate-350">{annualIntra} JP</strong></p>
-          <p className="text-gray-500 font-bold">Standar: <strong className="text-slate-700 dark:text-slate-350">{recommendedAnnual} JP</strong></p>
-        </div>
-      </div>
-    );
-  };
 
   // Filter subjects for the current step
   const filteredSubjects = useMemo(() => {
@@ -617,44 +585,41 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                   if (!mapelObj) return null;
                   
                   return (
-                    <div key={id} className="flex flex-col gap-2 p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
-                          <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-650 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {/* JP Input */}
-                          <div className="w-24">
-                            <input
-                              type="number"
-                              min={1}
-                              max={40}
-                              value={config.jp_per_minggu}
-                              onChange={(e) => {
-                                const copy = { ...bulkSelections };
-                                copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
-                                setBulkSelections(copy);
-                              }}
-                              className="w-full h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-855 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500"
-                            />
-                          </div>
-                          {/* Delete item button */}
-                          <button
-                            type="button"
-                            onClick={() => {
+                    <div key={id} className="flex items-center justify-between gap-3 p-2 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl hover:border-indigo-200 transition-all animate-in fade-in duration-200">
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{mapelObj.nama_mapel}</p>
+                        <span className="text-[8px] bg-slate-250 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">{mapelObj.kode_mapel}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* JP Input */}
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={40}
+                            value={config.jp_per_minggu}
+                            onChange={(e) => {
                               const copy = { ...bulkSelections };
-                              delete copy[id];
+                              copy[id] = { ...copy[id], jp_per_minggu: Number(e.target.value) };
                               setBulkSelections(copy);
                             }}
-                            className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                            className="w-12 h-7 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-center text-xs font-black text-indigo-600 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                          />
+                          <span className="text-[9px] font-black text-slate-400">JP</span>
                         </div>
+                        {/* Delete item button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const copy = { ...bulkSelections };
+                            delete copy[id];
+                            setBulkSelections(copy);
+                          }}
+                          className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-md transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                      {/* JP calculator */}
-                      {renderJpCalculator(Number(config.jp_per_minggu || 0), mapelObj.nama_mapel, mapelObj.kode_mapel)}
                     </div>
                   );
                 })
