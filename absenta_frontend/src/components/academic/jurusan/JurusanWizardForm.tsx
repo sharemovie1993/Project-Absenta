@@ -269,7 +269,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
           </div>
 
           {/* Program Keahlian List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin flex flex-col">
             {filteredPrograms.map(prog => {
               const isSelected = selectedProgramKodes.includes(prog.kode);
               return (
@@ -277,7 +277,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                   key={prog.kode}
                   type="button"
                   onClick={() => toggleProgram(prog.kode)}
-                  className={`flex items-center text-left p-3.5 rounded-2xl border transition-all group ${
+                  className={`flex items-center text-left p-3 rounded-xl border transition-all group ${
                     isSelected
                       ? 'border-violet-500 bg-violet-50/10 dark:bg-violet-950/10 shadow-sm'
                       : 'border-slate-100 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
@@ -287,26 +287,23 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                     {isSelected ? (
                       <CheckSquare className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                     ) : (
-                      <Square className="w-5 h-5 text-slate-300 dark:text-slate-750 group-hover:text-slate-400" />
+                      <Square className="w-5 h-5 text-slate-300 dark:text-slate-700 group-hover:text-slate-400" />
                     )}
                   </div>
-                  <div className="space-y-0.5 min-w-0 flex-1">
-                    <span className="text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
-                      {prog.bidang_keahlian}
-                    </span>
-                    <h6 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight truncate">
+                  <div className="min-w-0 flex-1 flex items-center justify-between">
+                    <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
                       {prog.nama}
                     </h6>
-                    <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">
-                      Kode: {prog.kode} · ({prog.jurusans?.length || 0} Jurusan)
-                    </p>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-md ml-2 shrink-0">
+                      {prog.kode}
+                    </span>
                   </div>
                 </button>
               );
             })}
 
             {filteredPrograms.length === 0 && (
-              <div className="text-center py-8 text-slate-400 text-[11px] font-semibold col-span-2">
+              <div className="text-center py-8 text-slate-400 text-[11px] font-semibold">
                 Tidak ada program keahlian yang cocok dengan pencarian Anda.
               </div>
             )}
