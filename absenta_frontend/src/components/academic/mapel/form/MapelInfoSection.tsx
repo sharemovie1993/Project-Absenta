@@ -5,6 +5,7 @@ import { Label } from '../../../ui/Label';
 import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Controller } from 'react-hook-form';
 import { SectionCard, DetailRow } from './FormShared';
+import toast from 'react-hot-toast';
 
 interface MapelInfoSectionProps {
   register: any;
@@ -13,6 +14,8 @@ interface MapelInfoSectionProps {
   isViewMode: boolean;
   watch: any;
   tingkatOptions: any[];
+  presets?: any[];
+  setValue?: any;
 }
 
 export const MapelInfoSection = React.memo<MapelInfoSectionProps>(({
@@ -21,7 +24,9 @@ export const MapelInfoSection = React.memo<MapelInfoSectionProps>(({
   errors,
   isViewMode,
   watch,
-  tingkatOptions = []
+  tingkatOptions = [],
+  presets = [],
+  setValue
 }) => {
   if (isViewMode) {
     const selectedTingkat = tingkatOptions?.find(opt => opt.value === (watch('tingkat')?.toString() || '0'));
@@ -37,6 +42,38 @@ export const MapelInfoSection = React.memo<MapelInfoSectionProps>(({
 
   return (
     <SectionCard title="Informasi Mata Pelajaran" icon={BookOpenCheck}>
+      {/* Option to load from Global Preset (Autofill) */}
+      {!isViewMode && presets && presets.length > 0 && (
+        <div className="space-y-2 md:col-span-2 p-4 bg-violet-50/40 dark:bg-violet-950/15 rounded-2xl border border-violet-100 dark:border-violet-900/40 mb-2">
+          <label className="text-[11px] font-bold text-violet-700 dark:text-violet-300 uppercase tracking-wider block mb-1">
+            🚀 Preset Mata Pelajaran (Autofill Cepat)
+          </label>
+          <select
+            onChange={(e) => {
+              const selectedPresetId = e.target.value;
+              if (selectedPresetId) {
+                const preset = presets.find(p => p.id === selectedPresetId);
+                if (preset && setValue) {
+                  setValue('nama_mapel', preset.nama_mapel, { shouldValidate: true });
+                  setValue('kode_mapel', preset.kode_mapel || '', { shouldValidate: true });
+                  toast.success(`Autofill berhasil untuk mapel: ${preset.nama_mapel}`);
+                }
+              }
+            }}
+            className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+          >
+            <option value="">— Pilih Preset Mata Pelajaran —</option>
+            {presets.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.nama_mapel} ({p.kode_mapel} · {p.category})
+              </option>
+            ))}
+          </select>
+          <p className="text-[9px] text-slate-500 italic mt-1">
+            * Memilih salah satu preset akan mengisi otomatis nama dan kode mata pelajaran.
+          </p>
+        </div>
+      )}
       <div className="space-y-2 md:col-span-2 group">
         <div className="flex items-center justify-between px-1">
           <Label htmlFor="nama_mapel" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">

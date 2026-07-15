@@ -8,7 +8,7 @@ import {
   Loader,
   ModalFooter
 } from '../../ui';
-import { createMapel, updateMapel, getMapelDetail, type CreateMapelPayload, type UpdateMapelPayload } from '../../../api/academic/mapel.api';
+import { createMapel, updateMapel, getMapelDetail, getPresetsByJenjang, type CreateMapelPayload, type UpdateMapelPayload, type GlobalMapelPreset } from '../../../api/academic/mapel.api';
 import toast from 'react-hot-toast';
 import { createMapelSchema, type CreateMapelSchema } from '../../../schemas/academic/mapel.schema';
 import { useJenjang } from '../../../hooks/useJenjang';
@@ -34,8 +34,9 @@ export const MapelForm = React.memo<MapelFormProps>(({
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+  const [presets, setPresets] = useState<GlobalMapelPreset[]>([]);
   
-  const { tingkatList } = useJenjang();
+  const { tingkatList, jenjang } = useJenjang();
   
   const tingkatOptions = React.useMemo(() => {
     return [
@@ -44,7 +45,17 @@ export const MapelForm = React.memo<MapelFormProps>(({
     ];
   }, [tingkatList]);
 
-
+  useEffect(() => {
+    if (mode === 'create') {
+      getPresetsByJenjang(jenjang)
+        .then(res => {
+          if (res.success && res.data) {
+            setPresets(res.data);
+          }
+        })
+        .catch(err => console.error('Failed to load global mapel presets:', err));
+    }
+  }, [jenjang, mode]);
 
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
@@ -55,6 +66,7 @@ export const MapelForm = React.memo<MapelFormProps>(({
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors }
   } = useForm<CreateMapelSchema>({
     resolver: zodResolver(createMapelSchema),
@@ -157,6 +169,8 @@ export const MapelForm = React.memo<MapelFormProps>(({
           isViewMode={isViewMode}
           watch={watch}
           tingkatOptions={tingkatOptions}
+          presets={presets}
+          setValue={setValue}
         />
 
         <ModalFooter className="mt-4 pt-6 border-t border-slate-100 dark:border-slate-800 gap-3">
