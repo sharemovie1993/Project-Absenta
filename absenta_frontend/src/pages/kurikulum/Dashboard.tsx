@@ -18,7 +18,7 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { kurikulumApi } from '@/api/kurikulum.api';
-import { guruApi, kelasApi, mapelApi, semesterApi, jurusanApi } from '@/api/academic.api';
+import { guruApi, kelasApi, mapelApi, semesterApi, jurusanApi, tahunPelajaranApi } from '@/api/academic.api';
 import { getJadwalTemplate } from '@/api/attendance/jadwalTemplate.api';
 import { useTvStore } from '@/store/tvStore';
 import { useTvStore as useTvStoreLocal } from '@/store/tvStore'; // unused mapping prevention
@@ -65,6 +65,10 @@ export default function KurikulumDashboard() {
     queryKey: ['semester', 'active'], queryFn: semesterApi.getActive,
     refetchInterval: REFETCH, staleTime: 30_000,
   });
+  const { data: yearsR } = useQuery({
+    queryKey: ['academic-years-dash'], queryFn: () => tahunPelajaranApi.getAll(),
+    refetchInterval: REFETCH, staleTime: 30_000,
+  });
   const { data: guruR, isLoading: lGuru } = useQuery({
     queryKey: ['guru', 'all-dash'], queryFn: () => guruApi.getAll({ limit: 200 }),
     refetchInterval: REFETCH, staleTime: 30_000,
@@ -96,12 +100,15 @@ export default function KurikulumDashboard() {
   const semesterRaw = (semR as { data?: unknown })?.data ?? null;
   const semester    = (Array.isArray(semesterRaw) ? semesterRaw[0] : semesterRaw) as { nama_semester?: string; tahun_pelajaran_id?: string; id?: string; TahunPelajaran?: { tahun?: string } } | null;
   const semNama     = semester?.nama_semester ?? '';
-  const tpTahun     = semester?.TahunPelajaran?.tahun ?? '';
+  
+  const activeYear = useMemo(() => (yearsR?.data ?? []).find(y => y.is_active), [yearsR]);
+  const resolvedTahunPelajaranId = semester?.tahun_pelajaran_id || activeYear?.id;
+  const tpTahun     = semester?.TahunPelajaran?.tahun || activeYear?.tahun || '';
 
   const { data: strR, isLoading: lStr } = useQuery({
-    queryKey: ['kurikulum', 'struktur-dash', semester?.tahun_pelajaran_id],
-    queryFn: () => kurikulumApi.getStruktur({ tahun_pelajaran_id: semester?.tahun_pelajaran_id, limit: 500 }),
-    enabled: !!semester?.tahun_pelajaran_id,
+    queryKey: ['kurikulum', 'struktur-dash', resolvedTahunPelajaranId],
+    queryFn: () => kurikulumApi.getStruktur({ tahun_pelajaran_id: resolvedTahunPelajaranId, limit: 500 }),
+    enabled: !!resolvedTahunPelajaranId,
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: supR, isLoading: lSup } = useQuery({
