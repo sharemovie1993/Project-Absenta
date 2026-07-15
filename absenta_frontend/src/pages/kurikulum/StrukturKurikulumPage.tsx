@@ -202,7 +202,7 @@ const StrukturKurikulumPage: React.FC = () => {
             return (
               <Card 
                 key={grade} 
-                onClick={() => setSelectedTingkat(grade)}
+                onClick={() => navigate(`/kurikulum/plotting?tingkat=${grade}`)}
                 className={cn(
                   "p-6 border transition-all cursor-pointer relative overflow-hidden group select-none rounded-2xl",
                   isActive 

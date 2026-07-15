@@ -20,10 +20,14 @@ import {
   getSubjectSortRank
 } from '../../utils/kurikulum/masterStrukturHelper';
 
+import { useSearchParams } from 'react-router-dom';
+
 export const useMasterStrukturState = () => {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  
   const { data: tenantRes } = useQuery({
     queryKey: ['tenant-profile', user?.tenant_id],
     queryFn: () => getTenantById(user?.tenant_id || ''),
@@ -33,10 +37,25 @@ export const useMasterStrukturState = () => {
   
   const { jenjang, kurikulum, tingkatList, kelompokOptions } = useJenjang();
 
+  const queryTingkat = useMemo(() => {
+    const t = searchParams.get('tingkat');
+    return t ? Number(t) : null;
+  }, [searchParams]);
+
   // Filters
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
-  const [selectedTingkat, setSelectedTingkat] = useState<number>(10);
+  const [selectedTingkat, setSelectedTingkat] = useState<number>(() => {
+    const t = searchParams.get('tingkat');
+    return t ? Number(t) : 10;
+  });
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
+
+  // Sync selectedTingkat when query param changes
+  React.useEffect(() => {
+    if (queryTingkat !== null && queryTingkat !== selectedTingkat) {
+      setSelectedTingkat(queryTingkat);
+    }
+  }, [queryTingkat]);
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
