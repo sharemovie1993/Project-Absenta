@@ -15,7 +15,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   onSuccess,
   onCancel
 }) => {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -27,7 +27,10 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   // Step 1: Selected Bidang Keahlian names
   const [selectedBidangs, setSelectedBidangs] = useState<string[]>([]);
 
-  // Step 2: Selected Jurusan codes
+  // Step 2: Selected Program Keahlian codes
+  const [selectedProgramKodes, setSelectedProgramKodes] = useState<string[]>([]);
+
+  // Step 3: Selected Jurusan codes
   const [selectedJurusanCodes, setSelectedJurusanCodes] = useState<string[]>([]);
 
   // Fetch presets on mount
@@ -66,7 +69,14 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     );
   };
 
-  // Toggle Jurusan selection (Step 2)
+  // Toggle Program Keahlian selection (Step 2)
+  const toggleProgram = (kode: string) => {
+    setSelectedProgramKodes(prev =>
+      prev.includes(kode) ? prev.filter(k => k !== kode) : [...prev, kode]
+    );
+  };
+
+  // Toggle Jurusan selection (Step 3)
   const toggleJurusan = (code: string) => {
     setSelectedJurusanCodes(prev =>
       prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
@@ -80,9 +90,20 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     return bidangKeahlians.filter(bid => bid.toLowerCase().includes(query));
   }, [bidangKeahlians, searchQuery]);
 
-  // Filter programs and their jurusans based on selected Bidang Keahlian and search query (Step 2)
+  // Filter Program Keahlian based on selected Bidang Keahlian and search query (Step 2)
   const step2Data = useMemo(() => {
-    const selectedProgs = programPresets.filter(p => selectedBidangs.includes(p.bidang_keahlian));
+    const progs = programPresets.filter(p => selectedBidangs.includes(p.bidang_keahlian));
+    if (!searchQuery.trim()) return progs;
+    const query = searchQuery.toLowerCase();
+    return progs.filter(p =>
+      p.nama.toLowerCase().includes(query) ||
+      p.kode.toLowerCase().includes(query)
+    );
+  }, [programPresets, selectedBidangs, searchQuery]);
+
+  // Filter programs and their jurusans based on selected Program Keahlian and search query (Step 3)
+  const step3Data = useMemo(() => {
+    const selectedProgs = programPresets.filter(p => selectedProgramKodes.includes(p.kode));
     if (!searchQuery.trim()) return selectedProgs;
 
     const query = searchQuery.toLowerCase();
@@ -101,15 +122,27 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       }
       return null;
     }).filter((p): p is typeof programPresets[0] => p !== null);
-  }, [programPresets, selectedBidangs, searchQuery]);
+  }, [programPresets, selectedProgramKodes, searchQuery]);
 
-  // Proceed to step 2 and pre-select all jurusans under chosen Bidang Keahlian
-  const handleNextStep = () => {
+  // Proceed to Step 2 and pre-select all Program Keahlian under chosen Bidang Keahlian
+  const handleNextStep1 = () => {
     if (selectedBidangs.length === 0) return;
 
-    // Pre-populate jurusans under selected Bidang Keahlian
+    const initialPrograms = programPresets
+      .filter(p => selectedBidangs.includes(p.bidang_keahlian))
+      .map(p => p.kode);
+
+    setSelectedProgramKodes(initialPrograms);
+    setSearchQuery('');
+    setStep(2);
+  };
+
+  // Proceed to Step 3 and pre-select all Jurusans under chosen Program Keahlian
+  const handleNextStep2 = () => {
+    if (selectedProgramKodes.length === 0) return;
+
     const initialJurusans: string[] = [];
-    const selectedProgs = programPresets.filter(p => selectedBidangs.includes(p.bidang_keahlian));
+    const selectedProgs = programPresets.filter(p => selectedProgramKodes.includes(p.kode));
     selectedProgs.forEach(prog => {
       prog.jurusans.forEach(j => {
         initialJurusans.push(j.kode);
@@ -118,16 +151,22 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
 
     setSelectedJurusanCodes(initialJurusans);
     setSearchQuery('');
-    setStep(2);
+    setStep(3);
   };
 
-  // Go back to step 1
-  const handlePrevStep = () => {
+  // Go back to Step 1
+  const handlePrevStep2 = () => {
     setSearchQuery('');
     setStep(1);
   };
 
-  // Select/Deselect all jurusans under a specific program in Step 2
+  // Go back to Step 2
+  const handlePrevStep3 = () => {
+    setSearchQuery('');
+    setStep(2);
+  };
+
+  // Select/Deselect all jurusans under a specific program in Step 3
   const toggleAllJurusansForProgram = (programKode: string, selectAll: boolean) => {
     const prog = programPresets.find(p => p.kode === programKode);
     if (!prog) return;
@@ -227,13 +266,22 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             1. Bidang Keahlian
           </span>
         </div>
-        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-4"></div>
+        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-2"></div>
         <div className="flex items-center gap-2">
-          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 2 ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-            2
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 2 ? 'bg-violet-600 text-white' : step === 3 ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+            {step === 3 ? '✓' : '2'}
           </span>
-          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 2 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500'}`}>
-            2. Konsentrasi Keahlian (Jurusan)
+          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 2 ? 'text-violet-600 dark:text-violet-400' : step === 3 ? 'text-slate-500' : 'text-slate-400 dark:text-slate-500'}`}>
+            2. Program Keahlian
+          </span>
+        </div>
+        <div className="h-0.5 bg-slate-200 dark:bg-slate-800 flex-1 mx-2"></div>
+        <div className="flex items-center gap-2">
+          <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black ${step === 3 ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+            3
+          </span>
+          <span className={`text-[11px] font-black uppercase tracking-tight ${step === 3 ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-slate-500'}`}>
+            3. Konsentrasi Keahlian (Jurusan)
           </span>
         </div>
       </div>
@@ -251,7 +299,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                 Langkah 1: Pilih Bidang Keahlian
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Tentukan Bidang Keahlian yang ada di sekolah Anda. Di langkah berikutnya, Anda akan memfilter spesifik Konsentrasi/Jurusan di bawah bidang tersebut.
+                Tentukan Bidang Keahlian yang ada di sekolah Anda. Di langkah berikutnya, Anda akan memilih Program Keahlian.
               </p>
             </div>
           </div>
@@ -318,10 +366,88 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             </div>
             <div className="flex-1 space-y-1">
               <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-                Langkah 2: Pilih Konsentrasi Keahlian (Jurusan)
+                Langkah 2: Pilih Program Keahlian
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Tentukan jurusan spesifik di bawah Bidang Keahlian yang Anda pilih sebelumnya. Jurusan yang tidak dibuka di sekolah Anda dapat dide-check.
+                Tentukan Program Keahlian yang diajarkan di sekolah Anda. Di langkah berikutnya, Anda akan memfilter Jurusan.
+              </p>
+            </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama program keahlian..."
+              className="w-full pl-10 pr-4 h-10 text-[12px] font-semibold border-2 border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+
+          {/* Program Keahlian List */}
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin flex flex-col">
+            {step2Data.map(prog => {
+              const isSelected = selectedProgramKodes.includes(prog.kode);
+              return (
+                <button
+                  key={prog.kode}
+                  type="button"
+                  onClick={() => toggleProgram(prog.kode)}
+                  className={`flex items-center text-left p-3.5 rounded-xl border transition-all group ${
+                    isSelected
+                      ? 'border-violet-500 bg-violet-50/10 dark:bg-violet-950/10 shadow-sm'
+                      : 'border-slate-100 dark:border-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <div className="mr-3">
+                    {isSelected ? (
+                      <CheckSquare className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                    ) : (
+                      <Square className="w-5 h-5 text-slate-300 dark:text-slate-700 group-hover:text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <h6 className="text-[12px] font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                        {prog.nama}
+                      </h6>
+                      <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">
+                        {prog.bidang_keahlian}
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-900 px-2 py-0.5 rounded-md ml-2 shrink-0">
+                      {prog.kode}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {step2Data.length === 0 && (
+              <div className="text-center py-8 text-slate-400 text-[11px] font-semibold">
+                Tidak ada program keahlian yang cocok dengan pencarian Anda.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Step 3 View */}
+      {step === 3 && (
+        <>
+          {/* Info Card */}
+          <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800/80 rounded-2xl p-4 flex items-start gap-4">
+            <div className="bg-violet-100 dark:bg-violet-900/40 p-2 rounded-xl text-violet-600 dark:text-violet-400 mt-0.5">
+              <Layers size={20} />
+            </div>
+            <div className="flex-1 space-y-1">
+              <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                Langkah 3: Pilih Konsentrasi Keahlian (Jurusan)
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Tentukan jurusan spesifik di bawah Program Keahlian yang Anda pilih sebelumnya. Jurusan yang tidak dibuka di sekolah Anda dapat dide-check.
               </p>
             </div>
           </div>
@@ -338,9 +464,9 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
             />
           </div>
 
-          {/* Jurusan List (Filtered by selected Bidangs in Step 1) */}
+          {/* Jurusan List (Filtered by selected Programs in Step 2) */}
           <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
-            {step2Data.map(prog => {
+            {step3Data.map(prog => {
               const allJurusansSelected = prog.jurusans.every(j => selectedJurusanCodes.includes(j.kode));
 
               return (
@@ -402,7 +528,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               );
             })}
 
-            {step2Data.length === 0 && (
+            {step3Data.length === 0 && (
               <div className="text-center py-8 text-slate-400 text-[11px] font-semibold">
                 Tidak ada preset jurusan yang cocok.
               </div>
@@ -430,8 +556,33 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               type="button"
               variant="toolbarPrimary"
               size="toolbar"
-              onClick={handleNextStep}
+              onClick={handleNextStep1}
               disabled={selectedBidangs.length === 0}
+              className="px-6"
+            >
+              Lanjut
+              <ChevronRight className="w-3.5 h-3.5 ml-2" />
+            </Button>
+          </>
+        ) : step === 2 ? (
+          <>
+            <Button
+              type="button"
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={handlePrevStep2}
+              disabled={loading}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 mr-2" />
+              Kembali
+            </Button>
+            <div className="flex-1" />
+            <Button
+              type="button"
+              variant="toolbarPrimary"
+              size="toolbar"
+              onClick={handleNextStep2}
+              disabled={selectedProgramKodes.length === 0}
               className="px-6"
             >
               Lanjut
@@ -444,7 +595,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
               type="button"
               variant="toolbarOutline"
               size="toolbar"
-              onClick={handlePrevStep}
+              onClick={handlePrevStep3}
               disabled={loading}
             >
               <ChevronLeft className="w-3.5 h-3.5 mr-2" />
