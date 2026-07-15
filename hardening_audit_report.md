@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **184 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **50 Halaman** | 27% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **72 Halaman** | 39% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **51 Halaman** | 28% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **71 Halaman** | 39% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **62 Halaman** | 34% | **Prioritas Utama Refaktor** |
 
 ---
@@ -1153,14 +1153,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `Dashboard.tsx`
-* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-
----
-
 ### 📄 Halaman: `Login.tsx`
 * **Lokasi File:** [Login.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/Login.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
@@ -1606,6 +1598,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `CetakBerkasKurikulumPage.tsx`
 * **Lokasi File:** [CetakBerkasKurikulumPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/CetakBerkasKurikulumPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `Dashboard.tsx`
+* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

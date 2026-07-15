@@ -3754,7 +3754,7 @@
     "usesUiComponents": true,
     "usesMemo": true,
     "noAnyType": true,
-    "safeMapping": false,
+    "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,

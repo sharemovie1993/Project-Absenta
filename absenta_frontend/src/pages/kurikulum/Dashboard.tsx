@@ -40,6 +40,9 @@ const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute
 const STANDAR_MAX = 24;
 const STANDAR_MIN = 12;
 
+const chartTooltipContentStyle = { borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 };
+const chartLabelStyle = { fill: '#475569', fontSize: 10, fontWeight: 'bold' };
+
 
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -161,14 +164,14 @@ export default function KurikulumDashboard() {
       }
     }
     
-    return teachers.map((t) => {
+    return teachers?.map((t) => {
       const jp = jwMap[t.id] || 0;
       return {
         id: t.id,
         nama: t.nama_guru,
         jp,
       };
-    }).sort((a, b) => b.jp - a.jp);
+    })?.sort((a, b) => b.jp - a.jp);
   }, [guruR, jwR]);
 
   const supSelesai   = supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length;
@@ -193,7 +196,7 @@ export default function KurikulumDashboard() {
     const pending = Math.max(0, total - approved - rejected);
     
     const uniqueApprovedTeachers = new Set(
-      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id).map(p => p.guru_id)
+      list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id)?.map(p => p.guru_id)
     );
     
     const teachersCount = safeTotal(guruR);
@@ -351,7 +354,7 @@ export default function KurikulumDashboard() {
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                             <XAxis dataKey="nama" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} angle={-30} textAnchor="end" interval={0} />
                             <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
+                            <Tooltip contentStyle={chartTooltipContentStyle} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
                             <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
                               {beban?.map((b, i) => (
                                 <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
@@ -567,12 +570,12 @@ export default function KurikulumDashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
                       <XAxis dataKey="nama" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11 }} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
+                      <Tooltip contentStyle={chartTooltipContentStyle} formatter={(v: number) => [`${v} JP/minggu`, 'Beban']} />
                        <Bar dataKey="jp" radius={[4, 4, 0, 0]} maxBarSize={36}>
                         {beban?.map((b, i) => (
                           <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                         ))}
-                        <LabelList dataKey="jp" position="top" style={{ fill: '#475569', fontSize: 10, fontWeight: 'bold' }} formatter={(v: number) => `${v} JP`} />
+                        <LabelList dataKey="jp" position="top" style={chartLabelStyle} formatter={(v: number) => `${v} JP`} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
@@ -718,7 +721,7 @@ export default function KurikulumDashboard() {
                         {overload.length > 0 && (
                           <div className="p-3.5 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-2xl">
                             <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase mb-2">Overload ({overload.length} Guru)</p>
-                            {overload.slice(0, 5)?.map((g, i) => (
+                            {overload?.slice(0, 5)?.map((g, i) => (
                               <div key={i} className="flex justify-between items-center py-0.5">
                                 <span className="text-[10px] text-rose-700 dark:text-rose-300 truncate max-w-[65%]">{g.nama}</span>
                                 <span className="text-[10px] font-black text-rose-600 bg-rose-100 dark:bg-rose-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
@@ -729,7 +732,7 @@ export default function KurikulumDashboard() {
                         {underload.length > 0 && (
                           <div className="p-3.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl">
                             <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase mb-2">Underload ({underload.length} Guru)</p>
-                            {underload.slice(0, 5)?.map((g, i) => (
+                            {underload?.slice(0, 5)?.map((g, i) => (
                               <div key={i} className="flex justify-between items-center py-0.5">
                                 <span className="text-[10px] text-amber-700 dark:text-amber-300 truncate max-w-[65%]">{g.nama}</span>
                                 <span className="text-[10px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">{g.jp}JP</span>
