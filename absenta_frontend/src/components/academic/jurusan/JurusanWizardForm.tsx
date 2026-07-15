@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Save, X, RefreshCw, Layers, Search, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, Alert, ModalFooter } from '../../ui';
 import { SMK_PRESETS } from '../../../constants/smk-presets';
 import { bulkWizardCreateJurusan } from '../../../api/academic/jurusan.api';
+import { getGlobalPresets, type GlobalProgramPreset } from '../../../api/academic/jurusan-presets.api';
 import toast from 'react-hot-toast';
 
 interface JurusanWizardFormProps {
@@ -19,11 +20,38 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
   const [submitError, setSubmitError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Loaded presets from database
+  const [programPresets, setProgramPresets] = useState<GlobalProgramPreset[]>([]);
+  const [loadingPresets, setLoadingPresets] = useState(true);
+
   // Step 1: Selected Program Keahlian codes
   const [selectedProgramKodes, setSelectedProgramKodes] = useState<string[]>([]);
 
   // Step 2: Selected Jurusan codes
   const [selectedJurusanCodes, setSelectedJurusanCodes] = useState<string[]>([]);
+
+  // Fetch presets on mount
+  useEffect(() => {
+    const loadPresets = async () => {
+      try {
+        setLoadingPresets(true);
+        const res = await getGlobalPresets();
+        if (res.success && res.data && res.data.length > 0) {
+          setProgramPresets(res.data);
+        } else {
+          // Fallback to static presets if API returns empty
+          setProgramPresets(SMK_PRESETS as any);
+        }
+      } catch (err) {
+        console.error('Failed to load global presets:', err);
+        // Fallback to static presets if API fails
+        setProgramPresets(SMK_PRESETS as any);
+      } finally {
+        setLoadingPresets(false);
+      }
+    };
+    loadPresets();
+  }, []);
 
   // Toggle Program Keahlian selection (Step 1)
   const toggleProgram = (kode: string) => {
@@ -41,18 +69,18 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
 
   // Filter programs based on search query (Step 1)
   const filteredPrograms = useMemo(() => {
-    if (!searchQuery.trim()) return SMK_PRESETS;
+    if (!searchQuery.trim()) return programPresets;
     const query = searchQuery.toLowerCase();
-    return SMK_PRESETS.filter(prog =>
+    return programPresets.filter(prog =>
       prog.nama.toLowerCase().includes(query) ||
       prog.kode.toLowerCase().includes(query) ||
       prog.bidang_keahlian.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [programPresets, searchQuery]);
 
   // Filter programs and their jurusans based on selected programs and search query (Step 2)
   const step2Data = useMemo(() => {
-    const selectedProgs = SMK_PRESETS.filter(p => selectedProgramKodes.includes(p.kode));
+    const selectedProgs = programPresets.filter(p => selectedProgramKodes.includes(p.kode));
     if (!searchQuery.trim()) return selectedProgs;
 
     const query = searchQuery.toLowerCase();
@@ -70,8 +98,8 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
         };
       }
       return null;
-    }).filter((p): p is typeof SMK_PRESETS[0] => p !== null);
-  }, [selectedProgramKodes, searchQuery]);
+    }).filter((p): p is typeof programPresets[0] => p !== null);
+  }, [programPresets, selectedProgramKodes, searchQuery]);
 
   // Proceed to step 2 and pre-select all jurusans under chosen programs
   const handleNextStep = () => {
@@ -80,7 +108,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
     // Pre-populate jurusans under selected programs
     const initialJurusans: string[] = [];
     selectedProgramKodes.forEach(kode => {
-      const prog = SMK_PRESETS.find(p => p.kode === kode);
+      const prog = programPresets.find(p => p.kode === kode);
       if (prog) {
         prog.jurusans.forEach(j => {
           initialJurusans.push(j.kode);
@@ -101,7 +129,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
 
   // Select/Deselect all jurusans under a specific program in Step 2
   const toggleAllJurusansForProgram = (programKode: string, selectAll: boolean) => {
-    const prog = SMK_PRESETS.find(p => p.kode === programKode);
+    const prog = programPresets.find(p => p.kode === programKode);
     if (!prog) return;
     const jurKodes = prog.jurusans.map(j => j.kode);
 
@@ -124,10 +152,10 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       setSubmitError('');
 
       // Build payload for chosen programs and jurusans
-      const selectedProgramsMap = new Map<string, typeof SMK_PRESETS[0]>();
+      const selectedProgramsMap = new Map<string, typeof programPresets[0]>();
       const payloadJurusans: Array<{ nama: string; kode: string; singkatan: string; program_keahlian_kode: string }> = [];
 
-      SMK_PRESETS.forEach(prog => {
+      programPresets.forEach(prog => {
         let hasSelectedJurusan = false;
         prog.jurusans.forEach(j => {
           if (selectedJurusanCodes.includes(j.kode)) {
@@ -171,6 +199,15 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
       setLoading(false);
     }
   };
+
+  if (loadingPresets) {
+    return (
+      <div className="flex flex-col justify-center items-center py-16 gap-3">
+        <RefreshCw size={28} className="animate-spin text-violet-600" />
+        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Memuat Preset Global...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -261,7 +298,7 @@ export const JurusanWizardForm: React.FC<JurusanWizardFormProps> = React.memo(({
                       {prog.nama}
                     </h6>
                     <p className="text-[9px] font-semibold text-slate-500 dark:text-slate-400">
-                      Kode: {prog.kode} · ({prog.jurusans.length} Jurusan)
+                      Kode: {prog.kode} · ({prog.jurusans?.length || 0} Jurusan)
                     </p>
                   </div>
                 </button>

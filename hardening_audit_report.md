@@ -8,10 +8,10 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **183 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **54 Halaman** | 30% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **68 Halaman** | 37% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **61 Halaman** | 33% | **Prioritas Utama Refaktor** |
+| **Total Halaman Utama** | **184 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **50 Halaman** | 27% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **72 Halaman** | 39% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **62 Halaman** | 34% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -624,6 +624,20 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `JurusanPresetsPage.tsx`
+* **Lokasi File:** [JurusanPresetsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/superadmin/JurusanPresetsPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.
+
+---
+
 ### 📄 Halaman: `KurikulumStandardsPage.tsx`
 * **Lokasi File:** [KurikulumStandardsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/superadmin/KurikulumStandardsPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
@@ -967,6 +981,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `CoopTvMode.tsx`
+* **Lokasi File:** [CoopTvMode.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/CoopTvMode.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 504 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
 ### 📄 Halaman: `OpnameFormModal.tsx`
 * **Lokasi File:** [OpnameFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/OpnameFormModal.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
@@ -1107,11 +1129,35 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `PenempatanPklPage.tsx`
+* **Lokasi File:** [PenempatanPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/PenempatanPklPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+
+---
+
+### 📄 Halaman: `CetakBerkasKesiswaanPage.tsx`
+* **Lokasi File:** [CetakBerkasKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/CetakBerkasKesiswaanPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+
+---
+
 ### 📄 Halaman: `PrestasiPage.tsx`
 * **Lokasi File:** [PrestasiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PrestasiPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+
+---
+
+### 📄 Halaman: `Dashboard.tsx`
+* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
 
 ---
 
@@ -1383,13 +1429,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `CoopTvMode.tsx`
-* **Lokasi File:** [CoopTvMode.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/CoopTvMode.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `ReceiptModal.tsx`
 * **Lokasi File:** [ReceiptModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ReceiptModal.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1516,13 +1555,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `PenempatanPklPage.tsx`
-* **Lokasi File:** [PenempatanPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/PenempatanPklPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `TefaPage.tsx`
 * **Lokasi File:** [TefaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TefaPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1532,13 +1564,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TracerStudyPage.tsx`
 * **Lokasi File:** [TracerStudyPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TracerStudyPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `CetakBerkasKesiswaanPage.tsx`
-* **Lokasi File:** [CetakBerkasKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/CetakBerkasKesiswaanPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1581,13 +1606,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `CetakBerkasKurikulumPage.tsx`
 * **Lokasi File:** [CetakBerkasKurikulumPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/CetakBerkasKurikulumPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `Dashboard.tsx`
-* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

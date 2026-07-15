@@ -97,10 +97,10 @@ export default async function jurusanRoutes(fastify: any) {
   // GLOBAL PRESETS (SUPERADMIN ONLY)
   // =========================================================================
 
-  // GET /jurusan/presets - Get all global presets (superadmin only)
+  // GET /jurusan/presets - Get all global presets (superadmin or tenant admin)
   fastify.get('/presets', {
     preHandler: [
-        requireCapability('superadmin.tenants.manage'),
+        requireCapability(['superadmin.tenants.manage', 'academic.structures.create', 'academic.structures.view.list']),
         determineDataScope()
     ]
   }, async (request: any, reply: any) => {
