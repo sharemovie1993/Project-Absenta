@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Loader2, Search, BookMarked, Building2, X, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, Suspense, lazy } from 'react';
+import { Plus, Pencil, Trash2, Loader2, Search, BookMarked, Building2, X, Check, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { ProgramKeahlian } from '../../../types/academic';
 import {
@@ -10,6 +10,9 @@ import {
 } from '../../../api/academic/program-keahlian.api';
 import { Button } from '../../ui';
 import { SPEKTRUM_SMK_2024 } from '../../../utils/nomenklaturSMK';
+
+// Lazy load Table
+const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 
 interface FormState {
   nama: string;
@@ -37,6 +40,14 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Selection states
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -60,7 +71,6 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
   };
 
   const openEdit = (pk: ProgramKeahlian) => {
-    // Cek apakah data ini kustom atau ada di spektrum nasional
     const bidangMatch = SPEKTRUM_SMK_2024.find(b => b.bidang === pk.bidang_keahlian);
     const existsInSpektrum = bidangMatch?.programs.some(p => p.nama === pk.nama) ?? false;
 
@@ -75,7 +85,6 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
     setShowForm(true);
   };
 
-  // List program keahlian terfilter berdasarkan bidang keahlian terpilih
   const availablePrograms = useMemo(() => {
     if (!form.bidang_keahlian) return [];
     const bidangMatch = SPEKTRUM_SMK_2024.find(b => b.bidang === form.bidang_keahlian);
@@ -162,36 +171,196 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
     }
   };
 
-  const filtered = list.filter(pk =>
-    !search || pk.nama.toLowerCase().includes(search.toLowerCase()) ||
-    (pk.kode || '').toLowerCase().includes(search.toLowerCase()) ||
-    (pk.bidang_keahlian || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    const items = list.filter(pk => selectedIds.has(pk.id));
+    const withJurusans = items.filter(pk => (pk._count?.Jurusan || 0) > 0);
+    
+    if (withJurusans.length > 0) {
+      toast.error(`Tidak bisa menghapus: ada ${withJurusans.length} Program Keahlian yang masih memiliki Konsentrasi/Jurusan terhubung.`);
+      return;
+    }
+
+    if (!confirm(`Hapus ${selectedIds.size} Program Keahlian terpilih?`)) return;
+
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const id of ids) {
+        try {
+          await deleteProgramKeahlian(id);
+          successCount++;
+        } catch {
+          failCount++;
+        }
+      }
+
+      if (failCount > 0) {
+        toast(`Berhasil menghapus ${successCount} program, ${failCount} gagal.`, { icon: '⚠️' });
+      } else {
+        toast.success(`Berhasil menghapus ${successCount} Program Keahlian`);
+      }
+
+      setSelectedIds(new Set());
+      load();
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menghapus secara massal');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    return list.filter(pk =>
+      !search || pk.nama.toLowerCase().includes(search.toLowerCase()) ||
+      (pk.kode || '').toLowerCase().includes(search.toLowerCase()) ||
+      (pk.bidang_keahlian || '').toLowerCase().includes(search.toLowerCase())
+    );
+  }, [list, search]);
+
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage, itemsPerPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filtered.length / itemsPerPage);
+  }, [filtered.length, itemsPerPage]);
+
+  // Columns for the Table component
+  const columns = useMemo(() => [
+    { 
+      key: 'nama', 
+      label: 'Nama Program Keahlian',
+      sortable: true,
+      render: (value: string, pk: ProgramKeahlian) => (
+        <div>
+          <div className="font-bold text-slate-800 dark:text-slate-200">{value}</div>
+          {pk.kode && (
+            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Kode: {pk.kode}</div>
+          )}
+        </div>
+      )
+    },
+    { 
+      key: 'bidang_keahlian', 
+      label: 'Bidang Keahlian',
+      sortable: true,
+      render: (value: string | null) => value || '-'
+    },
+    { 
+      key: 'singkatan', 
+      label: 'Singkatan',
+      render: (value: string | null) => value || '-'
+    },
+    { 
+      key: 'jurusans_count', 
+      label: 'Jurusan Terhubung',
+      render: (_: any, pk: ProgramKeahlian) => (
+        <div className="font-black text-violet-600 dark:text-violet-400">
+          {pk._count?.Jurusan || 0} Jurusan
+        </div>
+      )
+    },
+    { 
+      key: 'actions', 
+      label: 'Aksi', 
+      render: (_: any, pk: ProgramKeahlian) => (
+        <div className="flex items-center gap-1">
+          {canEdit && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={() => openEdit(pk)}
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                onClick={() => handleDelete(pk)}
+                disabled={deletingId === pk.id || (pk._count?.Jurusan || 0) > 0}
+                title={(pk._count?.Jurusan || 0) > 0 ? 'Tidak bisa dihapus: masih ada konsentrasi terhubung' : 'Hapus'}
+              >
+                {deletingId === pk.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </Button>
+            </>
+          )}
+        </div>
+      )
+    },
+  ], [canEdit, deletingId]);
 
   return (
     <div className="space-y-4">
       {/* Header bar */}
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Cari Program Keahlian..."
-            className="w-full pl-8 pr-3 py-2 text-[12px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
-          />
+      <div className="flex items-center justify-between gap-3 px-1 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Cari Program Keahlian..."
+              className="w-full pl-8 pr-3 py-2 text-[12px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400"
+            />
+          </div>
+          {canEdit && filtered.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const allSelected = filtered.every(pk => selectedIds.has(pk.id));
+                setSelectedIds(prev => {
+                  const next = new Set<string>();
+                  if (!allSelected) {
+                    filtered.forEach(pk => next.add(pk.id));
+                  }
+                  return next;
+                });
+              }}
+              className="px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 shrink-0"
+            >
+              {filtered.every(pk => selectedIds.has(pk.id)) ? 'Batal Pilih Semua' : 'Pilih Semua'}
+            </button>
+          )}
         </div>
-        {canEdit && (
-          <Button
-            size="sm"
-            onClick={openAdd}
-            className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white text-[12px] font-semibold px-4 py-2 rounded-xl shadow-sm flex items-center gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Tambah Program Keahlian
-          </Button>
-        )}
+        
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && canEdit && (
+            <Button
+              size="sm"
+              variant="toolbarDanger"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="text-[12px] font-bold px-4 py-2 rounded-xl flex items-center gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Hapus Terpilih ({selectedIds.size})
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              size="sm"
+              onClick={openAdd}
+              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white text-[12px] font-semibold px-4 py-2 rounded-xl shadow-sm flex items-center gap-1.5 shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tambah Program Keahlian
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Info banner */}
@@ -326,69 +495,125 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
           <Loader2 className="w-6 h-6 animate-spin text-violet-400" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 space-y-2">
+        <div className="text-center py-12 space-y-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
           <BookMarked className="w-10 h-10 mx-auto text-slate-300" />
           <p className="text-[13px] font-semibold text-slate-400">Belum ada Program Keahlian</p>
           <p className="text-[11px] text-slate-400">Tambahkan Program Keahlian terlebih dahulu</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(pk => (
-            <div
-              key={pk.id}
-              className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-violet-300 dark:hover:border-violet-700 transition group"
-            >
-              {/* Icon */}
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
+        <div className="bg-transparent overflow-hidden">
+          <div className="hidden md:block">
+            <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin text-violet-400" /></div>}>
+              <Table
+                columns={columns}
+                data={paginatedData}
+                loading={loading}
+                emptyMessage="Tidak ada data program keahlian ditemukan"
+                className="border-none"
+                selectedRowKeys={selectedIds}
+                onSelectedRowKeysChange={setSelectedIds}
+                pagination={{
+                  currentPage,
+                  totalPages: totalPages || 1,
+                  totalItems: filtered.length,
+                  itemsPerPage,
+                  onPageChange: (page) => setCurrentPage(page),
+                  onLimitChange: (limit) => {
+                    setItemsPerPage(limit);
+                    setCurrentPage(1);
+                  }
+                }}
+              />
+            </Suspense>
+          </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">{pk.nama}</p>
-                  {pk.kode && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
-                      {pk.kode}
-                    </span>
+          <div className="md:hidden space-y-2">
+            {paginatedData.map(pk => {
+              const isSelected = selectedIds.has(pk.id);
+              return (
+                <div
+                  key={pk.id}
+                  className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-violet-300 dark:hover:border-violet-700 transition"
+                >
+                  {/* Checkbox for selection */}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(pk.id)) {
+                            next.delete(pk.id);
+                          } else {
+                            next.add(pk.id);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="text-slate-400 hover:text-violet-600 transition-colors"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                      ) : (
+                        <Square className="w-5 h-5 text-slate-300 dark:text-slate-750" />
+                      )}
+                    </button>
                   )}
-                </div>
-                {pk.bidang_keahlian && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{pk.bidang_keahlian}</p>
-                )}
-              </div>
 
-              {/* Badge count */}
-              <div className="text-center flex-shrink-0">
-                <p className="text-[18px] font-black text-violet-600 dark:text-violet-400">{pk._count?.Jurusan || 0}</p>
-                <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Konsentrasi</p>
-              </div>
+                  {/* Icon */}
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <Building2 className="w-5 h-5 text-white" />
+                  </div>
 
-              {/* Actions */}
-              {canEdit && (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={() => openEdit(pk)}
-                    className="p-2 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/40 text-slate-400 hover:text-violet-600 transition"
-                    title="Edit"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(pk)}
-                    disabled={deletingId === pk.id || (pk._count?.Jurusan || 0) > 0}
-                    className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    title={(pk._count?.Jurusan || 0) > 0 ? 'Tidak bisa dihapus: masih ada konsentrasi terhubung' : 'Hapus'}
-                  >
-                    {deletingId === pk.id
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <Trash2 className="w-3.5 h-3.5" />
-                    }
-                  </button>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">{pk.nama}</p>
+                      {pk.kode && (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
+                          {pk.kode}
+                        </span>
+                      )}
+                    </div>
+                    {pk.bidang_keahlian && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{pk.bidang_keahlian}</p>
+                    )}
+                  </div>
+
+                  {/* Badge count */}
+                  <div className="text-center flex-shrink-0">
+                    <p className="text-[18px] font-black text-violet-600 dark:text-violet-400">{pk._count?.Jurusan || 0}</p>
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Konsentrasi</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
+
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 mt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                >
+                  Prev
+                </Button>
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
