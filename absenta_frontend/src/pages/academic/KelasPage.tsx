@@ -8,7 +8,7 @@ import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
 import type { Kelas } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { School, Users, Download } from 'lucide-react';
+import { School, Users, Download, FileText, LayoutGrid, ChevronRight } from 'lucide-react';
 import { 
   importKelasFromExcel, 
   downloadKelasImportTemplate, 
@@ -68,6 +68,7 @@ export const KelasPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [subMode, setSubMode] = useState<'manual' | null>(null);
 
   // Permissions
   const canCreate = can('academic.structures.create');
@@ -154,10 +155,16 @@ export const KelasPage: React.FC = () => {
     }
   ], [stats, sortedTingkatStats, navigate]);
 
-  const handleCreateKelas = useCallback((tingkat?: number) => setModalState({ mode: 'create', isOpen: true, initialTingkat: tingkat }), []);
+  const handleCreateKelas = useCallback((tingkat?: number) => {
+    setModalState({ mode: 'create', isOpen: true, initialTingkat: tingkat });
+    setSubMode(null);
+  }, []);
   const handleEditKelas = useCallback((k: Kelas) => setModalState({ mode: 'edit', kelasId: k.id, isOpen: true }), []);
   const handleViewKelas = useCallback((k: Kelas) => setModalState({ mode: 'view', kelasId: k.id, isOpen: true }), []);
-  const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
+  const handleCloseModal = useCallback(() => {
+    setModalState({ mode: null, isOpen: false });
+    setSubMode(null);
+  }, []);
 
   const handleFormSuccess = useCallback(() => {
     handleCloseModal();
@@ -268,7 +275,6 @@ export const KelasPage: React.FC = () => {
         >
           <KelasList
             onAdd={canCreate ? handleCreateKelas : undefined}
-            onAddBulk={canCreate ? () => setBulkOpen(true) : undefined}
             onEdit={canEdit ? handleEditKelas : undefined}
             onView={handleViewKelas}
             onImport={canCreate ? () => setImportOpen(true) : undefined}
@@ -302,20 +308,59 @@ export const KelasPage: React.FC = () => {
       <Modal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? 'Tambah Kelas' : 'Data Kelas'}
-        size="xl"
+        title={modalState.mode === 'create' ? (subMode === 'manual' ? 'Tambah Kelas' : 'Pilih Metode Tambah Kelas') : 'Data Kelas'}
+        size={modalState.mode === 'create' && !subMode ? 'lg' : 'xl'}
       >
-        {modalState.mode && (
-          <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
-            <KelasForm
-              kelasId={modalState.kelasId}
-              mode={modalState.mode}
-              initialTingkat={modalState.initialTingkat}
-              onSuccess={handleFormSuccess}
-              onCancel={handleCloseModal}
-            />
-          </Suspense>
-        )}
+        <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
+          {modalState.mode === 'create' && !subMode ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              <button
+                onClick={() => setSubMode('manual')}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-600 dark:hover:border-indigo-600 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <FileText size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Isi data kelas secara manual satu per satu. Cocok untuk menambahkan satu kelas khusus atau kustom.
+                </p>
+                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Mulai Mengisi <ChevronRight size={14} />
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleCloseModal();
+                  setBulkOpen(true);
+                }}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-600 dark:hover:border-indigo-600 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <LayoutGrid size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Buat Kelas Massal (Wizard)</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Buat rombel paralel secara massal (wizard) untuk semua tingkat kelas sekaligus. Cepat & otomatis.
+                </p>
+                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Buka Wizard <ChevronRight size={14} />
+                </span>
+              </button>
+            </div>
+          ) : (
+            modalState.mode && (
+              <KelasForm
+                kelasId={modalState.kelasId}
+                mode={modalState.mode}
+                initialTingkat={modalState.initialTingkat}
+                onSuccess={handleFormSuccess}
+                onCancel={handleCloseModal}
+              />
+            )
+          )}
+        </Suspense>
       </Modal>
       <BulkClassModal
         isOpen={bulkOpen}

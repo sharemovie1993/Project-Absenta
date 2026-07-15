@@ -289,7 +289,8 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
                     <option value="tingkatNumber">1.1, 1.2, 7.1</option>
                     <option value="kelasTingkatAlphabet">Kelas 1A, Kelas 7A</option>
                     <option value="kelasTingkatNumber">Kelas 1.1, Kelas 7.1</option>
-                    <option value="romanAlphabet">I-A, II-B, VII-A</option>
+                    <option value="romanAlphabet">I-A, II-B, VII-A (Romawi + Huruf)</option>
+                    <option value="romanNumber">X TKJ 1, VII-1 (Romawi + Angka)</option>
                   </select>
                 </div>
               </div>
