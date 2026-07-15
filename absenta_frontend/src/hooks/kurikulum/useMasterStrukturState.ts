@@ -535,6 +535,12 @@ export const useMasterStrukturState = () => {
           const isPKL = kode === 'PKL' || name.includes('praktik kerja lapangan');
           const isElective = category === 'PILIHAN';
           
+          // Mapel PILIHAN (otonomi sekolah) tidak dihitung dalam target wajib Kemendikbud.
+          // Referensi: Permendikbud 12/2024 — target JP adalah beban wajib intrakurikuler.
+          if (isElective) {
+            return; // lewati — bukan bagian dari target standar wajib
+          }
+          
           if (isReligion) {
             uniqueRefs.set('RELIGION', ref);
           } else if (isSeniOrPrakarya) {
@@ -543,8 +549,6 @@ export const useMasterStrukturState = () => {
             if (selectedTingkat === 12) {
               uniqueRefs.set(kode, ref);
             }
-          } else if (isElective) {
-            uniqueRefs.set(kode, ref);
           } else {
             uniqueRefs.set(kode, ref);
           }
