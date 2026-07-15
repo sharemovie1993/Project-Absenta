@@ -40,6 +40,7 @@ interface KelasListProps {
   onEdit?: (kelas: Kelas) => void;
   onView?: (kelas: Kelas) => void;
   onAdd?: (tingkat?: number) => void;
+  onAddBulk?: () => void;
   onImport?: () => void;
   onExport?: () => void;
   isExporting?: boolean;
@@ -52,6 +53,7 @@ const KelasList = React.memo<KelasListProps>(({
   onEdit, 
   onView, 
   onAdd,
+  onAddBulk,
   onImport,
   onExport,
   isExporting = false,
@@ -684,6 +686,7 @@ const KelasList = React.memo<KelasListProps>(({
                  </div>
 
                  {canManage && onAdd && (
+                  <div className="flex gap-2">
                     <Button 
                       onClick={() => onAdd()}
                       variant="toolbarPrimary"
@@ -692,6 +695,18 @@ const KelasList = React.memo<KelasListProps>(({
                       <Plus className="w-4 h-4 mr-1.5" />
                       Tambah Kelas
                     </Button>
+                    {onAddBulk && (
+                      <Button 
+                        onClick={onAddBulk}
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        className="text-indigo-600 border-indigo-250 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-900/40 dark:hover:bg-indigo-950/20 rounded-xl"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
+                        Buat Massal (Wizard)
+                      </Button>
+                    )}
+                  </div>
                  )}
     
                  {canManage && onImport && (

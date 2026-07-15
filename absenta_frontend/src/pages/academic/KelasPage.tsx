@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import KelasList from '../../components/academic/kelas/KelasList';
+import { BulkClassModal } from '../../components/academic/kelas/BulkClassModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useJenjang } from '../../hooks/useJenjang';
 import toast from 'react-hot-toast';
@@ -66,6 +67,7 @@ export const KelasPage: React.FC = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   // Permissions
   const canCreate = can('academic.structures.create');
@@ -266,6 +268,7 @@ export const KelasPage: React.FC = () => {
         >
           <KelasList
             onAdd={canCreate ? handleCreateKelas : undefined}
+            onAddBulk={canCreate ? () => setBulkOpen(true) : undefined}
             onEdit={canEdit ? handleEditKelas : undefined}
             onView={handleViewKelas}
             onImport={canCreate ? () => setImportOpen(true) : undefined}
@@ -314,6 +317,11 @@ export const KelasPage: React.FC = () => {
           </Suspense>
         )}
       </Modal>
+      <BulkClassModal
+        isOpen={bulkOpen}
+        onClose={() => setBulkOpen(false)}
+        onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+      />
     </AcademicPageLayout>
   );
 };
