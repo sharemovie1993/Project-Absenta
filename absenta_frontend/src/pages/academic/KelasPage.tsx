@@ -91,14 +91,19 @@ export const KelasPage: React.FC = () => {
 
   const sortedTingkatStats = useMemo(() => {
     return (stats?.active_kelas_by_tingkat || [])
+      .filter(item => hookTingkatList.includes(item.tingkat))
       .slice()
       .sort((a, b) => a.tingkat - b.tingkat);
-  }, [stats]);
+  }, [stats, hookTingkatList]);
+
+  const totalActiveKelasFiltered = useMemo(() => {
+    return sortedTingkatStats.reduce((sum, item) => sum + item.count, 0);
+  }, [sortedTingkatStats]);
 
   const academicStats = useMemo(() => [
     {
       title: "Total Kelas",
-      value: stats?.total_kelas || 0,
+      value: totalActiveKelasFiltered,
       icon: <School size={14} />,
       gradient: "from-blue-500 to-cyan-600",
       subtitle: "Total semua kelas terdaftar"
