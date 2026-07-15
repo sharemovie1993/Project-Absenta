@@ -104,6 +104,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'sarpras.loans.request',
     'correspondence.inbox.view',
     'correspondence.outbox.view',
+    // Perangkat Ajar: GURU bisa upload dan melihat perangkat ajar sendiri (domain TENANT)
+    'academic.manage.kbm',
   ]);
 
   const siswa = uniqueStrings([
