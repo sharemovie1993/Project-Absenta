@@ -36,6 +36,7 @@ export const MapelPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { tingkatList: hookTingkatList, jenjang } = useJenjang();
+  const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
   const [subMode, setSubMode] = useState<'manual' | null>(null);
@@ -255,7 +256,7 @@ export const MapelPage: React.FC = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Preset Kurikulum</h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Pilih cepat dari katalog preset kurikulum nasional (wajib & kejuruan) secara massal.
+                  Pilih cepat dari katalog preset kurikulum nasional {isSmkMak ? '(wajib & kejuruan)' : '(wajib)'} secara massal.
                 </p>
                 <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
                   Mulai Wizard <ChevronRight size={14} />
