@@ -184,7 +184,14 @@ const GuruMapelPage: React.FC = () => {
       </div>
 
       <Suspense fallback={<div className="flex justify-center items-center p-8"><Loader size="lg" /></div>}>
-        <Modal isOpen={createOpen} onClose={handleCreateClose} title="Tambah Pengampu Guru-Mapel" size="lg">
+        <Modal 
+          isOpen={createOpen} 
+          onClose={handleCreateClose} 
+          title="Tambah Pengampu Guru-Mapel" 
+          size="md"
+          className="overflow-visible"
+          contentClassName="overflow-visible !max-h-none"
+        >
           <GuruMapelForm onSuccess={handleSuccess} onCancel={handleCreateClose} />
         </Modal>
 

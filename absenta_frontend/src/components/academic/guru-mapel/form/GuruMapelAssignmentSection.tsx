@@ -21,7 +21,7 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
   loading
 }) => {
   return (
-    <SectionCard title="Penugasan Mata Pelajaran" icon={Layers}>
+    <div className="flex flex-col gap-5 overflow-visible">
       <div className="space-y-2 group">
         <div className="flex items-center justify-between px-1">
           <Label htmlFor="guru_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
@@ -75,7 +75,7 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
           <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.mapel_id.message}</p>
         )}
       </div>
-    </SectionCard>
+    </div>
   );
 });
 
