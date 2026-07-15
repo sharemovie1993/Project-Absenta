@@ -678,9 +678,11 @@ const RegisterTenant = () => {
                               <div className="flex justify-between items-center text-sm">
                                  <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Portal URL</span>
                                  <span className="text-slate-900 dark:text-white font-black">
-                                    {/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(MAIN_DOMAIN) 
-                                       ? MAIN_DOMAIN 
-                                       : `${formData.tenant_domain}.${MAIN_DOMAIN}`
+                                    {isSingleTenant
+                                       ? MAIN_DOMAIN
+                                       : /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(MAIN_DOMAIN) 
+                                          ? MAIN_DOMAIN 
+                                          : `${formData.tenant_domain}.${MAIN_DOMAIN}`
                                     }
                                     {window.location.port && window.location.port !== '80' && window.location.port !== '443' ? `:${window.location.port}` : ''}
                                  </span>
@@ -782,8 +784,10 @@ const RegisterTenant = () => {
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">Subdomain Akses</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-black text-sm">{formData.tenant_domain}.absenta.id</span>
+                  <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">{isSingleTenant ? 'Portal URL' : 'Subdomain Akses'}</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-black text-sm">
+                    {isSingleTenant ? MAIN_DOMAIN : `${formData.tenant_domain}.${MAIN_DOMAIN}`}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block uppercase tracking-wider mb-1">No. WhatsApp Admin</span>
