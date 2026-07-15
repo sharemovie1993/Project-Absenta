@@ -13,7 +13,7 @@
  * - Jeda antar pesan diatur dengan `limiter` BullMQ (max 1 pesan / 3 detik per tenant).
  */
 
-import { Queue, Worker } from 'bullmq';
+import { Queue, Worker, type ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
 import { waGatewayService } from './wa-gateway.service';
 
@@ -23,11 +23,27 @@ const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
 const REDIS_PORT = Number(process.env.REDIS_PORT) || 6379;
 const REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
 
-const redisConnection = new IORedis({
+/**
+ * BullMQ requires its own internal ioredis connection.
+ * We pass a config object instead of a Redis instance to avoid
+ * version conflicts between top-level ioredis and bullmq's bundled ioredis.
+ * BullMQ will create and manage the connection internally.
+ */
+const bullmqConnection: ConnectionOptions = {
   host: REDIS_HOST,
   port: REDIS_PORT,
   password: REDIS_PASSWORD,
   maxRetriesPerRequest: null, // Required by BullMQ
+};
+
+/**
+ * Separate IORedis instance for non-BullMQ uses (event listeners, health checks, etc.)
+ */
+const redisConnection = new IORedis({
+  host: REDIS_HOST,
+  port: REDIS_PORT,
+  password: REDIS_PASSWORD,
+  maxRetriesPerRequest: null,
 });
 
 redisConnection.on('error', (err) => {
@@ -58,7 +74,7 @@ function getOrCreateTenantQueue(tenantId: string): Queue {
 
   // Create Queue with rate limiter: max 1 message per 3 seconds per tenant
   const queue = new Queue(queueName, {
-    connection: redisConnection,
+    connection: bullmqConnection,
     defaultJobOptions: {
       attempts: 3,
       backoff: {
@@ -80,7 +96,7 @@ function getOrCreateTenantQueue(tenantId: string): Queue {
       console.log(`[WA-Queue:${tid}] ✅ Pesan berhasil dikirim ke ${nomor}`);
     },
     {
-      connection: redisConnection,
+      connection: bullmqConnection,
       concurrency: 1, // Satu pesan per satu waktu per tenant
       limiter: {
         max: 1,
