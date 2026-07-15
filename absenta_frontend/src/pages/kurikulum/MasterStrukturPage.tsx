@@ -92,21 +92,46 @@ const MasterStrukturPage: React.FC = () => {
     }, [selectedTahunId, selectedTingkat, selectedJurusanId]);
 
     const renderedTingkatButtons = React.useMemo(() => {
-        return tingkatList?.map((t) => (
-            <button
-                key={t}
-                type="button"
-                onClick={() => setSelectedTingkat(t)}
-                aria-label={`Pilih Kelas ${t}`}
-                className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${
-                    selectedTingkat === t 
-                    ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600 dark:text-indigo-400' 
-                    : 'text-gray-500 hover:bg-white/50 dark:hover:bg-slate-700/50'
-                }`}
-            >
-                KELAS {t}
-            </button>
-        ));
+        return tingkatList?.map((t) => {
+            const isActive = selectedTingkat === t;
+            
+            // Custom vibrant active colors depending on the class level
+            let activeColorClass = 'bg-white text-indigo-600 dark:text-indigo-400 shadow-sm';
+            if (isActive) {
+              const colorMap: Record<number, string> = {
+                1: 'bg-emerald-600 text-white shadow-md shadow-emerald-100 dark:shadow-none',
+                2: 'bg-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none',
+                3: 'bg-purple-600 text-white shadow-md shadow-purple-100 dark:shadow-none',
+                4: 'bg-amber-500 text-white shadow-md shadow-amber-100 dark:shadow-none',
+                5: 'bg-rose-600 text-white shadow-md shadow-rose-100 dark:shadow-none',
+                6: 'bg-cyan-600 text-white shadow-md shadow-cyan-100 dark:shadow-none',
+                7: 'bg-blue-600 text-white shadow-md shadow-blue-100 dark:shadow-none',
+                8: 'bg-teal-600 text-white shadow-md shadow-teal-100 dark:shadow-none',
+                9: 'bg-violet-600 text-white shadow-md shadow-violet-100 dark:shadow-none',
+                10: 'bg-sky-600 text-white shadow-md shadow-sky-100 dark:shadow-none',
+                11: 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-100 dark:shadow-none',
+                12: 'bg-orange-600 text-white shadow-md shadow-orange-100 dark:shadow-none',
+                13: 'bg-lime-600 text-white shadow-md shadow-lime-100 dark:shadow-none'
+              };
+              activeColorClass = colorMap[t] || 'bg-indigo-600 text-white shadow-md';
+            }
+
+            return (
+                <button
+                    key={t}
+                    type="button"
+                    onClick={() => setSelectedTingkat(t)}
+                    aria-label={`Pilih Kelas ${t}`}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all ${
+                        isActive 
+                        ? activeColorClass 
+                        : 'text-gray-500 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                >
+                    KELAS {t}
+                </button>
+            );
+        });
     }, [tingkatList, selectedTingkat, setSelectedTingkat]);
 
     const renderedUnmappedRecommendations = React.useMemo(() => {
