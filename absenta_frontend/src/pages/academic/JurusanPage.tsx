@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth';
 import toast from 'react-hot-toast';
 import type { Jurusan } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { School, Users, Download, Calendar, Layers, BookMarked, GraduationCap } from 'lucide-react';
+import { School, Users, Download, Calendar, Layers, BookMarked, GraduationCap, FileText, Sparkles, ChevronRight } from 'lucide-react';
 import { importJurusanFromExcel, downloadJurusanImportTemplate, getJurusanList } from '../../api/academic/jurusan.api';
 import { Alert, Card, Button, SectionCard, Loader } from '../../components/ui';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -18,6 +18,7 @@ import { lazy, Suspense, useCallback } from 'react';
 
 // Lazy load heavy components
 const JurusanForm = lazy(() => import('../../components/academic/jurusan/JurusanForm').then(module => ({ default: module.JurusanForm })));
+const JurusanWizardForm = lazy(() => import('../../components/academic/jurusan/JurusanWizardForm').then(module => ({ default: module.JurusanWizardForm })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
@@ -37,6 +38,7 @@ export const JurusanPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('konsentrasi');
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [subMode, setSubMode] = useState<'manual' | 'wizard' | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
@@ -101,10 +103,16 @@ export const JurusanPage: React.FC = () => {
     }
   ], [stats, navigate]);
 
-  const handleAddJurusan = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
+  const handleAddJurusan = useCallback(() => {
+    setSubMode(null);
+    setModalState({ mode: 'create', isOpen: true });
+  }, []);
   const handleEditJurusan = useCallback((j: Jurusan) => setModalState({ mode: 'edit', jurusanId: j.id, isOpen: true }), []);
   const handleViewJurusan = useCallback((j: Jurusan) => setModalState({ mode: 'view', jurusanId: j.id, isOpen: true }), []);
-  const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
+  const handleCloseModal = useCallback(() => {
+    setModalState({ mode: null, isOpen: false });
+    setSubMode(null);
+  }, []);
 
   const handleFormSuccess = useCallback(() => {
     handleCloseModal();
@@ -261,17 +269,72 @@ export const JurusanPage: React.FC = () => {
       <Modal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? 'Tambah Konsentrasi Keahlian' : 'Data Konsentrasi Keahlian'}
+        title={modalState.mode === 'create' ? (subMode === 'wizard' ? 'Tambah Massal (Presets)' : 'Tambah Konsentrasi Keahlian') : 'Data Konsentrasi Keahlian'}
         size="lg"
       >
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
-          {modalState.mode && (
+          {modalState.mode === 'create' && !subMode ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              <button
+                onClick={() => setSubMode('manual')}
+                className="group flex flex-col items-center justify-between text-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all h-60"
+              >
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-110 transition-transform">
+                    <FileText size={32} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                      Isi data jurusan satu per satu secara manual. Pilihan terbaik jika nama jurusan sekolah Anda kustom atau tidak standar.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Mulai Mengisi <ChevronRight size={14} />
+                </span>
+              </button>
+
+              <button
+                onClick={() => setSubMode('wizard')}
+                className="group flex flex-col items-center justify-between text-center p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all h-60"
+              >
+                <div className="flex flex-col items-center space-y-4">
+                  <div className="p-4 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-110 transition-transform">
+                    <Sparkles size={32} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Massal (SMK Presets)</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                      Pilih dari daftar standar Program & Konsentrasi Keahlian SMK Kurikulum Merdeka. Sangat cepat & otomatis membuat kategori induk.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                  Mulai Wizard <ChevronRight size={14} />
+                </span>
+              </button>
+            </div>
+          ) : modalState.mode === 'create' && subMode === 'manual' ? (
             <JurusanForm
-              jurusanId={modalState.jurusanId}
-              mode={modalState.mode}
+              mode="create"
               onSuccess={handleFormSuccess}
               onCancel={handleCloseModal}
             />
+          ) : modalState.mode === 'create' && subMode === 'wizard' ? (
+            <JurusanWizardForm
+              onSuccess={handleFormSuccess}
+              onCancel={handleCloseModal}
+            />
+          ) : (
+            modalState.mode && (
+              <JurusanForm
+                jurusanId={modalState.jurusanId}
+                mode={modalState.mode}
+                onSuccess={handleFormSuccess}
+                onCancel={handleCloseModal}
+              />
+            )
           )}
         </Suspense>
       </Modal>

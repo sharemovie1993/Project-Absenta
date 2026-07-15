@@ -90,3 +90,11 @@ export const importJurusanFromExcel = async (
 export const exportJurusanToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/jurusan/export');
 };
+
+// Bulk Create Program & Jurusan via Wizard
+export const bulkWizardCreateJurusan = async (payload: {
+  programs: Array<{ nama: string; kode: string; singkatan: string; bidang_keahlian?: string }>;
+  jurusans: Array<{ nama: string; kode: string; singkatan: string; program_keahlian_kode: string }>;
+}): Promise<{ success: boolean; message: string }> => {
+  return requestWithFallback<{ success: boolean; message: string }>('post', '/academic/jurusan/bulk-wizard', { data: payload });
+};

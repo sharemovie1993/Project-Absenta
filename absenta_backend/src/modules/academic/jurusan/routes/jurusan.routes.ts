@@ -33,6 +33,16 @@ export default async function jurusanRoutes(fastify: any) {
     return jurusanController.importFromExcel(request, reply);
   });
 
+  // POST /jurusan/bulk-wizard - Bulk create ProgramKeahlian and Jurusan
+  fastify.post('/bulk-wizard', {
+    preHandler: [
+        requireCapability('academic.structures.create'),
+        determineDataScope()
+    ]
+  }, async (request: any, reply: any) => {
+    return jurusanController.bulkWizardCreate(request, reply);
+  });
+
   // GET /jurusan - Get all jurusan
   fastify.get('/', {
     preHandler: [

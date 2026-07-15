@@ -438,4 +438,82 @@ export class JurusanService {
 
     return { created, updated, errors };
   }
+
+  async bulkWizardCreate(
+    payload: {
+      programs: Array<{ nama: string; kode: string; singkatan: string; bidang_keahlian?: string }>;
+      jurusans: Array<{ nama: string; kode: string; singkatan: string; program_keahlian_kode: string }>;
+    },
+    tenantId: string
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const programMap: Record<string, string> = {};
+
+      // Load existing ProgramKeahlian to prevent duplicate key error
+      const existingPrograms = await tx.programKeahlian.findMany({
+        where: { tenant_id: tenantId }
+      });
+      existingPrograms.forEach(p => {
+        if (p.kode) programMap[p.kode.toUpperCase()] = p.id;
+      });
+
+      // Insert missing ProgramKeahlian
+      for (const prog of payload.programs) {
+        const key = prog.kode.toUpperCase();
+        if (!programMap[key]) {
+          const newProg = await tx.programKeahlian.create({
+            data: {
+              tenant_id: tenantId,
+              nama: prog.nama,
+              kode: prog.kode,
+              singkatan: prog.singkatan,
+              bidang_keahlian: prog.bidang_keahlian || null
+            }
+          });
+          programMap[key] = newProg.id;
+        }
+      }
+
+      // Load existing Jurusan to prevent duplicate key error
+      const existingJurusans = await tx.jurusan.findMany({
+        where: { tenant_id: tenantId }
+      });
+      const existingJurusanKodes = new Set(existingJurusans.map(j => j.kode?.toUpperCase()).filter(Boolean));
+
+      // Insert missing Jurusan & Auto Sarpras Location
+      for (const jur of payload.jurusans) {
+        const key = jur.kode.toUpperCase();
+        if (!existingJurusanKodes.has(key)) {
+          const programId = programMap[jur.program_keahlian_kode.toUpperCase()] || null;
+
+          const newJur = await tx.jurusan.create({
+            data: {
+              tenant_id: tenantId,
+              nama: jur.nama,
+              kode: jur.kode,
+              singkatan: jur.singkatan,
+              program_keahlian_id: programId
+            }
+          });
+
+          // Provision default Sarpras Lab location
+          const abbr = jur.singkatan || jur.kode || jur.nama.substring(0, 5).toUpperCase();
+          try {
+            await tx.sarprasLocation.create({
+              data: {
+                tenant_id: tenantId,
+                nama: `Lab Utama ${abbr}`,
+                unit_id: newJur.id,
+                deskripsi: `Lokasi inventaris utama untuk jurusan ${jur.nama}`
+              }
+            });
+          } catch (err) {
+            console.warn('Failed to create automatic Sarpras Location in bulk:', err);
+          }
+        }
+      }
+
+      return { success: true, message: 'Bulk wizard creation completed' };
+    });
+  }
 }

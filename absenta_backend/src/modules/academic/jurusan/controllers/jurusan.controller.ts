@@ -301,5 +301,25 @@ export const jurusanController = {
       console.error('Export error:', error);
       return reply.status(500).send({ success: false, message: 'Export failed' });
     }
+  },
+
+  async bulkWizardCreate(request: any, reply: any) {
+    try {
+      const user = request.user!;
+      const result = await jurusanService.bulkWizardCreate(request.body, user.tenantId);
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Bulk wizard creation completed successfully',
+        data: result
+      });
+    } catch (error: any) {
+      console.error('Error bulk wizard creating jurusan:', error);
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Internal server error',
+        data: null
+      });
+    }
   }
 };
