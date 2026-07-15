@@ -55,7 +55,7 @@ export const useMasterStrukturState = () => {
   });
   const tenantInfo = tenantRes?.data;
   
-  const { jenjang, tingkatList, kelompokOptions } = useJenjang();
+  const { jenjang, kurikulum, tingkatList, kelompokOptions } = useJenjang();
 
   // Filters
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
@@ -410,9 +410,27 @@ export const useMasterStrukturState = () => {
     const mappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
     return subjects.data.filter((s: Mapel) => {
       if (mappedMapelIds.has(s.id)) return false;
+
+      // Filter out based on active kurikulum
+      const kode = (s.kode_mapel || '').toUpperCase();
+      const name = (s.nama_mapel || '').toLowerCase();
+      
+      if (kurikulum === 'K13') {
+        // K13 does not have Seni Pilihan
+        const isSeniPilihan = ['SENI_MUSIK', 'SENI_RUPA', 'SENI_TARI', 'SENI_TEATER'].includes(kode) ||
+          ['seni musik', 'seni rupa', 'seni tari', 'seni teater'].some(t => name.includes(t));
+        if (isSeniPilihan) return false;
+      } else if (kurikulum === 'MERDEKA') {
+        // Merdeka does not use general Seni Budaya for SD, SMP, SMA (only SMK/MAK uses it)
+        if (!isSmkOrMak) {
+          const isGeneralSeniBudaya = kode === 'SENI' || name === 'seni budaya';
+          if (isGeneralSeniBudaya) return false;
+        }
+      }
+
       return isMapelRelevantForTingkat(s, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal);
     });
-  }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal]);
+  }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, kurikulum]);
 
   const presetSisaCount = useMemo(() => {
     if (!subjects?.data || !mappingFiltered) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
