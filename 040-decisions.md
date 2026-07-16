@@ -164,3 +164,7 @@
   3. Mengubah properti `jurusan_id` di model `Kelas` database menjadi opsional (nullable), serta secara dinamis menyembunyikan kolom, filter pencarian, form input pilihan Jurusan di CRUD kelas, dan menu navigasi Jurusan di sidebar bagi sekolah dengan jenjang SD/MI/SMP/MTs.
 - **Rasional**: Menyediakan preset referensi data nasional program keahlian secara global dari level platform untuk kemudahan tenant sekolah, menyederhanakan alur pemilihan wizard bagi admin sekolah, serta memfasilitasi sekolah dasar dan menengah pertama (SD/SMP) agar platform dapat digunakan secara relevan tanpa memaksakan struktur penjurusan SMK/SMA.
 
+2026-07: Hardware Telemetry and Automated Specification Diagnostics
+- **Keputusan**: Mengintegrasikan utilitas pengambil spesifikasi hardware (CPU model & core, RAM total, dan disk space utama) ke dalam payload heartbeat telemetri (`osType`) yang dikirim dari klien Easy Tunnel dan backend Absenta ke server lisensi pusat (`https://api.absenta.id`).
+- **Rasional**: Memungkinkan dasbor admin pusat memantau kelayakan hardware mesin lokal/SaaS klien secara real-time tanpa perlu menambahkan skema kolom database baru di VPS atau melakukan perubahan yang merusak kompatibilitas data. Penggunaan parsing visual dinamis di sisi frontend memisahkan rincian hardware tersebut secara transparan.
+
