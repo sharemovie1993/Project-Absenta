@@ -29,20 +29,20 @@ Completed:
 - **Global Program & Jurusan Presets**: CRUD dan model data global untuk preset Program Keahlian dan Konsentrasi Keahlian (Jurusan) tingkat superadmin/platform, serta seeder standar nasional Kurikulum Merdeka.
 - **Wizard Tambah Massal Jurusan (2-Step)**: Wizard tambah massal jurusan di level tenant/sekolah yang dibagi menjadi 2 langkah (langkah 1: Program Keahlian, langkah 2: Jurusan terfilter).
 - **Adaptasi Jenjang Sekolah (useJenjang)**: Halaman CRUD Kelas, tabel kelas, filter kelas, dan menu sidebar Jurusan otomatis disembunyikan/disederhanakan untuk sekolah jenjang SD/SMP/MI/MTs yang tidak menerapkan penjurusan. Properti `jurusan_id` di database kini opsional/nullable.
-
+- **Hardware Telemetry Heartbeat**: Pengiriman otomatis spesifikasi perangkat keras host (CPU Model & core count, RAM total, dan disk storage utama) dalam string `osType` telemetri ke server lisensi pusat setiap 2 menit.
 
 In Progress:
 - None
 
 Current Focus:
-- Final Verification & Cleanup
+- Pemeliharaan performa dan pemantauan kestabilan worker.
 
 Open Issues:
 - **Query Optimization**: Performa rekap kehadiran pada tenant skala besar (>1000 siswa).
 - **Offline Sync**: Keandalan protokol rekon-otomatis sinkronisasi data perangkat IoT saat gangguan koneksi internet.
 
 Next Task:
-- Deployment & User Feedback Verification
+- Monitoring log heartbeat telemetri di server pusat.
 
 
 
