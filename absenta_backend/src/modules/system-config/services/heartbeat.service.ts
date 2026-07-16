@@ -3,6 +3,50 @@ import axios from 'axios';
 import * as os from 'os';
 import * as cron from 'node-cron';
 import { acquireLock, releaseLock } from '@/infra/locks/distributedLock';
+import { execSync } from 'child_process';
+
+function getCpuSpec(): string {
+  try {
+    const cpus = os.cpus();
+    if (cpus && cpus.length > 0) {
+      const model = cpus[0].model.replace(/\s+/g, ' ').trim();
+      return `${model} (${cpus.length} Cores)`;
+    }
+  } catch (e) {}
+  return 'Unknown CPU';
+}
+
+function getRamSpecGB(): string {
+  try {
+    const totalBytes = os.totalmem();
+    const totalGB = Math.round(totalBytes / (1024 * 1024 * 1024));
+    return `${totalGB} GB`;
+  } catch (e) {}
+  return 'Unknown RAM';
+}
+
+function getStorageSpecGB(): string {
+  try {
+    if (process.platform === 'win32') {
+      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get size', { windowsHide: true }).toString();
+      const match = out.match(/\d+/);
+      if (match) {
+        const sizeBytes = parseInt(match[0], 10);
+        const sizeGB = Math.round(sizeBytes / (1024 * 1024 * 1024));
+        return `${sizeGB} GB`;
+      }
+    } else {
+      const out = execSync("df -B1 / | tail -1 | awk '{print $2}'", { windowsHide: true }).toString();
+      const match = out.match(/\d+/);
+      if (match) {
+        const sizeBytes = parseInt(match[0], 10);
+        const sizeGB = Math.round(sizeBytes / (1024 * 1024 * 1024));
+        return `${sizeGB} GB`;
+      }
+    }
+  } catch (e) {}
+  return 'Unknown Storage';
+}
 
 export const heartbeatService = {
   async collectAndSendMetrics(): Promise<void> {
@@ -179,7 +223,7 @@ export const heartbeatService = {
         tenants: tenantList,
         appDomain: process.env.PUBLIC_DOMAIN_BASE || undefined,
         hostname: os.hostname(),
-        osType: `${os.type()} ${os.release()} (${os.arch()})`
+        osType: `${os.type()} ${os.release()} (${os.arch()}) | CPU: ${getCpuSpec()} | RAM: ${getRamSpecGB()} | Storage: ${getStorageSpecGB()}`
       };
 
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {
