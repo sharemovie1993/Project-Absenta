@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, SectionCard } from '../../../components/ui';
+import { Button, SectionCard, Modal } from '../../../components/ui';
 import { getSiswaList, mapPpdbStudents, downloadSiswaImportTemplate, importSiswaFromExcel } from '../../../api/academic/siswa.api';
 import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdown.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
@@ -19,6 +19,7 @@ const PpdbMappingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [mappingModalOpen, setMappingModalOpen] = useState(false);
   
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
@@ -45,7 +46,7 @@ const PpdbMappingPage: React.FC = () => {
 
         const rawSekolah = (sekolahRes as any)?.data || sekolahRes;
         const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
-        const smk = ['SMK', 'MAK'].includes(jenjang);
+        const smk = ['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as any[]).length > 0);
         setIsSmkMak(smk);
 
         setJurusans(jurusanList);
@@ -152,6 +153,7 @@ const PpdbMappingPage: React.FC = () => {
         toast.success(`Berhasil memetakan ${selectedSiswa.length} siswa ke rombel!`);
         setSelectedSiswa([]);
         setTargetKelasId('');
+        setMappingModalOpen(false);
         // Refresh list
         await fetchCalonStudents();
       } else {
@@ -250,10 +252,10 @@ const PpdbMappingPage: React.FC = () => {
         { label: 'Pemetaan PPDB', path: '/academic/ppdb-mapping' }
       ]}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-6">
         
-        {/* Left Side: Filter and Student Table List */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Full-width container for student table */}
+        <div className="space-y-6">
           <SectionCard title="Daftar Calon Siswa">
             
             {/* PPDB Action Buttons */}
@@ -325,6 +327,33 @@ const PpdbMappingPage: React.FC = () => {
                 Refresh
               </Button>
             </div>
+
+            {/* Selected Action Bar */}
+            {selectedSiswa.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-indigo-50/80 border border-indigo-100 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="text-sm font-semibold text-indigo-900">
+                  {selectedSiswa.length} calon siswa dipilih untuk pemetaan rombel
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedSiswa([])}
+                    className="flex-1 sm:flex-initial text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-100/50"
+                  >
+                    Batal Pilih
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setMappingModalOpen(true)}
+                    className="flex-1 sm:flex-initial text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1.5 border-none"
+                  >
+                    <UserCheck size={13} />
+                    <span>Petakan ke Kelas</span>
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Students Table */}
             <div className="overflow-x-auto border border-slate-100 rounded-xl">
@@ -405,75 +434,93 @@ const PpdbMappingPage: React.FC = () => {
           </SectionCard>
         </div>
 
-        {/* Right Side: Mapping Settings Action Panel */}
-        <div className="space-y-6">
-          <SectionCard title="Pemetaan Kelas">
-            <div className="space-y-6">
-              
-              <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl text-xs text-amber-800 space-y-2">
-                <div className="flex items-center gap-2 font-semibold">
-                  <AlertCircle size={14} />
-                  <span>Informasi Pemetaan</span>
-                </div>
-                <p>
-                  Siswa yang terpilih akan dipindahkan statusnya menjadi <strong>AKTIF</strong>, dikaitkan ke kelas tujuan, dan didaftarkan ke semester/tahun pelajaran aktif secara otomatis.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                    1. Kelas Tujuan
-                  </label>
-                  <select
-                    value={targetKelasId}
-                    onChange={e => setTargetKelasId(e.target.value)}
-                    disabled={submitLoading || loading}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all disabled:bg-slate-50"
-                  >
-                    <option value="">-- Pilih Kelas Target --</option>
-                    {filteredKelasOptions.map(k => (
-                      <option key={k.value} value={k.value}>{k.label}</option>
-                    ))}
-                  </select>
-                  {isSmkMak && selectedJurusan !== 'all' && (
-                    <p className="mt-1 text-xs text-slate-400">
-                      Pilihan kelas difilter berdasarkan Jurusan yang dipilih pada filter siswa.
-                    </p>
-                  )}
-                </div>
-
-                <div className="border-t border-slate-100 pt-4">
-                  <div className="flex items-center justify-between text-sm text-slate-600 mb-4">
-                    <span>Siswa dipilih:</span>
-                    <span className="font-bold text-slate-900">{selectedSiswa.length} siswa</span>
-                  </div>
-
-                  <Button
-                    onClick={handleMapStudents}
-                    disabled={submitLoading || loading || selectedSiswa.length === 0 || !targetKelasId}
-                    className="w-full flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200"
-                  >
-                    {submitLoading ? (
-                      <>
-                        <RefreshCw size={16} className="animate-spin" />
-                        <span>Memproses Pemetaan...</span>
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck size={16} />
-                        <span>Petakan ke Rombel</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-            </div>
-          </SectionCard>
-        </div>
-
       </div>
+
+      {/* Mapping Wizard Modal */}
+      <Modal
+        isOpen={mappingModalOpen}
+        onClose={() => setMappingModalOpen(false)}
+        title="Pemetaan Kelas / Rombel Siswa Baru"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl text-xs text-amber-800 space-y-2">
+            <div className="flex items-center gap-2 font-semibold">
+              <AlertCircle size={14} />
+              <span>Informasi Pemetaan</span>
+            </div>
+            <p>
+              Sebanyak <strong>{selectedSiswa.length} siswa</strong> yang terpilih akan dipindahkan statusnya menjadi <strong>AKTIF</strong>, dikaitkan ke kelas tujuan, dan didaftarkan ke semester/tahun pelajaran aktif secara otomatis.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Pilih Kelas Tujuan
+              </label>
+              <select
+                value={targetKelasId}
+                onChange={e => setTargetKelasId(e.target.value)}
+                disabled={submitLoading}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all disabled:bg-slate-50"
+              >
+                <option value="">-- Pilih Kelas Target --</option>
+                {filteredKelasOptions.map(k => (
+                  <option key={k.value} value={k.value}>{k.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selected Students Scrollable List */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Daftar Siswa yang Akan Dipetakan ({selectedSiswa.length})
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-lg p-2 divide-y divide-slate-50 bg-slate-50/30 scrollbar-thin">
+                {calonList
+                  .filter(s => selectedSiswa.includes(s.id))
+                  .map(s => (
+                    <div key={s.id} className="py-1.5 px-2 text-xs font-medium text-slate-700 flex justify-between">
+                      <span>{s.nama_siswa}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {s.nisn || s.nis || '-'}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMappingModalOpen(false)}
+              disabled={submitLoading}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleMapStudents}
+              disabled={submitLoading || !targetKelasId}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1.5 px-4 rounded-lg text-sm shadow-md border-none"
+            >
+              {submitLoading ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={14} />
+                  <span>Proses Pemetaan</span>
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
         <ExcelImportModal

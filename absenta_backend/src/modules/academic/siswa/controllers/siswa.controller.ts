@@ -710,7 +710,7 @@ export const siswaController = {
         prisma.jurusan.findMany({ where: { tenant_id: tenantId } }),
         prisma.sekolah.findFirst({ where: { tenant_id: tenantId } })
       ]);
-      const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '');
+      const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '') || jurusans.length > 0;
       const kelasList = ref.kelasList as any[];
       const kelasIdSet = new Set(kelasList.map(k => k.id));
       const jurusanNames = jurusans.map(j => j.nama);
