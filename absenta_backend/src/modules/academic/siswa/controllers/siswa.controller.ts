@@ -517,20 +517,33 @@ export const siswaController = {
          return reply.status(401).send({ success: false, message: 'Unauthorized: Tenant ID required' });
       }
 
+      // Fetch sekolah to check jenjang
+      const sekolah = await prisma.sekolah.findFirst({ where: { tenant_id: tenantId } });
+      const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '');
+
       // --- SISWA SHEET ---
-      const headers = [
-        'NAMA LENGKAP', 'NIS', 'NISN', 'NIK', 'EMAIL', 'JK (L/P)', 'TEMPAT LAHIR', 
-        'TANGGAL LAHIR (YYYY-MM-DD)', 'ALAMAT', 'NO. HP', 'NAMA KELAS', 'STATUS', 'NO. RFID'
-      ];
+      const headers = isSmkMak
+        ? [
+            'NAMA LENGKAP', 'NIS', 'NISN', 'NIK', 'EMAIL', 'JK (L/P)', 'TEMPAT LAHIR', 
+            'TANGGAL LAHIR (YYYY-MM-DD)', 'ALAMAT', 'NO. HP', 'NAMA KELAS', 'JURUSAN', 'STATUS', 'NO. RFID'
+          ]
+        : [
+            'NAMA LENGKAP', 'NIS', 'NISN', 'NIK', 'EMAIL', 'JK (L/P)', 'TEMPAT LAHIR', 
+            'TANGGAL LAHIR (YYYY-MM-DD)', 'ALAMAT', 'NO. HP', 'NAMA KELAS', 'STATUS', 'NO. RFID'
+          ];
+
+      const quickPetunjuk = isSmkMak
+        ? '1. Kolom BERWARNA EMAS wajib diisi (Nama, Kelas, Jurusan). Untuk PPDB, kosongkan Kelas, set status CALON.'
+        : '1. Kolom BERWARNA EMAS wajib diisi (Nama & Kelas).';
 
       // Add helper rows at the top for better UX
       const dataWithHints = [
-        ['PETUNJUK CEPAT:', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['1. Kolom BERWARNA EMAS wajib diisi (Nama & Kelas).', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['2. Agar angka NOL tidak hilang di NO HP/NISN, awali dengan tanda PETIK SATU (\'). Contoh: \'0812345678', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['3. JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['4. Format Tanggal: YYYY-MM-DD (Contoh: 2010-06-12).', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['', '', '', '', '', '', '', '', '', '', '', '', ''], // Spacer
+        ['PETUNJUK CEPAT:', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        [quickPetunjuk, '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['2. Agar angka NOL tidak hilang di NO HP/NISN, awali dengan tanda PETIK SATU (\'). Contoh: \'0812345678', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['3. JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['4. Format Tanggal: YYYY-MM-DD (Contoh: 2010-06-12).', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', '', '', '', '', '', ''], // Spacer
         headers
       ];
 
@@ -577,11 +590,15 @@ export const siswaController = {
         if (cell) cell.s = i === 2 ? warningStyle : hintStyle;
       }
 
+      const requiredCols = isSmkMak
+        ? ['NAMA LENGKAP', 'NAMA KELAS', 'JURUSAN']
+        : ['NAMA LENGKAP', 'NAMA KELAS'];
+
       // Apply Styles to Header (Row 6, index 6)
       headers.forEach((h, i) => {
         const cell = ws[XLSX.utils.encode_cell({ r: 6, c: i })];
         if (cell) {
-          if (['NAMA LENGKAP', 'NAMA KELAS'].includes(h)) {
+          if (requiredCols.includes(h)) {
             cell.s = reqHeaderStyle;
           } else {
             cell.s = optHeaderStyle;
@@ -602,13 +619,16 @@ export const siswaController = {
         [''],
         ['1. KOLOM BERWARNA EMAS WAJIB DIISI'],
         ['2. nama_siswa: Nama lengkap siswa'],
-        ['3. kelas_id: Bisa diisi ID Kelas atau Nama Kelas (Lihat sheet Referensi)'],
+        ['3. kelas_id / NAMA KELAS: Bisa diisi ID Kelas atau Nama Kelas (Lihat sheet Referensi). Kosongkan jika PPDB (CALON).'],
+        isSmkMak ? ['3b. JURUSAN: WAJIB diisi untuk sekolah SMK/MAK (contoh: RPL, TKJ, Akuntansi)'] : null,
         ['4. jenis_kelamin: Isi dengan "L" (Laki-laki) atau "P" (Perempuan)'],
         ['5. tanggal_lahir: Format YYYY-MM-DD (Contoh: 2010-06-12)'],
-        ['6. status: Isi dengan "AKTIF", "TIDAK_AKTIF", "LULUS", "PINDAH"'],
+        ['6. status: Isi dengan "AKTIF", "CALON" (untuk PPDB belum dipetakan), "TIDAK_AKTIF", "LULUS", "PINDAH"'],
         [''],
-        ['Tips: Gunakan sheet "Referensi Kelas" untuk mempermudah mencari nama/id kelas.']
-      ];
+        ['Tips: Gunakan sheet "Referensi Kelas" untuk mempermudah mencari nama/id kelas.'],
+        isSmkMak ? ['Tips SMK/MAK: Nama kelas boleh sama jika jurusannya berbeda.'] : null,
+      ].filter(Boolean) as string[][];
+
       const petunjukWs = XLSX.utils.aoa_to_sheet(instructions);
       
       // Style Title
@@ -619,14 +639,35 @@ export const siswaController = {
 
       // --- REFERENSI SHEET ---
       const kelasRef = await kelasService.getKelasReference(tenantId, scope);
-      const refData = kelasRef.map(k => ({
-         'ID Kelas (Sangat Disarankan)': k.id,
-         'Nama Kelas': k.nama_kelas,
-         'Tingkat': k.tingkat,
-         'Jurusan': k.jurusan
-      }));
+      const refData = kelasRef.map(k => {
+        if (isSmkMak) {
+          return {
+            'ID Kelas': k.id,
+            'Nama Kelas': k.nama_kelas,
+            'Jurusan ⭐ (Wajib)': k.jurusan,
+            'Tingkat': k.tingkat
+          };
+        } else {
+          return {
+            'ID Kelas (Sangat Disarankan)': k.id,
+            'Nama Kelas': k.nama_kelas,
+            'Tingkat': k.tingkat,
+            'Jurusan': k.jurusan
+          };
+        }
+      });
       const refWs = XLSX.utils.json_to_sheet(refData);
-      refWs['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 10 }, { wch: 20 }];
+      
+      if (isSmkMak) {
+        refWs['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 10 }];
+        // Highlight Jurusan column header
+        const jurCell = refWs[XLSX.utils.encode_cell({ r: 0, c: 2 })];
+        if (jurCell) {
+          jurCell.s = reqHeaderStyle;
+        }
+      } else {
+        refWs['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 10 }, { wch: 20 }];
+      }
       
       XLSX.utils.book_append_sheet(wb, refWs, 'Referensi Kelas');
 
@@ -1233,6 +1274,39 @@ export const siswaController = {
     } catch (error: any) {
       console.error('Get exit bundle error:', error);
       return reply.status(500).send({ success: false, message: error.message || 'Failed to generate exit bundle' });
+    }
+  },
+
+  async mapPpdbStudents(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const org = (request as any).organizationalScope;
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found' });
+      }
+
+      const { siswa_ids, target_kelas_id } = request.body || {};
+      if (!Array.isArray(siswa_ids) || siswa_ids.length === 0) {
+        return reply.status(400).send({ success: false, message: 'siswa_ids wajib berupa array yang tidak kosong' });
+      }
+      if (!target_kelas_id) {
+        return reply.status(400).send({ success: false, message: 'target_kelas_id wajib diisi' });
+      }
+
+      const result = await siswaService.mapPpdbStudents(tenantId, org, {
+        siswaIds: siswa_ids,
+        targetKelasId: target_kelas_id
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: `Pemetaan PPDB selesai. Berhasil: ${result.success}, Gagal: ${result.failed}`,
+        data: result
+      });
+    } catch (error: any) {
+      console.error('PPDB mapping error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Failed to map PPDB students' });
     }
   }
 };

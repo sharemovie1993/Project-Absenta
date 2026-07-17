@@ -89,6 +89,7 @@ const CetakBerkasSarprasPage = lazy(() => import('./pages/sarpras/CetakBerkasSar
 const CetakBerkasHubinPage = lazy(() => import('./pages/hubin/CetakBerkasHubinPage').then(m => ({ default: m.CetakBerkasHubinPage })));
 const BackupPage = lazy(() => import('./pages/academic/BackupPage'));
 const StaffActivityLogPage = lazy(() => import('./pages/academic/StaffActivityLogPage'));
+const PpdbMappingPage = lazy(() => import('./pages/academic/ppdb/PpdbMappingPage'));
 
 // Named exports handled via lazy
 const GuruPage = lazy(() => import('./pages/academic/GuruPage').then(module => ({ default: module.GuruPage })));
@@ -465,6 +466,11 @@ function App() {
                     <Route path="/academic/siswa" element={
                       <ProtectedRoute requiredCapability="academic.students.view.list">
                         <SiswaPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/academic/ppdb-mapping" element={
+                      <ProtectedRoute requiredCapability="academic.students.update">
+                        <PpdbMappingPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/kelas" element={

@@ -347,14 +347,6 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       return;
     }
     const t = jenisTypeByName[petugasForm.jenis_kegiatan] || '';
-    if ((t === 'KBM' || t === 'ESKUL') && !petugasForm.guru_id) {
-      toast('Pilih guru untuk kegiatan KBM/Eskul', { icon: 'ℹ️' });
-      return;
-    }
-    if (t === 'KBM' && !petugasForm.mapel_id) {
-      toast('Pilih mata pelajaran untuk kegiatan KBM', { icon: 'ℹ️' });
-      return;
-    }
     
     setCreatingSession(true);
     try {

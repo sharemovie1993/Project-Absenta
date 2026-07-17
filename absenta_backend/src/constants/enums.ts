@@ -15,7 +15,8 @@ export enum SiswaStatus {
   AKTIF = 'AKTIF',
   LULUS = 'LULUS',
   KELUAR = 'KELUAR',
-  PINDAH = 'PINDAH'
+  PINDAH = 'PINDAH',
+  CALON = 'CALON'
 }
 
 export enum SubscriptionStatus {

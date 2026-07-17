@@ -9,4 +9,4 @@ export * from './update-siswa.command';
 export * from './pair-rfid-bulk.command';
 export * from './generate-rfid-bulk.command';
 export * from './generate-rfid-for-siswa.command';
-
+export * from './map-ppdb-students.command';

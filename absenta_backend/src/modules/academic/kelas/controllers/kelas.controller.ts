@@ -2,6 +2,7 @@ import { kelasService, CreateKelasInput, UpdateKelasInput } from '../services/ke
 import { createKelasSchema, updateKelasSchema } from '../services/kelas.schema';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
+import { prisma } from '@/utils/prisma';
 
 export const kelasController = {
   async getAllKelas(request: any, reply: any) {
@@ -221,8 +222,14 @@ export const kelasController = {
     }
   },
 
-  async getImportTemplate(_request: any, reply: any) {
+  async getImportTemplate(request: any, reply: any) {
     try {
+      const tenantId = request.tenantId;
+      const sekolah = tenantId
+        ? await prisma.sekolah.findFirst({ where: { tenant_id: tenantId } })
+        : null;
+      const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '');
+
       const headers = [
         'nama_kelas', 'tingkat', 'jurusan', 'wali_kelas', 'jam_masuk', 'jam_pulang'
       ];
@@ -252,10 +259,14 @@ export const kelasController = {
         alignment: { horizontal: "center" }
       };
 
+      const requiredCols = isSmkMak
+        ? ['nama_kelas', 'tingkat', 'jurusan']
+        : ['nama_kelas', 'tingkat'];
+
       headers.forEach((h, i) => {
         const cell = ws[XLSX.utils.encode_cell({ r: 0, c: i })];
         if (cell) {
-          if (['nama_kelas', 'tingkat', 'jurusan'].includes(h)) {
+          if (requiredCols.includes(h)) {
             cell.s = reqStyle;
           } else {
             cell.s = optStyle;
@@ -272,11 +283,15 @@ export const kelasController = {
         ['PETUNJUK PENGISIAN IMPORT KELAS'],
         [''],
         ['1. KOLOM BERWARNA EMAS WAJIB DIISI'],
-        ['2. tingkat: Isi dengan angka 1-12'],
-        ['3. jurusan: Isi dengan Nama Jurusan atau Kode Jurusan'],
+        ['2. tingkat: Isi dengan angka sesuai tingkat (misal: 1-6 untuk SD, 7-9 untuk SMP, 10-12/13 untuk SMA/SMK)'],
+        isSmkMak
+          ? ['3. jurusan: WAJIB diisi — Isi dengan Nama Jurusan atau Kode Jurusan']
+          : ['3. jurusan: Opsional — Isi dengan Nama Jurusan jika ada'],
         ['4. jam_masuk/pulang: Format HH:mm (Contoh: 07:00)'],
         [''],
-        ['Tips: Pastikan Nama Kelas unik agar tidak membingungkan sistem.']
+        isSmkMak
+          ? ['Tips: Pada sekolah SMK/MAK, nama kelas boleh sama asalkan jurusannya berbeda.']
+          : ['Tips: Pastikan Nama Kelas unik dalam tingkat yang sama agar tidak membingungkan sistem.']
       ];
       const petunjukWs = XLSX.utils.aoa_to_sheet(instructions);
       petunjukWs['A1'].s = { font: { bold: true, sz: 14, color: { rgb: "4F46E5" } } };

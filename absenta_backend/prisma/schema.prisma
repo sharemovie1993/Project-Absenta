@@ -698,6 +698,7 @@ model Jurusan {
   sarprasLocations        SarprasLocation[]
   organizationalAssigns   OrganizationalAssignment[]
   StrukturKurikulum       StrukturKurikulum[]
+  Siswa                   Siswa[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -912,7 +913,8 @@ model Siswa {
   // kelas_id           String
   // tahun_pelajaran_id String?
   // semester_id        String?
-  kelas_id           String
+  kelas_id           String?
+  jurusan_id         String?
   tahun_pelajaran_id String?
   semester_id        String?
   tanggal_masuk      DateTime?
@@ -925,7 +927,8 @@ model Siswa {
   updated_at         DateTime            @updatedAt
   AbsenGerbangSiswa  AbsenGerbangSiswa[]
   OrangTuaSiswa      OrangTuaSiswa[]
-  Kelas              Kelas               @relation(fields: [kelas_id], references: [id])
+  Kelas              Kelas?              @relation(fields: [kelas_id], references: [id])
+  Jurusan            Jurusan?            @relation(fields: [jurusan_id], references: [id])
   Semester           Semester?           @relation(fields: [semester_id], references: [id])
   TahunPelajaran     TahunPelajaran?     @relation(fields: [tahun_pelajaran_id], references: [id])
   Tenant             Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -1097,6 +1100,7 @@ model AbsenSiswa {
   kelas_nama_snapshot         String?
   tingkat_snapshot            Int?
   tahun_pelajaran_id_snapshot String?
+  catatan                     String?
   created_at                  DateTime      @default(now()) @db.Timestamptz
   updated_at                  DateTime      @updatedAt @db.Timestamptz
   SesiAbsensi                 SesiAbsensi   @relation(fields: [sesi_id], references: [id])

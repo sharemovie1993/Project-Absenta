@@ -23,27 +23,28 @@ export interface PaginatedJKMResponse {
 }
 
 const PLATFORM_DEFAULT_JENIS_KEGIATAN: Array<{ nama: string; tipe: JenisKegiatan; urutan: number }> = [
-  { nama: 'KBM', tipe: JenisKegiatan.KBM, urutan: 0 },
-  { nama: 'Upacara', tipe: JenisKegiatan.PEMBIASAAN, urutan: 1 },
-  { nama: 'Apel Datang', tipe: JenisKegiatan.PEMBIASAAN, urutan: 2 },
-  { nama: 'Apel Pulang', tipe: JenisKegiatan.PEMBIASAAN, urutan: 3 },
-  { nama: 'Duha', tipe: JenisKegiatan.PEMBIASAAN, urutan: 4 },
+  { nama: 'Ketarunaan', tipe: JenisKegiatan.PEMBIASAAN, urutan: 0 },
+  { nama: 'KBM', tipe: JenisKegiatan.KBM, urutan: 1 },
+  { nama: 'Upacara', tipe: JenisKegiatan.PEMBIASAAN, urutan: 2 },
+  { nama: 'Apel Datang', tipe: JenisKegiatan.PEMBIASAAN, urutan: 3 },
+  { nama: 'Apel Pulang', tipe: JenisKegiatan.PEMBIASAAN, urutan: 4 },
+  { nama: 'Duha', tipe: JenisKegiatan.PEMBIASAAN, urutan: 5 },
 
-  { nama: 'KBM 1', tipe: JenisKegiatan.KBM, urutan: 5 },
-  { nama: 'KBM 2', tipe: JenisKegiatan.KBM, urutan: 6 },
-  { nama: 'KBM 3', tipe: JenisKegiatan.KBM, urutan: 7 },
-  { nama: 'KBM 4', tipe: JenisKegiatan.KBM, urutan: 8 },
-  { nama: 'KBM 5', tipe: JenisKegiatan.KBM, urutan: 9 },
-  { nama: 'KBM 6', tipe: JenisKegiatan.KBM, urutan: 10 },
+  { nama: 'KBM 1', tipe: JenisKegiatan.KBM, urutan: 6 },
+  { nama: 'KBM 2', tipe: JenisKegiatan.KBM, urutan: 7 },
+  { nama: 'KBM 3', tipe: JenisKegiatan.KBM, urutan: 8 },
+  { nama: 'KBM 4', tipe: JenisKegiatan.KBM, urutan: 9 },
+  { nama: 'KBM 5', tipe: JenisKegiatan.KBM, urutan: 10 },
+  { nama: 'KBM 6', tipe: JenisKegiatan.KBM, urutan: 11 },
 
-  { nama: 'Pramuka', tipe: JenisKegiatan.ESKUL, urutan: 11 },
-  { nama: 'Paskibra', tipe: JenisKegiatan.ESKUL, urutan: 12 },
-  { nama: 'PMR', tipe: JenisKegiatan.ESKUL, urutan: 13 },
-  { nama: 'Rohis', tipe: JenisKegiatan.ESKUL, urutan: 14 },
-  { nama: 'Olahraga', tipe: JenisKegiatan.ESKUL, urutan: 15 },
-  { nama: 'OSIS', tipe: JenisKegiatan.ESKUL, urutan: 16 },
-  { nama: 'Seni', tipe: JenisKegiatan.ESKUL, urutan: 17 },
-  { nama: 'Jurusan', tipe: JenisKegiatan.ESKUL, urutan: 18 },
+  { nama: 'Pramuka', tipe: JenisKegiatan.ESKUL, urutan: 12 },
+  { nama: 'Paskibra', tipe: JenisKegiatan.ESKUL, urutan: 13 },
+  { nama: 'PMR', tipe: JenisKegiatan.ESKUL, urutan: 14 },
+  { nama: 'Rohis', tipe: JenisKegiatan.ESKUL, urutan: 15 },
+  { nama: 'Olahraga', tipe: JenisKegiatan.ESKUL, urutan: 16 },
+  { nama: 'OSIS', tipe: JenisKegiatan.ESKUL, urutan: 17 },
+  { nama: 'Seni', tipe: JenisKegiatan.ESKUL, urutan: 18 },
+  { nama: 'Jurusan', tipe: JenisKegiatan.ESKUL, urutan: 19 },
 ]
 
 export async function seedDefaultJenisKegiatanForTenant(tenantId: string): Promise<void> {

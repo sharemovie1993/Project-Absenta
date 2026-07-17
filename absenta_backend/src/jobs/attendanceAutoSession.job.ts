@@ -66,21 +66,19 @@ export async function generateSessionsForTenantDirect(
       return { success: false, message: 'Semester aktif tidak ditemukan.' };
     }
 
-    // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini yang memiliki guru & mapel
+    // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini
     const schedules = await prisma.jadwalTemplate.findMany({
       where: {
         tenant_id: tenantId,
         tahun_pelajaran_id: activeYear.id,
         semester_id: activeSemester.id,
         hari: hariEnum,
-        jenis_kegiatan: 'KBM',
-        guru_id: { not: null },
-        mapel_id: { not: null }
+        // Filter guru_id dan mapel_id dihapus agar kegiatan seperti Pembiasaan/Ketarunaan tetap dibuatkan sesinya
       }
     });
 
     if (schedules.length === 0) {
-      return { success: true, message: 'Tidak ada jadwal pelajaran (KBM) terdaftar untuk hari ini.', count: 0 };
+      return { success: true, message: 'Tidak ada jadwal pelajaran terdaftar untuk hari ini.', count: 0 };
     }
 
     // Offset timezone lokal
@@ -138,7 +136,7 @@ export async function generateSessionsForTenantDirect(
               tenant_id: tenantId,
               sesi_id: created.id,
               guru_id: schedule.guru_id,
-              status: 'HADIR',
+              status: 'Belum Hadir',
               tahun_pelajaran_id: schedule.tahun_pelajaran_id,
               semester_id: schedule.semester_id
             }

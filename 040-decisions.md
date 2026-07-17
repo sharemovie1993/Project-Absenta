@@ -168,3 +168,12 @@
 - **Keputusan**: Mengintegrasikan utilitas pengambil spesifikasi hardware (CPU model & core, RAM total, dan disk space utama) ke dalam payload heartbeat telemetri (`osType`) yang dikirim dari klien Easy Tunnel dan backend Absenta ke server lisensi pusat (`https://api.absenta.id`).
 - **Rasional**: Memungkinkan dasbor admin pusat memantau kelayakan hardware mesin lokal/SaaS klien secara real-time tanpa perlu menambahkan skema kolom database baru di VPS atau melakukan perubahan yang merusak kompatibilitas data. Penggunaan parsing visual dinamis di sisi frontend memisahkan rincian hardware tersebut secara transparan.
 
+2026-07: Scoped Class Uniqueness and PPDB Calon Students with Bulk Rombel Mapping
+- **Keputusan**:
+  1. Mengubah uniqueness constraint Kelas dari tingkat-only menjadi `tenant_id + nama_kelas + tingkat + jurusan_id`, mengizinkan duplikasi nama kelas antar jurusan.
+  2. Mengubah field `kelas_id` di model `Siswa` menjadi nullable (`String?`), menambahkan field `jurusan_id` (nullable) langsung di model `Siswa` untuk menampung data jurusan siswa calon PPDB berstatus `CALON`.
+  3. Membangun API bulk-mapping `POST /siswa/ppdb/map` untuk memetakan siswa `CALON` ke rombel dengan mengaktifkannya (`status = AKTIF`), mengisi `kelas_id`, `tahun_pelajaran_id`, `semester_id` yang aktif, dan menulis data registrasi ke `SiswaAkademik`.
+  4. Merancang antarmuka terintegrasi Pemetaan PPDB di frontend pada rute `/academic/ppdb-mapping` untuk memfasilitasi bulk mapping tersebut.
+- **Rasional**: Memenuhi kebutuhan realistis sekolah kejuruan (SMK) yang memiliki kelas dengan nama sama lintas jurusan, memfasilitasi administrasi siswa baru dari jalur PPDB sebelum penentuan rombel secara efisien tanpa membuat data sampah (dummy classes), dan memastikan siklus hidup data akademik siswa (SiswaAkademik) tetap konsisten.
+
+

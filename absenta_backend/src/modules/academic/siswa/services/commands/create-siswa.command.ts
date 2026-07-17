@@ -23,22 +23,43 @@ export async function createSiswaCommand(
     await subscriptionService.checkTenantLimit(tenantId, 'students');
   } */
 
-  const kelas = await siswaDb.kelas.findFirst({
-    where: {
-      id: validatedInput.kelas_id,
-      tenant_id: tenantId,
-    },
-  });
+  const isCalon = validatedInput.status === 'CALON';
 
-  if (!kelas) {
-    throw new Error('Kelas not found or not in the same tenant');
+  if (!isCalon) {
+    if (!validatedInput.kelas_id) {
+      throw new Error('Kelas wajib diisi');
+    }
+    const kelas = await siswaDb.kelas.findFirst({
+      where: {
+        id: validatedInput.kelas_id,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!kelas) {
+      throw new Error('Kelas not found or not in the same tenant');
+    }
+
+    // Apply Isolate/Scope filter from Organization Engine
+    if (org && org.tenant_wide !== true) {
+      const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+      if (!allowed.includes(String(validatedInput.kelas_id))) {
+        throw new Error('Anda tidak memiliki akses untuk mendaftarkan siswa ke kelas ini');
+      }
+    }
   }
 
-  // Apply Isolate/Scope filter from Organization Engine
-  if (org && org.tenant_wide !== true) {
-    const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-    if (!allowed.includes(String(validatedInput.kelas_id))) {
-      throw new Error('Anda tidak memiliki akses untuk mendaftarkan siswa ke kelas ini');
+  // Validate Jurusan if provided
+  if (validatedInput.jurusan_id) {
+    const jurusan = await siswaDb.jurusan.findFirst({
+      where: {
+        id: validatedInput.jurusan_id,
+        tenant_id: tenantId,
+      },
+    });
+
+    if (!jurusan) {
+      throw new Error('Jurusan not found or not in the same tenant');
     }
   }
 
@@ -88,7 +109,7 @@ export async function createSiswaCommand(
     const existingSiswaByName = await siswaDb.siswa.findFirst({
       where: {
         tenant_id: tenantId,
-        kelas_id: validatedInput.kelas_id,
+        kelas_id: validatedInput.kelas_id || null,
         nama_siswa: { equals: validatedInput.nama_siswa, mode: 'insensitive' },
       } as any,
     });
@@ -238,7 +259,8 @@ export async function createSiswaCommand(
       penerima_kps: input.penerima_kps || null,
       penerima_kip: input.penerima_kip || null,
       no_kip: input.no_kip || null,
-      kelas_id: input.kelas_id,
+      kelas_id: input.kelas_id || null,
+      jurusan_id: input.jurusan_id || null,
       tahun_pelajaran_id: input.tahun_pelajaran_id || null,
       semester_id: input.semester_id || null,
       tanggal_masuk: input.tanggal_masuk || new Date(),

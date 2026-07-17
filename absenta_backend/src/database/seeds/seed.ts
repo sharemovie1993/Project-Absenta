@@ -20,6 +20,7 @@ import { seedKurikulumStandards } from './seed_kurikulum_standards';
 import { seedJurusanPresets } from './seed_jurusan_presets';
 import { seedCalendarPresets } from './seed_calendar_presets';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
+import { seedDefaultJenisKegiatanForTenant } from '../../modules/academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
 
 const prisma = new PrismaClient();
 
@@ -831,8 +832,9 @@ async function main() {
 
   for (const tenant of allTenants) {
     await strukturOrganisasiService.initializeTenant(tenant.id);
+    await seedDefaultJenisKegiatanForTenant(tenant.id);
   }
-  console.log(`✅ Struktur Organisasi seeded for ${allTenants.length} tenants.`);
+  console.log(`✅ Struktur Organisasi & Jenis Kegiatan seeded for ${allTenants.length} tenants.`);
 
   console.log('🔐 Menjalankan Policy Engine seeding (Fase B: Permission & StrukturPermission)...');
   console.log('✅ Policy Engine seeding (Fase B) selesai.');

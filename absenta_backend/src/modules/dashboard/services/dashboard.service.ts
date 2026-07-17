@@ -297,7 +297,7 @@ export class DashboardService {
     return violations.map(v => ({
       id: v.id,
       student: v.Siswa.nama_siswa,
-      class: v.Siswa.Kelas.nama_kelas,
+      class: v.Siswa.Kelas?.nama_kelas || 'Tanpa Kelas',
       violation: v.jenis_pelanggaran,
       points: v.poin,
       date: v.tanggal.toISOString(),

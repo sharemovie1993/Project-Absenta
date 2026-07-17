@@ -244,7 +244,7 @@ export class PdfRaporService {
           <tr><td style="width: 30%;">Nama Lengkap</td><td style="width: 3%;">:</td><td style="font-weight: bold; text-transform: uppercase;">${skl.Siswa.nama_siswa}</td></tr>
           <tr><td>Nomor Induk Siswa (NIS)</td><td>:</td><td>${skl.Siswa.nis}</td></tr>
           <tr><td>NISN</td><td>:</td><td>${skl.Siswa.nisn || '-'}</td></tr>
-          <tr><td>Kelas / Tingkat</td><td>:</td><td>${skl.Siswa.Kelas.nama_kelas} / ${skl.Siswa.Kelas.tingkat}</td></tr>
+          <tr><td>Kelas / Tingkat</td><td>:</td><td>${skl.Siswa.Kelas?.nama_kelas || '-'} / ${skl.Siswa.Kelas?.tingkat || '-'}</td></tr>
         </table>
 
         <div class="verdict">
@@ -336,7 +336,7 @@ export class PdfRaporService {
           </div>
 
           <div class="name">${ukk.Siswa.nama_siswa}</div>
-          <div style="font-size: 13px; color: #555; margin-bottom: 5px;">NIS: ${ukk.Siswa.nis} / NISN: ${ukk.Siswa.nisn || '-'} | Kelas: ${ukk.Siswa.Kelas.nama_kelas}</div>
+          <div style="font-size: 13px; color: #555; margin-bottom: 5px;">NIS: ${ukk.Siswa.nis} / NISN: ${ukk.Siswa.nisn || '-'} | Kelas: ${ukk.Siswa.Kelas?.nama_kelas || '-'}</div>
 
           <div class="content-text" style="font-weight: bold;">
             Telah mengikuti Uji Kompetensi Keahlian (UKK) dan dinyatakan berkualifikasi:
@@ -466,7 +466,7 @@ export class PdfRaporService {
             <td style="width: 20%;">Mitra DU/DI</td><td style="width: 2%;">:</td><td style="width: 28%;">${pkl.Mitra.nama}</td>
           </tr>
           <tr>
-            <td>Kelas</td><td>:</td><td>${pkl.Siswa.Kelas.nama_kelas}</td>
+            <td>Kelas</td><td>:</td><td>${pkl.Siswa.Kelas?.nama_kelas || '-'}</td>
             <td>Alamat Industri</td><td>:</td><td>${pkl.Mitra.alamat || '-'}</td>
           </tr>
           <tr>
@@ -665,11 +665,11 @@ export class PdfRaporService {
         <table class="meta-table">
           <tr>
             <td style="width: 15%;">Nama Siswa</td><td style="width: 2%;">:</td><td style="width: 33%; font-weight: bold;">${student.nama_siswa}</td>
-            <td style="width: 15%;">Kelas</td><td style="width: 2%;">:</td><td style="width: 33%;">${student.Kelas.nama_kelas}</td>
+            <td style="width: 15%;">Kelas</td><td style="width: 2%;">:</td><td style="width: 33%;">${student.Kelas?.nama_kelas || '-'}</td>
           </tr>
           <tr>
             <td>NIS / NISN</td><td>:</td><td>${student.nis} / ${student.nisn || '-'}</td>
-            <td>Tingkat</td><td>:</td><td>${student.Kelas.tingkat}</td>
+            <td>Tingkat</td><td>:</td><td>${student.Kelas?.tingkat || '-'}</td>
           </tr>
         </table>
 

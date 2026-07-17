@@ -115,13 +115,13 @@ async function main() {
             },
             update: {
                 // No accumulation columns in schema, just sync status or class if needed
-                kelas_id: student.kelas_id
+                kelas_id: student.kelas_id!
             },
             create: {
                 siswa_id: student.id,
                 tahun_pelajaran_id: tapel.id,
                 semester_id: semester.id,
-                kelas_id: student.kelas_id,
+                kelas_id: student.kelas_id!,
                 status: 'AKTIF'
             }
         });

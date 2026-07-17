@@ -254,6 +254,9 @@ export class JadwalTemplateController {
       if (!siswa) {
         return reply.status(404).send({ success: false, message: 'Siswa profile not found' });
       }
+      if (!siswa.kelas_id) {
+        return reply.status(400).send({ success: false, message: 'Siswa belum memiliki kelas' });
+      }
       ctx = await this.buildContext(request, reply, tenantId, siswa.kelas_id, siswa);
     } else if (roleName === RoleName.GURU) {
       const guru = await jadwalTemplateDb.guru.findFirst({

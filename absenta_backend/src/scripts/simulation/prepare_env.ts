@@ -40,7 +40,7 @@ async function main() {
     });
     
     const guru = guruUser?.Guru;
-    const kelas = await prisma.kelas.findFirst({ where: { id: raka.kelas_id } });
+    const kelas = await prisma.kelas.findFirst({ where: { id: raka.kelas_id! } });
 
     if (!guru || !kelas) throw new Error(`Missing core data for session. Guru: ${!!guru}, Kelas: ${!!kelas}`);
 

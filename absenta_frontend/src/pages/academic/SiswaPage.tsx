@@ -49,6 +49,7 @@ const SiswaPage: React.FC = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [activeSiswaCount, setActiveSiswaCount] = useState<number>(0);
+  const [calonSiswaCount, setCalonSiswaCount] = useState<number>(0);
   const [registeredCount, setRegisteredCount] = useState<number | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
@@ -78,14 +79,16 @@ const SiswaPage: React.FC = () => {
       if (!canView) return;
       try {
         setIsLoadingStats(true);
-        const [statsRes, activeRes, activeY, activeS] = await Promise.all([
+        const [statsRes, activeRes, calonRes, activeY, activeS] = await Promise.all([
           getAcademicStats(),
           getSiswaList(1, 1, '', '', 'AKTIF'),
+          getSiswaList(1, 1, '', '', 'CALON'),
           getActiveTahunPelajaran(),
           getActiveSemester()
         ]);
         setStats(statsRes.data);
         setActiveSiswaCount(activeRes.pagination?.total || 0);
+        setCalonSiswaCount(calonRes.pagination?.total || 0);
 
         if (activeY && activeS) {
           const regStats = await getAcademicRegistrationStats(activeY.id, activeS.id);
@@ -106,8 +109,6 @@ const SiswaPage: React.FC = () => {
     // So all we do here is simple arithmetic.
     const totalSiswa = stats?.total_siswa || 0;
     const nonaktifCount = Math.max(0, totalSiswa - activeSiswaCount);
-    const unregisteredCount = registeredCount !== null ? Math.max(0, activeSiswaCount - registeredCount) : 0;
-    const isComplete = unregisteredCount === 0 && registeredCount !== null;
     return [
       {
         title: isIsolatedScope ? "Siswa di Kelas" : "Total Siswa",
@@ -131,15 +132,15 @@ const SiswaPage: React.FC = () => {
         subtitle: "Lulus / Mutasi / Keluar"
       },
       {
-        title: isComplete ? "Status Registrasi" : "Belum Registrasi",
-        value: isComplete ? "Lengkap" : unregisteredCount,
-        icon: isComplete ? <CheckCircle2 size={14} /> : <GraduationCap size={14} />,
-        gradient: isComplete ? "from-emerald-500 to-teal-600" : "from-amber-500 to-orange-600",
-        subtitle: isComplete ? "Semua siswa aktif terdaftar" : "Butuh aktivasi semester",
-        onClick: () => navigate('/academic/registrasi-siswa')
+        title: "Pemetaan PPDB",
+        value: calonSiswaCount,
+        icon: <GraduationCap size={14} />,
+        gradient: calonSiswaCount > 0 ? "from-amber-500 to-orange-600" : "from-slate-400 to-slate-500",
+        subtitle: calonSiswaCount > 0 ? `${calonSiswaCount} siswa belum dipetakan` : "Semua siswa terpetakan",
+        onClick: () => navigate('/academic/ppdb-mapping')
       }
     ];
-  }, [stats, activeSiswaCount, registeredCount, navigate, isIsolatedScope]);
+  }, [stats, activeSiswaCount, registeredCount, navigate, isIsolatedScope, calonSiswaCount]);
 
   const handleCreateSiswa = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
   const handleEditSiswa = useCallback((s: Siswa) => setModalState({ mode: 'edit', siswaId: s.id, isOpen: true }), []);

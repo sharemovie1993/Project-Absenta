@@ -229,6 +229,16 @@ export class SesiService {
       waktuMulaiFallback: mulai,
     });
 
+    // 11. Inheritance Attendance Logic (Pull)
+    // Jika sesi KBM baru dibuat, cek apakah ada sesi PEMBIASAAN yang tumpang tindih untuk diwariskan kehadirannya
+    void (async () => {
+      try {
+        await this.pullAttendanceFromOverlappingPembiasaan(tenantId, created);
+      } catch (e) {
+        console.error('[SesiService] pullAttendanceFromOverlappingPembiasaan failed', e);
+      }
+    })();
+
     return created;
   }
 
@@ -896,7 +906,221 @@ export class SesiService {
     } catch { }
     attendanceMetricsAggregator.record(tenantId, 'SESSION', totalMs);
 
+    // 10. Inheritance Attendance Logic
+    // Jika sesi ini adalah PEMBIASAAN, wariskan kehadiran ke sesi KBM yang tumpang tindih
+    void (async () => {
+      try {
+        await this.syncAttendanceToOverlappingSessions(
+          tenantId,
+          sesi,
+          siswa_id,
+          siswaAkademik.id,
+          finalStatus,
+          nowTap,
+          String(sesi.tahun_pelajaran_id),
+          String(sesi.semester_id),
+          {
+            is_terlambat: isTerlambat,
+            menit_keterlambatan: isTerlambat ? lateMinutesComputed : 0,
+            poin_kehadiran: poin,
+            asal_gerbang: asalGerbang,
+            kelas_id_snapshot: siswa.kelas_id || null,
+            kelas_nama_snapshot: siswa.Kelas?.nama_kelas || null,
+            tingkat_snapshot: siswa.Kelas?.tingkat ?? null,
+            tahun_pelajaran_id_snapshot: activeYear?.id || null,
+          }
+        );
+      } catch (e) {
+        console.error('[SesiService] syncAttendanceToOverlappingSessions failed', e);
+      }
+    })();
+
     return updated;
+  }
+
+  private async syncAttendanceToOverlappingSessions(
+    tenantId: string,
+    sourceSesi: any,
+    siswaId: string,
+    siswaAkademikId: string,
+    status: string,
+    waktuTap: Date,
+    _tahunPelajaranId: string,
+    _semesterId: string,
+    snapshots: any
+  ) {
+    // 1. Cek apakah sesi asal adalah tipe PEMBIASAAN
+    // Kita cari master data jenis kegiatan untuk mendapatkan tipenya
+    const jkMaster = await prisma.jenisKegiatanMaster.findFirst({
+      where: { tenant_id: tenantId, nama: sourceSesi.jenis_kegiatan }
+    });
+
+    // Hanya wariskan jika tipenya PEMBIASAAN (seperti Ketarunaan, Upacara, dll)
+    if (!jkMaster || jkMaster.tipe !== 'PEMBIASAAN') return;
+
+    // 2. Cari sesi KBM di kelas yang sama pada hari yang sama yang tumpang tindih waktunya
+    const overlappingSessions = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: sourceSesi.kelas_id,
+        tanggal: sourceSesi.tanggal,
+        status: 'BERLANGSUNG',
+        id: { not: sourceSesi.id },
+        AND: [
+          // Gunakan lte/gte agar sesi yang berbatasan (misal 07:00 dan 07:00) tetap terhitung tumpang tindih
+          { waktu_mulai: { lte: sourceSesi.waktu_selesai || new Date(sourceSesi.waktu_mulai.getTime() + 60 * 60 * 1000) } },
+          { OR: [{ waktu_selesai: null }, { waktu_selesai: { gte: sourceSesi.waktu_mulai } }] }
+        ]
+      }
+    });
+
+    if (overlappingSessions.length === 0) return;
+
+    // Filter hanya yang tipenya KBM
+    const kbmTargetSessions = [];
+    for (const s of overlappingSessions) {
+      const m = await prisma.jenisKegiatanMaster.findFirst({
+        where: { tenant_id: tenantId, nama: s.jenis_kegiatan }
+      });
+      if (m && m.tipe === 'KBM') {
+        kbmTargetSessions.push(s);
+      }
+    }
+
+    if (kbmTargetSessions.length === 0) return;
+
+    const catatan = `Hadir (Mengikuti kegiatan ${sourceSesi.jenis_kegiatan})`;
+
+    // 3. Eksekusi sinkronisasi kehadiran
+    for (const kbm of kbmTargetSessions) {
+      const existing = await prisma.absenSiswa.findFirst({
+        where: { tenant_id: tenantId, sesi_id: kbm.id, siswa_akademik_id: siswaAkademikId },
+        select: { id: true, status: true, created_at: true }
+      });
+
+      if (existing) {
+        // Jangan override jika status sudah SAKIT, IZIN, atau DISPEN
+        const protectedStatuses = ['SAKIT', 'IZIN', 'DISPEN'];
+        if (!protectedStatuses.includes(String(existing.status).toUpperCase())) {
+          await prisma.absenSiswa.update({
+            where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+            data: {
+              status: status,
+              waktu_tap: waktuTap,
+              catatan: catatan,
+              updated_at: new Date()
+            }
+          });
+        }
+      } else {
+        await prisma.absenSiswa.create({
+          data: {
+            tenant_id: tenantId,
+            sesi_id: kbm.id,
+            siswa_id: siswaId,
+            siswa_akademik_id: siswaAkademikId,
+            status: status,
+            waktu_tap: waktuTap,
+            catatan: catatan,
+            // Copy snapshots dari sesi asal
+            asal_gerbang: snapshots.asal_gerbang,
+            is_terlambat: snapshots.is_terlambat,
+            menit_keterlambatan: snapshots.menit_keterlambatan,
+            poin_kehadiran: snapshots.poin_kehadiran,
+            kelas_id_snapshot: snapshots.kelas_id_snapshot,
+            kelas_nama_snapshot: snapshots.kelas_nama_snapshot,
+            tingkat_snapshot: snapshots.tingkat_snapshot,
+            tahun_pelajaran_id_snapshot: snapshots.tahun_pelajaran_id_snapshot,
+          }
+        });
+      }
+
+      // Emit event untuk setiap sesi yang diupdate agar frontend terupdate secara real-time
+      this.publishRedisEvent('events:session_attendance_update', {
+        tenant_id: tenantId,
+        sesi_id: kbm.id,
+        record: { siswa_id: siswaId, status: status, waktu_tap: waktuTap }
+      });
+    }
+  }
+
+  private async pullAttendanceFromOverlappingPembiasaan(tenantId: string, targetSesi: any) {
+    // 1. Cek apakah sesi target adalah tipe KBM
+    const jkTarget = await prisma.jenisKegiatanMaster.findFirst({
+      where: { tenant_id: tenantId, nama: targetSesi.jenis_kegiatan }
+    });
+    if (!jkTarget || jkTarget.tipe !== 'KBM') return;
+
+    // 2. Cari sesi PEMBIASAAN yang tumpang tindih pada hari dan kelas yang sama
+    const overlappingSessions = await prisma.sesiAbsensi.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: targetSesi.kelas_id,
+        tanggal: targetSesi.tanggal,
+        id: { not: targetSesi.id },
+        AND: [
+          // Gunakan lte/gte agar sesi yang berbatasan tetap terdeteksi
+          { waktu_mulai: { lte: targetSesi.waktu_selesai || new Date(targetSesi.waktu_mulai.getTime() + 60 * 60 * 1000) } },
+          { OR: [{ waktu_selesai: null }, { waktu_selesai: { gte: targetSesi.waktu_mulai } }] }
+        ]
+      }
+    });
+
+    for (const p of overlappingSessions) {
+      const jkP = await prisma.jenisKegiatanMaster.findFirst({
+        where: { tenant_id: tenantId, nama: p.jenis_kegiatan }
+      });
+
+      if (jkP && jkP.tipe === 'PEMBIASAAN') {
+        const attendanceRecords = await prisma.absenSiswa.findMany({
+          where: { tenant_id: tenantId, sesi_id: p.id }
+        });
+
+        const catatan = `Hadir (Mengikuti kegiatan ${p.jenis_kegiatan})`;
+
+        for (const rec of attendanceRecords) {
+          const existing = await prisma.absenSiswa.findFirst({
+            where: { tenant_id: tenantId, sesi_id: targetSesi.id, siswa_akademik_id: rec.siswa_akademik_id },
+            select: { id: true, status: true, created_at: true }
+          });
+
+          if (existing) {
+            const protectedStatuses = ['SAKIT', 'IZIN', 'DISPEN'];
+            if (!protectedStatuses.includes(String(existing.status).toUpperCase())) {
+              await prisma.absenSiswa.update({
+                where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+                data: {
+                  status: rec.status,
+                  waktu_tap: rec.waktu_tap,
+                  catatan: catatan,
+                  updated_at: new Date()
+                }
+              });
+            }
+          } else {
+            await prisma.absenSiswa.create({
+              data: {
+                tenant_id: tenantId,
+                sesi_id: targetSesi.id,
+                siswa_id: rec.siswa_id,
+                siswa_akademik_id: rec.siswa_akademik_id,
+                status: rec.status,
+                waktu_tap: rec.waktu_tap,
+                catatan: catatan,
+                asal_gerbang: rec.asal_gerbang,
+                is_terlambat: rec.is_terlambat,
+                menit_keterlambatan: rec.menit_keterlambatan,
+                poin_kehadiran: rec.poin_kehadiran,
+                kelas_id_snapshot: rec.kelas_id_snapshot,
+                kelas_nama_snapshot: rec.kelas_nama_snapshot,
+                tingkat_snapshot: rec.tingkat_snapshot,
+                tahun_pelajaran_id_snapshot: rec.tahun_pelajaran_id_snapshot,
+              }
+            });
+          }
+        }
+      }
+    }
   }
 
   async listAbsenSiswa(tenantId: string, org: any, sesi_id: string, userId: string) {

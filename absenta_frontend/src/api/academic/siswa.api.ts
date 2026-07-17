@@ -233,3 +233,12 @@ export const downloadSiswaDocumentFile = async (id: string, docId: string): Prom
 export const downloadSiswaExitBundle = async (id: string): Promise<Blob> => {
   return downloadBlob(`/academic/siswa/${id}/exit-bundle`);
 };
+
+export const mapPpdbStudents = async (
+  siswa_ids: string[],
+  target_kelas_id: string
+): Promise<{ success: boolean; message: string }> => {
+  return requestWithFallback<{ success: boolean; message: string }>('post', '/academic/siswa/ppdb/map', {
+    data: { siswa_ids, target_kelas_id }
+  });
+};

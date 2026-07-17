@@ -29,6 +29,7 @@ export interface SesiAttendanceRecord {
   waktu_tap?: string | null;
   is_terlambat?: boolean;
   asal_gerbang?: boolean;
+  catatan?: string | null;
   Siswa?: SiswaDetail;
 }
 
@@ -76,6 +77,11 @@ const SesiAttendanceRow = React.memo(({
           {record.Siswa?.nama_siswa || studentId}
         </p>
         <p className="text-[8px] text-gray-400 font-bold truncate">NIS: {record.Siswa?.nis || '-'}</p>
+        {record.catatan && (
+          <p className="text-[7px] text-indigo-500 font-black italic truncate mt-0.5">
+            {record.catatan}
+          </p>
+        )}
       </div>
       <div className="flex items-center justify-center gap-1.5">
         <span className="text-[10px] font-bold text-gray-500">

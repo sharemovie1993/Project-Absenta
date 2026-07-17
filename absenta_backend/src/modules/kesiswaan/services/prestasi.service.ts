@@ -88,7 +88,7 @@ export class PrestasiService {
       const sa = await prisma.siswaAkademik.findFirst({
         where: {
           siswa_id: data.siswa_id,
-          kelas_id: siswa.kelas_id,
+          kelas_id: siswa.kelas_id || undefined,
           tahun_pelajaran_id: siswa.tahun_pelajaran_id,
           semester_id: siswa.semester_id
         }
@@ -101,7 +101,7 @@ export class PrestasiService {
         tenant_id: tenantId,
         siswa_id: data.siswa_id,
         siswa_akademik_id: siswaAkademikId,
-        kelas_id: siswa?.kelas_id,
+        kelas_id: siswa?.kelas_id || undefined,
         tanggal: data.tanggal,
         jenis_prestasi_id: data.jenis_prestasi_id,
         nama_prestasi: data.nama_prestasi,

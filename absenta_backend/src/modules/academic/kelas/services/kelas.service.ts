@@ -82,6 +82,12 @@ export class KelasService {
     return { ...rest, WaliKelas: assignments };
   }
 
+  private buildSarprasLocationName(namaKelas: string, jurusanNama?: string | null): string {
+    return jurusanNama
+      ? `Ruang Kelas ${namaKelas} (${jurusanNama})`
+      : `Ruang Kelas ${namaKelas}`;
+  }
+
   async getAllKelas(tenantId: string, org: any, params?: PaginationParams): Promise<PaginatedKelasResponse> {
     const whereClause: any = { tenant_id: tenantId };
 
@@ -336,17 +342,18 @@ export class KelasService {
     // Normalize empty string to null to prevent Postgres foreign key constraint error
     const normalizedJurusanId = input.jurusan_id && input.jurusan_id.trim() !== '' ? input.jurusan_id : null;
 
-    // Check if kelas name is unique within tenant and tingkat
+    // Check if kelas name is unique within tenant, tingkat, and jurusan
     const existingKelas = await prisma.kelas.findFirst({
       where: {
         tenant_id: tenantId,
         nama_kelas: input.nama_kelas,
         tingkat: input.tingkat,
+        jurusan_id: normalizedJurusanId,
       },
     });
 
     if (existingKelas) {
-      throw new Error('Kelas name already exists for this tingkat in this tenant');
+      throw new Error('Nama kelas sudah ada untuk tingkat dan jurusan yang sama');
     }
 
     // Check if jurusan exists and is in the same tenant (if provided)
@@ -471,8 +478,13 @@ export class KelasService {
 
       // Automatically create a default Sarpras Location for the new Class
       try {
+        const jurusanForLoc = normalizedJurusanId
+          ? await tx.jurusan.findUnique({ where: { id: normalizedJurusanId }, select: { nama: true } })
+          : null;
+        const locName = this.buildSarprasLocationName(kelas.nama_kelas, jurusanForLoc?.nama);
+
         const existingLoc = await tx.sarprasLocation.findFirst({
-          where: { tenant_id: tenantId, nama: `Ruang Kelas ${kelas.nama_kelas}` }
+          where: { tenant_id: tenantId, nama: locName }
         });
         if (existingLoc) {
           await tx.sarprasLocation.update({
@@ -487,7 +499,7 @@ export class KelasService {
           await tx.sarprasLocation.create({
             data: {
               tenant_id: tenantId,
-              nama: `Ruang Kelas ${kelas.nama_kelas}`,
+              nama: locName,
               kelas_id: kelas.id,
               unit_id: normalizedJurusanId,
               deskripsi: `Ruang kelas untuk ${kelas.nama_kelas} tingkat ${kelas.tingkat}`
@@ -550,19 +562,24 @@ export class KelasService {
       throw new Error('Kelas not found or insufficient permissions');
     }
 
-    // Check if kelas name is unique within tenant and tingkat (if provided and different from current)
-    if (input.nama_kelas && (input.nama_kelas !== existingKelas.nama_kelas || (input.tingkat && input.tingkat !== existingKelas.tingkat))) {
+    // Check if kelas name is unique within tenant, tingkat, and jurusan (if provided or changed)
+    if (input.nama_kelas || input.tingkat !== undefined || normalizedJurusanId !== undefined) {
+      const targetNama = input.nama_kelas ?? existingKelas.nama_kelas;
+      const targetTingkat = input.tingkat ?? existingKelas.tingkat;
+      const targetJurusan = normalizedJurusanId !== undefined ? normalizedJurusanId : existingKelas.jurusan_id;
+
       const existingName = await prisma.kelas.findFirst({
         where: {
           tenant_id: existingKelas.tenant_id,
-          nama_kelas: input.nama_kelas,
-          tingkat: input.tingkat || existingKelas.tingkat,
+          nama_kelas: targetNama,
+          tingkat: targetTingkat,
+          jurusan_id: targetJurusan,
           id: { not: kelasId },
         },
       });
 
       if (existingName) {
-        throw new Error('Kelas name already exists for this tingkat in this tenant');
+        throw new Error('Nama kelas sudah ada untuk tingkat dan jurusan yang sama');
       }
     }
 
@@ -694,12 +711,20 @@ export class KelasService {
 
       // Automatically create/update the default Sarpras Location for the Class
       try {
+        const targetUnitId = normalizedJurusanId !== undefined ? normalizedJurusanId : existingKelas.jurusan_id;
+        const jurusanForLoc = targetUnitId
+          ? await tx.jurusan.findUnique({ where: { id: targetUnitId }, select: { nama: true } })
+          : null;
+
+        const targetName = this.buildSarprasLocationName(
+          input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas,
+          jurusanForLoc?.nama
+        );
+        const targetDesc = `Ruang kelas untuk ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas} tingkat ${input.tingkat !== undefined ? input.tingkat : existingKelas.tingkat}`;
+
         const existingLoc = await tx.sarprasLocation.findFirst({
           where: { kelas_id: kelasId, tenant_id: existingKelas.tenant_id }
         });
-        const targetName = `Ruang Kelas ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas}`;
-        const targetDesc = `Ruang kelas untuk ${input.nama_kelas !== undefined ? input.nama_kelas : existingKelas.nama_kelas} tingkat ${input.tingkat !== undefined ? input.tingkat : existingKelas.tingkat}`;
-        const targetUnitId = normalizedJurusanId !== undefined ? normalizedJurusanId : existingKelas.jurusan_id;
 
         if (existingLoc) {
           await tx.sarprasLocation.update({
@@ -848,27 +873,38 @@ export class KelasService {
     const errors: any[] = [];
 
     // Pre-fetch references for cache
-    const jurusans = await prisma.jurusan.findMany({ where: { tenant_id: tenantId } });
-    const gurus = await prisma.guru.findMany({ where: { tenant_id: tenantId } });
+    const [jurusans, gurus, sekolah] = await Promise.all([
+      prisma.jurusan.findMany({ where: { tenant_id: tenantId } }),
+      prisma.guru.findMany({ where: { tenant_id: tenantId } }),
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+    ]);
+    const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '');
 
     for (const [index, row] of data.entries()) {
       const rowNumber = row.__rowNum || (index + 2);
       try {
-        // const rowNum = index + 2; // Header is row 1
         const namaKelas = row.nama_kelas ? String(row.nama_kelas).trim() : '';
         const tingkat = row.tingkat ? parseInt(row.tingkat) : 0;
         const jurusanName = row.jurusan ? String(row.jurusan).trim() : '';
         const waliKelasName = row.wali_kelas ? String(row.wali_kelas).trim() : '';
 
-        if (!namaKelas || !tingkat || !jurusanName) {
-          throw new Error('Missing required fields: nama_kelas, tingkat, jurusan');
+        if (isSmkMak && !jurusanName) {
+          throw new Error('Kolom jurusan wajib diisi untuk sekolah SMK/MAK');
+        }
+
+        if (!namaKelas || !tingkat) {
+          throw new Error('Kolom nama_kelas dan tingkat wajib diisi');
         }
 
         // Find Jurusan (with typo tolerance)
-        const jurusanMatch = findBestMatch(jurusanName, jurusans.map(j => j.nama));
-        const jurusan = jurusans.find(j => j.nama === jurusanMatch.match);
-        if (!jurusan) {
-          throw new Error(`Jurusan '${jurusanName}' tidak ditemukan`);
+        let jurusanId: string | null = null;
+        if (jurusanName) {
+          const jurusanMatch = findBestMatch(jurusanName, jurusans.map(j => j.nama));
+          const jurusan = jurusans.find(j => j.nama === jurusanMatch.match);
+          if (!jurusan) {
+            throw new Error(`Jurusan '${jurusanName}' tidak ditemukan`);
+          }
+          jurusanId = jurusan.id;
         }
 
         // Find Wali Kelas (Optional)
@@ -889,6 +925,7 @@ export class KelasService {
             tenant_id: tenantId,
             nama_kelas: namaKelas,
             tingkat: tingkat,
+            jurusan_id: jurusanId,
           },
         });
 
@@ -897,7 +934,7 @@ export class KelasService {
           await this.updateKelas(existingKelas.id, {
              nama_kelas: namaKelas,
              tingkat: tingkat,
-             jurusan_id: jurusan.id,
+             jurusan_id: jurusanId,
              guru_id: guruId,
              jam_masuk: row.jam_masuk,
              jam_pulang: row.jam_pulang
@@ -908,7 +945,7 @@ export class KelasService {
           await this.createKelas({
             nama_kelas: namaKelas,
             tingkat: tingkat,
-            jurusan_id: jurusan.id,
+            jurusan_id: jurusanId,
             guru_id: guruId,
             jam_masuk: row.jam_masuk,
             jam_pulang: row.jam_pulang

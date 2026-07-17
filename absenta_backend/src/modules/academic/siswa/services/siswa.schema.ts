@@ -78,7 +78,8 @@ export const createSiswaSchema = z.object({
     return false;
   }),
   no_kip: coerceString,
-  kelas_id: coerceRequiredString('Kelas'),
+  kelas_id: coerceString,
+  jurusan_id: coerceString,
   tahun_pelajaran_id: coerceString,
   semester_id: coerceString,
   no_rfid: coerceString,

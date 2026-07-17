@@ -64,6 +64,9 @@ export class RaporService {
     if (!siswa) {
       throw new Error('Siswa tidak ditemukan');
     }
+    if (!siswa.Kelas) {
+      throw new Error('Siswa belum memiliki kelas');
+    }
 
     // 2. Ambil catatan & kehadiran rapor
     const raporSummary = await prisma.raporSiswa.findFirst({

@@ -87,13 +87,13 @@ const SesiCreateModalComponent: React.FC<SesiCreateModalProps> = ({
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="create-guru-select">Guru (Opsional/Wajib KBM)</Label>
+          <Label htmlFor="create-guru-select">Guru (Opsional)</Label>
           <SearchableSelect
             id="create-guru-select"
             value={petugasForm.guru_id}
             onValueChange={(v) => setPetugasForm((f) => ({ ...f, guru_id: v }))}
             options={guruOptions}
-            placeholder="Pilih Guru"
+            placeholder="Pilih Guru (Kosongkan jika tidak ada)"
           />
         </div>
 
@@ -104,7 +104,7 @@ const SesiCreateModalComponent: React.FC<SesiCreateModalProps> = ({
             value={petugasForm.mapel_id || ''}
             onValueChange={(v) => setPetugasForm((f) => ({ ...f, mapel_id: v }))}
             options={mapelOptions}
-            placeholder="Pilih Mapel"
+            placeholder="Pilih Mapel (Kosongkan jika tidak ada)"
           />
         </div>
 

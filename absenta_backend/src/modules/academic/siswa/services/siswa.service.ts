@@ -24,6 +24,7 @@ import { completeSiswaExitCommand } from './commands/complete-siswa-exit.command
 import { getSiswaDocumentsQuery } from './queries/get-siswa-documents.query';
 import { getSiswaTimelineQuery } from './queries/get-siswa-timeline.query';
 import { getSiswaExitBundleQuery } from './queries/get-siswa-exit-bundle.query';
+import { mapPpdbStudentsCommand } from './commands/map-ppdb-students.command';
 
 export type { PaginationParams, SiswaResponse, PaginatedSiswaResponse, CreateSiswaInput, UpdateSiswaInput } from './siswa.types';
 
@@ -175,5 +176,13 @@ export class SiswaService {
     siswaId: string;
   }) {
     return getSiswaExitBundleQuery(params);
+  }
+
+  async mapPpdbStudents(
+    tenantId: string,
+    org: any,
+    input: { siswaIds: string[]; targetKelasId: string }
+  ) {
+    return mapPpdbStudentsCommand(input, { tenantId, org });
   }
 }

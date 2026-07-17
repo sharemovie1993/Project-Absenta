@@ -336,7 +336,7 @@ export class HubinService {
       const sa = await prisma.siswaAkademik.findFirst({
         where: {
           siswa_id: data.siswa_id,
-          kelas_id: siswa.kelas_id,
+          kelas_id: siswa.kelas_id || undefined,
           tahun_pelajaran_id: siswa.tahun_pelajaran_id,
           semester_id: siswa.semester_id
         }
@@ -442,7 +442,7 @@ export class HubinService {
         const sa = await prisma.siswaAkademik.findFirst({
           where: {
             siswa_id: siswaId,
-            kelas_id: siswa.kelas_id,
+            kelas_id: siswa.kelas_id || undefined,
             tahun_pelajaran_id: siswa.tahun_pelajaran_id,
             semester_id: siswa.semester_id
           }

@@ -105,6 +105,16 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.bulkUpdateStatus(request, reply);
   });
 
+  // POST /siswa/ppdb/map - Map PPDB (CALON) students to a class/rombel
+  fastify.post('/ppdb/map', {
+    preHandler: [
+        requireCapability('academic.students.update'),
+        organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.mapPpdbStudents(request, reply);
+  });
+
   // GET /siswa/import/template
   fastify.get('/import/template', {
     preHandler: [
