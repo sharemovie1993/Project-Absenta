@@ -128,7 +128,12 @@ prisma.$use(async (params, next) => {
 
   if (params.action === 'findMany' && params.model && sortingFields[params.model]) {
     params.args = params.args || {};
-    if (!params.args.orderBy) {
+    const hasNoOrderBy = !params.args.orderBy;
+    const isDefaultCreatedAtDesc = params.args.orderBy && 
+      ((typeof params.args.orderBy === 'object' && params.args.orderBy.created_at === 'desc' && Object.keys(params.args.orderBy).length === 1) ||
+       (Array.isArray(params.args.orderBy) && params.args.orderBy.length === 1 && params.args.orderBy[0]?.created_at === 'desc'));
+
+    if (hasNoOrderBy || isDefaultCreatedAtDesc) {
       params.args.orderBy = sortingFields[params.model];
     }
   }

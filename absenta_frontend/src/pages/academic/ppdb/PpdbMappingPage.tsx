@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { generateStandardFilename } from '../../../utils/file-download.utils';
 import { generateImportTemplate } from '../../../utils/export.utils';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { KelasExpandedPanel } from './KelasExpandedPanel';
 
 const ExcelImportModal = lazy(() => import('../../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const Loader = lazy(() => import('../../../components/ui/Loader').then(module => ({ default: module.Loader })));
@@ -210,7 +211,7 @@ const PpdbMappingPage: React.FC = () => {
   const handleOpenImport = useCallback(() => setImportOpen(true), []);
   const handleCloseImport = useCallback(() => setImportOpen(false), []);
 
-  const handleTemplateDownload = useCallback(async () => {
+  const handleDownloadFormat = useCallback(async () => {
     if (isExporting) return;
     setIsExporting(true);
     try {
@@ -231,11 +232,11 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'No. Seri Ijazah SMP', accessor: (row: R) => String(row.no_ijazah_smp), width: 25, required: false }
       ];
 
-      const sampleData = [{
+      const excelRow = [{
         nama_siswa: 'Budi Santoso', jurusan: jurusanNames[0] || 'Teknik Otomasi Industri', nis: '242510001', nisn: '0081234567', nik: '3201020304050001', jenis_kelamin: 'L', tempat_lahir: 'Bandung', tanggal_lahir: '2010-05-15', alamat: 'Jl. Merdeka No. 10', no_hp: '081234567890', email: 'budi@example.com', nama_ayah: 'Agus Santoso', nama_ibu: 'Siti Rahma', status: 'CALON', no_rfid: 'RF000123', sekolah_asal: 'SMPN 1 Bandung', no_ijazah_smp: 'DN-01/D-SMP/21/0000001'
       }];
 
-      const filename = generateStandardFilename('template_import_siswa_ppdb', 'xlsx').replace('.xlsx', '');
+      const filename = generateStandardFilename('import_siswa_ppdb', 'xlsx').replace('.xlsx', '');
       const instructionText = `Kolom BERWARNA EMAS wajib diisi. ${
         isSmkMak 
           ? 'Isi kolom JURUSAN (wajib bagi SMK) dan set status ke CALON.' 
@@ -244,7 +245,7 @@ const PpdbMappingPage: React.FC = () => {
 
       generateImportTemplate(
         columns,
-        sampleData,
+        excelRow,
         filename,
         instructionText
       );
@@ -354,6 +355,25 @@ const PpdbMappingPage: React.FC = () => {
     }
   }, [fetchClassStudents, fetchCalonStudents]);
 
+  const handleRevertAllStudents = useCallback(async (classId: string) => {
+    if (kelasSiswaList.length === 0) return;
+    try {
+      setKelasSiswaLoading(true);
+      await Promise.all(
+        kelasSiswaList?.map(s => updateSiswa(s.id, { kelas_id: null, status: 'CALON' } as unknown as Partial<Siswa>))
+      );
+      toast.success(`${kelasSiswaList.length} siswa berhasil dikembalikan menjadi calon siswa.`);
+      await fetchClassStudents(classId);
+      await fetchCalonStudents();
+      const metadataRes = await getKelasForDropdown();
+      setKelasOptions(metadataRes || []);
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal mengembalikan semua siswa.');
+      setKelasSiswaLoading(false);
+    }
+  }, [kelasSiswaList, fetchClassStudents, fetchCalonStudents]);
+
   const pageStats = useMemo(() => [
     { title: "Siswa PPDB (Calon)", value: calonList?.length || 0, icon: <GraduationCap size={14} />, gradient: "from-amber-500 to-orange-600", subtitle: "Menunggu pemetaan kelas" },
     { title: "Siswa Terpilih", value: selectedSiswa?.length || 0, icon: <UserCheck size={14} />, gradient: "from-blue-500 to-indigo-600", subtitle: "Akan dipetakan ke rombel" }
@@ -397,7 +417,7 @@ const PpdbMappingPage: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleTemplateDownload}
+                    onClick={handleDownloadFormat}
                     disabled={isExporting}
                     className="flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 transition-colors"
                   >
@@ -509,7 +529,7 @@ const PpdbMappingPage: React.FC = () => {
               ) : (
                 <table className="w-full text-left border-collapse min-w-max">
                   <thead>
-                    <tr className="bg-slate-55 border-b border-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                    <tr className="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider">
                       <th className="py-3 px-4 w-16 text-center whitespace-nowrap">
                         <input
                           type="checkbox"
@@ -537,7 +557,7 @@ const PpdbMappingPage: React.FC = () => {
                       >
                         <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">
-                            <div className="text-slate-350 cursor-grab hover:text-slate-500 mr-0.5">
+                            <div className="text-slate-400 cursor-grab hover:text-slate-500 mr-0.5">
                               <GripVertical size={14} />
                             </div>
                             <input
@@ -553,14 +573,7 @@ const PpdbMappingPage: React.FC = () => {
                         {isSmkMak && (
                           <td className="py-3 px-4 whitespace-nowrap">
                             {s.Jurusan?.nama ? (
-                              <span 
-                                className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-55 text-indigo-650"
-                                style={{
-                                  backgroundColor: s.Jurusan.warna ? `${s.Jurusan.warna}15` : undefined,
-                                  color: s.Jurusan.warna || undefined,
-                                  border: s.Jurusan.warna ? `1px solid ${s.Jurusan.warna}30` : undefined
-                                }}
-                              >
+                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
                                 {s.Jurusan.nama}
                               </span>
                             ) : (
@@ -669,33 +682,13 @@ const PpdbMappingPage: React.FC = () => {
                        
                        {/* Expanded Students List */}
                        {expandedKelasId === k.value && (
-                         <div className="mt-2 border-t border-slate-100 pt-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200" onClick={e => e.stopPropagation()}>
-                           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Siswa Terpetakan</div>
-                           {kelasSiswaLoading ? (
-                             <div className="py-2 text-center text-xs text-slate-450 animate-pulse">Memuat...</div>
-                           ) : kelasSiswaList.length === 0 ? (
-                             <div className="py-2 text-center text-xs text-slate-400 border border-dashed border-slate-100 rounded-lg">Kosong</div>
-                           ) : (
-                             <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin">
-                               {kelasSiswaList?.map(s => (
-                                 <div key={s.id} className="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-100 hover:bg-slate-100/50 transition-colors">
-                                   <div className="flex flex-col min-w-0 pr-2">
-                                     <span className="text-[11px] font-semibold text-slate-800 truncate">{s.nama_siswa}</span>
-                                     <span className="text-[9px] text-slate-400 font-mono">{s.nisn || s.nis || '-'}</span>
-                                   </div>
-                                   <Button
-                                     variant="outline"
-                                     size="xs"
-                                     onClick={() => handleRevertStudent(s.id, k.value)}
-                                     className="text-[9px] py-0.5 px-1.5 border-rose-100 hover:border-rose-200 text-rose-600 hover:bg-rose-50/50 font-medium shrink-0"
-                                   >
-                                     Kembalikan
-                                   </Button>
-                                 </div>
-                               ))}
-                             </div>
-                           )}
-                         </div>
+                         <KelasExpandedPanel
+                           classId={k.value}
+                           isLoading={kelasSiswaLoading}
+                           siswaList={kelasSiswaList}
+                           onRevertOne={handleRevertStudent}
+                           onRevertAll={handleRevertAllStudents}
+                         />
                        )}
                     </div>
                   );
@@ -783,7 +776,7 @@ const PpdbMappingPage: React.FC = () => {
           onClose={handleCloseImport}
           title="Import Calon Siswa (PPDB)"
           onImport={handleImportSiswa}
-          onDownloadTemplate={handleTemplateDownload}
+          onDownloadTemplate={handleDownloadFormat}
           onSuccess={() => {
             fetchCalonStudents();
           }}
