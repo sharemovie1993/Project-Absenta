@@ -71,6 +71,7 @@ export async function getKelasForDropdown(): Promise<DropdownOption[]> {
       label: `${kelas.nama_kelas} - Tingkat ${kelas.tingkat}`,
       tingkat: kelas.tingkat,
       jurusan_id: kelas.jurusan_id,
+      is_active: (kelas as any).is_active !== false,
       siswa_count: (kelas as any)._count?.Siswa || 0
     }));
   } catch (error) {

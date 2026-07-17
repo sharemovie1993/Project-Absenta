@@ -30,6 +30,7 @@ interface DropdownOption {
   label: string;
   jurusan_id?: string | null;
   tingkat?: number | null;
+  is_active?: boolean;
   siswa_count?: number;
   Jurusan?: {
     id: string;
@@ -56,7 +57,7 @@ const PpdbMappingPage: React.FC = () => {
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
   const [jurusans, setJurusans] = useState<{ value: string; label: string; warna?: string | null }[]>([]);
-  const [kelasOptions, setKelasOptions] = useState<{ value: string; label: string; jurusan_id?: string | null; tingkat?: number | null; siswa_count?: number }[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<{ value: string; label: string; jurusan_id?: string | null; tingkat?: number | null; is_active?: boolean; siswa_count?: number }[]>([]);
   
   // Filter & selections
   const [isSmkMak, setIsSmkMak] = useState(false);
@@ -73,7 +74,7 @@ const PpdbMappingPage: React.FC = () => {
       const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
       setIsSmkMak(['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as DropdownOption[]).length > 0));
       setJurusans(jurusanList as DropdownOption[]);
-      setKelasOptions((allKelas as DropdownOption[])?.map(k => ({ value: k.value, label: k.label, jurusan_id: k.jurusan_id || k.Jurusan?.id || null, tingkat: k.tingkat || null, siswa_count: k.siswa_count || 0 })));
+      setKelasOptions((allKelas as DropdownOption[])?.map(k => ({ value: k.value, label: k.label, jurusan_id: k.jurusan_id || k.Jurusan?.id || null, tingkat: k.tingkat || null, is_active: k.is_active !== false, siswa_count: k.siswa_count || 0 })));
     } catch (err) {
       console.error('Failed to load metadata:', err);
       toast.error('Gagal memuat data referensi');
@@ -112,11 +113,14 @@ const PpdbMappingPage: React.FC = () => {
     return [...list].sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
   }, [calonList, selectedJurusan, searchTerm, isSmkMak]);
 
-  // 4. Filter target classes based on selected jurusan & tingkat 10
+  // 4. Filter target classes: only tingkat 10, active, and matching jurusan
   const filteredKelasOptions = useMemo(() => {
-    const res = kelasOptions.filter(k => k.tingkat === 10);
+    const res = kelasOptions.filter(k => k.tingkat === 10 && k.is_active !== false);
     return (!isSmkMak || selectedJurusan === 'all') ? res : (selectedJurusan === 'none' ? res.filter(k => !k.jurusan_id) : res.filter(k => k.jurusan_id === selectedJurusan));
   }, [kelasOptions, selectedJurusan, isSmkMak]);
+
+  // Guard: apakah jurusan sudah dipilih spesifik (bukan "semua")
+  const isJurusanSelected = useMemo(() => !isSmkMak || (selectedJurusan !== 'all'), [isSmkMak, selectedJurusan]);
 
   // Dropdown options formatted dynamically with counts
   const jurusanOptions = useMemo(() => [
@@ -142,6 +146,12 @@ const PpdbMappingPage: React.FC = () => {
   const handleDrop = useCallback(async (e: React.DragEvent, kelasId: string) => {
     e.preventDefault();
     setActiveDropTarget(null);
+
+    if (!isJurusanSelected) {
+      toast.error('Pilih Jurusan terlebih dahulu sebelum memetakan siswa.');
+      return;
+    }
+
     try {
       const dataStr = e.dataTransfer.getData('text/plain');
       if (!dataStr) return;
@@ -164,7 +174,7 @@ const PpdbMappingPage: React.FC = () => {
       setSubmitLoading(false);
       setDraggingIds([]);
     }
-  }, [fetchCalonStudents, fetchMetadata]);
+  }, [isJurusanSelected, fetchCalonStudents, fetchMetadata]);
 
   // Handle select all checkbox
   const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,12 +273,16 @@ const PpdbMappingPage: React.FC = () => {
   const handleImportSiswa = useCallback((file: File, onProgress: (p: number) => void, socketId?: string) => importSiswaFromExcel(file, onProgress, socketId, { status: 'CALON' }), []);
 
   const handleAutoDistribute = useCallback(async (variant: 'alphabetical' | 'random') => {
+    if (!isJurusanSelected) {
+      toast.error('Pilih Jurusan terlebih dahulu sebelum menggunakan fitur bagi rata.');
+      return;
+    }
     if (filteredSiswa.length === 0) {
       toast.error('Tidak ada calon siswa yang tersedia untuk dipetakan.');
       return;
     }
     if (filteredKelasOptions.length === 0) {
-      toast.error('Tidak ada kelas target yang tersedia di tingkat/jurusan ini.');
+      toast.error('Tidak ada kelas aktif yang tersedia di jurusan ini.');
       return;
     }
 
@@ -446,13 +460,19 @@ const PpdbMappingPage: React.FC = () => {
                   
                   {/* Preset Buttons */}
                   <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2.5 ml-1">
+                    {!isJurusanSelected && isSmkMak && (
+                      <span className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Pilih jurusan dulu
+                      </span>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleAutoDistribute('alphabetical')}
-                      disabled={loading || filteredSiswa.length === 0}
-                      className="flex items-center gap-1 text-[11px] text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"
-                      title="Bagi rata siswa ke kelas-kelas yang tersedia secara alfabetis (A-Z)"
+                      disabled={loading || filteredSiswa.length === 0 || !isJurusanSelected}
+                      className="flex items-center gap-1 text-[11px] text-indigo-600 border-indigo-100 hover:bg-indigo-50/50 disabled:opacity-40"
+                      title={!isJurusanSelected ? 'Pilih jurusan spesifik terlebih dahulu' : 'Bagi rata siswa ke kelas secara alfabetis (A-Z)'}
                     >
                       <ListOrdered size={12} />
                       <span>Bagi Rata (A-Z)</span>
@@ -461,9 +481,9 @@ const PpdbMappingPage: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleAutoDistribute('random')}
-                      disabled={loading || filteredSiswa.length === 0}
-                      className="flex items-center gap-1.5 text-[11px] text-amber-600 border-amber-100 hover:bg-amber-50/50"
-                      title="Bagi rata siswa ke kelas-kelas yang tersedia secara acak (Random)"
+                      disabled={loading || filteredSiswa.length === 0 || !isJurusanSelected}
+                      className="flex items-center gap-1.5 text-[11px] text-amber-600 border-amber-100 hover:bg-amber-50/50 disabled:opacity-40"
+                      title={!isJurusanSelected ? 'Pilih jurusan spesifik terlebih dahulu' : 'Bagi rata siswa ke kelas secara acak (Random)'}
                     >
                       <Shuffle size={12} />
                       <span>Bagi Rata (Acak)</span>
