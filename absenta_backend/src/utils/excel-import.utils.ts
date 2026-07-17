@@ -6,7 +6,6 @@ import * as XLSX from 'xlsx-js-style';
  */
 const HEADER_MAP: Record<string, string> = {
   // Common
-  'NAMA': 'nama',
   'KODE': 'kode',
   'TINGKAT': 'tingkat',
   'HARI': 'hari',
@@ -15,14 +14,31 @@ const HEADER_MAP: Record<string, string> = {
 
   // Siswa
   'NAMA LENGKAP': 'nama_siswa',
+  'NAMA': 'nama_siswa',
+  'NAMA PENDAFTAR': 'nama_siswa',
+  'NAMA CALON SISWA': 'nama_siswa',
   'NAMA KELAS': 'nama_kelas',
   'NIS': 'nis',
   'NISN': 'nisn',
   'JK (L/P)': 'jenis_kelamin',
+  'JENIS KELAMIN': 'jenis_kelamin',
+  'JK': 'jenis_kelamin',
   'TEMPAT LAHIR': 'tempat_lahir',
   'TANGGAL LAHIR (YYYY-MM-DD)': 'tanggal_lahir',
+  'TANGGAL LAHIR': 'tanggal_lahir',
   'ALAMAT': 'alamat',
   'NO. HP': 'no_hp',
+  'NO HP': 'no_hp',
+  'NO WA': 'no_hp',
+  'NO HP/WA': 'no_hp',
+  'TELEPON': 'no_hp',
+  'NO TELEPON': 'no_hp',
+  'NO. TELEPON': 'no_hp',
+  'JURUSAN': 'jurusan',
+  'PILIHAN JURUSAN': 'jurusan',
+  'PILIHAN KOMPETENSI': 'jurusan',
+  'PILIHAN 1': 'jurusan',
+  'KOMPETENSI KEAHLIAN': 'jurusan',
 
   // Guru
   'NIP': 'nip',
@@ -66,11 +82,14 @@ const HEADER_MAP: Record<string, string> = {
 const KEY_ALIASES: Record<string, string[]> = {
   'nama_jurusan': ['nama', 'jurusan'],
   'nama_guru': ['nama', 'nama_lengkap'],
-  'nama_siswa': ['nama', 'nama_lengkap'],
+  'nama_siswa': ['nama', 'nama_lengkap', 'nama_pendaftar', 'nama_calon_siswa'],
   'nama_mapel': ['mapel'],
   'kode_mapel': ['kode'],
   'kode_jurusan': ['kode'],
   'wali_kelas': ['nama_wali_kelas'],
+  'jenis_kelamin': ['jk', 'gender'],
+  'no_hp': ['no_telp', 'telepon', 'no_telepon', 'no_hp_wa', 'no_wa'],
+  'jurusan': ['pilihan_1', 'pilihan_kompetensi', 'kompetensi_keahlian', 'nama_jurusan', 'pilihan_jurusan'],
 };
 
 /**
