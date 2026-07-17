@@ -430,10 +430,7 @@ const PpdbMappingPage: React.FC = () => {
                         />
                       </th>
                       <th className="py-3 px-4 whitespace-nowrap">Nama Lengkap</th>
-                      <th className="py-3 px-4 whitespace-nowrap">NIS</th>
-                      <th className="py-3 px-4 whitespace-nowrap">NISN</th>
                       {isSmkMak && <th className="py-3 px-4 whitespace-nowrap">Jurusan PPDB</th>}
-                      <th className="py-3 px-4 whitespace-nowrap">Gender</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
@@ -460,8 +457,6 @@ const PpdbMappingPage: React.FC = () => {
                           />
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{s.nama_siswa}</td>
-                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.nis || '-'}</td>
-                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.nisn || '-'}</td>
                         {isSmkMak && (
                           <td className="py-3 px-4 whitespace-nowrap">
                             {s.Jurusan?.nama ? (
@@ -475,7 +470,6 @@ const PpdbMappingPage: React.FC = () => {
                             )}
                           </td>
                         )}
-                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
                       </tr>
                     ))}
                   </tbody>
