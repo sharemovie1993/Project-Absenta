@@ -174,38 +174,71 @@ export default function JadwalPelajaranPage() {
     const toastId = toast.loading('Sedang menyiapkan dokumen PDF...');
     try {
       // 1. Fetch school info
-      const sekolah = await sekolahApi.getProfile();
+      let sekolah = null;
+      try {
+        sekolah = await sekolahApi.getProfile();
+      } catch (e) {
+        console.warn('Failed to fetch school profile', e);
+      }
 
       // 2. Fetch tenant info
-      const tenantRes = await getMyTenant();
-      const tenantInfo = tenantRes?.success ? tenantRes.data : null;
+      let tenantInfo = null;
+      try {
+        const tenantRes = await getMyTenant();
+        tenantInfo = tenantRes?.success ? tenantRes.data : null;
+      } catch (e) {
+        console.warn('Failed to fetch tenant info', e);
+      }
 
       // 3. Fetch list of organizational assignments for principal NIP/Name signature
-      const strukturRes = await getStrukturList({ page: 1, limit: 100 });
-      const strukturList = strukturRes?.success ? strukturRes.data : [];
+      let strukturList: any[] = [];
+      try {
+        const strukturRes = await getStrukturList({ page: 1, limit: 100 });
+        strukturList = strukturRes?.success ? strukturRes.data : [];
+      } catch (e) {
+        console.warn('Failed to fetch structure list', e);
+      }
 
       // 4. Fetch school and regional logos as base64
       let logoDaerahBase64 = null;
       let logoSekolahBase64 = null;
 
-      if (sekolah?.logo_daerah) {
-        logoDaerahBase64 = await getBase64ImageFromUrl(sekolah.logo_daerah).catch(() => null);
-      }
-      if (sekolah?.logo_sekolah) {
-        logoSekolahBase64 = await getBase64ImageFromUrl(sekolah.logo_sekolah).catch(() => null);
+      try {
+        if (sekolah?.logo_daerah) {
+          logoDaerahBase64 = await getBase64ImageFromUrl(sekolah.logo_daerah).catch(() => null);
+        }
+        if (sekolah?.logo_sekolah) {
+          logoSekolahBase64 = await getBase64ImageFromUrl(sekolah.logo_sekolah).catch(() => null);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch base64 logos', e);
       }
 
       // 5. Fetch master kegiatan for activity name mappings
-      const jenisRes = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
-      const jenisKegiatanList = jenisRes?.success ? jenisRes.data : [];
+      let jenisKegiatanList: any[] = [];
+      try {
+        const jenisRes = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
+        jenisKegiatanList = jenisRes?.success ? jenisRes.data : [];
+      } catch (e) {
+        console.warn('Failed to fetch jenis kegiatan list', e);
+      }
 
-      // 6. Fetch classes and gurus list for label displays in autotable
-      const [classesRes, gurusRes] = await Promise.all([
-        getKelasList(1, 100),
-        getGuruList(1, 100)
-      ]);
-      const classes = classesRes?.success ? classesRes.data : [];
-      const gurus = gurusRes?.success ? gurusRes.data : [];
+      // 6. Extract unique classes and gurus from the current page's jadwal list to avoid potential 403 Forbidden errors
+      const classes: any[] = [];
+      const classIds = new Set<string>();
+      const gurus: any[] = [];
+      const guruIds = new Set<string>();
+
+      jadwal.forEach(j => {
+        if (j.kelas_id && !classIds.has(j.kelas_id)) {
+          classIds.add(j.kelas_id);
+          classes.push({ id: j.kelas_id, nama_kelas: j.Kelas?.nama_kelas || 'Kelas' });
+        }
+        if (j.guru_id && !guruIds.has(j.guru_id)) {
+          guruIds.add(j.guru_id);
+          gurus.push({ id: j.guru_id, nama_guru: j.Guru?.User?.full_name || 'Guru' });
+        }
+      });
 
       const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
 
@@ -240,10 +273,12 @@ export default function JadwalPelajaranPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      toast.success('PDF berhasil diunduh', { id: toastId });
+      toast.dismiss(toastId);
+      toast.success('PDF berhasil diunduh');
     } catch (err) {
-      console.error(err);
-      toast.error('Gagal menghasilkan PDF', { id: toastId });
+      console.error('Failed to generate PDF', err);
+      toast.dismiss(toastId);
+      toast.error('Gagal menghasilkan PDF');
     }
   }, [user, selectedGuruId, selectedKelasId, isSiswa, defaultKelasId, selectedTahunId, selectedSemesterId, jadwal]);
 
