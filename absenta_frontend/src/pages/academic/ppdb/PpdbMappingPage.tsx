@@ -7,7 +7,7 @@ import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdow
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical, CornerRightDown, ArrowDown } from 'lucide-react';
+import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical, CornerRightDown, ArrowDown, ListOrdered, Shuffle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { generateStandardFilename } from '../../../utils/file-download.utils';
 import { generateImportTemplate } from '../../../utils/export.utils';
@@ -37,10 +37,7 @@ interface DropdownOption {
 }
 
 // Zod Schema Validation Guard for Student-to-Class Mapping
-const mappingSchema = z.object({
-  siswaIds: z.array(z.string().uuid('ID siswa tidak valid')).min(1, 'Pilih minimal satu siswa untuk dipetakan'),
-  kelasId: z.string().uuid('Pilih kelas tujuan yang valid')
-});
+const mappingSchema = z.object({ siswaIds: z.array(z.string().uuid('ID siswa tidak valid')).min(1, 'Pilih minimal satu siswa untuk dipetakan'), kelasId: z.string().uuid('Pilih kelas tujuan yang valid') });
 
 const PpdbMappingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -80,13 +77,7 @@ const PpdbMappingPage: React.FC = () => {
 
       setJurusans(jurusanList as DropdownOption[]);
       
-      const mappedKelas = (allKelas as DropdownOption[])?.map(k => ({
-        value: k.value,
-        label: k.label,
-        jurusan_id: k.jurusan_id || k.Jurusan?.id || null,
-        tingkat: k.tingkat || null,
-        siswa_count: k.siswa_count || 0
-      }));
+      const mappedKelas = (allKelas as DropdownOption[])?.map(k => ({ value: k.value, label: k.label, jurusan_id: k.jurusan_id || k.Jurusan?.id || null, tingkat: k.tingkat || null, siswa_count: k.siswa_count || 0 }));
       setKelasOptions(mappedKelas);
 
     } catch (err) {
@@ -158,11 +149,7 @@ const PpdbMappingPage: React.FC = () => {
   // Dropdown options formatted dynamically with counts
   const jurusanOptions = useMemo(() => [
     { label: `Semua Jurusan (${calonList?.length || 0})`, value: 'all', warna: null },
-    ...(jurusans?.map(j => ({
-      label: `${j.label} (${calonList?.filter(s => s.jurusan_id === j.value)?.length || 0})`,
-      value: j.value,
-      warna: j.warna || null
-    })) || []),
+    ...(jurusans?.map(j => ({ label: `${j.label} (${calonList?.filter(s => s.jurusan_id === j.value)?.length || 0})`, value: j.value, warna: j.warna || null })) || []),
     { label: `Tanpa Jurusan (Belum diisi) (${calonList?.filter(s => !s.jurusan_id)?.length || 0})`, value: 'none', warna: null }
   ], [jurusans, calonList]);
 
@@ -303,27 +290,9 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'No. Seri Ijazah SMP', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.no_ijazah_smp), width: 25, required: false }
       ];
 
-      const sampleData = [
-        {
-          nama_siswa: 'Budi Santoso',
-          jurusan: jurusanNames[0] || 'Teknik Otomasi Industri',
-          nis: '242510001',
-          nisn: '0081234567',
-          nik: '3201020304050001',
-          jenis_kelamin: 'L',
-          tempat_lahir: 'Bandung',
-          tanggal_lahir: '2010-05-15',
-          alamat: 'Jl. Merdeka No. 10',
-          no_hp: '081234567890',
-          email: 'budi@example.com',
-          nama_ayah: 'Agus Santoso',
-          nama_ibu: 'Siti Rahma',
-          status: 'CALON',
-          no_rfid: 'RF000123',
-          sekolah_asal: 'SMPN 1 Bandung',
-          no_ijazah_smp: 'DN-01/D-SMP/21/0000001'
-        }
-      ];
+      const sampleData = [{
+        nama_siswa: 'Budi Santoso', jurusan: jurusanNames[0] || 'Teknik Otomasi Industri', nis: '242510001', nisn: '0081234567', nik: '3201020304050001', jenis_kelamin: 'L', tempat_lahir: 'Bandung', tanggal_lahir: '2010-05-15', alamat: 'Jl. Merdeka No. 10', no_hp: '081234567890', email: 'budi@example.com', nama_ayah: 'Agus Santoso', nama_ibu: 'Siti Rahma', status: 'CALON', no_rfid: 'RF000123', sekolah_asal: 'SMPN 1 Bandung', no_ijazah_smp: 'DN-01/D-SMP/21/0000001'
+      }];
 
       const filename = generateStandardFilename('template_import_siswa_ppdb', 'xlsx').replace('.xlsx', '');
       const instructionText = `Kolom BERWARNA EMAS wajib diisi. ${
@@ -353,21 +322,63 @@ const PpdbMappingPage: React.FC = () => {
     return importSiswaFromExcel(file, onProgress, socketId, { status: 'CALON' });
   }, []);
 
-  const pageStats = useMemo(() => [
-    {
-      title: "Siswa PPDB (Calon)",
-      value: calonList?.length || 0,
-      icon: <GraduationCap size={14} />,
-      gradient: "from-amber-500 to-orange-600",
-      subtitle: "Menunggu pemetaan kelas"
-    },
-    {
-      title: "Siswa Terpilih",
-      value: selectedSiswa?.length || 0,
-      icon: <UserCheck size={14} />,
-      gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Akan dipetakan ke rombel"
+  const handleAutoDistribute = useCallback(async (variant: 'alphabetical' | 'random') => {
+    if (filteredSiswa.length === 0) {
+      toast.error('Tidak ada calon siswa yang tersedia untuk dipetakan.');
+      return;
     }
+    if (filteredKelasOptions.length === 0) {
+      toast.error('Tidak ada kelas target yang tersedia di tingkat/jurusan ini.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let sortedSiswa = [...filteredSiswa];
+      if (variant === 'alphabetical') {
+        sortedSiswa.sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
+      } else {
+        // Fisher-Yates shuffle
+        for (let i = sortedSiswa.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [sortedSiswa[i], sortedSiswa[j]] = [sortedSiswa[j], sortedSiswa[i]];
+        }
+      }
+
+      const distribution: Record<string, string[]> = {};
+      filteredKelasOptions.forEach(k => {
+        distribution[k.value] = [];
+      });
+
+      sortedSiswa.forEach((siswa, index) => {
+        const classIndex = index % filteredKelasOptions.length;
+        const targetClassId = filteredKelasOptions[classIndex].value;
+        distribution[targetClassId].push(siswa.id);
+      });
+
+      const promises = Object.entries(distribution)
+        .filter(([_, ids]) => ids.length > 0)
+        ?.map(([classId, ids]) => mapPpdbStudents(ids, classId));
+
+      await Promise.all(promises);
+
+      toast.success(`Berhasil membagi rata ${filteredSiswa.length} siswa ke ${filteredKelasOptions.length} kelas secara ${variant === 'alphabetical' ? 'alfabetis A-Z' : 'acak/random'}.`);
+      
+      await fetchCalonStudents();
+      const metadataRes = await getKelasForDropdown();
+      setKelasOptions(metadataRes || []);
+      setSelectedSiswa([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memproses preset bagi rata siswa');
+    } finally {
+      setLoading(false);
+    }
+  }, [filteredSiswa, filteredKelasOptions, fetchCalonStudents]);
+
+  const pageStats = useMemo(() => [
+    { title: "Siswa PPDB (Calon)", value: calonList?.length || 0, icon: <GraduationCap size={14} />, gradient: "from-amber-500 to-orange-600", subtitle: "Menunggu pemetaan kelas" },
+    { title: "Siswa Terpilih", value: selectedSiswa?.length || 0, icon: <UserCheck size={14} />, gradient: "from-blue-500 to-indigo-600", subtitle: "Akan dipetakan ke rombel" }
   ], [calonList?.length, selectedSiswa?.length]);
 
   return (
@@ -378,21 +389,10 @@ const PpdbMappingPage: React.FC = () => {
       hardeningModuleKey="academic_ppdb_mapping"
       instruction={{
         title: "Panduan Pemetaan PPDB",
-        description: (
-          <div className="space-y-2">
-            <p>Pilih calon siswa di tabel sebelah kiri dan seret ke kelas target di kanan, atau gunakan tombol wizard.</p>
-          </div>
-        ),
-        items: [
-          { text: "Pilih calon siswa di tabel sebelah kiri." },
-          { text: "Seret ke kelas target di kanan, atau gunakan tombol wizard." }
-        ]
+        description: <p>Pilih calon siswa di tabel sebelah kiri dan seret ke kelas target di kanan, atau gunakan tombol wizard.</p>,
+        items: [{ text: "Pilih calon siswa di tabel sebelah kiri." }, { text: "Seret ke kelas target di kanan, atau gunakan tombol wizard." }]
       }}
-      breadcrumbs={[
-        { label: 'Akademik', path: '/academic' },
-        { label: 'Siswa', path: '/academic/siswa' },
-        { label: 'Pemetaan PPDB', path: '/academic/ppdb-mapping' }
-      ]}
+      breadcrumbs={[{ label: 'Akademik', path: '/academic' }, { label: 'Siswa', path: '/academic/siswa' }, { label: 'Pemetaan PPDB', path: '/academic/ppdb-mapping' }]}
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -445,6 +445,32 @@ const PpdbMappingPage: React.FC = () => {
                       <span>Petakan ({selectedSiswa?.length} Siswa)</span>
                     </Button>
                   )}
+                  
+                  {/* Preset Buttons */}
+                  <div className="flex items-center gap-1.5 border-l border-slate-200 pl-2.5 ml-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAutoDistribute('alphabetical')}
+                      disabled={loading || filteredSiswa.length === 0}
+                      className="flex items-center gap-1 text-[11px] text-indigo-600 border-indigo-100 hover:bg-indigo-50/50"
+                      title="Bagi rata siswa ke kelas-kelas yang tersedia secara alfabetis (A-Z)"
+                    >
+                      <ListOrdered size={12} />
+                      <span>Bagi Rata (A-Z)</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAutoDistribute('random')}
+                      disabled={loading || filteredSiswa.length === 0}
+                      className="flex items-center gap-1.5 text-[11px] text-amber-600 border-amber-100 hover:bg-amber-50/50"
+                      title="Bagi rata siswa ke kelas-kelas yang tersedia secara acak (Random)"
+                    >
+                      <Shuffle size={12} />
+                      <span>Bagi Rata (Acak)</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -714,29 +740,18 @@ const PpdbMappingPage: React.FC = () => {
                 Daftar Siswa yang Akan Dipetakan ({selectedSiswa?.length || 0})
               </label>
               <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-lg p-2 divide-y divide-slate-50 bg-slate-50/30 scrollbar-thin">
-                {calonList
-                  ?.filter(s => selectedSiswa?.includes(s.id))
-                  ?.map(s => (
-                    <div key={s.id} className="py-1.5 px-2 text-xs font-medium text-slate-700 flex justify-between">
-                      <span>{s.nama_siswa}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {s.nisn || s.nis || '-'}
-                      </span>
-                    </div>
-                  ))}
+                {calonList?.filter(s => selectedSiswa?.includes(s.id))?.map(s => (
+                  <div key={s.id} className="py-1.5 px-2 text-xs font-medium text-slate-700 flex justify-between">
+                    <span>{s.nama_siswa}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">{s.nisn || s.nis || '-'}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMappingModalOpen(false)}
-              disabled={submitLoading}
-            >
-              Batal
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setMappingModalOpen(false)} disabled={submitLoading}>Batal</Button>
             <Button
               onClick={handleMapStudents}
               disabled={submitLoading || !targetKelasId}
