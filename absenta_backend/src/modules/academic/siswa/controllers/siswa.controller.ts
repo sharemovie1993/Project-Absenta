@@ -838,7 +838,8 @@ export const siswaController = {
                throw new Error('Nama Siswa is required');
             }
 
-            const statusInput = String(input.status || input.Status || 'AKTIF').trim().toUpperCase();
+            const defaultStatus = String(query.status || 'AKTIF').trim().toUpperCase();
+            const statusInput = String(input.status || input.Status || defaultStatus).trim().toUpperCase();
             const isCalon = statusInput === 'CALON';
 
             const inputJurusan = input.JURUSAN || input.jurusan || input.Jurusan || input.nama_jurusan;
