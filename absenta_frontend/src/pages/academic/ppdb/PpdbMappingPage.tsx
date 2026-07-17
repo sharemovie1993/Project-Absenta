@@ -644,17 +644,23 @@ const PpdbMappingPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* Drop Visual Helper */}
-                      {isDragging && (
-                        <div className={`mt-2 py-2 border border-dashed rounded-lg flex items-center justify-center gap-1.5 text-xs transition-colors ${
-                          isOver 
-                            ? 'border-indigo-400 bg-indigo-100 text-indigo-700 font-medium' 
-                            : 'border-slate-200 text-slate-400'
-                        }`}>
-                          <GraduationCap size={14} className={isOver ? 'animate-bounce' : ''} />
-                          <span>{isOver ? 'Lepas untuk memetakan!' : 'Drop di sini'}</span>
-                        </div>
-                      )}
+                       {/* Permanent Drop Target Indicator */}
+                       <div className={`mt-2 py-2 border border-dashed rounded-lg flex items-center justify-center gap-1.5 text-xs transition-all duration-200 ${
+                         isOver 
+                           ? 'border-indigo-500 bg-indigo-100 text-indigo-700 font-bold scale-[1.01]' 
+                           : isDragging
+                           ? 'border-indigo-300 bg-indigo-50/50 text-indigo-600 animate-pulse font-medium'
+                           : 'border-slate-200 bg-slate-50/30 text-slate-400'
+                       }`}>
+                         <GraduationCap size={13} className={isOver ? 'animate-bounce' : ''} />
+                         <span>
+                           {isOver 
+                             ? 'Lepas untuk memetakan!' 
+                             : isDragging
+                             ? 'Siap menerima drop...'
+                             : 'Seret calon siswa ke sini'}
+                         </span>
+                       </div>
                     </div>
                   );
                 })
