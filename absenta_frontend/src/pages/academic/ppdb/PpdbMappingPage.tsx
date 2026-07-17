@@ -483,7 +483,6 @@ const PpdbMappingPage: React.FC = () => {
           onImport={handleImportSiswa}
           onDownloadTemplate={handleTemplateDownload}
           onSuccess={() => {
-            handleCloseImport();
             fetchCalonStudents();
           }}
           sampleDataHint="Tips: Pastikan format kolom status adalah 'CALON' atau biarkan kosong agar otomatis terbaca sebagai calon siswa PPDB."

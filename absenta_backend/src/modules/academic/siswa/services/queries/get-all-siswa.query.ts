@@ -69,31 +69,38 @@ export async function getAllSiswaQuery(
   const isElevatedContext = params?.context === 'elevated' && org?.is_elevated_context === true;
 
   if (org && org.tenant_wide !== true && !isElevatedContext) {
-    if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
-      if (safeKelasId) {
-        whereClause.Kelas = {
-          id: safeKelasId,
-          jurusan_id: { in: org.unit_ids }
-        };
-      } else {
-        whereClause.Kelas = {
-          jurusan_id: { in: org.unit_ids }
-        };
+    if (safeStatus === 'CALON') {
+      // CALON students don't have a class. Filter by direct jurusan_id if unit restricted.
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        whereClause.jurusan_id = { in: org.unit_ids };
       }
     } else {
-      const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-      if (allowed.length > 0) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
         if (safeKelasId) {
-          if (!allowed.includes(String(safeKelasId))) {
-            // Hard reject if requesting unauthorized class
-            whereClause.id = '00000000-0000-4000-8000-000000000000';
-          }
+          whereClause.Kelas = {
+            id: safeKelasId,
+            jurusan_id: { in: org.unit_ids }
+          };
         } else {
-          whereClause.kelas_id = { in: allowed };
+          whereClause.Kelas = {
+            jurusan_id: { in: org.unit_ids }
+          };
         }
       } else {
-          // No assigned classes, return empty
-          whereClause.id = '00000000-0000-4000-8000-000000000000';
+        const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+        if (allowed.length > 0) {
+          if (safeKelasId) {
+            if (!allowed.includes(String(safeKelasId))) {
+              // Hard reject if requesting unauthorized class
+              whereClause.id = '00000000-0000-4000-8000-000000000000';
+            }
+          } else {
+            whereClause.kelas_id = { in: allowed };
+          }
+        } else {
+            // No assigned classes, return empty
+            whereClause.id = '00000000-0000-4000-8000-000000000000';
+        }
       }
     }
   }
