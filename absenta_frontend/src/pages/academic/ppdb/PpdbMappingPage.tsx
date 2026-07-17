@@ -1,18 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, SectionCard } from '../../../components/ui';
-import { getSiswaList, mapPpdbStudents } from '../../../api/academic/siswa.api';
+import { getSiswaList, mapPpdbStudents, downloadSiswaImportTemplate, importSiswaFromExcel } from '../../../api/academic/siswa.api';
 import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdown.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { downloadFileFromBlob, generateStandardFilename } from '../../../utils/file-download.utils';
+
+const ExcelImportModal = lazy(() => import('../../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
+const Loader = lazy(() => import('../../../components/ui/Loader').then(module => ({ default: module.Loader })));
 
 const PpdbMappingPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
@@ -157,6 +162,25 @@ const PpdbMappingPage: React.FC = () => {
     }
   };
 
+  const handleOpenImport = () => setImportOpen(true);
+  const handleCloseImport = () => setImportOpen(false);
+
+  const handleTemplateDownload = async () => {
+    try {
+      toast('Mengunduh template...');
+      const blob = await downloadSiswaImportTemplate();
+      downloadFileFromBlob(blob, generateStandardFilename('template_import_siswa_ppdb', 'xlsx'));
+      toast.success('Template berhasil diunduh');
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal mengunduh template');
+    }
+  };
+
+  const handleImportSiswa = async (file: File, onProgress: (p: number) => void, socketId?: string) => {
+    return importSiswaFromExcel(file, onProgress, socketId, { status: 'CALON' });
+  };
+
   const pageStats = useMemo(() => [
     {
       title: "Siswa PPDB (Calon)",
@@ -191,6 +215,32 @@ const PpdbMappingPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <SectionCard title="Daftar Calon Siswa">
             
+            {/* PPDB Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
+              <div className="text-sm font-medium text-slate-600">
+                Penerimaan & Impor Calon Siswa
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTemplateDownload}
+                  className="flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 transition-colors"
+                >
+                  <Download size={13} />
+                  <span>Format Excel</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleOpenImport}
+                  className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-md shadow-emerald-500/15"
+                >
+                  <FileSpreadsheet size={13} />
+                  <span>Impor Excel PPDB</span>
+                </Button>
+              </div>
+            </div>
+
             {/* Filter toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div className="relative flex-1">
@@ -383,6 +433,21 @@ const PpdbMappingPage: React.FC = () => {
         </div>
 
       </div>
+
+      <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
+        <ExcelImportModal
+          isOpen={importOpen}
+          onClose={handleCloseImport}
+          title="Import Calon Siswa (PPDB)"
+          onImport={handleImportSiswa}
+          onDownloadTemplate={handleTemplateDownload}
+          onSuccess={() => {
+            handleCloseImport();
+            fetchCalonStudents();
+          }}
+          sampleDataHint="Tips: Pastikan format kolom status adalah 'CALON' atau biarkan kosong agar otomatis terbaca sebagai calon siswa PPDB."
+        />
+      </Suspense>
     </AcademicPageLayout>
   );
 };

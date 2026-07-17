@@ -705,9 +705,15 @@ export const siswaController = {
         return reply.status(400).send({ success: false, message: 'Excel file is empty' });
       }
 
-      const ref = await siswaService.getImportReferenceData(tenantId);
+      const [ref, jurusans, sekolah] = await Promise.all([
+        siswaService.getImportReferenceData(tenantId),
+        prisma.jurusan.findMany({ where: { tenant_id: tenantId } }),
+        prisma.sekolah.findFirst({ where: { tenant_id: tenantId } })
+      ]);
+      const isSmkMak = ['SMK', 'MAK'].includes(sekolah?.jenjang?.toUpperCase() || '');
       const kelasList = ref.kelasList as any[];
       const kelasIdSet = new Set(kelasList.map(k => k.id));
+      const jurusanNames = jurusans.map(j => j.nama);
 
       // Attempt to get active academic year/semester if not provided
       // Use query params if provided (for importing into past periods)
@@ -832,26 +838,70 @@ export const siswaController = {
                throw new Error('Nama Siswa is required');
             }
 
+            const statusInput = String(input.status || input.Status || 'AKTIF').trim().toUpperCase();
+            const isCalon = statusInput === 'CALON';
+
+            const inputJurusan = input.JURUSAN || input.jurusan || input.Jurusan || input.nama_jurusan;
+            if (isSmkMak && isCalon && !inputJurusan) {
+              throw new Error('Kolom JURUSAN wajib diisi untuk siswa CALON (PPDB) di sekolah SMK/MAK');
+            }
+
+            // Resolve Jurusan if provided
+            let matchedJurusanId: string | undefined = undefined;
+            if (inputJurusan) {
+              const matchJurusan = findBestMatch(String(inputJurusan), jurusanNames);
+              if (matchJurusan.match) {
+                matchedJurusanId = jurusans.find(j => j.nama === matchJurusan.match)?.id;
+              } else if (isSmkMak && isCalon) {
+                throw new Error(`Jurusan "${inputJurusan}" tidak ditemukan`);
+              }
+            }
+            input.jurusan_id = matchedJurusanId;
+
             // Resolve kelas_id
             let kelasId = input.kelas_id || input.nama_kelas;
-            if (kelasId) {
-               const kelasIdStr = String(kelasId).trim();
-               // check if it's an ID
-               if (kelasIdSet.has(kelasIdStr)) {
-                  kelasId = kelasIdStr;
-               } else {
-                  // Fuzzy match
-                  const match = findBestMatch(kelasIdStr, kelasList.map(k => k.nama_kelas));
-                  if (match.match) {
-                     kelasId = kelasList.find(k => k.nama_kelas === match.match).id;
-                  } else {
-                     throw new Error(`Kelas '${kelasId}' tidak ditemukan`);
-                  }
-               }
+            if (!isCalon) {
+              if (kelasId) {
+                 const kelasIdStr = String(kelasId).trim();
+                 // check if it's an ID
+                 if (kelasIdSet.has(kelasIdStr)) {
+                    kelasId = kelasIdStr;
+                 } else {
+                    // Filter candidate kelas berdasarkan jurusan jika disediakan
+                    let candidateKelas = kelasList;
+                    if (inputJurusan) {
+                      const matchJurusan = findBestMatch(String(inputJurusan), jurusanNames);
+                      if (matchJurusan.match) {
+                        const targetJurusanId = jurusans.find(j => j.nama === matchJurusan.match)?.id;
+                        candidateKelas = kelasList.filter(k => k.jurusan_id === targetJurusanId);
+                      }
+                    }
+
+                    const candidateNames = candidateKelas.map(k => k.nama_kelas);
+                    const match = findBestMatch(kelasIdStr, candidateNames);
+                    if (match.match) {
+                       // Deteksi ambiguitas
+                       const matchedKelasAll = candidateKelas.filter(k => k.nama_kelas === match.match);
+                       if (matchedKelasAll.length > 1) {
+                         const list = matchedKelasAll.map(k => k.Jurusan?.nama || 'tanpa jurusan').join(', ');
+                         throw new Error(
+                           `Kelas "${match.match}" ambigu — ditemukan di beberapa jurusan: ${list}. ` +
+                           `Sertakan kolom JURUSAN di Excel untuk menentukan kelas yang tepat.`
+                         );
+                       }
+                       kelasId = matchedKelasAll[0].id;
+                    } else {
+                       throw new Error(`Kelas '${kelasId}' tidak ditemukan`);
+                    }
+                 }
+              } else {
+                 throw new Error('Kolom Kelas wajib diisi untuk siswa aktif');
+              }
+              input.kelas_id = kelasId;
             } else {
-               throw new Error('Kolom Kelas wajib diisi');
+              input.kelas_id = undefined;
             }
-            input.kelas_id = kelasId;
+            input.status = statusInput;
 
             // 2. Default academic period if missing
             if (!input.tahun_pelajaran_id && activeYear) {
