@@ -24,9 +24,17 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
   // Form State
   const [selectedTingkat, setSelectedTingkat] = useState<number[]>([]);
   const [parallelCount, setParallelCount] = useState<number>(3);
-  const [namingPattern, setNamingPattern] = useState<string>('tingkatAlphabet');
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
   const [appendJurusan, setAppendJurusan] = useState<boolean>(false);
+
+  // New granular naming states
+  const [useRoman, setUseRoman] = useState<boolean>(false);
+  const [suffixType, setSuffixType] = useState<'alphabet' | 'number'>('alphabet');
+  const [separator, setSeparator] = useState<string>('');
+  const [useKelasPrefix, setUseKelasPrefix] = useState<boolean>(false);
+
+  // Preview State (Editable)
+  const [previewClasses, setPreviewClasses] = useState<{ tingkat: number; nama_kelas: string; jurusan_id?: string }[]>([]);
 
   // Execution State
   const [isGenerating, setIsGenerating] = useState(false);
@@ -50,9 +58,12 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
     if (isOpen) {
       setSelectedTingkat([]);
       setParallelCount(3);
-      setNamingPattern('tingkatAlphabet');
       setSelectedJurusanId('');
       setAppendJurusan(false);
+      setUseRoman(false);
+      setSuffixType('alphabet');
+      setSeparator('');
+      setUseKelasPrefix(false);
       setIsGenerating(false);
       setProgressIndex(0);
       setProgressTotal(0);
@@ -90,39 +101,30 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
     return jurusanList.find(j => j.id === selectedJurusanId);
   }, [jurusanList, selectedJurusanId]);
 
-  const generatedClasses = useMemo(() => {
-    const classes: { tingkat: number; nama_kelas: string; jurusan_id?: string }[] = [];
-    if (selectedTingkat.length === 0 || parallelCount <= 0) return classes;
+  // Sync previewClasses when inputs change
+  useEffect(() => {
+    if (selectedTingkat.length === 0 || parallelCount <= 0) {
+      setPreviewClasses([]);
+      return;
+    }
 
-    // Sort selected tingkat to keep ordering clean
+    const classes: { tingkat: number; nama_kelas: string; jurusan_id?: string }[] = [];
     const sortedTingkat = [...selectedTingkat].sort((a, b) => a - b);
-    const suffixType = namingPattern.endsWith('Number') ? 'number' : 'alphabet';
-    const isRoman = namingPattern.startsWith('roman');
-    const isKelasPrefix = namingPattern.startsWith('kelas');
-    const isStrip = namingPattern.includes('Strip');
 
     for (const t of sortedTingkat) {
       for (let i = 0; i < parallelCount; i++) {
         const suffix = getSuffix(i, suffixType);
         let nameStr = '';
+        const gradeRep = useRoman ? getRoman(t) : String(t);
+        const prefix = useKelasPrefix ? 'Kelas ' : '';
 
         if (appendJurusan && activeJurusanObj) {
           const code = activeJurusanObj.singkatan || activeJurusanObj.kode || activeJurusanObj.nama;
-          if (isKelasPrefix) {
-            nameStr = `Kelas ${t} ${code} ${suffix}`;
-          } else if (isRoman) {
-            nameStr = `${getRoman(t)} ${code} ${suffix}`;
-          } else {
-            nameStr = `${t} ${code} ${suffix}`;
-          }
+          // Format: [Prefix] [Grade] [Code] [Suffix] -> Kelas 10 AKL 1
+          nameStr = `${prefix}${gradeRep} ${code} ${suffix}`;
         } else {
-          const separator = isStrip ? '-' : '';
-          const gradeRep = isRoman ? getRoman(t) : String(t);
-          if (isKelasPrefix) {
-            nameStr = `Kelas ${gradeRep}${separator}${suffix}`;
-          } else {
-            nameStr = `${gradeRep}${separator}${suffix}`;
-          }
+          // Format: [Prefix] [Grade] [Separator] [Suffix] -> Kelas 10-A
+          nameStr = `${prefix}${gradeRep}${separator}${suffix}`;
         }
 
         classes.push({
@@ -132,8 +134,16 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
         });
       }
     }
-    return classes;
-  }, [selectedTingkat, parallelCount, namingPattern, selectedJurusanId, appendJurusan, activeJurusanObj]);
+    setPreviewClasses(classes);
+  }, [selectedTingkat, parallelCount, useRoman, suffixType, separator, useKelasPrefix, selectedJurusanId, appendJurusan, activeJurusanObj]);
+
+  const updatePreviewClassName = (index: number, newName: string) => {
+    setPreviewClasses(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], nama_kelas: newName };
+      return next;
+    });
+  };
 
   const handleToggleTingkat = (t: number) => {
     setSelectedTingkat(prev =>
@@ -150,14 +160,14 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
   };
 
   const handleGenerate = async () => {
-    if (generatedClasses.length === 0) return;
+    if (previewClasses.length === 0) return;
     try {
       setIsGenerating(true);
-      setProgressTotal(generatedClasses.length);
+      setProgressTotal(previewClasses.length);
       setProgressIndex(0);
 
-      for (let i = 0; i < generatedClasses.length; i++) {
-        const item = generatedClasses[i];
+      for (let i = 0; i < previewClasses.length; i++) {
+        const item = previewClasses[i];
         setCurrentProgressName(item.nama_kelas);
         
         const response = await createKelas({
@@ -172,7 +182,7 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
         setProgressIndex(i + 1);
       }
 
-      toast.success(`Berhasil membuat ${generatedClasses.length} kelas secara massal!`);
+      toast.success(`Berhasil membuat ${previewClasses.length} kelas secara massal!`);
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -189,7 +199,7 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
       isOpen={isOpen}
       onClose={() => !isGenerating && onClose()}
       title="Wizard Pembuatan Kelas Massal"
-      size="2xl"
+      size="4xl"
     >
       <div className="p-6 pt-2 space-y-6">
         {isGenerating ? (
@@ -219,8 +229,8 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
         ) : (
           /* Form Wizard */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left side settings: Col 7 */}
-            <div className="lg:col-span-7 space-y-5">
+            {/* Left side settings: Col 6 */}
+            <div className="lg:col-span-6 space-y-5">
               {/* Tingkat Selection */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -279,20 +289,107 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
                   <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
                     Pola Penamaan
                   </label>
-                  <select
-                    value={namingPattern}
-                    onChange={(e) => setNamingPattern(e.target.value)}
-                    className="h-10 text-[13px] w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="tingkatAlphabet">1A, 2B, 7A</option>
-                    <option value="tingkatStripAlphabet">1-A, 2-B, 7-A</option>
-                    <option value="tingkatNumber">1.1, 1.2, 7.1</option>
-                    <option value="kelasTingkatAlphabet">Kelas 1A, Kelas 7A</option>
-                    <option value="kelasTingkatNumber">Kelas 1.1, Kelas 7.1</option>
-                    <option value="romanAlphabet">I-A, II-B, VII-A (Romawi + Huruf)</option>
-                    <option value="romanNumber">X TKJ 1, VII-1 (Romawi + Angka)</option>
-                  </select>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-10">
+                    <button
+                      type="button"
+                      onClick={() => setSuffixType('alphabet')}
+                      className={`flex-1 text-[10px] font-black uppercase rounded-lg transition-all ${
+                        suffixType === 'alphabet' 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      A, B, C
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSuffixType('number')}
+                      className={`flex-1 text-[10px] font-black uppercase rounded-lg transition-all ${
+                        suffixType === 'number' 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      1, 2, 3
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              {/* Advanced Naming Options */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Format Tingkat
+                  </label>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-10">
+                    <button
+                      type="button"
+                      onClick={() => setUseRoman(false)}
+                      className={`flex-1 text-[10px] font-black uppercase rounded-lg transition-all ${
+                        !useRoman 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      10, 11, 12
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseRoman(true)}
+                      className={`flex-1 text-[10px] font-black uppercase rounded-lg transition-all ${
+                        useRoman 
+                          ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' 
+                          : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                    >
+                      X, XI, XII
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Pemisah
+                  </label>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl h-10">
+                    {[
+                      { label: 'None', value: '' },
+                      { label: '-', value: '-' },
+                      { label: '.', value: '.' },
+                      { label: 'Spasi', value: ' ' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setSeparator(opt.value)}
+                        className={`flex-1 text-[9px] font-black uppercase rounded-lg transition-all ${
+                          separator === opt.value 
+                            ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm' 
+                            : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 pt-1">
+                <input
+                  type="checkbox"
+                  id="use-prefix"
+                  checked={useKelasPrefix}
+                  onChange={(e) => setUseKelasPrefix(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500"
+                />
+                <label htmlFor="use-prefix" className="text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                  Gunakan awalan "Kelas"
+                  <span className="block text-[9px] text-slate-400 font-normal">
+                    Contoh: Kelas 10-A (atau Kelas X AKL 1)
+                  </span>
+                </label>
               </div>
 
               {/* Jurusan Selection (SMK/SMA) */}
@@ -338,29 +435,34 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
               )}
             </div>
 
-            {/* Right side preview: Col 5 */}
-            <div className="lg:col-span-5 border border-slate-150 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/40 dark:bg-slate-950/20 h-full flex flex-col justify-between min-h-[280px]">
+            {/* Right side preview: Col 6 */}
+            <div className="lg:col-span-6 border border-slate-150 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/40 dark:bg-slate-950/20 h-full flex flex-col justify-between min-h-[280px]">
               <div className="space-y-3 flex-1 flex flex-col min-h-0">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block shrink-0">
-                  Pratinjau Hasil ({generatedClasses.length} Kelas)
+                  Pratinjau Hasil ({previewClasses.length} Kelas)
                 </span>
                 <div className="overflow-y-auto max-h-[220px] pr-1 space-y-1.5 flex-1 min-h-0">
-                  {generatedClasses.length === 0 ? (
+                  {previewClasses.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 opacity-30 text-center space-y-2">
                       <LayoutGrid size={24} />
                       <p className="text-[10px] font-bold uppercase">Belum ada pratinjau</p>
                       <p className="text-[9px]">Pilih tingkat kelas dan isi rombel paralel</p>
                     </div>
                   ) : (
-                    generatedClasses.map((item, index) => (
+                    previewClasses.map((item, index) => (
                       <div 
                         key={index}
                         className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl px-3 animate-in fade-in duration-200"
                       >
-                        <span className="text-xs font-black text-slate-700 dark:text-slate-200">
-                          {item.nama_kelas}
-                        </span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex-1 mr-2">
+                          <input
+                            type="text"
+                            value={item.nama_kelas}
+                            onChange={(e) => updatePreviewClassName(index, e.target.value)}
+                            className="w-full bg-transparent border-none text-xs font-black text-slate-700 dark:text-slate-200 focus:ring-0 p-0"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <Badge variant="outline" className="text-[8.5px] px-1.5 font-black uppercase tracking-wider">
                             Tingkat {item.tingkat}
                           </Badge>
@@ -376,12 +478,12 @@ export function BulkClassModal({ isOpen, onClose, onSuccess }: BulkClassModalPro
                 </div>
               </div>
 
-              {generatedClasses.length > 0 && (
+              {previewClasses.length > 0 && (
                 <div className="pt-4 border-t border-slate-200/50 dark:border-slate-800/50 flex flex-col gap-2 shrink-0">
                   <div className="p-2.5 bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-start gap-2">
                     <CheckCircle2 size={13} className="text-amber-600 mt-0.5 shrink-0" />
                     <p className="text-[9px] text-amber-800 dark:text-amber-400 font-bold leading-normal">
-                      Wizard akan membuat {generatedClasses.length} kelas secara berurutan. Anda dapat menghubungkan Wali Kelas setelah kelas berhasil dibuat.
+                      Wizard akan membuat {previewClasses.length} kelas secara berurutan. Anda dapat menghubungkan Wali Kelas setelah kelas berhasil dibuat.
                     </p>
                   </div>
                   <Button
