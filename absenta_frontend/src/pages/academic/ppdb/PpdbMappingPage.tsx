@@ -7,7 +7,7 @@ import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdow
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical } from 'lucide-react';
+import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical, CornerRightDown, ArrowDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { generateStandardFilename } from '../../../utils/file-download.utils';
 import { generateImportTemplate } from '../../../utils/export.utils';
@@ -575,6 +575,21 @@ const PpdbMappingPage: React.FC = () => {
 
         {/* Right Column: Rombel / Kelas drop targets */}
         <div className="space-y-6">
+          {/* Visual Drag and Drop Hint Arrow Banner */}
+          <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 flex items-center gap-3 shadow-sm animate-pulse">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
+              <CornerRightDown className="h-4 w-4 transform rotate-0 hidden md:block" />
+              <ArrowDown className="h-4 w-4 block md:hidden" />
+            </div>
+            <div className="flex-1">
+              <div className="text-xs font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wide">Petunjuk Pemetaan</div>
+              <p className="text-[11px] text-indigo-700 dark:text-indigo-400 mt-0.5 font-medium leading-relaxed">
+                <span className="hidden md:inline">← Seret baris calon siswa dari tabel kiri dan lepas (drop) tepat di dalam kartu rombel/kelas target di bawah.</span>
+                <span className="inline md:hidden">↓ Seret baris calon siswa dari tabel di atas dan lepas (drop) di kartu kelas target di bawah.</span>
+              </p>
+            </div>
+          </div>
+
           <SectionCard 
             title="Daftar Rombel / Kelas (Tingkat 10)" 
             subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Semua kelas tingkat 10"}
