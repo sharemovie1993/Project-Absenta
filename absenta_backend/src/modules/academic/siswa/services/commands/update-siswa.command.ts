@@ -142,9 +142,20 @@ export async function updateSiswaCommand(
     }
   }
 
+  // If reverting to CALON, explicitly clear class and active year/semester assignments
+  if (dataToUpdate.status === 'CALON') {
+    dataToUpdate.kelas_id = null;
+    dataToUpdate.tahun_pelajaran_id = null;
+    dataToUpdate.semester_id = null;
+  }
+
   // Sanitize data: don't overwrite with null/empty for important fields
   const protectedFields = ['nama_siswa', 'jenis_kelamin', 'kelas_id', 'nis', 'nisn', 'nik', 'no_rfid'];
   protectedFields.forEach(field => {
+    // Allow null for kelas_id if status is CALON
+    if (field === 'kelas_id' && dataToUpdate.status === 'CALON' && dataToUpdate[field] === null) {
+      return;
+    }
     if (dataToUpdate[field] === null || dataToUpdate[field] === undefined || String(dataToUpdate[field]).trim() === '') {
        delete dataToUpdate[field];
     }
@@ -250,6 +261,17 @@ export async function updateSiswaCommand(
     where: { id: siswaId },
     select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, status: true, nama_siswa: true }
   });
+
+  if (currentSiswa && currentSiswa.status === 'CALON') {
+    try {
+      await siswaDb.siswaAkademik.deleteMany({
+        where: { siswa_id: siswaId }
+      });
+      console.log(`[AUTO-SYNC] Deleted SiswaAkademik records for reverted student: ${siswaId}`);
+    } catch (e: any) {
+      console.error('[AUTO-SYNC] Failed to clean SiswaAkademik upon revert:', e.message || e);
+    }
+  }
 
   if (currentSiswa && currentSiswa.kelas_id && currentSiswa.tahun_pelajaran_id && currentSiswa.semester_id) {
     try {
