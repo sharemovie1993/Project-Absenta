@@ -46,9 +46,50 @@ export async function generateSessionsForTenantDirect(
     const today = new Date(dateStr);
     const hariEnum = dayIndexToHari[today.getDay()] as Hari;
 
-    // Hari Sabtu dan Minggu tidak menghasilkan sesi presensi KBM otomatis
-    if (hariEnum === 'SABTU' || hariEnum === 'MINGGU') {
-      return { success: true, message: `Hari libur (${hariEnum}), skip pembuatan sesi otomatis.`, count: 0 };
+    // 1.5. Ambil konfigurasi tenant (termasuk hari sekolah)
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { hari_sekolah: true, name: true }
+    });
+
+    if (!tenant) {
+      return { success: false, message: `Tenant ${tenantId} tidak ditemukan.` };
+    }
+
+    // Cek Kejadian Khusus (Bencana/Libur Darurat)
+    const specialEvents = await prisma.absensiKejadianKhusus.findMany({
+      where: { tenant_id: tenantId, tanggal: today }
+    });
+
+    // Jika ada kejadian khusus GLOBAL dengan mode LIBUR, skip seluruh sekolah
+    const globalLibur = specialEvents.find(e => !e.kelas_id && e.mode_kejadian === 'LIBUR');
+    if (globalLibur) {
+      return { success: true, message: `Sekolah diliburkan secara GLOBAL (Kejadian Khusus: ${globalLibur.keterangan}), skip pembuatan sesi.`, count: 0 };
+    }
+
+    // Buat map untuk pengecekan cepat kejadian khusus per kelas
+    const classEventsMap = new Map<string, any>();
+    specialEvents.forEach(e => {
+      if (e.kelas_id) classEventsMap.set(e.kelas_id, e);
+    });
+
+    // Cek Kalender Akademik (Libur Terjadwal)
+    const academicHoliday = await prisma.kalenderAkademik.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tanggal_mulai: { lte: today },
+        tanggal_selesai: { gte: today },
+        jenis: { startsWith: 'LIBUR' }
+      }
+    });
+
+    if (academicHoliday) {
+      return { success: true, message: `Hari libur terjadwal (${academicHoliday.judul}), skip pembuatan sesi otomatis.`, count: 0 };
+    }
+
+    // Cek apakah hari ini adalah hari sekolah bagi tenant ini
+    if (!tenant.hari_sekolah.includes(hariEnum)) {
+      return { success: true, message: `Hari ini (${hariEnum}) bukan hari sekolah untuk ${tenant.name}, skip pembuatan sesi otomatis.`, count: 0 };
     }
 
     // 2. Ambil konteks akademik aktif (Tahun Pelajaran & Semester)
@@ -81,6 +122,45 @@ export async function generateSessionsForTenantDirect(
       return { success: true, message: 'Tidak ada jadwal pelajaran terdaftar untuk hari ini.', count: 0 };
     }
 
+    // Group and merge consecutive slots for the same class + guru + mapel + jenis_kegiatan
+    const grouped: Record<string, typeof schedules> = {};
+    for (const s of schedules) {
+      const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    }
+
+    const mergedSchedules: typeof schedules = [];
+
+    for (const key in grouped) {
+      const slots = grouped[key];
+      // Sort by start time (e.g. "07:00", "07:45")
+      slots.sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+
+      let current = { ...slots[0] };
+      mergedSchedules.push(current);
+
+      for (let i = 1; i < slots.length; i++) {
+        const next = slots[i];
+        
+        // Calculate gap between current.jam_selesai and next.jam_mulai
+        const [currH, currM] = current.jam_selesai.split(':').map(Number);
+        const [nextH, nextM] = next.jam_mulai.split(':').map(Number);
+        
+        const currMins = (currH || 0) * 60 + (currM || 0);
+        const nextMins = (nextH || 0) * 60 + (nextM || 0);
+        const gap = nextMins - currMins;
+
+        // If the gap is 35 minutes or less (covers standard break times), merge them!
+        if (gap <= 35) {
+          current.jam_selesai = next.jam_selesai;
+        } else {
+          current = { ...next };
+          mergedSchedules.push(current);
+        }
+      }
+    }
+
     // Offset timezone lokal
     const TZ_OFFSET: Record<string, number> = {
       'Asia/Jakarta': 7,
@@ -91,7 +171,13 @@ export async function generateSessionsForTenantDirect(
 
     let createdCount = 0;
 
-    for (const schedule of schedules) {
+    for (const schedule of mergedSchedules) {
+      // Cek apakah ada kejadian khusus LIBUR untuk kelas ini
+      const classEvent = classEventsMap.get(schedule.kelas_id);
+      if (classEvent && classEvent.mode_kejadian === 'LIBUR') {
+        continue; // Skip pembuatan sesi untuk kelas ini
+      }
+
       // Kombinasikan string tanggal dan waktu ke Date UTC
       const startMulai = new Date(new Date(`${dateStr}T${schedule.jam_mulai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
       const startSelesai = new Date(new Date(`${dateStr}T${schedule.jam_selesai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
