@@ -121,6 +121,13 @@ export async function getAllSiswaQuery(
           full_name: true,
         },
       },
+      Jurusan: {
+        select: {
+          id: true,
+          nama: true,
+          warna: true,
+        },
+      },
       Kelas: {
         select: {
           id: true,

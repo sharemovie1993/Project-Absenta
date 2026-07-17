@@ -549,7 +549,14 @@ const PpdbMappingPage: React.FC = () => {
                         {isSmkMak && (
                           <td className="py-3 px-4 whitespace-nowrap">
                             {s.Jurusan?.nama ? (
-                              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600">
+                              <span 
+                                className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-55 text-indigo-650"
+                                style={{
+                                  backgroundColor: s.Jurusan.warna ? `${s.Jurusan.warna}15` : undefined,
+                                  color: s.Jurusan.warna || undefined,
+                                  border: s.Jurusan.warna ? `1px solid ${s.Jurusan.warna}30` : undefined
+                                }}
+                              >
                                 {s.Jurusan.nama}
                               </span>
                             ) : (
