@@ -368,10 +368,10 @@ const PpdbMappingPage: React.FC = () => {
                   <span>Tidak ada calon siswa ditemukan.</span>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-max">
                   <thead>
                     <tr className="bg-slate-55 border-b border-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center">
+                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={filteredSiswa.length > 0 && selectedSiswa.length === filteredSiswa.length}
@@ -379,10 +379,11 @@ const PpdbMappingPage: React.FC = () => {
                           className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
                         />
                       </th>
-                      <th className="py-3 px-4">Nama Lengkap</th>
-                      <th className="py-3 px-4">NIS / NISN</th>
-                      {isSmkMak && <th className="py-3 px-4">Jurusan PPDB</th>}
-                      <th className="py-3 px-4">Gender</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Nama Lengkap</th>
+                      <th className="py-3 px-4 whitespace-nowrap">NIS</th>
+                      <th className="py-3 px-4 whitespace-nowrap">NISN</th>
+                      {isSmkMak && <th className="py-3 px-4 whitespace-nowrap">Jurusan PPDB</th>}
+                      <th className="py-3 px-4 whitespace-nowrap">Gender</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
@@ -402,12 +403,11 @@ const PpdbMappingPage: React.FC = () => {
                             className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
                           />
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-900">{s.nama_siswa}</td>
-                        <td className="py-3 px-4 text-slate-500">
-                          {s.nis || '-'}{s.nisn ? ` / ${s.nisn}` : ''}
-                        </td>
+                        <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{s.nama_siswa}</td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.nis || '-'}</td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.nisn || '-'}</td>
                         {isSmkMak && (
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             {s.Jurusan?.nama ? (
                               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600">
                                 {s.Jurusan.nama}
@@ -419,7 +419,7 @@ const PpdbMappingPage: React.FC = () => {
                             )}
                           </td>
                         )}
-                        <td className="py-3 px-4 text-slate-500">{s.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
+                        <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{s.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}</td>
                       </tr>
                     ))}
                   </tbody>
