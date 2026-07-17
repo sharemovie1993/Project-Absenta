@@ -66,7 +66,8 @@ export async function getKelasForDropdown(): Promise<DropdownOption[]> {
     return kelasList.map(kelas => ({
       value: kelas.id,
       label: `${kelas.nama_kelas} - Tingkat ${kelas.tingkat}`,
-      tingkat: kelas.tingkat
+      tingkat: kelas.tingkat,
+      jurusan_id: kelas.jurusan_id
     }));
   } catch (error) {
     console.error('Error fetching kelas for dropdown:', error);

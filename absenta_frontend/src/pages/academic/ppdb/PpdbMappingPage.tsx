@@ -6,7 +6,7 @@ import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdow
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { downloadFileFromBlob, generateStandardFilename } from '../../../utils/file-download.utils';
 import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
@@ -20,6 +20,8 @@ const PpdbMappingPage: React.FC = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const [activeDropTarget, setActiveDropTarget] = useState<string | null>(null);
+  const [draggingIds, setDraggingIds] = useState<string[]>([]);
   
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
@@ -51,11 +53,11 @@ const PpdbMappingPage: React.FC = () => {
 
         setJurusans(jurusanList);
         
-        // Map kelas options
         const mappedKelas = (allKelas as any[]).map(k => ({
           value: k.value,
           label: k.label,
-          jurusan_id: k.jurusan_id || k.Jurusan?.id || null
+          jurusan_id: k.jurusan_id || k.Jurusan?.id || null,
+          tingkat: k.tingkat || null
         }));
         setKelasOptions(mappedKelas);
 
@@ -109,13 +111,79 @@ const PpdbMappingPage: React.FC = () => {
     });
   }, [calonList, selectedJurusan, searchTerm, isSmkMak]);
 
-  // 4. Filter target classes based on selected jurusan
+  // 4. Filter target classes based on selected jurusan & tingkat 10
   const filteredKelasOptions = useMemo(() => {
-    if (!isSmkMak || selectedJurusan === 'all' || selectedJurusan === 'none') {
-      return kelasOptions;
+    let result = kelasOptions;
+    
+    // Filter by tingkat 10
+    result = result.filter(k => k.tingkat === 10);
+
+    if (!isSmkMak || selectedJurusan === 'all') {
+      return result;
     }
-    return kelasOptions.filter(k => k.jurusan_id === selectedJurusan);
+    if (selectedJurusan === 'none') {
+      return result.filter(k => !k.jurusan_id);
+    }
+    return result.filter(k => k.jurusan_id === selectedJurusan);
   }, [kelasOptions, selectedJurusan, isSmkMak]);
+
+  // HTML5 Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, studentId: string) => {
+    // If the student is already checked, drag all checked students.
+    // If not checked, select it and drag it alone.
+    let targets = [...selectedSiswa];
+    if (!targets.includes(studentId)) {
+      targets = [studentId];
+      setSelectedSiswa([studentId]);
+    }
+    e.dataTransfer.setData('text/plain', JSON.stringify(targets));
+    setDraggingIds(targets);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggingIds([]);
+    setActiveDropTarget(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (kelasId: string) => {
+    setActiveDropTarget(kelasId);
+  };
+
+  const handleDragLeave = () => {
+    setActiveDropTarget(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, kelasId: string) => {
+    e.preventDefault();
+    setActiveDropTarget(null);
+    try {
+      const dataStr = e.dataTransfer.getData('text/plain');
+      if (!dataStr) return;
+      const studentIds = JSON.parse(dataStr) as string[];
+      if (studentIds.length === 0) return;
+
+      setSubmitLoading(true);
+      const res = await mapPpdbStudents(studentIds, kelasId);
+      if (res.success) {
+        toast.success(`Berhasil memetakan ${studentIds.length} siswa ke rombel!`);
+        setSelectedSiswa([]);
+        await fetchCalonStudents();
+      } else {
+        toast.error(res.message || 'Gagal memetakan siswa');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal memetakan siswa');
+    } finally {
+      setSubmitLoading(false);
+      setDraggingIds([]);
+    }
+  };
 
   // Handle select all checkbox
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,11 +320,11 @@ const PpdbMappingPage: React.FC = () => {
         { label: 'Pemetaan PPDB', path: '/academic/ppdb-mapping' }
       ]}
     >
-      <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Full-width container for student table */}
-        <div className="space-y-6">
-          <SectionCard title="Daftar Calon Siswa">
+        {/* Left Side: Filter and Student Table List */}
+        <div className="lg:col-span-2 space-y-6">
+          <SectionCard title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)">
             
             {/* PPDB Action Buttons */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
@@ -371,7 +439,7 @@ const PpdbMappingPage: React.FC = () => {
                 <table className="w-full text-left border-collapse min-w-max">
                   <thead>
                     <tr className="bg-slate-55 border-b border-slate-100 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                      <th className="py-3 px-4 w-12 text-center whitespace-nowrap">
+                      <th className="py-3 px-4 w-16 text-center whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={filteredSiswa.length > 0 && selectedSiswa.length === filteredSiswa.length}
@@ -390,12 +458,18 @@ const PpdbMappingPage: React.FC = () => {
                     {filteredSiswa.map(s => (
                       <tr 
                         key={s.id}
-                        className={`hover:bg-slate-50/70 transition-colors duration-150 cursor-pointer ${
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, s.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`hover:bg-slate-50/70 transition-colors duration-150 cursor-grab active:cursor-grabbing ${
                           selectedSiswa.includes(s.id) ? 'bg-indigo-50/30' : ''
                         }`}
                         onClick={() => handleSelectStudent(s.id, !selectedSiswa.includes(s.id))}
                       >
-                        <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
+                        <td className="py-3 px-4 text-center flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
+                          <div className="text-slate-350 cursor-grab hover:text-slate-500 mr-0.5">
+                            <GripVertical size={14} />
+                          </div>
                           <input
                             type="checkbox"
                             checked={selectedSiswa.includes(s.id)}
@@ -431,6 +505,77 @@ const PpdbMappingPage: React.FC = () => {
               Menampilkan {filteredSiswa.length} dari {calonList.length} total calon siswa.
             </div>
 
+          </SectionCard>
+        </div>
+
+        {/* Right Column: Rombel / Kelas drop targets */}
+        <div className="space-y-6">
+          <SectionCard 
+            title="Daftar Rombel / Kelas (Tingkat 10)" 
+            subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Semua kelas tingkat 10"}
+          >
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
+              {filteredKelasOptions.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 bg-slate-50/20">
+                  <AlertCircle size={20} className="text-slate-300" />
+                  <span className="text-xs">Tidak ada kelas tingkat 10 yang cocok.</span>
+                </div>
+              ) : (
+                filteredKelasOptions.map(k => {
+                  const isOver = activeDropTarget === k.value;
+                  const isDragging = draggingIds.length > 0;
+                  const matchedJurusan = jurusans.find(j => j.value === k.jurusan_id);
+                  
+                  return (
+                    <div
+                      key={k.value}
+                      onDragOver={handleDragOver}
+                      onDragEnter={() => handleDragEnter(k.value)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, k.value)}
+                      className={`relative border rounded-xl p-4 transition-all duration-200 flex flex-col gap-2 cursor-default ${
+                        isOver
+                          ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02] shadow-md shadow-indigo-500/10'
+                          : isDragging
+                          ? 'border-dashed border-indigo-300 bg-indigo-50/10 animate-pulse'
+                          : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold text-slate-900 text-sm sm:text-base">
+                          {k.label.split(' - ')[0]}
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                          Tingkat 10
+                        </span>
+                      </div>
+
+                      {matchedJurusan ? (
+                        <div className="text-xs text-slate-500">
+                          Jurusan: <span className="font-medium text-slate-700">{matchedJurusan.label}</span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-400 italic">
+                          Umum / Tanpa Jurusan
+                        </div>
+                      )}
+
+                      {/* Drop Visual Helper */}
+                      {isDragging && (
+                        <div className={`mt-2 py-2 border border-dashed rounded-lg flex items-center justify-center gap-1.5 text-xs transition-colors ${
+                          isOver 
+                            ? 'border-indigo-400 bg-indigo-100 text-indigo-700 font-medium' 
+                            : 'border-slate-200 text-slate-400'
+                        }`}>
+                          <GraduationCap size={14} className={isOver ? 'animate-bounce' : ''} />
+                          <span>{isOver ? 'Lepas untuk memetakan!' : 'Drop di sini'}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </SectionCard>
         </div>
 
