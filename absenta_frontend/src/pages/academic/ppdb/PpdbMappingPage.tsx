@@ -348,6 +348,16 @@ const PpdbMappingPage: React.FC = () => {
                   <FileSpreadsheet size={13} />
                   <span>Impor Excel PPDB</span>
                 </Button>
+                {selectedSiswa.length > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => setMappingModalOpen(true)}
+                    className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15 animate-in fade-in zoom-in duration-200"
+                  >
+                    <UserCheck size={13} />
+                    <span>Petakan ({selectedSiswa.length} Siswa)</span>
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -394,33 +404,6 @@ const PpdbMappingPage: React.FC = () => {
                 Refresh
               </Button>
             </div>
-
-            {/* Selected Action Bar */}
-            {selectedSiswa.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-indigo-50/80 border border-indigo-100 rounded-xl p-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="text-sm font-semibold text-indigo-900">
-                  {selectedSiswa.length} calon siswa dipilih untuk pemetaan rombel
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedSiswa([])}
-                    className="flex-1 sm:flex-initial text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-100/50"
-                  >
-                    Batal Pilih
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setMappingModalOpen(true)}
-                    className="flex-1 sm:flex-initial text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1.5 border-none"
-                  >
-                    <UserCheck size={13} />
-                    <span>Petakan ke Kelas</span>
-                  </Button>
-                </div>
-              </div>
-            )}
 
             {/* Students Table */}
             <div className="overflow-x-auto border border-slate-100 rounded-xl">
