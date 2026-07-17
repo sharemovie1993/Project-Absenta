@@ -114,6 +114,28 @@ prisma.$use(async (params, next) => {
   return next(params);
 });
 
+// Default sorting A-Z / Jenjang for list actions
+prisma.$use(async (params, next) => {
+  const sortingFields: Record<string, any> = {
+    Siswa: { nama_siswa: 'asc' },
+    Guru: { nama_guru: 'asc' },
+    Kelas: [
+      { tingkat: 'asc' },
+      { nama_kelas: 'asc' }
+    ],
+    Jurusan: { nama: 'asc' }
+  };
+
+  if (params.action === 'findMany' && params.model && sortingFields[params.model]) {
+    params.args = params.args || {};
+    if (!params.args.orderBy) {
+      params.args.orderBy = sortingFields[params.model];
+    }
+  }
+
+  return next(params);
+});
+
 if (slowQueryMs) {
   (prisma as any).$on('query' as any, (e: any) => {
     if (typeof e?.duration === 'number' && e.duration >= slowQueryMs) {
