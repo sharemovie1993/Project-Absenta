@@ -178,8 +178,16 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'NISN', key: 'nisn', width: 15, required: false },
         { header: 'NIK', key: 'nik', width: 20, required: false },
         { header: 'Jenis Kelamin (L/P)', key: 'jenis_kelamin', width: 18, required: false, dropdown: { refKey: 'jk' } },
+        { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20, required: false },
+        { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25, required: false },
+        { header: 'Alamat', key: 'alamat', width: 35, required: false },
+        { header: 'No. HP', key: 'no_hp', width: 15, required: false },
+        { header: 'Email', key: 'email', width: 25, required: false },
+        { header: 'Nama Ayah', key: 'nama_ayah', width: 25, required: false },
+        { header: 'Nama Ibu', key: 'nama_ibu', width: 25, required: false },
         ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
-        { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } }
+        { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } },
+        { header: 'No. RFID', key: 'no_rfid', width: 15, required: false }
       ];
 
       await generateAdvancedTemplate(
