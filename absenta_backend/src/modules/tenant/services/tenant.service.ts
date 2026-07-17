@@ -283,6 +283,7 @@ export class TenantService {
       jam_masuk_default: tenant.jam_masuk_default,
       jam_pulang_default: tenant.jam_pulang_default,
       toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit,
+      hari_sekolah: tenant.hari_sekolah,
       deletion_requested_at: tenant.deletion_requested_at,
       
       // Inject these custom configs!
