@@ -432,6 +432,10 @@ const PpdbMappingPage: React.FC = () => {
                 )}
               </div>
             }
+            {...{
+              toolbarLeft: null,
+              toolbarRight: null
+            }}
           >
             
             {/* Filter toolbar */}
