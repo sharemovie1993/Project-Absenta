@@ -488,7 +488,10 @@ export const renderKurikulumRosterPdf = (
 
         // Resolve display text
         const act = getActivityInfo(item.jenis_kegiatan);
-        const isKbm = !item.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
+        const isKbm = 
+          !item.jenis_kegiatan || 
+          String(item.jenis_kegiatan).toUpperCase() === 'KBM' || 
+          (act && act.tipe?.toUpperCase() === 'KBM');
         const subjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
 
         let cellText = '';
