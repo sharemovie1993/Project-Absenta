@@ -1,23 +1,52 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { Button, SectionCard, Modal } from '../../../components/ui';
-import { getSiswaList, mapPpdbStudents, downloadSiswaImportTemplate, importSiswaFromExcel } from '../../../api/academic/siswa.api';
+import { getSiswaList, mapPpdbStudents, importSiswaFromExcel } from '../../../api/academic/siswa.api';
 import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdown.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical } from 'lucide-react';
+import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { downloadFileFromBlob, generateStandardFilename } from '../../../utils/file-download.utils';
-import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
+import { generateStandardFilename } from '../../../utils/file-download.utils';
+import { generateImportTemplate } from '../../../utils/export.utils';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 
 const ExcelImportModal = lazy(() => import('../../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const Loader = lazy(() => import('../../../components/ui/Loader').then(module => ({ default: module.Loader })));
+
+interface ProfileResponse {
+  success: boolean;
+  data?: {
+    jenjang?: string;
+  };
+  jenjang?: string;
+}
+
+interface DropdownOption {
+  value: string;
+  label: string;
+  jurusan_id?: string | null;
+  tingkat?: number | null;
+  siswa_count?: number;
+  Jurusan?: {
+    id: string;
+    nama?: string;
+  };
+}
+
+// Zod Schema Validation Guard for Student-to-Class Mapping
+const mappingSchema = z.object({
+  siswaIds: z.array(z.string().uuid('ID siswa tidak valid')).min(1, 'Pilih minimal satu siswa untuk dipetakan'),
+  kelasId: z.string().uuid('Pilih kelas tujuan yang valid')
+});
 
 const PpdbMappingPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [activeDropTarget, setActiveDropTarget] = useState<string | null>(null);
@@ -36,7 +65,7 @@ const PpdbMappingPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // 1. Fetch metadata (Sekolah, Jurusan, Kelas)
-  const fetchMetadata = async () => {
+  const fetchMetadata = useCallback(async () => {
     try {
       const [sekolahRes, jurusanList, allKelas] = await Promise.all([
         sekolahApi.getProfile(),
@@ -44,14 +73,14 @@ const PpdbMappingPage: React.FC = () => {
         getKelasForDropdown()
       ]);
 
-      const rawSekolah = (sekolahRes as any)?.data || sekolahRes;
+      const rawSekolah = (sekolahRes as ProfileResponse)?.data || sekolahRes;
       const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
-      const smk = ['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as any[]).length > 0);
+      const smk = ['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as DropdownOption[]).length > 0);
       setIsSmkMak(smk);
 
-      setJurusans(jurusanList);
+      setJurusans(jurusanList as DropdownOption[]);
       
-      const mappedKelas = (allKelas as any[]).map(k => ({
+      const mappedKelas = (allKelas as DropdownOption[])?.map(k => ({
         value: k.value,
         label: k.label,
         jurusan_id: k.jurusan_id || k.Jurusan?.id || null,
@@ -64,17 +93,16 @@ const PpdbMappingPage: React.FC = () => {
       console.error('Failed to load metadata:', err);
       toast.error('Gagal memuat data referensi');
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchMetadata();
-  }, []);
+  }, [fetchMetadata]);
 
   // 2. Fetch CALON students
-  const fetchCalonStudents = async () => {
+  const fetchCalonStudents = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch maximum 1000 calon students for bulk mapping
       const res = await getSiswaList(1, 1000, '', '', 'CALON');
       setCalonList(res.data || []);
     } catch (err) {
@@ -83,11 +111,11 @@ const PpdbMappingPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCalonStudents();
-  }, []);
+  }, [fetchCalonStudents]);
 
   // 3. Filter students based on selected jurusan & search term
   const filteredSiswa = useMemo(() => {
@@ -125,10 +153,18 @@ const PpdbMappingPage: React.FC = () => {
     return result.filter(k => k.jurusan_id === selectedJurusan);
   }, [kelasOptions, selectedJurusan, isSmkMak]);
 
+  // Dropdown options formatted dynamically with counts
+  const jurusanOptions = useMemo(() => [
+    { label: `Semua Jurusan (${calonList?.length || 0})`, value: 'all' },
+    ...(jurusans?.map(j => ({
+      label: `${j.label} (${calonList?.filter(s => s.jurusan_id === j.value)?.length || 0})`,
+      value: j.value
+    })) || []),
+    { label: `Tanpa Jurusan (Belum diisi) (${calonList?.filter(s => !s.jurusan_id)?.length || 0})`, value: 'none' }
+  ], [jurusans, calonList]);
+
   // HTML5 Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent, studentId: string) => {
-    // If the student is already checked, drag all checked students.
-    // If not checked, select it and drag it alone.
+  const handleDragStart = useCallback((e: React.DragEvent, studentId: string) => {
     let targets = [...selectedSiswa];
     if (!targets.includes(studentId)) {
       targets = [studentId];
@@ -137,27 +173,27 @@ const PpdbMappingPage: React.FC = () => {
     e.dataTransfer.setData('text/plain', JSON.stringify(targets));
     setDraggingIds(targets);
     e.dataTransfer.effectAllowed = 'move';
-  };
+  }, [selectedSiswa]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggingIds([]);
     setActiveDropTarget(null);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
+  }, []);
 
-  const handleDragEnter = (kelasId: string) => {
+  const handleDragEnter = useCallback((kelasId: string) => {
     setActiveDropTarget(kelasId);
-  };
+  }, []);
 
-  const handleDragLeave = () => {
+  const handleDragLeave = useCallback(() => {
     setActiveDropTarget(null);
-  };
+  }, []);
 
-  const handleDrop = async (e: React.DragEvent, kelasId: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, kelasId: string) => {
     e.preventDefault();
     setActiveDropTarget(null);
     try {
@@ -171,45 +207,46 @@ const PpdbMappingPage: React.FC = () => {
       if (res.success) {
         toast.success(`Berhasil memetakan ${studentIds.length} siswa ke rombel!`);
         setSelectedSiswa([]);
-        // Refresh list and metadata
         await Promise.all([fetchCalonStudents(), fetchMetadata()]);
       } else {
         toast.error(res.message || 'Gagal memetakan siswa');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memetakan siswa');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memetakan siswa';
+      toast.error(msg);
     } finally {
       setSubmitLoading(false);
       setDraggingIds([]);
     }
-  };
+  }, [fetchCalonStudents, fetchMetadata]);
 
   // Handle select all checkbox
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedSiswa(filteredSiswa.map(s => s.id));
+      setSelectedSiswa(filteredSiswa?.map(s => s.id) || []);
     } else {
       setSelectedSiswa([]);
     }
-  };
+  }, [filteredSiswa]);
 
   // Handle single student checkbox selection
-  const handleSelectStudent = (siswaId: string, checked: boolean) => {
+  const handleSelectStudent = useCallback((siswaId: string, checked: boolean) => {
     if (checked) {
       setSelectedSiswa(prev => [...prev, siswaId]);
     } else {
       setSelectedSiswa(prev => prev.filter(id => id !== siswaId));
     }
-  };
+  }, []);
 
-  // Perform bulk mapping submit
-  const handleMapStudents = async () => {
-    if (selectedSiswa.length === 0) {
-      toast.error('Pilih minimal satu siswa untuk dipetakan');
-      return;
-    }
-    if (!targetKelasId) {
-      toast.error('Pilih kelas tujuan');
+  // Perform bulk mapping submit protected by Zod Validation Guard
+  const handleMapStudents = useCallback(async () => {
+    const validation = mappingSchema.safeParse({
+      siswaIds: selectedSiswa,
+      kelasId: targetKelasId
+    });
+
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
@@ -221,92 +258,114 @@ const PpdbMappingPage: React.FC = () => {
         setSelectedSiswa([]);
         setTargetKelasId('');
         setMappingModalOpen(false);
-        // Refresh list and metadata
         await Promise.all([fetchCalonStudents(), fetchMetadata()]);
       } else {
         toast.error(res.message || 'Gagal memetakan siswa');
       }
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal memetakan siswa');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memetakan siswa';
+      toast.error(msg);
     } finally {
       setSubmitLoading(false);
     }
-  };
+  }, [selectedSiswa, targetKelasId, fetchCalonStudents, fetchMetadata]);
 
-  const handleOpenImport = () => setImportOpen(true);
-  const handleCloseImport = () => setImportOpen(false);
+  const handleOpenImport = useCallback(() => setImportOpen(true), []);
+  const handleCloseImport = useCallback(() => setImportOpen(false), []);
 
-  const handleTemplateDownload = async () => {
+  const handleTemplateDownload = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       toast('Menyiapkan template...');
-      const jurusanNames = jurusans.map(j => String(j.label)).filter(Boolean);
+      const jurusanNames = jurusans?.map(j => String(j.label)).filter(Boolean) || [];
 
       const columns = [
-        { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
-        ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
-        { header: 'NIS', key: 'nis', width: 15, required: false },
-        { header: 'NISN', key: 'nisn', width: 15, required: false },
-        { header: 'NIK', key: 'nik', width: 20, required: false },
-        { header: 'Jenis Kelamin (L/P)', key: 'jenis_kelamin', width: 18, required: false, dropdown: { refKey: 'jk' } },
-        { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20, required: false },
-        { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25, required: false },
-        { header: 'Alamat', key: 'alamat', width: 35, required: false },
-        { header: 'No. HP', key: 'no_hp', width: 15, required: false },
-        { header: 'Email', key: 'email', width: 25, required: false },
-        { header: 'Nama Ayah', key: 'nama_ayah', width: 25, required: false },
-        { header: 'Nama Ibu', key: 'nama_ibu', width: 25, required: false },
-        { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } },
-        { header: 'No. RFID', key: 'no_rfid', width: 15, required: false },
-        { header: 'Sekolah Asal', key: 'sekolah_asal', width: 25, required: false },
-        { header: 'No. Seri Ijazah SMP', key: 'no_ijazah_smp', width: 25, required: false }
+        { header: 'Nama Lengkap', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nama_siswa), width: 30, required: true },
+        ...(isSmkMak ? [{ header: 'Jurusan', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.jurusan), width: 25, required: true }] : []),
+        { header: 'NIS', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nis), width: 15, required: false },
+        { header: 'NISN', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nisn), width: 15, required: false },
+        { header: 'NIK', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nik), width: 20, required: false },
+        { header: 'Jenis Kelamin (L/P)', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.jenis_kelamin), width: 18, required: false },
+        { header: 'Tempat Lahir', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.tempat_lahir), width: 20, required: false },
+        { header: 'Tanggal Lahir (YYYY-MM-DD)', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.tanggal_lahir), width: 25, required: false },
+        { header: 'Alamat', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.alamat), width: 35, required: false },
+        { header: 'No. HP', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.no_hp), width: 15, required: false },
+        { header: 'Email', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.email), width: 25, required: false },
+        { header: 'Nama Ayah', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nama_ayah), width: 25, required: false },
+        { header: 'Nama Ibu', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.nama_ibu), width: 25, required: false },
+        { header: 'Status', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.status), width: 15, required: false },
+        { header: 'No. RFID', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.no_rfid), width: 15, required: false },
+        { header: 'Sekolah Asal', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.sekolah_asal), width: 25, required: false },
+        { header: 'No. Seri Ijazah SMP', accessor: (row: Record<string, string | number | boolean | null | undefined>) => String(row.no_ijazah_smp), width: 25, required: false }
       ];
 
-      await generateAdvancedTemplate(
-        columns,
+      const sampleData = [
         {
-          fileName: generateStandardFilename('template_import_siswa_ppdb', 'xlsx'),
-          instructions: [
-            'Kolom BERWARNA EMAS wajib diisi.',
-            isSmkMak 
-              ? 'Isi kolom JURUSAN (wajib bagi SMK) dan set status ke CALON.' 
-              : 'Set status ke CALON.',
-            'JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.',
-            'Format Tanggal Lahir (jika diisi): YYYY-MM-DD (Contoh: 2010-06-12).'
-          ],
-          referenceData: {
-            jurusan: jurusanNames,
-            jk: ['L', 'P'],
-            status: ['CALON', 'AKTIF']
-          }
+          nama_siswa: 'Budi Santoso',
+          jurusan: jurusanNames[0] || 'Teknik Otomasi Industri',
+          nis: '242510001',
+          nisn: '0081234567',
+          nik: '3201020304050001',
+          jenis_kelamin: 'L',
+          tempat_lahir: 'Bandung',
+          tanggal_lahir: '2010-05-15',
+          alamat: 'Jl. Merdeka No. 10',
+          no_hp: '081234567890',
+          email: 'budi@example.com',
+          nama_ayah: 'Agus Santoso',
+          nama_ibu: 'Siti Rahma',
+          status: 'CALON',
+          no_rfid: 'RF000123',
+          sekolah_asal: 'SMPN 1 Bandung',
+          no_ijazah_smp: 'DN-01/D-SMP/21/0000001'
         }
-      );
-      toast.success('Template cerdas berhasil diunduh.');
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal mengunduh template');
-    }
-  };
+      ];
 
-  const handleImportSiswa = async (file: File, onProgress: (p: number) => void, socketId?: string) => {
+      const filename = generateStandardFilename('template_import_siswa_ppdb', 'xlsx').replace('.xlsx', '');
+      const instructionText = `Kolom BERWARNA EMAS wajib diisi. ${
+        isSmkMak 
+          ? 'Isi kolom JURUSAN (wajib bagi SMK) dan set status ke CALON.' 
+          : 'Set status ke CALON.'
+      } JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan. Format Tanggal Lahir (jika diisi): YYYY-MM-DD (Contoh: 2010-06-12).`;
+
+      generateImportTemplate(
+        columns,
+        sampleData,
+        filename,
+        instructionText
+      );
+
+      toast.success('Template cerdas berhasil diunduh.');
+    } catch (err: unknown) {
+      console.error(err);
+      const msg = err instanceof Error ? err.message : 'Gagal mengunduh template';
+      toast.error(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isSmkMak, jurusans, isExporting]);
+
+  const handleImportSiswa = useCallback(async (file: File, onProgress: (p: number) => void, socketId?: string) => {
     return importSiswaFromExcel(file, onProgress, socketId, { status: 'CALON' });
-  };
+  }, []);
 
   const pageStats = useMemo(() => [
     {
       title: "Siswa PPDB (Calon)",
-      value: calonList.length,
+      value: calonList?.length || 0,
       icon: <GraduationCap size={14} />,
       gradient: "from-amber-500 to-orange-600",
       subtitle: "Menunggu pemetaan kelas"
     },
     {
       title: "Siswa Terpilih",
-      value: selectedSiswa.length,
+      value: selectedSiswa?.length || 0,
       icon: <UserCheck size={14} />,
       gradient: "from-blue-500 to-indigo-600",
       subtitle: "Akan dipetakan ke rombel"
     }
-  ], [calonList.length, selectedSiswa.length]);
+  ], [calonList?.length, selectedSiswa?.length]);
 
   return (
     <AcademicPageLayout
@@ -314,6 +373,18 @@ const PpdbMappingPage: React.FC = () => {
       subtitle="Petakan siswa baru hasil PPDB ke rombel (kelas) secara massal"
       stats={pageStats}
       hardeningModuleKey="academic_ppdb_mapping"
+      instruction={{
+        title: "Panduan Pemetaan PPDB",
+        description: (
+          <div className="space-y-2">
+            <p>Pilih calon siswa di tabel sebelah kiri dan seret ke kelas target di kanan, atau gunakan tombol wizard.</p>
+          </div>
+        ),
+        items: [
+          { text: "Pilih calon siswa di tabel sebelah kiri." },
+          { text: "Seret ke kelas target di kanan, atau gunakan tombol wizard." }
+        ]
+      }}
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
         { label: 'Siswa', path: '/academic/siswa' },
@@ -324,18 +395,15 @@ const PpdbMappingPage: React.FC = () => {
         
         {/* Left Side: Filter and Student Table List */}
         <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)">
-            
-            {/* PPDB Action Buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
-              <div className="text-sm font-medium text-slate-600">
-                Penerimaan & Impor Calon Siswa
-              </div>
+          <SectionCard 
+            title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)"
+            actions={
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleTemplateDownload}
+                  disabled={isExporting}
                   className="flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 transition-colors"
                 >
                   <Download size={13} />
@@ -344,24 +412,26 @@ const PpdbMappingPage: React.FC = () => {
                 <Button
                   size="sm"
                   onClick={handleOpenImport}
+                  disabled={loading}
                   className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-md shadow-emerald-500/15"
                 >
                   <FileSpreadsheet size={13} />
                   <span>Impor Excel PPDB</span>
                 </Button>
-                {selectedSiswa.length > 0 && (
+                {selectedSiswa?.length > 0 && (
                   <Button
                     size="sm"
                     onClick={() => setMappingModalOpen(true)}
                     className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15 animate-in fade-in zoom-in duration-200"
                   >
                     <UserCheck size={13} />
-                    <span>Petakan ({selectedSiswa.length} Siswa)</span>
+                    <span>Petakan ({selectedSiswa?.length} Siswa)</span>
                   </Button>
                 )}
               </div>
-            </div>
-
+            }
+          >
+            
             {/* Filter toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div className="relative flex-1">
@@ -371,34 +441,23 @@ const PpdbMappingPage: React.FC = () => {
                   placeholder="Cari nama atau NIS calon siswa..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
+                  aria-label="Cari nama atau NIS calon siswa"
                   className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 outline-none"
                 />
               </div>
 
               {isSmkMak && (
-                <div className="w-full md:w-64">
-                  <select
-                    value={selectedJurusan}
-                    onChange={e => {
-                      setSelectedJurusan(e.target.value);
-                      setSelectedSiswa([]);
-                    }}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                  >
-                    <option value="all">Semua Jurusan ({calonList.length})</option>
-                    {jurusans.map(j => {
-                      const count = calonList.filter(s => s.jurusan_id === j.value).length;
-                      return (
-                        <option key={j.value} value={j.value}>
-                          {j.label} ({count})
-                        </option>
-                      );
-                    })}
-                    <option value="none">
-                      Tanpa Jurusan (Belum diisi) ({calonList.filter(s => !s.jurusan_id).length})
-                    </option>
-                  </select>
-                </div>
+                <SearchableSelect
+                  value={selectedJurusan}
+                  onValueChange={(val) => {
+                    setSelectedJurusan(val);
+                    setSelectedSiswa([]);
+                  }}
+                  options={jurusanOptions}
+                  placeholder="Filter Jurusan..."
+                  disabled={loading}
+                  className="w-full md:w-64"
+                />
               )}
 
               <Button
@@ -420,7 +479,7 @@ const PpdbMappingPage: React.FC = () => {
                   <RefreshCw size={24} className="animate-spin text-indigo-600" />
                   <span>Memuat data calon siswa...</span>
                 </div>
-              ) : filteredSiswa.length === 0 ? (
+              ) : filteredSiswa?.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 flex flex-col items-center justify-center gap-2">
                   <AlertCircle size={24} className="text-slate-300" />
                   <span>Tidak ada calon siswa ditemukan.</span>
@@ -432,8 +491,9 @@ const PpdbMappingPage: React.FC = () => {
                       <th className="py-3 px-4 w-16 text-center whitespace-nowrap">
                         <input
                           type="checkbox"
-                          checked={filteredSiswa.length > 0 && selectedSiswa.length === filteredSiswa.length}
+                          checked={filteredSiswa?.length > 0 && selectedSiswa?.length === filteredSiswa?.length}
                           onChange={handleSelectAll}
+                          aria-label="Pilih semua calon siswa"
                           className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
                         />
                       </th>
@@ -442,16 +502,16 @@ const PpdbMappingPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 text-sm text-slate-700">
-                    {filteredSiswa.map(s => (
+                    {filteredSiswa?.map(s => (
                       <tr 
                         key={s.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, s.id)}
                         onDragEnd={handleDragEnd}
                         className={`hover:bg-slate-50/70 transition-colors duration-150 cursor-grab active:cursor-grabbing ${
-                          selectedSiswa.includes(s.id) ? 'bg-indigo-50/30' : ''
+                          selectedSiswa?.includes(s.id) ? 'bg-indigo-50/30' : ''
                         }`}
-                        onClick={() => handleSelectStudent(s.id, !selectedSiswa.includes(s.id))}
+                        onClick={() => handleSelectStudent(s.id, !selectedSiswa?.includes(s.id))}
                       >
                         <td className="py-3 px-4 text-center flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
                           <div className="text-slate-350 cursor-grab hover:text-slate-500 mr-0.5">
@@ -459,8 +519,9 @@ const PpdbMappingPage: React.FC = () => {
                           </div>
                           <input
                             type="checkbox"
-                            checked={selectedSiswa.includes(s.id)}
+                            checked={selectedSiswa?.includes(s.id)}
                             onChange={e => handleSelectStudent(s.id, e.target.checked)}
+                            aria-label={`Pilih ${s.nama_siswa}`}
                             className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
                           />
                         </td>
@@ -486,7 +547,7 @@ const PpdbMappingPage: React.FC = () => {
             </div>
             
             <div className="mt-4 text-xs text-slate-400">
-              Menampilkan {filteredSiswa.length} dari {calonList.length} total calon siswa.
+              Menampilkan {filteredSiswa?.length || 0} dari {calonList?.length || 0} total calon siswa.
             </div>
 
           </SectionCard>
@@ -499,16 +560,15 @@ const PpdbMappingPage: React.FC = () => {
             subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Semua kelas tingkat 10"}
           >
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
-              {filteredKelasOptions.length === 0 ? (
+              {filteredKelasOptions?.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 bg-slate-50/20">
                   <AlertCircle size={20} className="text-slate-300" />
                   <span className="text-xs">Tidak ada kelas tingkat 10 yang cocok.</span>
                 </div>
               ) : (
-                filteredKelasOptions.map(k => {
+                filteredKelasOptions?.map(k => {
                   const isOver = activeDropTarget === k.value;
-                  const isDragging = draggingIds.length > 0;
-                  const matchedJurusan = jurusans.find(j => j.value === k.jurusan_id);
+                  const isDragging = draggingIds?.length > 0;
                   
                   return (
                     <div
@@ -527,7 +587,7 @@ const PpdbMappingPage: React.FC = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="font-semibold text-slate-900 text-sm sm:text-base">
-                          {k.label.split(' - ')[0]}
+                          {k.label?.split(' - ')[0]}
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100">
                           Tingkat 10
@@ -576,37 +636,38 @@ const PpdbMappingPage: React.FC = () => {
               <span>Informasi Pemetaan</span>
             </div>
             <p>
-              Sebanyak <strong>{selectedSiswa.length} siswa</strong> yang terpilih akan dipindahkan statusnya menjadi <strong>AKTIF</strong>, dikaitkan ke kelas tujuan, dan didaftarkan ke semester/tahun pelajaran aktif secara otomatis.
+              Sebanyak <strong>{selectedSiswa?.length} siswa</strong> yang terpilih akan dipindahkan statusnya menjadi <strong>AKTIF</strong>, dikaitkan ke kelas tujuan, dan didaftarkan ke semester/tahun pelajaran aktif secara otomatis.
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <label htmlFor="target-kelas-select" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                 Pilih Kelas Tujuan
               </label>
-              <select
+              <SearchableSelect
+                id="target-kelas-select"
                 value={targetKelasId}
-                onChange={e => setTargetKelasId(e.target.value)}
+                onValueChange={(val) => setTargetKelasId(val)}
+                options={filteredKelasOptions?.map(k => ({
+                  label: k.label,
+                  value: k.value
+                })) || []}
+                placeholder="-- Pilih Kelas Target --"
                 disabled={submitLoading}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all disabled:bg-slate-50"
-              >
-                <option value="">-- Pilih Kelas Target --</option>
-                {filteredKelasOptions.map(k => (
-                  <option key={k.value} value={k.value}>{k.label}</option>
-                ))}
-              </select>
+                className="w-full"
+              />
             </div>
 
             {/* Selected Students Scrollable List */}
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                Daftar Siswa yang Akan Dipetakan ({selectedSiswa.length})
+                Daftar Siswa yang Akan Dipetakan ({selectedSiswa?.length || 0})
               </label>
               <div className="max-h-40 overflow-y-auto border border-slate-100 rounded-lg p-2 divide-y divide-slate-50 bg-slate-50/30 scrollbar-thin">
                 {calonList
-                  .filter(s => selectedSiswa.includes(s.id))
-                  .map(s => (
+                  ?.filter(s => selectedSiswa?.includes(s.id))
+                  ?.map(s => (
                     <div key={s.id} className="py-1.5 px-2 text-xs font-medium text-slate-700 flex justify-between">
                       <span>{s.nama_siswa}</span>
                       <span className="text-[10px] text-slate-400 font-mono">
