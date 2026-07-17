@@ -142,4 +142,92 @@ export class KalenderAkademikController {
       return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal menghapus event kalender.' });
     }
   }
+
+  // GET /kurikulum/kalender/presets
+  static async getPresets(request: any, reply: any) {
+    try {
+      const { jenjang } = request.query as { jenjang?: string };
+      const where: any = {};
+      
+      if (jenjang) {
+        where.OR = [
+          { jenjang: 'ALL' },
+          { jenjang: jenjang.toUpperCase() }
+        ];
+      }
+
+      const presets = await prisma.globalCalendarPreset.findMany({
+        where,
+        orderBy: { judul: 'asc' }
+      });
+      return reply.send({ data: presets });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal mengambil data preset kalender.' });
+    }
+  }
+
+  // POST /kurikulum/kalender/presets (Superadmin only)
+  static async createPreset(request: any, reply: any) {
+    try {
+      const body = request.body as any;
+      if (!body.judul || !body.jenis) {
+        return reply.status(400).send({ error: 'BAD_REQUEST', message: 'Judul dan Jenis preset wajib diisi.' });
+      }
+
+      const preset = await prisma.globalCalendarPreset.create({
+        data: {
+          jenjang: body.jenjang ? body.jenjang.toUpperCase() : 'ALL',
+          judul: body.judul,
+          jenis: body.jenis,
+          keterangan: body.keterangan ?? null
+        }
+      });
+      return reply.status(201).send({ data: preset, message: 'Preset kalender berhasil ditambahkan.' });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal menambahkan preset kalender.' });
+    }
+  }
+
+  // PUT /kurikulum/kalender/presets/:id (Superadmin only)
+  static async updatePreset(request: any, reply: any) {
+    try {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+
+      const existing = await prisma.globalCalendarPreset.findUnique({ where: { id } });
+      if (!existing) return reply.status(404).send({ error: 'NOT_FOUND', message: 'Preset tidak ditemukan.' });
+
+      const updated = await prisma.globalCalendarPreset.update({
+        where: { id },
+        data: {
+          jenjang: body.jenjang ? body.jenjang.toUpperCase() : existing.jenjang,
+          judul: body.judul ?? existing.judul,
+          jenis: body.jenis ?? existing.jenis,
+          keterangan: body.keterangan !== undefined ? body.keterangan : existing.keterangan
+        }
+      });
+      return reply.send({ data: updated, message: 'Preset kalender berhasil diperbarui.' });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal memperbarui preset kalender.' });
+    }
+  }
+
+  // DELETE /kurikulum/kalender/presets/:id (Superadmin only)
+  static async deletePreset(request: any, reply: any) {
+    try {
+      const { id } = request.params as { id: string };
+
+      const existing = await prisma.globalCalendarPreset.findUnique({ where: { id } });
+      if (!existing) return reply.status(404).send({ error: 'NOT_FOUND', message: 'Preset tidak ditemukan.' });
+
+      await prisma.globalCalendarPreset.delete({ where: { id } });
+      return reply.send({ message: 'Preset kalender berhasil dihapus.' });
+    } catch (error: any) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal menghapus preset kalender.' });
+    }
+  }
 }

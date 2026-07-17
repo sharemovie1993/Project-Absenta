@@ -8,9 +8,9 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **186 Halaman** | 100% | - |
+| **Total Halaman Utama** | **187 Halaman** | 100% | - |
 | **✅ Lolos Sempurna (Hardened)** | **53 Halaman** | 28% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **71 Halaman** | 38% | **Butuh Sentuhan Ringan** |
+| **⚠️ Sebagian Terstandar (Partial)** | **72 Halaman** | 39% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **62 Halaman** | 33% | **Prioritas Utama Refaktor** |
 
 ---
@@ -24,14 +24,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
-
----
-
-### 📄 Halaman: `GuruMapelPage.tsx`
-* **Lokasi File:** [GuruMapelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/GuruMapelPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
 
 ---
 
@@ -125,14 +117,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.
-
----
-
-### 📄 Halaman: `JadwalTemplatePage.tsx`
-* **Lokasi File:** [JadwalTemplatePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/jadwal-template/JadwalTemplatePage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
 
 ---
 
@@ -422,6 +406,17 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `KalenderAkademikPage.tsx`
+* **Lokasi File:** [KalenderAkademikPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/KalenderAkademikPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+
+---
+
 ### 📄 Halaman: `MenuAuditPage.tsx`
 * **Lokasi File:** [MenuAuditPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/management/MenuAuditPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
@@ -595,6 +590,22 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.
+
+---
+
+### 📄 Halaman: `CalendarPresetsPage.tsx`
+* **Lokasi File:** [CalendarPresetsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/superadmin/CalendarPresetsPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.
 
 ---
@@ -1153,6 +1164,22 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `JamKBMPage.tsx`
+* **Lokasi File:** [JamKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JamKBMPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
+  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 921 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.
+
+---
+
 ### 📄 Halaman: `Login.tsx`
 * **Lokasi File:** [Login.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/Login.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
@@ -1386,13 +1413,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `WaliKelasPage.tsx`
-* **Lokasi File:** [WaliKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/WaliKelasPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `AttendanceSettingsPage.tsx`
 * **Lokasi File:** [AttendanceSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceSettingsPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1610,15 +1630,15 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `JadwalPelajaranPage.tsx`
-* **Lokasi File:** [JadwalPelajaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JadwalPelajaranPage.tsx)
+### 📄 Halaman: `GuruMapelPage.tsx`
+* **Lokasi File:** [GuruMapelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/GuruMapelPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
 ---
 
-### 📄 Halaman: `KalenderAkademikPage.tsx`
-* **Lokasi File:** [KalenderAkademikPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/KalenderAkademikPage.tsx)
+### 📄 Halaman: `JadwalPelajaranPage.tsx`
+* **Lokasi File:** [JadwalPelajaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JadwalPelajaranPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1654,6 +1674,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `SupervisiPage.tsx`
 * **Lokasi File:** [SupervisiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/SupervisiPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `WaliKelasPage.tsx`
+* **Lokasi File:** [WaliKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/WaliKelasPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

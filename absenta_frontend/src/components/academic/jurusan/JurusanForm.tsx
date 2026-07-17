@@ -50,6 +50,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
       nama: '',
       kode: '',
       singkatan: '',
+      warna: 'indigo',
       program_keahlian_id: ''
     }
   });
@@ -67,6 +68,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
           nama: jurusan.nama || '',
           kode: jurusan.kode || '',
           singkatan: jurusan.singkatan || '',
+          warna: jurusan.warna || 'indigo',
           program_keahlian_id: jurusan.program_keahlian_id || ''
         });
       } catch (error) {
@@ -92,6 +94,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
         nama: data.nama,
         kode: data.kode || undefined,
         singkatan: data.singkatan || undefined,
+        warna: data.warna || null,
         program_keahlian_id: data.program_keahlian_id || null
       };
 

@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { type JadwalTemplate } from '../../../api/attendance/jadwalTemplate.api';
+import { getMyTenant } from '../../../api/tenants.api';
 
 interface JadwalPrintLayoutProps {
   jadwal: JadwalTemplate[];
   guruName?: string;
   subjectName?: string;
   isPrinting: boolean;
+  selectedKelasId?: string;
 }
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -40,20 +42,64 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
   jadwal,
   guruName,
   subjectName,
-  isPrinting
+  isPrinting,
+  selectedKelasId
 }) => {
+  // Shift config states
+  const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
+
+  useEffect(() => {
+    if (!isPrinting) return;
+    const fetchTenantShift = async () => {
+      try {
+        const tenantRes = await getMyTenant();
+        if (tenantRes?.success && tenantRes.data?.shift_jam_pelajaran) {
+          setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+        }
+      } catch (err) {
+        console.error('Failed to load shift jam pelajaran config:', err);
+      }
+    };
+    fetchTenantShift();
+  }, [isPrinting]);
+
+  // Resolve slot time dynamically based on the class shift assignment
+  const resolveSlotTime = (targetKelasId: string, slotIndex: number): { start: string; end: string } => {
+    if (shiftJamPelajaran) {
+      const assignedShiftId = shiftJamPelajaran.class_assignments?.[targetKelasId] || 'pagi';
+      const shift = shiftJamPelajaran.shifts?.find((s: any) => s.id === assignedShiftId) || shiftJamPelajaran.shifts?.[0];
+      if (shift) {
+        const slot = shift.slots?.find((sl: any) => sl.slot === slotIndex);
+        if (slot) {
+          return { start: slot.start, end: slot.end };
+        }
+      }
+    }
+    const mockVal = SLOT_TIME[slotIndex] || "07:00 - 07:45";
+    const parts = mockVal.split(' - ');
+    return { start: parts[0], end: parts[1] };
+  };
+
   if (!isPrinting) return null;
 
   const getSlotData = (day: string, slotIndex: number) => {
-    const slotRange = SLOT_TIME[slotIndex].split(' - ');
-    const slotStart = slotRange[0];
-    const slotEnd = slotRange[1];
-
-    return jadwal.find(j => {
-      if (j.hari !== day) return false;
-      const jamMulai = j.jam_mulai.split(':').slice(0, 2).join(':');
-      return jamMulai >= slotStart && jamMulai < slotEnd;
-    });
+    if (selectedKelasId) {
+      const targetSlot = resolveSlotTime(selectedKelasId, slotIndex);
+      return jadwal.find(j => 
+        j.hari === day && 
+        j.jam_mulai && j.jam_mulai.startsWith(targetSlot.start) &&
+        j.kelas_id === selectedKelasId
+      );
+    } else {
+      return jadwal.find(j => {
+        if (j.hari !== day) return false;
+        if (j.kelas_id) {
+          const classSlot = resolveSlotTime(j.kelas_id, slotIndex);
+          return j.jam_mulai && j.jam_mulai.startsWith(classSlot.start);
+        }
+        return false;
+      });
+    }
   };
 
   const derivedSubject = subjectName || Array.from(new Set(jadwal.map(j => j.Mapel?.nama_mapel).filter(Boolean)))[0] || '-';
@@ -175,7 +221,15 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
               {SLOTS.map(slot => (
                 <th key={slot}>
                   <div className="slot-num">{slot}</div>
-                  <div className="slot-time">{SLOT_TIME[slot]}</div>
+                  <div className="slot-time">
+                    {selectedKelasId 
+                      ? (() => {
+                          const t = resolveSlotTime(selectedKelasId, slot);
+                          return `${t.start} - ${t.end}`;
+                        })()
+                      : 'Dinamis'
+                    }
+                  </div>
                 </th>
               ))}
             </tr>

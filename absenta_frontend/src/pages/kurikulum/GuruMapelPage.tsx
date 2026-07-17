@@ -1,12 +1,13 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { SectionCard } from '../../components/ui';
+import { Modal } from '../../components/ui/Modal';
 import GuruMapelList from '../../components/academic/guru-mapel/GuruMapelList';
 import { useAuth } from '../../hooks/useAuth';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { listGuruMapel, importGuruMapelFromExcel } from '../../api/academic/guru-mapel.api';
+import { listGuruMapel, importGuruMapelFromExcel } from '../../api/kurikulum/guru-mapel.api';
 import { guruApi, mapelApi } from '../../api/academic.api';
-import { Users, BookOpen, GraduationCap, Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, Download, Upload, FileSpreadsheet, FileText, Sparkles, ChevronRight } from 'lucide-react';
 import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import toast from 'react-hot-toast';
@@ -14,18 +15,30 @@ import type { GuruMapel } from '../../types/academic';
 import { Loader } from '../../components/ui/Loader';
 
 // Lazy load Modal dan Komponen Berat
-const Modal = lazy(() => import('../../components/ui/Modal').then(module => ({ default: module.Modal })));
 const GuruMapelForm = lazy(() => import('../../components/academic/guru-mapel/GuruMapelForm').then(module => ({ default: module.default })));
+const GuruMapelWizardForm = lazy(() => import('../../components/academic/guru-mapel/GuruMapelWizardForm').then(module => ({ default: module.GuruMapelWizardForm })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
 const GuruMapelPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  const handleSelectionOpen = useCallback(() => setSelectionOpen(true), []);
+  const handleSelectionClose = useCallback(() => setSelectionOpen(false), []);
+
+  const handleWizardOpen = useCallback(() => setWizardOpen(true), []);
+  const handleWizardClose = useCallback(() => setWizardOpen(false), []);
+  const handleWizardSuccess = useCallback(() => { 
+    setWizardOpen(false); 
+    setRefreshTrigger(prev => prev + 1); 
+  }, []);
 
 
   const canView = useMemo(() => can('academic.teaching.view'), [can]);
@@ -86,7 +99,7 @@ const GuruMapelPage: React.FC = () => {
     }
   }, []);
 
-  const handleTemplateDownload = useCallback(async () => {
+  const handleExcelLayoutDownload = useCallback(async () => {
     try {
       toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [gurusRes, mapelsRes] = await Promise.all([
@@ -179,11 +192,62 @@ const GuruMapelPage: React.FC = () => {
             </div>
           }
         >
-          <GuruMapelList onAdd={canManage ? handleCreateOpen : undefined} refreshTrigger={refreshTrigger} />
+          <GuruMapelList 
+            onAdd={canManage ? handleSelectionOpen : undefined} 
+            onAddWizard={canManage ? handleWizardOpen : undefined} 
+            refreshTrigger={refreshTrigger} 
+          />
         </SectionCard>
       </div>
 
       <Suspense fallback={<div className="flex justify-center items-center p-8"><Loader size="lg" /></div>}>
+        <Modal 
+          isOpen={selectionOpen} 
+          onClose={handleSelectionClose} 
+          title="Pilih Metode Tambah Pengampu" 
+          size="lg"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            <button
+              onClick={() => {
+                handleSelectionClose();
+                handleCreateOpen();
+              }}
+              className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
+            >
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                <FileText size={28} />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                Tentukan guru pengampu dan mata pelajaran secara manual satu per satu.
+              </p>
+              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                Mulai Mengisi <ChevronRight size={14} />
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                handleSelectionClose();
+                handleWizardOpen();
+              }}
+              className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
+            >
+              <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                <Sparkles size={28} />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Wizard</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                Tentukan guru pengampu untuk banyak mata pelajaran sekaligus dengan langkah demi langkah (Wizard).
+              </p>
+              <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                Mulai Wizard <ChevronRight size={14} />
+              </span>
+            </button>
+          </div>
+        </Modal>
+
         <Modal 
           isOpen={createOpen} 
           onClose={handleCreateClose} 
@@ -195,6 +259,15 @@ const GuruMapelPage: React.FC = () => {
           <GuruMapelForm onSuccess={handleSuccess} onCancel={handleCreateClose} />
         </Modal>
 
+        <Modal 
+          isOpen={wizardOpen} 
+          onClose={handleWizardClose} 
+          title="Tambah Pengampu via Wizard (Bulk)" 
+          size="md"
+        >
+          <GuruMapelWizardForm onSuccess={handleWizardSuccess} onCancel={handleWizardClose} />
+        </Modal>
+
         <ExcelImportModal
           isOpen={isImportOpen}
           onClose={handleImportClose}
@@ -202,7 +275,7 @@ const GuruMapelPage: React.FC = () => {
           onImport={importGuruMapelFromExcel}
           title="Import Pengampu Guru-Mapel"
           templateName="template_impor_guru_mapel.xlsx"
-          onDownloadTemplate={handleTemplateDownload}
+          onDownloadTemplate={handleExcelLayoutDownload}
           description="Gunakan fitur ini untuk mengalokasikan beban mengajar guru secara massal."
         />
       </Suspense>

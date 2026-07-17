@@ -164,4 +164,245 @@ export class SupervisiService {
       },
     });
   }
+
+  static async submitSelfAssessment(
+    tenantId: string,
+    id: string,
+    guruUserId: string,
+    data: { target_pembelajaran: string; nilai_self?: number; catatan_self?: string }
+  ) {
+    const guru = await prisma.guru.findUnique({
+      where: { user_id: guruUserId }
+    });
+    if (!guru) {
+      throw new Error('Guru profile not found');
+    }
+
+    const existing = await prisma.supervisiGuru.findFirst({
+      where: { id, tenant_id: tenantId }
+    });
+    if (!existing) {
+      throw new Error('Supervisi not found');
+    }
+
+    if (existing.guru_id !== guru.id) {
+      throw new Error('Hanya guru yang disupervisi yang dapat mengisi evaluasi diri');
+    }
+
+    return prisma.supervisiGuru.update({
+      where: { id },
+      data: {
+        target_pembelajaran: data.target_pembelajaran,
+        nilai_self: data.nilai_self,
+        catatan_self: data.catatan_self,
+        is_self_evaluated: true
+      }
+    });
+  }
+
+  static async getAnalytics(tenantId: string) {
+    const supervisiList = await prisma.supervisiGuru.findMany({
+      where: { tenant_id: tenantId },
+      select: {
+        id: true,
+        nilai: true,
+        nilai_self: true,
+        status: true,
+        tanggal: true,
+        Guru: { select: { nama_guru: true } }
+      }
+    });
+
+    const scheduled = supervisiList.filter(s => s.status === 'SCHEDULED').length;
+    const completed = supervisiList.filter(s => s.status === 'COMPLETED').length;
+
+    const completedWithScores = supervisiList.filter(s => s.status === 'COMPLETED' && s.nilai !== null);
+    const avgScore = completedWithScores.length > 0
+      ? Math.round(completedWithScores.reduce((sum, s) => sum + (s.nilai ?? 0), 0) / completedWithScores.length)
+      : 0;
+
+    const selfEvalWithScores = supervisiList.filter(s => s.nilai_self !== null);
+    const avgSelfScore = selfEvalWithScores.length > 0
+      ? Math.round(selfEvalWithScores.reduce((sum, s) => sum + (s.nilai_self ?? 0), 0) / selfEvalWithScores.length)
+      : 0;
+
+    const monthlyTrend: Record<string, { count: number; total: number; avg: number }> = {};
+    completedWithScores.forEach(s => {
+      // Format to YYYY-MM
+      const date = new Date(s.tanggal);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const monthStr = `${year}-${month}`;
+      
+      if (!monthlyTrend[monthStr]) {
+        monthlyTrend[monthStr] = { count: 0, total: 0, avg: 0 };
+      }
+      monthlyTrend[monthStr].count++;
+      monthlyTrend[monthStr].total += s.nilai ?? 0;
+      monthlyTrend[monthStr].avg = Math.round(monthlyTrend[monthStr].total / monthlyTrend[monthStr].count);
+    });
+
+    const teacherScores: Record<string, { count: number; total: number; avg: number; name: string }> = {};
+    completedWithScores.forEach(s => {
+      const gName = s.Guru.nama_guru;
+      if (!teacherScores[gName]) {
+        teacherScores[gName] = { count: 0, total: 0, avg: 0, name: gName };
+      }
+      teacherScores[gName].count++;
+      teacherScores[gName].total += s.nilai ?? 0;
+      teacherScores[gName].avg = Math.round(teacherScores[gName].total / teacherScores[gName].count);
+    });
+
+    const topTeachers = Object.values(teacherScores)
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 5);
+
+    return {
+      stats: {
+        total: supervisiList.length,
+        scheduled,
+        completed,
+        avgScore,
+        avgSelfScore
+      },
+      monthlyTrend: Object.entries(monthlyTrend)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([month, data]) => ({
+          month,
+          avg_score: data.avg
+        })),
+      topTeachers
+    };
+  }
+
+  static async getSchedulingRecommendations(tenantId: string, guruId: string, tanggalStr: string) {
+    const date = new Date(tanggalStr);
+    if (isNaN(date.getTime())) {
+      throw new Error('Format tanggal tidak valid. Gunakan YYYY-MM-DD');
+    }
+    
+    const daysIndonesian = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+    const dayName = daysIndonesian[date.getDay()];
+
+    if (dayName === 'MINGGU') {
+      return [];
+    }
+
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    if (!activeYear) return [];
+
+    const activeSemester = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: activeYear.id, is_active: true }
+    });
+    if (!activeSemester) return [];
+
+    const teacherSchedules = await prisma.jadwalTemplate.findMany({
+      where: {
+        tenant_id: tenantId,
+        guru_id: guruId,
+        hari: dayName as any,
+        tahun_pelajaran_id: activeYear.id,
+        semester_id: activeSemester.id,
+        mapel_id: { not: null }
+      },
+      include: {
+        Kelas: { select: { nama_kelas: true } },
+        Mapel: { select: { nama_mapel: true } }
+      },
+      orderBy: { jam_mulai: 'asc' }
+    });
+
+    if (teacherSchedules.length === 0) {
+      return [];
+    }
+
+    const allTeachers = await prisma.guru.findMany({
+      where: {
+        tenant_id: tenantId,
+        id: { not: guruId }
+      },
+      select: {
+        id: true,
+        nama_guru: true,
+        nip: true
+      }
+    });
+
+    const daySchedules = await prisma.jadwalTemplate.findMany({
+      where: {
+        tenant_id: tenantId,
+        hari: dayName as any,
+        tahun_pelajaran_id: activeYear.id,
+        semester_id: activeSemester.id,
+        guru_id: { not: null }
+      }
+    });
+
+    const startOfDay = new Date(tanggalStr);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(tanggalStr);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const daySupervisions = await prisma.supervisiGuru.findMany({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: startOfDay, lte: endOfDay }
+      }
+    });
+
+    const isOverlapping = (startA: string, endA: string, startB: string, endB: string) => {
+      return startA < endB && endA > startB;
+    };
+
+    const recommendations = [];
+
+    // Map time slots to order (jam_ke) if not explicitly present
+    for (let index = 0; index < teacherSchedules.length; index++) {
+      const schedule = teacherSchedules[index];
+      const jamMulai = schedule.jam_mulai;
+      const jamSelesai = schedule.jam_selesai;
+      const calculatedJamKe = index + 1; // logical jam_ke sequence
+
+      const freeSupervisors = [];
+
+      for (const supervisor of allTeachers) {
+        const isTeaching = daySchedules.some(s => 
+          s.guru_id === supervisor.id &&
+          isOverlapping(s.jam_mulai, s.jam_selesai, jamMulai, jamSelesai)
+        );
+
+        if (isTeaching) continue;
+
+        const isBusySupervising = daySupervisions.some(sv => 
+          sv.supervisor_id === supervisor.id &&
+          (sv.jam_ke === calculatedJamKe)
+        );
+
+        if (isBusySupervising) continue;
+
+        freeSupervisors.push({
+          id: supervisor.id,
+          nama_guru: supervisor.nama_guru,
+          nip: supervisor.nip
+        });
+      }
+
+      recommendations.push({
+        id: schedule.id,
+        hari: schedule.hari,
+        jam_mulai: schedule.jam_mulai,
+        jam_selesai: schedule.jam_selesai,
+        kelas_id: schedule.kelas_id,
+        kelas: schedule.Kelas?.nama_kelas || 'N/A',
+        mapel_id: schedule.mapel_id,
+        mapel: schedule.Mapel?.nama_mapel || 'N/A',
+        jam_ke: calculatedJamKe,
+        recommended_supervisors: freeSupervisors
+      });
+    }
+
+    return recommendations;
+  }
 }

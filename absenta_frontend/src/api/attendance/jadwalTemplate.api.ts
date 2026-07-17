@@ -52,30 +52,30 @@ export interface JadwalTemplateFilters {
 }
 
 export const getJadwalTemplate = async (filters?: JadwalTemplateFilters) => {
-  const q: Record<string, unknown> | undefined = filters ? { ...filters } : undefined;
-  return requestWithFallback<any>('get', '/attendance/jadwal-template', { 
+  const q: Record<string, unknown> = filters ? { ...filters, _t: Date.now() } : { _t: Date.now() };
+  return requestWithFallback<any>('get', '/kurikulum/jadwal-template', { 
     params: q,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 };
 
 export const getMyJadwalTemplate = async (params?: { tanggal?: string; hari?: string }) => {
-  return requestWithFallback<{ success: boolean; message?: string; data: JadwalTemplate[] }>('get', '/attendance/jadwal-template/my', {
+  return requestWithFallback<{ success: boolean; message?: string; data: JadwalTemplate[] }>('get', '/kurikulum/jadwal-template/my', {
     params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 };
 
 export const createJadwalTemplate = async (payload: CreateJadwalPayload) => {
-  return requestWithFallback<any>('post', '/attendance/jadwal-template', { data: payload });
+  return requestWithFallback<any>('post', '/kurikulum/jadwal-template', { data: payload });
 };
 
 export const updateJadwalTemplate = async (id: string, payload: UpdateJadwalPayload) => {
-  return requestWithFallback<any>('put', `/attendance/jadwal-template/${id}`, { data: payload });
+  return requestWithFallback<any>('put', `/kurikulum/jadwal-template/${id}`, { data: payload });
 };
 
 export const deleteJadwalTemplate = async (id: string) => {
-  return requestWithFallback<any>('delete', `/attendance/jadwal-template/${id}`);
+  return requestWithFallback<any>('delete', `/kurikulum/jadwal-template/${id}`);
 };
 
 export const importJadwalFromExcel = async (
@@ -84,6 +84,6 @@ export const importJadwalFromExcel = async (
   semesterId: string,
   onProgress?: (progress: number) => void
 ) => {
-  const url = `/attendance/jadwal-template/import?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}`;
+  const url = `/kurikulum/jadwal-template/import?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}`;
   return importDataFromExcel(url, file, onProgress);
 };

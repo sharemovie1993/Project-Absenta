@@ -8,7 +8,7 @@ import { previewTransition, executeTransition, type TransitionPreviewInput, type
 import { getTahunPelajaranList as fetchTahunPelajaran } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList as fetchSemester } from '../../../api/academic/semester.api';
 import { getGuruList as fetchGuru } from '../../../api/academic/guru.api';
-import { getWaliKelasStrukturList as fetchWaliKelasStruktur } from '../../../api/academic/waliKelas.api';
+import { getWaliKelasStrukturList as fetchWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import { useAuthStore } from '../../../store/authStore';
 import type { TahunPelajaran, Semester } from '../../../types/academic';
 import toast from 'react-hot-toast';

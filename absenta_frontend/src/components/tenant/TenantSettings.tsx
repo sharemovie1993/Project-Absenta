@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader, Input, Label, Switch, Badge } from '@/components/ui';
 import { AlertTriangle, Trash2, Clock, XCircle, ShieldAlert, Plus, Save, Edit2, X, Globe, Phone, Mail, MapPin, Eye, Upload, Loader2, Layers, School } from 'lucide-react';
 import { requestDeletion, cancelDeletion, getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
@@ -9,6 +10,7 @@ import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
 import axiosInstance from '@/lib/axiosInstance';
 import { fetchActiveSystemConfig, saveSystemConfig } from '@/services/systemConfig';
+import { getKelasForDropdown } from '@/api/dropdown.api';
 
 /**
  * TenantSettings - Halaman Pengaturan & Profil Sekolah (Khusus Tenant Admin)
@@ -28,6 +30,32 @@ export const TenantSettings: React.FC = () => {
 
   // BPBK Settings state
   const [requireApproval, setRequireApproval] = useState(true);
+
+  // Shift states
+  const [kelasList, setKelasList] = useState<any[]>([]);
+  const [activeShiftTab, setActiveShiftTab] = useState<'SHIFTS' | 'CLASSES'>('SHIFTS');
+  const [activeSelectedShiftId, setActiveSelectedShiftId] = useState<string>('pagi');
+  const [shiftConfig, setShiftConfig] = useState<any>({
+    shifts: [
+      {
+        id: 'pagi',
+        name: 'Shift Pagi',
+        slots: [
+          { slot: 1, start: '07:00', end: '07:45' },
+          { slot: 2, start: '07:45', end: '08:30' },
+          { slot: 3, start: '08:30', end: '09:15' },
+          { slot: 4, start: '09:35', end: '10:20' },
+          { slot: 5, start: '10:20', end: '11:05' },
+          { slot: 6, start: '11:05', end: '11:50' },
+          { slot: 7, start: '12:30', end: '13:15' },
+          { slot: 8, start: '13:15', end: '14:00' },
+          { slot: 9, start: '14:00', end: '14:45' },
+          { slot: 10, start: '14:45', end: '15:30' }
+        ]
+      }
+    ],
+    class_assignments: {}
+  });
 
   // Form states untuk Profil & Kop Surat
   const [name, setName] = useState('');
@@ -121,10 +149,51 @@ export const TenantSettings: React.FC = () => {
         console.error('Failed to load gurus:', err);
       }
 
+      // Fetch kelas list for dropdown
+      try {
+        const kelasRes = await getKelasForDropdown();
+        if (kelasRes) {
+          setKelasList(kelasRes);
+        }
+      } catch (err) {
+        console.error('Failed to load kelas:', err);
+      }
+
       if (response.success) {
         const data = response.data;
         setTenant(data);
         setName(data.name || '');
+        
+        // Initialize shift config
+        if (data.shift_jam_pelajaran) {
+          setShiftConfig(data.shift_jam_pelajaran);
+          if (data.shift_jam_pelajaran.shifts && data.shift_jam_pelajaran.shifts.length > 0) {
+            setActiveSelectedShiftId(data.shift_jam_pelajaran.shifts[0].id);
+          }
+        } else {
+          setShiftConfig({
+            shifts: [
+              {
+                id: 'pagi',
+                name: 'Shift Pagi',
+                slots: [
+                  { slot: 1, start: '07:00', end: '07:45' },
+                  { slot: 2, start: '07:45', end: '08:30' },
+                  { slot: 3, start: '08:30', end: '09:15' },
+                  { slot: 4, start: '09:35', end: '10:20' },
+                  { slot: 5, start: '10:20', end: '11:05' },
+                  { slot: 6, start: '11:05', end: '11:50' },
+                  { slot: 7, start: '12:30', end: '13:15' },
+                  { slot: 8, start: '13:15', end: '14:00' },
+                  { slot: 9, start: '14:00', end: '14:45' },
+                  { slot: 10, start: '14:45', end: '15:30' }
+                ]
+              }
+            ],
+            class_assignments: {}
+          });
+          setActiveSelectedShiftId('pagi');
+        }
         setAddress(data.address || '');
         setPhone(data.phone || '');
         setEmail(data.email || '');
@@ -243,6 +312,7 @@ export const TenantSettings: React.FC = () => {
         jenjang: jenjang || null,
         kurikulum: kurikulum || 'MERDEKA',
         kepala_sekolah_guru_id: selectedGuruId || null,
+        shift_jam_pelajaran: shiftConfig,
       };
 
       const response = await updateTenant(tenant.id, payload);
@@ -1042,6 +1112,34 @@ export const TenantSettings: React.FC = () => {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>      {/* ⏰ SHIFT & JAM PELAJARAN KBM CARD */}
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
+          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+              <Clock className="h-4 w-4" />
+            </div>
+            Konfigurasi Shift & Waktu Kegiatan Belajar Mengajar (KBM)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-6">
+            <div className="space-y-1.5 max-w-lg">
+              <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                Pengaturan Jam Pelajaran (KBM) & Shift
+              </Label>
+              <p className="text-xs text-slate-500 leading-normal">
+                Konfigurasi pembagian shift (Pagi/Siang), pengaturan jam pelajaran per-slot, dan pemetaan kelas kini dikelola langsung secara terpusat oleh bagian **Kurikulum** untuk kemudahan pendelegasian tugas.
+              </p>
+            </div>
+            <Link
+              to="/kurikulum/jam-kbm"
+              className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 text-xs font-black rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-center inline-block shrink-0 transition-colors"
+            >
+              Buka Pengaturan Jam KBM
+            </Link>
+          </div>
         </CardContent>
       </Card>
 

@@ -5,8 +5,8 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download } from 'lucide-react';
-import { listGuruMapel, removeGuruMapel } from '../../../api/academic/guru-mapel.api';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers } from 'lucide-react';
+import { listGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -20,9 +20,10 @@ import { exportDataToExcel } from '../../../utils/export.utils';
 interface Props {
   refreshTrigger?: number;
   onAdd?: () => void;
+  onAddWizard?: () => void;
 }
 
-const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
+const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizard }) => {
 
   const { user } = useAuthStore();
   const confirm = useConfirm();
@@ -38,7 +39,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd }) => {
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
 
   const canManage = useMemo(() => {
-    return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN';
+    return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
   }, [user]);
 
   const handleSearchGuru = useCallback(async (query: string) => {

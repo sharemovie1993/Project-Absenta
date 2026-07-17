@@ -30,6 +30,8 @@ Completed:
 - **Wizard Tambah Massal Jurusan (2-Step)**: Wizard tambah massal jurusan di level tenant/sekolah yang dibagi menjadi 2 langkah (langkah 1: Program Keahlian, langkah 2: Jurusan terfilter).
 - **Adaptasi Jenjang Sekolah (useJenjang)**: Halaman CRUD Kelas, tabel kelas, filter kelas, dan menu sidebar Jurusan otomatis disembunyikan/disederhanakan untuk sekolah jenjang SD/SMP/MI/MTs yang tidak menerapkan penjurusan. Properti `jurusan_id` di database kini opsional/nullable.
 - **Hardware Telemetry Heartbeat**: Pengiriman otomatis spesifikasi perangkat keras host (CPU Model & core count, RAM total, dan disk storage utama) dalam string `osType` telemetri ke server lisensi pusat setiap 2 menit.
+- **Kurikulum Enhancements (Capping JP, Analitik Supervisi, & Self-Assessment)**: Pengenalan batasan JP mengajar mingguan guru dengan alert warning di Schedule Builder, modal input target pra-observasi guru, serta dashboard analitik tren kompetensi pedagogik untuk Kepala Sekolah/Wakasek.
+- **Rekomendasi & Automasi Penjadwalan Supervisi**: Sistem pencari slot mengajar guru otomatis berdasarkan tanggal pilihan serta rekomendasi supervisor bebas bentrok (tidak mengajar & tidak sedang mensupervisi di slot waktu yang sama).
 
 In Progress:
 - None

@@ -24,6 +24,7 @@ export interface CreateJurusanPayload {
   nama: string;
   kode?: string;
   singkatan?: string;
+  warna?: string | null;
   program_keahlian_id?: string | null;
 }
 
@@ -31,6 +32,7 @@ export interface UpdateJurusanPayload {
   nama?: string;
   kode?: string;
   singkatan?: string;
+  warna?: string | null;
   program_keahlian_id?: string | null;
 }
 

@@ -3,6 +3,23 @@ import { requestWithFallback } from "./apiUtils";
 // Types based on TENANT_MODULE_API.md and TenantsPage interface
 export type AbsensiMode = 'SIMPLE' | 'MULTI_SESI';
 
+export interface ShiftSlot {
+  slot: number;
+  start: string;
+  end: string;
+}
+
+export interface ShiftDetail {
+  id: string;
+  name: string;
+  slots: ShiftSlot[];
+}
+
+export interface ShiftJamPelajaranConfig {
+  shifts: ShiftDetail[];
+  class_assignments: Record<string, string>;
+}
+
 interface Tenant {
   id: string;
   name: string;
@@ -16,6 +33,7 @@ interface Tenant {
   phone?: string;
   email?: string;
   website?: string;
+  shift_jam_pelajaran?: ShiftJamPelajaranConfig | null;
   nama_dinas_atas?: string;
   nama_dinas_bawah?: string;
   nama_cabang_dinas?: string;
@@ -103,6 +121,7 @@ export interface UpdateTenantRequest {
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;
   jenjang?: string | null;
+  shift_jam_pelajaran?: ShiftJamPelajaranConfig | null;
 }
 
 export interface PaginationInfo {

@@ -194,18 +194,18 @@ export function SearchableSelect({
                 }}
                 data-disabled={option.disabled}
                 className={cn(
-                  'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-gray-100 dark:hover:bg-gray-700 data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+                  'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-gray-100 dark:hover:bg-gray-700 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full overflow-hidden pr-4',
                   value === option.value && 'bg-gray-100 dark:bg-gray-700 font-medium',
                   option.disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <Check
                   className={cn(
-                    'mr-2 h-4 w-4',
+                    'mr-2 h-4 w-4 shrink-0',
                     (value && option.value && value === option.value) ? 'opacity-100' : 'opacity-0'
                   )}
                 />
-                {option.label}
+                <span className="truncate whitespace-nowrap">{option.label}</span>
               </div>
             ))
           )}

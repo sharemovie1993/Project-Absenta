@@ -4,11 +4,16 @@ import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
 
 export class TahunPelajaranController {
-  async getAllTahunPelajaran(req: any, reply: any): Promise<void> {
+   async getAllTahunPelajaran(req: any, reply: any): Promise<void> {
     try {
       const user = req.user as any;
+      const { status } = req.query || {};
 
-      const tahunPelajaran = await tahunPelajaranService.getAllTahunPelajaran(user.roleName, user.tenantId);
+      const tahunPelajaran = await tahunPelajaranService.getAllTahunPelajaran(
+        user.roleName, 
+        user.tenantId,
+        status
+      );
 
       reply.status(200).send({
         success: true,

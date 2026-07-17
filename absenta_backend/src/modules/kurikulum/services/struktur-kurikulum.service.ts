@@ -126,4 +126,101 @@ export class StrukturKurikulumService {
       where: { id }
     });
   }
+
+  static async checkBebanGuru(tenantId: string, guruId: string, addMapelId?: string, addKelasId?: string) {
+    const guru = await prisma.guru.findFirst({
+      where: { id: guruId, tenant_id: tenantId },
+      select: { max_jp: true, nama_guru: true }
+    });
+
+    if (!guru) {
+      throw new Error('Guru tidak ditemukan');
+    }
+
+    const maxJp = guru.max_jp ?? 24;
+
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    if (!activeYear) return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
+
+    const activeSemester = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: activeYear.id, is_active: true }
+    });
+    if (!activeSemester) return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
+
+    // Count actual scheduled slots for this teacher in the visual grid
+    const schedulesCount = await prisma.jadwalTemplate.count({
+      where: {
+        tenant_id: tenantId,
+        guru_id: guruId,
+        tahun_pelajaran_id: activeYear.id,
+        semester_id: activeSemester.id,
+        mapel_id: { not: null },
+      }
+    });
+
+    const totalJp = schedulesCount + 1; // Count plus the one we are placing
+
+    // Class KBM subject allocation check
+    let isAllocationExceeded = false;
+    let maxAllocationJp = 0;
+    let currentAllocationJp = 0;
+    let mapelName = '';
+    let kelasName = '';
+
+    if (addMapelId && addKelasId) {
+      const cls = await prisma.kelas.findFirst({
+        where: { id: addKelasId, tenant_id: tenantId },
+        select: { tingkat: true, nama_kelas: true }
+      });
+      const mapel = await prisma.mapel.findFirst({
+        where: { id: addMapelId, tenant_id: tenantId },
+        select: { nama_mapel: true }
+      });
+
+      if (cls && mapel) {
+        kelasName = cls.nama_kelas;
+        mapelName = mapel.nama_mapel;
+
+        const struct = await prisma.strukturKurikulum.findFirst({
+          where: {
+            tenant_id: tenantId,
+            mapel_id: addMapelId,
+            tingkat: cls.tingkat,
+            tahun_pelajaran_id: activeYear.id
+          },
+          select: { jp_per_minggu: true }
+        });
+
+        maxAllocationJp = struct?.jp_per_minggu ?? 2; // Default 2 JP if not set in structure
+
+        // Count current slots for this class and subject
+        currentAllocationJp = await prisma.jadwalTemplate.count({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: addKelasId,
+            mapel_id: addMapelId,
+            tahun_pelajaran_id: activeYear.id,
+            semester_id: activeSemester.id,
+          }
+        });
+
+        isAllocationExceeded = (currentAllocationJp + 1) > maxAllocationJp;
+      }
+    }
+
+    return {
+      current_jp: totalJp,
+      max_jp: maxJp,
+      is_exceeded: totalJp > maxJp,
+      nama_guru: guru.nama_guru,
+      is_allocation_exceeded: isAllocationExceeded,
+      current_allocation_jp: currentAllocationJp + 1,
+      max_allocation_jp: maxAllocationJp,
+      mapel_name: mapelName,
+      kelas_name: kelasName
+    };
+  }
 }
+

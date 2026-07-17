@@ -66,6 +66,7 @@ const UpgradeIntelligencePage = lazy(() => import('./pages/superadmin/intelligen
 const RevenueDashboardPage = lazy(() => import('./pages/superadmin/revenue/RevenueDashboardPage'));
 const BackupsPage = lazy(() => import('./pages/superadmin/BackupsPage'));
 const MapelPresetsPage = lazy(() => import('./pages/superadmin/MapelPresetsPage'));
+const CalendarPresetsPage = lazy(() => import('./pages/superadmin/CalendarPresetsPage'));
 const KurikulumStandardsPage = lazy(() => import('./pages/superadmin/KurikulumStandardsPage'));
 const JurusanPresetsPage = lazy(() => import('./pages/superadmin/JurusanPresetsPage'));
 const SupportTicketPage = lazy(() => import('./pages/support/SupportTicketPage'));
@@ -98,8 +99,8 @@ const TahunPelajaranPage = lazy(() => import('./pages/academic/TahunPelajaranPag
 const SemesterPage = lazy(() => import('./pages/academic/SemesterPage'));
 const JurusanPage = lazy(() => import('./pages/academic/JurusanPage').then(module => ({ default: module.JurusanPage })));
 const JenisKegiatanMasterPage = lazy(() => import('./pages/academic/JenisKegiatanMasterPage'));
-const WaliKelasPage = lazy(() => import('./pages/academic/WaliKelasPage'));
-const GuruMapelPage = lazy(() => import('./pages/academic/GuruMapelPage'));
+const WaliKelasPage = lazy(() => import('./pages/kurikulum/WaliKelasPage'));
+const GuruMapelPage = lazy(() => import('./pages/kurikulum/GuruMapelPage'));
 const StrukturOrganisasiList = lazy(() => import('./pages/academic/struktur-organisasi/StrukturOrganisasiList'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WhatsappSettingsPage = lazy(() => import('./pages/settings/WhatsappSettingsPage'));
@@ -155,7 +156,6 @@ const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
 const AttendanceDashboardPage = lazy(() => import('./pages/attendance/AttendanceDashboardPage'));
 // Removed KegiatanPage and ManualPage per deprecation request
-const JadwalTemplatePage = lazy(() => import('./pages/attendance/jadwal-template/JadwalTemplatePage'));
 const StudentCardPage = lazy(() => import('./pages/academic/StudentCardPage'));
 const HomePage = lazy(() => import('./pages/public/HomePage'));
 const PricingPage = lazy(() => import('./pages/public/PricingPage'));
@@ -196,6 +196,7 @@ const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurik
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
 const JadwalPelajaranPage = lazy(() => import('./pages/kurikulum/JadwalPelajaranPage'));
 const KalenderAkademikPage = lazy(() => import('./pages/kurikulum/KalenderAkademikPage'));
+const JamKBMPage = lazy(() => import('./pages/kurikulum/JamKBMPage'));
 const RekapKBMPage = lazy(() => import('./pages/kurikulum/RekapKBMPage'));
 const SarprasInventoryPage = lazy(() => import('./pages/sarpras/SarprasInventoryPage'));
 const SarprasLoansPage = lazy(() => import('./pages/sarpras/SarprasLoansPage'));
@@ -460,11 +461,7 @@ function App() {
                         <GuruPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/academic/guru-mapel" element={
-                      <ProtectedRoute requiredCapability="academic.teaching.view">
-                        <GuruMapelPage />
-                      </ProtectedRoute>
-                    } />
+
                     <Route path="/academic/siswa" element={
                       <ProtectedRoute requiredCapability="academic.students.view.list">
                         <SiswaPage />
@@ -500,11 +497,7 @@ function App() {
                         <JenisKegiatanMasterPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/academic/wali-kelas" element={
-                      <ProtectedRoute requiredCapability="academic.homeroom.manage">
-                        <WaliKelasPage />
-                      </ProtectedRoute>
-                    } />
+
                     <Route path="/academic/transition" element={
                       <ProtectedRoute requiredCapability="academic.promotions.manage">
                         <AcademicTransitionPage />
@@ -775,8 +768,16 @@ function App() {
                         <MasterStrukturPage />
                       </ProtectedRoute>
                     } />
-                     {/* Jadwal Pelajaran consolidated into /attendance/jadwal-template */}
-                    <Route path="/kurikulum/jadwal" element={<Navigate to="/attendance/jadwal-template" replace />} />
+                    <Route path="/kurikulum/jadwal" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <JadwalPelajaranPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/jam-kbm" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <JamKBMPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/kurikulum/kalender" element={
                       <ProtectedRoute requiredCapability="academic.years.view.list">
                         <KalenderAkademikPage />
@@ -795,6 +796,16 @@ function App() {
                     <Route path="/kurikulum/perangkat" element={
                       <ProtectedRoute requiredCapability="academic.teaching.view">
                         <PerangkatAjarPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/guru-mapel" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <GuruMapelPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/wali-kelas" element={
+                      <ProtectedRoute requiredCapability="academic.homeroom.manage">
+                        <WaliKelasPage />
                       </ProtectedRoute>
                     } />
                     
@@ -1116,6 +1127,11 @@ function App() {
                             <MapelPresetsPage />
                           </ProtectedRoute>
                         } />
+                        <Route path="/superadmin/calendar-presets" element={
+                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
+                            <CalendarPresetsPage />
+                          </ProtectedRoute>
+                        } />
                         <Route path="/superadmin/jurusan-presets" element={
                           <ProtectedRoute requiredCapability="superadmin.tenants.manage">
                             <JurusanPresetsPage />
@@ -1234,11 +1250,7 @@ function App() {
                         <AttendanceSettingsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/attendance/jadwal-template" element={
-                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
-                        <JadwalTemplatePage />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/attendance/jadwal-template" element={<Navigate to="/kurikulum/jadwal" replace />} />
                     {/* Removed deprecated attendance pages: kegiatan, manual */}
                     <Route element={<PetugasRoute />}>
                     </Route>

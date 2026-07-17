@@ -14,6 +14,7 @@ export const guruSchema = z.object({
   pendidikan_terakhir: z.string().optional(),
   rfid_tag: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  max_jp: z.number().int().min(0, 'JP minimal 0').optional().or(z.literal('')),
   // For assignments
   mapel_ids: z.array(z.string()).optional(),
 });

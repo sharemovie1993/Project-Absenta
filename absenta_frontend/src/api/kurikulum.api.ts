@@ -172,4 +172,46 @@ export const kurikulumApi = {
     const response = await api.get(`/kurikulum/rekap-kbm${qs.toString() ? '?' + qs.toString() : ''}`);
     return response.data;
   },
+
+  // Calendar Presets
+  getCalendarPresets: async (jenjang?: string) => {
+    const response = await api.get('/kurikulum/kalender/presets', { params: { jenjang } });
+    return response.data;
+  },
+  createCalendarPreset: async (data: any) => {
+    const response = await api.post('/kurikulum/kalender/presets', data);
+    return response.data;
+  },
+  updateCalendarPreset: async (id: string, data: any) => {
+    const response = await api.put(`/kurikulum/kalender/presets/${id}`, data);
+    return response.data;
+  },
+  deleteCalendarPreset: async (id: string) => {
+    const response = await api.delete(`/kurikulum/kalender/presets/${id}`);
+    return response.data;
+  },
+
+  checkBebanGuru: async (guruId: string, addMapelId?: string, addKelasId?: string) => {
+    const response = await api.get('/kurikulum/struktur/check-beban-guru', {
+      params: { guru_id: guruId, add_mapel_id: addMapelId, add_kelas_id: addKelasId }
+    });
+    return response.data;
+  },
+
+  getSupervisiAnalytics: async () => {
+    const response = await api.get('/kurikulum/supervisi/analytics');
+    return response.data;
+  },
+
+  submitSupervisiSelfAssessment: async (id: string, data: { target_pembelajaran: string; nilai_self?: number; catatan_self?: string }) => {
+    const response = await api.put(`/kurikulum/supervisi/${id}/self-assessment`, data);
+    return response.data;
+  },
+
+  getSupervisiRecommendations: async (guruId: string, tanggal: string) => {
+    const response = await api.get('/kurikulum/supervisi/rekomendasi', {
+      params: { guru_id: guruId, tanggal }
+    });
+    return response.data;
+  },
 };

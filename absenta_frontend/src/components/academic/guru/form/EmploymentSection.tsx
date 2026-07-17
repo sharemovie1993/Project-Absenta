@@ -33,6 +33,7 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
         <DetailRow icon={<GraduationCap size={16} />} label="Pendidikan" value={getLabel(watch('pendidikan_terakhir'), PENDIDIKAN_OPTIONS)} />
         <DetailRow icon={<Activity size={16} />} label="Status Akun" value={getLabel(watch('status'), statusOptions)} />
         <DetailRow icon={<CreditCard size={16} />} label="RFID Tag" value={watch('rfid_tag')} />
+        <DetailRow icon={<Briefcase size={16} />} label="Kapasitas JP Mengajar" value={watch('max_jp') ? `${watch('max_jp')} JP` : '24 JP (Default)'} />
       </SectionCard>
     );
   }
@@ -60,6 +61,10 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
       <div className="space-y-2 group">
         <Label htmlFor="rfid_tag" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Digital Tag (RFID)</Label>
         <Input id="rfid_tag" {...register('rfid_tag')} placeholder="Entry No RFID..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
+      </div>
+      <div className="space-y-2 group">
+        <Label htmlFor="max_jp" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Kapasitas JP Mengajar</Label>
+        <Input id="max_jp" type="number" {...register('max_jp', { setValueAs: (v: string) => v === '' ? undefined : Number(v) })} placeholder="Default 24 JP..." disabled={isViewMode} className="h-10 text-[13px] font-bold tracking-tight bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl shadow-inner" />
       </div>
     </SectionCard>
   );

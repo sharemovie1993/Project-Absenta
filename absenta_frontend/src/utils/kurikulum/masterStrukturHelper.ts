@@ -1,6 +1,6 @@
 import type { Mapel } from '../../types/academic';
 import { sekolahApi, Sekolah } from '../../api/academic/sekolah.api';
-import { getStrukturList } from '../../api/academic/strukturOrganisasi.api';
+import { getStrukturTree } from '../../api/academic/strukturOrganisasi.api';
 import { renderStrukturKurikulumPdf, StrukturPrintRow } from '../print/modules/pdfKurikulum';
 import { getBase64ImageFromUrl } from '../cooperative/coopDocUtils';
 import { toast } from 'react-hot-toast';
@@ -19,13 +19,6 @@ export type StrukturKurikulum = {
   };
 };
 
-interface StrukturOrganisasiItem {
-  jabatan?: {
-    nama_jabatan?: string;
-  };
-  nama_lengkap?: string;
-  nip?: string;
-}
 
 export const STANDAR_JP_CONFIG: Record<string, Record<number, number>> = {
   SMA: { 10: 44, 11: 44, 12: 44 },
@@ -313,18 +306,33 @@ export const performStrukturPrint = async ({
       try { logoSekolahBase64 = await getBase64ImageFromUrl(rightLogoUrl); } catch(e) {}
     }
 
-    let principalName = 'Kepala Sekolah';
+    let principalName = '';
     let principalNip = '';
+    let wakasekName = '';
+    let wakasekNip = '';
     try {
-      const strukturRes = await getStrukturList({ is_active: true });
-      const kepalaRaw = strukturRes.data?.find((s) => {
-        const item = s as unknown as StrukturOrganisasiItem;
-        return item.jabatan?.nama_jabatan?.toLowerCase().includes('kepala sekolah');
-      });
-      if (kepalaRaw) {
-        const kepala = kepalaRaw as unknown as StrukturOrganisasiItem;
-        principalName = kepala.nama_lengkap || '';
-        principalNip = kepala.nip || '';
+      // getStrukturTree returns Record<kode, nodes[]>
+      // Each node has: members[{ name, details("NIP: xxx") }]
+      const treeRes = await getStrukturTree();
+      const tree = treeRes?.data || {};
+
+      // Kepala Sekolah → kode 'KEPALA_SEKOLAH'
+      const kepsekNodes: any[] = tree['KEPALA_SEKOLAH'] || [];
+      const kepsekHead = kepsekNodes[0]?.members?.[0];
+      if (kepsekHead) {
+        principalName = kepsekHead.name || '';
+        // Extract NIP from details string e.g. "NIP: 12345"
+        const nipMatch = (kepsekHead.details || '').match(/NIP[:\s.]+([\d\s]+)/i);
+        principalNip = nipMatch ? nipMatch[1].trim() : '';
+      }
+
+      // Wakasek Kurikulum → kode 'KURIKULUM'
+      const kurikulumNodes: any[] = tree['KURIKULUM'] || [];
+      const kurikulumHead = kurikulumNodes[0]?.members?.[0];
+      if (kurikulumHead) {
+        wakasekName = kurikulumHead.name || '';
+        const nipMatch2 = (kurikulumHead.details || '').match(/NIP[:\s.]+([\d\s]+)/i);
+        wakasekNip = nipMatch2 ? nipMatch2[1].trim() : '';
       }
     } catch(e) {}
 
@@ -404,18 +412,80 @@ export const performStrukturPrint = async ({
       city,
       principalName,
       principalNip,
+      wakasekName,
+      wakasekNip,
       getJpValueForSemester,
       getKelompokTotal
     });
 
     const blobUrl = URL.createObjectURL(blob);
+
+    // Format nama file: STRUKTUR_KURIKULUM_JURUSAN_TAHUN
+    const jurusanSlug = selectedJurusan
+      ? (selectedJurusan.singkatan || selectedJurusan.kode || selectedJurusan.nama || '')
+          .toUpperCase()
+          .replace(/\s+/g, '_')
+      : '';
+    const tahunSlug = (selectedTahunNama || 'TP').replace(/[\/\-\s]/g, '_');
+    const fileName = jurusanSlug
+      ? `STRUKTUR_KURIKULUM_${jurusanSlug}_${tahunSlug}.pdf`
+      : `STRUKTUR_KURIKULUM_${tahunSlug}.pdf`;
+    const fileTitle = fileName.replace('.pdf', '');
+
     if (printWindow && !printWindow.closed) {
-      printWindow.location.href = blobUrl;
+      // Tulis HTML wrapper agar title tab dan nama download bisa dikontrol
+      printWindow.document.open();
+      printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>${fileTitle}</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #404040; }
+      #toolbar {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+        height: 40px; background: #323232;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 0 16px; gap: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+      }
+      #toolbar span {
+        color: #e0e0e0; font-size: 12px; font-weight: 600;
+        letter-spacing: 0.03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      #dl-btn {
+        display: flex; align-items: center; gap: 6px;
+        background: #1a73e8; color: #fff;
+        border: none; border-radius: 6px;
+        padding: 5px 14px; font-size: 12px; font-weight: 700;
+        cursor: pointer; text-decoration: none; white-space: nowrap;
+        transition: background 0.15s;
+      }
+      #dl-btn:hover { background: #1558b0; }
+      #pdf-frame {
+        position: fixed; top: 40px; left: 0; right: 0; bottom: 0;
+        width: 100%; height: calc(100vh - 40px);
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <span title="${fileName}">${fileName}</span>
+      <a id="dl-btn" href="${blobUrl}" download="${fileName}">
+        &#8595; Unduh PDF
+      </a>
+    </div>
+    <embed id="pdf-frame" src="${blobUrl}" type="application/pdf">
+  </body>
+</html>`);
+      printWindow.document.close();
       setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+
     } else {
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `struktur-kurikulum-${selectedTahunNama || 'tp'}.pdf`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

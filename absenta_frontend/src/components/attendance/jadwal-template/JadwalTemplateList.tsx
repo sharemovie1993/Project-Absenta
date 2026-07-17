@@ -90,7 +90,8 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
         const jenisMaster = (jenisRes.data || []).filter((j: JenisKegiatanMaster) => j.aktif).filter((j: JenisKegiatanMaster) => String(j.tipe).toUpperCase() !== 'GERBANG');
         setJenisOptions(jenisMaster.map((j: JenisKegiatanMaster) => ({ value: j.id, label: j.nama, tipe: String(j.tipe) })));
 
-        if (user?.role?.name !== 'SISWA' && user?.role?.name !== 'GURU') {
+        const canSelectKelas = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('attendance.schedules.view.list');
+        if (canSelectKelas) {
           const kelasRes = await kelasApi.getAll({ limit: 100 });
           if (controller.signal.aborted) return;
           const kOptions = (kelasRes.data || []).map((k: Kelas) => ({
@@ -126,7 +127,7 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
 
   // 2. Fetch Jadwal when Kelas changes
   useEffect(() => {
-    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '');
+    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '') || can('attendance.schedules.view.list');
     if (isAdmin && (!selectedKelasId || !activeTahunId || !activeSemesterId)) return;
     // SISWA also needs a kelas_id to fetch (PETUGAS_KELAS has it injected from parent)
     if (!isAdmin && user?.role?.name === 'SISWA' && !selectedKelasId) return;
@@ -275,7 +276,7 @@ export const JadwalTemplateList: React.FC<{ kelasId?: string }> = ({ kelasId }) 
         </div>
         
         <div className="flex items-center gap-2">
-            {!kelasId && ['ADMIN','SUPERADMIN'].includes(user?.role?.name || '') && (
+            {!kelasId && (user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('attendance.schedules.view.list')) && (
               <div className="w-[200px]">
                   <SearchableSelect
                     value={selectedKelasId}

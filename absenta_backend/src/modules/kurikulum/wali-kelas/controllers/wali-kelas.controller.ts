@@ -1,7 +1,7 @@
 import {
   waliKelasService,
 } from '../services/wali-kelas.service';
-import { assignWaliKelasStrukturSchema } from '../../services/academic-validation.schema';
+import { assignWaliKelasStrukturSchema } from '../../../../modules/academic/services/academic-validation.schema';
 import { z } from 'zod';
 
 export const waliKelasController = {

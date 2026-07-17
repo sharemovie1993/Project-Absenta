@@ -110,17 +110,20 @@ export function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className={cn(
-          "fixed inset-0 flex p-4",
-          placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
-        )} style={{ zIndex }}>
+        <div 
+          className={cn(
+            "fixed inset-0 flex p-4",
+            placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
+          )} 
+          style={{ zIndex }}
+          onClick={disableClose ? undefined : onClose}
+        >
           {/* Backdrop */}
           <motion.div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={disableClose ? undefined : onClose}
           />
           
           {/* Modal Content */}
@@ -138,6 +141,7 @@ export function Modal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: placement === 'bottom' ? 20 : placement === 'top' ? -20 : 20 }}
             transition={{ type: 'spring', duration: 0.3 }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             {title && (

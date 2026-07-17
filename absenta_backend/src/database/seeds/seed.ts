@@ -18,6 +18,7 @@ import { seedSarprasCatalog } from './seed_sarpras_catalog';
 import { seedMapelPresets } from './seed_mapel_presets';
 import { seedKurikulumStandards } from './seed_kurikulum_standards';
 import { seedJurusanPresets } from './seed_jurusan_presets';
+import { seedCalendarPresets } from './seed_calendar_presets';
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 
 const prisma = new PrismaClient();
@@ -238,8 +239,6 @@ async function main() {
         {
           label: 'Persiapan Akademik', icon: 'Settings', path: null, children: [
             { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
-            { label: 'Wali Kelas', icon: 'UserCheck', path: '/academic/wali-kelas', required_capability: 'academic.homeroom.manage' },
-            { label: 'Guru Mapel', icon: 'ListChecks', path: '/academic/guru-mapel', required_capability: 'academic.teaching.manage' },
             { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
             { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
             { label: 'Kelulusan & Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
@@ -257,7 +256,10 @@ async function main() {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
         { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.structures.view.list' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.structures.view.list' },
+        { label: 'Guru Mapel', icon: 'ListChecks', path: '/kurikulum/guru-mapel', required_capability: 'academic.teaching.manage' },
+        { label: 'Wali Kelas', icon: 'UserCheck', path: '/kurikulum/wali-kelas', required_capability: 'academic.homeroom.manage' },
         { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list' },
+        { label: 'Pengaturan Jam KBM', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'attendance.schedules.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view' },
         { label: 'Rekap KBM', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap' },
@@ -284,7 +286,7 @@ async function main() {
       label: 'ABSENSI', icon: 'Clock', path: null, required_features: ['ABSENSI'], order: 20, children: [
         { label: 'Dashboard Absensi', icon: 'LayoutDashboard', path: '/attendance/dashboard', required_capability: 'attendance.sessions.view.list' },
         { label: 'Pengaturan Umum', icon: 'Settings', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
-        { label: 'Template Jadwal', icon: 'Calendar', path: '/attendance/jadwal-template', required_capability: 'attendance.schedules.view.list' },
+        { label: 'Jadwal KBM', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'attendance.schedules.view.list' },
         { label: 'Petugas Absensi', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.petugas' },
         { label: 'Perangkat Absensi', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
         { label: 'Pendaftaran Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.face.templates' },
@@ -444,6 +446,7 @@ async function main() {
       children: [
         { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Preset Kalender', icon: 'Calendar', path: '/superadmin/calendar-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Aset Global', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
@@ -919,6 +922,9 @@ async function main() {
 
   // 14️⃣ Seed Global Program & Jurusan Presets
   await seedJurusanPresets(prisma);
+
+  // 15️⃣ Seed Global Calendar Event Presets
+  await seedCalendarPresets(prisma);
 
   console.log('✨ Seed selesai!');
 }

@@ -65,3 +65,11 @@ export const supervisiGuruUpdateSchema = z.object({
     message: 'supervisor_id harus berupa UUID yang valid'
   }).nullable().optional().transform(v => v === null ? undefined : v).optional()
 });
+
+export const supervisiSelfAssessmentSchema = z.object({
+  target_pembelajaran: z.string({
+    required_error: 'target_pembelajaran wajib diisi'
+  }).min(10, 'Target pembelajaran minimal 10 karakter'),
+  nilai_self: z.number().int().min(0, 'Nilai minimal 0').max(100, 'Nilai maksimal 100').optional(),
+  catatan_self: z.string().optional()
+});

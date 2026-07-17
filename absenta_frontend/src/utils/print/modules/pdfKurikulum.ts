@@ -28,6 +28,8 @@ export interface RenderStrukturOptions {
   city: string;
   principalName: string;
   principalNip: string;
+  wakasekName: string;
+  wakasekNip: string;
   getJpValueForSemester: (nama: string, kode: string, tingkat: number, sem: 1 | 2, baseJp: number) => string;
   getKelompokTotal: (list: StrukturPrintRow[], tingkat: number, sem: 1 | 2) => number;
 }
@@ -36,7 +38,8 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
   const {
     tenantInfo, sekolah, logoDaerahBase64, logoSekolahBase64,
     printRows, selectedTahunNama, selectedJurusan, city,
-    principalName, principalNip, getJpValueForSemester, getKelompokTotal
+    principalName, principalNip, wakasekName, wakasekNip,
+    getJpValueForSemester, getKelompokTotal
   } = opts;
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -205,32 +208,72 @@ export const renderStrukturKurikulumPdf = (opts: RenderStrukturOptions): Blob =>
 
   // ---- TANDA TANGAN ----
   let finalY = (doc as any).lastAutoTable?.finalY ?? (pageHeight - 50);
-  if (finalY + 32 > pageHeight) { // Reduced threshold
+  if (finalY + 38 > pageHeight) {
     doc.addPage();
     finalY = 20;
   }
 
-  const sigY = finalY + 6; // Reduced gap from table
-  const leftSigX = pageWidth / 4;
-  const rightSigX = (pageWidth * 3) / 4;
+  const sigY = finalY + 7;
+  const margin = 15;
+  const midX = pageWidth / 2;
 
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Mengetahui,', leftSigX, sigY, { align: 'center' });
-  doc.text('Wakasek Bidang Kurikulum', leftSigX, sigY + 3.8, { align: 'center' });
-  doc.text('.'.repeat(40), leftSigX, sigY + 18, { align: 'center' }); // Reduced gap to name
-  doc.setFontSize(7);
-  doc.text('NIP. ' + '.'.repeat(20), leftSigX, sigY + 21.8, { align: 'center' });
+  // Blok TTD kiri: mulai dari margin (15mm), lebar ~(midX - margin - 5)
+  const leftBlockX = margin;
+  // Blok TTD kanan: mulai dari midX + 5
+  const rightBlockX = midX + 5;
 
+  // Fungsi helper: tulis nama dengan underline rata kiri
+  const drawSignatureName = (name: string, x: number, y: number) => {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(name, x, y);
+    // Underline manual: garis di bawah teks
+    const textWidth = doc.getTextWidth(name);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(x, y + 0.8, x + textWidth, y + 0.8);
+    doc.setFont('Helvetica', 'normal');
+  };
+
+  // Tanggal: gunakan tanggal_mulai TP jika tersedia, fallback ke hari ini
   const dateStr = `${city}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
-  doc.setFontSize(8);
-  doc.text(dateStr, rightSigX, sigY, { align: 'center' });
-  doc.text('Kepala Sekolah,', rightSigX, sigY + 3.8, { align: 'center' });
-  doc.setFont('Helvetica', 'bold');
-  doc.text(principalName, rightSigX, sigY + 18, { align: 'center' }); // Reduced gap to name
+
+  // ── TTD KIRI: Wakasek Kurikulum ──
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text(`NIP. ${principalNip}`, rightSigX, sigY + 21.8, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('Mengetahui,', leftBlockX, sigY);
+  doc.text('Wakasek Bidang Kurikulum', leftBlockX, sigY + 4);
+  // Ruang tanda tangan (14mm)
+  if (wakasekName) {
+    drawSignatureName(wakasekName, leftBlockX, sigY + 18);
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`NIP. ${wakasekNip || '-'}`, leftBlockX, sigY + 22.5);
+  } else {
+    doc.setFontSize(8);
+    doc.text('(___________________________)', leftBlockX, sigY + 18);
+    doc.setFontSize(7.5);
+    doc.text('NIP. ________________________', leftBlockX, sigY + 22.5);
+  }
+
+  // ── TTD KANAN: Kepala Sekolah ──
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(dateStr, rightBlockX, sigY);
+  doc.text('Kepala Sekolah,', rightBlockX, sigY + 4);
+  // Ruang tanda tangan (14mm)
+  if (principalName) {
+    drawSignatureName(principalName, rightBlockX, sigY + 18);
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`NIP. ${principalNip || '-'}`, rightBlockX, sigY + 22.5);
+  } else {
+    doc.setFontSize(8);
+    doc.text('(___________________________)', rightBlockX, sigY + 18);
+    doc.setFontSize(7.5);
+    doc.text('NIP. ________________________', rightBlockX, sigY + 22.5);
+  }
+
 
   return doc.output('blob');
 };

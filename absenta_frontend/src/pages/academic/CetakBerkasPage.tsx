@@ -2,7 +2,7 @@ import React from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { CetakFormAcademic } from '../../components/academic/CetakFormAcademic';
 import { generateAcademicPdf } from '../../utils/print/pdfAcademic';
-import { listGuruMapel } from '../../api/academic/guru-mapel.api';
+import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '../../types/academic';
 
 interface AcademicFormWrapperProps {

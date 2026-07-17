@@ -56,8 +56,8 @@ async function main() {
     '/academic/siswa',
     '/academic/tahun-pelajaran',
     '/academic/semester',
-    '/academic/guru-mapel',
-    '/academic/wali-kelas',
+    '/kurikulum/guru-mapel',
+    '/kurikulum/wali-kelas',
   ];
   for (const p of childPaths) {
     await upsertCoreFeatureForPath(p, false);

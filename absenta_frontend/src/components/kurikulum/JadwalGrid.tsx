@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Badge } from '../ui';
 import { Clock, Plus, BookOpen, User, Edit2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type JadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
+import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
 
 interface JadwalGridProps {
@@ -13,6 +14,7 @@ interface JadwalGridProps {
   onDeleteSlot?: (id: string) => void;
   loading?: boolean;
   readOnly?: boolean;
+  selectedKelasId?: string;
 }
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -38,24 +40,62 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
   onEditSlot, 
   onDeleteSlot,
   loading,
-  readOnly = false
+  readOnly = false,
+  selectedKelasId
 }) => {
   
-  const getSlotData = (day: string, slotIndex: number) => {
-    const slotRange = SLOT_TIME[slotIndex].split(' - ');
-    const slotStart = slotRange[0];
-    const slotEnd = slotRange[1];
+  // Shift config states
+  const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
 
-    return jadwal.find(j => {
-      if (j.hari !== day) return false;
-      
-      // Ambil jam mulai saja (format HH:mm)
-      const jamMulai = j.jam_mulai.split(':').slice(0, 2).join(':');
-      
-      // Jika jam mulai jadwal berada di dalam rentang jam pelajaran ini
-      // Atau jika jam mulai jadwal sama persis dengan jam mulai slot
-      return jamMulai >= slotStart && jamMulai < slotEnd;
-    });
+  useEffect(() => {
+    const fetchTenantShift = async () => {
+      try {
+        const tenantRes = await getMyTenant();
+        if (tenantRes?.success && tenantRes.data?.shift_jam_pelajaran) {
+          setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+        }
+      } catch (err) {
+        console.error('Failed to load shift jam pelajaran config:', err);
+      }
+    };
+    fetchTenantShift();
+  }, []);
+
+  // Resolve slot time dynamically based on the class shift assignment
+  const resolveSlotTime = (targetKelasId: string, slotIndex: number): { start: string; end: string } => {
+    if (shiftJamPelajaran) {
+      const assignedShiftId = shiftJamPelajaran.class_assignments?.[targetKelasId] || 'pagi';
+      const shift = shiftJamPelajaran.shifts?.find((s: any) => s.id === assignedShiftId) || shiftJamPelajaran.shifts?.[0];
+      if (shift) {
+        const slot = shift.slots?.find((sl: any) => sl.slot === slotIndex);
+        if (slot) {
+          return { start: slot.start, end: slot.end };
+        }
+      }
+    }
+    const mockVal = SLOT_TIME[slotIndex] || "07:00 - 07:45";
+    const parts = mockVal.split(' - ');
+    return { start: parts[0], end: parts[1] };
+  };
+
+  const getSlotData = (day: string, slotIndex: number) => {
+    if (selectedKelasId) {
+      const targetSlot = resolveSlotTime(selectedKelasId, slotIndex);
+      return jadwal.find(j => 
+        j.hari === day && 
+        j.jam_mulai && j.jam_mulai.startsWith(targetSlot.start) &&
+        j.kelas_id === selectedKelasId
+      );
+    } else {
+      return jadwal.find(j => {
+        if (j.hari !== day) return false;
+        if (j.kelas_id) {
+          const classSlot = resolveSlotTime(j.kelas_id, slotIndex);
+          return j.jam_mulai && j.jam_mulai.startsWith(classSlot.start);
+        }
+        return false;
+      });
+    }
   };
 
   return (
@@ -75,77 +115,118 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
 
         {/* Grid Body */}
         <div className="relative">
-          {SLOTS.map(slot => (
-            <div key={slot} className="grid grid-cols-7 border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group">
-              {/* Time Column */}
-              <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center space-y-1">
-                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">JAM {slot}</span>
-                <span className="text-[10px] text-gray-400 font-medium">{SLOT_TIME[slot]}</span>
-              </div>
+          {SLOTS.map(slot => {
+            const prevSlotIndex = slot > 1 ? slot - 1 : null;
+            const prevSlot = prevSlotIndex && selectedKelasId ? resolveSlotTime(selectedKelasId, prevSlotIndex) : null;
+            const currentSlot = selectedKelasId ? resolveSlotTime(selectedKelasId, slot) : null;
+            const breakDuration = prevSlot && currentSlot && (() => {
+              const toMins = (t: string) => {
+                const [h, m] = t.split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
+              };
+              return toMins(currentSlot.start) - toMins(prevSlot.end);
+            })();
 
-              {/* Day Columns */}
-              {DAYS.map(day => {
-                const item = getSlotData(day, slot);
-                
-                return (
-                  <div 
-                    key={`${day}-${slot}`} 
-                    className={cn(
-                      "p-2 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[100px] transition-colors relative"
-                    )}
-                  >
-                    <AnimatePresence mode="wait">
-                      {item ? (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className={cn(
-                            "h-full w-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item",
-                            item.jenis_kegiatan === 'KBM' 
-                              ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
-                              : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
-                          )}
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-1">
-                              <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
-                                {item.Kelas?.nama_kelas || item.jenis_kegiatan}
-                              </Badge>
-                              <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                {!readOnly && (
+            return (
+              <React.Fragment key={slot}>
+                {breakDuration && breakDuration > 0 && (
+                  <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800/80 bg-amber-50/10 dark:bg-amber-950/5">
+                    <div className="p-2.5 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
+                      <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
+                    </div>
+                    <div className="col-span-6 p-2.5 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400/85">
+                      <span className="flex items-center gap-1.5">
+                        ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {currentSlot.start})
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-7 border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group">
+                  {/* Time Column */}
+                  <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center space-y-1">
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">JAM {slot}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">
+                      {selectedKelasId 
+                        ? (() => {
+                            const t = resolveSlotTime(selectedKelasId, slot);
+                            return `${t.start} - ${t.end}`;
+                          })()
+                        : 'Dinamis'
+                      }
+                    </span>
+                  </div>
+
+                  {/* Day Columns */}
+                  {DAYS.map(day => {
+                    const item = getSlotData(day, slot);
+                    
+                    return (
+                      <div 
+                        key={`${day}-${slot}`} 
+                        className={cn(
+                          "p-2 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[100px] transition-colors relative"
+                        )}
+                      >
+                        <AnimatePresence mode="wait">
+                          {item ? (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className={cn(
+                                "h-full w-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item",
+                                item.jenis_kegiatan === 'KBM' 
+                                  ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
+                                  : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
+                              )}
+                            >
+                              <div>
+                                <div className="flex justify-between items-start mb-1">
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
+                                    {item.Kelas?.nama_kelas || item.jenis_kegiatan}
+                                  </Badge>
+                                  <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                    {!readOnly && (
+                                      <>
+                                        <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(item); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
+                                          <Edit2 className="w-3 h-3" />
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(item.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {item.Mapel && (
                                   <>
-                                    <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(item); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
-                                      <Edit2 className="w-3 h-3" />
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(item.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
+                                    <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-0.5">
+                                      {item.Mapel.nama_mapel}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono mb-1 leading-none">
+                                      {item.jam_mulai} - {item.jam_selesai}
+                                    </div>
                                   </>
                                 )}
+                                {item.Guru && (
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center">
+                                    <User className="w-2.5 h-2.5 mr-1 text-green-500" />
+                                    {item.Guru.User?.full_name?.split(' ')[0]}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            
-                            {item.Mapel && (
-                              <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-1">
-                                {item.Mapel.nama_mapel}
-                              </div>
-                            )}
-                            {item.Guru && (
-                              <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center">
-                                <User className="w-2.5 h-2.5 mr-1 text-green-500" />
-                                {item.Guru.User?.full_name?.split(' ')[0]}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ) : null}
-                    </AnimatePresence>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                            </motion.div>
+                          ) : null}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              </React.Fragment>
+            );
+          })}
         </div>
       </div>
 

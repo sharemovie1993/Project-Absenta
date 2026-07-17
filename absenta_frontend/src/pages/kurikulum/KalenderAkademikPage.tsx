@@ -14,19 +14,14 @@ import {
   Pencil,
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { SectionCard } from '../../components/ui/SectionCard';
-import { Label } from '../../components/ui/Label';
-import { Input } from '../../components/ui/Input';
+import { Button, Badge, SectionCard, Label, Input, Modal, ModalFooter } from '../../components/ui';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { tahunPelajaranApi } from '../../api/academic.api';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
+import { useJenjang } from '../../hooks/useJenjang';
 import { z } from 'zod';
-
-const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 
 const hardeningModuleKey = 'kalender_akademik_page';
@@ -118,8 +113,16 @@ export default function KalenderAkademikPage() {
     tanggal_mulai: '', tanggal_selesai: '', keterangan: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
+
+  const { jenjang } = useJenjang();
 
   // ─── Queries ───────────────────────────────────────────────────────────────
+  const { data: dbPresets = [] } = useQuery({
+    queryKey: ['calendar-presets', jenjang],
+    queryFn: () => kurikulumApi.getCalendarPresets(jenjang).then(r => r.data ?? []),
+  });
+
   const { data: tahunData = [] } = useQuery({
     queryKey: ['tahun-pelajaran'],
     queryFn: () => tahunPelajaranApi.getAll().then(r => r.data ?? []),
@@ -160,8 +163,28 @@ export default function KalenderAkademikPage() {
     setEditTarget(null);
     setForm({ judul: '', jenis: 'KEGIATAN', tahun_pelajaran_id: tahunPelajaranId, tanggal_mulai: '', tanggal_selesai: '', keterangan: '' });
     setFormErrors({});
+    setSelectedPreset('');
     setModalOpen(true);
   }, [tahunPelajaranId]);
+
+  const openCreateModalWithDate = useCallback((day: number) => {
+    const mm = String(calMonth + 1).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    const dateStr = `${calYear}-${mm}-${dd}`;
+
+    setEditTarget(null);
+    setForm({
+      judul: '',
+      jenis: 'KEGIATAN',
+      tahun_pelajaran_id: tahunPelajaranId,
+      tanggal_mulai: dateStr,
+      tanggal_selesai: dateStr,
+      keterangan: ''
+    });
+    setFormErrors({});
+    setSelectedPreset('');
+    setModalOpen(true);
+  }, [calYear, calMonth, tahunPelajaranId]);
 
   const openEditModal = useCallback((ev: CalendarEvent) => {
     setEditTarget(ev);
@@ -174,10 +197,26 @@ export default function KalenderAkademikPage() {
       keterangan: ev.keterangan ?? '',
     });
     setFormErrors({});
+    setSelectedPreset('');
     setModalOpen(true);
   }, []);
 
-  const closeModal = useCallback(() => { setModalOpen(false); setEditTarget(null); }, []);
+  const closeModal = useCallback(() => { setModalOpen(false); setEditTarget(null); setSelectedPreset(''); }, []);
+
+  const handleSelectPreset = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedPreset(val);
+    if (val === '') return;
+    const preset = dbPresets.find((p: any) => p.id === val);
+    if (preset) {
+      setForm(f => ({
+        ...f,
+        judul: preset.judul,
+        jenis: preset.jenis,
+        keterangan: preset.keterangan ?? ''
+      }));
+    }
+  }, [dbPresets]);
 
   const handleSubmit = useCallback(() => {
     const parsed = eventSchema.safeParse(form);
@@ -290,36 +329,95 @@ export default function KalenderAkademikPage() {
       )}
 
       {/* ─── Calendar Grid ──────────────────────────────────────────── */}
-      <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden mb-6">
+        {/* Calendar Header Nav */}
+        <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} className="h-8 w-8 rounded-lg">
             <ChevronLeft size={16} />
           </Button>
-          <span style={{ fontWeight: 700, fontSize: 16 }}>{MONTH_NAMES[calMonth]} {calYear}</span>
-          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
+          <span className="text-[14px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">{MONTH_NAMES[calMonth]} {calYear}</span>
+          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} className="h-8 w-8 rounded-lg">
             <ChevronRight size={16} />
           </Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
-          {DAY_NAMES?.map(d => <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, opacity: 0.6, padding: '4px 0' }}>{d}</div>)}
+        {/* Day Name Header */}
+        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10">
+          {DAY_NAMES?.map(d => (
+            <div 
+              key={d} 
+              className="text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest py-3 border-r last:border-r-0 border-slate-200 dark:border-slate-800"
+            >
+              {d}
+            </div>
+          ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+        {/* Days Grid */}
+        <div className="grid grid-cols-7">
           {calDays?.map((day, i) => {
             const dayEvents = getDayEvents(day);
             const isToday = day !== null && today.getDate() === day && today.getMonth() === calMonth && today.getFullYear() === calYear;
+            
+            // Border classes
+            const isLastCol = (i + 1) % 7 === 0;
+            const borderClasses = `${isLastCol ? '' : 'border-r'} border-b border-slate-200 dark:border-slate-800/80`;
+
             return (
-              <div key={i} style={getDayStyle(day, isToday)}>
+              <div
+                key={i}
+                className={`min-h-[96px] p-2.5 transition-all duration-200 flex flex-col justify-between relative ${borderClasses} ${
+                  day
+                    ? 'bg-white dark:bg-slate-950 hover:bg-slate-50/50 dark:hover:bg-slate-900/30'
+                    : 'bg-slate-50/30 dark:bg-slate-900/10'
+                }`}
+              >
                 {day && (
                   <>
-                    <div style={{ fontSize: 12, fontWeight: isToday ? 700 : 400, color: isToday ? 'var(--color-primary)' : 'inherit', marginBottom: 2 }}>{day}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {dayEvents.slice(0, 2)?.map((ev: CalendarEvent) => {
-                        const j = getJenis(ev.jenis);
-                        const eventBadgeStyle = { fontSize: 9, fontWeight: 600, color: j.color, background: j.bg, borderRadius: 3, padding: '1px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
-                        return <div key={ev.id} style={eventBadgeStyle as React.CSSProperties}>{ev.judul}</div>;
-                      })}
-                      {dayEvents.length > 2 && <div style={{ fontSize: 9, opacity: 0.6 }}>+{dayEvents.length - 2} lagi</div>}
+                    <div className="flex justify-between items-start">
+                      {isToday ? (
+                        <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-[11px] shadow-sm shadow-indigo-500/30">
+                          {day}
+                        </span>
+                      ) : (
+                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-350">
+                          {day}
+                        </span>
+                      )}
                     </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center my-2">
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openCreateModalWithDate(day)}
+                          className="flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-indigo-650 dark:hover:text-indigo-400 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-all duration-200 cursor-pointer shadow-sm hover:scale-105 active:scale-95 bg-white dark:bg-slate-950"
+                          title="Tambah event pada tanggal ini"
+                        >
+                          <Plus size={13} className="stroke-[2.5]" />
+                        </button>
+                      )}
+                    </div>
+
+                    {dayEvents.length > 0 && (
+                      <div className="flex flex-col gap-1 w-full mt-auto">
+                        {dayEvents.slice(0, 1)?.map((ev: CalendarEvent) => {
+                          const j = getJenis(ev.jenis);
+                          return (
+                            <div
+                              key={ev.id}
+                              style={{ background: j.bg, color: j.color }}
+                              className="text-[9px] font-bold rounded px-1.5 py-0.5 overflow-hidden text-ellipsis whitespace-nowrap shadow-sm border border-black/5 dark:border-white/5 text-center leading-normal"
+                            >
+                              {ev.judul}
+                            </div>
+                          );
+                        })}
+                        {dayEvents.length > 1 && (
+                          <div className="text-[8px] font-bold text-slate-400 dark:text-slate-550 text-center leading-none mt-0.5">
+                            +{dayEvents.length - 1} lagi
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -388,6 +486,33 @@ export default function KalenderAkademikPage() {
               />
               {formErrors.tahun_pelajaran_id && <div style={{ color: 'var(--color-danger)', fontSize: 11, marginTop: 3 }}>{formErrors.tahun_pelajaran_id}</div>}
             </div>
+            {!editTarget && dbPresets.length > 0 && (
+              <div>
+                <Label htmlFor="kal-preset">Pilih dari Preset Event (Autofill Cepat)</Label>
+                <select
+                  id="kal-preset"
+                  value={selectedPreset}
+                  onChange={handleSelectPreset}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)',
+                    fontSize: 13,
+                    color: 'inherit'
+                  }}
+                >
+                  <option value="">- Pilih Preset Event Kalender SMK -</option>
+                  {dbPresets.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.judul} ({p.jenis})</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 10, color: '#6b7280', marginTop: 3 }}>
+                  * Memilih salah satu preset akan mengisi otomatis field di bawah. Anda tetap dapat mengeditnya secara manual.
+                </p>
+              </div>
+            )}
             <div>
               <Label htmlFor="kal-judul">Nama / Judul Event *</Label>
               <Input id="kal-judul" value={form.judul} onChange={e => setForm(f => ({ ...f, judul: e.target.value }))} placeholder="cth. Libur Idul Fitri, PTS Semester Ganjil" aria-label="Judul event" />
@@ -415,12 +540,25 @@ export default function KalenderAkademikPage() {
               <Label htmlFor="kal-ket">Keterangan (opsional)</Label>
               <textarea id="kal-ket" aria-label="Keterangan tambahan event" value={form.keterangan} onChange={e => setForm(f => ({ ...f, keterangan: e.target.value }))} rows={2} placeholder="Informasi tambahan..." style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--border-color)' }}>
-              <Button variant="secondary" onClick={closeModal}>Batal</Button>
-              <Button variant="primary" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
+            <ModalFooter>
+              <Button
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={closeModal}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="toolbarPrimary"
+                size="toolbar"
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
                 {(createMutation.isPending || updateMutation.isPending) ? 'Menyimpan...' : 'Simpan'}
               </Button>
-            </div>
+            </ModalFooter>
           </div>
         </Modal>
       </Suspense>

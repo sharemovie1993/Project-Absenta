@@ -229,6 +229,7 @@ export interface Jurusan {
   nama: string;
   kode?: string;
   singkatan?: string;
+  warna?: string | null;
   program_keahlian_id?: string | null;
   created_at: Date;
   updated_at: Date;

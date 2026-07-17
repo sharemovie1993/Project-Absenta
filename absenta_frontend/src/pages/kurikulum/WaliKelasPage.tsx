@@ -48,7 +48,7 @@ const WaliKelasPage: React.FC = () => {
       isLoadingStats={isLoadingStats}
       hardeningModuleKey="walikelas"
       breadcrumbs={[
-        { label: 'Akademik', path: '/academic' },
+        { label: 'Kurikulum', path: '/kurikulum/dashboard' },
         { label: 'Wali Kelas' }
       ]}
       instruction={{

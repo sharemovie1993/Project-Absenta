@@ -37,6 +37,7 @@ export interface UpdateTenantInput {
   jenjang?: string | null;
   kurikulum?: string | null;
   kepala_sekolah_guru_id?: string | null;
+  shift_jam_pelajaran?: any;
 }
 
 export interface TenantResponse {
@@ -182,7 +183,7 @@ export class TenantService {
       where: {
         tenant_id: id,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE']
+          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'ALLOW_MANUAL_HADIR_GATE', 'shift_jam_pelajaran']
         }
       }
     });
@@ -198,6 +199,15 @@ export class TenantService {
         parsedLines = JSON.parse(configMap['print_header_lines']);
       } catch (e) {
         parsedLines = [];
+      }
+    }
+
+    let parsedShift: any = null;
+    if (configMap['shift_jam_pelajaran']) {
+      try {
+        parsedShift = JSON.parse(configMap['shift_jam_pelajaran']);
+      } catch (e) {
+        parsedShift = null;
       }
     }
 
@@ -283,6 +293,7 @@ export class TenantService {
       website: configMap['website'] || null,
       print_header_lines: parsedLines,
       allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
+      shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values
       kepala_sekolah: kepalaSekolahNama || null,
@@ -384,6 +395,7 @@ export class TenantService {
       jenjang,
       kurikulum,
       kepala_sekolah_guru_id,
+      shift_jam_pelajaran,
       ...coreInput
     } = input;
 
@@ -424,6 +436,9 @@ export class TenantService {
     }
     if (allow_manual_hadir_gate !== undefined) {
       await upsertConfig('ALLOW_MANUAL_HADIR_GATE', allow_manual_hadir_gate ? 'true' : 'false');
+    }
+    if (shift_jam_pelajaran !== undefined) {
+      await upsertConfig('shift_jam_pelajaran', JSON.stringify(shift_jam_pelajaran));
     }
 
     // Save kepala_sekolah, nip_kepala, jenjang & kurikulum in Sekolah table
@@ -566,7 +581,7 @@ export class TenantService {
       where: {
         tenant_id: tenantId,
         key: {
-          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website']
+          in: ['print_header_lines', 'logo_daerah_url', 'address', 'phone', 'email', 'website', 'shift_jam_pelajaran']
         }
       }
     });
@@ -582,6 +597,15 @@ export class TenantService {
         parsedLines = JSON.parse(configMap['print_header_lines']);
       } catch (e) {
         parsedLines = [];
+      }
+    }
+
+    let parsedShift: any = null;
+    if (configMap['shift_jam_pelajaran']) {
+      try {
+        parsedShift = JSON.parse(configMap['shift_jam_pelajaran']);
+      } catch (e) {
+        parsedShift = null;
       }
     }
 
@@ -655,6 +679,7 @@ export class TenantService {
       email: configMap['email'] || null,
       website: configMap['website'] || null,
       print_header_lines: parsedLines,
+      shift_jam_pelajaran: parsedShift,
 
       // Hybrid Kepala Sekolah values
       kepala_sekolah: currentKepsekNama || null,

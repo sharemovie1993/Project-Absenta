@@ -398,7 +398,7 @@ export class PrepChecklistService {
       status_text: isGuruMapelDone
         ? `${countGuruMapel} pemetaan beban mengajar terdaftar`
         : 'Belum ada pemetaan beban mengajar guru',
-      action_path: '/academic/guru-mapel',
+      action_path: '/kurikulum/guru-mapel',
       details: { total: countGuruMapel }
     });
 

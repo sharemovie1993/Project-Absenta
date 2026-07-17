@@ -360,7 +360,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
     const actions: QuickAction[] = [
-      { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/attendance/jadwal-template?guru_id=${guruId}`),          color: 'blue'   },
+      { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`),          color: 'blue'   },
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo' },
     ];
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'),         color: 'rose'   });

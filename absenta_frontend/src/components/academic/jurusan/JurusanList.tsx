@@ -219,6 +219,37 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
         </Badge>
       )
     },
+    {
+      key: 'warna',
+      label: 'Warna Khas',
+      render: (value: string | null) => {
+        const colorName = value || 'indigo';
+        const TAILWIND_COLOR_MAP: Record<string, string> = {
+          blue: '#3b82f6',
+          cyan: '#06b6d4',
+          emerald: '#10b981',
+          amber: '#f59e0b',
+          orange: '#f97316',
+          purple: '#a855f7',
+          rose: '#f43f5e',
+          pink: '#ec4899',
+          teal: '#14b8a6',
+          indigo: '#6366f1'
+        };
+        const hex = colorName.startsWith('#') ? colorName : (TAILWIND_COLOR_MAP[colorName] || '#6366f1');
+        return (
+          <div className="flex items-center gap-1.5">
+            <div 
+              className="w-3 h-3 rounded-full border border-slate-200/50 shadow-sm" 
+              style={{ backgroundColor: hex }} 
+            />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 font-mono">
+              {value ? value : 'Default'}
+            </span>
+          </div>
+        );
+      }
+    },
     { 
       key: 'keterangan', 
       label: 'Keterangan',

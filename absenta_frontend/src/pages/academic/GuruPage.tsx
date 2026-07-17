@@ -79,7 +79,7 @@ export const GuruPage: React.FC = () => {
       icon: <UserCheck size={14} />,
       gradient: "from-emerald-500 to-teal-600",
       subtitle: "Guru dengan jadwal aktif",
-      onClick: () => navigate('/academic/guru-mapel')
+      onClick: () => navigate('/kurikulum/guru-mapel')
     }
   ], [stats, navigate]);
 

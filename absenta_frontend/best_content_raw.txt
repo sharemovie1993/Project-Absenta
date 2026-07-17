@@ -1,0 +1,45 @@
+Created At: 2026-07-16T02:11:55Z
+Completed At: 2026-07-16T02:11:55Z
+File Path: `file:///d:/BarayaProject/Project%20Absenta/absenta_frontend/src/components/kurikulum/JadwalBuilder.tsx`
+Total Lines: 861
+Total Bytes: 36652
+Showing lines 825 to 861
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+825:                             </span>
+826:                           </div>
+827:                         </div>
+828:                       )}
+829:                       
+830:                                   )}>
+831:                                     <AlertTriangle className="w-4 h-4" />
+832:                                     <span className="text-[8px] font-black uppercase tracking-wider mt-0.5 leading-tight">
+833:                                       {conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA KBM'}
+834:                                     </span>
+835:                                   </div>
+836:                                 ) : (
+837:                                   <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
+838:                                     <Plus size={12} className="stroke-[2.5]" />
+839:                                   </span>
+840:                                 )}
+841:                               </div>
+842:                             )}
+843:                           </div>
+844:                         );
+845:                       })}
+846: 
+847:                     </div>
+848:                   );
+849:                 })}
+850:               </div>
+851:             )}
+852: 
+853:           </div>
+854:         </div>
+855: 
+856:       </div>
+857: 
+858:     </div>
+859:   );
+860: };
+861: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

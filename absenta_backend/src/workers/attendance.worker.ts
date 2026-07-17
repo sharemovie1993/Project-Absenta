@@ -20,6 +20,11 @@ async function processJob(job: Job): Promise<any> {
     if (name === 'attendance-auto-session') {
       const { runAttendanceAutoSessionCycle } = await import('../jobs/attendanceAutoSession.job');
       await runAttendanceAutoSessionCycle();
+    } else if (name === 'attendance-auto-session-tenant') {
+      const { generateSessionsForTenantDirect } = await import('../jobs/attendanceAutoSession.job');
+      const dateStr = String((job.data as any)?.dateStr || '');
+      const timeZone = String((job.data as any)?.timeZone || '');
+      result = await generateSessionsForTenantDirect(tenantId, dateStr, timeZone);
     } else if (name === 'attendance-auto-close') {
       const { runAttendanceAutoCloseCycle } = await import('../jobs/attendanceAutoClose.job');
       await runAttendanceAutoCloseCycle();

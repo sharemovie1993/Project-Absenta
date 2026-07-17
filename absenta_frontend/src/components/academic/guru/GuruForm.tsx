@@ -9,7 +9,7 @@ import { ModalFooter } from '../../ui/Modal';
 import { Save, X, RefreshCw } from 'lucide-react';
 import { createGuru, updateGuru, getGuruDetail, type CreateGuruPayload, type UpdateGuruPayload } from '../../../api/academic/guru.api';
 import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
-import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/academic/guru-mapel.api';
+import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import { guruSchema, type GuruFormValues } from '../../../schemas/academic/guru.schema';
 import toast from 'react-hot-toast';
 
@@ -118,7 +118,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           status_kepegawaian: (guru.status_kepegawaian as 'PNS' | 'HONORER' | 'KONTRAK') || 'PNS',
           status: (guru as any).User?.status || 'ACTIVE',
           pendidikan_terakhir: guru.pendidikan_terakhir || 'S1',
-          rfid_tag: guru.no_rfid || ''
+          rfid_tag: guru.no_rfid || '',
+          max_jp: (guru as any).max_jp || ''
         });
       } catch (error) {
         console.error('Error loading guru data:', error);
@@ -175,7 +176,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           status_kepegawaian: data.status_kepegawaian,
           status: data.status,
           pendidikan_terakhir: data.pendidikan_terakhir,
-          no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined
+          no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
+          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp)
         };
         
         await updateGuru(guruId, updatePayload);
@@ -211,7 +213,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           agama: data.agama || 'ISLAM',
           status_kepegawaian: data.status_kepegawaian,
           pendidikan_terakhir: data.pendidikan_terakhir || 'S1',
-          no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined
+          no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
+          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp)
         };
         
         const created = await createGuru(createPayload);

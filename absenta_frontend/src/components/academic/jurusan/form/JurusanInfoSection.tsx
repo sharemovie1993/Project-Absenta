@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Info as InfoIcon, Hash, Layers } from 'lucide-react';
+import { BookOpen, Info as InfoIcon, Hash, Layers, Pipette } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
 import { SectionCard, DetailRow } from './FormShared';
@@ -7,6 +7,19 @@ import { getProgramKeahlianList, createProgramKeahlian } from '../../../../api/a
 import { getGlobalPresets } from '../../../../api/academic/jurusan-presets.api';
 import type { ProgramKeahlian } from '../../../../types/academic';
 import toast from 'react-hot-toast';
+
+export const TAILWIND_COLOR_MAP: Record<string, string> = {
+  blue: '#3b82f6',
+  cyan: '#06b6d4',
+  emerald: '#10b981',
+  amber: '#f59e0b',
+  orange: '#f97316',
+  purple: '#a855f7',
+  rose: '#f43f5e',
+  pink: '#ec4899',
+  teal: '#14b8a6',
+  indigo: '#6366f1'
+};
 
 interface JurusanInfoSectionProps {
   register: any;
@@ -26,6 +39,14 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
   const [programKeahlianList, setProgramKeahlianList] = useState<ProgramKeahlian[]>([]);
   const selectedPKId = watch('program_keahlian_id');
   const selectedPK = programKeahlianList.find(p => p.id === selectedPKId);
+  const watchedWarna = watch('warna');
+  const [localWarna, setLocalWarna] = useState<string>('indigo');
+
+  useEffect(() => {
+    if (watchedWarna) {
+      setLocalWarna(watchedWarna);
+    }
+  }, [watchedWarna]);
 
   const [presets, setPresets] = useState<any[]>([]);
 
@@ -75,6 +96,23 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
           icon={<Layers size={16} />}
           label="Program Keahlian"
           value={selectedPK ? `${selectedPK.nama}${selectedPK.bidang_keahlian ? ` (${selectedPK.bidang_keahlian})` : ''}` : '-'}
+        />
+        <DetailRow
+          icon={
+            <div 
+              className="w-3.5 h-3.5 rounded-full border border-slate-200/50" 
+              style={{ backgroundColor: localWarna && localWarna.startsWith('#') ? localWarna : (TAILWIND_COLOR_MAP[localWarna || ''] || '#6366f1') }} 
+            />
+          }
+          label="Warna Khas"
+          value={
+            <span 
+              className="font-extrabold uppercase tracking-widest text-[10px] px-2 py-0.5 rounded-md text-white shadow-sm" 
+              style={{ backgroundColor: localWarna && localWarna.startsWith('#') ? localWarna : (TAILWIND_COLOR_MAP[localWarna || ''] || '#6366f1') }}
+            >
+              {localWarna || 'Default (Indigo)'}
+            </span>
+          }
         />
       </SectionCard>
     );
@@ -253,6 +291,111 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
           className={`h-10 text-[13px] font-bold tracking-tight bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.kode ? 'border-red-500 focus:ring-red-500/20' : ''}`}
         />
         {errors.kode && <p className="text-[10px] font-bold text-red-500 mt-1 px-1">{errors.kode.message}</p>}
+      </div>
+
+      {/* Warna Jurusan */}
+      <div className="space-y-2 md:col-span-2 group">
+        <div className="flex items-center justify-between px-1">
+          <Label htmlFor="warna" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+            Warna Khas Jurusan
+          </Label>
+          <div className="flex items-center gap-1.5">
+            <InfoIcon className="w-3 h-3 text-indigo-400" />
+            <p className="text-[9px] text-indigo-500 font-medium italic">Dipakai untuk warna tombol, kartu, dan diagram di berbagai modul</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+          {Object.keys(TAILWIND_COLOR_MAP).map((colorKey) => {
+            const isSelected = localWarna === colorKey || (!localWarna && colorKey === 'indigo');
+            const hex = TAILWIND_COLOR_MAP[colorKey];
+            return (
+              <button
+                key={colorKey}
+                type="button"
+                onClick={() => {
+                  setLocalWarna(colorKey);
+                  if (setValue) {
+                    setValue('warna', colorKey, { shouldDirty: true, shouldTouch: true });
+                  }
+                }}
+                className="w-8 h-8 rounded-full border-2 transition-all cursor-pointer relative flex items-center justify-center hover:scale-105 active:scale-95"
+                style={{ 
+                  backgroundColor: hex,
+                  borderColor: isSelected ? '#1e293b' : 'transparent',
+                  boxShadow: isSelected ? '0 0 0 2px #fff, 0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                }}
+                title={colorKey.toUpperCase()}
+              >
+                {isSelected && (
+                  <span className="text-white text-xs font-black">✓</span>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Divider */}
+          <div className="w-[1px] h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          {/* EyeDropper Custom Color Picker */}
+          {(() => {
+            const isCustomSelected = localWarna && localWarna.startsWith('#');
+            const hasEyeDropper = 'EyeDropper' in window;
+            
+            return (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (hasEyeDropper) {
+                      try {
+                        const eyeDropper = new (window as any).EyeDropper();
+                        const result = await eyeDropper.open();
+                        const hex = result.sRGBHex;
+                        setLocalWarna(hex);
+                        if (setValue) {
+                          setValue('warna', hex, { shouldDirty: true, shouldTouch: true });
+                        }
+                      } catch (err) {
+                        console.log('EyeDropper closed without picking:', err);
+                      }
+                    } else {
+                      // Fallback: click the hidden color input
+                      const inputEl = document.getElementById('custom-color-input-element');
+                      if (inputEl) inputEl.click();
+                    }
+                  }}
+                  className="w-8 h-8 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center hover:scale-105 active:scale-95 shadow-sm bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350"
+                  style={{ 
+                    backgroundColor: isCustomSelected ? localWarna : undefined,
+                    color: isCustomSelected ? '#ffffff' : undefined,
+                    borderColor: isCustomSelected ? '#1e293b' : 'transparent',
+                    boxShadow: isCustomSelected ? '0 0 0 2px #fff, 0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none'
+                  }}
+                  title={hasEyeDropper ? "Pipet Warna (Pilih dari mana saja di layar komputer Anda)" : "Pilih Warna Custom..."}
+                >
+                  <Pipette size={14} className={isCustomSelected ? "drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" : ""} />
+                </button>
+
+                {/* Hidden input for fallback in non-supported browsers or fallback actions */}
+                <input
+                  id="custom-color-input-element"
+                  type="color"
+                  value={isCustomSelected ? localWarna : '#6366f1'}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setLocalWarna(val);
+                    if (setValue) {
+                      setValue('warna', val, { shouldDirty: true, shouldTouch: true });
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 w-0 h-0 pointer-events-none"
+                />
+              </div>
+            );
+          })()}
+        </div>
+        <input type="hidden" {...register('warna')} />
       </div>
     </SectionCard>
   );

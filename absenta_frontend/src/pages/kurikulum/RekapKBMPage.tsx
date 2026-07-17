@@ -36,6 +36,7 @@ interface RekapKBMRecord {
   nama_guru: string;
   nip: string;
   total_jp_rencana: number;
+  jp_dijadwalkan?: number;
   jp_terlaksana: number;
   jp_sisa: number;
   persentase: number;
@@ -356,15 +357,16 @@ export default function RekapKBMPage() {
                   </div>
 
                   {/* Mini Stats Metrics */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                     {[
                       { label: 'Rencana', value: `${guru.total_jp_rencana} JP`, color: 'var(--text-primary)', bg: 'var(--bg-primary, #fff)' },
+                      { label: 'Dijadwalkan', value: `${guru.jp_dijadwalkan ?? 0} JP`, color: (guru.jp_dijadwalkan ?? 0) !== guru.total_jp_rencana ? '#ec4899' : '#3b82f6', bg: 'var(--bg-primary, #fff)' },
                       { label: 'Terlaksana', value: `${guru.jp_terlaksana} JP`, color: '#10b981', bg: 'var(--bg-primary, #fff)' },
                       { label: 'Sisa Beban', value: `${guru.jp_sisa} JP`, color: guru.jp_sisa > 0 ? '#ef4444' : '#10b981', bg: 'var(--bg-primary, #fff)' },
                     ]?.map(item => (
-                      <div key={item.label} style={{ background: item.bg, borderRadius: 8, padding: '6px 8px', textAlign: 'center', border: '1px solid var(--border-color, #e5e7eb)' }}>
-                        <div style={{ fontSize: 9, color: 'var(--text-secondary, #6b7280)', marginBottom: 2 }}>{item.label}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: item.color }}>{item.value}</div>
+                      <div key={item.label} style={{ background: item.bg, borderRadius: 8, padding: '6px 4px', textAlign: 'center', border: '1px solid var(--border-color, #e5e7eb)' }}>
+                        <div style={{ fontSize: 8.5, color: 'var(--text-secondary, #6b7280)', marginBottom: 2 }}>{item.label}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: item.color }}>{item.value}</div>
                       </div>
                     ))}
                   </div>

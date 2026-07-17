@@ -12,6 +12,9 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { cn } from '../../lib/utils';
 import { ClipboardList, Plus, Clock, Award, BookOpen, User, Calendar, ChevronRight } from 'lucide-react';
 import { z } from 'zod';
+import { useAuthStore } from '../../store/authStore';
+import { SupervisiSelfAssessmentModal } from '../../components/kurikulum/SupervisiSelfAssessmentModal';
+import { SupervisiAnalyticsDashboard } from './SupervisiAnalyticsDashboard';
 
 // Lazy load komponen berat (Pillar 11 – Optimasi Pemuatan)
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
@@ -27,7 +30,8 @@ const supervisiSchema = z.object({
   mapel: z.string().min(1, 'Mata pelajaran wajib dipilih'),
   catatan: z.string().optional(),
   nilai: z.union([z.number().min(0).max(100), z.literal('')]).optional(),
-  status: z.string().min(1)
+  status: z.string().min(1),
+  supervisor_id: z.string().nullable().optional()
 });
 
 type FormState = {
@@ -39,6 +43,7 @@ type FormState = {
   catatan: string;
   nilai: number | '';
   status: string;
+  supervisor_id: string;
 };
 
 const DEFAULT_FORM: FormState = {
@@ -49,10 +54,16 @@ const DEFAULT_FORM: FormState = {
   mapel: '',
   catatan: '',
   nilai: '',
-  status: 'SCHEDULED'
+  status: 'SCHEDULED',
+  supervisor_id: ''
 };
 
 export default function SupervisiPage() {
+  const { user } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'LIST' | 'ANALYTICS'>('LIST');
+  const [selfAssessmentModalOpen, setSelfAssessmentModalOpen] = useState(false);
+  const [selfAssessmentSupervisiId, setSelfAssessmentSupervisiId] = useState<string | null>(null);
+
   const [data, setData] = useState<Supervisi[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,6 +77,60 @@ export default function SupervisiPage() {
   const [pageLimit, setPageLimit] = useState(10);
   const [totalData, setTotalData] = useState(0);
   const [selectedSupervisiId, setSelectedSupervisiId] = useState<string | null>(null);
+
+  // States for Scheduling Recommendations
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
+
+  const fetchRecommendations = async () => {
+    if (!formData.guru_id || !formData.tanggal) {
+      toast.error('Pilih Guru dan Tanggal terlebih dahulu.');
+      return;
+    }
+    try {
+      setLoadingRecs(true);
+      const res = await kurikulumApi.getSupervisiRecommendations(formData.guru_id, formData.tanggal);
+      setRecommendations(res.data || []);
+      if ((res.data || []).length === 0) {
+        toast.error('Tidak ada jadwal mengajar untuk guru ini pada tanggal tersebut.');
+      } else {
+        toast.success(`Ditemukan ${res.data.length} slot jadwal mengajar.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal memuat rekomendasi.');
+    } finally {
+      setLoadingRecs(false);
+    }
+  };
+
+  // Reset recommendations when guru_id or tanggal changes
+  useEffect(() => {
+    setRecommendations([]);
+    setSelectedRecId(null);
+  }, [formData.guru_id, formData.tanggal]);
+
+  const currentGuru = useMemo(() => guruItems.find(g => g.user_id === user?.id), [guruItems, user]);
+  const canViewAnalytics = useMemo(() => {
+    return user?.roleName === 'ADMIN' || user?.roleName === 'SUPERADMIN' || user?.capabilities?.includes('curriculum.supervision.view.report');
+  }, [user]);
+  const canManage = useMemo(() => {
+    return user?.roleName === 'ADMIN' || user?.roleName === 'SUPERADMIN' || user?.capabilities?.includes('academic.structure.manage');
+  }, [user]);
+
+  const currentRecSlot = useMemo(() => {
+    return recommendations.find(r => r.id === selectedRecId);
+  }, [recommendations, selectedRecId]);
+
+  const filteredSupervisorOptions = useMemo(() => {
+    if (currentRecSlot && currentRecSlot.recommended_supervisors) {
+      return currentRecSlot.recommended_supervisors.map((s: any) => ({
+        label: `${s.nama_guru} (Bebas Bentrok)`,
+        value: s.id
+      }));
+    }
+    return guruOptions.filter(o => o.value !== formData.guru_id);
+  }, [currentRecSlot, guruOptions, formData.guru_id]);
 
   const selectedSupervisi = useMemo(() => {
     if (data.length === 0) return null;
@@ -129,6 +194,7 @@ export default function SupervisiPage() {
       const payload = {
         ...formData,
         nilai: formData.nilai === '' ? null : Number(formData.nilai),
+        supervisor_id: formData.supervisor_id || null,
       };
       if (selectedId) {
         await kurikulumApi.updateSupervisi(selectedId, payload);
@@ -156,7 +222,8 @@ export default function SupervisiPage() {
       mapel: item.mapel ?? '',
       catatan: item.catatan ?? '',
       nilai: item.nilai ?? '',
-      status: item.status
+      status: item.status,
+      supervisor_id: item.supervisor_id || ''
     });
     setSelectedId(item.id);
     setModalOpen(true);
@@ -199,6 +266,9 @@ export default function SupervisiPage() {
         <div>
           <div className="font-medium text-slate-800 dark:text-slate-200">{item.Guru?.nama_guru}</div>
           <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{item.Guru?.nip || '-'}</div>
+          {item.Supervisor?.nama_guru && (
+            <div className="text-[9px] text-slate-500 font-semibold mt-0.5">Penilai: {item.Supervisor.nama_guru}</div>
+          )}
         </div>
       )
     },
@@ -226,28 +296,49 @@ export default function SupervisiPage() {
     {
       key: 'actions',
       label: 'Aksi',
-      render: (_: unknown, item: Supervisi) => (
-        <div className="flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
-            className="text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Edit
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
-            className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50/10 dark:hover:bg-rose-950/20"
-          >
-            Hapus
-          </Button>
-        </div>
-      )
+      render: (_: unknown, item: Supervisi) => {
+        const isMySupervisi = currentGuru && item.guru_id === currentGuru.id;
+        return (
+          <div className="flex gap-2">
+            {isMySupervisi && item.status === 'SCHEDULED' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelfAssessmentSupervisiId(item.id);
+                  setSelfAssessmentModalOpen(true);
+                }}
+                className="text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
+              >
+                Evaluasi Diri
+              </Button>
+            )}
+            {canManage && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                  className="text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Edit
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                  className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50/10 dark:hover:bg-rose-950/20"
+                >
+                  Hapus
+                </Button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, currentGuru, canManage]);
 
   const stats = useMemo(() => {
     const total = data.length;
@@ -331,8 +422,38 @@ export default function SupervisiPage() {
         ]
       }}
     >
+      {canViewAnalytics && (
+        <div className="px-6 lg:px-8 border-b border-gray-100 dark:border-slate-800 flex gap-6">
+          <button
+            onClick={() => setActiveTab('LIST')}
+            className={cn(
+              "pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all duration-200 outline-none",
+              activeTab === 'LIST'
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            )}
+          >
+            Daftar & Penjadwalan
+          </button>
+          <button
+            onClick={() => setActiveTab('ANALYTICS')}
+            className={cn(
+              "pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all duration-200 outline-none",
+              activeTab === 'ANALYTICS'
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            )}
+          >
+            Analitik Kompetensi
+          </button>
+        </div>
+      )}
+
       <div className="p-6 lg:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        {activeTab === 'ANALYTICS' && canViewAnalytics ? (
+          <SupervisiAnalyticsDashboard />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
           {/* Table Container (Kiri) */}
           <div className="lg:col-span-7 flex">
             <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm flex flex-col justify-between w-full">
@@ -449,6 +570,40 @@ export default function SupervisiPage() {
                     )}
                   </div>
 
+                  {/* Self-Assessment Details */}
+                  {(selectedSupervisi.is_self_evaluated || (selectedSupervisi as any).target_pembelajaran) && (
+                    <div className="space-y-2 border-t border-slate-50 dark:border-slate-800 pt-4">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                        <Award size={10} className="text-indigo-500" />
+                        Evaluasi Diri Guru (Pra-Observasi)
+                      </h4>
+                      <div className="p-3 bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-50 dark:border-indigo-900/20 rounded-xl space-y-2">
+                        <div>
+                          <p className="text-[9px] font-bold text-gray-400 uppercase">Target Pembelajaran</p>
+                          <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+                            {(selectedSupervisi as any).target_pembelajaran || '-'}
+                          </p>
+                        </div>
+                        {((selectedSupervisi as any).nilai_self !== null && (selectedSupervisi as any).nilai_self !== undefined) && (
+                          <div>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase">Skor Evaluasi Mandiri</p>
+                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-black">
+                              {(selectedSupervisi as any).nilai_self}/100
+                            </p>
+                          </div>
+                        )}
+                        {(selectedSupervisi as any).catatan_self && (
+                          <div>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase">Catatan Guru</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                              "{(selectedSupervisi as any).catatan_self}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Catatan */}
                   <div className="space-y-2">
                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Penilai (Supervisor)</h4>
@@ -475,8 +630,9 @@ export default function SupervisiPage() {
             </Card>
           </div>
         </div>
+      )}
 
-        <Suspense fallback={null}>
+      <Suspense fallback={null}>
           <Modal
             isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
@@ -520,6 +676,67 @@ export default function SupervisiPage() {
                   />
                 </div>
               </div>
+
+              {/* Automasi & Rekomendasi Jadwal */}
+              {formData.guru_id && formData.tanggal && !selectedId && (
+                <div className="space-y-2 border border-indigo-50 dark:border-indigo-950/40 rounded-2xl p-4 bg-indigo-50/20 dark:bg-indigo-950/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+                      <Clock size={12} /> Automasi Jadwal
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={fetchRecommendations}
+                      loading={loadingRecs}
+                      className="text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 rounded-xl px-2 h-7"
+                    >
+                      Cari Jadwal Mengajar Guru
+                    </Button>
+                  </div>
+
+                  {recommendations.length > 0 && (
+                    <div className="space-y-2 mt-2 max-h-48 overflow-y-auto pr-1">
+                      <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Pilih Slot Jam Mengajar:</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {recommendations.map((rec) => (
+                          <div
+                            key={rec.id}
+                            onClick={() => {
+                              setSelectedRecId(rec.id);
+                              setFormData({
+                                ...formData,
+                                jam_ke: rec.jam_ke,
+                                kelas: rec.kelas,
+                                mapel: rec.mapel,
+                                supervisor_id: rec.recommended_supervisors[0]?.id || ''
+                              });
+                              toast.success(`Slot dipilih: Jam Ke-${rec.jam_ke} - Kelas ${rec.kelas}`);
+                            }}
+                            className={cn(
+                              "p-3 rounded-2xl border text-xs cursor-pointer transition-all flex flex-col gap-1",
+                              selectedRecId === rec.id
+                                ? "border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30"
+                                : "border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-white/50 dark:bg-slate-950/50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between font-black text-slate-700 dark:text-slate-200">
+                              <span>Jam Ke-{rec.jam_ke} ({rec.jam_mulai} - {rec.jam_selesai})</span>
+                              <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 border-none text-[9px] font-black">{rec.kelas}</Badge>
+                            </div>
+                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{rec.mapel}</div>
+                            <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                              ✓ {rec.recommended_supervisors.length} supervisor bebas bentrok tersedia
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <Label htmlFor="mapel-select">Mata Pelajaran</Label>
                 <SearchableSelect
@@ -538,6 +755,17 @@ export default function SupervisiPage() {
                   onValueChange={(val) => setFormData({ ...formData, kelas: val })}
                   options={kelasOptions}
                   placeholder="Pilih Kelas"
+                />
+              </div>
+              <div>
+                <Label htmlFor="supervisor-select">Supervisor / Penilai</Label>
+                <SearchableSelect
+                  id="supervisor-select"
+                  value={formData.supervisor_id}
+                  onValueChange={(val) => setFormData({ ...formData, supervisor_id: val })}
+                  options={filteredSupervisorOptions}
+                  placeholder="Pilih Supervisor"
+                  searchPlaceholder="Cari Supervisor..."
                 />
               </div>
               <div>
@@ -584,6 +812,23 @@ export default function SupervisiPage() {
               </div>
             </form>
           </Modal>
+
+          {selfAssessmentModalOpen && selfAssessmentSupervisiId && (
+            <SupervisiSelfAssessmentModal
+              isOpen={selfAssessmentModalOpen}
+              onClose={() => {
+                setSelfAssessmentModalOpen(false);
+                setSelfAssessmentSupervisiId(null);
+              }}
+              supervisiId={selfAssessmentSupervisiId}
+              initialData={{
+                target_pembelajaran: (selectedSupervisi as any)?.target_pembelajaran,
+                nilai_self: (selectedSupervisi as any)?.nilai_self,
+                catatan_self: (selectedSupervisi as any)?.catatan_self
+              }}
+              onSuccess={fetchData}
+            />
+          )}
         </Suspense>
       </div>
     </AcademicPageLayout>

@@ -1,12 +1,10 @@
 import guruRoutes from '../guru/routes/guru.routes';
-import guruMapelRoutes from '../guru-mapel/routes/guru-mapel.routes';
 import siswaRoutes from '../siswa/routes/siswa.routes';
 import kelasRoutes from '../kelas/routes/kelas.routes';
 import mapelRoutes from '../mapel/routes/mapel.routes';
 import tahunPelajaranRoutes from '../tahun-pelajaran/routes/tahun-pelajaran.routes';
 import semesterRoutes from '../semester/routes/semester.routes';
 import jurusanRoutes from '../jurusan/routes/jurusan.routes';
-import { waliKelasRoutes } from '../wali-kelas/routes/wali-kelas.routes';
 import kenaikanKelasRoutes from '../kenaikan-kelas/routes/kenaikan-kelas.routes';
 import jenisKegiatanMasterRoutes from '../jenis-kegiatan-master/routes/jenis-kegiatan-master.routes';
 import transitionRoutes from '../transition/routes/transition.routes';
@@ -24,14 +22,12 @@ import { requireCapability } from '../../../middlewares/requireCapability';
 
 export async function academicRoutes(fastify: any) {
   await fastify.register(guruRoutes, { prefix: '/guru' });
-  await fastify.register(guruMapelRoutes, { prefix: '/guru-mapel' });
   await fastify.register(siswaRoutes, { prefix: '/siswa' });
   await fastify.register(kelasRoutes, { prefix: '/kelas' });
   await fastify.register(mapelRoutes, { prefix: '/mapel' });
   await fastify.register(tahunPelajaranRoutes, { prefix: '/tahun-pelajaran' });
   await fastify.register(semesterRoutes, { prefix: '/semester' });
   await fastify.register(jurusanRoutes, { prefix: '/jurusan' });
-  await fastify.register(waliKelasRoutes, { prefix: '/wali-kelas' });
   await fastify.register(kenaikanKelasRoutes, { prefix: '/kenaikan-kelas' });
   await fastify.register(jenisKegiatanMasterRoutes, { prefix: '/jenis-kegiatan-master' });
   await fastify.register(transitionRoutes, { prefix: '/transition' });

@@ -34,4 +34,32 @@ export async function kalenderAkademikRoutes(fastify: any) {
     { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
     KalenderAkademikController.delete
   );
+
+  // GET /presets - Get all global calendar presets
+  fastify.get(
+    '/presets',
+    { preHandler: [requireCapability('academic.years.view.list'), determineDataScope()] },
+    KalenderAkademikController.getPresets
+  );
+
+  // POST /presets - Create new global calendar preset (superadmin only)
+  fastify.post(
+    '/presets',
+    { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()] },
+    KalenderAkademikController.createPreset
+  );
+
+  // PUT /presets/:id - Update global calendar preset (superadmin only)
+  fastify.put(
+    '/presets/:id',
+    { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()] },
+    KalenderAkademikController.updatePreset
+  );
+
+  // DELETE /presets/:id - Delete global calendar preset (superadmin only)
+  fastify.delete(
+    '/presets/:id',
+    { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()] },
+    KalenderAkademikController.deletePreset
+  );
 }

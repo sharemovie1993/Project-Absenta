@@ -8,6 +8,7 @@ export interface CreateJurusanInput {
   nama: string;
   kode?: string | null;
   singkatan?: string | null;
+  warna?: string | null;
   program_keahlian_id?: string | null;
 }
 
@@ -15,6 +16,7 @@ export interface UpdateJurusanInput {
   nama?: string;
   kode?: string | null;
   singkatan?: string | null;
+  warna?: string | null;
   program_keahlian_id?: string | null;
 }
 
@@ -24,6 +26,7 @@ export interface JurusanResponse {
   nama: string;
   kode?: string | null;
   singkatan?: string | null;
+  warna?: string | null;
   program_keahlian_id?: string | null;
   created_at: Date;
   updated_at: Date;
@@ -172,6 +175,7 @@ export class JurusanService {
         nama: input.nama,
         kode: input.kode,
         singkatan: input.singkatan,
+        warna: input.warna,
         ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },
       include: {
@@ -258,6 +262,7 @@ export class JurusanService {
         ...(input.nama && { nama: input.nama }),
         ...(input.kode !== undefined && { kode: input.kode }),
         ...(input.singkatan !== undefined && { singkatan: input.singkatan }),
+        ...(input.warna !== undefined && { warna: input.warna }),
         ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },
       include: {

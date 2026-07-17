@@ -36,11 +36,7 @@ export default async function attendancePlugin(fastify: any) {
     const { attendanceNotifyRoutes } = await import('./notify/routes/notify.routes');
     await subFastify.register(attendanceNotifyRoutes, { prefix: '/notify' });
 
-    // 7. Jadwal Template Routes
-    const { jadwalTemplateRoutes } = await import('./jadwal-template/routes/jadwal-template.routes');
-    await subFastify.register(jadwalTemplateRoutes, { prefix: '/jadwal-template' });
-
-    // 8. Kejadian Khusus Routes
+     // 8. Kejadian Khusus Routes
     const { kejadianKhususRoutes } = await import('./kejadian-khusus/routes/kejadian-khusus.routes');
     await subFastify.register(kejadianKhususRoutes, { prefix: '/kejadian-khusus' });
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download } from 'lucide-react';
+import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight } from 'lucide-react';
 import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
-import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/academic/waliKelas.api';
+import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const [items, setItems] = useState<WaliKelasStrukturAssignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [totalItems, setTotalItems] = useState(0);
   const [includeInactive, setIncludeInactive] = useState(false);
 
+  const [selectionOpen, setSelectionOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [presetData, setPresetData] = useState<{ guru_id?: string; kelas_id?: string } | undefined>(undefined);
@@ -344,7 +347,7 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
             <div className="flex flex-wrap items-center gap-2">
                {canManage && (
                   <Button 
-                    onClick={() => openAssignModal()}
+                    onClick={() => setSelectionOpen(true)}
                     variant="toolbarPrimary"
                     size="toolbar"
                   >
@@ -390,6 +393,53 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
           }
         />
       </div>
+
+      <Modal
+        isOpen={selectionOpen}
+        onClose={() => setSelectionOpen(false)}
+        title="Pilih Metode Penugasan Wali Kelas"
+        size="lg"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+          <button
+            onClick={() => {
+              setSelectionOpen(false);
+              openAssignModal();
+            }}
+            className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
+          >
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+              <FileText size={28} />
+            </div>
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+              Tentukan wali kelas untuk kelas tertentu secara manual satu per satu.
+            </p>
+            <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+              Mulai Mengisi <ChevronRight size={14} />
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSelectionOpen(false);
+              navigate('/academic/struktur-organisasi?tab=WALI_KELAS');
+            }}
+            className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
+          >
+            <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+              <Network size={28} />
+            </div>
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Diagram Struktur</h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+              Petakan wali kelas secara visual menggunakan diagram struktur organisasi.
+            </p>
+            <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+              Buka Diagram <ChevronRight size={14} />
+            </span>
+          </button>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={assignOpen}

@@ -49,7 +49,7 @@ export const UserCapabilityCard: React.FC<UserCapabilityCardProps> = ({ user, su
     if (caps.some((c: string) => c.startsWith('academic.students'))) academicItems.push({ label: 'Data Siswa', icon: Users, path: '/academic/siswa' });
     if (caps.some((c: string) => c.startsWith('academic.teacher'))) academicItems.push({ label: 'Data Guru', icon: GraduationCap, path: '/academic/guru' });
     if (caps.includes('dashboard.view.kurikulum')) academicItems.push({ label: 'Kelola Kurikulum', icon: FileText, path: '/kurikulum/struktur' });
-    if (caps.includes('dashboard.view.walikelas')) academicItems.push({ label: 'Wali Kelas', icon: User, path: '/academic/wali-kelas' });
+    if (caps.includes('dashboard.view.walikelas')) academicItems.push({ label: 'Wali Kelas', icon: User, path: '/kurikulum/wali-kelas' });
     if (academicItems.length > 0) groups.push({ category: 'Manajemen Akademik', items: academicItems });
 
     // 3. Absensi

@@ -83,7 +83,7 @@ export const MapelPage: React.FC = () => {
       icon: <Target size={14} />,
       gradient: "from-green-500 to-emerald-600",
       subtitle: "Mapel dengan jam mengajar",
-      onClick: () => navigate('/academic/guru-mapel')
+      onClick: () => navigate('/kurikulum/guru-mapel')
     }
   ], [stats, navigate]);
 

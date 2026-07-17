@@ -9,6 +9,7 @@ export default async function strukturKurikulumRoutes(fastify: any) {
   fastify.put('/standards/:id', { preHandler: requireCapability('superadmin.tenants.manage') }, StrukturKurikulumController.updateStandardReference);
   fastify.delete('/standards/:id', { preHandler: requireCapability('superadmin.tenants.manage') }, StrukturKurikulumController.deleteStandardReference);
   fastify.get('/grouped', { preHandler: requireCapability(['academic.structure.manage', 'academic.structures.view.list']) }, StrukturKurikulumController.getByTingkatGrouped);
+  fastify.get('/check-beban-guru', { preHandler: requireCapability(['academic.structure.manage', 'academic.structures.view.list']) }, StrukturKurikulumController.checkBebanGuru);
   fastify.post('/', { preHandler: requireCapability('academic.structure.manage') }, StrukturKurikulumController.upsert);
   fastify.delete('/:id', { preHandler: requireCapability('academic.structure.manage') }, StrukturKurikulumController.delete);
 }

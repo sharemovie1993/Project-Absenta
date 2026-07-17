@@ -66,9 +66,13 @@ export class RekapKBMController {
             nama_guru: t.Guru.nama_guru ?? '-',
             nip: t.Guru.nip ?? '-',
             total_jp_rencana: 0,
+            total_jp_dijadwalkan: 0,
             detail_kelas: [],
           };
         }
+
+        // Each template is exactly 1 JP slot
+        guruMap[guruId].total_jp_dijadwalkan += 1;
 
         if (!uniqueAssignments.has(assignmentKey)) {
           uniqueAssignments.add(assignmentKey);
@@ -105,6 +109,7 @@ export class RekapKBMController {
       // 4. Gabungkan data
       const result = Object.values(guruMap).map((guru: any) => ({
         ...guru,
+        jp_dijadwalkan: guru.total_jp_dijadwalkan ?? 0,
         jp_terlaksana: jpTerlaksana[guru.guru_id] ?? 0,
         jp_sisa: Math.max(0, guru.total_jp_rencana - (jpTerlaksana[guru.guru_id] ?? 0)),
         persentase: guru.total_jp_rencana > 0

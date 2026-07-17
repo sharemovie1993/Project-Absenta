@@ -43,7 +43,7 @@ export const getWaliKelasStrukturList = async (
   if (filters?.guru_id) params.set("guru_id", filters.guru_id);
   if (filters?.kelas_id) params.set("kelas_id", filters.kelas_id);
   if (filters?.include_inactive) params.set("include_inactive", "true");
-  return requestWithFallback<PaginatedWaliKelasStrukturResponse>('get', `/academic/wali-kelas/struktur?${params.toString()}`);
+  return requestWithFallback<PaginatedWaliKelasStrukturResponse>('get', `/kurikulum/wali-kelas/struktur?${params.toString()}`);
 };
 
 
@@ -51,13 +51,13 @@ export const getWaliKelasStrukturList = async (
 export const assignWaliKelasStruktur = async (
   payload: AssignWaliKelasStrukturPayload
 ): Promise<SingleWaliKelasStrukturResponse> => {
-  return requestWithFallback<SingleWaliKelasStrukturResponse>('post', `/academic/wali-kelas/struktur/assign`, { data: payload });
+  return requestWithFallback<SingleWaliKelasStrukturResponse>('post', `/kurikulum/wali-kelas/struktur/assign`, { data: payload });
 };
 
 export const nonaktifWaliKelasStruktur = async (
   id: string
 ): Promise<{ success: boolean; message: string; data: null }> => {
-  return requestWithFallback<{ success: boolean; message: string; data: null }>('put', `/academic/wali-kelas/struktur/${id}/nonaktif`);
+  return requestWithFallback<{ success: boolean; message: string; data: null }>('put', `/kurikulum/wali-kelas/struktur/${id}/nonaktif`);
 };
 
 

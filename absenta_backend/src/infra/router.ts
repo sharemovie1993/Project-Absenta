@@ -474,6 +474,18 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { rekapKBMRoutes } = await import('../modules/kurikulum/routes/rekap-kbm.routes');
       await fastify.register(rekapKBMRoutes, { prefix: '/kurikulum/rekap-kbm' });
 
+      // Jadwal Pelajaran (Kurikulum)
+      const { jadwalTemplateRoutes } = await import('../modules/kurikulum/jadwal-template/routes/jadwal-template.routes');
+      await fastify.register(jadwalTemplateRoutes, { prefix: '/kurikulum/jadwal-template' });
+
+      // Guru Mapel (Kurikulum)
+      const { default: guruMapelRoutes } = await import('../modules/kurikulum/guru-mapel/routes/guru-mapel.routes');
+      await fastify.register(guruMapelRoutes, { prefix: '/kurikulum/guru-mapel' });
+
+      // Wali Kelas (Kurikulum)
+      const { waliKelasRoutes } = await import('../modules/kurikulum/wali-kelas/routes/wali-kelas.routes');
+      await fastify.register(waliKelasRoutes, { prefix: '/kurikulum/wali-kelas' });
+
       // Modul Rapor & Penilaian (Decoupled dari Kurikulum)
       const { default: nilaiRoutes } = await import('../modules/rapor/routes/nilai.routes');
       await fastify.register(nilaiRoutes, { prefix: '/rapor/nilai' });

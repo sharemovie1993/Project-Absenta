@@ -310,11 +310,15 @@ model SupervisiGuru {
   mapel         String?
   kelas         String?
   jam_ke        Int?
-  status        String   @default("SCHEDULED") // SCHEDULED, COMPLETED
-  catatan       String?
-  nilai         Int?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  status              String   @default("SCHEDULED") // SCHEDULED, COMPLETED
+  catatan             String?
+  nilai               Int?
+  target_pembelajaran String?  @db.Text
+  nilai_self          Int?
+  catatan_self        String?  @db.Text
+  is_self_evaluated   Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Guru       Guru   @relation(fields: [guru_id], references: [id])
@@ -684,6 +688,7 @@ model Jurusan {
   nama                    String
   kode                    String?
   singkatan               String?
+  warna                   String?
   program_keahlian_id     String?                    // FK ke ProgramKeahlian (Konsentrasi Keahlian)
   created_at              DateTime                   @default(now())
   updated_at              DateTime                   @updatedAt
@@ -766,6 +771,7 @@ model Guru {
   agama                 String?
   status_kepegawaian    String?
   pendidikan_terakhir   String?
+  max_jp                Int?             @default(24)
   created_at            DateTime         @default(now())
   updated_at            DateTime         @updatedAt
   AbsenGuru             AbsenGuru[]
@@ -3818,6 +3824,16 @@ model GlobalMapelPreset {
 
   @@unique([jenjang, category, kode_mapel])
   @@index([jenjang])
+}
+
+model GlobalCalendarPreset {
+  id          String   @id @default(uuid())
+  jenjang     String   @default("ALL")
+  judul       String
+  jenis       String
+  keterangan  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 }
 
 model GlobalKurikulumStandard {

@@ -18,6 +18,16 @@ export class JadwalTemplateController {
     const userId = user?.id;
     const roleName = user?.roleName;
 
+    const isGlobalManager =
+      roleName === 'ADMIN' ||
+      roleName === 'SUPERADMIN' ||
+      await authorizationService.hasUserPermission(userId, 'academic.structure.manage');
+
+    if (isGlobalManager) {
+      const preferredKelasId = request.body?.kelas_id || request.query?.kelas_id;
+      return this.buildContext(request, reply, tenantId, preferredKelasId, undefined, undefined, undefined, undefined);
+    }
+
     if (roleName === RoleName.SISWA) {
       // Get Siswa
       const siswa = await jadwalTemplateDb.siswa.findFirst({
@@ -192,9 +202,22 @@ export class JadwalTemplateController {
       return this.listAuthorized(request, reply);
     }
     
+    const isGlobalManager =
+      user?.roleName === 'ADMIN' ||
+      user?.roleName === 'SUPERADMIN' ||
+      (user?.id ? (
+        await authorizationService.hasUserPermission(user.id, 'academic.structure.manage') ||
+        await authorizationService.hasUserPermission(user.id, 'attendance.schedules.create')
+      ) : false);
+
+    if (isGlobalManager && request.dataScope) {
+      request.dataScope.tenantWide = true;
+      request.dataScope.tenant_wide = true;
+    }
+
     // If it's a Guru, they might want their personal list OR if they are a Wali Kelas, the class list
     // If dataScope is present and filtered by class, we assume they want the Class List (Wali Kelas context)
-    if (user?.roleName === RoleName.GURU && (!dataScope || !dataScope.kelasIds)) {
+    if (user?.roleName === RoleName.GURU && !isGlobalManager && (!dataScope || !dataScope.kelasIds)) {
       return this.listGuru(request, reply);
     }
     
@@ -547,7 +570,15 @@ export class JadwalTemplateController {
     const isValidTime = (t: any) => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t);
 
     try {
-    if (user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) {
+      const isGlobalManager =
+        user?.roleName === 'ADMIN' ||
+        user?.roleName === 'SUPERADMIN' ||
+        (user?.id ? (
+          await authorizationService.hasUserPermission(user.id, 'academic.structure.manage') ||
+          await authorizationService.hasUserPermission(user.id, 'attendance.schedules.create')
+        ) : false);
+
+      if ((user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) && !isGlobalManager) {
         const ctx = await this.getAuthorizedContext(request, reply);
         if (!ctx) return;
 
@@ -638,8 +669,16 @@ export class JadwalTemplateController {
       return reply.status(404).send({ success: false, message: 'Jadwal Template not found' });
     }
 
+    const isGlobalManager =
+      user?.roleName === 'ADMIN' ||
+      user?.roleName === 'SUPERADMIN' ||
+      (user?.id ? (
+        await authorizationService.hasUserPermission(user.id, 'academic.structure.manage') ||
+        await authorizationService.hasUserPermission(user.id, 'attendance.schedules.create')
+      ) : false);
+
     // Enforce SISWA/GURU Context
-    if (user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) {
+    if ((user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) && !isGlobalManager) {
       const ctx = await this.getAuthorizedContext(request, reply);
       if (!ctx) return;
 
@@ -728,8 +767,16 @@ export class JadwalTemplateController {
       return reply.status(404).send({ success: false, message: 'Jadwal Template not found' });
     }
 
+    const isGlobalManager =
+      user?.roleName === 'ADMIN' ||
+      user?.roleName === 'SUPERADMIN' ||
+      (user?.id ? (
+        await authorizationService.hasUserPermission(user.id, 'academic.structure.manage') ||
+        await authorizationService.hasUserPermission(user.id, 'attendance.schedules.create')
+      ) : false);
+
     // Enforce SISWA/GURU Context
-    if (user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) {
+    if ((user?.roleName === RoleName.SISWA || user?.roleName === RoleName.GURU) && !isGlobalManager) {
       const ctx = await this.getAuthorizedContext(request, reply);
       if (!ctx) return;
 

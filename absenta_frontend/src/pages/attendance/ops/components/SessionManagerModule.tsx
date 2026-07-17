@@ -21,7 +21,7 @@ import Button from '../../../../components/ui/Button';
 import { formatLocalDateTime, formatLocalTimeFromISO, roundTo5, toLocalDate } from '../../../../utils/attendance/time';
 import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { guruApi, mapelApi } from '../../../../api/academic.api';
-import { listGuruMapel } from '../../../../api/academic/guru-mapel.api';
+import { listGuruMapel } from '../../../../api/kurikulum/guru-mapel.api';
 import { jenisKegiatanMasterApi } from '../../../../api/academic/jenisKegiatanMaster.api';
 import { useSocket } from '../../../../hooks/useSocket';
 import { 

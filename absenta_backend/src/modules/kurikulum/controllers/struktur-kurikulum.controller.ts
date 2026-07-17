@@ -133,4 +133,29 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, 'Failed to delete global kurikulum standard', error);
     }
   }
+
+  static async checkBebanGuru(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { guru_id, add_mapel_id, add_kelas_id } = req.query;
+
+      if (!guru_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'guru_id query parameter is required'
+        });
+      }
+
+      const result = await StrukturKurikulumService.checkBebanGuru(
+        tenant_id,
+        guru_id,
+        add_mapel_id || undefined,
+        add_kelas_id || undefined
+      );
+
+      return sendResponse(reply, 200, true, 'Beban guru checked successfully', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Failed to check beban guru', error);
+    }
+  }
 }

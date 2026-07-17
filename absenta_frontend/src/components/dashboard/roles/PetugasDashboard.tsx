@@ -47,7 +47,7 @@ export const PetugasDashboard: React.FC = () => {
     { label: 'Input Absen', icon: Zap, onClick: () => navigate('/attendance/ops'), color: 'blue' },
     { label: 'Monitoring', icon: Activity, onClick: () => navigate('/attendance/rekap'), color: 'emerald' },
     { label: 'Riwayat Log', icon: Clock, onClick: () => navigate('/attendance/tracking-siswa'), color: 'indigo' },
-    { label: 'Modul Jadwal', icon: LayoutList, onClick: () => navigate('/attendance/jadwal-template'), color: 'amber' },
+    { label: 'Jadwal KBM', icon: LayoutList, onClick: () => navigate('/kurikulum/jadwal'), color: 'amber' },
   ];
 
   const infoStrips: InfoStripItem[] = [

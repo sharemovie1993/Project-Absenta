@@ -5,7 +5,7 @@ import { Button, Alert, ModalFooter } from '../../ui';
 import { Save, X, RefreshCw } from 'lucide-react';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
-import { assignGuruMapel } from '../../../api/academic/guru-mapel.api';
+import { assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { Guru, Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { guruMapelSchema, type GuruMapelFormValues } from '../../../schemas/academic/guru-mapel.schema';

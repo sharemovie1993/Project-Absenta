@@ -3,7 +3,7 @@ import { CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { Button, Loader, ModalFooter } from '../../ui';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getKelasList } from '../../../api/academic/kelas.api';
-import { assignWaliKelasStruktur } from '../../../api/academic/waliKelas.api';
+import { assignWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import toast from 'react-hot-toast';
 
 // Modular Sections
