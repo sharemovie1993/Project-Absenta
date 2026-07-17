@@ -43,7 +43,8 @@ const PpdbMappingPage: React.FC = () => {
           getKelasForDropdown()
         ]);
 
-        const jenjang = (sekolahRes as any)?.jenjang?.toUpperCase() || '';
+        const rawSekolah = (sekolahRes as any)?.data || sekolahRes;
+        const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
         const smk = ['SMK', 'MAK'].includes(jenjang);
         setIsSmkMak(smk);
 
