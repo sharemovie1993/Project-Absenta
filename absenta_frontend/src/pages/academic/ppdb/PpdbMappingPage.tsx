@@ -313,6 +313,7 @@ const PpdbMappingPage: React.FC = () => {
       title="Pemetaan PPDB ke Rombel"
       subtitle="Petakan siswa baru hasil PPDB ke rombel (kelas) secara massal"
       stats={pageStats}
+      hardeningModuleKey="academic_ppdb_mapping"
       breadcrumbs={[
         { label: 'Akademik', path: '/academic' },
         { label: 'Siswa', path: '/academic/siswa' },
@@ -384,11 +385,18 @@ const PpdbMappingPage: React.FC = () => {
                     }}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   >
-                    <option value="all">Semua Jurusan</option>
-                    {jurusans.map(j => (
-                      <option key={j.value} value={j.value}>{j.label}</option>
-                    ))}
-                    <option value="none">Tanpa Jurusan (Belum diisi)</option>
+                    <option value="all">Semua Jurusan ({calonList.length})</option>
+                    {jurusans.map(j => {
+                      const count = calonList.filter(s => s.jurusan_id === j.value).length;
+                      return (
+                        <option key={j.value} value={j.value}>
+                          {j.label} ({count})
+                        </option>
+                      );
+                    })}
+                    <option value="none">
+                      Tanpa Jurusan (Belum diisi) ({calonList.filter(s => !s.jurusan_id).length})
+                    </option>
                   </select>
                 </div>
               )}
