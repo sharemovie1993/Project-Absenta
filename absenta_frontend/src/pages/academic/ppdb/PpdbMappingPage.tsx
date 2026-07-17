@@ -169,7 +169,6 @@ const PpdbMappingPage: React.FC = () => {
   const handleTemplateDownload = async () => {
     try {
       toast('Menyiapkan template...');
-      const kelasNames = kelasOptions.map(k => String(k.label)).filter(Boolean);
       const jurusanNames = jurusans.map(j => String(j.label)).filter(Boolean);
 
       const columns = [
@@ -178,7 +177,6 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'NISN', key: 'nisn', width: 15, required: false },
         { header: 'NIK', key: 'nik', width: 20, required: false },
         { header: 'Jenis Kelamin (L/P)', key: 'jenis_kelamin', width: 18, required: false, dropdown: { refKey: 'jk' } },
-        { header: 'Nama Kelas', key: 'nama_kelas', width: 25, required: false, dropdown: { refKey: 'kelas' } },
         ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
         { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } }
       ];
@@ -189,12 +187,13 @@ const PpdbMappingPage: React.FC = () => {
           fileName: generateStandardFilename('template_import_siswa_ppdb', 'xlsx'),
           instructions: [
             'Kolom BERWARNA EMAS wajib diisi.',
-            'Untuk PPDB/Calon siswa, kosongkan kolom NAMA KELAS, isi JURUSAN (wajib bagi SMK), dan set status ke CALON.',
+            isSmkMak 
+              ? 'Isi kolom JURUSAN (wajib bagi SMK) dan set status ke CALON.' 
+              : 'Set status ke CALON.',
             'JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.',
             'Format Tanggal Lahir (jika diisi): YYYY-MM-DD (Contoh: 2010-06-12).'
           ],
           referenceData: {
-            kelas: kelasNames,
             jurusan: jurusanNames,
             jk: ['L', 'P'],
             status: ['CALON', 'AKTIF']
