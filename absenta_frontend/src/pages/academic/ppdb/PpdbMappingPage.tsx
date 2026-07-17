@@ -399,83 +399,93 @@ const PpdbMappingPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <SectionCard 
             title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)"
-            actions={
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTemplateDownload}
-                  disabled={isExporting}
-                  className="flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 transition-colors"
-                >
-                  <Download size={13} />
-                  <span>Format Excel</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleOpenImport}
-                  disabled={loading}
-                  className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-md shadow-emerald-500/15"
-                >
-                  <FileSpreadsheet size={13} />
-                  <span>Impor Excel PPDB</span>
-                </Button>
-                {selectedSiswa?.length > 0 && (
-                  <Button
-                    size="sm"
-                    onClick={() => setMappingModalOpen(true)}
-                    className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15 animate-in fade-in zoom-in duration-200"
-                  >
-                    <UserCheck size={13} />
-                    <span>Petakan ({selectedSiswa?.length} Siswa)</span>
-                  </Button>
-                )}
-              </div>
-            }
             {...{
               toolbarLeft: null,
               toolbarRight: null
             }}
           >
             
-            {/* Filter toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nama atau NIS calon siswa..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  aria-label="Cari nama atau NIS calon siswa"
-                  className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 outline-none"
-                />
+            {/* Unified Toolbar above the Table */}
+            <div className="space-y-4 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+              
+              {/* Row 1: Primary Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Aksi & Impor Calon Siswa
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTemplateDownload}
+                    disabled={isExporting}
+                    className="flex items-center gap-1.5 text-xs text-slate-600 border-slate-200 hover:bg-slate-50 transition-colors"
+                  >
+                    <Download size={13} />
+                    <span>Format Excel</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleOpenImport}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-md shadow-emerald-500/15"
+                  >
+                    <FileSpreadsheet size={13} />
+                    <span>Impor Excel PPDB</span>
+                  </Button>
+                  {selectedSiswa?.length > 0 && (
+                    <Button
+                      size="sm"
+                      onClick={() => setMappingModalOpen(true)}
+                      className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15 animate-in fade-in zoom-in duration-200"
+                    >
+                      <UserCheck size={13} />
+                      <span>Petakan ({selectedSiswa?.length} Siswa)</span>
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              {isSmkMak && (
-                <SearchableSelect
-                  value={selectedJurusan}
-                  onValueChange={(val) => {
-                    setSelectedJurusan(val);
-                    setSelectedSiswa([]);
-                  }}
-                  options={jurusanOptions}
-                  placeholder="Filter Jurusan..."
-                  disabled={loading}
-                  className="w-full md:w-64"
-                />
-              )}
+              {/* Row 2: Filters & Search */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama atau NIS calon siswa..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    aria-label="Cari nama atau NIS calon siswa"
+                    className="pl-9 pr-4 py-2 w-full border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 outline-none"
+                  />
+                </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchCalonStudents}
-                disabled={loading}
-                className="flex items-center gap-2 self-start md:self-auto"
-              >
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                Refresh
-              </Button>
+                {isSmkMak && (
+                  <SearchableSelect
+                    value={selectedJurusan}
+                    onValueChange={(val) => {
+                      setSelectedJurusan(val);
+                      setSelectedSiswa([]);
+                    }}
+                    options={jurusanOptions}
+                    placeholder="Filter Jurusan..."
+                    disabled={loading}
+                    className="w-full md:w-64"
+                  />
+                )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchCalonStudents}
+                  disabled={loading}
+                  className="flex items-center gap-2 self-start md:self-auto"
+                >
+                  <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                  Refresh
+                </Button>
+              </div>
+
             </div>
 
             {/* Students Table */}
