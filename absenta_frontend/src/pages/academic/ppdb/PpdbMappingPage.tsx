@@ -187,7 +187,9 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'Nama Ibu', key: 'nama_ibu', width: 25, required: false },
         ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
         { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } },
-        { header: 'No. RFID', key: 'no_rfid', width: 15, required: false }
+        { header: 'No. RFID', key: 'no_rfid', width: 15, required: false },
+        { header: 'Sekolah Asal', key: 'sekolah_asal', width: 25, required: false },
+        { header: 'No. Seri Ijazah SMP', key: 'no_ijazah_smp', width: 25, required: false }
       ];
 
       await generateAdvancedTemplate(

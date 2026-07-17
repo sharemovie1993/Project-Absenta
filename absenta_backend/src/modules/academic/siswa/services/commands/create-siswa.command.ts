@@ -267,6 +267,8 @@ export async function createSiswaCommand(
       status: input.status || 'AKTIF',
       no_rfid: rfid,
       foto: input.foto || null,
+      sekolah_asal: input.sekolah_asal || null,
+      no_ijazah_smp: input.no_ijazah_smp || null,
     } as any,
   });
 

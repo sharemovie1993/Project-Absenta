@@ -17,6 +17,7 @@ model Tenant {
   jam_masuk_default             String @default("07:00") // Format HH:mm
   jam_pulang_default            String @default("14:00") // Format HH:mm
   toleransi_keterlambatan_menit Int    @default(15) // Durasi toleransi dalam menit
+  hari_sekolah                  Hari[] @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
 
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?
@@ -751,6 +752,7 @@ model Kelas {
   PrestasiSiswa             PrestasiSiswa[]
   sarprasLocations          SarprasLocation[]
   RaporSiswa                RaporSiswa[]
+  AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
 
 
   @@index([tenant_id])
@@ -906,6 +908,8 @@ model Siswa {
   penerima_kps       Boolean?            @default(false)
   penerima_kip       Boolean?            @default(false)
   no_kip             String?
+  sekolah_asal       String?
+  no_ijazah_smp      String?
   // NOTE:
   // Field berikut adalah current academic pointer (denormalized).
   // BUKAN sumber histori akademik.
@@ -1008,6 +1012,7 @@ model SesiAbsensi {
   is_auto_closed     Boolean         @default(false)
   sumber_sesi        SumberSesi      @default(MANUAL)
   jadwal_template_id String?
+  keterangan         String?         @db.Text
   JadwalTemplate     JadwalTemplate? @relation(fields: [jadwal_template_id], references: [id])
   created_at         DateTime        @default(now()) @db.Timestamptz
   updated_at         DateTime        @updatedAt @db.Timestamptz
@@ -2072,16 +2077,22 @@ model AbsensiKejadianKhusus {
   tenant_id String
   Tenant    Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
+  kelas_id String?
+  Kelas    Kelas?  @relation(fields: [kelas_id], references: [id], onDelete: SetNull)
+
   tanggal    DateTime @db.Date
-  keterangan String // Contoh: "Hujan Deras Pagi Hari"
+  keterangan String // Contoh: "Hujan Deras Pagi Hari" atau "Gempa Bumi - Sekolah Diliburkan"
 
   // Jika true, semua absensi hari ini dianggap tidak terlambat
   abaikan_terlambat Boolean @default(true)
 
+  // Mode Kejadian: NORMAL (hanya abaikan telat), LIBUR (hapus/batalkan sesi), DISPEN (isi dispen semua)
+  mode_kejadian String @default("NORMAL") // NORMAL, LIBUR, DISPEN
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  @@unique([tenant_id, tanggal])
+  @@unique([tenant_id, tanggal, kelas_id])
   @@map("absensi_kejadian_khusus")
 }
 

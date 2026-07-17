@@ -34,6 +34,8 @@ export const createSiswaSchema = z.object({
     }
     return 'L';
   }, z.string().default('L')),
+  sekolah_asal: coerceString,
+  no_ijazah_smp: coerceString,
   tempat_lahir: coerceString,
   tanggal_lahir: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
   alamat: coerceString,

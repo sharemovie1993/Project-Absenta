@@ -39,6 +39,12 @@ const HEADER_MAP: Record<string, string> = {
   'PILIHAN KOMPETENSI': 'jurusan',
   'PILIHAN 1': 'jurusan',
   'KOMPETENSI KEAHLIAN': 'jurusan',
+  'SEKOLAH ASAL': 'sekolah_asal',
+  'ASAL SEKOLAH': 'sekolah_asal',
+  'NO. SERI IJAZAH SMP': 'no_ijazah_smp',
+  'NO SERI IJAZAH SMP': 'no_ijazah_smp',
+  'NO SERI IJAZAH': 'no_ijazah_smp',
+  'NO. SERI IJAZAH': 'no_ijazah_smp',
 
   // Guru
   'NIP': 'nip',
@@ -90,6 +96,8 @@ const KEY_ALIASES: Record<string, string[]> = {
   'jenis_kelamin': ['jk', 'gender'],
   'no_hp': ['no_telp', 'telepon', 'no_telepon', 'no_hp_wa', 'no_wa'],
   'jurusan': ['pilihan_1', 'pilihan_kompetensi', 'kompetensi_keahlian', 'nama_jurusan', 'pilihan_jurusan'],
+  'sekolah_asal': ['asal_sekolah'],
+  'no_ijazah_smp': ['no_seri_ijazah_smp', 'no_seri_ijazah', 'no_ijazah'],
 };
 
 /**
