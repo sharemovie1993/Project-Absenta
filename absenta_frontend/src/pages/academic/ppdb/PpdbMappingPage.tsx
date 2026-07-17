@@ -397,7 +397,7 @@ const PpdbMappingPage: React.FC = () => {
         {/* Left Side: Filter and Student Table List */}
         <div className="lg:col-span-2 space-y-6">
           <SectionCard 
-            title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)"
+            title="Daftar Calon Siswa"
             fullWidth={true}
             {...{
               toolbarLeft: null,
@@ -411,7 +411,7 @@ const PpdbMappingPage: React.FC = () => {
               {/* Row 1: Primary Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Aksi & Impor Calon Siswa
+                  Aksi
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -615,8 +615,8 @@ const PpdbMappingPage: React.FC = () => {
           </div>
 
           <SectionCard 
-            title="Daftar Rombel / Kelas (Tingkat 10)" 
-            subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Semua kelas tingkat 10"}
+            title="Kelas Tujuan" 
+            subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Kelas tingkat 10"}
             fullWidth={true}
           >
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
@@ -704,7 +704,7 @@ const PpdbMappingPage: React.FC = () => {
       <Modal
         isOpen={mappingModalOpen}
         onClose={() => setMappingModalOpen(false)}
-        title="Pemetaan Kelas / Rombel Siswa Baru"
+        title="Pilih Kelas Tujuan"
         size="md"
       >
         <div className="space-y-6">
@@ -774,7 +774,7 @@ const PpdbMappingPage: React.FC = () => {
         <ExcelImportModal
           isOpen={importOpen}
           onClose={handleCloseImport}
-          title="Import Calon Siswa (PPDB)"
+          title="Import Calon Siswa"
           onImport={handleImportSiswa}
           onDownloadTemplate={handleDownloadFormat}
           onSuccess={() => {
