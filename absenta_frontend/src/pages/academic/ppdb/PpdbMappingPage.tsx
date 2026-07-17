@@ -54,7 +54,7 @@ const PpdbMappingPage: React.FC = () => {
   
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
-  const [jurusans, setJurusans] = useState<{ value: string; label: string }[]>([]);
+  const [jurusans, setJurusans] = useState<{ value: string; label: string; warna?: string | null }[]>([]);
   const [kelasOptions, setKelasOptions] = useState<{ value: string; label: string; jurusan_id?: string | null; tingkat?: number | null; siswa_count?: number }[]>([]);
   
   // Filter & selections
@@ -157,12 +157,13 @@ const PpdbMappingPage: React.FC = () => {
 
   // Dropdown options formatted dynamically with counts
   const jurusanOptions = useMemo(() => [
-    { label: `Semua Jurusan (${calonList?.length || 0})`, value: 'all' },
+    { label: `Semua Jurusan (${calonList?.length || 0})`, value: 'all', warna: null },
     ...(jurusans?.map(j => ({
       label: `${j.label} (${calonList?.filter(s => s.jurusan_id === j.value)?.length || 0})`,
-      value: j.value
+      value: j.value,
+      warna: j.warna || null
     })) || []),
-    { label: `Tanpa Jurusan (Belum diisi) (${calonList?.filter(s => !s.jurusan_id)?.length || 0})`, value: 'none' }
+    { label: `Tanpa Jurusan (Belum diisi) (${calonList?.filter(s => !s.jurusan_id)?.length || 0})`, value: 'none', warna: null }
   ], [jurusans, calonList]);
 
   // HTML5 Drag and Drop Handlers

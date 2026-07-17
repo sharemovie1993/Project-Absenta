@@ -154,6 +154,7 @@ export function SearchableSelect({
           aria-label={placeholder || searchPlaceholder || "Pilih opsi"}
           disabled={disabled}
           className="flex-1 h-full bg-transparent outline-none placeholder:text-slate-500 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 min-w-0 text-sm pl-10 pr-10"
+          style={{ color: (selectedOption as any)?.warna || undefined, fontWeight: (selectedOption as any)?.warna ? 'bold' : 'normal' }}
           autoComplete="off"
         />
         <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-1 shrink-0">
@@ -205,7 +206,7 @@ export function SearchableSelect({
                     (value && option.value && value === option.value) ? 'opacity-100' : 'opacity-0'
                   )}
                 />
-                <span className="truncate whitespace-nowrap">{option.label}</span>
+                <span className="truncate whitespace-nowrap" style={{ color: option.warna || undefined, fontWeight: option.warna ? 'bold' : 'normal' }}>{option.label}</span>
               </div>
             ))
           )}

@@ -6,6 +6,9 @@ export interface DropdownOption {
   value: string;
   label: string;
   tingkat?: number;
+  warna?: string | null;
+  jurusan_id?: string | null;
+  siswa_count?: number;
 }
 
 // Interface untuk response dropdown
@@ -87,7 +90,11 @@ export async function getJurusanForDropdown(): Promise<DropdownOption[]> {
   try {
     const response = await requestWithFallback<{ success: boolean; data: Jurusan[] }>('get', "/academic/jurusan", { params: { limit: 1000 } });
     const jurusanList: Jurusan[] = (response as any).data || [];
-    return jurusanList.map((jurusan) => ({ value: jurusan.id, label: jurusan.nama }));
+    return jurusanList.map((jurusan) => ({
+      value: jurusan.id,
+      label: jurusan.nama,
+      warna: (jurusan as any).warna || null
+    }));
   } catch (error) {
     console.error('Error fetching jurusan for dropdown:', error);
     return [];
