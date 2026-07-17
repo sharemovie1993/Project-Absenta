@@ -119,7 +119,7 @@ const PpdbMappingPage: React.FC = () => {
 
   // 3. Filter students based on selected jurusan & search term
   const filteredSiswa = useMemo(() => {
-    return calonList.filter(s => {
+    const list = calonList.filter(s => {
       const matchSearch = searchTerm
         ? s.nama_siswa.toLowerCase().includes(searchTerm.toLowerCase()) || 
           (s.nis && s.nis.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -135,6 +135,8 @@ const PpdbMappingPage: React.FC = () => {
 
       return matchSearch && matchJurusan;
     });
+
+    return [...list].sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
   }, [calonList, selectedJurusan, searchTerm, isSmkMak]);
 
   // 4. Filter target classes based on selected jurusan & tingkat 10
@@ -513,17 +515,19 @@ const PpdbMappingPage: React.FC = () => {
                         }`}
                         onClick={() => handleSelectStudent(s.id, !selectedSiswa?.includes(s.id))}
                       >
-                        <td className="py-3 px-4 text-center flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
-                          <div className="text-slate-350 cursor-grab hover:text-slate-500 mr-0.5">
-                            <GripVertical size={14} />
+                        <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <div className="text-slate-350 cursor-grab hover:text-slate-500 mr-0.5">
+                              <GripVertical size={14} />
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={selectedSiswa?.includes(s.id)}
+                              onChange={e => handleSelectStudent(s.id, e.target.checked)}
+                              aria-label={`Pilih ${s.nama_siswa}`}
+                              className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
+                            />
                           </div>
-                          <input
-                            type="checkbox"
-                            checked={selectedSiswa?.includes(s.id)}
-                            onChange={e => handleSelectStudent(s.id, e.target.checked)}
-                            aria-label={`Pilih ${s.nama_siswa}`}
-                            className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
-                          />
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-900 whitespace-nowrap">{s.nama_siswa}</td>
                         {isSmkMak && (
