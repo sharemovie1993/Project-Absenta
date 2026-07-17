@@ -128,18 +128,26 @@ const StudentCardPage = () => {
         return [{ label: 'Semua Kelas', value: 'all' }, ...list];
     }, [kelasListResponse]);
 
-    const { data: siswaData, isLoading: isLoadingSiswa } = useQuery({
+    const { data: rawSiswaData, isLoading: isLoadingSiswa } = useQuery({
         queryKey: ['siswa-list', selectedKelas, debouncedSearch, isSiswa, user?.id],
         queryFn: () => getSiswaList(
             1,
             100,
             debouncedSearch,
             selectedKelas === 'all' ? '' : selectedKelas,
-            '',
+            'AKTIF',
             '',
             isSiswa ? user?.id : ''
         )
     });
+
+    const siswaData = useMemo(() => {
+        if (!rawSiswaData) return undefined;
+        return {
+            ...rawSiswaData,
+            data: rawSiswaData.data?.filter((s) => s.status === 'AKTIF' && s.kelas_id) || []
+        };
+    }, [rawSiswaData]);
 
     const previewStudent = useMemo(() =>
         siswaData?.data?.find((s) => s.id === previewStudentId),
