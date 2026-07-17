@@ -118,13 +118,21 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
   // Shift config states
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
+  const [hariSekolah, setHariSekolah] = useState<string[]>(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']);
 
   useEffect(() => {
     const fetchTenantShift = async () => {
       try {
         const tenantRes = await getMyTenant();
-        if (tenantRes?.success && tenantRes.data?.shift_jam_pelajaran) {
-          setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+        if (tenantRes?.success) {
+          if (tenantRes.data?.shift_jam_pelajaran) {
+            setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+          }
+          if (Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+            const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+            const sortedDays = [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+            setHariSekolah(sortedDays);
+          }
         }
       } catch (err) {
         console.error('Failed to load shift jam pelajaran config:', err);
@@ -1011,11 +1019,11 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           <div className="min-w-[1000px]">
             
             {/* Header Days */}
-            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+            <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
               <div className="p-3.5 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
                 JAM / WAKTU
               </div>
-              {DAYS.map(day => (
+              {hariSekolah.map(day => (
                 <div 
                   key={day} 
                   className="p-3.5 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
@@ -1051,18 +1059,18 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                   return (
                     <React.Fragment key={slotIndex}>
                       {breakDuration && breakDuration > 0 && (
-                        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5">
+                        <div className="grid border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
                           <div className="p-2 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
                             <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
                           </div>
-                          <div className="col-span-6 p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85">
+                          <div className="p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
                             <span className="flex items-center gap-1.5">
                               ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {slot.start})
                             </span>
                           </div>
                         </div>
                       )}
-                      <div className="grid grid-cols-7 border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row">
+                      <div className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
                         {/* Time Column */}
                         <div className="p-3 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 shrink-0">
                           <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">JAM {slotIndex}</span>
@@ -1072,7 +1080,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                         </div>
 
                         {/* Days Columns */}
-                        {DAYS.map(day => {
+                        {hariSekolah.map(day => {
                           const item = getSlotData(day, slotIndex) as any;
                           const conflict = checkConflict(day, slotIndex, viewMode === 'KELAS' ? selectedKelasId : '');
                           const active = savingSlot === `${day}-${slotIndex}`;
