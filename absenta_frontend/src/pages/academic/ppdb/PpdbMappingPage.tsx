@@ -174,6 +174,7 @@ const PpdbMappingPage: React.FC = () => {
 
       const columns = [
         { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+        ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
         { header: 'NIS', key: 'nis', width: 15, required: false },
         { header: 'NISN', key: 'nisn', width: 15, required: false },
         { header: 'NIK', key: 'nik', width: 20, required: false },
@@ -185,7 +186,6 @@ const PpdbMappingPage: React.FC = () => {
         { header: 'Email', key: 'email', width: 25, required: false },
         { header: 'Nama Ayah', key: 'nama_ayah', width: 25, required: false },
         { header: 'Nama Ibu', key: 'nama_ibu', width: 25, required: false },
-        ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
         { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } },
         { header: 'No. RFID', key: 'no_rfid', width: 15, required: false },
         { header: 'Sekolah Asal', key: 'sekolah_asal', width: 25, required: false },
