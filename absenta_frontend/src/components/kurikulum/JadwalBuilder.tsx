@@ -532,15 +532,35 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
               } = checkRes.data;
 
               if (is_exceeded) {
-                toast.error(`Peringatan: Jam mengajar ${nama_guru} melebihi batas (${current_jp} JP dari maks ${max_jp} JP per minggu).`, {
-                  duration: 6000
-                });
+                const proceed = await requestConfirm(
+                  'Beban Mengajar Melebihi Batas',
+                  <div className="space-y-3 text-slate-600 dark:text-slate-400 text-left">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Jam mengajar <strong className="text-slate-900 dark:text-white">{nama_guru}</strong> akan melebihi batas yang ditentukan ({current_jp} JP dari maks {max_jp} JP per minggu).
+                    </p>
+                    <p className="text-xs">Apakah Anda yakin ingin tetap menempatkan jadwal ini?</p>
+                  </div>
+                );
+                if (!proceed) {
+                  setSavingSlot(null);
+                  return;
+                }
               }
 
               if (is_allocation_exceeded) {
-                toast.error(`Peringatan: Alokasi ${mapel_name} di kelas ${kelas_name} melebihi batas (${current_allocation_jp} JP dari alokasi ${max_allocation_jp} JP per minggu).`, {
-                  duration: 6000
-                });
+                const proceed = await requestConfirm(
+                  'Alokasi Kurikulum Melebihi Batas',
+                  <div className="space-y-3 text-slate-600 dark:text-slate-400 text-left">
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Alokasi mata pelajaran <strong className="text-indigo-600 dark:text-indigo-400">{mapel_name}</strong> di kelas <strong className="text-slate-900 dark:text-white">{kelas_name}</strong> melebihi batas alokasi struktur kurikulum ({current_allocation_jp} JP dari alokasi {max_allocation_jp} JP per minggu).
+                    </p>
+                    <p className="text-xs">Apakah Anda yakin ingin tetap menempatkan jadwal ini?</p>
+                  </div>
+                );
+                if (!proceed) {
+                  setSavingSlot(null);
+                  return;
+                }
               }
             }
           } catch (e) {
