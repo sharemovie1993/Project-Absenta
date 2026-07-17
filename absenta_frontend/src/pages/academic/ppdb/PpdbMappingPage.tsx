@@ -471,7 +471,7 @@ const PpdbMappingPage: React.FC = () => {
                     options={jurusanOptions}
                     placeholder="Filter Jurusan..."
                     disabled={loading}
-                    className="w-full md:w-64"
+                    className="w-full md:w-[380px]"
                   />
                 )}
 
