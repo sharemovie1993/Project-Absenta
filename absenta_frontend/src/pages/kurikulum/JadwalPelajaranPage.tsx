@@ -174,8 +174,7 @@ export default function JadwalPelajaranPage() {
     const toastId = toast.loading('Sedang menyiapkan dokumen PDF...');
     try {
       // 1. Fetch school info
-      const sekolahRes = await sekolahApi.getSekolah();
-      const sekolah = sekolahRes?.success ? sekolahRes.data : null;
+      const sekolah = await sekolahApi.getProfile();
 
       // 2. Fetch tenant info
       const tenantRes = await getMyTenant();
