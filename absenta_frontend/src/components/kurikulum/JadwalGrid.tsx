@@ -46,13 +46,21 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
   
   // Shift config states
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
+  const [hariSekolah, setHariSekolah] = useState<string[]>(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']);
 
   useEffect(() => {
     const fetchTenantShift = async () => {
       try {
         const tenantRes = await getMyTenant();
-        if (tenantRes?.success && tenantRes.data?.shift_jam_pelajaran) {
-          setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+        if (tenantRes?.success) {
+          if (tenantRes.data?.shift_jam_pelajaran) {
+            setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+          }
+          if (Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+            const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+            const sortedDays = [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+            setHariSekolah(sortedDays);
+          }
         }
       } catch (err) {
         console.error('Failed to load shift jam pelajaran config:', err);
@@ -98,15 +106,61 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
     }
   };
 
+  const getSlotVisualInfo = (day: string, slotIndex: number) => {
+    const item = getSlotData(day, slotIndex);
+    if (!item) return { type: 'empty' };
+
+    // Check if there is a previous slot on the same day for the same class, teacher, subject
+    const isContinuation = (() => {
+      if (slotIndex <= 1) return false;
+      const prevItem = getSlotData(day, slotIndex - 1);
+      if (!prevItem) return false;
+      return (
+        String(prevItem.kelas_id || '') === String(item.kelas_id || '') &&
+        String(prevItem.guru_id || '') === String(item.guru_id || '') &&
+        String(prevItem.mapel_id || '') === String(item.mapel_id || '') &&
+        String(prevItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+      );
+    })();
+
+    if (isContinuation) {
+      return { type: 'continuation', parent: item };
+    }
+
+    // It is the start of a block. Let's find how many hours it lasts (JP count)
+    // and what the final end time is.
+    let jpCount = 1;
+    let finalEnd = item.jam_selesai;
+    let nextSlotIndex = slotIndex + 1;
+    while (nextSlotIndex <= 10) {
+      const nextItem = getSlotData(day, nextSlotIndex);
+      if (
+        nextItem &&
+        String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+        String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+        String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+        String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+      ) {
+        jpCount++;
+        finalEnd = nextItem.jam_selesai;
+        nextSlotIndex++;
+      } else {
+        break;
+      }
+    }
+
+    return { type: 'start', item, jpCount, finalEnd };
+  };
+
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className="min-w-[1000px]">
         {/* Header Days */}
-        <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800">
+        <div className="grid border-b border-gray-200 dark:border-gray-800" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
           <div className="p-4 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-gray-800 font-bold text-gray-500 dark:text-gray-400 text-sm text-center">
             WAKTU
           </div>
-          {DAYS.map(day => (
+          {hariSekolah.map(day => (
             <div key={day} className="p-4 bg-gray-50 dark:bg-slate-800/50 font-bold text-gray-900 dark:text-white text-sm text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800">
               {day}
             </div>
@@ -130,11 +184,11 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
             return (
               <React.Fragment key={slot}>
                 {breakDuration && breakDuration > 0 && (
-                  <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800/80 bg-amber-50/10 dark:bg-amber-950/5">
+                  <div className="grid border-b border-gray-200 dark:border-gray-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
                     <div className="p-2.5 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
                       <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
                     </div>
-                    <div className="col-span-6 p-2.5 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400/85">
+                    <div className="p-2.5 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
                       <span className="flex items-center gap-1.5">
                         ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {currentSlot.start})
                       </span>
@@ -142,7 +196,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                   </div>
                 )}
 
-                <div className="grid grid-cols-7 border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group">
+                <div className="grid border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
                   {/* Time Column */}
                   <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center space-y-1">
                     <span className="text-xs font-bold text-purple-600 dark:text-purple-400">JAM {slot}</span>
@@ -158,8 +212,8 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                   </div>
 
                   {/* Day Columns */}
-                  {DAYS.map(day => {
-                    const item = getSlotData(day, slot);
+                  {hariSekolah.map(day => {
+                    const visualInfo = getSlotVisualInfo(day, slot);
                     
                     return (
                       <div 
@@ -169,14 +223,14 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                         )}
                       >
                         <AnimatePresence mode="wait">
-                          {item ? (
+                          {visualInfo.type === 'start' && visualInfo.item ? (
                             <motion.div
                               initial={{ opacity: 0, scale: 0.95 }}
                               animate={{ opacity: 1, scale: 1 }}
                               exit={{ opacity: 0, scale: 0.95 }}
                               className={cn(
                                 "h-full w-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item",
-                                item.jenis_kegiatan === 'KBM' 
+                                visualInfo.item.jenis_kegiatan === 'KBM' 
                                   ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
                                   : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
                               )}
@@ -184,15 +238,15 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                               <div>
                                 <div className="flex justify-between items-start mb-1">
                                   <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
-                                    {item.Kelas?.nama_kelas || item.jenis_kegiatan}
+                                    {visualInfo.item.Kelas?.nama_kelas || visualInfo.item.jenis_kegiatan}
                                   </Badge>
                                   <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                     {!readOnly && (
                                       <>
-                                        <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(item); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
+                                        <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(visualInfo.item!); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
                                           <Edit2 className="w-3 h-3" />
                                         </button>
-                                        <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(item.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
+                                        <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(visualInfo.item!.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
                                           <Trash2 className="w-3 h-3" />
                                         </button>
                                       </>
@@ -200,24 +254,30 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                   </div>
                                 </div>
                                 
-                                {item.Mapel && (
+                                {visualInfo.item.Mapel && (
                                   <>
                                     <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-0.5">
-                                      {item.Mapel.nama_mapel}
+                                      {visualInfo.item.Mapel.nama_mapel}
                                     </div>
                                     <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono mb-1 leading-none">
-                                      {item.jam_mulai} - {item.jam_selesai}
+                                      {visualInfo.item.jam_mulai} - {visualInfo.finalEnd} {visualInfo.jpCount > 1 ? `(${visualInfo.jpCount} JP)` : ''}
                                     </div>
                                   </>
                                 )}
-                                {item.Guru && (
+                                {visualInfo.item.Guru && (
                                   <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center">
                                     <User className="w-2.5 h-2.5 mr-1 text-green-500" />
-                                    {item.Guru.User?.full_name?.split(' ')[0]}
+                                    {visualInfo.item.Guru.User?.full_name?.split(' ')[0]}
                                   </div>
                                 )}
                               </div>
                             </motion.div>
+                          ) : visualInfo.type === 'continuation' && visualInfo.parent ? (
+                            <div className="h-full w-full rounded-xl border border-dashed border-blue-200/60 dark:border-blue-800/20 bg-blue-50/10 dark:bg-blue-900/5 flex items-center justify-center p-2 text-center select-none">
+                              <span className="text-[8px] font-bold text-blue-400/80 dark:text-blue-500/40 uppercase tracking-widest">
+                                ↑ Lanjutan KBM
+                              </span>
+                            </div>
                           ) : null}
                         </AnimatePresence>
                       </div>

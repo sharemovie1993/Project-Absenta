@@ -430,7 +430,48 @@ export class JadwalTemplateController {
         };
       });
 
-    const finalResult = [...scheduledItems, ...adhocItems].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+    const sortedItems = [...scheduledItems, ...adhocItems].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+
+    // Group and merge consecutive items for same class, teacher, subject, and activity
+    const finalResult: typeof sortedItems = [];
+    if (sortedItems.length > 0) {
+      let current = { ...sortedItems[0] };
+      finalResult.push(current);
+
+      for (let i = 1; i < sortedItems.length; i++) {
+        const next = sortedItems[i];
+
+        const sameContext = 
+          String(current.kelas_id || '') === String(next.kelas_id || '') &&
+          String(current.guru_id || '') === String(next.guru_id || '') &&
+          String(current.mapel_id || '') === String(next.mapel_id || '') &&
+          String(current.jenis_kegiatan || '').toUpperCase() === String(next.jenis_kegiatan || '').toUpperCase();
+
+        if (sameContext) {
+          const [currH, currM] = current.jam_selesai.split(':').map(Number);
+          const [nextH, nextM] = next.jam_mulai.split(':').map(Number);
+          const currMins = (currH || 0) * 60 + (currM || 0);
+          const nextMins = (nextH || 0) * 60 + (nextM || 0);
+          const gap = nextMins - currMins;
+
+          // If gap <= 35 minutes (covers standard breaks), merge them!
+          if (gap <= 35) {
+            current.jam_selesai = next.jam_selesai;
+            if (!current.session && next.session) {
+              current.session = next.session;
+              current.attendance_status = next.attendance_status;
+              current.waktu_tap = next.waktu_tap;
+              current.is_live = next.is_live;
+              current.is_finished = next.is_finished;
+            }
+            continue;
+          }
+        }
+
+        current = { ...next };
+        finalResult.push(current);
+      }
+    }
 
     return reply.send({ 
       success: true, 
