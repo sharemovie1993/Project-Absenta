@@ -381,16 +381,16 @@ const PpdbMappingPage: React.FC = () => {
 
   return (
     <AcademicPageLayout
-      title="Pemetaan PPDB ke Rombel"
-      subtitle="Petakan siswa baru hasil PPDB ke rombel (kelas) secara massal"
+      title="Pemetaan Hasil PPDB ke Rombel"
+      subtitle="Tempatkan siswa baru ke rombel (kelas) sesuai jurusan dan tingkatnya"
       stats={pageStats}
       hardeningModuleKey="academic_ppdb_mapping"
       instruction={{
-        title: "Panduan Pemetaan PPDB",
-        description: <p>Pilih calon siswa di tabel sebelah kiri dan seret ke kelas target di kanan, atau gunakan tombol wizard.</p>,
-        items: [{ text: "Pilih calon siswa di tabel sebelah kiri." }, { text: "Seret ke kelas target di kanan, atau gunakan tombol wizard." }]
+        title: "Cara Pemetaan",
+        description: <p>Pilih calon siswa di tabel sebelah kiri dan seret ke kelas target di kanan, atau gunakan tombol preset pembagian rata.</p>,
+        items: [{ text: "Pilih satu atau lebih calon siswa di tabel kiri." }, { text: "Seret ke kelas tujuan di kanan, atau gunakan tombol Bagi Rata." }]
       }}
-      breadcrumbs={[{ label: 'Akademik', path: '/academic' }, { label: 'Siswa', path: '/academic/siswa' }, { label: 'Pemetaan PPDB', path: '/academic/ppdb-mapping' }]}
+      breadcrumbs={[{ label: 'Akademik', path: '/academic' }, { label: 'Siswa', path: '/academic/siswa' }, { label: 'Hasil PPDB', path: '/academic/ppdb-mapping' }]}
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
