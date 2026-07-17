@@ -396,85 +396,123 @@ export const renderKurikulumRosterPdf = (
     doc.line(15, headerEndY + 14, pageWidth - 15, headerEndY + 14);
 
     // 3. Draw Timetable Grid
-    const days = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
-    const head = [['JAM KE-', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT']];
-
-    const slots = Array.from(
-      new Set(
-        groupJadwal.map(j => `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}`)
-      )
-    ).sort();
-
-    let body: any[] = [];
-    if (slots.length > 0) {
-      body = slots.map((slot, index) => {
-        const slotSchedules = groupJadwal.filter(j =>
-          `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}` === slot
-        );
-        
-        const slotActivities = slotSchedules.map(j => getActivityInfo(j.jenis_kegiatan));
-        
-        const isIstirahat = slotActivities.length > 0 && slotActivities.every(act => 
-          act?.tipe?.toUpperCase() === 'ISTIRAHAT' || act?.nama?.toUpperCase()?.includes('ISTIRAHAT')
-        );
-        const isUpacara = slotActivities.length > 0 && slotActivities.every(act => 
-          act?.tipe?.toUpperCase() === 'UPACARA' || act?.nama?.toUpperCase()?.includes('UPACARA') || act?.nama?.toUpperCase()?.includes('APEL')
-        );
-
-        if (isIstirahat) {
-          const actLabel = slotActivities[0]?.nama || 'ISTIRAHAT';
-          return [
-            `Jam ${index + 1}\n(${slot})`,
-            { content: actLabel.toUpperCase(), colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
-          ];
-        }
-        if (isUpacara) {
-          const actLabel = slotActivities[0]?.nama || 'UPACARA';
-          return [
-            `Jam ${index + 1}\n(${slot})`,
-            { content: actLabel.toUpperCase(), colSpan: 5, styles: { fillColor: [248, 250, 252], fontStyle: 'bold', halign: 'center', textColor: [71, 85, 105] } }
-          ];
-        }
-
-        const row: any[] = [`Jam ${index + 1}\n(${slot})`];
-        days.forEach(day => {
-          const matches = groupJadwal.filter(j =>
-            j.hari === day &&
-            `${j.jam_mulai.substring(0, 5)} - ${j.jam_selesai.substring(0, 5)}` === slot
-          );
-          if (matches.length > 0) {
-            if (printType === 'roster_teacher') {
-              row.push(
-                matches.map(m => {
-                  const act = getActivityInfo(m.jenis_kegiatan);
-                  const isKbm = !m.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
-                  const subjectName = isKbm && m.Mapel?.nama_mapel ? m.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
-                  const targetClass = m.Kelas?.nama_kelas || 'Kelas';
-                  return `${subjectName.toUpperCase()}\n(${targetClass})`;
-                }).join('\n\n')
-              );
-            } else {
-              row.push(
-                matches.map(m => {
-                  const act = getActivityInfo(m.jenis_kegiatan);
-                  const isKbm = !m.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
-                  const subjectName = isKbm && m.Mapel?.nama_mapel ? m.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
-                  const teacher = m.Guru?.User?.full_name || 'Guru';
-                  return `${subjectName.toUpperCase()}\n(${teacher})`;
-                }).join('\n\n')
-              );
-            }
-          } else {
-            row.push('');
-          }
-        });
-        return row;
-      });
-    } else {
-      body = Array.from({ length: 8 }).map((_, i) => [
-        `Jam ${i + 1}`, '', '', '', '', ''
-      ]);
+    const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
+    const days = [...DAYS];
+    if (groupJadwal.some(j => j.hari === 'SABTU')) {
+      days.push('SABTU');
     }
+
+    const DAY_ABBR: Record<string, string> = {
+      'SENIN': 'SENIN',
+      'SELASA': 'SELASA',
+      'RABU': 'RABU',
+      'KAMIS': 'KAMIS',
+      'JUMAT': 'JUMAT',
+      'SABTU': 'SABTU',
+    };
+
+    const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1);
+
+    const SLOT_TIME_FALLBACK: Record<number, string> = {
+      1: "07:00-07:45",
+      2: "07:45-08:30",
+      3: "08:30-09:15",
+      4: "09:35-10:20",
+      5: "10:20-11:05",
+      6: "11:05-11:50",
+      7: "12:30-13:15",
+      8: "13:15-14:00",
+      9: "14:00-14:45",
+      10: "14:45-15:30",
+    };
+
+    const head = [
+      [
+        'HARI',
+        ...SLOTS.map(slot => {
+          const time = SLOT_TIME_FALLBACK[slot] || '';
+          return `JAM ${slot}\n(${time})`;
+        })
+      ]
+    ];
+
+    const getSlotData = (dayStr: string, slotNum: number) => {
+      const timeRange = SLOT_TIME_FALLBACK[slotNum] || '';
+      const startTime = timeRange.split('-')[0];
+      return groupJadwal.find(j => 
+        j.hari === dayStr && 
+        j.jam_mulai && j.jam_mulai.startsWith(startTime)
+      );
+    };
+
+    const body: any[] = [];
+    days.forEach(day => {
+      const row: any[] = [DAY_ABBR[day]];
+      let skipCount = 0;
+
+      for (let i = 0; i < SLOTS.length; i++) {
+        if (skipCount > 0) {
+          skipCount--;
+          continue;
+        }
+
+        const slot = SLOTS[i];
+        const item = getSlotData(day, slot);
+
+        if (!item) {
+          row.push('');
+          continue;
+        }
+
+        // Look ahead for consecutive matches
+        let colSpan = 1;
+        let nextIdx = i + 1;
+        while (nextIdx < SLOTS.length) {
+          const nextSlot = SLOTS[nextIdx];
+          const nextItem = getSlotData(day, nextSlot);
+          if (
+            nextItem &&
+            String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+            String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+            String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+            String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+          ) {
+            colSpan++;
+            nextIdx++;
+          } else {
+            break;
+          }
+        }
+
+        skipCount = colSpan - 1;
+
+        // Resolve display text
+        const act = getActivityInfo(item.jenis_kegiatan);
+        const isKbm = !item.jenis_kegiatan || act?.tipe?.toUpperCase() === 'KBM';
+        const subjectName = isKbm && item.Mapel?.nama_mapel ? item.Mapel.nama_mapel : (act?.nama || 'KEGIATAN');
+
+        let cellText = '';
+        if (printType === 'roster_teacher') {
+          const targetClass = item.Kelas?.nama_kelas || 'Kelas';
+          cellText = `${subjectName.toUpperCase()}\n(${targetClass})`;
+        } else {
+          const teacher = item.Guru?.User?.full_name || 'Guru';
+          const teacherShort = teacher.split(' ')[0];
+          cellText = `${subjectName.toUpperCase()}\n(${teacherShort})`;
+        }
+
+        if (colSpan > 1) {
+          row.push({
+            content: cellText,
+            colSpan,
+            styles: { fillColor: [239, 246, 255] }
+          });
+        } else {
+          row.push(cellText);
+        }
+      }
+      body.push(row);
+    });
 
     autoTable(doc, {
       startY: headerEndY + 17,
@@ -482,22 +520,27 @@ export const renderKurikulumRosterPdf = (
       body,
       theme: 'grid',
       styles: { 
-        fontSize: 6.5, 
+        fontSize: 7, 
         font: 'Helvetica', 
-        cellPadding: 2.2, 
+        cellPadding: 3, 
         halign: 'center', 
         valign: 'middle',
-        lineColor: [203, 213, 225],
+        lineColor: [148, 163, 184],
         lineWidth: 0.15
       },
-      headStyles: { fillColor: [248, 250, 252], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.2 },
+      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineWidth: 0.2 },
       columnStyles: {
-        0: { cellWidth: 25, fontStyle: 'bold', fillColor: [248, 250, 252] },
-        1: { cellWidth: 31 },
-        2: { cellWidth: 31 },
-        3: { cellWidth: 31 },
-        4: { cellWidth: 31 },
-        5: { cellWidth: 31 }
+        0: { cellWidth: 22, fontStyle: 'bold', fillColor: [248, 250, 252] },
+        1: { cellWidth: 24.5 },
+        2: { cellWidth: 24.5 },
+        3: { cellWidth: 24.5 },
+        4: { cellWidth: 24.5 },
+        5: { cellWidth: 24.5 },
+        6: { cellWidth: 24.5 },
+        7: { cellWidth: 24.5 },
+        8: { cellWidth: 24.5 },
+        9: { cellWidth: 24.5 },
+        10: { cellWidth: 24.5 }
       }
     });
 

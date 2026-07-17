@@ -245,14 +245,16 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     checklistData
   } = options;
 
+  const isLandscape = module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType);
+
   const doc = new jsPDF({
-    orientation: 'p',
+    orientation: isLandscape ? 'l' : 'p',
     unit: 'mm',
     format: 'a4'
   });
 
-  const pageWidth = 210;
-  const pageHeight = 297;
+  const pageWidth = isLandscape ? 297 : 210;
+  const pageHeight = isLandscape ? 210 : 297;
 
   // Retrieve principal details
   const principalAssign = strukturList?.find(s => s.kode === 'KEPALA_SEKOLAH');
