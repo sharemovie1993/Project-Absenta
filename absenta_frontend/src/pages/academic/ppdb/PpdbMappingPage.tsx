@@ -9,6 +9,7 @@ import type { Siswa } from '../../../types/academic';
 import { Search, GraduationCap, ChevronRight, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { downloadFileFromBlob, generateStandardFilename } from '../../../utils/file-download.utils';
+import { generateAdvancedTemplate } from '../../../utils/excel-advanced.utils';
 
 const ExcelImportModal = lazy(() => import('../../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 const Loader = lazy(() => import('../../../components/ui/Loader').then(module => ({ default: module.Loader })));
@@ -167,10 +168,40 @@ const PpdbMappingPage: React.FC = () => {
 
   const handleTemplateDownload = async () => {
     try {
-      toast('Mengunduh template...');
-      const blob = await downloadSiswaImportTemplate();
-      downloadFileFromBlob(blob, generateStandardFilename('template_import_siswa_ppdb', 'xlsx'));
-      toast.success('Template berhasil diunduh');
+      toast('Menyiapkan template...');
+      const kelasNames = kelasOptions.map(k => String(k.label)).filter(Boolean);
+      const jurusanNames = jurusans.map(j => String(j.label)).filter(Boolean);
+
+      const columns = [
+        { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+        { header: 'NIS', key: 'nis', width: 15, required: false },
+        { header: 'NISN', key: 'nisn', width: 15, required: false },
+        { header: 'NIK', key: 'nik', width: 20, required: false },
+        { header: 'Jenis Kelamin (L/P)', key: 'jenis_kelamin', width: 18, required: false, dropdown: { refKey: 'jk' } },
+        { header: 'Nama Kelas', key: 'nama_kelas', width: 25, required: false, dropdown: { refKey: 'kelas' } },
+        ...(isSmkMak ? [{ header: 'Jurusan', key: 'jurusan', width: 25, required: true, dropdown: { refKey: 'jurusan' } }] : []),
+        { header: 'Status', key: 'status', width: 15, required: false, dropdown: { refKey: 'status' } }
+      ];
+
+      await generateAdvancedTemplate(
+        columns,
+        {
+          fileName: generateStandardFilename('template_import_siswa_ppdb', 'xlsx'),
+          instructions: [
+            'Kolom BERWARNA EMAS wajib diisi.',
+            'Untuk PPDB/Calon siswa, kosongkan kolom NAMA KELAS, isi JURUSAN (wajib bagi SMK), dan set status ke CALON.',
+            'JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.',
+            'Format Tanggal Lahir (jika diisi): YYYY-MM-DD (Contoh: 2010-06-12).'
+          ],
+          referenceData: {
+            kelas: kelasNames,
+            jurusan: jurusanNames,
+            jk: ['L', 'P'],
+            status: ['CALON', 'AKTIF']
+          }
+        }
+      );
+      toast.success('Template cerdas berhasil diunduh.');
     } catch (err) {
       console.error(err);
       toast.error('Gagal mengunduh template');
