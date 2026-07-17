@@ -26,7 +26,7 @@ const PpdbMappingPage: React.FC = () => {
   // Data lists
   const [calonList, setCalonList] = useState<Siswa[]>([]);
   const [jurusans, setJurusans] = useState<{ value: string; label: string }[]>([]);
-  const [kelasOptions, setKelasOptions] = useState<{ value: string; label: string[]; jurusan_id?: string | null }[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<{ value: string; label: string; jurusan_id?: string | null; tingkat?: number | null; siswa_count?: number }[]>([]);
   
   // Filter & selections
   const [isSmkMak, setIsSmkMak] = useState(false);
@@ -36,39 +36,37 @@ const PpdbMappingPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   // 1. Fetch metadata (Sekolah, Jurusan, Kelas)
+  const fetchMetadata = async () => {
+    try {
+      const [sekolahRes, jurusanList, allKelas] = await Promise.all([
+        sekolahApi.getProfile(),
+        getJurusanForDropdown(),
+        getKelasForDropdown()
+      ]);
+
+      const rawSekolah = (sekolahRes as any)?.data || sekolahRes;
+      const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
+      const smk = ['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as any[]).length > 0);
+      setIsSmkMak(smk);
+
+      setJurusans(jurusanList);
+      
+      const mappedKelas = (allKelas as any[]).map(k => ({
+        value: k.value,
+        label: k.label,
+        jurusan_id: k.jurusan_id || k.Jurusan?.id || null,
+        tingkat: k.tingkat || null,
+        siswa_count: k.siswa_count || 0
+      }));
+      setKelasOptions(mappedKelas);
+
+    } catch (err) {
+      console.error('Failed to load metadata:', err);
+      toast.error('Gagal memuat data referensi');
+    }
+  };
+
   useEffect(() => {
-    const fetchMetadata = async () => {
-      setLoading(true);
-      try {
-        const [sekolahRes, jurusanList, allKelas] = await Promise.all([
-          sekolahApi.getProfile(),
-          getJurusanForDropdown(),
-          getKelasForDropdown()
-        ]);
-
-        const rawSekolah = (sekolahRes as any)?.data || sekolahRes;
-        const jenjang = rawSekolah?.jenjang?.toUpperCase() || '';
-        const smk = ['SMK', 'MAK'].includes(jenjang) || (jurusanList && (jurusanList as any[]).length > 0);
-        setIsSmkMak(smk);
-
-        setJurusans(jurusanList);
-        
-        const mappedKelas = (allKelas as any[]).map(k => ({
-          value: k.value,
-          label: k.label,
-          jurusan_id: k.jurusan_id || k.Jurusan?.id || null,
-          tingkat: k.tingkat || null
-        }));
-        setKelasOptions(mappedKelas);
-
-      } catch (err) {
-        console.error('Failed to load metadata:', err);
-        toast.error('Gagal memuat data referensi');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMetadata();
   }, []);
 
@@ -173,7 +171,8 @@ const PpdbMappingPage: React.FC = () => {
       if (res.success) {
         toast.success(`Berhasil memetakan ${studentIds.length} siswa ke rombel!`);
         setSelectedSiswa([]);
-        await fetchCalonStudents();
+        // Refresh list and metadata
+        await Promise.all([fetchCalonStudents(), fetchMetadata()]);
       } else {
         toast.error(res.message || 'Gagal memetakan siswa');
       }
@@ -222,8 +221,8 @@ const PpdbMappingPage: React.FC = () => {
         setSelectedSiswa([]);
         setTargetKelasId('');
         setMappingModalOpen(false);
-        // Refresh list
-        await fetchCalonStudents();
+        // Refresh list and metadata
+        await Promise.all([fetchCalonStudents(), fetchMetadata()]);
       } else {
         toast.error(res.message || 'Gagal memetakan siswa');
       }
@@ -550,15 +549,12 @@ const PpdbMappingPage: React.FC = () => {
                         </span>
                       </div>
 
-                      {matchedJurusan ? (
-                        <div className="text-xs text-slate-500">
-                          Jurusan: <span className="font-medium text-slate-700">{matchedJurusan.label}</span>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-slate-400 italic">
-                          Umum / Tanpa Jurusan
-                        </div>
-                      )}
+                      <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1">
+                        <span>Jumlah Siswa:</span>
+                        <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                          {k.siswa_count || 0} siswa
+                        </span>
+                      </div>
 
                       {/* Drop Visual Helper */}
                       {isDragging && (
