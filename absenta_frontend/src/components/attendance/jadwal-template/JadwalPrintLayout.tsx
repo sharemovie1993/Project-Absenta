@@ -47,14 +47,22 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
 }) => {
   // Shift config states
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
+  const [hariSekolah, setHariSekolah] = useState<string[]>(['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']);
 
   useEffect(() => {
     if (!isPrinting) return;
     const fetchTenantShift = async () => {
       try {
         const tenantRes = await getMyTenant();
-        if (tenantRes?.success && tenantRes.data?.shift_jam_pelajaran) {
-          setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+        if (tenantRes?.success) {
+          if (tenantRes.data?.shift_jam_pelajaran) {
+            setShiftJamPelajaran(tenantRes.data.shift_jam_pelajaran);
+          }
+          if (Array.isArray(tenantRes.data?.hari_sekolah) && tenantRes.data.hari_sekolah.length > 0) {
+            const order = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+            const sortedDays = [...tenantRes.data.hari_sekolah].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+            setHariSekolah(sortedDays);
+          }
         }
       } catch (err) {
         console.error('Failed to load shift jam pelajaran config:', err);
@@ -100,6 +108,52 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
         return false;
       });
     }
+  };
+
+  const getMergedSlotsForDay = (day: string) => {
+    const cells: { slot: number; colSpan: number; item: any }[] = [];
+    let skipCount = 0;
+
+    for (let i = 0; i < SLOTS.length; i++) {
+      if (skipCount > 0) {
+        skipCount--;
+        continue;
+      }
+
+      const slot = SLOTS[i];
+      const item = getSlotData(day, slot);
+
+      if (!item) {
+        cells.push({ slot, colSpan: 1, item: null });
+        continue;
+      }
+
+      // Look ahead to see how many consecutive slots have the same class, teacher, subject
+      let colSpan = 1;
+      let nextIdx = i + 1;
+      while (nextIdx < SLOTS.length) {
+        const nextSlot = SLOTS[nextIdx];
+        const nextItem = getSlotData(day, nextSlot);
+
+        if (
+          nextItem &&
+          String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+          String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+          String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+          String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+        ) {
+          colSpan++;
+          nextIdx++;
+        } else {
+          break;
+        }
+      }
+
+      skipCount = colSpan - 1;
+      cells.push({ slot, colSpan, item });
+    }
+
+    return cells;
   };
 
   const derivedSubject = subjectName || Array.from(new Set(jadwal.map(j => j.Mapel?.nama_mapel).filter(Boolean)))[0] || '-';
@@ -235,17 +289,16 @@ export const JadwalPrintLayout: React.FC<JadwalPrintLayoutProps> = ({
             </tr>
           </thead>
           <tbody>
-            {DAYS.filter(d => d !== 'SABTU' || jadwal.some(j => j.hari === 'SABTU')).map(day => (
+            {hariSekolah.map(day => (
               <tr key={day}>
                 <td className="day-col">{DAY_ABBR[day]}</td>
-                {SLOTS.map(slot => {
-                  const item = getSlotData(day, slot);
+                {getMergedSlotsForDay(day).map(({ slot, colSpan, item }) => {
                   const teacherInitials = item?.Guru?.User?.full_name 
-                    ? item.Guru.User.full_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    ? item.Guru.User.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2)
                     : '';
                   
                   return (
-                    <td key={slot}>
+                    <td key={slot} colSpan={colSpan}>
                       {item && (
                         <>
                           <div className="cell-initials">{teacherInitials}</div>

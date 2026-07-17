@@ -152,139 +152,170 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
     return { type: 'start', item, jpCount, finalEnd };
   };
 
+  const getMergedSlotsForDay = (day: string) => {
+    const cells: { slot: number; colSpan: number; item: any }[] = [];
+    let skipCount = 0;
+
+    for (let i = 0; i < SLOTS.length; i++) {
+      if (skipCount > 0) {
+        skipCount--;
+        continue;
+      }
+
+      const slot = SLOTS[i];
+      const item = getSlotData(day, slot);
+
+      if (!item) {
+        cells.push({ slot, colSpan: 1, item: null });
+        continue;
+      }
+
+      // Look ahead to see how many consecutive slots have the same class, teacher, subject
+      let colSpan = 1;
+      let nextIdx = i + 1;
+      while (nextIdx < SLOTS.length) {
+        const nextSlot = SLOTS[nextIdx];
+        const nextItem = getSlotData(day, nextSlot);
+
+        if (
+          nextItem &&
+          String(nextItem.kelas_id || '') === String(item.kelas_id || '') &&
+          String(nextItem.guru_id || '') === String(item.guru_id || '') &&
+          String(nextItem.mapel_id || '') === String(item.mapel_id || '') &&
+          String(nextItem.jenis_kegiatan || '').toUpperCase() === String(item.jenis_kegiatan || '').toUpperCase()
+        ) {
+          colSpan++;
+          nextIdx++;
+        } else {
+          break;
+        }
+      }
+
+      skipCount = colSpan - 1;
+      cells.push({ slot, colSpan, item });
+    }
+
+    return cells;
+  };
+
   return (
     <div className="w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className="min-w-[1000px]">
         {/* Header Days */}
-        <div className="grid border-b border-gray-200 dark:border-gray-800" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-          <div className="p-4 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-gray-800 font-bold text-gray-500 dark:text-gray-400 text-sm text-center">
-            WAKTU
+        <div className="grid border-b border-gray-200 dark:border-gray-800" style={{ gridTemplateColumns: `120px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+          <div className="p-4 bg-gray-50 dark:bg-slate-800/50 border-r border-gray-200 dark:border-gray-800 font-bold text-gray-500 dark:text-gray-400 text-xs text-center flex items-center justify-center">
+            HARI / WAKTU
           </div>
-          {hariSekolah.map(day => (
-            <div key={day} className="p-4 bg-gray-50 dark:bg-slate-800/50 font-bold text-gray-900 dark:text-white text-sm text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800">
-              {day}
-            </div>
-          ))}
+          {SLOTS.map(slot => {
+            const time = resolveSlotTime(selectedKelasId || '', slot);
+            return (
+              <div 
+                key={slot} 
+                className="p-3 bg-gray-50 dark:bg-slate-800/50 font-bold text-center border-r last:border-r-0 border-gray-200 dark:border-gray-800 flex flex-col justify-center items-center"
+              >
+                <div className="text-xs text-gray-900 dark:text-white uppercase font-black">JAM {slot}</div>
+                <div className="text-[9px] text-gray-400 font-mono mt-0.5">{time.start} - {time.end}</div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Grid Body */}
         <div className="relative">
-          {SLOTS.map(slot => {
-            const prevSlotIndex = slot > 1 ? slot - 1 : null;
-            const prevSlot = prevSlotIndex && selectedKelasId ? resolveSlotTime(selectedKelasId, prevSlotIndex) : null;
-            const currentSlot = selectedKelasId ? resolveSlotTime(selectedKelasId, slot) : null;
-            const breakDuration = prevSlot && currentSlot && (() => {
-              const toMins = (t: string) => {
-                const [h, m] = t.split(':').map(Number);
-                return (h || 0) * 60 + (m || 0);
-              };
-              return toMins(currentSlot.start) - toMins(prevSlot.end);
-            })();
+          {hariSekolah.map(day => {
+            const mergedCells = getMergedSlotsForDay(day);
 
             return (
-              <React.Fragment key={slot}>
-                {breakDuration && breakDuration > 0 && (
-                  <div className="grid border-b border-gray-200 dark:border-gray-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                    <div className="p-2.5 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
-                      <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
-                    </div>
-                    <div className="p-2.5 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
-                      <span className="flex items-center gap-1.5">
-                        ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {currentSlot.start})
-                      </span>
-                    </div>
-                  </div>
-                )}
+              <div 
+                key={day} 
+                className="grid border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group"
+                style={{ gridTemplateColumns: `120px repeat(${SLOTS.length}, minmax(0, 1fr))` }}
+              >
+                {/* Day name column */}
+                <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex items-center justify-center font-black text-sm text-gray-700 dark:text-gray-300">
+                  {day}
+                </div>
 
-                <div className="grid border-b last:border-b-0 border-gray-100 dark:border-gray-800/50 group" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                  {/* Time Column */}
-                  <div className="p-4 bg-gray-50/50 dark:bg-slate-800/20 border-r border-gray-200 dark:border-gray-800 flex flex-col items-center justify-center space-y-1">
-                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">JAM {slot}</span>
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      {selectedKelasId 
-                        ? (() => {
-                            const t = resolveSlotTime(selectedKelasId, slot);
-                            return `${t.start} - ${t.end}`;
-                          })()
-                        : 'Dinamis'
-                      }
-                    </span>
-                  </div>
-
-                  {/* Day Columns */}
-                  {hariSekolah.map(day => {
-                    const visualInfo = getSlotVisualInfo(day, slot);
-                    
-                    return (
-                      <div 
-                        key={`${day}-${slot}`} 
-                        className={cn(
-                          "p-2 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[100px] transition-colors relative"
-                        )}
-                      >
-                        <AnimatePresence mode="wait">
-                          {visualInfo.type === 'start' && visualInfo.item ? (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className={cn(
-                                "h-full w-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item",
-                                visualInfo.item.jenis_kegiatan === 'KBM' 
-                                  ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
-                                  : "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
-                              )}
-                            >
-                              <div>
-                                <div className="flex justify-between items-start mb-1">
-                                  <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
-                                    {visualInfo.item.Kelas?.nama_kelas || visualInfo.item.jenis_kegiatan}
-                                  </Badge>
-                                  <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                    {!readOnly && (
-                                      <>
-                                        <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(visualInfo.item!); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
-                                          <Edit2 className="w-3 h-3" />
-                                        </button>
-                                        <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(visualInfo.item!.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
+                {/* Merged Cells */}
+                {mergedCells.map(({ slot, colSpan, item }) => {
+                  return (
+                    <div 
+                      key={`${day}-${slot}`} 
+                      className={cn(
+                        "p-2 border-r last:border-r-0 border-gray-100 dark:border-gray-800/50 min-h-[105px] transition-colors relative flex"
+                      )}
+                      style={{ gridColumn: `span ${colSpan}` }}
+                    >
+                      <AnimatePresence mode="wait">
+                        {item ? (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className={cn(
+                              "w-full h-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item transition-all duration-200 hover:shadow-md",
+                              item.jenis_kegiatan === 'KBM' 
+                                ? "bg-blue-50/55 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
+                                : "bg-amber-50/55 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
+                            )}
+                          >
+                            <div className="w-full">
+                              <div className="flex justify-between items-start mb-1 gap-1">
+                                <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
+                                  {item.Kelas?.nama_kelas || item.jenis_kegiatan}
+                                </Badge>
                                 
-                                {visualInfo.item.Mapel && (
-                                  <>
-                                    <div className="text-xs font-bold text-gray-900 dark:text-white leading-tight mb-0.5">
-                                      {visualInfo.item.Mapel.nama_mapel}
-                                    </div>
-                                    <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono mb-1 leading-none">
-                                      {visualInfo.item.jam_mulai} - {visualInfo.finalEnd} {visualInfo.jpCount > 1 ? `(${visualInfo.jpCount} JP)` : ''}
-                                    </div>
-                                  </>
+                                {colSpan > 1 && (
+                                  <Badge className="text-[8px] h-4 px-1 bg-indigo-500/10 text-indigo-650 border-indigo-200/30 font-extrabold uppercase">
+                                    {colSpan} JP
+                                  </Badge>
                                 )}
-                                {visualInfo.item.Guru && (
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center">
-                                    <User className="w-2.5 h-2.5 mr-1 text-green-500" />
-                                    {visualInfo.item.Guru.User?.full_name?.split(' ')[0]}
+
+                                <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto">
+                                  {!readOnly && (
+                                    <>
+                                      <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(item); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
+                                        <Edit2 className="w-3 h-3" />
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); if (onDeleteSlot) onDeleteSlot(item.id); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-red-500">
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {item.Mapel && (
+                                <div className="text-xs font-bold text-gray-900 dark:text-white leading-snug mb-0.5 break-words">
+                                  {item.Mapel.nama_mapel}
+                                </div>
+                              )}
+                              
+                              <div className="flex flex-col gap-0.5 mt-1">
+                                <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">
+                                  {item.jam_mulai} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
+                                </div>
+                                {item.Guru && (
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                                    <User className="w-2.5 h-2.5 mr-1 text-green-500 shrink-0" />
+                                    <span className="truncate">{item.Guru.User?.full_name?.split(' ')[0]}</span>
                                   </div>
                                 )}
                               </div>
-                            </motion.div>
-                          ) : visualInfo.type === 'continuation' && visualInfo.parent ? (
-                            <div className="h-full w-full rounded-xl border border-dashed border-blue-200/60 dark:border-blue-800/20 bg-blue-50/10 dark:bg-blue-900/5 flex items-center justify-center p-2 text-center select-none">
-                              <span className="text-[8px] font-bold text-blue-400/80 dark:text-blue-500/40 uppercase tracking-widest">
-                                ↑ Lanjutan KBM
-                              </span>
                             </div>
-                          ) : null}
-                        </AnimatePresence>
-                      </div>
-                    );
-                  })}
-                </div>
-              </React.Fragment>
+                          </motion.div>
+                        ) : (
+                          <div className="w-full h-full rounded-xl border border-dashed border-gray-150 dark:border-slate-800/80 bg-gray-50/10 dark:bg-slate-900/5 hover:bg-gray-50/30 dark:hover:bg-slate-800/10 transition-colors flex items-center justify-center group/empty">
+                            <span className="text-[9px] font-bold text-gray-300 dark:text-slate-700/80 uppercase tracking-wider group-hover/empty:text-gray-400 dark:group-hover/empty:text-slate-600 transition-colors select-none">
+                              KOSONG
+                            </span>
+                          </div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
             );
           })}
         </div>
