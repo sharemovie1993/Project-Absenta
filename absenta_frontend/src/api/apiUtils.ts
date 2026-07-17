@@ -213,7 +213,9 @@ export async function downloadBlob(
   const tenantDomain = localStorage.getItem('tenant_domain');
   
   // Same-Origin URL (relative) to ensure browser respects 'download' attribute
-  let url = (axiosInstance.defaults.baseURL || '') + path;
+  const baseUrl = axiosInstance.defaults.baseURL || '';
+  const normalizedPath = baseUrl.endsWith('/') && path.startsWith('/') ? path.substring(1) : path;
+  let url = baseUrl + normalizedPath;
   if (options?.params) {
     const params = new URLSearchParams(options.params as any).toString();
     url += (url.includes('?') ? '&' : '?') + params;
