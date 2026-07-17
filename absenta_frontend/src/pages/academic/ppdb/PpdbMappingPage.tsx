@@ -399,6 +399,7 @@ const PpdbMappingPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-6">
           <SectionCard 
             title="Daftar Calon Siswa (Seret baris siswa terpilih ke kelas tujuan)"
+            fullWidth={true}
             {...{
               toolbarLeft: null,
               toolbarRight: null
@@ -576,6 +577,7 @@ const PpdbMappingPage: React.FC = () => {
           <SectionCard 
             title="Daftar Rombel / Kelas (Tingkat 10)" 
             subtitle={isSmkMak && selectedJurusan !== 'all' ? "Difilter berdasarkan Jurusan" : "Semua kelas tingkat 10"}
+            fullWidth={true}
           >
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-thin">
               {filteredKelasOptions?.length === 0 ? (
