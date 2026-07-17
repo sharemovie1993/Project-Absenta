@@ -26,11 +26,20 @@ import { LogService } from '../../utils/LogService';
 import useConfirm from '../../hooks/useConfirm';
 import { toast } from 'sonner';
 
+// Built-in PDF and API Imports
+import { generateGenericPdf } from '../../utils/print/pdfGeneric';
+import { getMyTenant } from '../../api/tenants.api';
+import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getStrukturList } from '../../api/academic/strukturOrganisasi.api';
+import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
+import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
+import { getKelasList } from '../../api/academic/kelas.api';
+import { getGuruList } from '../../api/academic/guru.api';
+
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-template/JadwalTemplateList').then(m => ({ default: m.JadwalTemplateList })));
 const JadwalGrid = lazy(() => import('../../components/kurikulum/JadwalGrid').then(m => ({ default: m.JadwalGrid })));
 const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder').then(m => ({ default: m.JadwalBuilder })));
-const JadwalPrintLayout = lazy(() => import('../../components/attendance/jadwal-template/JadwalPrintLayout').then(m => ({ default: m.JadwalPrintLayout })));
 
 const hardeningModuleKey = 'jadwal_pelajaran_page';
 
@@ -57,8 +66,6 @@ export default function JadwalPelajaranPage() {
   const [jadwal, setJadwal] = useState<JadwalTemplate[]>([]);
   const [loadingJadwal, setLoadingJadwal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [isPrinting, setIsPrinting] = useState(false);
-
   const [selectedKelasId, setSelectedKelasId] = useState<string>(searchParams.get('kelas_id') || '');
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
@@ -163,22 +170,83 @@ export default function JadwalPelajaranPage() {
     setViewMode('list');
   }, []);
 
-  const handlePrint = useCallback(() => {
-    const originalTitle = document.title;
-    const guruName = user?.full_name || 'Guru';
-    const cleanName = guruName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    
-    document.title = `jadwal_pelajaran_${cleanName}`;
-    
-    setIsPrinting(true);
-    const timer = setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-      document.title = originalTitle;
-    }, 500);
+  const handlePrint = useCallback(async () => {
+    const toastId = toast.loading('Sedang menyiapkan dokumen PDF...');
+    try {
+      // 1. Fetch school info
+      const sekolahRes = await sekolahApi.getSekolah();
+      const sekolah = sekolahRes?.success ? sekolahRes.data : null;
 
-    return () => clearTimeout(timer);
-  }, [user?.full_name]);
+      // 2. Fetch tenant info
+      const tenantRes = await getMyTenant();
+      const tenantInfo = tenantRes?.success ? tenantRes.data : null;
+
+      // 3. Fetch list of organizational assignments for principal NIP/Name signature
+      const strukturRes = await getStrukturList({ page: 1, limit: 100 });
+      const strukturList = strukturRes?.success ? strukturRes.data : [];
+
+      // 4. Fetch school and regional logos as base64
+      let logoDaerahBase64 = null;
+      let logoSekolahBase64 = null;
+
+      if (sekolah?.logo_daerah) {
+        logoDaerahBase64 = await getBase64ImageFromUrl(sekolah.logo_daerah).catch(() => null);
+      }
+      if (sekolah?.logo_sekolah) {
+        logoSekolahBase64 = await getBase64ImageFromUrl(sekolah.logo_sekolah).catch(() => null);
+      }
+
+      // 5. Fetch master kegiatan for activity name mappings
+      const jenisRes = await jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 });
+      const jenisKegiatanList = jenisRes?.success ? jenisRes.data : [];
+
+      // 6. Fetch classes and gurus list for label displays in autotable
+      const [classesRes, gurusRes] = await Promise.all([
+        getKelasList(1, 100),
+        getGuruList(1, 100)
+      ]);
+      const classes = classesRes?.success ? classesRes.data : [];
+      const gurus = gurusRes?.success ? gurusRes.data : [];
+
+      const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
+
+      // 7. Generate PDF blob
+      const blob = await generateGenericPdf({
+        module: 'kurikulum',
+        printType: selectedGuruId ? 'roster_teacher' : 'roster',
+        selectedClassId: targetKelasId || 'all',
+        selectedGuruId: selectedGuruId || 'all',
+        sekolah,
+        tenantInfo,
+        strukturList,
+        logoDaerahBase64,
+        logoSekolahBase64,
+        includeSchoolLogo: true,
+        filterData: { 
+          jadwalList: jadwal, 
+          classes, 
+          gurus, 
+          jenisKegiatanList 
+        }
+      });
+
+      // 8. Download the PDF directly
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const docTitle = selectedGuruId ? `Jadwal_Guru_${user?.full_name}` : `Jadwal_Kelas_${selectedKelasId || 'Semua'}`;
+      link.setAttribute('download', `${docTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('PDF berhasil diunduh', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal menghasilkan PDF', { id: toastId });
+    }
+  }, [user, selectedGuruId, selectedKelasId, isSiswa, defaultKelasId, selectedTahunId, selectedSemesterId, jadwal]);
 
   const handleDeleteSlot = useCallback(async (id: string) => {
     if (!canManage) return;
@@ -349,16 +417,7 @@ export default function JadwalPelajaranPage() {
       }}
       hardeningModuleKey={hardeningModuleKey}
     >
-      {!isPrinting ? pageContent : (
-        <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
-          <JadwalPrintLayout
-            isPrinting={isPrinting}
-            jadwal={jadwal}
-            guruName={user?.full_name}
-            selectedKelasId={isSiswa ? defaultKelasId : selectedKelasId}
-          />
-        </Suspense>
-      )}
+      {pageContent}
     </AcademicPageLayout>
   );
 }
