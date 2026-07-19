@@ -69,42 +69,37 @@ export default function PremiumFeatureGate({
   return (
     <PremiumFeatureGateContext.Provider value={true}>
       <div className="flex flex-col w-full gap-6">
-        {/* Premium Service Banner (Non-Intrusive) */}
+        {/* Premium Service Banner (Clean, Modern, Low-Noise) */}
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 via-white to-amber-50 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/20 shadow-sm"
+          className="relative overflow-hidden rounded-xl border border-amber-200/60 dark:border-amber-900/30 bg-amber-50/30 dark:bg-amber-950/10 shadow-sm"
         >
-          {/* Decorative background sparkles */}
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Sparkles className="w-24 h-24 text-amber-500" />
-          </div>
-
-          <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 shadow-inner">
-                <Lock className="w-6 h-6 text-amber-600 dark:text-amber-500" />
+          <div className="px-5 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5 text-amber-600 dark:text-amber-500" />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-500 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full">
-                    Layanan {moduleName}
+                  <span className="text-[9px] font-extrabold uppercase tracking-widest text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded">
+                    Preview Mode
                   </span>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    • Preview Mode
+                    • {moduleName}
                   </span>
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">
-                  Fitur {featureName} Belum Aktif (Versi Uji Coba)
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
+                  Uji Coba: Fitur {featureName}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {user?.role?.name === 'ADMIN' ? (
                     <>
-                      Sekolah Anda belum berlangganan modul ini. Anda dapat mencoba seluruh fitur CRUD, namun penyimpanan data dibatasi maksimal 10 data. Hubungi Admin atau <span className="font-bold text-amber-600">Upgrade Modul {moduleName}</span> untuk akses penuh tanpa batas.
+                      Penyimpanan dibatasi maks. 10 data. Upgrade modul untuk akses tanpa batas.
                     </>
                   ) : (
                     <>
-                      Sekolah Anda belum berlangganan modul ini. Anda dapat mencoba seluruh fitur CRUD, namun penyimpanan data dibatasi maksimal 10 data. Silakan hubungi Administrator Sekolah Anda untuk mengaktifkan modul {moduleName} secara penuh.
+                      Penyimpanan dibatasi maks. 10 data. Hubungi admin sekolah Anda untuk akses penuh.
                     </>
                   )}
                 </p>
@@ -112,29 +107,22 @@ export default function PremiumFeatureGate({
             </div>
    
             {user?.role?.name === 'ADMIN' && (
-              <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 justify-end">
                 <Button 
                   variant="ghost"
                   onClick={handleRefresh}
                   isLoading={isRefreshing}
-                  className="flex-1 md:flex-none text-amber-600 font-bold text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 gap-2"
+                  className="flex-1 md:flex-none text-amber-700 dark:text-amber-500 font-bold text-xs hover:bg-amber-100/50 dark:hover:bg-amber-900/20 px-3.5 py-2 h-9 rounded-lg gap-1.5 border border-amber-200/40 dark:border-amber-900/20 bg-white/50 dark:bg-slate-900/50"
                 >
-                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Cek Status
                 </Button>
                 <Button 
-                  variant="ghost"
                   onClick={handleUpgradeClick}
-                  className="flex-1 md:flex-none text-slate-500 font-bold text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="flex-1 md:flex-none bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-4 py-2 h-9 font-bold text-xs shadow-sm shadow-amber-600/10 border-none gap-1.5"
                 >
-                  Lihat Detail
-                </Button>
-                <Button 
-                  onClick={handleUpgradeClick}
-                  className="flex-1 md:flex-none bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-amber-600/20 border-none h-11"
-                >
-                  <Zap className="w-4 h-4 mr-2 fill-current" />
-                  Upgrade Sekarang <ArrowRight className="ml-2 w-4 h-4" />
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  Upgrade Modul
                 </Button>
               </div>
             )}
