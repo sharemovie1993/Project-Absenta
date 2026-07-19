@@ -155,6 +155,26 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.generateRfidBulk(request, reply);
   });
 
+  // POST /siswa/nis/generate-massal - Generate official patterned NIS for all students with temp NIS (1111xxxxx)
+  fastify.post('/nis/generate-massal', {
+    preHandler: [
+        requireCapability('academic.students.update'),
+        organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.generateNisMassal(request, reply);
+  });
+
+  // GET /siswa/nis/wizard-preview - Get kelas list with temp-NIS student counts for the NIS generation wizard
+  fastify.get('/nis/wizard-preview', {
+    preHandler: [
+        requireCapability('academic.students.update'),
+        organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return siswaController.getNisWizardPreview(request, reply);
+  });
+
   // POST /siswa/rfid/bulk-pair - Pair RFID in bulk for a class
   fastify.post('/rfid/bulk-pair', {
     preHandler: [
@@ -197,10 +217,30 @@ export default async function siswaRoutes(fastify: any) {
     return siswaController.getAcademicRegistrationStats(request, reply);
   });
 
+  const validateSiswaSelfOrAdmin = async (request: any, reply: any) => {
+    const user = request.user;
+    const roleName = user?.roleName || user?.Role?.name || user?.role?.name;
+    const userId = user?.id || user?.userId;
+    const { id: targetSiswaId } = request.params;
+
+    if (roleName === RoleName.SISWA) {
+      const siswaProfile = await fastify.prisma.siswa.findFirst({
+        where: { user_id: userId }
+      });
+      if (!siswaProfile || siswaProfile.id !== targetSiswaId) {
+        return reply.status(403).send({
+          error: 'FORBIDDEN',
+          message: 'Forbidden: Anda tidak diperbolehkan mengakses data siswa lain'
+        });
+      }
+    }
+  };
+
   // POST /siswa/:id/documents - Upload document
   fastify.post('/:id/documents', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign']),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign'], { exemptRoles: [RoleName.SISWA] }),
+      validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {
@@ -211,6 +251,7 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id/documents', {
     preHandler: [
       requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {
@@ -221,6 +262,7 @@ export default async function siswaRoutes(fastify: any) {
   fastify.get('/:id/documents/:docId/download', {
     preHandler: [
       requireCapability('academic.students.view.detail', { exemptRoles: [RoleName.SISWA] }),
+      validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {
@@ -230,7 +272,8 @@ export default async function siswaRoutes(fastify: any) {
   // DELETE /siswa/:id/documents/:docId - Delete document
   fastify.delete('/:id/documents/:docId', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign']),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign'], { exemptRoles: [RoleName.SISWA] }),
+      validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
   }, async (request: any, reply: any) => {

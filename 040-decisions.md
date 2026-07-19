@@ -176,4 +176,9 @@
   4. Merancang antarmuka terintegrasi Pemetaan PPDB di frontend pada rute `/academic/ppdb-mapping` untuk memfasilitasi bulk mapping tersebut.
 - **Rasional**: Memenuhi kebutuhan realistis sekolah kejuruan (SMK) yang memiliki kelas dengan nama sama lintas jurusan, memfasilitasi administrasi siswa baru dari jalur PPDB sebelum penentuan rombel secara efisien tanpa membuat data sampah (dummy classes), dan memastikan siklus hidup data akademik siswa (SiswaAkademik) tetap konsisten.
 
-
+2026-07: Resilient Cascade Delete and Sequential Raw SQL Transaction for Siswa with Order-Based NIS Generation Wizard
+- **Keputusan**:
+  1. Mengoptimalkan query `deleteAllSiswa` dari chained ORM `deleteMany` lambat menjadi satu transaksi PostgreSQL tunggal (`$transaction` dengan batas waktu 2 menit) menggunakan raw SQL `$executeRawUnsafe` yang secara eksplisit menghapus data relasi berurutan dari 12 tabel (khususnya tabel `AsesmenSiswa`, `AbsenGerbangSiswa`, dan `AbsenSiswa` berdasarkan `siswa_akademik_id` serta `siswa_id`).
+  2. Mengalihkan alur generate NIS resmi dari otomatis saat pemetaan kelas PPDB menjadi proses manual di halaman siswa setelah kelas stabil (sesuai masukan pengguna).
+  3. Membangun **Wizard Generate NIS Massal (3-Step)** di frontend dan endpoint preview/eksekusi di backend untuk memetakan NIS secara teratur berurutan: Jurusan (A→Z) → Tingkat Kelas (10→11→12) → Nama Rombel (e.g. X TKJ 1 sebelum X TKJ 2) → Nama Siswa (A→Z) serta mendukung pengaturan urutan kelas manual (drag & drop/urutkan via tombol) oleh operator.
+- **Rasional**: Mencegah kegagalan *foreign key constraint* (violation) dan *timeout* HTTP request saat melakukan penghapusan massal data siswa, serta memberikan kendali penuh kepada staf Tata Usaha untuk mengatur nomor induk siswa secara terurut dan valid sesuai standar penomoran registrasi sekolah.

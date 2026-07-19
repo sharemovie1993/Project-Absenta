@@ -164,6 +164,32 @@ export const exportSiswaToExcel = async (): Promise<Blob> => {
   return downloadBlob('/academic/siswa/export');
 };
 
+export const generateNisMassal = async (orderedKelasIds?: string[]): Promise<{
+  success: boolean;
+  message: string;
+  data?: { generated: number; skipped: number; errors: { siswaId: string; nama: string; reason: string }[] };
+}> => {
+  return requestWithFallback('post', '/academic/siswa/nis/generate-massal', {
+    ordered_kelas_ids: orderedKelasIds ?? []
+  });
+};
+
+export interface NisWizardKelas {
+  kelasId: string;
+  namaKelas: string;
+  tingkat: number;
+  jurusanId: string | null;
+  namaJurusan: string;
+  jumlahSiswa: number;
+}
+
+export const getNisWizardPreview = async (): Promise<{
+  success: boolean;
+  data?: NisWizardKelas[];
+}> => {
+  return requestWithFallback('get', '/academic/siswa/nis/wizard-preview');
+};
+
 export interface SiswaTimelineItem {
   id: string;
   tanggal: string;

@@ -452,6 +452,46 @@ export const siswaController = {
     }
   },
 
+  async generateNisMassal(request: any, reply: any) {
+    try {
+      const scope = (request as any).organizationalScope;
+      const tenantId = request.tenantId;
+      const { ordered_kelas_ids } = request.body || {};
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: Tenant ID required' });
+      }
+
+      const result = await siswaService.generateNisMassal(
+        { orderedKelasIds: Array.isArray(ordered_kelas_ids) ? ordered_kelas_ids : undefined },
+        { tenantId: String(tenantId), org: scope }
+      );
+
+      return reply.status(200).send({
+        success: true,
+        message: `Generate NIS selesai: ${result.generated} berhasil, ${result.skipped} dilewati`,
+        data: result
+      });
+    } catch (error: any) {
+      console.error('Error generate NIS massal:', error);
+      return reply.status(500).send({ success: false, message: error?.message || 'Internal server error' });
+    }
+  },
+
+  async getNisWizardPreview(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      const data = await siswaService.getNisWizardPreview(String(tenantId));
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      console.error('Error NIS wizard preview:', error);
+      return reply.status(500).send({ success: false, message: error?.message || 'Internal server error' });
+    }
+  },
+
   async pairRfidBulk(request: any, reply: any) {
     try {
       const tenantId = request.tenantId;
@@ -1008,14 +1048,13 @@ export const siswaController = {
 
   async deleteAll(request: any, reply: any) {
     try {
-      const scope = (request as any).organizationalScope;
       const tenantId = request.tenantId;
       
       if (!tenantId) {
          return reply.status(400).send({ success: false, message: 'Tenant ID required' });
       }
 
-      const result = await siswaService.deleteAllSiswa(scope.tenantId);
+      const result = await siswaService.deleteAllSiswa(tenantId);
 
       return reply.status(200).send({
         success: true,
@@ -1023,9 +1062,10 @@ export const siswaController = {
         data: result,
       });
     } catch (error: any) {
+      console.error('Error deleteAll siswa:', error);
       return reply.status(500).send({
         success: false,
-        message: 'Internal server error',
+        message: error?.message || 'Internal server error',
         data: null,
       });
     }
@@ -1241,7 +1281,7 @@ export const siswaController = {
 
       const stream = storageService.createReadStream(doc.file_storage_path);
       reply.header('Content-Type', doc.mime_type);
-      reply.header('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.file_original_name)}"`);
+      reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.file_original_name)}"`);
       return reply.send(stream);
     } catch (error: any) {
       console.error('Download document error:', error);

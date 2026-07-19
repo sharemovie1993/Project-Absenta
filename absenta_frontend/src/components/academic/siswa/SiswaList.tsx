@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -24,7 +24,8 @@ const Table = lazy(() => import('../../ui/Table').then(module => ({ default: mod
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus } from '../../../api/academic/siswa.api';
+import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal } from '../../../api/academic/siswa.api';
+import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
 import { resetUserPassword, updateUser } from '../../../api/user.api';
@@ -81,6 +82,120 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+  
+  // States untuk Analitis & Validasi Data Siswa
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isNisWizardOpen, setIsNisWizardOpen] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStepText, setAnalysisStepText] = useState('');
+  const [analysisResults, setAnalysisResults] = useState<{
+    totalChecked: number;
+    missingNis: Siswa[];
+    missingNisn: Siswa[];
+    duplicateNis: { nis: string; students: Siswa[] }[];
+    duplicateNisn: { nisn: string; students: Siswa[] }[];
+  }>({
+    totalChecked: 0,
+    missingNis: [],
+    missingNisn: [],
+    duplicateNis: [],
+    duplicateNisn: [],
+  });
+  const [activeAnalysisTab, setActiveAnalysisTab] = useState<'missingNis' | 'missingNisn' | 'duplicateNis' | 'duplicateNisn'>('missingNis');
+
+  // Handler Pengecekan Kualitas Data (NIS & NISN)
+  const handleRunAnalysis = async () => {
+    setIsAnalysing(true);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(true);
+    setAnalysisStepText('Menghubungkan ke server dan mengambil data siswa...');
+
+    try {
+      setAnalysisProgress(10);
+      // Mengambil data maksimal hingga 5000 siswa aktif untuk analisis menyeluruh
+      const res = await getSiswaList(1, 5000, '', '', 'AKTIF');
+      setAnalysisProgress(35);
+      
+      const allStudents = res.data || [];
+      const totalCount = allStudents.length;
+
+      // 1. Cek NIS Kosong
+      setAnalysisStepText('Memeriksa siswa yang belum memiliki NIS...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(50);
+      const missingNis = allStudents.filter(s => !s.nis || s.nis.trim() === '' || s.nis === '-' || s.nis.startsWith('1111'));
+
+      // 2. Cek NISN Kosong / Tidak Valid
+      setAnalysisStepText('Memeriksa format NISN (wajib angka 10-digit)...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(65);
+      const missingNisn = allStudents.filter(s => {
+        const val = s.nisn;
+        return !val || val.trim() === '' || val === '-' || !/^\d{10}$/.test(val) || val.startsWith('9999');
+      });
+
+      // 3. Cek NIS Ganda
+      setAnalysisStepText('Mendeteksi duplikasi NIS di dalam sistem...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(80);
+      const nisGroups: Record<string, Siswa[]> = {};
+      allStudents.forEach(s => {
+        const nis = s.nis ? s.nis.trim() : '';
+        if (nis && nis !== '-') {
+          if (!nisGroups[nis]) nisGroups[nis] = [];
+          nisGroups[nis].push(s);
+        }
+      });
+      const duplicateNis = Object.entries(nisGroups)
+        .filter(([_, students]) => students.length > 1)
+        .map(([nis, students]) => ({ nis, students }));
+
+      // 4. Cek NISN Ganda
+      setAnalysisStepText('Mendeteksi duplikasi NISN nasional...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(95);
+      const nisnGroups: Record<string, Siswa[]> = {};
+      allStudents.forEach(s => {
+        const nisn = s.nisn ? s.nisn.trim() : '';
+        if (nisn && nisn !== '-') {
+          if (!nisnGroups[nisn]) nisnGroups[nisn] = [];
+          nisnGroups[nisn].push(s);
+        }
+      });
+      const duplicateNisn = Object.entries(nisnGroups)
+        .filter(([_, students]) => students.length > 1)
+        .map(([nisn, students]) => ({ nisn, students }));
+
+      // Finalisasi progress
+      setAnalysisStepText('Menyusun hasil laporan analitik data...');
+      await new Promise(r => setTimeout(r, 150));
+      setAnalysisProgress(100);
+
+      setAnalysisResults({
+        totalChecked: totalCount,
+        missingNis,
+        missingNisn,
+        duplicateNis,
+        duplicateNisn,
+      });
+
+      // Set tab aktif otomatis ke kategori yang memiliki masalah pertama kali
+      if (missingNis.length > 0) setActiveAnalysisTab('missingNis');
+      else if (missingNisn.length > 0) setActiveAnalysisTab('missingNisn');
+      else if (duplicateNis.length > 0) setActiveAnalysisTab('duplicateNis');
+      else if (duplicateNisn.length > 0) setActiveAnalysisTab('duplicateNisn');
+      else setActiveAnalysisTab('missingNis');
+
+      setIsAnalysing(false);
+      toast.success('Pemeriksaan kualitas data selesai!');
+    } catch (err) {
+      console.error('Failed to run student data analysis:', err);
+      toast.error('Gagal memvalidasi data siswa.');
+      setIsAnalysing(false);
+      setShowAnalysisModal(false);
+    }
+  };
 
   // Mutation & Graduation massal states
   const [isMutationModalOpen, setIsMutationModalOpen] = useState(false);
@@ -979,6 +1094,26 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                       </Button>
         
                     <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={handleRunAnalysis}
+                      className="rounded-xl border-indigo-100 hover:bg-indigo-50 dark:border-indigo-950/40 dark:hover:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 font-bold"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+                      Analisis Data
+                    </Button>
+
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => setIsNisWizardOpen(true)}
+                      className="rounded-xl border-violet-200 hover:bg-violet-50 dark:border-violet-950/40 dark:hover:bg-violet-950/20 text-violet-600 dark:text-violet-400 font-bold"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                      Generate NIS
+                    </Button>
+        
+                    <Button
                         variant="toolbarOutline"
                         size="toolbarIcon"
                         onClick={() => fetchSiswas(currentPage, searchTerm)}
@@ -1254,6 +1389,384 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         </div>
       </Modal>
 
+      {/* dialog analitik data kualitas nis & nisn */}
+      <Modal
+        isOpen={showAnalysisModal}
+        onClose={() => !isAnalysing && setShowAnalysisModal(false)}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-55 dark:bg-indigo-950/40 rounded-2xl text-indigo-600 dark:text-indigo-400">
+              <Sparkles size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Analitik Validitas Data</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Integritas & Kualitas Data NIS / NISN</p>
+            </div>
+          </div>
+        }
+        size="lg"
+      >
+        <div className="space-y-6">
+          {isAnalysing ? (
+            /* tampilan loading progress bar */
+            <div className="py-12 flex flex-col items-center justify-center space-y-6">
+              <div className="relative flex items-center justify-center">
+                <div className="h-16 w-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin" />
+                <AlertTriangle className="absolute text-indigo-600 animate-pulse" size={24} />
+              </div>
+              <div className="text-center space-y-2 max-w-sm">
+                <p className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">Sedang Memeriksa Database...</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight leading-relaxed animate-pulse">{analysisStepText}</p>
+              </div>
+              
+              {/* Progress Bar Linear */}
+              <div className="w-full max-w-md bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden shadow-inner relative">
+                <div 
+                  className="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 h-full rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${analysisProgress}%` }}
+                />
+              </div>
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{analysisProgress}% Selesai</span>
+            </div>
+          ) : (
+            /* dashboard laporan analitik */
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              
+              {/* Grid 4 Statistik Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <button 
+                  onClick={() => setActiveAnalysisTab('missingNis')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
+                    activeAnalysisTab === 'missingNis'
+                      ? 'border-red-200 bg-red-50/40 dark:border-red-950/40 dark:bg-red-950/20 shadow-sm'
+                      : 'border-slate-100 bg-slate-50/20 dark:border-slate-800/40 dark:bg-transparent hover:bg-slate-50/50'
+                  }`}
+                >
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">NIS Kosong</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-2xl font-black ${analysisResults.missingNis.length > 0 ? 'text-red-650 dark:text-red-400' : 'text-slate-650'}`}>
+                      {analysisResults.missingNis.length}
+                    </span>
+                    {analysisResults.missingNis.length > 0 && <span className="text-[10px] font-black text-red-500 uppercase tracking-tight">Siswa</span>}
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => setActiveAnalysisTab('missingNisn')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
+                    activeAnalysisTab === 'missingNisn'
+                      ? 'border-amber-200 bg-amber-50/40 dark:border-amber-950/40 dark:bg-amber-950/20 shadow-sm'
+                      : 'border-slate-100 bg-slate-50/20 dark:border-slate-800/40 dark:bg-transparent hover:bg-slate-50/50'
+                  }`}
+                >
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">NISN Invalid</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-2xl font-black ${analysisResults.missingNisn.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-650'}`}>
+                      {analysisResults.missingNisn.length}
+                    </span>
+                    {analysisResults.missingNisn.length > 0 && <span className="text-[10px] font-black text-amber-500 uppercase tracking-tight">Siswa</span>}
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => setActiveAnalysisTab('duplicateNis')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
+                    activeAnalysisTab === 'duplicateNis'
+                      ? 'border-rose-200 bg-rose-50/40 dark:border-rose-950/40 dark:bg-rose-950/20 shadow-sm'
+                      : 'border-slate-100 bg-slate-50/20 dark:border-slate-800/40 dark:bg-transparent hover:bg-slate-50/50'
+                  }`}
+                >
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">NIS Ganda</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-2xl font-black ${analysisResults.duplicateNis.length > 0 ? 'text-rose-650 dark:text-rose-400' : 'text-slate-650'}`}>
+                      {analysisResults.duplicateNis.length}
+                    </span>
+                    {analysisResults.duplicateNis.length > 0 && <span className="text-[10px] font-black text-rose-500 uppercase tracking-tight">Grup</span>}
+                  </div>
+                </button>
+
+                <button 
+                  onClick={() => setActiveAnalysisTab('duplicateNisn')}
+                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 ${
+                    activeAnalysisTab === 'duplicateNisn'
+                      ? 'border-rose-200 bg-rose-50/40 dark:border-rose-950/40 dark:bg-rose-950/20 shadow-sm'
+                      : 'border-slate-100 bg-slate-50/20 dark:border-slate-800/40 dark:bg-transparent hover:bg-slate-50/50'
+                  }`}
+                >
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">NISN Ganda</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className={`text-2xl font-black ${analysisResults.duplicateNisn.length > 0 ? 'text-rose-650 dark:text-rose-400' : 'text-slate-650'}`}>
+                      {analysisResults.duplicateNisn.length}
+                    </span>
+                    {analysisResults.duplicateNisn.length > 0 && <span className="text-[10px] font-black text-rose-500 uppercase tracking-tight">Grup</span>}
+                  </div>
+                </button>
+              </div>
+
+              {/* Laporan Detail Berdasarkan Tab Terpilih */}
+              <div className="bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-slate-100 dark:border-slate-800 p-4 space-y-4">
+                
+                {/* 1. Detail Tab: NIS Kosong */}
+                {activeAnalysisTab === 'missingNis' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">Daftar Siswa Tanpa NIS</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Siswa yang tidak memiliki nomor induk sekolah atau masih menggunakan NIS sementara (1111xxxxxx)</p>
+                      </div>
+                      <span className="px-2 py-1 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 uppercase tracking-widest">
+                        {analysisResults.missingNis.length} Siswa
+                      </span>
+                    </div>
+
+                    {analysisResults.missingNis.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center text-center space-y-2">
+                        <CheckCircle2 size={36} className="text-emerald-500" />
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Kualitas Data Sempurna!</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Semua siswa aktif sudah memiliki NIS.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[260px] overflow-y-auto border border-slate-100/60 dark:border-slate-800/80 rounded-xl bg-white dark:bg-slate-950 scrollbar-thin">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-50 dark:bg-slate-900 text-[9px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                            <tr>
+                              <th className="px-4 py-2.5">Nama Siswa</th>
+                              <th className="px-4 py-2.5">Kelas</th>
+                              <th className="px-4 py-2.5">Nilai Saat Ini</th>
+                              <th className="px-4 py-2.5 text-right">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100/60 dark:divide-slate-800/50">
+                            {analysisResults.missingNis.map(siswa => (
+                              <tr key={siswa.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-900/30">
+                                <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">{siswa.nama_siswa}</td>
+                                <td className="px-4 py-3 text-slate-500 font-semibold">{siswa.Kelas?.nama_kelas || '-'}</td>
+                                <td className="px-4 py-3 text-red-500 dark:text-red-400 font-black tracking-wider">
+                                  {siswa.nis ? (siswa.nis.startsWith('1111') ? 'NIS SEMENTARA (1111)' : `"${siswa.nis}"`) : 'KOSONG'}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    className="h-7 text-[10px] font-bold rounded-lg text-indigo-600 dark:text-indigo-400"
+                                    onClick={() => {
+                                      setShowAnalysisModal(false);
+                                      if (onEdit) onEdit(siswa);
+                                    }}
+                                  >
+                                    <Edit size={11} className="mr-1" /> Edit
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 2. Detail Tab: NISN Kosong / Invalid */}
+                {activeAnalysisTab === 'missingNisn' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">Daftar NISN Tidak Valid / Kosong</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">NISN harus berupa angka dan tepat 10-digit (dan bukan berawalan 9999xxxxxx)</p>
+                      </div>
+                      <span className="px-2 py-1 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 uppercase tracking-widest">
+                        {analysisResults.missingNisn.length} Siswa
+                      </span>
+                    </div>
+
+                    {analysisResults.missingNisn.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center text-center space-y-2">
+                        <CheckCircle2 size={36} className="text-emerald-500" />
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Format NISN Bersih!</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Semua siswa aktif sudah memiliki NISN 10-digit valid.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[260px] overflow-y-auto border border-slate-100/60 dark:border-slate-800/80 rounded-xl bg-white dark:bg-slate-950 scrollbar-thin">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-slate-50 dark:bg-slate-900 text-[9px] font-black text-slate-450 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                            <tr>
+                              <th className="px-4 py-2.5">Nama Siswa</th>
+                              <th className="px-4 py-2.5">Kelas</th>
+                              <th className="px-4 py-2.5">Nilai Saat Ini</th>
+                              <th className="px-4 py-2.5 text-right">Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100/60 dark:divide-slate-800/50">
+                            {analysisResults.missingNisn.map(siswa => (
+                              <tr key={siswa.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-900/30">
+                                <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">{siswa.nama_siswa}</td>
+                                <td className="px-4 py-3 text-slate-500 font-semibold">{siswa.Kelas?.nama_kelas || '-'}</td>
+                                <td className="px-4 py-3 text-red-500 dark:text-red-400 font-black tracking-wider">
+                                  {siswa.nisn ? (siswa.nisn.startsWith('9999') ? 'NISN SEMENTARA (9999)' : `"${siswa.nisn}" (Bukan 10 Digit)`) : 'KOSONG'}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    className="h-7 text-[10px] font-bold rounded-lg text-indigo-600 dark:text-indigo-400"
+                                    onClick={() => {
+                                      setShowAnalysisModal(false);
+                                      if (onEdit) onEdit(siswa);
+                                    }}
+                                  >
+                                    <Edit size={11} className="mr-1" /> Edit
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. Detail Tab: NIS Ganda */}
+                {activeAnalysisTab === 'duplicateNis' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">Duplikasi NIS Terdeteksi</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Satu nomor induk sekolah tidak boleh dimiliki beberapa siswa</p>
+                      </div>
+                      <span className="px-2 py-1 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 uppercase tracking-widest">
+                        {analysisResults.duplicateNis.length} Grup Duplikat
+                      </span>
+                    </div>
+
+                    {analysisResults.duplicateNis.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center text-center space-y-2">
+                        <CheckCircle2 size={36} className="text-emerald-500" />
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Tidak Ada NIS Ganda!</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Semua nomor induk sekolah terdistribusi unik.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[260px] overflow-y-auto space-y-3 scrollbar-thin">
+                        {analysisResults.duplicateNis.map((group, index) => (
+                          <div key={index} className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-rose-100 dark:border-rose-950/40 space-y-2">
+                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md">
+                              NIS Duplikat: {group.nis}
+                            </span>
+                            <div className="divide-y divide-slate-100/60 dark:divide-slate-800/40">
+                              {group.students.map(siswa => (
+                                <div key={siswa.id} className="py-2 flex justify-between items-center text-xs">
+                                  <div>
+                                    <span className="font-bold text-slate-850 dark:text-slate-200 block">{siswa.nama_siswa}</span>
+                                    <span className="text-[9px] font-semibold text-slate-400 uppercase">{siswa.Kelas?.nama_kelas || '-'}</span>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    className="h-6 text-[9px] font-bold rounded-lg text-indigo-650 dark:text-indigo-400"
+                                    onClick={() => {
+                                      setShowAnalysisModal(false);
+                                      if (onEdit) onEdit(siswa);
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Detail Tab: NISN Ganda */}
+                {activeAnalysisTab === 'duplicateNisn' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wide">Duplikasi NISN Nasional Terdeteksi</h3>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Satu NISN unik nasional tidak boleh tertukar atau diduplikasi</p>
+                      </div>
+                      <span className="px-2 py-1 text-[9px] font-bold bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 uppercase tracking-widest">
+                        {analysisResults.duplicateNisn.length} Grup Duplikat
+                      </span>
+                    </div>
+
+                    {analysisResults.duplicateNisn.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center text-center space-y-2">
+                        <CheckCircle2 size={36} className="text-emerald-500" />
+                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Tidak Ada NISN Ganda!</p>
+                        <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Integritas data NISN nasional bersih 100%.</p>
+                      </div>
+                    ) : (
+                      <div className="max-h-[260px] overflow-y-auto space-y-3 scrollbar-thin">
+                        {analysisResults.duplicateNisn.map((group, index) => (
+                          <div key={index} className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-rose-100 dark:border-rose-950/40 space-y-2">
+                            <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded-md">
+                              NISN Duplikat: {group.nisn}
+                            </span>
+                            <div className="divide-y divide-slate-100/60 dark:divide-slate-800/40">
+                              {group.students.map(siswa => (
+                                <div key={siswa.id} className="py-2 flex justify-between items-center text-xs">
+                                  <div>
+                                    <span className="font-bold text-slate-850 dark:text-slate-200 block">{siswa.nama_siswa}</span>
+                                    <span className="text-[9px] font-semibold text-slate-400 uppercase">{siswa.Kelas?.nama_kelas || '-'}</span>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    className="h-6 text-[9px] font-bold rounded-lg text-indigo-650 dark:text-indigo-400"
+                                    onClick={() => {
+                                      setShowAnalysisModal(false);
+                                      if (onEdit) onEdit(siswa);
+                                    }}
+                                  >
+                                    Edit
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Ringkasan Data yang Diperiksa */}
+              <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-wider px-1">
+                <span>Metode Scan: 10-Digit Constraint (NISN)</span>
+                <span>Total Data Diperiksa: {analysisResults.totalChecked} Siswa</span>
+              </div>
+
+              <ModalFooter className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                {analysisResults.missingNis.length > 0 && (
+                  <Button
+                    onClick={() => {
+                      setShowAnalysisModal(false);
+                      setIsNisWizardOpen(true);
+                    }}
+                    className="rounded-xl px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-md shadow-indigo-500/20"
+                  >
+                    <Sparkles size={12} /><span>Generate NIS Massal ({analysisResults.missingNis.length} Siswa)</span>
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => setShowAnalysisModal(false)}
+                  className="rounded-xl px-8 bg-slate-800 hover:bg-slate-900 text-white font-bold uppercase tracking-widest text-[10px]"
+                >
+                  Tutup Laporan
+                </Button>
+              </ModalFooter>
+
+            </div>
+          )}
+        </div>
+      </Modal>
+
       {/* Graduation Modal */}
       <Modal 
         isOpen={isGraduationModalOpen} 
@@ -1307,6 +1820,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           </ModalFooter>
         </div>
       </Modal>
+
+      {/* Nis Generate Wizard Modal */}
+      <NisGenerateWizard
+        isOpen={isNisWizardOpen}
+        onClose={() => setIsNisWizardOpen(false)}
+        onSuccess={() => {
+          fetchSiswas(currentPage, searchTerm);
+        }}
+      />
     </div>
   );
 });

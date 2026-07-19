@@ -32,6 +32,8 @@ Completed:
 - **Hardware Telemetry Heartbeat**: Pengiriman otomatis spesifikasi perangkat keras host (CPU Model & core count, RAM total, dan disk storage utama) dalam string `osType` telemetri ke server lisensi pusat setiap 2 menit.
 - **Kurikulum Enhancements (Capping JP, Analitik Supervisi, & Self-Assessment)**: Pengenalan batasan JP mengajar mingguan guru dengan alert warning di Schedule Builder, modal input target pra-observasi guru, serta dashboard analitik tren kompetensi pedagogik untuk Kepala Sekolah/Wakasek.
 - **Rekomendasi & Automasi Penjadwalan Supervisi**: Sistem pencari slot mengajar guru otomatis berdasarkan tanggal pilihan serta rekomendasi supervisor bebas bentrok (tidak mengajar & tidak sedang mensupervisi di slot waktu yang sama).
+- **Resilient Cascade Delete for Siswa**: Penulisan ulang `deleteAllSiswa` menggunakan satu transaksi PostgreSQL raw SQL (`$executeRawUnsafe`) berdurasi 2 menit untuk membersihkan secara berurutan data relasi pada 12 tabel (menyelesaikan error foreign key constraint dan limitasi timeout HTTP request).
+- **Wizard Generate NIS Massal**: Penambahan endpoint dan interface 3-step wizard untuk generate NIS massal terurut berdasar Jurusan (A→Z) → Tingkat Kelas → Rombel → Nama Siswa dengan opsi pengaturan urutan kelas dinamis.
 
 In Progress:
 - None

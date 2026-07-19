@@ -5,6 +5,7 @@ import { createSiswaCommand } from './commands/create-siswa.command';
 import { deleteAllSiswaCommand } from './commands/delete-all-siswa.command';
 import { deleteSiswaCommand } from './commands/delete-siswa.command';
 import { generateRfidBulkCommand } from './commands/generate-rfid-bulk.command';
+import { generateNisMassalCommand } from './commands/generate-nis-massal.command';
 import { generateRfidForSiswaCommand } from './commands/generate-rfid-for-siswa.command';
 import { importFromRowsCommand } from './commands/import-from-rows.command';
 import { pairRfidBulkCommand } from './commands/pair-rfid-bulk.command';
@@ -112,6 +113,45 @@ export class SiswaService {
 
   async generateRfidBulk(tenantId: string, kelasId?: string) {
     return generateRfidBulkCommand(tenantId, kelasId);
+  }
+
+  async generateNisMassal(input: { orderedKelasIds?: string[] }, scope: { tenantId: string; org: any }) {
+    return generateNisMassalCommand(input, scope);
+  }
+
+  async getNisWizardPreview(tenantId: string) {
+    // Return all kelas with temp-NIS student counts, grouped for the wizard
+    const kelasWithCounts = await (await import('@/utils/prisma')).prisma.kelas.findMany({
+      where: { tenant_id: tenantId, is_active: true },
+      select: {
+        id: true,
+        nama_kelas: true,
+        tingkat: true,
+        jurusan_id: true,
+        Jurusan: { select: { id: true, nama: true } },
+        _count: {
+          select: {
+            Siswa: { where: { status: 'AKTIF', nis: { startsWith: '1111' } } }
+          }
+        }
+      },
+      orderBy: [
+        { Jurusan: { nama: 'asc' } },
+        { tingkat: 'asc' },
+        { nama_kelas: 'asc' }
+      ]
+    });
+
+    return kelasWithCounts
+      .filter((k: any) => k._count.Siswa > 0)
+      .map((k: any) => ({
+        kelasId: k.id,
+        namaKelas: k.nama_kelas,
+        tingkat: k.tingkat,
+        jurusanId: k.jurusan_id,
+        namaJurusan: k.Jurusan?.nama ?? '-',
+        jumlahSiswa: k._count.Siswa
+      }));
   }
 
   async pairRfidBulk(tenantId: string, kelasId: string, rfids: string[]) {

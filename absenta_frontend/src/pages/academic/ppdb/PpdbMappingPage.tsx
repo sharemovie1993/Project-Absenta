@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Button, SectionCard, Modal } from '../../../components/ui';
-import { getSiswaList, mapPpdbStudents, importSiswaFromExcel, updateSiswa } from '../../../api/academic/siswa.api';
+import { getSiswaList, mapPpdbStudents, importSiswaFromExcel, updateSiswa, deleteSiswa } from '../../../api/academic/siswa.api';
 import { getJurusanForDropdown, getKelasForDropdown } from '../../../api/dropdown.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import type { Siswa } from '../../../types/academic';
-import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical, CornerRightDown, ArrowDown, ListOrdered, Shuffle } from 'lucide-react';
+import { Search, GraduationCap, UserCheck, AlertCircle, RefreshCw, FileSpreadsheet, Download, GripVertical, CornerRightDown, ArrowDown, ListOrdered, Shuffle, Trash2 } from 'lucide-react';
+import useConfirm from '../../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { generateStandardFilename } from '../../../utils/file-download.utils';
 import { generateImportTemplate } from '../../../utils/export.utils';
@@ -43,6 +44,7 @@ const mappingSchema = z.object({ siswaIds: z.array(z.string().uuid('ID siswa tid
 
 const PpdbMappingPage: React.FC = () => {
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -217,6 +219,63 @@ const PpdbMappingPage: React.FC = () => {
       setSubmitLoading(false);
     }
   }, [selectedSiswa, targetKelasId, fetchCalonStudents, fetchMetadata]);
+
+  // Handler Hapus Massal Calon Siswa (Bulk Delete)
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedSiswa.length === 0) return;
+
+    const ok = await confirm({
+      title: 'Hapus Massal Calon Siswa',
+      description: `Apakah Anda yakin ingin menghapus ${selectedSiswa.length} calon siswa terpilih secara permanen dari pendaftaran?`,
+      confirmText: 'YA, HAPUS',
+      cancelText: 'Batalkan',
+      style: 'danger',
+      withProgress: true,
+      progressLabel: 'Menghapus data calon siswa...',
+    });
+
+    if (!ok) return;
+
+    setLoading(true);
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    try {
+      await Promise.all(
+        selectedSiswa.map(async (id) => {
+          try {
+            const res = await deleteSiswa(id);
+            if (res.success) {
+              success++;
+            } else {
+              failed++;
+              errors.push(res.message || 'Gagal menghapus siswa');
+            }
+          } catch (err: any) {
+            failed++;
+            errors.push(err.message || 'Koneksi error');
+          }
+        })
+      );
+
+      if (success > 0) {
+        toast.success(`Berhasil menghapus ${success} calon siswa.`);
+      }
+      if (failed > 0) {
+        toast.error(`Gagal menghapus ${failed} siswa. Detail: ${errors[0]}`);
+      }
+      
+      setSelectedSiswa([]);
+      await Promise.all([fetchCalonStudents(), fetchMetadata()]);
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+      toast.error('Gagal memproses penghapusan massal');
+    } finally {
+      setLoading(false);
+      confirm.setLoading(false);
+    }
+  }, [selectedSiswa, confirm, fetchCalonStudents, fetchMetadata]);
 
   const handleOpenImport = useCallback(() => setImportOpen(true), []);
   const handleCloseImport = useCallback(() => setImportOpen(false), []);
@@ -448,14 +507,25 @@ const PpdbMappingPage: React.FC = () => {
                     <span>Impor Excel PPDB</span>
                   </Button>
                   {selectedSiswa?.length > 0 && (
-                    <Button
-                      size="sm"
-                      onClick={() => setMappingModalOpen(true)}
-                      className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15 animate-in fade-in zoom-in duration-200"
-                    >
-                      <UserCheck size={13} />
-                      <span>Petakan ({selectedSiswa?.length} Siswa)</span>
-                    </Button>
+                    <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                      <Button
+                        size="sm"
+                        onClick={() => setMappingModalOpen(true)}
+                        className="flex items-center gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-500/15"
+                      >
+                        <UserCheck size={13} />
+                        <span>Petakan ({selectedSiswa?.length} Siswa)</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleBulkDelete}
+                        className="flex items-center gap-1.5 text-xs border-rose-200 hover:bg-rose-50 text-rose-600 dark:border-rose-950/40 dark:hover:bg-rose-950/20 dark:text-rose-450 font-bold shadow-sm shadow-rose-100 dark:shadow-none"
+                      >
+                        <Trash2 size={13} />
+                        <span>Hapus ({selectedSiswa?.length} Siswa)</span>
+                      </Button>
+                    </div>
                   )}
                   
                   {/* Preset Buttons */}
