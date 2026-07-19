@@ -71,7 +71,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.schedules.update',
     'attendance.schedules.delete',
     'attendance.officers.view',
-    'attendance.officers.manage'
+    'attendance.officers.manage',
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',
@@ -109,6 +112,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update.attendance', // Kesiswaan bisa koreksi absensi massal
     'attendance.sessions.tap',
     'attendance.reports.view',
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
     'notify.announcements.manage', // Sebar pengumuman kesiswaan
     'bk.cases.view.list',
     'bk.cases.view.detail',
@@ -158,6 +164,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.reports.view',
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.recap.view.global',
@@ -224,10 +233,20 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update.attendance', // Tambahan: Validasi Izin/Sakit
     'attendance.sessions.tap',
     'attendance.sessions.update.journal',
-    'attendance.markGateAbsence',
-    'attendance.getNotPresentStudents',
-    'bk.cases.view.list',
-    'bk.cases.view.detail'
+  ],
+  [STRUKTUR_CODES.PEMBINA_ESKUL]: [
+    'organization.scope.unit_restricted',
+    'dashboard.view.overview',
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'attendance.schedules.view.list',
+    'attendance.sessions.view.list',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.delete',
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
   ],
   [STRUKTUR_CODES.PETUGAS_KELAS]: [
     'organization.scope.unit_restricted',

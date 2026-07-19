@@ -18,8 +18,9 @@ import {
 
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { getJadwalTemplate, deleteJadwalTemplate, type JadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
+import { getJadwalKBM, deleteJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
 import { LogService } from '../../utils/LogService';
@@ -37,7 +38,7 @@ import { getKelasList } from '../../api/academic/kelas.api';
 import { getGuruList } from '../../api/academic/guru.api';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
-const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-template/JadwalTemplateList').then(m => ({ default: m.JadwalTemplateList })));
+const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
 const JadwalGrid = lazy(() => import('../../components/kurikulum/JadwalGrid').then(m => ({ default: m.JadwalGrid })));
 const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder').then(m => ({ default: m.JadwalBuilder })));
 
@@ -63,7 +64,7 @@ export default function JadwalPelajaranPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder'>(isGuru ? 'grid' : 'list');
 
   // ── 3. Shared Data State (for Grid View) ────────────────────────────────────
-  const [jadwal, setJadwal] = useState<JadwalTemplate[]>([]);
+  const [jadwal, setJadwal] = useState<JadwalKBM[]>([]);
   const [loadingJadwal, setLoadingJadwal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedKelasId, setSelectedKelasId] = useState<string>(searchParams.get('kelas_id') || '');
@@ -141,7 +142,7 @@ export default function JadwalPelajaranPage() {
     const fetchData = async () => {
       setLoadingJadwal(true);
       try {
-        const res = await getJadwalTemplate({
+        const res = await getJadwalKBM({
           kelas_id: targetKelasId || undefined,
           guru_id: selectedGuruId || undefined,
           tahun_pelajaran_id: selectedTahunId,
@@ -295,7 +296,7 @@ export default function JadwalPelajaranPage() {
 
     if (isConfirmed) {
       try {
-        await deleteJadwalTemplate(id);
+        await deleteJadwalKBM(id);
         setRefreshKey(k => k + 1);
         toast.success('Jadwal berhasil dihapus');
       } catch (err) {
@@ -328,35 +329,15 @@ export default function JadwalPelajaranPage() {
         </div>
 
         {canManage && (
-          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Button 
-                  variant={viewMode === 'grid' ? 'primary' : 'ghost'} 
-                  size="sm" 
-                  className="rounded-lg px-4"
-                  onClick={() => setViewMode('grid')}
-              >
-                  <LayoutGrid className="w-4 h-4 mr-2" />
-                  Visual Grid
-              </Button>
-              <Button 
-                  variant={viewMode === 'builder' ? 'primary' : 'ghost'} 
-                  size="sm" 
-                  className="rounded-lg px-4"
-                  onClick={() => setViewMode('builder')}
-              >
-                  <Paintbrush className="w-4 h-4 mr-2" />
-                  Visual Builder
-              </Button>
-              <Button 
-                  variant={viewMode === 'list' ? 'primary' : 'ghost'} 
-                  size="sm" 
-                  className="rounded-lg px-4"
-                  onClick={() => setViewMode('list')}
-              >
-                  <List className="w-4 h-4 mr-2" />
-                  Daftar Kelola
-              </Button>
-          </div>
+          <TabSwitcher
+            options={[
+              { id: 'grid', label: 'Visual Grid', icon: LayoutGrid, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+              { id: 'builder', label: 'Visual Builder', icon: Paintbrush, colorClass: 'text-purple-600 dark:text-purple-400' },
+              { id: 'list', label: 'Daftar Kelola', icon: List, colorClass: 'text-emerald-600 dark:text-emerald-400' }
+            ]}
+            activeTab={viewMode}
+            onChange={(id) => setViewMode(id as 'grid' | 'list' | 'builder')}
+          />
         )}
       </div>
 
@@ -394,15 +375,15 @@ export default function JadwalPelajaranPage() {
   if (isLocked) {
     return (
       <AcademicPageLayout
-        title="Jadwal Pelajaran"
+        title="Jadwal KBM"
         description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
         hardeningModuleKey={hardeningModuleKey}
       >
         <PremiumFeatureGate 
           isLocked={isLocked}
           moduleName="ABSENSI"
-          featureName="Manajemen Template Jadwal"
-          description="Buat template jadwal presensi yang fleksibel untuk berbagai sesi, memudahkan otomatisasi pencatatan kehadiran setiap harinya."
+          featureName="Manajemen Jadwal KBM"
+          description="Buat jadwal KBM presensi yang fleksibel untuk berbagai sesi, memudahkan otomatisasi pencatatan kehadiran setiap harinya."
         >
           <div />
         </PremiumFeatureGate>
@@ -413,7 +394,7 @@ export default function JadwalPelajaranPage() {
   if (!isAllowed) {
     return (
       <AcademicPageLayout
-        title="Jadwal Pelajaran"
+        title="Jadwal KBM"
         description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
         hardeningModuleKey={hardeningModuleKey}
       >
@@ -424,7 +405,7 @@ export default function JadwalPelajaranPage() {
             </div>
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Mode Absensi Tidak Mendukung</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-md">
-              Halaman Jadwal Pelajaran hanya aktif pada sekolah yang mengaktifkan mode absensi MULTI_SESI. Silakan hubungi admin untuk mengubah pengaturan mode absensi.
+              Halaman Jadwal KBM hanya aktif pada sekolah yang mengaktifkan mode absensi MULTI_SESI. Silakan hubungi admin untuk mengubah pengaturan mode absensi.
             </p>
           </div>
         </SectionCard>
@@ -434,11 +415,11 @@ export default function JadwalPelajaranPage() {
 
   return (
     <AcademicPageLayout
-      title="Jadwal Pelajaran"
+      title="Jadwal KBM"
       description="Penyusunan jadwal KBM dan pemetaan jam mengajar guru."
       breadcrumbs={[
         { label: 'Kurikulum', path: '/kurikulum/dashboard' },
-        { label: 'Jadwal Pelajaran' }
+        { label: 'Jadwal KBM' }
       ]}
       instruction={{
         title: 'Panduan Penyusunan Jadwal',

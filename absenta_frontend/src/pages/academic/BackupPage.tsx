@@ -40,7 +40,7 @@ interface BackupStats {
     siswaAkademik: number;
   };
   operational: {
-    jadwalTemplate: number;
+    jadwalKBM: number;
     guruStruktur: number;
     siswaStruktur: number;
     pelanggaran: number;
@@ -149,7 +149,7 @@ export default function BackupPage() {
             siswaAkademik: data.siswaAkademik?.length || 0,
           },
           operational: {
-            jadwalTemplate: data.jadwalTemplate?.length || 0,
+            jadwalKBM: data.jadwalKBM?.length || 0,
             guruStruktur: data.guruStrukturOrganisasi?.length || 0,
             siswaStruktur: data.siswaStrukturOrganisasi?.length || 0,
             pelanggaran: data.pelanggaranSiswa?.length || 0,

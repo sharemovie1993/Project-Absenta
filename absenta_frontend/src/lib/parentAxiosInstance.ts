@@ -24,7 +24,7 @@ if (!BASE_URL.endsWith('/api')) {
 
 const parentAxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 60000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

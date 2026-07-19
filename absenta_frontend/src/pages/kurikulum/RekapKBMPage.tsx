@@ -283,7 +283,7 @@ export default function RekapKBMPage() {
           <div style={{ padding: 48, textAlign: 'center', opacity: 0.6 }}>
             <BarChart2 size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
             <div style={{ fontWeight: 600 }}>Tidak ada data rekap KBM ditemukan</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Silakan sesuaikan filter pencarian atau pastikan jadwal pelajaran terisi.</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>Silakan sesuaikan filter pencarian atau pastikan jadwal KBM terisi.</div>
           </div>
         ) : (
           <div style={viewMode === 'grid' ? {

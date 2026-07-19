@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { cn } from '@/lib/utils';
 import { ChevronDown, Search, X, Check, Loader2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -45,6 +46,7 @@ export function SearchableSelect({
   const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
 
   // Debounce search query for external search
@@ -90,6 +92,11 @@ export function SearchableSelect({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        // Exclude elements that are inside the portal dropdown
+        const target = event.target as HTMLElement;
+        if (target.closest('[style*="position: fixed"]') || target.closest('.animate-in')) {
+          return;
+        }
         setIsOpen(false);
       }
     };
@@ -101,6 +108,35 @@ export function SearchableSelect({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Recalculate portal dropdown position whenever it opens or viewport scrolls
+  useEffect(() => {
+    if (!isOpen || !containerRef.current) return;
+    const updatePos = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const dropHeight = Math.min(300, filteredOptions.length * 38 + 50);
+      const openUpward = spaceBelow < dropHeight && spaceAbove > spaceBelow;
+      setDropdownStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: Math.max(rect.width, 180),
+        zIndex: 99999,
+        ...(openUpward
+          ? { bottom: window.innerHeight - rect.top + 4 }
+          : { top: rect.bottom + 4 }),
+      });
+    };
+    updatePos();
+    window.addEventListener('scroll', updatePos, true);
+    window.addEventListener('resize', updatePos);
+    return () => {
+      window.removeEventListener('scroll', updatePos, true);
+      window.removeEventListener('resize', updatePos);
+    };
+  }, [isOpen, filteredOptions.length]);
 
 
   const handleSelect = (val: string, label: string) => {
@@ -172,9 +208,10 @@ export function SearchableSelect({
         </div>
       </div>
 
-      {isOpen && (
+      {isOpen && ReactDOM.createPortal(
         <div
-          className="absolute top-full left-0 w-full mt-1 z-[9999] rounded-md border border-gray-200 bg-white text-gray-900 shadow-xl outline-none animate-in fade-in-0 zoom-in-95 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 max-h-[300px] overflow-y-auto"
+          style={dropdownStyle}
+          className="rounded-md border border-gray-200 bg-white text-gray-900 shadow-2xl outline-none animate-in fade-in-0 zoom-in-95 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 max-h-[300px] overflow-y-auto"
         >
           {isLoading && (
              <div className="p-2 flex items-center justify-center text-sm text-gray-500">
@@ -210,7 +247,8 @@ export function SearchableSelect({
               </div>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

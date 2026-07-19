@@ -114,11 +114,17 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const [qrUrl, setQrUrl] = useState('');
     
     useEffect(() => {
-        if (student.id) {
-            QRCode.toDataURL(student.id, { margin: 1, width: 100 })
+        const qrValue = student.nisn;
+        // Validasi format NISN Nasional resmi: Harus string angka sepanjang tepat 10 digit
+        const isValidNisn = qrValue && /^\d{10}$/.test(qrValue);
+        
+        if (isValidNisn) {
+            QRCode.toDataURL(qrValue, { margin: 1, width: 100 })
                 .then(setQrUrl);
+        } else {
+            setQrUrl('');
         }
-    }, [student.id]);
+    }, [student.nisn]);
 
     const getLuminance = (hex: string) => {
         if (!hex) return 255;

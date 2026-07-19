@@ -29,6 +29,7 @@ import type { Asset } from '../../api/sarpras.api';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
 import { z } from 'zod';
@@ -426,22 +427,15 @@ const SarprasMaintenancePage: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-2 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            {statusButtons?.map(btn => (
-              <button
-                key={btn.value}
-                type="button"
-                onClick={() => { setStatusFilter(btn.value); setPage(1); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  statusFilter === btn.value
-                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-none'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
+          <TabSwitcher
+            options={statusButtons.map(btn => ({
+              id: btn.value,
+              label: btn.label,
+              colorClass: 'text-orange-600 dark:text-orange-400'
+            }))}
+            activeTab={statusFilter}
+            onChange={(id) => { setStatusFilter(id); setPage(1); }}
+          />
 
           {/* Table wrapped in SectionCard */}
           <SectionCard title="Daftar Laporan Perbaikan" icon={Wrench} fullWidth noPadding>

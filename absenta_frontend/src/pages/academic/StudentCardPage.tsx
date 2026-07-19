@@ -24,6 +24,7 @@ import {
     TabsContent,
     Loader
 } from '../../components/ui';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useDebounce } from '../../hooks/useDebounce';
 import toast from 'react-hot-toast';
@@ -73,6 +74,18 @@ const StudentCardPage = () => {
         { label: 'Akademik' },
         { label: 'Kartu Pelajar' }
     ], []);
+
+    const tabOptions = useMemo(() => {
+        const list = [];
+        if (isAdmin()) {
+            list.push({ id: 'design', label: 'Desain Kartu', icon: Layout, colorClass: 'text-blue-600 dark:text-blue-400' });
+        }
+        if (!isSiswa) {
+            list.push({ id: 'data', label: 'Pilih Siswa', icon: Users, colorClass: 'text-indigo-600 dark:text-indigo-400' });
+        }
+        list.push({ id: 'print', label: 'Preview & Cetak', icon: PrinterIcon, colorClass: 'text-violet-600 dark:text-violet-400' });
+        return list;
+    }, [isAdmin, isSiswa]);
 
     useEffect(() => {
         return () => {
@@ -550,34 +563,12 @@ const StudentCardPage = () => {
         >
             <div className="p-1">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <div className="px-6 pt-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                        <TL className="bg-transparent border-none p-0 gap-8 h-12">
-                            {isAdmin() && (
-                                <TabsTrigger
-                                    value="design"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-12 px-1 text-slate-500 data-[state=active]:text-blue-600 font-bold transition-all flex items-center gap-2"
-                                >
-                                    <Layout className="w-4 h-4" />
-                                    Desain Kartu
-                                </TabsTrigger>
-                            )}
-                            {!isSiswa && (
-                                <TabsTrigger
-                                    value="data"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-12 px-1 text-slate-500 data-[state=active]:text-blue-600 font-bold transition-all flex items-center gap-2"
-                                >
-                                    <Users className="w-4 h-4" />
-                                    Pilih Siswa
-                                </TabsTrigger>
-                            )}
-                            <TabsTrigger
-                                value="print"
-                                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-12 px-1 text-slate-500 data-[state=active]:text-blue-600 font-bold transition-all flex items-center gap-2"
-                            >
-                                <PrinterIcon className="w-4 h-4" />
-                                Preview & Cetak
-                            </TabsTrigger>
-                        </TL>
+                    <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <TabSwitcher
+                            options={tabOptions}
+                            activeTab={activeTab}
+                            onChange={setActiveTab}
+                        />
                     </div>
 
                     <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>

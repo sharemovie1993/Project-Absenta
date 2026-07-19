@@ -13,7 +13,8 @@
 - **Teacher Requirement**: Sesi dengan tipe `KBM` atau `ESKUL` wajib memiliki `guru_id`.
 - **Session Conflict**: Sistem menolak pembuatan sesi baru jika terdapat sesi lain yang masih `BERLANGSUNG` pada kelas, tanggal, dan jam yang sama.
 - **Auto-Close**: Sesi dianggap selesai secara sistem saat mencapai `waktu_selesai`, namun status operasional dapat ditutup secara manual oleh guru/petugas.
-- **Timezone Support**: Perhitungan hari dan waktu sesi mendukung tiga zona waktu: WIB (UTC+7), WITA (UTC+8), dan WIT (UTC+9) berdasarkan konfigurasi tenant.
+- **Timezone Support**: Perhitungan hari, sesi, dan visualisasi dashboard operasional absensi harus diselaraskan secara konsisten berdasarkan zona waktu aktif tenant (WIB: UTC+7, WITA: UTC+8, WIT: UTC+9). Seluruh kueri penanggalan harian wajib menggunakan shifted local date (helper `toLocalDate()`) untuk mencegah ketidaksinkronan data di pagi hari sebelum pukul 07:00 WIB (karena perbedaan tanggal hari dengan UTC).
+- **Time-Window Tap Restriction**: Absensi sesi KBM untuk Guru dan Siswa dibatasi dalam jendela waktu persiapan, yaitu maksimal 15 menit sebelum `waktu_mulai` sesi hingga sesi berakhir/ditutup. Tap yang dicoba lebih awal dari batas 15 menit sebelum jam mulai akan diblokir dengan pesan error guna melindungi integritas pencatatan keterlambatan dan poin kehadiran.
 
 ### 3. Penugasan Petugas Kelas
 - **Organizational Based**: Petugas kelas diangkat melalui posisi `PETUGAS_KELAS` pada `OrganizationalAssignment`.
@@ -22,7 +23,7 @@
 ### 4. Smart Scheduling & Manual Entry
 - **Fuzzy Matching**: Nama Guru, Mapel, dan Kelas dari Excel dipetakan menggunakan algoritma `findBestMatch`.
 - **Upsert Logic**: Jika ditemukan jadwal dengan Kelas, Hari, dan Jam Mulai yang sama, sistem akan memperbarui (Update) data Mapel dan Guru daripada membuat data baru.
-- **Manual Priority**: Status `IZIN`, `SAKIT`, `ALPA`, atau `DISPEN` yang diinput secara manual akan diupdate langsung ke level gerbang dan dipropagasi ke sesi aktif.
+- **Manual Priority**: Status `IZIN`, `SAKIT`, `ALPA`, atau `DISPEN` yang diinput secara manual akan diupdate langsung ke level gerbang dan dipropagasi ke sesi aktif. Ketika status terekam, data antrean siswa "Masih Dinanti" akan seketika di-update via event socket (`attendance_feed_update`, `gerbang_tap_update`) untuk langsung menyembunyikan siswa tersebut dari daftar belum hadir secara real-time.
 - **Normalization**: Sistem secara otomatis menormalisasi status ketidakhadiran (misal: `ALFA` menjadi `ALPA`) untuk konsistensi data.
 
 ### 5. Reporting & Analytics
@@ -35,3 +36,7 @@
 ### 6. Special Cases & Exceptions
 - **Priority**: Status `DISPEN`, `SAKIT`, atau `IZIN` dari modul Kejadian Khusus akan menimpa (Override) status absensi otomatis dari gerbang maupun sesi kegiatan.
 - **Ignore Late**: Kejadian khusus dapat dikonfigurasi dengan opsi `abaikan_terlambat` untuk memberikan toleransi pada hari-hari tertentu.
+- **Inheritance Attendance (Warisan Kehadiran)**:
+  - Ketika status absensi pada sesi dengan tipe `PEMBIASAAN` (misal: Latihan Ketarunaan, Apel Pagi) diperbarui, status kehadiran tersebut akan langsung diwariskan/disinkronisasikan secara otomatis ke seluruh sesi KBM yang waktunya bertumpang tindih (overlap).
+  - Status warisan tersebut dicatat di sesi KBM dengan menyertakan keterangan `Warisan Ketarunaan — [Nama Kegiatan] ([Waktu Pelaksanaan])` pada kolom catatan/keterangan absensi siswa.
+  - Sesi KBM yang telah menerima status warisan dibebaskan dari penetapan status ALPA otomatis oleh *Auto-Close Job* di akhir hari.

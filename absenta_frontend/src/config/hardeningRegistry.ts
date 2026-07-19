@@ -889,6 +889,171 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'Dropdown Petugas/Staf dan Jenis Aksi diganti menggunakan komponen SearchableSelect.'
       }
     ]
+  },
+  attendance_anggota_eskul: {
+    moduleName: 'attendance_anggota_eskul',
+    displayName: 'Manajemen Anggota & Pembina Eskul (Kesiswaan)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan AcademicPageLayout & ErrorBoundary.',
+        status: 'VERIFIED',
+        details: 'Halaman menggunakan AcademicPageLayout sebagai Error Boundary standar.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Penyaringan data, visualisasi, dan callback dimemosisasi dengan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback dan useMemo terintegrasi pada data handler.'
+      },
+      {
+        id: 'architectural_searchable_select',
+        name: 'Standarisasi Dropdown SearchableSelect',
+        description: 'Menggunakan SearchableSelect terstandarisasi untuk memilih guru pembina.',
+        status: 'VERIFIED',
+        details: 'Dropdown pemilihan guru di modal tambah manual diganti dengan SearchableSelect.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna (Instruction)',
+        description: 'Mewajibkan adanya properti instruction pada layout untuk memberikan panduan penggunaan fitur kepada pengguna.',
+        status: 'VERIFIED',
+        details: 'Properti instruction ter-useMemo dengan tips panduan dipasang pada AcademicPageLayout.'
+      },
+      {
+        id: 'architectural_breadcrumbs',
+        name: 'Navigasi Breadcrumbs Kontekstual',
+        description: 'Mewajibkan properti breadcrumbs pada layout agar pengguna mengetahui posisi navigasinya dalam hierarki halaman.',
+        status: 'VERIFIED',
+        details: 'Breadcrumbs [Kesiswaan → Anggota & Pembina Eskul] ter-useMemo dipasang pada AcademicPageLayout.'
+      }
+    ]
+  },
+  attendance_jadwal_kegiatan: {
+    moduleName: 'attendance_jadwal_kegiatan',
+    displayName: 'Jadwal Kegiatan Rutin (Kesiswaan)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan AcademicPageLayout & ErrorBoundary.',
+        status: 'VERIFIED',
+        details: 'Halaman menggunakan AcademicPageLayout sebagai Error Boundary standar.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Komputasi kartu jadwal, breadcrumbs, dan instruction panel dimemosisasi dengan useMemo.',
+        status: 'VERIFIED',
+        details: 'useMemo terintegrasi pada komputasi cards, breadcrumbs, dan instruction panel.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna (Instruction)',
+        description: 'Mewajibkan adanya properti instruction pada layout untuk memberikan panduan penggunaan fitur kepada pengguna.',
+        status: 'VERIFIED',
+        details: 'Properti instruction ter-useMemo dengan tips panduan, termasuk info auto-session, dipasang pada AcademicPageLayout.'
+      },
+      {
+        id: 'architectural_breadcrumbs',
+        name: 'Navigasi Breadcrumbs Kontekstual',
+        description: 'Mewajibkan properti breadcrumbs pada layout agar pengguna mengetahui posisi navigasinya dalam hierarki halaman.',
+        status: 'VERIFIED',
+        details: 'Breadcrumbs [Kesiswaan → Jadwal Kegiatan Rutin] ter-useMemo dipasang pada AcademicPageLayout.'
+      },
+      {
+        id: 'architectural_layout_standard',
+        name: 'Standardisasi Layout Utama (AcademicPageLayout)',
+        description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout yang terstandar.',
+        status: 'VERIFIED',
+        details: 'JadwalKegiatanPage.tsx telah direfactor menggunakan AcademicPageLayout dengan title, breadcrumbs, instruction, dan hardeningModuleKey.'
+      },
+      {
+        id: 'standard_action_button',
+        name: 'Standarisasi Tombol Aksi (Button Component)',
+        description: 'Menggunakan komponen Button terstandarisasi untuk aksi utama halaman.',
+        status: 'VERIFIED',
+        details: 'Tombol Tambah Jadwal dan aksi di modal form menggunakan komponen Button standar dari @/components/ui.'
+      },
+      {
+        id: 'empty_state_handling',
+        name: 'Penanganan Empty State',
+        description: 'Halaman menampilkan status kosong yang informatif ketika belum ada data jadwal.',
+        status: 'VERIFIED',
+        details: 'Empty state dengan ikon Calendar, judul, dan deskripsi ditampilkan saat daftar jadwal kosong.'
+      }
+    ]
+  },
+  jam_kbm_page: {
+    moduleName: 'jam_kbm_page',
+    displayName: 'Konfigurasi Jam KBM & Shift (Kurikulum)',
+    standards: [
+      {
+        id: 'architectural_layout_standard',
+        name: 'Standardisasi Layout Utama (AcademicPageLayout)',
+        description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout yang terstandar.',
+        status: 'VERIFIED',
+        details: 'JamKBMPage.tsx menggunakan AcademicPageLayout dengan title, breadcrumbs, instruction, toolbar, dan hardeningModuleKey.'
+      },
+      {
+        id: 'god_file_guard',
+        name: 'God File Prevention (Dekomposisi Subkomponent)',
+        description: 'Memecah berkas halaman >800 baris menjadi subkomponent terpisah yang dapat diuji dan dimuat secara lazy.',
+        status: 'VERIFIED',
+        details: 'Berkas asli 921 baris dipecah menjadi 3 modul: JamKBMTypes.ts, JamKBMShiftPanel.tsx (<350 baris), JamKBMClassAssignmentPanel.tsx (<100 baris), dan JamKBMPage.tsx (<250 baris). Semua subkomponent disimpan di src/components/kurikulum/jam-kbm/.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (useMemo + useCallback)',
+        description: 'Komputasi data berat dan event handler dimemoisasi untuk mencegah re-render tidak perlu.',
+        status: 'VERIFIED',
+        details: 'fetchTenant dibungkus useCallback; breadcrumbs & instruction di-useMemo; seluruh handler di JamKBMShiftPanel menggunakan useCallback; currentShift & parsed di-useMemo.'
+      },
+      {
+        id: 'no_any_type',
+        name: 'Keamanan Tipe TypeScript (No any)',
+        description: 'Menghilangkan seluruh penggunaan tipe data longgar ": any" dan menggantinya dengan tipe eksplisit.',
+        status: 'VERIFIED',
+        details: 'Semua tipe any diganti: kelasList: KelasOption[], shiftConfig: ShiftConfig, ShiftItem, TimeSlot, BreakItem — semua didefinisikan di JamKBMTypes.ts. err: unknown pattern diterapkan di semua catch block.'
+      },
+      {
+        id: 'zod_validation_guard',
+        name: 'Zod Schema Validation Guard',
+        description: 'Validasi data form melalui Zod safeParse() sebelum dikirim ke API — defense-in-depth.',
+        status: 'VERIFIED',
+        details: 'shiftConfigSchema.safeParse(shiftConfig) dijalankan di handleSave() sebelum memanggil updateTenant(). Schema mencakup timeSlotSchema, breakItemSchema, dan shiftItemSchema dengan constraint waktu, nama, dan durasi yang riil.'
+      },
+      {
+        id: 'form_a11y',
+        name: 'Aksesibilitas Form (aria-label / htmlFor)',
+        description: 'Seluruh elemen form dilengkapi aria-label dan id yang sesuai standar aksesibilitas web.',
+        status: 'VERIFIED',
+        details: 'Input nama shift, jam mulai, durasi, input waktu slot, input durasi istirahat, tombol sisipkan/hapus istirahat — semua dilengkapi aria-label. Tab buttons dilengkapi role="tab" dan aria-selected.'
+      },
+      {
+        id: 'architectural_searchable_select',
+        name: 'Standarisasi Dropdown SearchableSelect',
+        description: 'Mengganti elemen <select> native dengan SearchableSelect terstandarisasi.',
+        status: 'VERIFIED',
+        details: 'Dropdown Pilih Shift di toolbar dan dropdown penugasan shift per kelas di JamKBMClassAssignmentPanel menggunakan komponen SearchableSelect.'
+      },
+      {
+        id: 'lazy_suspense_loading',
+        name: 'Lazy Loading Subkomponent Berat (lazy + Suspense)',
+        description: 'Subkomponent panel berat dimuat on-demand menggunakan React.lazy() dan Suspense untuk mengurangi bundle awal.',
+        status: 'VERIFIED',
+        details: 'JamKBMShiftPanel dan JamKBMClassAssignmentPanel di-lazy() import di JamKBMPage.tsx dan dibungkus <Suspense fallback={<PanelLoader />}>. Bundle hanya dimuat ketika tab pertama kali dikunjungi.'
+      },
+      {
+        id: 'shared_tabular_standard',
+        name: 'Standardisasi Komponen Tabular Baru',
+        description: 'Mengintegrasikan komponen tabel shared Tabular yang dimodernisasi dari eskul page untuk penayangan data roster / list.',
+        status: 'VERIFIED',
+        details: 'Tabel penugasan kelas-kelas kini menggunakan komponen shared Tabular.tsx dengan view switcher (Diagram vs Tabel).'
+      }
+    ]
   }
 };
 
@@ -1157,16 +1322,16 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
       });
     }
 
-    // 23. Audit Kriteria: Standarisasi Kartu Analitik/Statistik (AnalyticsCard)
+    // 23. Audit Kriteria: Standarisasi Kartu Analitik/Statistik (AnalyticsCard Varian Premium)
     if (auditData.analyticsCardGuard !== undefined && auditData.analyticsCardGuard !== null) {
       config.standards.push({
         id: 'architectural_analytics_card',
-        name: 'Standarisasi Kartu Analitik/Statistik (AnalyticsCard)',
-        description: 'Memverifikasi apakah halaman menggunakan komponen AnalyticsCard yang terstandarisasi untuk menyajikan metrik/statistik, bukan custom stat card lokal.',
+        name: 'Standarisasi Kartu Analitik/Statistik (AnalyticsCard Varian Premium)',
+        description: 'Memverifikasi apakah halaman menggunakan komponen AnalyticsCard terstandarisasi varian premium untuk menyajikan metrik/statistik, bukan custom stat card lokal.',
         status: auditData.analyticsCardGuard ? 'VERIFIED' : 'FAILED',
         details: auditData.analyticsCardGuard
-          ? 'Tervalidasi: Menggunakan komponen AnalyticsCard terstandarisasi untuk visualisasi metrik.'
-          : 'Gagal: Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi dari `@/components/ui/AnalyticsCard`.'
+          ? 'Tervalidasi: Menggunakan komponen AnalyticsCard terstandarisasi varian premium untuk visualisasi metrik.'
+          : 'Gagal: Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium dari `@/components/ui/AnalyticsCard`.'
       });
     }
 
@@ -1206,6 +1371,32 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
         details: auditData.zodValidationGuard
           ? 'Tervalidasi: Form dilindungi oleh skema validasi Zod.'
           : 'Peringatan: Terdeteksi elemen form input tanpa skema validasi Zod.'
+      });
+    }
+
+    // 27. Audit Kriteria: Standarisasi Pemilih Tab (TabSwitcher Guard)
+    if (auditData.standardTabSwitcher !== undefined && auditData.standardTabSwitcher !== null) {
+      config.standards.push({
+        id: 'architectural_tab_switcher',
+        name: 'Standarisasi Pemilih Tab (TabSwitcher Guard)',
+        description: 'Memverifikasi apakah halaman menggunakan komponen bersama TabSwitcher untuk pemilih tab guna keseragaman antarmuka.',
+        status: auditData.standardTabSwitcher ? 'VERIFIED' : 'FAILED',
+        details: auditData.standardTabSwitcher
+          ? 'Tervalidasi: Navigasi tab menggunakan komponen standard TabSwitcher.'
+          : 'Gagal: Terdeteksi tombol switcher manual atau TabsList. Wajib menggunakan komponen <TabSwitcher />.'
+      });
+    }
+
+    // 28. Audit Kriteria: Konsistensi Aliran Tata Letak (Layout Flow Consistency Guard)
+    if (auditData.layoutFlowConsistency !== undefined && auditData.layoutFlowConsistency !== null) {
+      config.standards.push({
+        id: 'architectural_layout_flow_consistency',
+        name: 'Konsistensi Aliran Tata Letak (Layout Flow Consistency Guard)',
+        description: 'Memverifikasi apakah urutan aliran penempatan komponen utama di dalam halaman sudah konsisten (misalnya, filter dan kartu statistik wajib diletakkan di atas tabel data).',
+        status: auditData.layoutFlowConsistency ? 'VERIFIED' : 'WARNING',
+        details: auditData.layoutFlowConsistency
+          ? 'Tervalidasi: Aliran tata letak halaman konsisten dengan filter dan statistik berada di atas tabel data.'
+          : 'Peringatan: Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.'
       });
     }
   }

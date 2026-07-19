@@ -3,14 +3,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Badge } from '../ui';
 import { Clock, Plus, BookOpen, User, Edit2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type JadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
+import { type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
 
 interface JadwalGridProps {
-  jadwal: JadwalTemplate[];
+  jadwal: JadwalKBM[];
   onAddSlot?: (day: string, slot: number) => void;
-  onEditSlot?: (item: JadwalTemplate) => void;
+  onEditSlot?: (item: JadwalKBM) => void;
   onDeleteSlot?: (id: string) => void;
   loading?: boolean;
   readOnly?: boolean;
@@ -88,21 +88,16 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
 
   const getSlotData = (day: string, slotIndex: number) => {
     if (selectedKelasId) {
-      const targetSlot = resolveSlotTime(selectedKelasId, slotIndex);
       return jadwal.find(j => 
         j.hari === day && 
-        j.jam_mulai && j.jam_mulai.startsWith(targetSlot.start) &&
+        j.slot_index === slotIndex &&
         j.kelas_id === selectedKelasId
       );
     } else {
-      return jadwal.find(j => {
-        if (j.hari !== day) return false;
-        if (j.kelas_id) {
-          const classSlot = resolveSlotTime(j.kelas_id, slotIndex);
-          return j.jam_mulai && j.jam_mulai.startsWith(classSlot.start);
-        }
-        return false;
-      });
+      return jadwal.find(j => 
+        j.hari === day && 
+        j.slot_index === slotIndex
+      );
     }
   };
 
@@ -293,7 +288,7 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                               
                               <div className="flex flex-col gap-0.5 mt-1">
                                 <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">
-                                  {item.jam_mulai} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
+                                  {resolveSlotTime(item.kelas_id || '', slot).start} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
                                 </div>
                                 {item.Guru && (
                                   <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">

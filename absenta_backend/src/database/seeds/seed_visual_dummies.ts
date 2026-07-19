@@ -93,7 +93,7 @@ async function main() {
                 const mapel = faker.helpers.arrayElement(allMapel);
                 const guru = faker.helpers.arrayElement(allGuru);
                 
-                await prisma.jadwalTemplate.create({
+                await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId,
                         kelas_id: targetKelas.id,

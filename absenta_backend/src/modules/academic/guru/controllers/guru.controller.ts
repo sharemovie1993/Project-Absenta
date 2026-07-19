@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx-js-style';
 import { getPaginationParams } from '../../../../utils/pagination';
 import { prisma } from '@/utils/prisma';
 import { RoleName } from '../../../../constants/enums';
+import { storageService } from '@/infra/storage/storage.service';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -482,6 +483,108 @@ export class GuruController {
     } catch (error) {
       console.error('Export error:', error);
       reply.status(500).send({ success: false, message: 'Failed to export guru data' });
+    }
+  }
+
+  async uploadGuruDocument(request: any, reply: any) {
+    try {
+      const { id: guruId } = request.params;
+      const tenantId = request.tenantId;
+      const actorUserId = request.user?.id || request.user?.userId;
+
+      const file = await request.file();
+      if (!file) {
+        return reply.status(400).send({ success: false, message: 'File wajib diupload' });
+      }
+
+      const judul = String(file.fields?.judul?.value || '').trim();
+      const kategori = String(file.fields?.kategori?.value || 'LAINNYA').toUpperCase();
+
+      if (!judul) {
+        return reply.status(400).send({ success: false, message: 'Judul dokumen wajib diisi' });
+      }
+
+      const doc = await guruService.uploadGuruDocument({
+        tenantId,
+        guruId,
+        judul,
+        kategori,
+        actorUserId,
+        file
+      });
+
+      return reply.status(201).send({
+        success: true,
+        message: 'Dokumen berhasil diupload',
+        data: doc
+      });
+    } catch (error: any) {
+      console.error('Upload document error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Failed to upload document' });
+    }
+  }
+
+  async deleteGuruDocument(request: any, reply: any) {
+    try {
+      const { id: guruId, docId } = request.params;
+      const tenantId = request.tenantId;
+
+      await guruService.deleteGuruDocument({
+        tenantId,
+        guruId,
+        documentId: docId
+      });
+
+      return reply.status(200).send({
+        success: true,
+        message: 'Dokumen berhasil dihapus'
+      });
+    } catch (error: any) {
+      console.error('Delete document error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Failed to delete document' });
+    }
+  }
+
+  async getGuruDocuments(request: any, reply: any) {
+    try {
+      const { id: guruId } = request.params;
+      const tenantId = request.tenantId;
+
+      const docs = await guruService.getGuruDocuments({
+        tenantId,
+        guruId
+      });
+
+      return reply.status(200).send({
+        success: true,
+        data: docs
+      });
+    } catch (error: any) {
+      console.error('Get documents error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Failed to retrieve documents' });
+    }
+  }
+
+  async downloadGuruDocument(request: any, reply: any) {
+    try {
+      const { id: guruId, docId } = request.params;
+      const tenantId = request.tenantId;
+
+      const doc = await prisma.guruDocument.findFirst({
+        where: { id: docId, guru_id: guruId, tenant_id: tenantId }
+      });
+
+      if (!doc) {
+        return reply.status(404).send({ success: false, message: 'Dokumen tidak ditemukan' });
+      }
+
+      const stream = storageService.createReadStream(doc.file_storage_path);
+      reply.header('Content-Type', doc.mime_type);
+      reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.file_original_name)}"`);
+      return reply.send(stream);
+    } catch (error: any) {
+      console.error('Download document error:', error);
+      return reply.status(500).send({ success: false, message: error.message || 'Failed to download file' });
     }
   }
 }

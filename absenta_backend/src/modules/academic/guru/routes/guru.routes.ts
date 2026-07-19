@@ -103,5 +103,68 @@ export default async function guruRoutes(fastify: any) {
   }, async (request: any, reply: any) => {
     return guruController.importFromExcel(request, reply);
   });
+
+  const validateGuruSelfOrAdmin = async (request: any, reply: any) => {
+    const user = request.user;
+    const roleName = user?.roleName || user?.Role?.name || user?.role?.name;
+    const userId = user?.id || user?.userId;
+    const { id: targetGuruId } = request.params;
+
+    if (roleName === RoleName.GURU) {
+      const guruProfile = await fastify.prisma.guru.findFirst({
+        where: { user_id: userId }
+      });
+      if (!guruProfile || guruProfile.id !== targetGuruId) {
+        return reply.status(403).send({
+          error: 'FORBIDDEN',
+          message: 'Forbidden: Anda tidak diperbolehkan mengakses data guru lain'
+        });
+      }
+    }
+  };
+
+  // POST /guru/:id/documents - Upload document
+  fastify.post('/:id/documents', {
+    preHandler: [
+      requireCapability(['academic.teachers.update'], { exemptRoles: [RoleName.GURU] }),
+      validateGuruSelfOrAdmin,
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.uploadGuruDocument(request, reply);
+  });
+
+  // GET /guru/:id/documents - List documents
+  fastify.get('/:id/documents', {
+    preHandler: [
+      requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] }),
+      validateGuruSelfOrAdmin,
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.getGuruDocuments(request, reply);
+  });
+
+  // GET /guru/:id/documents/:docId/download - Download single document
+  fastify.get('/:id/documents/:docId/download', {
+    preHandler: [
+      requireCapability('academic.teachers.view.detail', { exemptRoles: [RoleName.GURU] }),
+      validateGuruSelfOrAdmin,
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.downloadGuruDocument(request, reply);
+  });
+
+  // DELETE /guru/:id/documents/:docId - Delete document
+  fastify.delete('/:id/documents/:docId', {
+    preHandler: [
+      requireCapability(['academic.teachers.update'], { exemptRoles: [RoleName.GURU] }),
+      validateGuruSelfOrAdmin,
+      organizationalScopeMiddleware
+    ]
+  }, async (request: any, reply: any) => {
+    return guruController.deleteGuruDocument(request, reply);
+  });
 }
 

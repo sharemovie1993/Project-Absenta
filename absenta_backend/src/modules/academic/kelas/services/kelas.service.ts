@@ -820,7 +820,7 @@ export class KelasService {
             SiswaAkademik: true,
             SesiAbsensi: true,
             KelasMapel: true,
-            JadwalTemplate: true,
+            JadwalKBM: true,
             OrganizationalAssignments: true,
             PelanggaranSiswa: true,
           },
@@ -834,7 +834,7 @@ export class KelasService {
       if (counts.SiswaAkademik > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki riwayat data akademik siswa');
       if (counts.SesiAbsensi > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki catatan sesi absensi');
       if (counts.KelasMapel > 0) throw new Error('Tidak dapat menghapus kelas yang masih memiliki daftar mata pelajaran (Kelas Mapel)');
-      if (counts.JadwalTemplate > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki data jadwal pelajaran');
+      if (counts.JadwalKBM > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki data jadwal pelajaran');
       if (counts.OrganizationalAssignments > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki penugasan organisasi (misal: Wali Kelas)');
       if (counts.PelanggaranSiswa > 0) throw new Error('Tidak dapat menghapus kelas yang memiliki catatan pelanggaran siswa');
     }

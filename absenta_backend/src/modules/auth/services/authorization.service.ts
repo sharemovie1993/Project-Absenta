@@ -37,51 +37,38 @@ export class AuthorizationService {
       return ['system.platform.full_access'];
     }
 
-    if (directFromUser.length > 0) {
-      const resolved = this.unique(directFromUser);
-      if (roleNameFromUser === 'SISWA') {
-        const student = await prisma.siswa.findFirst({
-          where: { user_id: userId },
-          select: { status: true }
-        });
-        if (student?.status?.toUpperCase() !== 'LULUS') {
-          return resolved.filter(c => c !== 'hubin.self.tracer' && c !== 'hubin.self.bkk');
-        }
-      }
-      return resolved;
-    }
-
-    const user: any = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        Role: {
-          select: {
-            name: true,
-            rolePermissions: { select: { Permission: { select: { id: true } } } },
-          },
-        },
-      } as any,
-    });
-
-    if (!user) return [];
-
-    const roleName = user?.Role?.name;
-    if (roleName === RoleName.SUPERADMIN) {
-      return ['system.platform.full_access'];
-    }
-
     const caps = new Set<string>();
-    const roleCaps = Array.isArray(user?.Role?.rolePermissions)
-      ? user.Role.rolePermissions.map((rp: any) => rp?.Permission?.id).filter(Boolean)
-      : [];
-    roleCaps.forEach((c: string) => caps.add(String(c)));
 
+    if (directFromUser.length > 0) {
+      directFromUser.forEach((c) => caps.add(c));
+    } else {
+      const user: any = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          Role: {
+            select: {
+              name: true,
+              rolePermissions: { select: { Permission: { select: { id: true } } } },
+            },
+          },
+        } as any,
+      });
+
+      if (user) {
+        const roleCaps = Array.isArray(user?.Role?.rolePermissions)
+          ? user.Role.rolePermissions.map((rp: any) => rp?.Permission?.id).filter(Boolean)
+          : [];
+        roleCaps.forEach((c: string) => caps.add(String(c)));
+      }
+    }
+
+    // Selalu gabungkan structural/organizational capabilities dari database
     const orgCaps = await organizationalAuthorizationEngine.resolveOrganizationalCapabilities(userId);
     orgCaps.forEach((c) => caps.add(String(c)));
 
     const resolved = Array.from(caps);
-    if (roleName === 'SISWA') {
+    if (roleNameFromUser === 'SISWA') {
       const student = await prisma.siswa.findFirst({
         where: { user_id: userId },
         select: { status: true }

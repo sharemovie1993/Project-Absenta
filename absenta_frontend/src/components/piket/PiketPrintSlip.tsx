@@ -1,5 +1,6 @@
 import React from 'react';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import type { SystemConfig } from '../../services/systemConfig';
 import { PrintHeader } from '../ui/PrintHeader';
 
 interface PiketPrintSlipProps {
@@ -11,6 +12,7 @@ interface PiketPrintSlipProps {
     kota?: string;
     [key: string]: any;
   } | null;
+  systemConfig?: SystemConfig | null;
   user?: {
     full_name?: string;
     name?: string;
@@ -22,6 +24,7 @@ interface PiketPrintSlipProps {
 export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = React.memo(({
   printedPermit,
   tenantInfo,
+  systemConfig,
   user,
   printPaperSize = '58mm'
 }) => {
@@ -199,6 +202,17 @@ export const PiketPrintSlip: React.FC<PiketPrintSlipProps> = React.memo(({
             </span>
           </div>
         </div>
+
+        {printedPermit.tipe_izin === 'IZIN_KELUAR' && !printedPermit.jam_kembali && systemConfig?.max_izin_sementara_menit && (
+          <div className={`mt-1 p-1 bg-gray-50 border border-dashed border-gray-300 rounded text-center`}>
+            <span className={`font-black uppercase block ${isFormalPaper ? 'text-[10px]' : 'text-[6px]'} text-rose-600 animate-pulse`}>
+              ⚠️ MAKSIMAL DURASI IZIN: {systemConfig.max_izin_sementara_menit} MENIT
+            </span>
+            <span className={`block font-medium italic ${isFormalPaper ? 'text-[8px]' : 'text-[5px]'} text-gray-500`}>
+              * Jika melebihi batas waktu, status otomatis menjadi ALPA (Bolos).
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Footer / QR + Signature Row */}

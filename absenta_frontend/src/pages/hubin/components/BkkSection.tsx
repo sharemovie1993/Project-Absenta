@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { useAuthStore } from '../../../store/authStore';
+import { TabSwitcher } from '../../../components/ui/TabSwitcher';
 import {
   Briefcase,
   Plus,
@@ -282,17 +283,24 @@ export const BkkSection: React.FC = () => {
 
       {/* Sub-tab for managers */}
       {canManageBkk && (
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-4">
-          {(['lowongan', 'pelamar'] as const)?.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveSubTab(tab)}
-              className={`pb-2 text-xs font-bold transition-all border-b-2 ${activeSubTab === tab ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              {tab === 'lowongan' ? 'Daftar Lowongan Pekerjaan' : `Kelola Pelamar BKK (${applicantsList?.length || 0})`}
-            </button>
-          ))}
-        </div>
+        <TabSwitcher
+          options={[
+            { id: 'lowongan', label: 'Daftar Lowongan Pekerjaan', icon: Briefcase, colorClass: 'text-indigo-600 dark:text-indigo-400' },
+            {
+              id: 'pelamar',
+              label: (
+                <span>
+                  Kelola Pelamar BKK <span className="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">{applicantsList?.length || 0}</span>
+                </span>
+              ),
+              icon: ClipboardCheck,
+              colorClass: 'text-violet-600 dark:text-violet-400'
+            }
+          ]}
+          activeTab={activeSubTab}
+          onChange={(id) => setActiveSubTab(id as 'lowongan' | 'pelamar')}
+          className="mb-4"
+        />
       )}
 
       {/* ── Lowongan Tab ── */}

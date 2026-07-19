@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-here';
-const BASE_URL = 'http://localhost:3000/api/attendance/jadwal-template';
+const BASE_URL = 'http://localhost:3004/api/kurikulum/jadwal-template';
 
 async function main() {
   try {
@@ -45,10 +45,11 @@ async function main() {
         console.log('Creating Plan...');
         plan = await prisma.plan.create({
             data: {
+                code: 'basic',
+                service_code: 'basic_service',
                 name: 'Basic Plan',
                 price_monthly: 100000,
                 max_user: 100,
-                features: 'basic',
                 absensi_mode: 'MULTI_SESI'
             }
         });
@@ -68,6 +69,7 @@ async function main() {
             data: {
                 tenant_id: tenant.id,
                 plan_id: plan.id,
+                service_code: 'basic_service',
                 start_date: new Date(),
                 end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
                 status: 'ACTIVE'
@@ -196,7 +198,6 @@ async function main() {
         Authorization: `Bearer ${token}`,
         'X-Tenant-ID': tenant.id
     };
-
     // 3. Test Create
     console.log('\n📝 Testing Create Jadwal Template...');
     const createPayload = {
@@ -207,8 +208,9 @@ async function main() {
         mapel_id: mapel.id,
         jenis_kegiatan: 'KBM',
         hari: 'SENIN',
-        jam_mulai: '07:00',
-        jam_selesai: '08:00'
+        slot_index: 2,
+        jam_mulai: '07:45',
+        jam_selesai: '08:30'
     };
 
     let createdId;
@@ -217,7 +219,7 @@ async function main() {
         console.log('✅ Create successful:', createRes.data.success);
         createdId = createRes.data.data.id;
     } catch (e: any) {
-        console.error('❌ Create failed:', e.response?.data || e.message);
+        console.error('❌ Create failed:', e);
     }
 
     if (createdId) {
@@ -233,11 +235,11 @@ async function main() {
         // 5. Test Update
         console.log('\n✏️ Testing Update Jadwal Template...');
         const updatePayload = {
-            jam_selesai: '08:30'
+            slot_index: 3
         };
         try {
             const updateRes = await axios.put(`${BASE_URL}/${createdId}`, updatePayload, { headers });
-            console.log('✅ Update successful:', updateRes.data.data.jam_selesai === '08:30');
+            console.log('✅ Update successful:', updateRes.data.data.slot_index === 3 && updateRes.data.data.jam_selesai === '09:15');
         } catch (e: any) {
              console.error('❌ Update failed:', e.response?.data || e.message);
         }

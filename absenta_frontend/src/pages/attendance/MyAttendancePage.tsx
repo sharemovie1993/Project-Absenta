@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getRekapBulananGuruMe } from '../../api/attendanceGerbang.api';
+import { getRekapBulananGuruMe, getRekapBulananSiswaMe } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '../../store/authStore';
 import { 
   ChevronLeft, 
@@ -35,24 +35,29 @@ const PremiumFeatureGate = lazy(() => import('../../components/auth/PremiumFeatu
 
 const STATUS_COLORS: Record<string, string> = {
   HADIR: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]',
+  TERLAMBAT: 'bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.4)]',
   ALPA: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]',
   SAKIT: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]',
   IZIN: 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]',
+  DISPEN: 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.4)]',
   BELUM: 'bg-slate-200 dark:bg-slate-700'
 };
 
 const STATUS_LABELS: Record<string, string> = {
   HADIR: 'Hadir Tepat Waktu',
+  TERLAMBAT: 'Terlambat',
   ALPA: 'Alpa / Tanpa Keterangan',
   SAKIT: 'Sakit',
   IZIN: 'Izin',
+  DISPEN: 'Dispensasi',
   BELUM: 'Belum Ada Data'
 };
 
 export const MyAttendancePage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const bulanKey = format(currentDate, 'yyyy-MM');
-  const { tenantId, subscription } = useAuthStore();
+  const { user, tenantId, subscription } = useAuthStore();
+  const isGuru = user?.role?.name === 'GURU';
   
   const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
                    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json || 
@@ -60,12 +65,25 @@ export const MyAttendancePage: React.FC = () => {
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
   const { data: attendanceData, isLoading } = useQuery({
-    queryKey: ['my-attendance-rekap', bulanKey, tenantId],
-    queryFn: () => getRekapBulananGuruMe({ bulan: bulanKey }),
+    queryKey: ['my-attendance-rekap', bulanKey, tenantId, user?.id],
+    queryFn: () => isGuru 
+      ? getRekapBulananGuruMe({ bulan: bulanKey })
+      : getRekapBulananSiswaMe({ bulan: bulanKey }),
     enabled: !!tenantId
   });
 
   const rekap = attendanceData?.data;
+
+  console.log('--- MY ATTENDANCE PAGE DEBUG ---', {
+    userEmail: user?.email,
+    userRole: user?.role?.name,
+    isGuru,
+    tenantId,
+    bulanKey,
+    hasRekap: !!rekap,
+    rekapDetailLength: rekap?.detail?.length,
+    rekapData: rekap
+  });
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -150,14 +168,14 @@ export const MyAttendancePage: React.FC = () => {
                </div>
             </div>
 
-            <div className="mt-8 p-6 rounded-xl border border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-8 p-6 rounded-xl border border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
                <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hadir Sesi</div>
+                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hadir</div>
                   <div className="text-xl font-black text-emerald-600">{rekap?.statistik?.HADIR || 0}</div>
                </div>
                <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Alpa</div>
-                  <div className="text-xl font-black text-rose-600">{rekap?.statistik?.ALPA || 0}</div>
+                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Terlambat</div>
+                  <div className="text-xl font-black text-orange-600">{rekap?.statistik?.TERLAMBAT || 0}</div>
                </div>
                <div className="text-center">
                   <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Izin</div>
@@ -166,6 +184,14 @@ export const MyAttendancePage: React.FC = () => {
                <div className="text-center">
                   <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Sakit</div>
                   <div className="text-xl font-black text-amber-600">{rekap?.statistik?.SAKIT || 0}</div>
+               </div>
+               <div className="text-center">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Dispen</div>
+                  <div className="text-xl font-black text-violet-600">{rekap?.statistik?.DISPEN || 0}</div>
+               </div>
+               <div className="text-center">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Alpa</div>
+                  <div className="text-xl font-black text-rose-600">{rekap?.statistik?.ALPA || 0}</div>
                </div>
             </div>
           </SectionCard>

@@ -286,7 +286,7 @@ export class SemesterService {
             Siswa: true,
             SiswaAkademik: true,
             AbsenGuru: true,
-            JadwalTemplate: true
+            JadwalKBM: true
           } 
         },
       },
@@ -299,7 +299,7 @@ export class SemesterService {
       if (counts.Siswa > 0) detailParts.push(`${counts.Siswa} Siswa`);
       if (counts.SiswaAkademik > 0) detailParts.push(`${counts.SiswaAkademik} Riwayat Akademik`);
       if (counts.AbsenGuru > 0) detailParts.push(`${counts.AbsenGuru} Absensi Guru`);
-      if (counts.JadwalTemplate > 0) detailParts.push(`${counts.JadwalTemplate} Jadwal Pelajaran`);
+      if (counts.JadwalKBM > 0) detailParts.push(`${counts.JadwalKBM} Jadwal Pelajaran`);
 
       if (detailParts.length > 0) {
         const tp = String(links.TahunPelajaran?.tahun || '');

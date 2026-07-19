@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   getStrukturTree, 
   createStruktur,
@@ -31,6 +31,7 @@ const TABS = [
   { id: 'KABENG', label: 'Kabeng', codes: ['KABENG'] },
   { id: 'TOOLMAN', label: 'Toolman', codes: ['TOOLMAN'] },
   { id: 'WALI_KELAS', label: 'Wali Kelas', codes: ['WALIKELAS'] },
+  { id: 'PEMBINA_ESKUL', label: 'Pembina Eskul', codes: ['PEMBINA_ESKUL'] },
   { id: 'BP_BK', label: 'BP/BK', codes: ['BPBK'] },
   { id: 'GERBANG', label: 'Gerbang', codes: ['GERBANG'] },
   { id: 'PETUGAS_KELAS', label: 'Petugas Kelas', codes: ['PETUGAS_KELAS', 'PETUGAS_ABSENSI'] },
@@ -38,6 +39,7 @@ const TABS = [
 ];
 
 const StrukturOrganisasiList: React.FC = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
 
@@ -185,15 +187,26 @@ const StrukturOrganisasiList: React.FC = () => {
             </TabsList>
           </Tabs>
 
-          {isGlobalStrukturAdmin && (
-            <Button 
-              onClick={handleOpenCreate}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold text-sm h-10 px-5 flex items-center gap-2 group shrink-0"
-            >
-              <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              <span>Tambah Jabatan</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {activeTab === 'PEMBINA_ESKUL' && (
+              <Button
+                variant="outline"
+                onClick={() => navigate('/attendance/anggota-kegiatan-eskul')}
+                className="font-bold text-sm h-10 px-5 rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Kembali ke Manajemen Eskul
+              </Button>
+            )}
+            {isGlobalStrukturAdmin && (
+              <Button 
+                onClick={handleOpenCreate}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md font-bold text-sm h-10 px-5 flex items-center gap-2 group"
+              >
+                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span>Tambah Jabatan</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Main Content Area */}

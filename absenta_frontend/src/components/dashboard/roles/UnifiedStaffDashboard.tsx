@@ -362,6 +362,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     const actions: QuickAction[] = [
       { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`),          color: 'blue'   },
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo' },
+      { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald' },
     ];
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'),         color: 'rose'   });
     if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple' });
@@ -370,7 +371,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => navigate('/kesiswaan/pelanggaran'), color: 'amber' });
     
     return actions;
-  }, [isWaliKelas, isKurikulum, navigate]);
+  }, [isWaliKelas, isKurikulum, navigate, guruId]);
 
   // ── 7. Dynamic Structural Panels Ordering ───────────────────────────────────
   const structuralPanels = useMemo(() => {
@@ -387,7 +388,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             absentStudents={absentStudents.map((s) => ({ id: s.id, nama: s.nama, status: s.status }))}
             isLoading={classPresenceLoading}
             hasData={hasClassPresenceData && classPresenceData.length > 0}
-            onViewRekap={() => navigate('/attendance/rekap/kelas-bulanan')}
+            onViewRekap={() => navigate(`/attendance/rekap/kelas-bulanan?kelas_id=${waliKelasId}`)}
             onFollowUp={() => navigate('/kesiswaan/monitoring')}
           />
         )
@@ -408,6 +409,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             supervisionCount={kurikulumMonitoringRes?.data?.supervisionCount || 0}
             isLoading={kurikulumMonitoringLoading || (kbmLoading && !kurikulumMonitoringRes?.data) || (teacherStatsLoading && !kurikulumMonitoringRes?.data)}
             onMonitor={() => navigate('/attendance/monitoring')}
+            onSpecialEvent={() => navigate('/attendance/settings?tab=kejadian-khusus')}
           />
         )
       });
@@ -576,6 +578,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
             isLoading={isKesiswaanLoading}
             onOpenPiket={() => navigate('/kesiswaan/piket')}
             onOpenMonitoring={isStrictKesiswaan ? () => navigate('/kesiswaan/monitoring') : undefined}
+            onSpecialEvent={() => navigate('/attendance/settings?tab=kejadian-khusus')}
           />
         )
       });

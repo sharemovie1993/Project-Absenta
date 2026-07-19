@@ -420,14 +420,14 @@ export default function DocumentCenterPage() {
 
   return (
     <AcademicPageLayout
-      title="Pusat Dokumen & Arsip"
+      title="Dokumen Legalitas Sekolah"
       description="Kelola dokumen administrasi, legal, manual, dan MoU secara terpusat dengan dukungan riwayat versi."
       stats={statsList}
       toolbar={toolbarSlot}
       hardeningModuleKey="document_center"
-      breadcrumbs={[{ label: 'System' }, { label: 'Document Center' }]}
+      breadcrumbs={[{ label: 'System' }, { label: 'Dokumen Legalitas' }]}
       instruction={{
-        title: 'Panduan Document Center',
+        title: 'Panduan Dokumen Legalitas Sekolah',
         description: 'Pusat pengelolaan file digital institusi Anda.',
         items: [
           { text: 'Gunakan filter kategori untuk menyaring dokumen spesifik.' },

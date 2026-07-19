@@ -6,7 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe } from '../../../api/attendanceGerbang.api';
-import { getMyJadwalTemplate } from '../../../api/attendance/jadwalTemplate.api';
+import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { formatLocalDateTime, getVirtualDate, toLocalDate, toLocalMonth } from '../../../utils/attendance/time';
 import { 
   Calendar, 
@@ -85,8 +85,8 @@ export const SiswaDashboard: React.FC = () => {
   });
 
   const { data: scheduleRes, isLoading: isScheduleLoading } = useQuery({
-    queryKey: ['jadwal-template-siswa-me', todayIso, user?.siswa_id],
-    queryFn: () => getMyJadwalTemplate({ tanggal: todayIso }),
+    queryKey: ['jadwal-kbm-siswa-me', todayIso, user?.siswa_id],
+    queryFn: () => getMyJadwalKBM({ tanggal: todayIso }),
     enabled: !!user && !!user?.siswa_id && tenantMode === 'MULTI_SESI',
   });
 
@@ -98,7 +98,7 @@ export const SiswaDashboard: React.FC = () => {
 
   const dailyRecap = dailyRecapRes?.data ?? null;
   const monthlyRecap = monthlyRecapRes?.data ?? null;
-  const jadwalTemplates = scheduleRes?.data ?? [];
+  const jadwalKBMs = scheduleRes?.data ?? [];
 
   const studentStatus = useMemo(() => {
     if (!dailyRecap) {
@@ -111,19 +111,35 @@ export const SiswaDashboard: React.FC = () => {
       return found?.waktu_tap ?? null;
     };
 
-    const checkInTime =
+    const formatTime = (timeStr: string | null): string => {
+      if (!timeStr || timeStr === '--:--') return '--:--';
+      try {
+        const date = new Date(timeStr);
+        if (isNaN(date.getTime())) return timeStr;
+        return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      } catch {
+        return timeStr;
+      }
+    };
+
+    const rawCheckIn =
       pickTime((x) => String(x?.jenis_kegiatan || '').toUpperCase().includes('GERBANG_DATANG')) ||
       pickTime((x) => String(x?.jenis_kegiatan || '').toUpperCase().includes('MASUK')) ||
       pickTime((x) => !!x?.waktu_tap) || '--:--';
 
-    const checkOutTime =
+    const rawCheckOut =
       pickTime((x) => String(x?.jenis_kegiatan || '').toUpperCase().includes('GERBANG_PULANG')) ||
       pickTime((x) => String(x?.jenis_kegiatan || '').toUpperCase().includes('PULANG'));
 
     const statusLabel = String(dailyRecap.status || '-').toUpperCase();
     const isPresent = statusLabel === 'HADIR' || statusLabel === 'TERLAMBAT';
 
-    return { isPresent, checkInTime: String(checkInTime), checkOutTime, statusLabel };
+    return { 
+      isPresent, 
+      checkInTime: formatTime(rawCheckIn), 
+      checkOutTime: rawCheckOut ? formatTime(rawCheckOut) : null, 
+      statusLabel 
+    };
   }, [dailyRecap]);
 
   const schedule = useMemo(() => {
@@ -138,7 +154,7 @@ export const SiswaDashboard: React.FC = () => {
     };
     const nowMin = toMinutes(nowHHMM);
 
-    return (jadwalTemplates || []).map((item: any) => {
+    return (jadwalKBMs || []).map((item: any) => {
       const start = String(item.jam_mulai || '00:00');
       const end = String(item.jam_selesai || '00:00');
       const startMin = toMinutes(start);
@@ -152,7 +168,7 @@ export const SiswaDashboard: React.FC = () => {
 
       return { id: item.id, subject, time: `${start} - ${end}`, teacher, status, active, attendanceStatus };
     });
-  }, [jadwalTemplates]);
+  }, [jadwalKBMs]);
 
   // Gamification Logic
   const gamification = useMemo(() => {
@@ -196,10 +212,10 @@ export const SiswaDashboard: React.FC = () => {
 
   const quickActions = useMemo<QuickAction[]>(() => {
     const actions: QuickAction[] = [
-      { label: 'Jadwal Saya', icon: CalendarDays, onClick: () => navigate('/kurikulum/jadwal-me'), color: 'indigo' },
-      { label: 'Riwayat Absen', icon: History, onClick: () => navigate('/attendance/riwayat-absen-me'), color: 'orange' },
-      { label: 'Laporan Kelas', icon: LayoutList, onClick: () => navigate('/attendance/rekap-kelas-me'), color: 'emerald' },
-      { label: 'Konseling', icon: MessageCircle, onClick: () => navigate('/kesiswaan/konseling'), color: 'blue' },
+      { label: 'Jadwal Saya', icon: CalendarDays, onClick: () => navigate('/kurikulum/jadwal'), color: 'indigo' },
+      { label: 'Riwayat Absen', icon: History, onClick: () => navigate('/attendance/my-attendance'), color: 'orange' },
+      { label: 'Laporan Kelas', icon: LayoutList, onClick: () => navigate('/attendance/rekap'), color: 'emerald' },
+      { label: 'Konseling', icon: MessageCircle, onClick: () => navigate('/bpbk/konseling'), color: 'blue' },
     ];
 
     if (can('hubin.self.pkl') || caps.includes('hubin.self.pkl') || can('hubin.view.pkl') || caps.includes('hubin.view.pkl')) {
@@ -305,8 +321,10 @@ export const SiswaDashboard: React.FC = () => {
                     : 'border-gray-50 hover:bg-gray-50'
                 )}
               >
-                <div className="text-[11px] font-bold text-gray-500 w-12 text-right flex-shrink-0">
-                  {item.time.split(' - ')[0]}
+                <div className="flex flex-col items-center justify-center min-w-[50px] border-r border-gray-100 dark:border-slate-800 pr-2.5 flex-shrink-0">
+                  <span className="text-[10px] font-bold text-gray-900 dark:text-white leading-none">{item.time.split(' - ')[0]}</span>
+                  <div className="w-0.5 h-2.5 bg-gray-100 dark:bg-slate-700 my-0.5" />
+                  <span className="text-[9px] font-semibold text-gray-400 leading-none">{item.time.split(' - ')[1]}</span>
                 </div>
                 <div className={cn("w-2 h-2 rounded-full flex-shrink-0", item.active ? 'bg-indigo-500 animate-pulse' : item.status === 'SELESAI' ? 'bg-emerald-500' : 'bg-gray-200')} />
                 <div className="flex-1 min-w-0">

@@ -2,6 +2,10 @@ import { prisma } from '@/utils/prisma';
 import { applyDataScope } from '@/utils/applyDataScope';
 import { userService } from '../../../user/services/user.service';
 import { DataScope } from '../../../../types/fastify';
+import { uploadGuruDocumentCommand } from './commands/upload-guru-document.command';
+import { deleteGuruDocumentCommand } from './commands/delete-guru-document.command';
+import { getGuruDocumentsQuery } from './queries/get-guru-documents.query';
+import { MultipartFile } from '@fastify/multipart';
 
 export interface CreateGuruInput {
   user_id?: string | null;
@@ -528,7 +532,7 @@ export class GuruService {
             GuruMapel: true,
             SesiAbsensi: true,
             AbsenGuru: true,
-            JadwalTemplate: true,
+            JadwalKBM: true,
             SupervisiGuru: true,
             SupervisiAsSupervisor: true,
             SiswaPkl: true,
@@ -543,7 +547,7 @@ export class GuruService {
       if (counts.GuruMapel > 0) throw new Error('Tidak dapat menghapus guru yang masih mengampu mata pelajaran (Guru Mapel)');
       if (counts.SesiAbsensi > 0) throw new Error('Tidak dapat menghapus guru yang memiliki catatan sesi absensi');
       if (counts.AbsenGuru > 0) throw new Error('Tidak dapat menghapus guru yang memiliki riwayat kehadiran');
-      if (counts.JadwalTemplate > 0) throw new Error('Tidak dapat menghapus guru yang masih terdaftar di Jadwal Pelajaran');
+      if (counts.JadwalKBM > 0) throw new Error('Tidak dapat menghapus guru yang masih terdaftar di Jadwal Pelajaran');
       if (counts.SupervisiGuru > 0 || counts.SupervisiAsSupervisor > 0) throw new Error('Tidak dapat menghapus guru yang memiliki data Supervisi');
       if (counts.SiswaPkl > 0) throw new Error('Tidak dapat menghapus guru yang sedang menjadi pembimbing PKL');
       if (counts.IzinKeluarSiswa > 0) throw new Error('Tidak dapat menghapus guru yang memiliki data Izin Keluar Siswa');
@@ -705,6 +709,32 @@ export class GuruService {
     }
 
     return { created, updated, errors };
+  }
+
+  async uploadGuruDocument(params: {
+    tenantId: string;
+    guruId: string;
+    judul: string;
+    kategori: string;
+    actorUserId?: string;
+    file: MultipartFile;
+  }) {
+    return uploadGuruDocumentCommand(params);
+  }
+
+  async deleteGuruDocument(params: {
+    tenantId: string;
+    guruId: string;
+    documentId: string;
+  }) {
+    return deleteGuruDocumentCommand(params);
+  }
+
+  async getGuruDocuments(params: {
+    tenantId: string;
+    guruId: string;
+  }) {
+    return getGuruDocumentsQuery(params);
   }
 }
 

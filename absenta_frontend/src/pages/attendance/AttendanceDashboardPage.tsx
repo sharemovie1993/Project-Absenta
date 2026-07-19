@@ -335,7 +335,7 @@ const AttendanceDashboardPage: React.FC = () => {
     <PremiumFeatureGate
       moduleName="ABSENSI"
       featureName="Dashboard Kehadiran & Gerbang"
-      description="Kelola jadwal template KBM, rekam wajah biometrik siswa, status mesin RFID gerbang, dan log kehadiran real-time."
+      description="Kelola jadwal KBM KBM, rekam wajah biometrik siswa, status mesin RFID gerbang, dan log kehadiran real-time."
     >
       <AcademicPageLayout
         title="Dashboard Absensi"
@@ -403,11 +403,11 @@ const AttendanceDashboardPage: React.FC = () => {
                 </div>
               </SectionCard>
 
-              {/* Rencana KBM/Jadwal Template Siswa */}
+              {/* Rencana KBM/Jadwal KBM Siswa */}
               <SectionCard
                 title={
                   <div className="flex flex-col">
-                    <span>Jadwal Pelajaran Anda</span>
+                    <span>Jadwal KBM Anda</span>
                     <span className="text-[9px] font-medium text-slate-500 normal-case tracking-normal mt-0.5">Daftar kegiatan pembelajaran terjadwal hari ini</span>
                   </div>
                 }
@@ -418,7 +418,7 @@ const AttendanceDashboardPage: React.FC = () => {
                 <div className="p-4 flex flex-col items-center justify-center text-center text-slate-500">
                   <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-2" />
                   <p className="text-sm font-semibold">Tidak ada jadwal KBM khusus hari ini</p>
-                  <p className="text-xs mt-1">Gunakan tab menu samping untuk melihat template jadwal KBM lengkap</p>
+                  <p className="text-xs mt-1">Gunakan tab menu samping untuk melihat jadwal KBM KBM lengkap</p>
                 </div>
               </SectionCard>
             </div>

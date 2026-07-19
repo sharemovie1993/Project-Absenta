@@ -298,7 +298,7 @@ export class SupervisiService {
     });
     if (!activeSemester) return [];
 
-    const teacherSchedules = await prisma.jadwalTemplate.findMany({
+    const teacherSchedules = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
         guru_id: guruId,
@@ -330,7 +330,7 @@ export class SupervisiService {
       }
     });
 
-    const daySchedules = await prisma.jadwalTemplate.findMany({
+    const daySchedules = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
         hari: dayName as any,

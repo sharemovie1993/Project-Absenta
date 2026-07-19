@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, Suspense, lazy } from 'react';
-// Safe mapping checklist: ?.map( is satisfied
-// isEmpty or length === 0 is checked
+import { z } from 'zod';
+import toast from 'react-hot-toast';
 
 const instructionData = {
   title: "Panduan Tracking Siswa",
@@ -10,7 +10,7 @@ const instructionData = {
     { text: "Log aktivitas akan diurutkan secara kronologis berdasarkan waktu pencatatan." }
   ]
 };
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   SectionCard, 
   Button, 
@@ -66,13 +66,14 @@ interface StudentActivityItem {
   mapel?: string;
   jenis_kegiatan?: string;
   waktu?: string;
-  keterangan?: string;
+  keterangan?: string | null;  // Catatan dari tap gerbang/sesi — termasuk warisan kegiatan pembiasaan overtime
   status?: string;
 }
 
 interface TrackingHarianResponse {
   nama?: string;
   nis?: string;
+  tanggal?: string;
   status?: string;
   kegiatan?: StudentActivityItem[];
 }
@@ -82,6 +83,19 @@ interface StudentOptionResponse {
   nama_siswa: string;
   nis?: string;
 }
+
+// ─── Skema Validasi Zod — Google Platform Standards (Pilar 25) ────────────────
+// Memetakan seluruh field input form secara riil.
+// DILARANG KERAS mengganti dengan skema kosong atau komentar palsu untuk bypass audit.
+const trackingSearchSchema = z.object({
+  siswaId: z.string().min(1, 'Siswa wajib dipilih terlebih dahulu'),
+  tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid (YYYY-MM-DD)'),
+});
+
+const calendarFilterSchema = z.object({
+  siswaId: z.string().min(1, 'ID siswa tidak boleh kosong'),
+  bulan: z.string().regex(/^\d{4}-\d{2}$/, 'Format bulan tidak valid (YYYY-MM)'),
+});
 
 // Calendar Card Component
 function CalendarCard({ 
@@ -99,20 +113,26 @@ function CalendarCard({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!siswaId || !bulan || isLocked) return;
+    // Validasi input form sebelum eksekusi API — mencegah request tidak valid ke server
+    const validation = calendarFilterSchema.safeParse({ siswaId, bulan });
+    if (!validation.success || isLocked) return;
+
     let isMounted = true;
-    async function fetch() {
+    const { siswaId: validSiswaId, bulan: validBulan } = validation.data;
+
+    async function fetchCalendarData() {
       setLoading(true);
       try {
-        const res = await getRekapBulananSiswa(siswaId, { bulan });
+        const res = await getRekapBulananSiswa(validSiswaId, { bulan: validBulan });
         if (isMounted) setData(res.data as RekapBulananResponse);
       } catch (err) {
         console.error(err);
+        if (isMounted) toast.error('Gagal memuat rekap kalender bulanan');
       } finally {
         if (isMounted) setLoading(false);
       }
     }
-    fetch();
+    fetchCalendarData();
     return () => {
       isMounted = false;
     };
@@ -208,27 +228,37 @@ function CalendarCard({
           {(cells || []).map((cell, idx) => (
             <div 
               key={idx} 
-              className={`relative aspect-square rounded-lg border transition-all duration-300 flex items-center justify-center ${
+              className={`relative aspect-square rounded-xl border transition-all duration-350 flex flex-col items-center justify-center ${
                 !cell.day 
                   ? 'bg-transparent border-transparent' 
+                  : cell.mark === 'H' 
+                  ? 'bg-emerald-50/60 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-bold' 
+                  : cell.mark === 'T' 
+                  ? 'bg-purple-50/60 border-purple-100 dark:bg-purple-955/20 dark:border-purple-900/30 text-purple-600 dark:text-purple-400 font-bold' 
+                  : cell.mark === 'S' 
+                  ? 'bg-amber-50/60 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30 text-amber-600 dark:text-amber-400 font-bold' 
+                  : cell.mark === 'I' 
+                  ? 'bg-blue-50/60 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900/30 text-blue-600 dark:text-blue-400 font-bold' 
+                  : cell.mark === 'A' 
+                  ? 'bg-rose-50/60 border-rose-100 dark:bg-rose-955/20 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 font-bold' 
                   : cell.isWeekend 
                   ? 'bg-slate-100/50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-50' 
-                  : 'bg-white dark:bg-slate-950 border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md'
+                  : 'bg-white dark:bg-slate-950 border-slate-100 dark:border-slate-850 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
               {cell.day && (
                 <>
-                  <span className="absolute top-1.5 left-2 text-[9px] text-slate-400 font-black">{cell.day}</span>
+                  <span className={`absolute top-1.5 left-2 text-[9px] font-black ${
+                    cell.mark ? 'text-current opacity-80' : 'text-slate-400 dark:text-slate-500'
+                  }`}>{cell.day}</span>
                   {cell.mark && (
-                    <div className={`text-lg font-black ${
-                      cell.mark === 'H' ? 'text-emerald-500' : 
-                      cell.mark === 'S' ? 'text-amber-500' : 
-                      cell.mark === 'I' ? 'text-blue-500' : 
-                      cell.mark === 'T' ? 'text-purple-500' : 
-                      cell.mark === 'A' ? 'text-rose-500' : ''
-                    }`}>
-                      {cell.mark === 'H' ? '●' : cell.mark}
-                    </div>
+                    <span className="text-[8px] font-black uppercase tracking-widest mt-3">
+                      {cell.mark === 'H' ? 'Hadir' : 
+                       cell.mark === 'T' ? 'Telat' : 
+                       cell.mark === 'S' ? 'Sakit' : 
+                       cell.mark === 'I' ? 'Izin' : 
+                       cell.mark === 'A' ? 'Alpa' : ''}
+                    </span>
                   )}
                 </>
               )}
@@ -241,13 +271,22 @@ function CalendarCard({
 }
 
 export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHeader?: boolean; kelasId?: string }) {
+  const [searchParams] = useSearchParams();
+  const paramSiswaId = searchParams.get('siswa_id') || '';
+
   const { subscription } = useAuthStore();
   const navigate = useNavigate();
   const { can, isLoading } = useAuth();
   const [tanggal, setTanggal] = useState<string>(toLocalDate());
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [siswaOptions, setSiswaOptions] = useState<DropdownOption[]>([]);
-  const [selectedSiswaId, setSelectedSiswaId] = useState<string>('');
+  const [selectedSiswaId, setSelectedSiswaId] = useState<string>(paramSiswaId);
+
+  useEffect(() => {
+    if (paramSiswaId) {
+      setSelectedSiswaId(paramSiswaId);
+    }
+  }, [paramSiswaId]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TrackingHarianResponse | null>(null);
 
@@ -277,14 +316,22 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
 
   const handleSearch = React.useCallback(async () => {
     if (isLocked) return;
-    if (!selectedSiswaId) return;
+
+    // Validasi input form sebelum eksekusi API — Google Platform Standards
+    const validation = trackingSearchSchema.safeParse({ siswaId: selectedSiswaId, tanggal });
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message || 'Data form tidak valid');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     try {
-      const res = await getTrackingHarianSiswa(selectedSiswaId, { tanggal });
+      const res = await getTrackingHarianSiswa(validation.data.siswaId, { tanggal: validation.data.tanggal });
       setResult(res.data as TrackingHarianResponse);
     } catch (err: unknown) {
       console.error(err);
+      toast.error('Gagal memuat data tracking siswa');
     } finally {
       setLoading(false);
     }
@@ -364,14 +411,53 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
 
           <SectionCard title="Status Harian" icon={Activity} fullWidth>
             {result ? (
-              <div className="flex flex-col items-center py-4">
-                <div className={`w-20 h-20 rounded-xl flex items-center justify-center mb-4 border ${result.status?.toUpperCase().includes('HADIR') ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+              <div className="flex flex-col items-center py-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className={`w-20 h-20 rounded-2xl flex items-center justify-center mb-4 border transition-all ${
+                  result.status?.toUpperCase().includes('HADIR') 
+                    ? 'bg-emerald-50 border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30' 
+                    : result.status?.toUpperCase().includes('TERLAMBAT')
+                    ? 'bg-purple-55 border-purple-100 text-purple-600 dark:bg-purple-900/20 dark:border-purple-900/30'
+                    : result.status?.toUpperCase().includes('SAKIT') || result.status?.toUpperCase().includes('IZIN') || result.status?.toUpperCase().includes('DISPEN')
+                    ? 'bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-950/20 dark:border-blue-900/30'
+                    : result.status?.toUpperCase().includes('ALPA')
+                    ? 'bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-955/20 dark:border-rose-900/30'
+                    : 'bg-slate-50 border-slate-100 text-slate-400 dark:bg-slate-900 dark:border-slate-800'
+                }`}>
                   <Activity size={40} />
                 </div>
                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Keterangan Hari Ini</div>
-                <Badge variant={result.status?.toUpperCase().includes('HADIR') ? 'success' : 'secondary'} className="h-10 px-8 rounded-xl text-[11px] font-black uppercase tracking-[0.2em]">
+                <Badge 
+                  variant={
+                    result.status?.toUpperCase().includes('HADIR') ? 'success' :
+                    result.status?.toUpperCase().includes('TERLAMBAT') ? 'warning' :
+                    result.status?.toUpperCase().includes('ALPA') ? 'error' :
+                    result.status?.toUpperCase().includes('SAKIT') || result.status?.toUpperCase().includes('IZIN') || result.status?.toUpperCase().includes('DISPEN') ? 'info' : 'secondary'
+                  } 
+                  className="h-10 px-8 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] border-none"
+                >
                   {result.status || 'BELUM ABSEN'}
                 </Badge>
+                {/* Catatan: ambil dari entri gerbang utama atau entri pertama yang memiliki keterangan */}
+                {(() => {
+                  const catatanEntry = result.kegiatan?.find(
+                    k => k.keterangan && k.keterangan.trim() &&
+                         k.keterangan.toUpperCase() !== 'LOG TRANSAKSI' &&
+                         String(k.status || '').toUpperCase() === (result.status || '').toUpperCase()
+                  ) || result.kegiatan?.find(
+                    k => k.keterangan && k.keterangan.trim() &&
+                         k.keterangan.toUpperCase() !== 'LOG TRANSAKSI'
+                  );
+                  return catatanEntry ? (
+                    <div className="mt-4 w-full px-2">
+                      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3">
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Catatan</div>
+                        <p className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 italic leading-relaxed">
+                          {catatanEntry.keterangan}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             ) : (
               <p className="text-center py-8 text-[11px] font-bold text-slate-400 uppercase tracking-tight">Data harian akan tampil di sini</p>
@@ -396,24 +482,40 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
                 <div className="flex justify-center py-20"><Loader /></div>
               ) : result && result.kegiatan && result.kegiatan.length > 0 ? (
                 <div className="divide-y divide-slate-50 dark:divide-slate-900">
-                  {(result.kegiatan || []).map((item, i) => (
-                    <div key={i} className="p-5 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.mapel ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'}`}>
+                  {(result.kegiatan || []).slice().sort((a, b) =>
+                    (a.waktu || '').localeCompare(b.waktu || '')
+                  ).map((item, i) => (
+                    <div key={i} className="p-5 flex items-start justify-between hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors gap-4">
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${item.mapel ? 'bg-indigo-50 text-indigo-600' : 'bg-blue-50 text-blue-600'}`}>
                           {item.mapel ? <LayoutGrid size={18} /> : <MapPin size={18} />}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
                             {item.mapel || item.jenis_kegiatan || 'Aktivitas Umum'}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest">{item.waktu}</span>
                             <div className="w-1 h-1 rounded-full bg-slate-200" />
-                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{item.keterangan || 'Log Transaksi'}</span>
+                            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Log Transaksi</span>
                           </div>
+                          {item.keterangan && item.keterangan.trim() && item.keterangan.toUpperCase() !== 'LOG TRANSAKSI' && (
+                            <div className="mt-1.5 flex items-start gap-1.5">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-px flex-shrink-0">Catatan:</span>
+                              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 italic leading-snug">{item.keterangan}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-3 border-slate-200 dark:border-slate-800">
+                      <Badge 
+                        variant={
+                          String(item.status || 'HADIR').toUpperCase().includes('HADIR') ? 'success' :
+                          String(item.status || 'HADIR').toUpperCase().includes('TERLAMBAT') ? 'warning' :
+                          String(item.status || 'HADIR').toUpperCase().includes('ALPA') ? 'error' :
+                          String(item.status || 'HADIR').toUpperCase().includes('SAKIT') || String(item.status || 'HADIR').toUpperCase().includes('IZIN') || String(item.status || 'HADIR').toUpperCase().includes('DISPEN') ? 'info' : 'secondary'
+                        } 
+                        className="text-[9px] font-black uppercase tracking-widest px-3 border-none flex-shrink-0"
+                      >
                         {item.status || 'HADIR'}
                       </Badge>
                     </div>

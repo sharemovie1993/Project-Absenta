@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { kurikulumApi } from '@/api/kurikulum.api';
 import { guruApi, kelasApi, mapelApi, semesterApi, jurusanApi, tahunPelajaranApi } from '@/api/academic.api';
-import { getJadwalTemplate } from '@/api/attendance/jadwalTemplate.api';
+import { getJadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { useTvStore } from '@/store/tvStore';
 import { useTvStore as useTvStoreLocal } from '@/store/tvStore'; // unused mapping prevention
 import { useJenjang } from '@/hooks/useJenjang';
@@ -119,8 +119,8 @@ export default function KurikulumDashboard() {
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: jwR } = useQuery({
-    queryKey: ['attendance', 'jadwal-template-dash', semester?.id],
-    queryFn: () => getJadwalTemplate({ semester_id: semester?.id }),
+    queryKey: ['attendance', 'jadwal-kbm-dash', semester?.id],
+    queryFn: () => getJadwalKBM({ semester_id: semester?.id }),
     enabled: !!semester?.id,
     refetchInterval: REFETCH, staleTime: 30_000,
   });
@@ -150,7 +150,7 @@ export default function KurikulumDashboard() {
   const distribusi  = useMemo(() => buildDistribusi(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
   const beban       = useMemo(() => buildBeban(strRows, kelompokOptions, isVocational), [strRows, kelompokOptions, isVocational]);
 
-  // Realistis Guru Load calculation from actual JadwalTemplate data
+  // Realistis Guru Load calculation from actual JadwalKBM data
   const teachersLoad = useMemo(() => {
     const teachers = safeArr<{ id: string; nama_guru: string }>(guruR);
     const jadwalList = safeArr<{ guru_id?: string }>(jwR);
@@ -447,7 +447,7 @@ export default function KurikulumDashboard() {
 
                           {/* Right Column: Schedule Conflicts */}
                           <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal Pelajaran</h4>
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal KBM</h4>
                             {conflicts.length === 0 ? (
                               <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
                                 <CheckCircle2 size={20} className="text-emerald-500" />
@@ -470,7 +470,7 @@ export default function KurikulumDashboard() {
                         </div>
                       </div>
                       <div className="text-[9px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-3 shrink-0">
-                        * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal Template aktif.
+                        * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal KBM aktif.
                       </div>
                     </Card>
                   </div>
@@ -702,7 +702,7 @@ export default function KurikulumDashboard() {
                     <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
                       Resolusi Konflik & Beban Mengajar
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Verifikasi validitas pembagian beban mengajar & jadwal pelajaran</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Verifikasi validitas pembagian beban mengajar & jadwal KBM</p>
                   </div>
                 </div>
 
@@ -746,7 +746,7 @@ export default function KurikulumDashboard() {
 
                   {/* Right Column: Schedule Conflicts */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal Pelajaran</h4>
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bentrok Jadwal KBM</h4>
                     {conflicts.length === 0 ? (
                       <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-2xl text-center gap-2">
                         <CheckCircle2 size={20} className="text-emerald-500" />
@@ -770,7 +770,7 @@ export default function KurikulumDashboard() {
                 </div>
               </div>
               <div className="text-[9px] text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800 pt-3 shrink-0 mt-4">
-                * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal Template aktif.
+                * Peringatan beban dan bentrok dihasilkan otomatis dari verifikasi data Jadwal KBM aktif.
               </div>
             </Card>
           </div>

@@ -15,3 +15,9 @@
 ### 3. Integritas Data & Pelaporan
 - **Mapel Reference**: Mata pelajaran dalam struktur kurikulum harus merujuk pada master data mapel yang aktif di modul `Academic`.
 - **History Protection**: Penghapusan data struktur kurikulum menggunakan `deleteMany` dengan filter `tenant_id` untuk memastikan keamanan data lintas sekolah.
+
+### 4. Jadwal Pelajaran (JadwalKBM)
+- **Slot Index Mapping**: Jadwal pelajaran dipetakan menggunakan `slot_index` (Jam Ke-1, Ke-2, dst.) alih-alih waktu absolut, sehingga visualisasi grid dan alokasi jam mengajar secara otomatis menyesuaikan ketika terjadi perubahan jam KBM sekolah di tingkat Tenant Config.
+- **Conflict Validation**: Bentrok jadwal kelas divalidasi secara ketat berdasarkan keunikan `slot_index` per hari/kelas. Bentrok jadwal guru divalidasi menggunakan rentang waktu absolut hasil konversi dari `slot_index` untuk tetap mendukung jadwal mengajar guru lintas kelas/shift.
+- **Auto Session Generation (Organic Sync)**: Setiap kali jadwal pelajaran baru dibuat (`create`), diperbarui (`update`), atau diimpor (`importFromExcel`), jika hari jadwal tersebut sesuai dengan hari aktif hari ini, sistem secara otomatis dan organik akan men-trigger pembuatan/penyesuaian sesi absensi (`SesiAbsensi` beserta `AbsenGuru` default) secara real-time untuk hari tersebut, tanpa harus menunggu siklus cron job harian berikutnya (idempotent sync).
+

@@ -288,8 +288,8 @@ export async function getRekapHarianSiswaMe(
 export async function getTrackingHarianSiswa(
   siswa_id: string,
   params: { tanggal: string }
-): Promise<{ success: boolean; message: string; data: { nama: string; tanggal: string; kegiatan: Array<{ waktu: string; jenis_kegiatan: string; status: string }> } }>{
-  return requestWithFallback<{ success: boolean; message: string; data: { nama: string; tanggal: string; kegiatan: Array<{ waktu: string; jenis_kegiatan: string; status: string }> } }>('get', `/attendance/rekap/siswa/${siswa_id}/tracking`, { 
+): Promise<{ success: boolean; message: string; data: { nama: string; nis?: string; tanggal: string; status?: string; kegiatan: Array<{ waktu: string; jenis_kegiatan: string; status: string; keterangan?: string | null }> } }>{
+  return requestWithFallback<{ success: boolean; message: string; data: { nama: string; nis?: string; tanggal: string; status?: string; kegiatan: Array<{ waktu: string; jenis_kegiatan: string; status: string; keterangan?: string | null }> } }>('get', `/attendance/rekap/siswa/${siswa_id}/tracking`, { 
     params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });

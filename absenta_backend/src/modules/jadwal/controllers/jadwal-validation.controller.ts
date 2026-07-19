@@ -20,7 +20,7 @@ export class JadwalValidationController {
         tanggal: body.tanggal ? new Date(body.tanggal) : undefined,
         kelas_id: body.kelas_id,
         guru_id: body.guru_id,
-        exclude_jadwal_template_id: body.exclude_jadwal_template_id,
+        exclude_jadwal_kbm_id: body.exclude_jadwal_kbm_id || body.exclude_jadwal_template_id,
         exclude_sesi_id: body.exclude_sesi_id,
       };
 

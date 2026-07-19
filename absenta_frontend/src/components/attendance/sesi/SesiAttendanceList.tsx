@@ -83,12 +83,19 @@ const SesiAttendanceRow = React.memo(({
           </p>
         )}
       </div>
-      <div className="flex items-center justify-center gap-1.5">
-        <span className="text-[10px] font-bold text-gray-500">
-           {record.waktu_tap ? new Date(record.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-        </span>
-        {record.status === 'HADIR' && !record.asal_gerbang && (
-           <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin-slow" />
+      <div className="flex flex-col items-center justify-center gap-0.5">
+        <div className="flex items-center justify-center gap-1.5">
+          <span className="text-[10px] font-bold text-gray-500">
+             {record.waktu_tap ? new Date(record.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+          </span>
+          {record.status === 'HADIR' && !record.asal_gerbang && (
+             <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin-slow" />
+          )}
+        </div>
+        {record.is_terlambat && (
+          <span className="px-1 py-0.2 text-[7px] font-black bg-rose-50 text-rose-600 rounded-sm uppercase tracking-tighter border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
+            Telat
+          </span>
         )}
       </div>
       <div className={cn("flex items-center gap-1", isReportMode ? "justify-center" : "justify-end")}>

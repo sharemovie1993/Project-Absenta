@@ -2,6 +2,8 @@ import { defineCronJob } from '../infra/jobEngine';
 import { appLogger } from '../utils/app-logger';
 import { prisma } from '../utils/prisma';
 import { emitDomainEvent } from '../infra/event-bus';
+import { ATTENDANCE_POINTS } from '../constants/attendance-points';
+import { systemConfigService } from '../modules/system-config/services/system-config.service';
 
 /**
  * Jalankan satu siklus auto-close sesi kehadiran.
@@ -81,23 +83,76 @@ async function finalizeSessionAndNotify(sessionId: string, tenantId: string) {
     });
     const existingIds = new Set(existingAbsents.map(a => a.siswa_akademik_id));
 
-    // 3. Sisanya tandai ALPA
+    // 3. Sisanya tandai ALPA atau IZIN (Jika ada izin keluar piket)
     const students = session.Kelas.SiswaAkademik || [];
-    const alpaData = students
-      .filter(s => !existingIds.has(s.id))
-      .map(s => ({
-        tenant_id: tenantId,
-        sesi_id: sessionId,
-        siswa_akademik_id: s.id,
-        status: 'ALPA',
-        waktu_tap: null,
-        tahun_pelajaran_id: session.tahun_pelajaran_id,
-        semester_id: session.semester_id,
-        keterangan: 'Auto-closed by system'
-      }));
+    const missingStudents = students.filter(s => !existingIds.has(s.id));
 
-    if (alpaData.length > 0) {
-      await tx.absenSiswa.createMany({ data: alpaData });
+    if (missingStudents.length > 0) {
+      const missingIds = missingStudents.map(s => s.id);
+
+      // Cek Izin Keluar yang aktif selama sesi berlangsung
+      // Izin dianggap aktif jika jam_keluar < waktu_selesai sesi
+      // DAN (jam_kembali is null ATAU jam_kembali > waktu_mulai sesi)
+      const activePermits = await tx.izinKeluarSiswa.findMany({
+        where: {
+          siswa_akademik_id: { in: missingIds },
+          tenant_id: tenantId,
+          jam_keluar: { lt: session.waktu_selesai || new Date() },
+          OR: [
+            { jam_kembali: null },
+            { jam_kembali: { gt: session.waktu_mulai } }
+          ]
+        },
+        select: { 
+          siswa_akademik_id: true, 
+          alasan: true,
+          tipe_izin: true,
+          jam_keluar: true,
+          jam_kembali: true
+        }
+      });
+
+      const sysCfg = await systemConfigService.getActive(tenantId);
+      const maxIzinMenit = sysCfg?.max_izin_sementara_menit ?? 45;
+
+      const studentPermitMap = new Map(activePermits.map(p => [p.siswa_akademik_id, p]));
+
+      const autoAttendanceData = missingStudents.map(s => {
+         const permit = studentPermitMap.get(s.id);
+         let isIzin = !!permit;
+         let finalCatatan = permit ? `[PIKET] ${permit.alasan}` : 'Auto-closed by system';
+         let finalStatus = isIzin ? 'IZIN' : 'ALPA';
+
+         // SMART TIMEOUT LOGIC
+         if (permit && permit.tipe_izin === 'IZIN_KELUAR' && !permit.jam_kembali) {
+           const waktuSelesaiSesi = session.waktu_selesai || new Date();
+           const diffMenit = Math.floor((waktuSelesaiSesi.getTime() - permit.jam_keluar.getTime()) / (1000 * 60));
+           
+           if (diffMenit > maxIzinMenit) {
+             isIzin = false;
+             finalStatus = 'ALPA';
+             finalCatatan = `[BOLOS] Izin keluar sementara melebihi batas ${maxIzinMenit} menit (Durasi: ${diffMenit}m)`;
+           }
+         }
+ 
+         return {
+           tenant_id: tenantId,
+           sesi_id: sessionId,
+           siswa_id: (s as any).siswa_id || null,
+           siswa_akademik_id: s.id,
+           status: finalStatus,
+           waktu_tap: null,
+           asal_gerbang: false,
+           poin_kehadiran: isIzin ? ATTENDANCE_POINTS.IZIN : ATTENDANCE_POINTS.ALPA,
+           kelas_id_snapshot: session.kelas_id,
+           kelas_nama_snapshot: session.Kelas?.nama_kelas || null,
+           tingkat_snapshot: session.Kelas?.tingkat || null,
+           tahun_pelajaran_id_snapshot: session.tahun_pelajaran_id,
+           catatan: finalCatatan
+         };
+       });
+
+      await tx.absenSiswa.createMany({ data: autoAttendanceData });
     }
 
     // 4. Update AbsenGuru jika belum hadir

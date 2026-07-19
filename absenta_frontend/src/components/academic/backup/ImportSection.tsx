@@ -32,7 +32,7 @@ interface BackupStats {
     siswaAkademik: number;
   };
   operational: {
-    jadwalTemplate: number;
+    jadwalKBM: number;
     guruStruktur: number;
     siswaStruktur: number;
     pelanggaran: number;

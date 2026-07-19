@@ -18,7 +18,8 @@ import {
   UserCheck, 
   Wrench, 
   Coins,
-  ClipboardCheck
+  ClipboardCheck,
+  Sparkles
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { STRUKTUR_CONFIG, shortenPosition } from './StrukturConfig';
@@ -35,6 +36,7 @@ export const getRoleIcon = (roleCode: string, size = 16, className = "") => {
   if (code === 'BPBK') return <HeartHandshake size={size} className={className} />;
   if (code === 'GERBANG') return <Shield size={size} className={className} />;
   if (code === 'WALIKELAS') return <UserCheck size={size} className={className} />;
+  if (code === 'PEMBINA_ESKUL') return <Sparkles size={size} className={className} />;
   if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(code)) return <Wrench size={size} className={className} />;
   if (code === 'KOPERASI' || code.includes('KOP')) return <Coins size={size} className={className} />;
   if (['PETUGAS_KELAS', 'PETUGAS_ABSENSI'].includes(code)) return <ClipboardCheck size={size} className={className} />;
@@ -70,6 +72,8 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-emerald-600 dark:bg-emerald-500";
   } else if (role === 'KESISWAAN') {
     headerBg = "bg-amber-600 dark:bg-amber-500";
+  } else if (role === 'PEMBINA_ESKUL') {
+    headerBg = "bg-purple-600 dark:bg-purple-500";
   } else if (role === 'HUBIN') {
     headerBg = "bg-cyan-600 dark:bg-cyan-500";
   } else if (role === 'SARPRAS') {
@@ -120,6 +124,8 @@ export const CategoryNode = React.memo<NodeDesignProps>(({ node }) => {
     categoryColor = "bg-emerald-600 dark:bg-emerald-500";
   } else if (node.data?.roleCode === 'KESISWAAN') {
     categoryColor = "bg-amber-600 dark:bg-amber-500";
+  } else if (node.data?.roleCode === 'PEMBINA_ESKUL') {
+    categoryColor = "bg-purple-600 dark:bg-purple-500";
   } else if (node.data?.roleCode === 'HUBIN') {
     categoryColor = "bg-cyan-600 dark:bg-cyan-500";
   } else if (node.data?.roleCode === 'SARPRAS') {
@@ -192,6 +198,8 @@ export const UnassignedNode = React.memo<NodeDesignProps>(({ node }) => {
     headerBg = "bg-emerald-600 dark:bg-emerald-500";
   } else if (role === 'KESISWAAN') {
     headerBg = "bg-amber-600 dark:bg-amber-500";
+  } else if (role === 'PEMBINA_ESKUL') {
+    headerBg = "bg-purple-600 dark:bg-purple-500";
   } else if (role === 'HUBIN') {
     headerBg = "bg-cyan-600 dark:bg-cyan-500";
   } else if (role === 'SARPRAS') {

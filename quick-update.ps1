@@ -49,6 +49,15 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host $migrateResult -ForegroundColor Gray
 }
 
+# Jalankan seeding database untuk memperbarui menu/data master
+Write-Host "Menjalankan seeding database..." -ForegroundColor Yellow
+npx prisma db seed
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "⚠️  Warning: Prisma db seed gagal atau dilewati." -ForegroundColor Yellow
+} else {
+    Write-Host "Prisma db seed berhasil dijalankan." -ForegroundColor Green
+}
+
 # 3. Cek & Install Dependensi
 Write-Host "[3/4] Memperbarui dependensi..." -ForegroundColor Yellow
 cd "$appRoot\absenta_backend"

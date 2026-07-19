@@ -4,6 +4,7 @@ import { bpbkApi } from '../../../api/bpbk.api';
 import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/Tabs';
+import { TabSwitcher } from '../../../components/ui/TabSwitcher';
 import { Table } from '../../../components/ui/Table';
 import type { Column } from '../../../components/ui/Table';
 import { Button } from '../../../components/ui/Button';
@@ -291,11 +292,16 @@ export const SettingsSection: React.FC = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="pelanggaran" className="w-full" onValueChange={(val: any) => setActiveTab(val)}>
-        <TabsList className="grid w-full grid-cols-2 mb-6 h-12 p-1.5 bg-slate-100/80 dark:bg-slate-900/50 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-          <TabsTrigger value="pelanggaran" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg">Kategori Pelanggaran & Poin</TabsTrigger>
-          <TabsTrigger value="prestasi" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg">Kategori Prestasi & Poin</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} className="w-full" onValueChange={(val: any) => setActiveTab(val as 'pelanggaran' | 'prestasi')}>
+        <TabSwitcher
+          options={[
+            { id: 'pelanggaran', label: 'Kategori Pelanggaran & Poin', icon: ShieldAlert, colorClass: 'text-rose-600 dark:text-rose-400' },
+            { id: 'prestasi', label: 'Kategori Prestasi & Poin', icon: Trophy, colorClass: 'text-emerald-600 dark:text-emerald-400' }
+          ]}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as 'pelanggaran' | 'prestasi')}
+          className="mb-6"
+        />
 
         <TabsContent value="pelanggaran" className="space-y-4">
           <Table

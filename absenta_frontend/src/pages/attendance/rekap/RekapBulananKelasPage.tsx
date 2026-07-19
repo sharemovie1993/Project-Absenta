@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 // Standardized using lazy( and Suspense
 import { 
   SectionCard, 
@@ -71,12 +72,16 @@ export function RekapBulananKelasContent({
 }: { 
   initialKelasId?: string;
 }) {
-  const { subscription } = useAuthStore();
+  const { user, subscription } = useAuthStore();
+  const navigate = useNavigate();
   const { can, isLoading } = useAuth();
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
-  const [kelasId, setKelasId] = useState(initialKelasId || '');
+  
+  // Default to Wali Kelas class ID if no initialKelasId is supplied
+  const waliKelasId = (user?.guru_profile as any)?.wali_kelas_di?.id;
+  const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<RekapBulananKelasRow[] | null>(null);
@@ -95,8 +100,9 @@ export function RekapBulananKelasContent({
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
   useEffect(() => {
-    if (initialKelasId) setKelasId(initialKelasId);
-  }, [initialKelasId]);
+    const activeWaliKelasId = (user?.guru_profile as any)?.wali_kelas_di?.id;
+    setKelasId(initialKelasId || activeWaliKelasId || '');
+  }, [initialKelasId, user]);
 
   useEffect(() => {
     const loadDropdowns = async () => {
@@ -136,7 +142,15 @@ export function RekapBulananKelasContent({
     { 
       label: 'Nama Siswa', 
       key: 'nama_siswa', 
-      render: (v: unknown) => <span className="font-bold text-slate-800 dark:text-slate-200">{String(v)}</span>
+      render: (v: unknown, row: RekapBulananKelasRow) => (
+        <button
+          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${row.siswa_id}`)}
+          className="font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 text-left transition-all"
+          title="Klik untuk Melacak Detail Aktivitas & Sesi Pembelajaran Siswa"
+        >
+          {String(v)}
+        </button>
+      )
     },
     { 
       label: 'Hadir', 
@@ -250,7 +264,7 @@ export function RekapBulananKelasContent({
                 columns={columns}
                 data={pagedRows}
                 loading={loading}
-                emptyMessage="Silakan pilih filter dan klik Generate Laporan."
+                emptyMessage={kelasId ? "Tidak ada catatan presensi yang ditemukan untuk bulan ini." : "Silakan pilih filter dan klik Generate Laporan."}
                 compact={true}
                 className="border-none"
                 pagination={{
@@ -283,6 +297,9 @@ export function RekapBulananKelasContent({
 }
 
 export default function RekapBulananKelasPage() {
+  const [searchParams] = useSearchParams();
+  const kelasIdParam = searchParams.get('kelas_id') || undefined;
+
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
 
@@ -301,7 +318,7 @@ export default function RekapBulananKelasPage() {
           featureName="Rekap Presensi Per Kelas"
           description="Analisis kehadiran seluruh siswa dalam satu kelas secara kolektif dengan tampilan pivot yang mendetail."
         >
-          <RekapBulananKelasContent />
+          <RekapBulananKelasContent initialKelasId={kelasIdParam} />
         </PremiumFeatureGate>
       </Suspense>
     </AcademicPageLayout>

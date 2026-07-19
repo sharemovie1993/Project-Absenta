@@ -47,7 +47,7 @@ export class OrganizationalAuthorizationEngine {
 
       let teachingKelasIds: string[] = [];
       if (guru) {
-        const schedules = await prisma.jadwalTemplate.findMany({
+        const schedules = await prisma.jadwalKBM.findMany({
           where: { guru_id: guru.id },
           select: { kelas_id: true }
         });

@@ -6,7 +6,15 @@ export async function studentCardConfigRoutes(fastify: any) {
   fastify.get(
     '/',
     {
-      preHandler: [requireCapability("academic.student.card.view.config")],
+      preHandler: [
+        async (request: any, reply: any) => {
+          const role = request.user?.roleName || request.user?.role?.name;
+          if (role === 'SISWA' || role === 'GURU') {
+            return;
+          }
+          await requireCapability("academic.student.card.view.config")(request, reply);
+        }
+      ],
     },
     studentCardConfigController.getConfig.bind(studentCardConfigController)
   );

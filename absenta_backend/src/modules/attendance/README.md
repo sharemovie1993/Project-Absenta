@@ -38,7 +38,23 @@ Modul Attendance adalah sistem manajemen kehadiran terpadu di platform Absenta.i
 - **Merge Strategy**: Laporan cerdas yang menggabungkan data dari Gerbang dan Sesi Aktivitas untuk memberikan gambaran kehadiran yang utuh.
 - **Statistik Bulanan**: Perhitungan poin kehadiran, persentase kehadiran, dan tren keterlambatan.
 
+### 6. Jadwal Kegiatan (Non-KBM Activity Schedules)
+- **Penjadwalan Fleksibel**: Membuat template jadwal kegiatan berulang (eskul, pembiasaan, upacara) yang terpisah dari jadwal KBM kurikulum.
+- **Masa Berlaku Otomatis**: Jadwal dapat dikonfigurasi untuk satu semester, dua semester, atau sepanjang tahun pelajaran tanpa input tanggal manual.
+- **Dukungan Hari Libur**: Auto-session job (`attendanceAutoSession.job.ts`) mendukung pembuatan sesi absensi untuk kegiatan hari Sabtu/Minggu bahkan jika bukan hari sekolah resmi (misalnya: latihan rutin Pramuka setiap Sabtu).
+
+### 7. Anggota Kegiatan Eskul (Membership Management)
+- **Keanggotaan Terikat Akademik**: Model `AnggotaKegiatanEskul` menghubungkan `SiswaAkademik` (snapshot semester aktif) ke `JenisKegiatanMaster` (eskul).
+- **Kontrol Distribusi Sesi**: Hanya siswa yang terdaftar sebagai anggota eskul yang akan mendapatkan kartu sesi/sesi absensi ketika Jadwal Kegiatan eskul tersebut di-generate — mencegah distribusi sesi ke semua kelas yang tidak relevan.
+- **Manajemen Bulk**: Mendukung penambahan anggota secara massal melalui picker siswa yang dapat difilter per kelas.
+- **Endpoint API**:
+  - `GET /api/attendance/anggota-kegiatan-eskul/siswa-picker` — Daftar siswa aktif untuk picker.
+  - `GET /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId` — Daftar anggota eskul.
+  - `POST /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId/add` — Tambah anggota (bulk).
+  - `DELETE /api/attendance/anggota-kegiatan-eskul/member/:anggotaId` — Hapus anggota.
+
 ## Teknologi & Pattern
 - **Pattern**: Command/Query Separation, Repository Pattern, Event-Driven (via Domain Event Bus).
 - **Integrasi**: Terhubung dengan `Notification Service` untuk pengiriman notifikasi real-time ke orang tua.
 - **Real-time**: Menggunakan Socket.io (via `realtime` infra) untuk monitoring gerbang secara langsung.
+

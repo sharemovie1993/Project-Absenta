@@ -1,17 +1,16 @@
-import React, { lazy, Suspense, useMemo, useCallback } from 'react';
+import React, { useState, lazy, Suspense, useMemo, useCallback } from 'react';
 const TenantAttendanceForm = lazy(() => import('../../components/attendance/settings/TenantAttendanceForm').then(module => ({ default: module.TenantAttendanceForm })));
 const KejadianKhususPanel = lazy(() => import('../../components/attendance/settings/KejadianKhususPanel').then(module => ({ default: module.KejadianKhususPanel })));
 const KelasScheduleList = lazy(() => import('../../components/attendance/settings/KelasScheduleList').then(module => ({ default: module.KelasScheduleList })));
 import { 
   Tabs, 
-  TabsList, 
-  TabsTrigger, 
   TabsContent, 
   Alert, 
   AlertDescription, 
   Loader,
   Card 
 } from '../../components/ui';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useAuth } from '../../hooks/useAuth';
 import { 
   Settings, 
@@ -62,10 +61,19 @@ const breadcrumbs = [
 export const AttendanceSettingsPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
   const { can, isLoading: isAuthLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState('general');
 
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
-  const handleTabChange = useCallback((value: string) => {}, []);
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+  }, []);
+
+  const tabOptions = useMemo(() => [
+    { id: 'general', label: 'Pengaturan Umum', icon: Sliders, colorClass: 'text-indigo-650 dark:text-indigo-400' },
+    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-650 dark:text-purple-400' },
+    { id: 'classes', label: 'Jadwal Kelas (Shift)', icon: Clock, colorClass: 'text-emerald-650 dark:text-emerald-400' }
+  ], []);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
@@ -75,18 +83,13 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
 
   const pageContent = (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm inline-flex mb-8">
-          <TabsTrigger value="general" className="rounded-xl px-6 py-2.5 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all">
-            <Sliders className="w-3.5 h-3.5 mr-2" /> Pengaturan Umum
-          </TabsTrigger>
-          <TabsTrigger value="events" className="rounded-xl px-6 py-2.5 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all">
-            <Bell className="w-3.5 h-3.5 mr-2" /> Kejadian Khusus
-          </TabsTrigger>
-          <TabsTrigger value="classes" className="rounded-xl px-6 py-2.5 font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all">
-            <Clock className="w-3.5 h-3.5 mr-2" /> Jadwal Kelas (Shift)
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabSwitcher
+          options={tabOptions}
+          activeTab={activeTab}
+          onChange={handleTabChange}
+          className="mb-8"
+        />
 
         <TabsContent value="general" className="mt-0 focus-visible:outline-none">
           <Card className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">

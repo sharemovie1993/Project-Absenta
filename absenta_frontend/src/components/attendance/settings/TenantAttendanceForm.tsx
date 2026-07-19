@@ -3,7 +3,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, updateTenant, type UpdateTenantRequest } from '../../../api/tenants.api';
 import { Button, Input, Label, ModalFooter, Loader, Alert, Switch } from '../../ui';
 import { toast } from 'react-hot-toast';
-import { Clock, Settings2, Save, RefreshCw } from 'lucide-react';
+import { Clock, Settings2, Save, RefreshCw, CalendarDays } from 'lucide-react';
 
 const TenantAttendanceFormComponent: React.FC = () => {
   const { user } = useAuthStore();
@@ -14,8 +14,19 @@ const TenantAttendanceFormComponent: React.FC = () => {
     jam_masuk_default: '07:00',
     jam_pulang_default: '14:00',
     toleransi_keterlambatan_menit: 15,
+    hari_sekolah: ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
     allow_manual_hadir_gate: false
   });
+
+  const DAYS_OPTIONS = [
+    { value: 'SENIN', label: 'Senin' },
+    { value: 'SELASA', label: 'Selasa' },
+    { value: 'RABU', label: 'Rabu' },
+    { value: 'KAMIS', label: 'Kamis' },
+    { value: 'JUMAT', label: 'Jumat' },
+    { value: 'SABTU', label: 'Sabtu' },
+    { value: 'MINGGU', label: 'Minggu' },
+  ];
 
   const loadTenantData = useCallback(async () => {
     if (!user?.tenant_id) return;
@@ -28,6 +39,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
         jam_masuk_default: tenant.jam_masuk_default || '07:00',
         jam_pulang_default: tenant.jam_pulang_default || '14:00',
         toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit || 15,
+        hari_sekolah: tenant.hari_sekolah || ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
         allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate
       });
     } catch (err) {
@@ -53,6 +65,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
         jam_masuk_default: formData.jam_masuk_default,
         jam_pulang_default: formData.jam_pulang_default,
         toleransi_keterlambatan_menit: Number(formData.toleransi_keterlambatan_menit),
+        hari_sekolah: formData.hari_sekolah,
         allow_manual_hadir_gate: formData.allow_manual_hadir_gate
       };
       
@@ -148,6 +161,50 @@ const TenantAttendanceFormComponent: React.FC = () => {
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+              <CalendarDays size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Hari Sekolah Aktif</h3>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Tentukan hari operasional sekolah</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {DAYS_OPTIONS.map((day) => {
+              const isActive = formData.hari_sekolah.includes(day.value);
+              return (
+                <button
+                  key={day.value}
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => {
+                      const current = [...prev.hari_sekolah];
+                      if (current.includes(day.value)) {
+                        return { ...prev, hari_sekolah: current.filter(d => d !== day.value) };
+                      } else {
+                        return { ...prev, hari_sekolah: [...current, day.value] };
+                      }
+                    });
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
+                    isActive 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200 dark:shadow-none' 
+                      : 'bg-white dark:bg-slate-950 text-slate-400 border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'
+                  }`}
+                >
+                  {day.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-slate-400 font-medium italic">
+            * Sistem hanya akan membuat sesi absensi otomatis pada hari-hari yang dipilih di atas.
+          </p>
         </div>
 
         <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">

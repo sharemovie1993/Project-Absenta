@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import {
   Scan,
   Clock,
@@ -16,6 +17,7 @@ import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { useAuthStore } from '../../store/authStore';
 import { tenantApi } from '../../api/tenants.api';
+import { fetchActiveSystemConfig, type SystemConfig } from '../../services/systemConfig';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import type { Tenant } from '../../api/tenants.api';
@@ -55,6 +57,7 @@ export default function PiketPage() {
   const [dailyPermits, setDailyPermits] = useState<IzinKeluarSiswa[]>([]);
   const [loadingPermits, setLoadingPermits] = useState(true);
   const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
+  const [systemConfig, setSystemConfig] = useState<SystemConfig | null>(null);
 
   // Printing States
   const [printedPermit, setPrintedPermit] = useState<(IzinKeluarSiswa & { qrCodeUrl?: string }) | null>(null);
@@ -99,12 +102,17 @@ export default function PiketPage() {
     // Fetch School Tenant Details
     const fetchTenant = async () => {
       try {
-        const res = await tenantApi.getMyTenant();
-        if (res.success) {
-          setTenantInfo(res.data);
+        const [tenantRes, configRes] = await Promise.all([
+          tenantApi.getMyTenant(),
+          fetchActiveSystemConfig()
+        ]);
+
+        if (tenantRes.success) {
+          setTenantInfo(tenantRes.data);
         }
+        setSystemConfig(configRes);
       } catch (err: unknown) {
-        console.error('Gagal memuat profil sekolah:', err);
+        console.error('Gagal memuat profil sekolah atau konfigurasi:', err);
       }
     };
     fetchTenant();
@@ -176,6 +184,28 @@ export default function PiketPage() {
   const activeOutStudents = useMemo(() => {
     return dailyPermits.filter(p => p.status === 'DISETUJUI');
   }, [dailyPermits]);
+
+  const tabOptions = useMemo(() => [
+    { id: 'scan', label: 'Operasional Piket', icon: Scan, colorClass: 'text-indigo-650 dark:text-indigo-400' },
+    {
+      id: 'monitoring',
+      label: (
+        <span className="relative flex items-center">
+          Monitoring Siswa
+          {activeOutStudents.length > 0 && (
+            <Badge variant="outline" className="ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white animate-bounce border-none">
+              {activeOutStudents.length}
+            </Badge>
+          )}
+        </span>
+      ),
+      icon: Clock,
+      colorClass: 'text-rose-600 dark:text-rose-400'
+    },
+    { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-605 dark:text-blue-400' },
+    { id: 'security', label: 'Pos Keamanan', icon: ShieldCheck, colorClass: 'text-slate-700 dark:text-slate-300' },
+    { id: 'rekap', label: 'Rekap Harian', icon: FileText, colorClass: 'text-violet-600 dark:text-violet-400' }
+  ], [activeOutStudents]);
 
   const filteredHistory = useMemo(() => {
     if (!historySearch.trim()) return dailyPermits;
@@ -261,28 +291,12 @@ export default function PiketPage() {
         <div className="print:hidden">
           <Card className="p-4 sm:p-6 shadow-sm overflow-hidden">
             <Tabs value={activeTab} onValueChange={setActiveTab} color="indigo" variant="soft">
-              <TabsList className="flex w-full overflow-x-auto scrollbar-none items-center p-1.5 bg-gray-100/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border border-gray-200/50 dark:border-slate-700/50 rounded-xl md:grid md:grid-cols-5 md:h-12 flex-nowrap whitespace-nowrap gap-1">
-              <TabsTrigger value="scan" className="rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5">
-                <Scan size={14} /> Operasional Piket
-              </TabsTrigger>
-              <TabsTrigger value="monitoring" className="rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5 relative">
-                <Clock size={14} /> Monitoring Siswa
-                {activeOutStudents.length > 0 && (
-                  <Badge variant="outline" className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white animate-bounce border-none">
-                    {activeOutStudents.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="history" className="rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5">
-                <History size={14} /> Riwayat Hari Ini
-              </TabsTrigger>
-              <TabsTrigger value="security" className="rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5">
-                <ShieldCheck size={14} /> Pos Keamanan
-              </TabsTrigger>
-              <TabsTrigger value="rekap" className="rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 sm:gap-2 shrink-0 whitespace-nowrap px-3 sm:px-4 py-2 sm:py-2.5">
-                <FileText size={14} /> Rekap Harian
-              </TabsTrigger>
-            </TabsList>
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                className="w-full justify-start overflow-x-auto scrollbar-none"
+              />
 
             {/* TAB 1: OPERASIONAL SCANNER */}
             <TabsContent value="scan" className="mt-8 space-y-8">
@@ -354,6 +368,7 @@ export default function PiketPage() {
           <PiketPrintSlip
             printedPermit={printedPermit}
             tenantInfo={tenantInfo}
+            systemConfig={systemConfig}
             user={user}
             printPaperSize={printPaperSize}
           />,

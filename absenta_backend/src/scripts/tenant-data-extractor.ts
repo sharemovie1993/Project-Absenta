@@ -79,7 +79,7 @@ async function extractTenantData(tenantId: string) {
     'OrangTuaSiswa': 'orangTuaSiswa',
     'SystemConfig': 'systemConfig',
     'ConsentLog': 'consentLog',
-    'JadwalTemplate': 'jadwalTemplate',
+    'JadwalKBM': 'jadwalKBM',
     'StrukturKurikulum': 'strukturKurikulum',
     'ProgresMateri': 'progresMateri',
     'AbsensiKejadianKhusus': 'absensiKejadianKhusus',

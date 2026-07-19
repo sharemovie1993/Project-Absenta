@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarCheck, GraduationCap, Users, History } from "lucide-react";
+import { CalendarCheck, GraduationCap, Users, History, ShieldAlert } from "lucide-react";
 import { getDashboardOverview, getAttendanceChart } from "../../api/dashboard.api";
 import { getAcademicStats, type AcademicStats } from "../../api/academic-stats.api";
 import { getAcademicRegistrationStats } from "../../api/academic/siswa.api";
 import type { DashboardOverviewStats, ChartData } from "../../types/dashboard";
 import { useAuthStore } from "../../store/authStore";
 import { isSystemSuperAdmin, isPlatformUser } from "../../utils/rbac";
+import { cn } from "../../lib/utils";
 
 const AttendanceChart = lazy(() => import("../../components/charts/AttendanceChart"));
 import OnboardingDashboard from "./OnboardingDashboard";
@@ -130,6 +131,13 @@ export default function DashboardOverview() {
     return "Malam";
   };
 
+  const quickActions = [
+    { label: 'Tahun Pelajaran', icon: CalendarCheck, onClick: () => navigate('/academic/tahun-pelajaran'), color: 'blue' },
+    { label: 'Data Siswa', icon: GraduationCap, onClick: () => navigate('/academic/siswa'), color: 'indigo' },
+    { label: 'Kejadian Khusus', icon: ShieldAlert, onClick: () => navigate('/attendance/settings?tab=events'), color: 'rose' },
+    { label: 'Log Aktivitas', icon: History, onClick: () => navigate('/academic/staff-logs'), color: 'slate' },
+  ];
+
   const renderOverviewContent = () => (
     <>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
@@ -141,13 +149,34 @@ export default function DashboardOverview() {
             Inilah ringkasan aktivitas sekolah Anda hari ini, {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <Button
-          onClick={() => navigate('/academic/staff-logs')}
-          className="flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-700 hover:to-slate-800"
-        >
-          <History size={14} />
-          Log Aktivitas Staf
-        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {quickActions.map((action, idx) => {
+          const colorsMap: Record<string, string> = {
+            blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100',
+            indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100',
+            rose: 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100',
+            slate: 'bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100',
+          };
+          const colorClass = colorsMap[action.color || 'blue'];
+          
+          return (
+            <button
+              key={idx}
+              onClick={action.onClick}
+              className={cn(
+                "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all duration-300 group shadow-sm",
+                colorClass
+              )}
+            >
+              <div className="p-2 rounded-xl bg-white/80 shadow-sm group-hover:scale-110 transition-transform">
+                <action.icon size={20} />
+              </div>
+              <span className="text-xs font-black uppercase tracking-widest">{action.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <>

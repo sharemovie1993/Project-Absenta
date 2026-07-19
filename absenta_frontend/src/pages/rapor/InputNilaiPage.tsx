@@ -179,6 +179,7 @@ export default function InputNilaiPage() {
       title="Input Nilai KBM & Rapor"
       description="Pencatatan nilai harian, ulangan, dan capaian kompetensi siswa kelas aktif."
       breadcrumbs={breadcrumbs}
+      hardeningModuleKey="inputnilaipage"
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         

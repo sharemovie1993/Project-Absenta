@@ -364,6 +364,7 @@ export async function getRekapBulananKelas(request: AuthenticatedRequest, reply:
         ? data
         : Array.isArray((data as any)?.students)
           ? (data as any).students.map((s: any) => ({
+              siswa_id: s.id ?? s.siswa_id ?? '',
               nama_siswa: s.nama ?? s.nama_siswa ?? '',
               HADIR: Number(s.hadir ?? s.HADIR ?? 0),
               IZIN: Number(s.izin ?? s.IZIN ?? 0),

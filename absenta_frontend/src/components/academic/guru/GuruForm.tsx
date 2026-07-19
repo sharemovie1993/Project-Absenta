@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { cn } from '../../../lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../../ui/Button';
@@ -7,6 +8,8 @@ import { Alert } from '../../ui/Alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/Tabs';
 import { ModalFooter } from '../../ui/Modal';
 import { Save, X, RefreshCw } from 'lucide-react';
+
+const GuruDocsPanel = lazy(() => import('./GuruDocsPanel').then(module => ({ default: module.GuruDocsPanel })));
 import { createGuru, updateGuru, getGuruDetail, type CreateGuruPayload, type UpdateGuruPayload } from '../../../api/academic/guru.api';
 import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
@@ -262,10 +265,16 @@ export const GuruForm = React.memo<GuruFormProps>(({
         )}
 
         <Tabs defaultValue="data-pribadi" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <TabsList className={cn(
+            'grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50',
+            guruId ? 'grid-cols-4' : 'grid-cols-3'
+          )}>
             <TabsTrigger value="data-pribadi" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Data Pribadi</TabsTrigger>
             <TabsTrigger value="kepegawaian" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Kepegawaian</TabsTrigger>
             <TabsTrigger value="penugasan" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Penugasan</TabsTrigger>
+            {guruId && (
+              <TabsTrigger value="berkas" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Berkas</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="data-pribadi" className="space-y-6">
@@ -301,6 +310,14 @@ export const GuruForm = React.memo<GuruFormProps>(({
               isViewMode={isViewMode}
             />
           </TabsContent>
+
+          {guruId && (
+            <TabsContent value="berkas" className="space-y-6">
+              <Suspense fallback={<div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
+                <GuruDocsPanel guruId={guruId} guruName={watch('nama')} mode="full" />
+              </Suspense>
+            </TabsContent>
+          )}
         </Tabs>
 
         <ModalFooter className="mt-4 pt-6 border-t border-slate-100 dark:border-slate-800 gap-3">

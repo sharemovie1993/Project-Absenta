@@ -10,6 +10,7 @@ import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.a
 import { School, Users, Download, Calendar, Layers, BookMarked, GraduationCap, FileText, Sparkles, ChevronRight } from 'lucide-react';
 import { importJurusanFromExcel, downloadJurusanImportTemplate, getJurusanList } from '../../api/academic/jurusan.api';
 import { Alert, Card, Button, SectionCard, Loader } from '../../components/ui';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
 import { exportDataToExcel, generateImportTemplate } from '../../utils/export.utils';
@@ -208,30 +209,14 @@ export const JurusanPage: React.FC = () => {
     >
       <div className="space-y-4">
         {/* Tab Navigator */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-2xl w-fit">
-          <button
-            onClick={() => setActiveTab('konsentrasi')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all ${
-              activeTab === 'konsentrasi'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
-          >
-            <GraduationCap className="w-3.5 h-3.5" />
-            Konsentrasi Keahlian
-          </button>
-          <button
-            onClick={() => setActiveTab('program')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all ${
-              activeTab === 'program'
-                ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-            }`}
-          >
-            <BookMarked className="w-3.5 h-3.5" />
-            Program Keahlian
-          </button>
-        </div>
+        <TabSwitcher
+          options={[
+            { id: 'konsentrasi', label: 'Konsentrasi Keahlian', icon: GraduationCap, colorClass: 'text-blue-600 dark:text-blue-400' },
+            { id: 'program', label: 'Program Keahlian', icon: BookMarked, colorClass: 'text-violet-600 dark:text-violet-400' }
+          ]}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as ActiveTab)}
+        />
 
         {/* Tab Content */}
         <SectionCard fullWidth noPadding>

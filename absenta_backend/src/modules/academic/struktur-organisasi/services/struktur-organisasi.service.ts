@@ -28,6 +28,7 @@ export interface AssignGuruInput {
   end_date?: Date;
   kelas_id?: string | null;
   unit_id?: string | null;
+  jenis_kegiatan_id?: string | null;
 }
 
 export interface AssignSiswaInput {
@@ -103,6 +104,18 @@ export class StrukturOrganisasiService {
       select: { id: true, nama_kelas: true, tingkat: true }
     });
 
+    const allEskuls = await prisma.jenisKegiatanMaster.findMany({
+      where: { tenant_id: tenantId, tipe: 'ESKUL', aktif: true },
+      select: { id: true, nama: true }
+    });
+    allEskuls.sort((a, b) => {
+      const isAOsis = a.nama.toUpperCase().includes('OSIS');
+      const isBOsis = b.nama.toUpperCase().includes('OSIS');
+      if (isAOsis && !isBOsis) return -1;
+      if (!isAOsis && isBOsis) return 1;
+      return a.nama.localeCompare(b.nama);
+    });
+
     const grouped: Record<string, any[]> = {};
     for (const pos of list) {
       if (!grouped[pos.code]) grouped[pos.code] = [];
@@ -124,6 +137,7 @@ export class StrukturOrganisasiService {
           userId: a.user_id,
           unit_id: a.unit_id,
           kelas_id: a.kelas_id,
+          jenis_kegiatan_id: a.jenis_kegiatan_id,
           tingkat: a.Kelas?.tingkat || null,
           unit_kode: a.Unit?.singkatan || a.Unit?.kode || a.Kelas?.nama_kelas || null,
           type: a.User?.Guru ? 'GURU' : 'SISWA',
@@ -169,6 +183,22 @@ export class StrukturOrganisasiService {
             kelas_name: kelas.nama_kelas,
             tingkat: kelas.tingkat,
             members: assignedMember ? [assignedMember] : [],
+          });
+        }
+      } else if (pos.code === 'PEMBINA_ESKUL') {
+        // Create a node for EACH Eskul
+        for (const eskul of allEskuls) {
+          const assignedMembers = members.filter((m: any) => m.jenis_kegiatan_id === eskul.id);
+          grouped[pos.code].push({
+            id: pos.id,
+            kode: pos.code,
+            nama: pos.name,
+            deskripsi: null,
+            parent_id: null,
+            scope: pos.scope_type,
+            jenis_kegiatan_id: eskul.id,
+            eskul_name: eskul.nama,
+            members: assignedMembers,
           });
         }
       } else {
@@ -398,15 +428,19 @@ export class StrukturOrganisasiService {
       throw new Error('User dengan role ADMIN Sekolah tidak boleh ditunjuk sebagai Bendahara Koperasi untuk menghindari Conflict of Interest.');
     }
 
-    // [PROFESSIONAL VALIDATION] Ensure unit_id or kelas_id is provided for specific roles
+    // [PROFESSIONAL VALIDATION] Ensure unit_id or kelas_id or jenis_kegiatan_id is provided for specific roles
     const needsUnit = ['KAPROG', 'KABENG', 'TOOLMAN'].includes(position.code);
     const needsKelas = ['WALIKELAS'].includes(position.code);
+    const needsEskul = ['PEMBINA_ESKUL'].includes(position.code);
 
     if (needsUnit && !input.unit_id) {
       throw new Error(`Jabatan ${position.code} wajib memilih Jurusan/Unit Kerja.`);
     }
     if (needsKelas && !input.kelas_id) {
       throw new Error(`Jabatan ${position.code} wajib memilih Kelas.`);
+    }
+    if (needsEskul && !input.jenis_kegiatan_id) {
+      throw new Error(`Jabatan ${position.code} wajib memilih Ekstrakurikuler.`);
     }
 
     const existing = await prisma.organizationalAssignment.findFirst({
@@ -415,6 +449,7 @@ export class StrukturOrganisasiService {
         position_id: input.struktur_id,
         user_id: guru.user_id,
         kelas_id: input.kelas_id || null,
+        jenis_kegiatan_id: input.jenis_kegiatan_id || null,
       },
       select: { id: true },
     });
@@ -422,7 +457,7 @@ export class StrukturOrganisasiService {
     // [ATOMIC REPLACEMENT LOGIC] 
     // Untuk jabatan pimpinan utama, pastikan TIDAK ADA orang lain yang aktif.
     // Tapi untuk jabatan BIDANG/STAF, kita izinkan multi-personil.
-    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI'].includes(position.code);
+    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL'].includes(position.code);
 
     if (!isMultiStaffRole) {
       await prisma.organizationalAssignment.updateMany({
@@ -431,6 +466,7 @@ export class StrukturOrganisasiService {
           position_id: input.struktur_id,
           unit_id: input.unit_id || null,
           kelas_id: input.kelas_id || null,
+          jenis_kegiatan_id: input.jenis_kegiatan_id || null,
           is_active: true,
           NOT: { user_id: guru.user_id }
         },
@@ -447,9 +483,11 @@ export class StrukturOrganisasiService {
           end_date: input.end_date || null,
           kelas_id: input.kelas_id || null,
           unit_id: input.unit_id || null,
+          jenis_kegiatan_id: input.jenis_kegiatan_id || null,
           updated_at: new Date(),
         },
       });
+
       await organizationalContextCache.invalidateUser(String(guru.user_id));
       return updated;
     }
@@ -461,6 +499,7 @@ export class StrukturOrganisasiService {
         user_id: guru.user_id,
         kelas_id: input.kelas_id || null,
         unit_id: input.unit_id || null,
+        jenis_kegiatan_id: input.jenis_kegiatan_id || null,
         is_active: true,
         start_date: input.start_date || new Date(),
         end_date: input.end_date || null,
@@ -475,7 +514,12 @@ export class StrukturOrganisasiService {
   async removeGuru(tenantId: string, guruId: string, strukturId: string) {
     // [SMART REMOVAL] Check if guruId is actually an Assignment ID first
     const directAssignment = await prisma.organizationalAssignment.findFirst({
-      where: { id: guruId, tenant_id: tenantId }
+      where: { id: guruId, tenant_id: tenantId },
+      include: {
+        Position: {
+          select: { code: true }
+        }
+      }
     });
 
     if (directAssignment) {
@@ -483,6 +527,7 @@ export class StrukturOrganisasiService {
         where: { id: directAssignment.id },
         data: { is_active: false, end_date: new Date(), updated_at: new Date() }
       });
+
       await organizationalContextCache.invalidateUser(String(directAssignment.user_id));
       return;
     }
@@ -493,6 +538,8 @@ export class StrukturOrganisasiService {
       select: { user_id: true },
     });
     if (!guru?.user_id) return;
+
+
 
     await prisma.organizationalAssignment.updateMany({
       where: {

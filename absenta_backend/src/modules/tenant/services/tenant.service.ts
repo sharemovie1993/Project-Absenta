@@ -440,6 +440,7 @@ export class TenantService {
     }
     if (shift_jam_pelajaran !== undefined) {
       await upsertConfig('shift_jam_pelajaran', JSON.stringify(shift_jam_pelajaran));
+      await syncJadwalKBMTimes(tenantId, prisma);
     }
 
     // Save kepala_sekolah, nip_kepala, jenjang & kurikulum in Sekolah table
@@ -832,3 +833,58 @@ export class TenantService {
 }
 
 export const tenantService = new TenantService();
+
+export async function syncJadwalKBMTimes(tenantId: string, tx: any) {
+  const config = await tx.config.findFirst({
+    where: { tenant_id: tenantId, key: 'shift_jam_pelajaran' }
+  });
+  if (!config?.value) return;
+  try {
+    const shiftConfig = JSON.parse(config.value);
+    const templates = await tx.jadwalKBM.findMany({
+      where: { tenant_id: tenantId }
+    });
+
+    const SLOT_TIME: Record<number, { start: string; end: string }> = {
+      1: { start: "07:00", end: "07:45" },
+      2: { start: "07:45", end: "08:30" },
+      3: { start: "08:30", end: "09:15" },
+      4: { start: "09:35", end: "10:20" },
+      5: { start: "10:20", end: "11:05" },
+      6: { start: "11:05", end: "11:50" },
+      7: { start: "12:30", end: "13:15" },
+      8: { start: "13:15", end: "14:00" },
+      9: { start: "14:00", end: "14:45" },
+      10: { start: "14:45", end: "15:30" },
+    };
+
+    for (const temp of templates) {
+      const assignedShiftId = shiftConfig.class_assignments?.[temp.kelas_id] || 'pagi';
+      const shift = shiftConfig.shifts?.find((s: any) => s.id === assignedShiftId) || shiftConfig.shifts?.[0];
+      let start = temp.jam_mulai;
+      let end = temp.jam_selesai;
+      if (shift) {
+        const slot = shift.slots?.find((sl: any) => sl.slot === temp.slot_index);
+        if (slot) {
+          start = slot.start;
+          end = slot.end;
+        }
+      } else {
+        const fallback = SLOT_TIME[temp.slot_index];
+        if (fallback) {
+          start = fallback.start;
+          end = fallback.end;
+        }
+      }
+
+      if (start !== temp.jam_mulai || end !== temp.jam_selesai) {
+        await tx.jadwalKBM.update({
+          where: { id: temp.id },
+          data: { jam_mulai: start, jam_selesai: end }
+        });
+      }
+    }
+  } catch (e) {
+    console.error('Failed to sync jadwal template times during shift update', e);
+  }
+}

@@ -89,7 +89,7 @@ export const ImportResultModal: React.FC<ImportResultModalProps> = ({
               </h4>
               <div className="grid grid-cols-2 gap-x-8 gap-y-2">
                 {[
-                  { label: 'Jadwal Template', val: result.jadwalTemplate },
+                  { label: 'Jadwal KBM', val: result.jadwalKBM },
                   { label: 'Pelanggaran', val: result.pelanggaran },
                   { label: 'Supervisi', val: result.supervisi },
                   { label: 'Riwayat Akademik', val: result.siswaAkademik },

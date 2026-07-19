@@ -154,7 +154,7 @@ export const createMapelSchema = mapelSchema;
 export const updateMapelSchema = mapelSchema.partial();
 
 // Tahun Pelajaran Validation Schema
-export const tahunPelajaranSchema = z.object({
+export const tahunPelajaranBaseSchema = z.object({
   tenant_id: z.string().min(1, 'Tenant ID wajib diisi'),
   nama_tahun: z.string()
     .min(1, 'Nama tahun pelajaran wajib diisi')
@@ -170,19 +170,23 @@ export const tahunPelajaranSchema = z.object({
   tanggal_mulai: z.date(),
   tanggal_selesai: z.date(),
   is_active: z.boolean()
-}).refine((data) => data.tahun_selesai > data.tahun_mulai, {
-  message: 'Tahun selesai harus lebih besar dari tahun mulai',
-  path: ['tahun_selesai']
-}).refine((data) => data.tanggal_selesai > data.tanggal_mulai, {
-  message: 'Tanggal selesai harus lebih besar dari tanggal mulai',
-  path: ['tanggal_selesai']
 });
 
+export const tahunPelajaranSchema = tahunPelajaranBaseSchema
+  .refine((data) => data.tahun_selesai > data.tahun_mulai, {
+    message: 'Tahun selesai harus lebih besar dari tahun mulai',
+    path: ['tahun_selesai']
+  })
+  .refine((data) => data.tanggal_selesai > data.tanggal_mulai, {
+    message: 'Tanggal selesai harus lebih besar dari tanggal mulai',
+    path: ['tanggal_selesai']
+  });
+
 export const createTahunPelajaranSchema = tahunPelajaranSchema;
-export const updateTahunPelajaranSchema = tahunPelajaranSchema.partial();
+export const updateTahunPelajaranSchema = tahunPelajaranBaseSchema.partial();
 
 // Semester Validation Schema
-export const semesterSchema = z.object({
+export const semesterBaseSchema = z.object({
   tenant_id: z.string().min(1, 'Tenant ID wajib diisi'),
   tahun_pelajaran_id: z.string().min(1, 'Tahun pelajaran wajib dipilih'),
   nama_semester: z.string()
@@ -195,13 +199,15 @@ export const semesterSchema = z.object({
   tanggal_mulai: z.date(),
   tanggal_selesai: z.date(),
   is_active: z.boolean()
-}).refine((data) => data.tanggal_selesai > data.tanggal_mulai, {
+});
+
+export const semesterSchema = semesterBaseSchema.refine((data) => data.tanggal_selesai > data.tanggal_mulai, {
   message: 'Tanggal selesai harus lebih besar dari tanggal mulai',
   path: ['tanggal_selesai']
 });
 
 export const createSemesterSchema = semesterSchema;
-export const updateSemesterSchema = semesterSchema.partial();
+export const updateSemesterSchema = semesterBaseSchema.partial();
 
 // Export all schemas for easy import
 export const academicSchemas = {

@@ -23,6 +23,7 @@ interface KesiswaanSidebarPanelProps {
   onOpenPiket?: () => void;
   /** Navigasi ke monitoring */
   onOpenMonitoring?: () => void;
+  onSpecialEvent?: () => void;
 }
 
 export const KesiswaanSidebarPanel: React.FC<KesiswaanSidebarPanelProps> = ({
@@ -33,6 +34,7 @@ export const KesiswaanSidebarPanel: React.FC<KesiswaanSidebarPanelProps> = ({
   isLoading = false,
   onOpenPiket,
   onOpenMonitoring,
+  onSpecialEvent,
 }) => {
   return (
     <div className={cn(
@@ -144,6 +146,20 @@ export const KesiswaanSidebarPanel: React.FC<KesiswaanSidebarPanelProps> = ({
                 </span>
               </div>
               <ChevronRight size={12} className="text-gray-300 group-hover:text-amber-500 transition-colors" />
+            </button>
+          )}
+          {onSpecialEvent && (
+            <button
+              onClick={onSpecialEvent}
+              className="w-full flex items-center justify-between group py-2 px-3 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={11} className="text-rose-500" />
+                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 group-hover:text-rose-700 dark:group-hover:text-rose-400 transition-colors">
+                  Aksi Global / Libur
+                </span>
+              </div>
+              <ChevronRight size={12} className="text-gray-300 group-hover:text-rose-500 transition-colors" />
             </button>
           )}
         </div>

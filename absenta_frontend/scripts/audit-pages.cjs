@@ -83,8 +83,16 @@ walkDir(targetDir, (filepath) => {
   const usesLayout = isComponentFile || content.includes('AcademicPageLayout') || content.includes('PageLayout') || content.includes('InfraErrorBoundary');
 
   // ─── Pilar 2: Keamanan Data & Defensive Programming (Optional Chaining pada Map) ───
-  // Mencari penggunaan `.map(` yang tidak menggunakan safe chaining `?.map(` (Hardened: menggunakan negative lookbehind)
-  const hasUnsafeMap = /(?<!\?)\.map\(/g.test(content);
+  // HARDENED: Mengenali semua pola aman yang setara:
+  //   (a) Optional chaining:         array?.map(...)
+  //   (b) Fallback guard:            (array || []).map(...) atau (array ?? []).map(...)
+  //   (c) Type cast + fallback:      (expr as Type[] || []).map(...)
+  //   (d) Literal array langsung:    ['a','b'].map(...) — literal tidak pernah null
+  const contentForMapCheck = content
+    .replace(/\((?:[^)(]|\([^)]*\))*\|\|\s*\[\]\s*\)\.map\s*\(/g, '?.map(')
+    .replace(/\((?:[^)(]|\([^)]*\))*\?\?\s*\[\]\s*\)\.map\s*\(/g, '?.map(')
+    .replace(/\[[^\]]*\]\.map\s*\(/g, '?.map(');
+  const hasUnsafeMap = /(?<!\?)\.map\(/g.test(contentForMapCheck);
 
   // ─── Pilar 3: Optimasi DOM Churn (Memoization) ───
   // Jika halaman memuat list data atau render komponen berat, tapi tidak mengimpor useMemo/useCallback
@@ -132,9 +140,14 @@ walkDir(targetDir, (filepath) => {
   const missingTableSorting = hasTableComponent && !hasSortingImpl;
 
   // Pillar 8: Penanganan State Kosong
-  // Hardened: Mendeteksi perbandingan double/triple equals, isEmpty helper, dan penegasian !data.length / !data?.length
+  // HARDENED: Mendeteksi SEMUA pola penanganan state kosong yang valid:
+  //   (a) Perbandingan eksplisit: .length === 0, .length == 0, .length !== 0
+  //   (b) Perbandingan positif:   .length > 0 (ternary implisit — jika true tampil, jika false tampil empty)
+  //   (c) Guard awal:             if (!data) return — early return sebelum render
+  //   (d) Helper/komponen:        isEmpty, EmptyState, NoData
+  //   (e) Negasi panjang:         !data.length, !data?.length
   const hasFetchData = content.includes('useQuery') || content.includes('useFetch') || content.includes('useGet') || content.includes('axios.get') || content.includes('fetch(');
-  const hasEmptyState = /\.length\s*(===|==)\s*0|isEmpty|emptyState|EmptyState|NoData|!\w*(?:\?\.)?length/.test(content) || hasListComponent;
+  const hasEmptyState = /\.length\s*(===|==|!==|!=|>|>=|<|<=)\s*\d+|isEmpty|emptyState|EmptyState|NoData|!\w*(?:\?\.)?length|if\s*\(!\s*\w/.test(content) || hasListComponent;
   const missingEmptyState = hasFetchData && !hasEmptyState;
 
   // Pillar 9: Indikator Loading / Skeleton Guard
@@ -212,7 +225,7 @@ walkDir(targetDir, (filepath) => {
 
   // ─── Pilar 22: Desentralisasi Konfigurasi (Anti-Hardcoded) ───
   // Hardened: Mendeteksi let/var dan variasi kata data tiruan (mock/dummy/sample/temp/test), serta IP lokal
-  const hasMockData = /\b(const|let|var)\s+\w*(mock|dummy|sample|temp|test)\w*\s*=/i.test(content);
+  const hasMockData = /\b(const|let|var)\s+\w*(mock|dummy|sample|temp(?!late)|test(?!ing))\w*\s*=/i.test(content);
   const hasStaticApiUrl = /https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|api\b)/i.test(content);
   const hasHardcodedConfigs = hasMockData || hasStaticApiUrl;
 
@@ -236,10 +249,30 @@ walkDir(targetDir, (filepath) => {
   const missingImportExportGuard = hasImportExport && (!hasImportExportLoading || !hasTryCatchForExport || !usesStyledTemplate);
 
   // Pilar 25: Validasi Skema Zod untuk Form (Zod Schema Guard)
-  // Hardened: Mendeteksi juga komponen form terstandar Absenta (kapital)
-  const hasForm = content.includes('<form') || /<(input|select|textarea|Input|Select|Textarea|SearchableSelect)\b/i.test(content);
-  const hasZodValidation = content.includes('zodResolver') || content.includes('z.object') || content.includes('validationSchema') || content.includes('Schema') || content.includes('zod') || content.includes('yup') || content.includes('joi');
+  // HARDENED: Mendeteksi SEMUA elemen form termasuk komponen React Absenta (kapital) untuk mencegah false-negative
+  const hasForm = content.includes('<form') || /\<(input|select|textarea|Input|Select|Textarea|SearchableSelect)\b/i.test(content);
+  // HARDENED: Hanya mendeteksi penggunaan Zod yang NYATA — dilarang keras memakai substring longgar
+  // seperti 'Schema' atau 'zod' karena rentan false-positive dari nama interface TypeScript atau komentar
+  const hasZodValidation = /z\.object\s*\(/.test(content) || content.includes('zodResolver') || /\.safeParse\s*\(/.test(content) || /\.parseAsync\s*\(/.test(content) || content.includes('yup.object') || content.includes('joi.object');
   const missingZodValidation = hasForm && !hasZodValidation;
+
+  // ─── Pilar 27: Standarisasi Tab Switcher (TabSwitcher Guard) ───
+  const hasTabsList = /<TabsList\b/i.test(content) || /onValueChange\s*=\s*\{\s*setActiveTab/i.test(content);
+  const hasManualTabButtons = /setActiveSubTab|setActiveTab/i.test(content);
+  const usesTabSwitcher = content.includes('TabSwitcher') || content.includes('<TabSwitcher');
+  const missingTabSwitcher = (hasTabsList || hasManualTabButtons) && !usesTabSwitcher && !isComponentFile;
+
+  // ─── Pilar 28: Konsistensi Aliran Tata Letak (Layout Flow Consistency Guard) ───
+  // Bersihkan konten di dalam modal untuk menghindari alarm palsu dari filter/stat di dalam dialog
+  const contentWithoutModals = content.replace(/<(Modal|ExcelImportModal|Dialog|Drawer)[^>]*>[\s\S]*?<\/\1>/g, '');
+  const indexOfTable = contentWithoutModals.indexOf('<Table');
+  const indexOfList = contentWithoutModals.search(/<(?!TabsList)[A-Za-z]*List\b/);
+  const firstTableIndex = indexOfTable !== -1 ? indexOfTable : (indexOfList !== -1 ? indexOfList : Infinity);
+  const indexOfFilter = contentWithoutModals.search(/<(select|Select|SearchableSelect)\b/);
+  const indexOfStats = contentWithoutModals.search(/<(AnalyticsCard|MemoizedAnalyticsCard)\b/);
+  const hasInconsistentFilters = firstTableIndex !== Infinity && indexOfFilter !== -1 && firstTableIndex < indexOfFilter;
+  const hasInconsistentStats = firstTableIndex !== Infinity && indexOfStats !== -1 && firstTableIndex < indexOfStats;
+  const missingLayoutFlowConsistency = !isComponentFile && (hasInconsistentFilters || hasInconsistentStats);
 
   const key = getRegistryKey(filepath, content);
 
@@ -333,7 +366,7 @@ walkDir(targetDir, (filepath) => {
 
   if (missingStandardContainer) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push('⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)');
+    issues.push('⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.');
   }
 
   if (missingAdvancedSelect) {
@@ -363,7 +396,7 @@ walkDir(targetDir, (filepath) => {
 
   if (missingAnalyticsCard) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push("⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout>. Cara 2: Impor langsung <AnalyticsCard> dari '@/components/ui/AnalyticsCard'.");
+    issues.push("⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout> (secara default me-render varian premium). Cara 2: Impor langsung <AnalyticsCard variant=\"premium\"> dari '@/components/ui/AnalyticsCard'.");
   }
 
   if (missingStandardPdfPrint) {
@@ -378,7 +411,17 @@ walkDir(targetDir, (filepath) => {
 
   if (missingZodValidation) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push("⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Petunjuk Perbaikan: Impor 'z' dari 'zod', buat skema validasi dengan z.object({...}) untuk seluruh input form, dan lakukan validasi menggunakan schema.safeParse(formData) sebelum mengirim data ke API.");
+    issues.push("⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.");
+  }
+
+  if (missingTabSwitcher) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.");
+  }
+
+  if (missingLayoutFlowConsistency) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.");
   }
 
   totalFiles++;
@@ -418,6 +461,8 @@ walkDir(targetDir, (filepath) => {
     importExportGuard: !missingImportExportGuard,
     standardPdfPrint: !missingStandardPdfPrint,
     zodValidationGuard: !missingZodValidation,
+    standardTabSwitcher: !missingTabSwitcher,
+    layoutFlowConsistency: !missingLayoutFlowConsistency,
     filename,
     relativePath
   };

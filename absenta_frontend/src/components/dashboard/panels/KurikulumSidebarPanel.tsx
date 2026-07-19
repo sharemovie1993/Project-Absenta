@@ -27,6 +27,7 @@ interface KurikulumSidebarPanelProps {
   /** Loading state */
   isLoading?: boolean;
   onMonitor?: () => void;
+  onSpecialEvent?: () => void;
 }
 
 export const KurikulumSidebarPanel: React.FC<KurikulumSidebarPanelProps> = ({
@@ -39,6 +40,7 @@ export const KurikulumSidebarPanel: React.FC<KurikulumSidebarPanelProps> = ({
   supervisionCount = 0,
   isLoading = false,
   onMonitor,
+  onSpecialEvent,
 }) => {
   const healthColor =
     healthScore >= 80 ? 'text-emerald-600' :
@@ -176,18 +178,35 @@ export const KurikulumSidebarPanel: React.FC<KurikulumSidebarPanelProps> = ({
         )}
 
         {/* CTA */}
-        <button
-          onClick={onMonitor}
-          className="w-full flex items-center justify-between group pt-2 border-t border-gray-100 dark:border-slate-700/50"
-        >
-          <span className="text-[9px] font-black text-gray-400 group-hover:text-purple-600 uppercase tracking-widest transition-colors">
-            Pantau KBM Sekolah
-          </span>
-          <div className="flex items-center gap-0.5">
-            <span className="text-[9px] font-bold text-purple-400 group-hover:text-purple-600 transition-colors">Buka</span>
-            <ChevronRight size={12} className="text-gray-300 group-hover:text-purple-600 transition-colors" />
-          </div>
-        </button>
+        <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-slate-700/50">
+          <button
+            onClick={onMonitor}
+            className="w-full flex items-center justify-between group"
+          >
+            <span className="text-[9px] font-black text-gray-400 group-hover:text-purple-600 uppercase tracking-widest transition-colors">
+              Pantau KBM Sekolah
+            </span>
+            <div className="flex items-center gap-0.5">
+              <span className="text-[9px] font-bold text-purple-400 group-hover:text-purple-600 transition-colors">Buka</span>
+              <ChevronRight size={12} className="text-gray-300 group-hover:text-purple-600 transition-colors" />
+            </div>
+          </button>
+
+          {onSpecialEvent && (
+            <button
+              onClick={onSpecialEvent}
+              className="w-full flex items-center justify-between group"
+            >
+              <span className="text-[9px] font-black text-gray-400 group-hover:text-rose-600 uppercase tracking-widest transition-colors">
+                Kejadian Khusus / Libur
+              </span>
+              <div className="flex items-center gap-0.5">
+                <span className="text-[9px] font-bold text-rose-400 group-hover:text-rose-600 transition-colors">Atur</span>
+                <ChevronRight size={12} className="text-gray-300 group-hover:text-rose-600 transition-colors" />
+              </div>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

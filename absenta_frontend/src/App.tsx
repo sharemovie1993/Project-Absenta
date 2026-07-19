@@ -74,6 +74,7 @@ const AdminSupportTicketPage = lazy(() => import('./pages/superadmin/support/Adm
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const DocumentCenterPage = lazy(() => import('./pages/documents/DocumentCenterPage'));
 const DocumentActivityPage = lazy(() => import('./pages/documents/DocumentActivityPage'));
+const MemberDocsPage = lazy(() => import('./pages/documents/MemberDocsPage'));
 const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'));
 const SubscriptionList = lazy(() => import('./pages/notifications/SubscriptionList'));
 const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEmailSequencePage'));
@@ -153,6 +154,8 @@ const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
 const P5Page = lazy(() => import('./pages/rapor/P5Page'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
+const JadwalKegiatanPage = lazy(() => import('./pages/attendance/JadwalKegiatanPage'));
+const AnggotaKegiatanEskulPage = lazy(() => import('./pages/attendance/AnggotaKegiatanEskulPage'));
 const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
 const AttendanceDashboardPage = lazy(() => import('./pages/attendance/AttendanceDashboardPage'));
@@ -1184,6 +1187,14 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/documents/member-docs"
+                      element={
+                        <ProtectedRoute requiredCapability="academic.students.view.detail">
+                           <MemberDocsPage />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/reports" element={
                       <ProtectedRoute requiredCapability="attendance.reports.view">
                         <ReportsPage />
@@ -1256,7 +1267,19 @@ function App() {
                         <AttendanceSettingsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/attendance/jadwal-template" element={<Navigate to="/kurikulum/jadwal" replace />} />
+                    <Route path="/attendance/jadwal-kbm" element={<Navigate to="/kurikulum/jadwal" replace />} />
+                    <Route path="/attendance/jadwal-kegiatan" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <JadwalKegiatanPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/attendance/anggota-kegiatan-eskul" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <AnggotaKegiatanEskulPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                     {/* Removed deprecated attendance pages: kegiatan, manual */}
                     <Route element={<PetugasRoute />}>
                     </Route>

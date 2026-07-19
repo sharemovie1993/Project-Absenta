@@ -111,6 +111,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
   const siswa = uniqueStrings([
     'core.auth.logout',
     'core.sekolah.view.profile',
+    'core.tenants.view.detail',
     'dashboard.view.overview',
     'academic.years.view.list',
     'academic.semesters.view.list',
@@ -396,6 +397,9 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.manage.face.templates',
     'attendance.monitoring.view.live.status',
     'attendance.gate.tap.entry',
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
     'documents.view.list',
     'documents.view.detail',
     'documents.upload',

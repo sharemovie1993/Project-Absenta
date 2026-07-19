@@ -397,7 +397,7 @@ async function main() {
     }
 
     // --- 6. SEED SUBJECTS & SCHEDULES (Expanded Mon-Sat) ---
-    console.log('📅 Seeding Mapel & JadwalTemplate (Senin - Sabtu) with Special Activities...');
+    console.log('📅 Seeding Mapel & JadwalKBM (Senin - Sabtu) with Special Activities...');
     
     // Ensure JenisKegiatanMaster follows Platform Registration Defaults
     await seedDefaultJenisKegiatanForTenant(tenantId);
@@ -488,7 +488,7 @@ async function main() {
 
     // Clean all existing templates
     console.log('🧹 Clearing all schedule templates for tenant...');
-    await prisma.jadwalTemplate.deleteMany({ where: { tenant_id: tenantId } });
+    await prisma.jadwalKBM.deleteMany({ where: { tenant_id: tenantId } });
 
     const days = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
     const kbmSlots = [
@@ -508,7 +508,7 @@ async function main() {
 
             // 1. Start Activities
             if (day === 'SENIN') {
-                await prisma.jadwalTemplate.create({
+                await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId, kelas_id: kelas.id, hari: day as Hari,
                         jam_mulai: '07:00', jam_selesai: '07:45',
@@ -516,7 +516,7 @@ async function main() {
                     }
                 });
             } else if (day === 'JUMAT') {
-                await prisma.jadwalTemplate.create({
+                await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId, kelas_id: kelas.id, hari: day as Hari,
                         jam_mulai: '07:00', jam_selesai: '07:45',
@@ -525,7 +525,7 @@ async function main() {
                 });
             } else {
                 // Selasa - Sabtu: Apel Datang
-                await prisma.jadwalTemplate.create({
+                await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId, kelas_id: kelas.id, hari: day as Hari,
                         jam_mulai: '07:00', jam_selesai: '07:15',
@@ -545,7 +545,7 @@ async function main() {
                 const guruIdx = (kIndex + i + (dIdx * 2)) % allGurus.length;
                 const guru = allGurus[guruIdx];
 
-                const template = await prisma.jadwalTemplate.create({
+                const template = await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId, kelas_id: kelas.id, hari: day as Hari,
                         jam_mulai: slot.start, jam_selesai: slot.end,
@@ -582,7 +582,7 @@ async function main() {
                             semester_id: semester.id,
                             status: 'BERLANGSUNG',
                             sumber_sesi: 'TEMPLATE',
-                            jadwal_template_id: template.id
+                            jadwal_kbm_id: template.id
                         }
                     });
 
@@ -631,7 +631,7 @@ async function main() {
 
             // 3. End Activities (Selasa - Sabtu)
             if (day !== 'SENIN' && day !== 'JUMAT') {
-                await prisma.jadwalTemplate.create({
+                await prisma.jadwalKBM.create({
                     data: {
                         tenant_id: tenantId, kelas_id: kelas.id, hari: day as Hari,
                         jam_mulai: '15:00', jam_selesai: '15:15',

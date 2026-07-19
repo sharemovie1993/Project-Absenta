@@ -19,6 +19,7 @@ export class DocumentStorageService {
     tenantId: string | null | undefined;
     category: string;
     file: MultipartFile;
+    subFolder?: string;
   }) {
     const now = new Date();
     const year = String(now.getUTCFullYear());
@@ -30,7 +31,9 @@ export class DocumentStorageService {
     const randomPrefix = crypto.randomBytes(16).toString('hex');
     const finalName = `${randomPrefix}_${safeOriginalName}`;
 
-    const relativeDir = path.join('storage', 'documents', tenantSegment, categorySegment, year, month);
+    const relativeDir = params.subFolder
+      ? path.join('storage', 'documents', tenantSegment, params.subFolder, categorySegment, year, month)
+      : path.join('storage', 'documents', tenantSegment, categorySegment, year, month);
     const relativePath = toPosixPath(path.join(relativeDir, finalName));
     const result = await storageService.uploadStream(relativePath, params.file.file, {
       contentType: params.file.mimetype,
@@ -50,6 +53,7 @@ export class DocumentStorageService {
     originalName: string;
     mimeType: string;
     buffer: Buffer;
+    subFolder?: string;
   }) {
     const now = new Date();
     const year = String(now.getUTCFullYear());
@@ -61,7 +65,9 @@ export class DocumentStorageService {
     const randomPrefix = crypto.randomBytes(16).toString('hex');
     const finalName = `${randomPrefix}_${safeOriginalName}`;
 
-    const relativeDir = path.join('storage', 'documents', tenantSegment, categorySegment, year, month);
+    const relativeDir = params.subFolder
+      ? path.join('storage', 'documents', tenantSegment, params.subFolder, categorySegment, year, month)
+      : path.join('storage', 'documents', tenantSegment, categorySegment, year, month);
     const relativePath = toPosixPath(path.join(relativeDir, finalName));
     await storageService.uploadBuffer(relativePath, params.buffer, { contentType: params.mimeType });
 

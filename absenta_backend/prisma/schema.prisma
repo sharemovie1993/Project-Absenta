@@ -22,73 +22,76 @@ model Tenant {
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?
 
-  subdomain               String?                  @unique
-  custom_domain           String?                  @unique
-  custom_domain_status    String?                  @default("NONE") // NONE | PENDING | ACTIVE | FAILED
-  custom_domain_verified_at DateTime?              @db.Timestamptz
-  logo_url                String?
-  status                  String                   @default("ACTIVE")
-  deletion_requested_at   DateTime?
-  created_at              DateTime                 @default(now())
-  updated_at              DateTime                 @updatedAt
-  AbsenGerbangSiswa       AbsenGerbangSiswa[]
-  AbsenGuru               AbsenGuru[]
-  AbsenSiswa              AbsenSiswa[]
-  activityLogs            ActivityLog[]
-  config                  Config[]
-  documents               Document[]               @relation("TenantDocuments")
-  documentActivities      DocumentActivity[]       @relation("TenantDocumentActivities")
-  financialReports        FinancialReport[]
-  guru                    Guru[]
-  GuruMapel               GuruMapel[]
-  JenisKegiatanMaster     JenisKegiatanMaster[]
-  jurusan                 Jurusan[]
-  programKeahlian         ProgramKeahlian[]
-  kelas                   Kelas[]
-  KelasMapel              KelasMapel[]
-  mapel                   Mapel[]
-  notificationLogs        NotificationLog[]
-  notificationPreferences NotificationPreference[]
-  OrangTua                OrangTua[]
-  sekolah                 Sekolah[]
-  Semester                Semester[]
-  sesiAbsensi             SesiAbsensi[]
-  SesiGerbang             SesiGerbang[]
-  siswa                   Siswa[]
-  TahunPelajaran          TahunPelajaran[]
-  users                   User[]
-  subscriptions           Subscription[]           @relation("TenantSubscriptions")
-  SystemConfig            SystemConfig[]
-  SiswaFaceTemplate       SiswaFaceTemplate[]
-  JadwalTemplate          JadwalTemplate[]
-  PelanggaranSiswa        PelanggaranSiswa[]
-  SupervisiGuru           SupervisiGuru[]
-  JenisPelanggaran        JenisPelanggaran[]
-  SiswaDocument           SiswaDocument[]
-  roles                   Role[]
-  TenantBackup            TenantBackup[]
-  Member                  Member[]
+  subdomain                 String?                  @unique
+  custom_domain             String?                  @unique
+  custom_domain_status      String?                  @default("NONE") // NONE | PENDING | ACTIVE | FAILED
+  custom_domain_verified_at DateTime?                @db.Timestamptz
+  logo_url                  String?
+  status                    String                   @default("ACTIVE")
+  deletion_requested_at     DateTime?
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+  AbsenGerbangSiswa         AbsenGerbangSiswa[]
+  AbsenGuru                 AbsenGuru[]
+  AbsenSiswa                AbsenSiswa[]
+  activityLogs              ActivityLog[]
+  config                    Config[]
+  documents                 Document[]               @relation("TenantDocuments")
+  documentActivities        DocumentActivity[]       @relation("TenantDocumentActivities")
+  financialReports          FinancialReport[]
+  guru                      Guru[]
+  GuruMapel                 GuruMapel[]
+  JenisKegiatanMaster       JenisKegiatanMaster[]
+  jurusan                   Jurusan[]
+  programKeahlian           ProgramKeahlian[]
+  kelas                     Kelas[]
+  KelasMapel                KelasMapel[]
+  mapel                     Mapel[]
+  notificationLogs          NotificationLog[]
+  notificationPreferences   NotificationPreference[]
+  OrangTua                  OrangTua[]
+  sekolah                   Sekolah[]
+  Semester                  Semester[]
+  sesiAbsensi               SesiAbsensi[]
+  SesiGerbang               SesiGerbang[]
+  siswa                     Siswa[]
+  TahunPelajaran            TahunPelajaran[]
+  users                     User[]
+  subscriptions             Subscription[]           @relation("TenantSubscriptions")
+  SystemConfig              SystemConfig[]
+  SiswaFaceTemplate         SiswaFaceTemplate[]
+  JadwalKBM                 JadwalKBM[]
+  JadwalKegiatan            JadwalKegiatan[]
+  AnggotaKegiatanEskul      AnggotaKegiatanEskul[]
+
+  PelanggaranSiswa PelanggaranSiswa[]
+  SupervisiGuru    SupervisiGuru[]
+  JenisPelanggaran JenisPelanggaran[]
+  SiswaDocument    SiswaDocument[]
+  roles            Role[]
+  TenantBackup     TenantBackup[]
+  Member           Member[]
 
   // Koperasi
-  SavingCategory SavingCategory[]
-  ShuConfig      ShuConfig?
-  ShuPeriod      ShuPeriod[]
-  ProductCategory ProductCategory[]
+  SavingCategory       SavingCategory[]
+  ShuConfig            ShuConfig?
+  ShuPeriod            ShuPeriod[]
+  ProductCategory      ProductCategory[]
   CoopPointTransaction CoopPointTransaction[]
 
   organizationalPositions   OrganizationalPosition[]
   organizationalAssignments OrganizationalAssignment[]
 
   // Hubin
-  MitraIndustri MitraIndustri[]
-  SiswaPkl      SiswaPkl[]
-  IzinKeluarSiswa IzinKeluarSiswa[]
-  HubinMoUHistory HubinMoUHistory[]
-  HubinLowongan HubinLowongan[]
-  HubinLamaran HubinLamaran[]
-  HubinLamaranLog HubinLamaranLog[]
-  HubinTracerStudy HubinTracerStudy[]
-  HubinTefaOrder HubinTefaOrder[]
+  MitraIndustri      MitraIndustri[]
+  SiswaPkl           SiswaPkl[]
+  IzinKeluarSiswa    IzinKeluarSiswa[]
+  HubinMoUHistory    HubinMoUHistory[]
+  HubinLowongan      HubinLowongan[]
+  HubinLamaran       HubinLamaran[]
+  HubinLamaranLog    HubinLamaranLog[]
+  HubinTracerStudy   HubinTracerStudy[]
+  HubinTefaOrder     HubinTefaOrder[]
   WaTenantConnection WaTenantConnection?
 
   // BK & Prestasi
@@ -111,29 +114,29 @@ model Tenant {
   SarprasAssetRepair SarprasAssetRepair[]
 
   // TU
-  SuratMasuk        SuratMasuk[]
-  SuratKeluar       SuratKeluar[]
-  StrukturKurikulum StrukturKurikulum[]
-  ProgresMateri     ProgresMateri[]
-  AbsensiPkl        AbsensiPkl[]
-  AttendanceDevice  AttendanceDevice[]
-  Kkmp              Kkmp[]
-  JenisNilaiMaster  JenisNilaiMaster[]
-  NilaiSiswa        NilaiSiswa[]
-  RaporSiswa        RaporSiswa[]
-  SertifikatUkk     SertifikatUkk[]
-  KelulusanSiswa    KelulusanSiswa[]
-  P5Projek          P5Projek[]
-  P5NilaiSiswa      P5NilaiSiswa[]
-  PerangkatAjar     PerangkatAjar[]
-  KalenderAkademik  KalenderAkademik[]
+  SuratMasuk               SuratMasuk[]
+  SuratKeluar              SuratKeluar[]
+  StrukturKurikulum        StrukturKurikulum[]
+  ProgresMateri            ProgresMateri[]
+  AbsensiPkl               AbsensiPkl[]
+  AttendanceDevice         AttendanceDevice[]
+  Kkmp                     Kkmp[]
+  JenisNilaiMaster         JenisNilaiMaster[]
+  NilaiSiswa               NilaiSiswa[]
+  RaporSiswa               RaporSiswa[]
+  SertifikatUkk            SertifikatUkk[]
+  KelulusanSiswa           KelulusanSiswa[]
+  P5Projek                 P5Projek[]
+  P5NilaiSiswa             P5NilaiSiswa[]
+  PerangkatAjar            PerangkatAjar[]
+  KalenderAkademik         KalenderAkademik[]
   ParentTeacherChatSession ParentTeacherChatSession[]
-  TemplateSurat     TemplateSurat[]
-  BkKonsultasiBooking BkKonsultasiBooking[]
-  SupportTicket     SupportTicket[]
-  WhatsappConfig    WhatsappConfig?
+  TemplateSurat            TemplateSurat[]
+  BkKonsultasiBooking      BkKonsultasiBooking[]
+  SupportTicket            SupportTicket[]
+  WhatsappConfig           WhatsappConfig?
+  GuruDocument             GuruDocument[]
 }
-
 
 enum BackupStatus {
   READY
@@ -303,14 +306,14 @@ model PelanggaranSiswa {
 }
 
 model SupervisiGuru {
-  id            String   @id @default(uuid())
-  tenant_id     String
-  guru_id       String
-  supervisor_id String?
-  tanggal       DateTime @db.Date
-  mapel         String?
-  kelas         String?
-  jam_ke        Int?
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  guru_id             String
+  supervisor_id       String?
+  tanggal             DateTime @db.Date
+  mapel               String?
+  kelas               String?
+  jam_ke              Int?
   status              String   @default("SCHEDULED") // SCHEDULED, COMPLETED
   catatan             String?
   nilai               Int?
@@ -371,7 +374,7 @@ model RoleJobdesk {
   id          String   @id @default(uuid())
   role_id     String   @unique
   description String?
-  tasks       Json?    // Array string daftar tugas konkret
+  tasks       Json? // Array string daftar tugas konkret
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -426,19 +429,20 @@ model User {
   Tenant                    Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   organizationalAssignments OrganizationalAssignment[]
 
-  Member              Member?
-  SiswaDocument       SiswaDocument[]
-  SarprasLoan         SarprasLoan[] @relation("Peminjam")
-  KonselingSiswa      KonselingSiswa[]
-  SarprasLoanApproved SarprasLoan[] @relation("Approver")
-  createdTickets      SupportTicket[] @relation("TicketCreator")
-  assignedTickets     SupportTicket[] @relation("TicketAssignee")
-  ticketMessages      SupportTicketMessage[]
+  Member               Member?
+  SiswaDocument        SiswaDocument[]
+  SarprasLoan          SarprasLoan[]          @relation("Peminjam")
+  KonselingSiswa       KonselingSiswa[]
+  SarprasLoanApproved  SarprasLoan[]          @relation("Approver")
+  createdTickets       SupportTicket[]        @relation("TicketCreator")
+  assignedTickets      SupportTicket[]        @relation("TicketAssignee")
+  ticketMessages       SupportTicketMessage[]
   receivedDispositions SuratMasuk[]
-  createdLetters      SuratKeluar[] @relation("createdLetters")
-  approvedLetters      SuratKeluar[] @relation("approvedLetters")
-  templateSuratCreator TemplateSurat[] @relation("templateSuratCreator")
-  guruBkBookings       BkKonsultasiBooking[] @relation("guruBkBookings")
+  createdLetters       SuratKeluar[]          @relation("createdLetters")
+  approvedLetters      SuratKeluar[]          @relation("approvedLetters")
+  templateSuratCreator TemplateSurat[]        @relation("templateSuratCreator")
+  guruBkBookings       BkKonsultasiBooking[]  @relation("guruBkBookings")
+  GuruDocument         GuruDocument[]
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -471,12 +475,12 @@ model OrganizationalPosition {
 }
 
 model PositionJobdesk {
-  id          String                 @id @default(uuid())
-  position_id String                 @unique
+  id          String   @id @default(uuid())
+  position_id String   @unique
   description String?
-  tasks       Json?                  // Array string daftar tugas konkret
-  created_at  DateTime               @default(now())
-  updated_at  DateTime               @updatedAt
+  tasks       Json? // Array string daftar tugas konkret
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   Position OrganizationalPosition @relation(fields: [position_id], references: [id], onDelete: Cascade)
 }
@@ -494,18 +498,22 @@ model OrganizationalAssignment {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
-  Tenant   Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Position OrganizationalPosition @relation(fields: [position_id], references: [id], onDelete: Cascade)
-  User     User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  Kelas    Kelas?                 @relation(fields: [kelas_id], references: [id])
-  Unit     Jurusan?               @relation(fields: [unit_id], references: [id])
+  Tenant              Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Position            OrganizationalPosition @relation(fields: [position_id], references: [id], onDelete: Cascade)
+  User                User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  Kelas               Kelas?                 @relation(fields: [kelas_id], references: [id])
+  Unit                Jurusan?               @relation(fields: [unit_id], references: [id])
+  JenisKegiatanMaster JenisKegiatanMaster?   @relation(fields: [jenis_kegiatan_id], references: [id])
+  jenis_kegiatan_id   String?
 
   @@unique([user_id, position_id, kelas_id])
+  @@unique([user_id, position_id, jenis_kegiatan_id])
   @@index([tenant_id])
   @@index([user_id])
   @@index([position_id])
   @@index([kelas_id])
   @@index([unit_id])
+  @@index([jenis_kegiatan_id])
 }
 
 model OrganizationalCapability {
@@ -524,18 +532,18 @@ model OrganizationalCapability {
 }
 
 model Module {
-  id          String   @id // e.g. "ABSENSI", "KOPERASI", "ERAPOR"
+  id          String  @id // e.g. "ABSENSI", "KOPERASI", "ERAPOR"
   name        String
   description String?
-  icon        String?  // Nama icon Lucide (misal: "building-2")
-  order       Int      @default(0)
-  is_active   Boolean  @default(true)
+  icon        String? // Nama icon Lucide (misal: "building-2")
+  order       Int     @default(0)
+  is_active   Boolean @default(true)
   metadata    Json?
 
-  plans       Plan[]
-  
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  plans Plan[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model Plan {
@@ -560,20 +568,20 @@ model Plan {
   trial_days     Int           @default(0)
 
   // Metadata dan penghapusan lunak
-  size_label String?     @db.VarChar(50)
-  tier       String?     @db.VarChar(50)
+  size_label String?   @db.VarChar(50)
+  tier       String?   @db.VarChar(50)
   metadata   Json?
   deleted_at DateTime?
 
-  created_at          DateTime            @default(now())
-  updated_at          DateTime            @updatedAt
-  currency            String              @default("IDR")
-  is_active           Boolean             @default(true)
-  subscriptions       Subscription[]
-  PlanAddon           PlanAddon[]
-  planChangesFrom     PlanChangeRequest[] @relation("PlanChangeFrom")
-  planChangesTo       PlanChangeRequest[] @relation("PlanChangeTo")
-  Module              Module?             @relation(fields: [module_id], references: [id])
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+  currency        String              @default("IDR")
+  is_active       Boolean             @default(true)
+  subscriptions   Subscription[]
+  PlanAddon       PlanAddon[]
+  planChangesFrom PlanChangeRequest[] @relation("PlanChangeFrom")
+  planChangesTo   PlanChangeRequest[] @relation("PlanChangeTo")
+  Module          Module?             @relation(fields: [module_id], references: [id])
 
   // Indexes untuk performa query
   @@index([is_active])
@@ -667,8 +675,6 @@ model SubscriptionAddon {
   @@index([addon_id])
 }
 
-
-
 // Audit trail perubahan plan pada subscription
 model SubscriptionHistory {
   id              String       @id @default(uuid())
@@ -684,22 +690,22 @@ model SubscriptionHistory {
 }
 
 model Jurusan {
-  id                      String                     @id @default(uuid())
-  tenant_id               String
-  nama                    String
-  kode                    String?
-  singkatan               String?
-  warna                   String?
-  program_keahlian_id     String?                    // FK ke ProgramKeahlian (Konsentrasi Keahlian)
-  created_at              DateTime                   @default(now())
-  updated_at              DateTime                   @updatedAt
-  Tenant                  Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  ProgramKeahlian         ProgramKeahlian?           @relation(fields: [program_keahlian_id], references: [id], onDelete: SetNull)
-  Kelas                   Kelas[]
-  sarprasLocations        SarprasLocation[]
-  organizationalAssigns   OrganizationalAssignment[]
-  StrukturKurikulum       StrukturKurikulum[]
-  Siswa                   Siswa[]
+  id                    String                     @id @default(uuid())
+  tenant_id             String
+  nama                  String
+  kode                  String?
+  singkatan             String?
+  warna                 String?
+  program_keahlian_id   String? // FK ke ProgramKeahlian (Konsentrasi Keahlian)
+  created_at            DateTime                   @default(now())
+  updated_at            DateTime                   @updatedAt
+  Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  ProgramKeahlian       ProgramKeahlian?           @relation(fields: [program_keahlian_id], references: [id], onDelete: SetNull)
+  Kelas                 Kelas[]
+  sarprasLocations      SarprasLocation[]
+  organizationalAssigns OrganizationalAssignment[]
+  StrukturKurikulum     StrukturKurikulum[]
+  Siswa                 Siswa[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -709,24 +715,24 @@ model Jurusan {
 // Model baru: Program Keahlian (Kurikulum Merdeka SMK)
 // Hierarki: Bidang Keahlian → Program Keahlian → Konsentrasi Keahlian (Jurusan)
 model ProgramKeahlian {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   tenant_id       String
-  nama            String    // Contoh: "Teknik Elektronika", "Teknik Otomotif"
-  kode            String?   // Contoh: "TE", "TO"
-  singkatan       String?   // Singkatan opsional
-  bidang_keahlian String?   // Contoh: "Teknologi dan Rekayasa"
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  nama            String // Contoh: "Teknik Elektronika", "Teknik Otomotif"
+  kode            String? // Contoh: "TE", "TO"
+  singkatan       String? // Singkatan opsional
+  bidang_keahlian String? // Contoh: "Teknologi dan Rekayasa"
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 
-  Tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Jurusan  Jurusan[] // Konsentrasi Keahlian yang berada di bawah Program Keahlian ini
+  Tenant  Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Jurusan Jurusan[] // Konsentrasi Keahlian yang berada di bawah Program Keahlian ini
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
 }
 
 model Kelas {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   tenant_id  String
   nama_kelas String
   tingkat    Int
@@ -745,7 +751,7 @@ model Kelas {
   SesiAbsensi               SesiAbsensi[]
   Siswa                     Siswa[]
   SiswaAkademik             SiswaAkademik[]
-  JadwalTemplate            JadwalTemplate[]
+  JadwalKBM                 JadwalKBM[]
   OrganizationalAssignments OrganizationalAssignment[]
   PelanggaranSiswa          PelanggaranSiswa[]
   AttendanceDevice          AttendanceDevice?
@@ -754,14 +760,13 @@ model Kelas {
   RaporSiswa                RaporSiswa[]
   AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
 
-
   @@index([tenant_id])
 }
 
 model Guru {
-  id                    String           @id @default(uuid())
+  id                    String                     @id @default(uuid())
   tenant_id             String
-  user_id               String           @unique
+  user_id               String                     @unique
   nip                   String?
   nama_guru             String
   no_rfid               String?
@@ -774,23 +779,24 @@ model Guru {
   agama                 String?
   status_kepegawaian    String?
   pendidikan_terakhir   String?
-  max_jp                Int?             @default(24)
-  created_at            DateTime         @default(now())
-  updated_at            DateTime         @updatedAt
+  max_jp                Int?                       @default(24)
+  created_at            DateTime                   @default(now())
+  updated_at            DateTime                   @updatedAt
   AbsenGuru             AbsenGuru[]
-  Tenant                Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  User                  User             @relation(fields: [user_id], references: [id])
+  Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  User                  User                       @relation(fields: [user_id], references: [id])
   GuruMapel             GuruMapel[]
-  perangkatAjar         PerangkatAjar[]  @relation("GuruPerangkat")
+  perangkatAjar         PerangkatAjar[]            @relation("GuruPerangkat")
   parentChatSessions    ParentTeacherChatSession[]
   SesiAbsensi           SesiAbsensi[]
-  JadwalTemplate        JadwalTemplate[]
+  JadwalKBM             JadwalKBM[]
   SupervisiGuru         SupervisiGuru[]
-  SupervisiAsSupervisor SupervisiGuru[]  @relation("Supervisor")
+  SupervisiAsSupervisor SupervisiGuru[]            @relation("Supervisor")
   SiswaPkl              SiswaPkl[]
   IzinKeluarSiswa       IzinKeluarSiswa[]
+  GuruDocument          GuruDocument[]
 
-  Member   Member?
+  Member Member?
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
@@ -808,7 +814,7 @@ model Mapel {
   KelasMapel        KelasMapel[]
   Tenant            Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   SesiAbsensi       SesiAbsensi[]
-  JadwalTemplate    JadwalTemplate[]
+  JadwalKBM         JadwalKBM[]
   StrukturKurikulum StrukturKurikulum[]
   Kkmp              Kkmp[]
   NilaiSiswa        NilaiSiswa[]
@@ -832,7 +838,8 @@ model TahunPelajaran {
   SesiGerbang       SesiGerbang[]
   SiswaAkademik     SiswaAkademik[]
   AbsenGuru         AbsenGuru[]
-  JadwalTemplate    JadwalTemplate[]
+  JadwalKBM         JadwalKBM[]
+  JadwalKegiatan    JadwalKegiatan[]
   StrukturKurikulum StrukturKurikulum[]
   NilaiSiswa        NilaiSiswa[]
   RaporSiswa        RaporSiswa[]
@@ -845,20 +852,20 @@ model TahunPelajaran {
 }
 
 model Semester {
-  id                 String           @id @default(uuid())
+  id                 String          @id @default(uuid())
   tenant_id          String
   nama_semester      String
   tahun_pelajaran_id String
-  is_active          Boolean          @default(false)
-  created_at         DateTime         @default(now())
-  updated_at         DateTime         @updatedAt
-  TahunPelajaran     TahunPelajaran   @relation(fields: [tahun_pelajaran_id], references: [id])
-  Tenant             Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  is_active          Boolean         @default(false)
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
+  TahunPelajaran     TahunPelajaran  @relation(fields: [tahun_pelajaran_id], references: [id])
+  Tenant             Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   SesiAbsensi        SesiAbsensi[]
   Siswa              Siswa[]
   SiswaAkademik      SiswaAkademik[]
   AbsenGuru          AbsenGuru[]
-  JadwalTemplate     JadwalTemplate[]
+  JadwalKBM          JadwalKBM[]
   NilaiSiswa         NilaiSiswa[]
   RaporSiswa         RaporSiswa[]
   P5Projek           P5Projek[]
@@ -868,48 +875,48 @@ model Semester {
 }
 
 model Siswa {
-  id                 String              @id @default(uuid())
-  tenant_id          String
-  user_id            String?             @unique
-  nis                String
-  nisn               String?
-  nik                String?
-  nama_siswa         String
-  jenis_kelamin      String
-  tempat_lahir       String?
-  tanggal_lahir      DateTime?
-  alamat             String?
-  dusun              String?
-  kelurahan          String?
-  kecamatan          String?
-  kabupaten          String?
-  provinsi           String?
-  rt                 String?
-  rw                 String?
-  kode_pos           String?
-  no_hp              String?
-  transportasi       String?
-  nama_ayah          String?
-  nik_ayah           String?
-  pekerjaan_ayah     String?
-  pendidikan_ayah    String?
-  penghasilan_ayah   String?
-  nama_ibu           String?
-  nik_ibu            String?
-  pekerjaan_ibu      String?
-  pendidikan_ibu     String?
-  penghasilan_ibu    String?
-  nama_wali          String?
-  hubungan_wali      String?
-  pekerjaan_wali     String?
-  penghasilan_wali   String?
-  anak_ke            Int?
-  kebutuhan_khusus   String?
-  penerima_kps       Boolean?            @default(false)
-  penerima_kip       Boolean?            @default(false)
-  no_kip             String?
-  sekolah_asal       String?
-  no_ijazah_smp      String?
+  id                  String                @id @default(uuid())
+  tenant_id           String
+  user_id             String?               @unique
+  nis                 String
+  nisn                String?
+  nik                 String?
+  nama_siswa          String
+  jenis_kelamin       String
+  tempat_lahir        String?
+  tanggal_lahir       DateTime?
+  alamat              String?
+  dusun               String?
+  kelurahan           String?
+  kecamatan           String?
+  kabupaten           String?
+  provinsi            String?
+  rt                  String?
+  rw                  String?
+  kode_pos            String?
+  no_hp               String?
+  transportasi        String?
+  nama_ayah           String?
+  nik_ayah            String?
+  pekerjaan_ayah      String?
+  pendidikan_ayah     String?
+  penghasilan_ayah    String?
+  nama_ibu            String?
+  nik_ibu             String?
+  pekerjaan_ibu       String?
+  pendidikan_ibu      String?
+  penghasilan_ibu     String?
+  nama_wali           String?
+  hubungan_wali       String?
+  pekerjaan_wali      String?
+  penghasilan_wali    String?
+  anak_ke             Int?
+  kebutuhan_khusus    String?
+  penerima_kps        Boolean?              @default(false)
+  penerima_kip        Boolean?              @default(false)
+  no_kip              String?
+  sekolah_asal        String?
+  no_ijazah_smp       String?
   // NOTE:
   // Field berikut adalah current academic pointer (denormalized).
   // BUKAN sumber histori akademik.
@@ -917,31 +924,31 @@ model Siswa {
   // kelas_id           String
   // tahun_pelajaran_id String?
   // semester_id        String?
-  kelas_id           String?
-  jurusan_id         String?
-  tahun_pelajaran_id String?
-  semester_id        String?
-  tanggal_masuk      DateTime?
-  tanggal_keluar     DateTime?
-  alasan_keluar      String?
-  status             String              @default("AKTIF")
-  no_rfid            String?
-  foto               String?
-  created_at         DateTime            @default(now())
-  updated_at         DateTime            @updatedAt
-  AbsenGerbangSiswa  AbsenGerbangSiswa[]
-  OrangTuaSiswa      OrangTuaSiswa[]
-  Kelas              Kelas?              @relation(fields: [kelas_id], references: [id])
-  Jurusan            Jurusan?            @relation(fields: [jurusan_id], references: [id])
-  Semester           Semester?           @relation(fields: [semester_id], references: [id])
-  TahunPelajaran     TahunPelajaran?     @relation(fields: [tahun_pelajaran_id], references: [id])
-  Tenant             Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  User               User?               @relation(fields: [user_id], references: [id])
-  AbsenSiswa         AbsenSiswa[]
-  SiswaFaceTemplate  SiswaFaceTemplate[]
-  SiswaAkademik      SiswaAkademik[]
-  PelanggaranSiswa   PelanggaranSiswa[]
-  SiswaDocument      SiswaDocument[]
+  kelas_id            String?
+  jurusan_id          String?
+  tahun_pelajaran_id  String?
+  semester_id         String?
+  tanggal_masuk       DateTime?
+  tanggal_keluar      DateTime?
+  alasan_keluar       String?
+  status              String                @default("AKTIF")
+  no_rfid             String?
+  foto                String?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime              @updatedAt
+  AbsenGerbangSiswa   AbsenGerbangSiswa[]
+  OrangTuaSiswa       OrangTuaSiswa[]
+  Kelas               Kelas?                @relation(fields: [kelas_id], references: [id])
+  Jurusan             Jurusan?              @relation(fields: [jurusan_id], references: [id])
+  Semester            Semester?             @relation(fields: [semester_id], references: [id])
+  TahunPelajaran      TahunPelajaran?       @relation(fields: [tahun_pelajaran_id], references: [id])
+  Tenant              Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  User                User?                 @relation(fields: [user_id], references: [id])
+  AbsenSiswa          AbsenSiswa[]
+  SiswaFaceTemplate   SiswaFaceTemplate[]
+  SiswaAkademik       SiswaAkademik[]
+  PelanggaranSiswa    PelanggaranSiswa[]
+  SiswaDocument       SiswaDocument[]
   PrestasiSiswa       PrestasiSiswa[]
   KonselingSiswa      KonselingSiswa[]
   PemanggilanOrangTua PemanggilanOrangTua[]
@@ -951,16 +958,16 @@ model Siswa {
   KasusBK             KasusBK[]
   EwsSnapshot         EwsSnapshot[]
 
-  Member   Member?
-  SiswaPkl SiswaPkl[]
-  HubinLamaran HubinLamaran[]
-  HubinTracerStudy HubinTracerStudy?
-  SuratKeluar SuratKeluar[]
-  NilaiSiswa  NilaiSiswa[]
-  RaporSiswa  RaporSiswa[]
-  SertifikatUkk SertifikatUkk[]
-  KelulusanSiswa KelulusanSiswa[]
-  P5NilaiSiswa P5NilaiSiswa[]
+  Member              Member?
+  SiswaPkl            SiswaPkl[]
+  HubinLamaran        HubinLamaran[]
+  HubinTracerStudy    HubinTracerStudy?
+  SuratKeluar         SuratKeluar[]
+  NilaiSiswa          NilaiSiswa[]
+  RaporSiswa          RaporSiswa[]
+  SertifikatUkk       SertifikatUkk[]
+  KelulusanSiswa      KelulusanSiswa[]
+  P5NilaiSiswa        P5NilaiSiswa[]
   BkKonsultasiBooking BkKonsultasiBooking[]
 
   @@unique([tenant_id, nis])
@@ -983,9 +990,9 @@ model SiswaDocument {
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  Siswa      Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  UploadedBy User?    @relation(fields: [uploaded_by_user_id], references: [id])
+  Siswa      Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  UploadedBy User?  @relation(fields: [uploaded_by_user_id], references: [id])
 
   PemanggilanOrangTua PemanggilanOrangTua[]
   HomeVisit           HomeVisit[]
@@ -1011,9 +1018,11 @@ model SesiAbsensi {
   status             String          @default("BERLANGSUNG")
   is_auto_closed     Boolean         @default(false)
   sumber_sesi        SumberSesi      @default(MANUAL)
-  jadwal_template_id String?
+  jadwal_kbm_id      String?
+  jadwal_kegiatan_id String?
   keterangan         String?         @db.Text
-  JadwalTemplate     JadwalTemplate? @relation(fields: [jadwal_template_id], references: [id])
+  JadwalKBM          JadwalKBM?      @relation(fields: [jadwal_kbm_id], references: [id])
+  JadwalKegiatan     JadwalKegiatan? @relation(fields: [jadwal_kegiatan_id], references: [id])
   created_at         DateTime        @default(now()) @db.Timestamptz
   updated_at         DateTime        @updatedAt @db.Timestamptz
   created_by_user_id String?
@@ -1050,15 +1059,16 @@ model SiswaAkademik {
   created_at         DateTime       @default(now())
   updated_at         DateTime       @default(now()) @updatedAt
 
-  siswa          Siswa          @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  kelas          Kelas          @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
-  tahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
-  semester       Semester       @relation(fields: [semester_id], references: [id], onDelete: Cascade)
-  AbsenSiswa      AbsenSiswa[]
-  PelanggaranSiswa PelanggaranSiswa[]
-  SiswaPkl         SiswaPkl[]
-  IzinKeluarSiswa  IzinKeluarSiswa[]
-  PrestasiSiswa    PrestasiSiswa[]
+  siswa                Siswa                  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  kelas                Kelas                  @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  tahunPelajaran       TahunPelajaran         @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  semester             Semester               @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  AbsenSiswa           AbsenSiswa[]
+  PelanggaranSiswa     PelanggaranSiswa[]
+  SiswaPkl             SiswaPkl[]
+  IzinKeluarSiswa      IzinKeluarSiswa[]
+  PrestasiSiswa        PrestasiSiswa[]
+  AnggotaKegiatanEskul AnggotaKegiatanEskul[]
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
 }
@@ -1260,15 +1270,17 @@ model SiswaFaceTemplate {
 // LogTap model removed (deprecated and replaced by ActivityLog)
 
 model JenisKegiatanMaster {
-  id         String        @id @default(uuid())
-  tenant_id  String
-  nama       String
-  tipe       JenisKegiatan
-  urutan     Int?
-  aktif      Boolean       @default(true)
-  created_at DateTime      @default(now())
-  updated_at DateTime      @updatedAt
-  Tenant     Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  id                    String                     @id @default(uuid())
+  tenant_id             String
+  nama                  String
+  tipe                  JenisKegiatan
+  urutan                Int?
+  aktif                 Boolean                    @default(true)
+  created_at            DateTime                   @default(now())
+  updated_at            DateTime                   @updatedAt
+  Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  AnggotaKegiatanEskul  AnggotaKegiatanEskul[]
+  organizationalAssigns OrganizationalAssignment[]
 
   @@unique([tenant_id, nama])
   @@index([tenant_id])
@@ -1356,8 +1368,6 @@ model AggregatedMetricDaily {
   @@map("aggregated_metric_daily")
 }
 
-
-
 model QueueJobLog {
   id            String   @id @default(uuid())
   queue_name    String
@@ -1434,8 +1444,6 @@ enum TenantRiskEventSeverity {
   HIGH
 }
 
-
-
 enum DocumentCategory {
   ADMINISTRATIVE
   BILLING
@@ -1511,8 +1519,6 @@ model DocumentActivity {
   @@index([document_id])
   @@index([actor_tenant_id, created_at])
 }
-
-
 
 enum PlanChangeStatus {
   SCHEDULED
@@ -1752,8 +1758,6 @@ enum SubscriptionStatus {
   SUSPENDED
 }
 
-
-
 enum PaymentGateway {
   MIDTRANS
   STRIPE
@@ -1951,6 +1955,9 @@ model SystemConfig {
   default_late_threshold        Int             @default(5)
   default_notap_threshold       Int             @default(5)
 
+  // Piket / Izin Keluar
+  max_izin_sementara_menit Int @default(45)
+
   // Parent App Feature Flags (Per Tenant)
   parent_app_enabled                    Boolean @default(true)
   parent_app_dashboard_enabled          Boolean @default(true)
@@ -1990,7 +1997,7 @@ model ConsentLog {
   @@index([timestamp])
 }
 
-model JadwalTemplate {
+model JadwalKBM {
   id        String @id @default(uuid())
   tenant_id String
 
@@ -2001,13 +2008,14 @@ model JadwalTemplate {
 
   // Waktu
   hari        Hari
+  slot_index  Int    @default(1)
   jam_mulai   String // Format "HH:mm" (24-hour)
   jam_selesai String // Format "HH:mm" (24-hour)
 
   // Konten
-  mapel_id       String? // Nullable (misal untuk istirahat/upacara)
+  mapel_id       String? // Nullable
   guru_id        String? // Nullable
-  jenis_kegiatan String  @default("KBM") // Mapping ke SesiAbsensi.jenis_kegiatan
+  jenis_kegiatan String  @default("KBM")
 
   // Metadata
   created_at         DateTime @default(now())
@@ -2025,14 +2033,54 @@ model JadwalTemplate {
   // Relation ke Instance Sesi (One-to-Many)
   SesiAbsensi SesiAbsensi[]
 
-  // Constraint 1: Satu kelas tidak boleh punya dua kegiatan di slot waktu yang sama persis
-  @@unique([kelas_id, tahun_pelajaran_id, semester_id, hari, jam_mulai, jam_selesai])
-  // Constraint 2: Satu guru tidak boleh mengajar di dua tempat di slot waktu yang sama persis
+  // Constraints
+  @@unique([kelas_id, tahun_pelajaran_id, semester_id, hari, slot_index])
   @@unique([guru_id, tahun_pelajaran_id, semester_id, hari, jam_mulai, jam_selesai])
-  // Indexes & Constraints
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
   @@index([kelas_id, hari])
   @@index([guru_id, hari])
+}
+
+model JadwalKegiatan {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  nama               String // "Apel Pagi", "Latihan Ketarunaan", "Pramuka"
+  jenis_kegiatan     String // FK ke JenisKegiatanMaster.nama (PEMBIASAAN / ESKUL)
+  hari               Hari[] // Menggunakan enum Hari bawaan Prisma
+  waktu_mulai        String // "07:00"
+  waktu_selesai      String? // "07:15"
+  target_semua_kelas Boolean   @default(true)
+  target_kelas_ids   String[]  @default([])
+  berlaku_mulai      DateTime
+  berlaku_sampai     DateTime?
+  tahun_pelajaran_id String
+  aktif              Boolean   @default(true)
+  dibuat_oleh        String // user_id
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
+  SesiAbsensi    SesiAbsensi[]
+
+  @@index([tenant_id])
+  @@index([tahun_pelajaran_id])
+}
+
+model AnggotaKegiatanEskul {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  jenis_kegiatan_id String // FK ke JenisKegiatanMaster.id
+  siswa_akademik_id String // FK ke SiswaAkademik.id
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  Tenant              Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  JenisKegiatanMaster JenisKegiatanMaster @relation(fields: [jenis_kegiatan_id], references: [id], onDelete: Cascade)
+  SiswaAkademik       SiswaAkademik       @relation(fields: [siswa_akademik_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, jenis_kegiatan_id, siswa_akademik_id])
+  @@index([tenant_id, jenis_kegiatan_id])
 }
 
 model StrukturKurikulum {
@@ -2127,7 +2175,7 @@ model Member {
   memberNo String
   type     MemberType   @default(STUDENT)
   status   MemberStatus @default(ACTIVE)
-  pin      String?      // Hash PIN 6-digit untuk otorisasi pembayaran cashless
+  pin      String? // Hash PIN 6-digit untuk otorisasi pembayaran cashless
   points   Int          @default(0)
 
   // Relasi Database
@@ -2161,19 +2209,19 @@ enum MemberType {
 
 // --- MASTER JENIS SIMPANAN (menggantikan SavingType enum) ---
 model SavingCategory {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   tenantId    String
-  code        String   // 'POKOK', 'WAJIB', 'SUKARELA', 'SHR', atau custom
-  name        String   // "Simpanan Hari Raya", "Simpanan Wajib", dll
+  code        String // 'POKOK', 'WAJIB', 'SUKARELA', 'SHR', atau custom
+  name        String // "Simpanan Hari Raya", "Simpanan Wajib", dll
   description String?
-  color       String?  // hex color untuk badge UI
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
+  color       String? // hex color untuk badge UI
+  order       Int     @default(0)
+  isActive    Boolean @default(true)
 
   // Aturan bisnis per kategori
   isMandatory    Boolean  @default(false) // Wajib setor tiap bulan?
-  isWithdrawable Boolean  @default(true)  // Bisa ditarik?
-  withdrawRule   String?  // 'ANYTIME'|'RESIGN_ONLY'|'YEAR_END'|'HOLIDAY'
+  isWithdrawable Boolean  @default(true) // Bisa ditarik?
+  withdrawRule   String? // 'ANYTIME'|'RESIGN_ONLY'|'YEAR_END'|'HOLIDAY'
   defaultAmount  Decimal? // Nominal default setoran (untuk UI autofill)
 
   // Konfigurasi SHU
@@ -2308,8 +2356,8 @@ model Product {
 
   tenantId String
 
-  saleItems    SaleItem[]
-  stockInItems CoopStockInItem[]
+  saleItems        SaleItem[]
+  stockInItems     CoopStockInItem[]
   stockOpnameItems CoopStockOpnameItem[]
 
   createdAt DateTime @default(now())
@@ -2319,45 +2367,45 @@ model Product {
 model ProductCategory {
   id          String   @id @default(uuid())
   tenantId    String
-  code        String   // 'MAKANAN', 'MINUMAN', dll.
-  name        String   // 'Makanan', 'Minuman', dll.
+  code        String // 'MAKANAN', 'MINUMAN', dll.
+  name        String // 'Makanan', 'Minuman', dll.
   description String?
   isActive    Boolean  @default(true)
   order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  Tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  Tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, code])
   @@unique([tenantId, name])
 }
 
 model CoopStockIn {
-  id            String            @id @default(uuid())
+  id            String   @id @default(uuid())
   tenantId      String
-  date          DateTime          @default(now())
-  supplier      String?           // Nama vendor / supplier penyedia barang
-  notes         String?           // Catatan penjelas tambahan
-  paymentMethod String            @default("CASH") // "CASH" | "CREDIT"
-  operatorId    String?           // User ID admin / operator yang menginput barang masuk
-  shippingFee   Decimal           @default(0) // Ongkos kirim (dicatat sebagai beban operasional terpisah)
+  date          DateTime @default(now())
+  supplier      String? // Nama vendor / supplier penyedia barang
+  notes         String? // Catatan penjelas tambahan
+  paymentMethod String   @default("CASH") // "CASH" | "CREDIT"
+  operatorId    String? // User ID admin / operator yang menginput barang masuk
+  shippingFee   Decimal  @default(0) // Ongkos kirim (dicatat sebagai beban operasional terpisah)
 
-  items         CoopStockInItem[]
+  items CoopStockInItem[]
 
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CoopStockInItem {
-  id         String   @id @default(uuid())
-  stockInId  String
-  productId  String
-  quantity   Int
-  costPrice  Decimal  // Harga modal beli barang saat masuk
+  id        String  @id @default(uuid())
+  stockInId String
+  productId String
+  quantity  Int
+  costPrice Decimal // Harga modal beli barang saat masuk
 
-  StockIn    CoopStockIn @relation(fields: [stockInId], references: [id], onDelete: Cascade)
-  Product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  StockIn CoopStockIn @relation(fields: [stockInId], references: [id], onDelete: Cascade)
+  Product Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model CoopStockOpname {
@@ -2369,16 +2417,16 @@ model CoopStockOpname {
   notes        String?
   operatorId   String?
 
-  items        CoopStockOpnameItem[]
+  items CoopStockOpnameItem[]
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([tenantId, opnameNumber])
 }
 
 model CoopStockOpnameItem {
-  id            String          @id @default(uuid())
+  id            String  @id @default(uuid())
   opnameId      String
   productId     String
   systemStock   Int
@@ -2387,8 +2435,8 @@ model CoopStockOpnameItem {
   costPrice     Decimal
   notes         String?
 
-  Opname        CoopStockOpname @relation(fields: [opnameId], references: [id], onDelete: Cascade)
-  Product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  Opname  CoopStockOpname @relation(fields: [opnameId], references: [id], onDelete: Cascade)
+  Product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Sale {
@@ -2445,7 +2493,7 @@ model Voucher {
   isActive    Boolean   @default(true)
 
   memberId String?
-  Member   Member?   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  Member   Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   tenantId String
 
@@ -2457,10 +2505,10 @@ model CoopPointTransaction {
   id          String          @id @default(uuid())
   tenantId    String
   memberId    String
-  amount      Int             // Positif untuk perolehan (earn), negatif untuk penukaran (redeem)
+  amount      Int // Positif untuk perolehan (earn), negatif untuk penukaran (redeem)
   type        CoopPointTxType
   description String?
-  referenceId String?         // ID relasi (Sale ID, SavingTransaction ID, atau Voucher ID)
+  referenceId String? // ID relasi (Sale ID, SavingTransaction ID, atau Voucher ID)
   createdAt   DateTime        @default(now())
 
   Tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -2566,15 +2614,15 @@ model ShuConfig {
 
 // --- PERIODE SHU PER TAHUN BUKU ---
 model ShuPeriod {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   tenantId  String
   year      Int
   startDate DateTime
   endDate   DateTime
 
-  totalRevenue Decimal   @default(0)
-  totalExpense Decimal   @default(0)
-  totalShu     Decimal   @default(0)
+  totalRevenue Decimal @default(0)
+  totalExpense Decimal @default(0)
+  totalShu     Decimal @default(0)
 
   status     ShuStatus @default(DRAFT)
   approvedBy String?
@@ -2690,60 +2738,60 @@ enum PPOBStatus {
 
 // --- MODUL HUBIN (PKL) ---
 model MitraIndustri {
-  id                    String            @id @default(uuid())
-  tenant_id             String
-  nama                  String
-  bidang                String?
-  alamat                String?
-  kontak                String?
-  latitude              Float?
-  longitude             Float?
-  radius                Int?              @default(100)
-  
+  id        String  @id @default(uuid())
+  tenant_id String
+  nama      String
+  bidang    String?
+  alamat    String?
+  kontak    String?
+  latitude  Float?
+  longitude Float?
+  radius    Int?    @default(100)
+
   // Detail PIC Industri
-  pic_nama              String?
-  pic_jabatan           String?
-  pic_telepon           String?
-  pic_email             String?
+  pic_nama    String?
+  pic_jabatan String?
+  pic_telepon String?
+  pic_email   String?
 
   // MoU & Kuota
-  mou_nomor             String?
-  mou_url               String?
-  mou_tanggal_mulai     DateTime?
-  mou_tanggal_berakhir  DateTime?
-  mou_status            String            @default("AKTIF")
-  kuota_pkl             Int               @default(0)
-  kompetensi_keahlian   String?
+  mou_nomor            String?
+  mou_url              String?
+  mou_tanggal_mulai    DateTime?
+  mou_tanggal_berakhir DateTime?
+  mou_status           String    @default("AKTIF")
+  kuota_pkl            Int       @default(0)
+  kompetensi_keahlian  String?
 
-  created_at            DateTime          @default(now())
-  updated_at            DateTime          @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  Tenant                Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SiswaPkl              SiswaPkl[]
-  MoUHistory            HubinMoUHistory[]
-  Lowongan              HubinLowongan[]
-  TefaOrder             HubinTefaOrder[]
-  SertifikatUkk         SertifikatUkk[]
+  Tenant        Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SiswaPkl      SiswaPkl[]
+  MoUHistory    HubinMoUHistory[]
+  Lowongan      HubinLowongan[]
+  TefaOrder     HubinTefaOrder[]
+  SertifikatUkk SertifikatUkk[]
 
   @@index([tenant_id])
 }
 
 model HubinMoUHistory {
-  id              String        @id @default(uuid())
+  id              String    @id @default(uuid())
   tenant_id       String
   mitra_id        String
   mou_nomor       String
-  mou_tipe        String        // MoU, MoA, PKS
+  mou_tipe        String // MoU, MoA, PKS
   tanggal_mulai   DateTime
   tanggal_selesai DateTime
   mou_url         String?
-  keterangan      String?       @db.Text
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
+  keterangan      String?   @db.Text
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
   deleted_at      DateTime?
 
-  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Mitra           MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
+  Tenant Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra  MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([mitra_id])
@@ -2751,23 +2799,23 @@ model HubinMoUHistory {
 }
 
 model HubinLowongan {
-  id              String         @id @default(uuid())
+  id              String    @id @default(uuid())
   tenant_id       String
   mitra_id        String?
   perusahaan_nama String
   judul_posisi    String
-  deskripsi       String         @db.Text
-  persyaratan     String         @db.Text
-  kuota           Int            @default(1)
+  deskripsi       String    @db.Text
+  persyaratan     String    @db.Text
+  kuota           Int       @default(1)
   tanggal_tutup   DateTime
-  status          String         @default("BUKA")
-  created_at      DateTime       @default(now())
-  updated_at      DateTime       @updatedAt
+  status          String    @default("BUKA")
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
   deleted_at      DateTime?
 
-  Tenant          Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Mitra           MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
-  Lamaran         HubinLamaran[]
+  Tenant  Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra   MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
+  Lamaran HubinLamaran[]
 
   @@index([tenant_id])
   @@index([mitra_id])
@@ -2775,21 +2823,21 @@ model HubinLowongan {
 }
 
 model HubinLamaran {
-  id              String        @id @default(uuid())
-  tenant_id       String
-  lowongan_id     String
-  siswa_id        String
-  status_seleksi  String        @default("TERKIRIM")
-  cv_url          String?
-  catatan         String?       @db.Text
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
-  deleted_at      DateTime?
+  id             String    @id @default(uuid())
+  tenant_id      String
+  lowongan_id    String
+  siswa_id       String
+  status_seleksi String    @default("TERKIRIM")
+  cv_url         String?
+  catatan        String?   @db.Text
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
 
-  Tenant          Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Lowongan        HubinLowongan @relation(fields: [lowongan_id], references: [id], onDelete: Cascade)
-  Siswa           Siswa         @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  Logs            HubinLamaranLog[]
+  Tenant   Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Lowongan HubinLowongan     @relation(fields: [lowongan_id], references: [id], onDelete: Cascade)
+  Siswa    Siswa             @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Logs     HubinLamaranLog[]
 
   @@index([tenant_id])
   @@index([lowongan_id])
@@ -2834,9 +2882,9 @@ model WaTenantConnection {
 }
 
 model HubinTracerStudy {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   tenant_id        String
-  siswa_id         String   @unique
+  siswa_id         String    @unique
   tahun_lulus      Int
   status_alumni    String
   perusahaan_nama  String?
@@ -2846,33 +2894,33 @@ model HubinTracerStudy {
   program_studi    String?
   usaha_nama       String?
   usaha_bidang     String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
   deleted_at       DateTime?
 
-  Tenant           Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa            Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa  Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([tenant_id, deleted_at])
 }
 
 model HubinTefaOrder {
-  id             String         @id @default(uuid())
+  id             String    @id @default(uuid())
   tenant_id      String
   mitra_id       String?
   nama_proyek    String
   nilai_kontrak  Float?
-  status_proyek  String         @default("PERENCANAAN")
+  status_proyek  String    @default("PERENCANAAN")
   tanggal_mulai  DateTime?
   tanggal_target DateTime?
-  deskripsi      String?        @db.Text
-  created_at     DateTime       @default(now())
-  updated_at     DateTime       @updatedAt
+  deskripsi      String?   @db.Text
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
   deleted_at     DateTime?
 
-  Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Mitra          MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
+  Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra  MitraIndustri? @relation(fields: [mitra_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([mitra_id])
@@ -2880,34 +2928,34 @@ model HubinTefaOrder {
 }
 
 model SiswaPkl {
-  id              String    @id @default(uuid())
-  tenant_id       String
+  id                String    @id @default(uuid())
+  tenant_id         String
   siswa_id          String
   siswa_akademik_id String?
   mitra_id          String
-  tanggal_mulai   DateTime
-  tanggal_selesai DateTime?
-  status          String    @default("AKTIF") // AKTIF, SELESAI, BATAL
-  pembimbing_id   String? // Guru pembimbing
-  
+  tanggal_mulai     DateTime
+  tanggal_selesai   DateTime?
+  status            String    @default("AKTIF") // AKTIF, SELESAI, BATAL
+  pembimbing_id     String? // Guru pembimbing
+
   // Geofencing Override (Untuk Branch Office / Lokasi Khusus per Siswa)
-  lat_override    Float?
-  lon_override    Float?
-  radius_override Int?
+  lat_override         Float?
+  lon_override         Float?
+  radius_override      Int?
   is_flexible_location Boolean @default(false) // Jika true, siswa bisa absen di luar radius tapi perlu verifikasi
 
-  nilai_json      Json?
-  kunjungan_json  Json?
-  jurnal_json     Json?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  nilai_json     Json?
+  kunjungan_json Json?
+  jurnal_json    Json?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  Tenant     Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa         Siswa          @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
   SiswaAkademik SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id])
-  Mitra         MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
-  Pembimbing Guru?         @relation(fields: [pembimbing_id], references: [id])
-  AbsensiPkl AbsensiPkl[]
+  Mitra         MitraIndustri  @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
+  Pembimbing    Guru?          @relation(fields: [pembimbing_id], references: [id])
+  AbsensiPkl    AbsensiPkl[]
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -2915,31 +2963,31 @@ model SiswaPkl {
 }
 
 model AbsensiPkl {
-  id              String   @id @default(uuid())
-  tenant_id       String
-  siswa_pkl_id    String
-  tanggal         DateTime @db.Date
-  jam_masuk       DateTime? @db.Timestamptz
-  jam_pulang      DateTime? @db.Timestamptz
-  status          String   @default("HADIR") // HADIR, IZIN, SAKIT, ALPA
-  kegiatan        String?  @db.Text
-  image_url       String?
-  image_url_out   String?
-  
+  id            String    @id @default(uuid())
+  tenant_id     String
+  siswa_pkl_id  String
+  tanggal       DateTime  @db.Date
+  jam_masuk     DateTime? @db.Timestamptz
+  jam_pulang    DateTime? @db.Timestamptz
+  status        String    @default("HADIR") // HADIR, IZIN, SAKIT, ALPA
+  kegiatan      String?   @db.Text
+  image_url     String?
+  image_url_out String?
+
   // Geolocation Data
-  latitude_masuk  Float?
-  longitude_masuk Float?
-  latitude_pulang Float?
+  latitude_masuk   Float?
+  longitude_masuk  Float?
+  latitude_pulang  Float?
   longitude_pulang Float?
-  
+
   // Geofencing Status
   is_outside_radius Boolean @default(false) // Menandai jika absen dilakukan di luar zona (Dinas Luar)
-  distance_meters   Int?     // Jarak dalam meter dari lokasi mitra saat absen
+  distance_meters   Int? // Jarak dalam meter dari lokasi mitra saat absen
   address_snapshot  String? @db.Text // Snapshot alamat saat absen luar zona
 
-  is_verified     Boolean  @default(false)
-  verified_by     String?
-  verifikasi_at   DateTime?
+  is_verified   Boolean   @default(false)
+  verified_by   String?
+  verifikasi_at DateTime?
 
   SiswaPkl SiswaPkl @relation(fields: [siswa_pkl_id], references: [id], onDelete: Cascade)
   Tenant   Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -2950,17 +2998,17 @@ model AbsensiPkl {
 }
 
 model IzinKeluarSiswa {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   tenant_id         String
   siswa_akademik_id String
   guru_piket_id     String?
-  jam_keluar        DateTime @db.Timestamptz
+  jam_keluar        DateTime  @db.Timestamptz
   jam_kembali       DateTime? @db.Timestamptz
   alasan            String
-  tipe_izin         String   @default("IZIN_KELUAR") // IZIN_KELUAR, PULANG_AWAL, IZIN_JURUSAN
-  status            String   @default("DISETUJUI") // DISETUJUI, KEMBALI, TERLAMBAT
-  created_at        DateTime @default(now()) @db.Timestamptz
-  updated_at        DateTime @updatedAt @db.Timestamptz
+  tipe_izin         String    @default("IZIN_KELUAR") // IZIN_KELUAR, PULANG_AWAL, IZIN_JURUSAN
+  status            String    @default("DISETUJUI") // DISETUJUI, KEMBALI, TERLAMBAT
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @updatedAt @db.Timestamptz
 
   Tenant        Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   SiswaAkademik SiswaAkademik @relation(fields: [siswa_akademik_id], references: [id], onDelete: Cascade)
@@ -2972,12 +3020,12 @@ model IzinKeluarSiswa {
 
 // --- MODUL SARPRAS (INVENTORY) ---
 model SarprasCategory {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenant_id  String
   nama       String
   deskripsi  String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
   Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -2989,14 +3037,14 @@ model SarprasCategory {
 }
 
 model SarprasLocation {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenant_id  String
   nama       String
   deskripsi  String?
   unit_id    String?
   kelas_id   String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
   Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -3025,10 +3073,10 @@ model SarprasAsset {
   price_purchase Decimal?  @db.Decimal(15, 2)
   image_url      String?
   deskripsi      String?
-  sumber_dana    String?   // BOS_REGULER, BOS_PROVINSI, KOMITE, HIBAH, YAYASAN, LAINNYA
+  sumber_dana    String? // BOS_REGULER, BOS_PROVINSI, KOMITE, HIBAH, YAYASAN, LAINNYA
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
   Tenant   Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -3114,14 +3162,14 @@ model SuratMasuk {
   id                    String   @id @default(uuid())
   tenant_id             String
   nomor_surat           String
-  judul                 String   // Perihal / Judul Surat
+  judul                 String // Perihal / Judul Surat
   asal_surat            String?
   tanggal_surat         DateTime
   tanggal_terima        DateTime @default(now())
   ringkasan             String?  @db.Text
-  dokumen_url           String?  // File scan surat masuk (.pdf / .png / .jpg)
+  dokumen_url           String? // File scan surat masuk (.pdf / .png / .jpg)
   disposisi_instruksi   String?  @db.Text // Instruksi disposisi kepala sekolah
-  penerima_disposisi_id String?  // User/Guru yang ditugaskan
+  penerima_disposisi_id String? // User/Guru yang ditugaskan
   status                String   @default("BARU") // BARU, DISPOSISI, PROSES, SELESAI
   created_at            DateTime @default(now())
   updated_at            DateTime @updatedAt
@@ -3133,21 +3181,21 @@ model SuratMasuk {
 }
 
 model SuratKeluar {
-  id             String    @id @default(uuid())
+  id             String   @id @default(uuid())
   tenant_id      String
   nomor_surat    String
-  judul          String    // Perihal / Judul Surat
+  judul          String // Perihal / Judul Surat
   tujuan_surat   String?
-  tanggal_surat  DateTime  @default(now())
-  isi_ringkas    String?   @db.Text
-  dokumen_url    String?   // File draft/final scan surat keluar
-  kategori_surat String    @default("Dinas") // Dinas, Undangan, Panggilan, Keterangan, dll
-  status         String    @default("DRAFT") // DRAFT, MENUNGGU_TTD, DIKIRIM, DITOLAK
-  siswa_id       String?   // Hubungan opsional ke Siswa
-  created_by_id  String?   // Pembuat draft
-  approved_by_id String?   // Penandatangan
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  tanggal_surat  DateTime @default(now())
+  isi_ringkas    String?  @db.Text
+  dokumen_url    String? // File draft/final scan surat keluar
+  kategori_surat String   @default("Dinas") // Dinas, Undangan, Panggilan, Keterangan, dll
+  status         String   @default("DRAFT") // DRAFT, MENUNGGU_TTD, DIKIRIM, DITOLAK
+  siswa_id       String? // Hubungan opsional ke Siswa
+  created_by_id  String? // Pembuat draft
+  approved_by_id String? // Penandatangan
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa      Siswa? @relation(fields: [siswa_id], references: [id], onDelete: SetNull)
@@ -3159,16 +3207,16 @@ model SuratKeluar {
 }
 
 model TemplateSurat {
-  id             String   @id @default(uuid())
-  tenant_id      String
-  nama_template  String
-  kategori       String   @default("Umum") // Panggilan, Keterangan, Undangan, Izin, dll
-  isi_template   String   @db.Text         // HTML / Rich Text dengan variabel {{nama_siswa}} dll
-  variabel_list  String?  @db.Text         // JSON array: ["nama_siswa","kelas","tanggal"]
-  is_active      Boolean  @default(true)
-  created_by_id  String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id            String   @id @default(uuid())
+  tenant_id     String
+  nama_template String
+  kategori      String   @default("Umum") // Panggilan, Keterangan, Undangan, Izin, dll
+  isi_template  String   @db.Text // HTML / Rich Text dengan variabel {{nama_siswa}} dll
+  variabel_list String?  @db.Text // JSON array: ["nama_siswa","kelas","tanggal"]
+  is_active     Boolean  @default(true)
+  created_by_id String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   Tenant    Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   CreatedBy User?  @relation("templateSuratCreator", fields: [created_by_id], references: [id])
@@ -3180,30 +3228,30 @@ model TemplateSurat {
 /// Orang tua dapat memesan jadwal sesi konsultasi dengan Guru BK
 /// melalui Portal Wali Murid. Guru BK dapat konfirmasi/tolak booking.
 model BkKonsultasiBooking {
-  id              String   @id @default(uuid())
-  tenant_id       String
+  id        String @id @default(uuid())
+  tenant_id String
 
-  ortu_id         String                // Siapa yang booking
-  siswa_id        String                // Untuk siswa siapa
-  guru_bk_id      String?               // Guru BK yang dituju (opsional, bisa auto-assign)
+  ortu_id    String // Siapa yang booking
+  siswa_id   String // Untuk siswa siapa
+  guru_bk_id String? // Guru BK yang dituju (opsional, bisa auto-assign)
 
-  tanggal_booking DateTime              // Tanggal & jam yang diinginkan ortu
+  tanggal_booking DateTime // Tanggal & jam yang diinginkan ortu
   durasi_menit    Int      @default(30) // Durasi sesi (menit)
   metode          String   @default("TATAP_MUKA") // TATAP_MUKA | ONLINE (via WA/Meet)
-  perihal         String   @db.Text     // Topik/masalah yang ingin dikonsultasikan
-  catatan_ortu    String?  @db.Text     // Catatan tambahan ortu
+  perihal         String   @db.Text // Topik/masalah yang ingin dikonsultasikan
+  catatan_ortu    String?  @db.Text // Catatan tambahan ortu
 
-  status          String   @default("MENUNGGU") // MENUNGGU | DIKONFIRMASI | DITOLAK | SELESAI | DIBATALKAN
-  catatan_bk      String?  @db.Text     // Catatan/alasan dari guru BK saat konfirmasi/tolak
-  link_meeting    String?               // Link Google Meet / WA group jika metode ONLINE
+  status       String  @default("MENUNGGU") // MENUNGGU | DIKONFIRMASI | DITOLAK | SELESAI | DIBATALKAN
+  catatan_bk   String? @db.Text // Catatan/alasan dari guru BK saat konfirmasi/tolak
+  link_meeting String? // Link Google Meet / WA group jika metode ONLINE
 
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  Tenant   Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  OrangTua OrangTua  @relation(fields: [ortu_id], references: [id], onDelete: Cascade)
-  Siswa    Siswa     @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  GuruBk   User?     @relation("guruBkBookings", fields: [guru_bk_id], references: [id])
+  Tenant   Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  OrangTua OrangTua @relation(fields: [ortu_id], references: [id], onDelete: Cascade)
+  Siswa    Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  GuruBk   User?    @relation("guruBkBookings", fields: [guru_bk_id], references: [id])
 
   @@index([tenant_id])
   @@index([ortu_id])
@@ -3211,34 +3259,33 @@ model BkKonsultasiBooking {
   @@index([status])
 }
 
-
 model AttendanceDevice {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   tenant_id        String
-  device_id        String   @unique // ID Hardware (MAC/ChipID)
-  name             String?  // Nama/Alias Alat
-  kelas_id         String?  @unique // Link 1:1 ke Kelas
-  status           String   @default("INACTIVE") // ONLINE, OFFLINE, INACTIVE
+  device_id        String    @unique // ID Hardware (MAC/ChipID)
+  name             String? // Nama/Alias Alat
+  kelas_id         String?   @unique // Link 1:1 ke Kelas
+  status           String    @default("INACTIVE") // ONLINE, OFFLINE, INACTIVE
   heartbeat_at     DateTime? @db.Timestamptz
   battery_level    Int?
   firmware_version String?
-  created_at       DateTime @default(now()) @db.Timestamptz
-  updated_at       DateTime @updatedAt @db.Timestamptz
+  created_at       DateTime  @default(now()) @db.Timestamptz
+  updated_at       DateTime  @updatedAt @db.Timestamptz
 
-  Kelas            Kelas?   @relation(fields: [kelas_id], references: [id])
-  Tenant           Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Kelas  Kelas? @relation(fields: [kelas_id], references: [id])
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
 }
 
 model WhatsappConfig {
-  id            String   @id @default(uuid())
-  tenant_id     String   @unique
-  provider_name String   @default("FONNTE") // e.g., FONNTE, WOWA, CUSTOM
-  api_url       String   // Gateway API Endpoint
-  api_token     String   // API Key / Token
-  sender_number String?  // Nomor pengirim (referensi)
-  is_active     Boolean  @default(true)
+  id            String  @id @default(uuid())
+  tenant_id     String  @unique
+  provider_name String  @default("FONNTE") // e.g., FONNTE, WOWA, CUSTOM
+  api_url       String // Gateway API Endpoint
+  api_token     String // API Key / Token
+  sender_number String? // Nomor pengirim (referensi)
+  is_active     Boolean @default(true)
 
   // Message Templates (Markdown/Plaintext with placeholders)
   template_absen_masuk  String? @db.Text
@@ -3352,40 +3399,40 @@ model SupportKnowledgeBase {
 
 // Kategori/Jenis Prestasi yang tersedia
 model JenisPrestasi {
-  id             String           @id @default(uuid())
-  tenant_id      String
-  kategori       String           // Akademik, Non-Akademik, Sikap/Karakter
-  nama_prestasi  String
-  poin           Int              // Poin penghargaan (contoh: +10, +25)
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  
-  Tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  PrestasiSiswa  PrestasiSiswa[]
+  id            String   @id @default(uuid())
+  tenant_id     String
+  kategori      String // Akademik, Non-Akademik, Sikap/Karakter
+  nama_prestasi String
+  poin          Int // Poin penghargaan (contoh: +10, +25)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  Tenant        Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  PrestasiSiswa PrestasiSiswa[]
 
   @@index([tenant_id])
 }
 
 // Catatan Prestasi yang diraih Siswa
 model PrestasiSiswa {
-  id                String         @id @default(uuid())
+  id                String   @id @default(uuid())
   tenant_id         String
   siswa_id          String
   siswa_akademik_id String?
   kelas_id          String?
-  tanggal           DateTime       @db.Date
+  tanggal           DateTime @db.Date
   jenis_prestasi_id String?
-  nama_prestasi     String         // Menyimpan nama prestasi (atau override)
-  poin              Int            @default(0)
+  nama_prestasi     String // Menyimpan nama prestasi (atau override)
+  poin              Int      @default(0)
   keterangan        String?
-  created_at        DateTime       @default(now())
-  updated_at        DateTime       @updatedAt
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  Tenant            Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa             Siswa          @relation(fields: [siswa_id], references: [id])
-  SiswaAkademik     SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id])
-  Kelas             Kelas?         @relation(fields: [kelas_id], references: [id])
-  Jenis             JenisPrestasi? @relation(fields: [jenis_prestasi_id], references: [id], onDelete: SetNull)
+  Tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa         Siswa          @relation(fields: [siswa_id], references: [id])
+  SiswaAkademik SiswaAkademik? @relation(fields: [siswa_akademik_id], references: [id])
+  Kelas         Kelas?         @relation(fields: [kelas_id], references: [id])
+  Jenis         JenisPrestasi? @relation(fields: [jenis_prestasi_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3393,27 +3440,27 @@ model PrestasiSiswa {
 
 // Catatan Sesi Konseling (Individu / Kelompok)
 model KonselingSiswa {
-  id                String         @id @default(uuid())
-  tenant_id         String
-  siswa_id          String
-  kasus_bk_id       String?
-  tanggal           DateTime       @db.Date
-  tipe              String         // INDIVIDU, KELOMPOK
-  kelompok_id       String?        // Pengenal jika konseling kelompok dilakukan bersamaan
-  masalah           String         @db.Text
-  solusi            String?        @db.Text
-  status            String         @default("PROSES") // PROSES, SELESAI
-  visibility        String         @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
-  petugas_id        String         // User ID guru BK yang menangani
-  deleted_at        DateTime?
-  deleted_by        String?
-  created_at        DateTime       @default(now())
-  updated_at        DateTime       @updatedAt
+  id          String    @id @default(uuid())
+  tenant_id   String
+  siswa_id    String
+  kasus_bk_id String?
+  tanggal     DateTime  @db.Date
+  tipe        String // INDIVIDU, KELOMPOK
+  kelompok_id String? // Pengenal jika konseling kelompok dilakukan bersamaan
+  masalah     String    @db.Text
+  solusi      String?   @db.Text
+  status      String    @default("PROSES") // PROSES, SELESAI
+  visibility  String    @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
+  petugas_id  String // User ID guru BK yang menangani
+  deleted_at  DateTime?
+  deleted_by  String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  Tenant            Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa             Siswa          @relation(fields: [siswa_id], references: [id])
-  Petugas           User           @relation(fields: [petugas_id], references: [id])
-  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
+  Tenant  Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa   Siswa    @relation(fields: [siswa_id], references: [id])
+  Petugas User     @relation(fields: [petugas_id], references: [id])
+  KasusBK KasusBK? @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3421,29 +3468,29 @@ model KonselingSiswa {
 
 // Catatan Pemanggilan Orang Tua
 model PemanggilanOrangTua {
-  id                  String       @id @default(uuid())
-  tenant_id           String
-  siswa_id            String
-  kasus_bk_id         String?
-  tanggal_pemanggilan DateTime     @db.Date
-  tanggal_pertemuan   DateTime?    @db.Date
-  alasan              String       @db.Text
-  keterangan_pertemuan String?     @db.Text
-  status              String       @default("BARU") // BARU, DIKIRIM, HADIR, TIDAK_HADIR
-  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
-  ortu_notified     Boolean        @default(false)
-  surat_dokumen_id    String?      // Relasi opsional ke file scan surat panggilan fisik
-  deleted_at          DateTime?
-  deleted_by          String?
-  waktu_pertemuan     String?      @db.VarChar(100)
-  tempat_pertemuan    String?      @db.VarChar(255)
-  created_at          DateTime     @default(now())
-  updated_at          DateTime     @updatedAt
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  siswa_id             String
+  kasus_bk_id          String?
+  tanggal_pemanggilan  DateTime  @db.Date
+  tanggal_pertemuan    DateTime? @db.Date
+  alasan               String    @db.Text
+  keterangan_pertemuan String?   @db.Text
+  status               String    @default("BARU") // BARU, DIKIRIM, HADIR, TIDAK_HADIR
+  visibility           String    @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  ortu_notified        Boolean   @default(false)
+  surat_dokumen_id     String? // Relasi opsional ke file scan surat panggilan fisik
+  deleted_at           DateTime?
+  deleted_by           String?
+  waktu_pertemuan      String?   @db.VarChar(100)
+  tempat_pertemuan     String?   @db.VarChar(255)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
-  Tenant              Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa               Siswa        @relation(fields: [siswa_id], references: [id])
-  Dokumen             SiswaDocument? @relation(fields: [surat_dokumen_id], references: [id], onDelete: SetNull)
-  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
+  Tenant  Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa   Siswa          @relation(fields: [siswa_id], references: [id])
+  Dokumen SiswaDocument? @relation(fields: [surat_dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3451,25 +3498,25 @@ model PemanggilanOrangTua {
 
 // Catatan Kunjungan Rumah (Home Visit)
 model HomeVisit {
-  id               String          @id @default(uuid())
-  tenant_id        String
-  siswa_id         String
-  kasus_bk_id       String?
-  tanggal          DateTime        @db.Date
-  alasan           String          @db.Text
-  hasil            String?         @db.Text
-  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
-  ortu_notified     Boolean        @default(false)
-  foto_dokumen_id  String?         // Relasi opsional ke file scan/foto laporan kunjungan rumah
-  deleted_at       DateTime?
-  deleted_by       String?
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id              String    @id @default(uuid())
+  tenant_id       String
+  siswa_id        String
+  kasus_bk_id     String?
+  tanggal         DateTime  @db.Date
+  alasan          String    @db.Text
+  hasil           String?   @db.Text
+  visibility      String    @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  ortu_notified   Boolean   @default(false)
+  foto_dokumen_id String? // Relasi opsional ke file scan/foto laporan kunjungan rumah
+  deleted_at      DateTime?
+  deleted_by      String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
 
-  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
-  Dokumen          SiswaDocument?  @relation(fields: [foto_dokumen_id], references: [id], onDelete: SetNull)
-  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
+  Tenant  Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa   Siswa          @relation(fields: [siswa_id], references: [id])
+  Dokumen SiswaDocument? @relation(fields: [foto_dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3477,25 +3524,25 @@ model HomeVisit {
 
 // Asesmen Kognitif/Psikososial/Angket BK
 model AsesmenSiswa {
-  id               String          @id @default(uuid())
-  tenant_id        String
-  siswa_id         String
-  kasus_bk_id       String?
-  tanggal          DateTime        @db.Date
-  nama_asesmen     String          // Contoh: "Sosiometri", "Kuesioner Gaya Belajar", "Tes Depresi Beck"
-  hasil_skor       String?
-  keterangan       String?         @db.Text
-  visibility        String         @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
-  dokumen_id       String?         // Relasi ke SiswaDocument (file hasil tes)
-  deleted_at       DateTime?
-  deleted_by       String?
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id           String    @id @default(uuid())
+  tenant_id    String
+  siswa_id     String
+  kasus_bk_id  String?
+  tanggal      DateTime  @db.Date
+  nama_asesmen String // Contoh: "Sosiometri", "Kuesioner Gaya Belajar", "Tes Depresi Beck"
+  hasil_skor   String?
+  keterangan   String?   @db.Text
+  visibility   String    @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
+  dokumen_id   String? // Relasi ke SiswaDocument (file hasil tes)
+  deleted_at   DateTime?
+  deleted_by   String?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
-  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
-  Dokumen          SiswaDocument?  @relation(fields: [dokumen_id], references: [id], onDelete: SetNull)
-  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
+  Tenant  Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa   Siswa          @relation(fields: [siswa_id], references: [id])
+  Dokumen SiswaDocument? @relation(fields: [dokumen_id], references: [id], onDelete: SetNull)
+  KasusBK KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3503,23 +3550,23 @@ model AsesmenSiswa {
 
 // Rujukan Kasus ke Pihak Eksternal
 model RujukanKasus {
-  id               String          @id @default(uuid())
-  tenant_id        String
-  siswa_id         String
-  kasus_bk_id       String?
-  tanggal          DateTime        @db.Date
-  rujukan_ke       String          // Contoh: "Psikolog Klinis", "Rumah Sakit", "Dinas Pendidikan", "Kepala Sekolah"
-  alasan           String          @db.Text
-  status           String          @default("DIUSULKAN") // DIUSULKAN, SELESAI
-  visibility        String         @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
-  deleted_at       DateTime?
-  deleted_by       String?
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id          String    @id @default(uuid())
+  tenant_id   String
+  siswa_id    String
+  kasus_bk_id String?
+  tanggal     DateTime  @db.Date
+  rujukan_ke  String // Contoh: "Psikolog Klinis", "Rumah Sakit", "Dinas Pendidikan", "Kepala Sekolah"
+  alasan      String    @db.Text
+  status      String    @default("DIUSULKAN") // DIUSULKAN, SELESAI
+  visibility  String    @default("LIMITED") // SENSITIVE, LIMITED, PUBLIC
+  deleted_at  DateTime?
+  deleted_by  String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
-  Tenant           Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa            Siswa           @relation(fields: [siswa_id], references: [id])
-  KasusBK           KasusBK?       @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
+  Tenant  Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa   Siswa    @relation(fields: [siswa_id], references: [id])
+  KasusBK KasusBK? @relation(fields: [kasus_bk_id], references: [id], onDelete: SetNull)
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -3527,27 +3574,27 @@ model RujukanKasus {
 
 // Kasus Utama BK (Parent Entity)
 model KasusBK {
-  id                String                 @id @default(uuid())
-  tenant_id         String
-  siswa_id          String
-  judul             String
-  kategori          String                 // KEDISIPLINAN, AKADEMIS, PRIBADI, SOSIAL
-  status            String                 @default("TERBUKA") // TERBUKA, PROSES, RUJUKAN, SELESAI
-  prioritas         String                 @default("SEDANG") // RENDAH, SEDANG, TINGGI
-  visibility        String                 @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
-  tanggal_kasus     DateTime               @db.Date
-  keterangan        String?                @db.Text
-  closed_at         DateTime?
-  closed_by         String?
-  catatan_selesai   String?                @db.Text
-  deleted_at        DateTime?
-  deleted_by        String?
-  reopen_count      Int                    @default(0)
-  created_at        DateTime               @default(now())
-  updated_at        DateTime               @updatedAt
+  id              String    @id @default(uuid())
+  tenant_id       String
+  siswa_id        String
+  judul           String
+  kategori        String // KEDISIPLINAN, AKADEMIS, PRIBADI, SOSIAL
+  status          String    @default("TERBUKA") // TERBUKA, PROSES, RUJUKAN, SELESAI
+  prioritas       String    @default("SEDANG") // RENDAH, SEDANG, TINGGI
+  visibility      String    @default("SENSITIVE") // SENSITIVE, LIMITED, PUBLIC
+  tanggal_kasus   DateTime  @db.Date
+  keterangan      String?   @db.Text
+  closed_at       DateTime?
+  closed_by       String?
+  catatan_selesai String?   @db.Text
+  deleted_at      DateTime?
+  deleted_by      String?
+  reopen_count    Int       @default(0)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
 
-  Tenant            Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa             Siswa                  @relation(fields: [siswa_id], references: [id])
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa  Siswa  @relation(fields: [siswa_id], references: [id])
 
   KonselingSiswa      KonselingSiswa[]
   PemanggilanOrangTua PemanggilanOrangTua[]
@@ -3564,35 +3611,33 @@ model EwsSnapshot {
   tenant_id         String
   siswa_id          String
   risk_score        Float
-  risk_level        String   // LOW, MEDIUM, HIGH
+  risk_level        String // LOW, MEDIUM, HIGH
   violations_score  Float
   achievement_score Float
   alpa_count        Int
   active_cases      Int
   snapshot_date     DateTime @default(now())
 
-  Tenant            Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa             Siswa    @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa  Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
   @@index([siswa_id])
   @@index([snapshot_date])
 }
 
-
-
 model BullyingReport {
-  id             String    @id @default(uuid())
+  id             String   @id @default(uuid())
   tenant_id      String
-  victim_name    String?   @db.VarChar(255)
-  reporter_class String?   @db.VarChar(100)
-  details        String    @db.Text
-  incident_date  DateTime  @db.Date
-  status         String    @default("BARU") // BARU, DIPROSES, SELESAI
-  created_at     DateTime  @default(now())
-  updated_at     DateTime  @updatedAt
+  victim_name    String?  @db.VarChar(255)
+  reporter_class String?  @db.VarChar(100)
+  details        String   @db.Text
+  incident_date  DateTime @db.Date
+  status         String   @default("BARU") // BARU, DIPROSES, SELESAI
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
-  Tenant         Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
 }
@@ -3612,13 +3657,13 @@ model EasyTunnel {
 }
 
 model Kkmp {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  mapel_id           String
-  tingkat            Int
-  kkm_nilai          Int      @default(75)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id         String   @id @default(uuid())
+  tenant_id  String
+  mapel_id   String
+  tingkat    Int
+  kkm_nilai  Int      @default(75)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Mapel  Mapel  @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
@@ -3628,12 +3673,12 @@ model Kkmp {
 }
 
 model JenisNilaiMaster {
-  id        String   @id @default(uuid())
-  tenant_id String
-  nama      String
-  kode      String
-  bobot     Int      @default(1)
-  is_active Boolean  @default(true)
+  id         String   @id @default(uuid())
+  tenant_id  String
+  nama       String
+  kode       String
+  bobot      Int      @default(1)
+  is_active  Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -3652,10 +3697,10 @@ model NilaiSiswa {
   semester_id        String
   jenis_nilai_id     String
   nilai              Float
-  catatan_deskripsi  String?          @db.Text
+  catatan_deskripsi  String?  @db.Text
   sesi_absensi_id    String?
-  created_at         DateTime         @default(now())
-  updated_at         DateTime         @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   Tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa          Siswa            @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
@@ -3695,19 +3740,19 @@ model RaporSiswa {
 }
 
 model SertifikatUkk {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  siswa_id           String
-  asesor_internal    String?
-  asesor_eksternal   String
-  mitra_industri_id  String?
-  nilai_praktik      Float
-  nilai_teori        Float?
-  predikat           String
-  nomor_sertifikat   String   @unique
-  tanggal_terbit     DateTime @db.Date
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id                String   @id @default(uuid())
+  tenant_id         String
+  siswa_id          String
+  asesor_internal   String?
+  asesor_eksternal  String
+  mitra_industri_id String?
+  nilai_praktik     Float
+  nilai_teori       Float?
+  predikat          String
+  nomor_sertifikat  String   @unique
+  tanggal_terbit    DateTime @db.Date
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   Tenant        Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa         Siswa          @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
@@ -3717,16 +3762,16 @@ model SertifikatUkk {
 }
 
 model KelulusanSiswa {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  siswa_id           String
-  nomor_skl          String   @unique
-  tanggal_lulus      DateTime @db.Date
-  rata_rata_nilai    Float
-  status_kelulusan   String   @default("LULUS")
-  catatan            String?  @db.Text
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id               String   @id @default(uuid())
+  tenant_id        String
+  siswa_id         String
+  nomor_skl        String   @unique
+  tanggal_lulus    DateTime @db.Date
+  rata_rata_nilai  Float
+  status_kelulusan String   @default("LULUS")
+  catatan          String?  @db.Text
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa  Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
@@ -3753,16 +3798,16 @@ model P5Projek {
 }
 
 model P5NilaiSiswa {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  projek_id          String
-  siswa_id           String
-  dimensi            String
-  sub_elemen         String
-  kualifikasi        String
-  catatan_proses     String?  @db.Text
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id             String   @id @default(uuid())
+  tenant_id      String
+  projek_id      String
+  siswa_id       String
+  dimensi        String
+  sub_elemen     String
+  kualifikasi    String
+  catatan_proses String?  @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   Tenant Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Projek P5Projek @relation(fields: [projek_id], references: [id], onDelete: Cascade)
@@ -3773,7 +3818,7 @@ model P5NilaiSiswa {
 }
 
 model PerangkatAjar {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   tenant_id          String
   guru_id            String
   mapel_id           String
@@ -3782,12 +3827,12 @@ model PerangkatAjar {
   judul              String
   jenis              String
   file_url           String
-  status             String   @default("PENDING")
-  catatan_reviewer   String?  @db.Text
+  status             String    @default("PENDING")
+  catatan_reviewer   String?   @db.Text
   reviewer_id        String?
   reviewed_at        DateTime?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Guru           Guru           @relation("GuruPerangkat", fields: [guru_id], references: [id], onDelete: Cascade)
@@ -3800,17 +3845,17 @@ model PerangkatAjar {
 }
 
 model ParentTeacherChatSession {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  orang_tua_id       String
-  guru_id            String
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id           String   @id @default(uuid())
+  tenant_id    String
+  orang_tua_id String
+  guru_id      String
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
-  Tenant    Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  OrangTua  OrangTua @relation(fields: [orang_tua_id], references: [id], onDelete: Cascade)
-  Guru      Guru     @relation(fields: [guru_id], references: [id], onDelete: Cascade)
-  Messages  ParentTeacherChatMessage[]
+  Tenant   Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  OrangTua OrangTua                   @relation(fields: [orang_tua_id], references: [id], onDelete: Cascade)
+  Guru     Guru                       @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Messages ParentTeacherChatMessage[]
 
   @@unique([orang_tua_id, guru_id])
   @@index([tenant_id])
@@ -3829,38 +3874,38 @@ model ParentTeacherChatMessage {
 }
 
 model GlobalMapelPreset {
-  id          String   @id @default(uuid())
-  jenjang     String   // SD, MI, SMP, MTs, SMA, MA, SMK, MAK, atau nama Jurusan (RPL, TKJ, AKL, dll.)
-  category    String   // "UMUM" atau "KEJURUAN"
-  nama_mapel  String
-  kode_mapel  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         String   @id @default(uuid())
+  jenjang    String // SD, MI, SMP, MTs, SMA, MA, SMK, MAK, atau nama Jurusan (RPL, TKJ, AKL, dll.)
+  category   String // "UMUM" atau "KEJURUAN"
+  nama_mapel String
+  kode_mapel String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@unique([jenjang, category, kode_mapel])
   @@index([jenjang])
 }
 
 model GlobalCalendarPreset {
-  id          String   @id @default(uuid())
-  jenjang     String   @default("ALL")
-  judul       String
-  jenis       String
-  keterangan  String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         String   @id @default(uuid())
+  jenjang    String   @default("ALL")
+  judul      String
+  jenis      String
+  keterangan String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model GlobalKurikulumStandard {
-  id             String   @id @default(uuid())
-  jenjang        String   // SD, SMP, SMA, SMK
-  category       String?  // UMUM, KEJURUAN, MULOK, PILIHAN
-  nama_mapel     String
-  kode_mapel     String
-  tingkat        Int      // 1 s/d 13
-  jp_per_minggu  Int      // Beban JP Standar Intrakurikuler per Minggu
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id            String   @id @default(uuid())
+  jenjang       String // SD, SMP, SMA, SMK
+  category      String? // UMUM, KEJURUAN, MULOK, PILIHAN
+  nama_mapel    String
+  kode_mapel    String
+  tingkat       Int // 1 s/d 13
+  jp_per_minggu Int // Beban JP Standar Intrakurikuler per Minggu
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   @@unique([jenjang, kode_mapel, tingkat])
   @@index([jenjang])
@@ -3874,25 +3919,21 @@ model GlobalProgramPreset {
   singkatan       String
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
-  
-  jurusans        GlobalJurusanPreset[]
+
+  jurusans GlobalJurusanPreset[]
 }
 
 model GlobalJurusanPreset {
-  id                      String              @id @default(uuid())
-  program_preset_id       String
-  nama                    String
-  kode                    String              @unique
-  singkatan               String
-  created_at              DateTime            @default(now())
-  updated_at              DateTime            @updatedAt
+  id                String   @id @default(uuid())
+  program_preset_id String
+  nama              String
+  kode              String   @unique
+  singkatan         String
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  Program                 GlobalProgramPreset @relation(fields: [program_preset_id], references: [id], onDelete: Cascade)
+  Program GlobalProgramPreset @relation(fields: [program_preset_id], references: [id], onDelete: Cascade)
 }
-
-
-
-
 
 // =============================================================================
 // KALENDER AKADEMIK � Modul Kurikulum
@@ -3918,4 +3959,26 @@ model KalenderAkademik {
   @@index([tenant_id])
   @@index([tahun_pelajaran_id])
   @@index([tanggal_mulai, tanggal_selesai])
+}
+
+model GuruDocument {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  guru_id             String
+  judul               String
+  kategori            String
+  file_original_name  String
+  file_storage_path   String
+  mime_type           String
+  size_bytes          Int
+  uploaded_by_user_id String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  Guru       Guru   @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Tenant     Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  UploadedBy User?  @relation(fields: [uploaded_by_user_id], references: [id])
+
+  @@index([guru_id])
+  @@index([tenant_id])
 }

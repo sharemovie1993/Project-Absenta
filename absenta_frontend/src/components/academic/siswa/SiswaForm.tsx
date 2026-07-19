@@ -1,6 +1,7 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { cn } from '../../../lib/utils';
 import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,6 +30,9 @@ import toast from 'react-hot-toast';
 import { PersonalSection } from './form/PersonalSection';
 import { AcademicSection } from './form/AcademicSection';
 import { GuardianSection } from './form/GuardianSection';
+
+// Lazy loaded Document Panel
+const SiswaDocsPanel = lazy(() => import('./SiswaDocsPanel').then(module => ({ default: module.SiswaDocsPanel })));
 
 interface SiswaFormProps {
   siswaId?: string;
@@ -353,12 +357,18 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         )}
 
         <Tabs defaultValue="data-pribadi" className="w-full">
-          <TabsList className={`grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 ${isViewMode ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          <TabsList className={cn(
+            'grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50',
+            (siswaId && isViewMode) ? 'grid-cols-5' : (siswaId || isViewMode) ? 'grid-cols-4' : 'grid-cols-3'
+          )}>
             <TabsTrigger value="data-pribadi" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Data Pribadi</TabsTrigger>
             <TabsTrigger value="akademik" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Akademik</TabsTrigger>
             <TabsTrigger value="orang-tua" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Orang Tua & Wali</TabsTrigger>
             {isViewMode && (
               <TabsTrigger value="linimasa-keluar" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Linimasa & Keluar</TabsTrigger>
+            )}
+            {siswaId && (
+              <TabsTrigger value="berkas" className="text-[10px] font-black uppercase tracking-widest h-full rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-blue-600 dark:data-[state=active]:text-blue-400 data-[state=active]:shadow-lg data-[state=active]:shadow-blue-500/10 transition-all duration-300">Berkas</TabsTrigger>
             )}
           </TabsList>
 
@@ -401,6 +411,20 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
           {isViewMode && siswaData && (
             <TabsContent value="linimasa-keluar" className="space-y-6">
               <SiswaTimelineAndExitTab siswa={siswaData} />
+            </TabsContent>
+          )}
+
+          {siswaId && (
+            <TabsContent value="berkas" className="space-y-6">
+              <Suspense fallback={<div className="h-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
+                <SiswaDocsPanel
+                  siswaId={siswaId}
+                  siswaName={siswaData?.nama_siswa}
+                  nis={siswaData?.nis}
+                  nisn={siswaData?.nisn}
+                  mode="full"
+                />
+              </Suspense>
             </TabsContent>
           )}
         </Tabs>

@@ -97,6 +97,13 @@ export async function rekapRoutes(fastify: any) {
               properties: {
                 nama_siswa: { type: 'string' },
                 bulan: { type: 'string' },
+                persentase_kehadiran: { type: 'number' },
+                total_hadir: { type: 'number' },
+                total_izin: { type: 'number' },
+                total_sakit: { type: 'number' },
+                total_alpa: { type: 'number' },
+                total_terlambat: { type: 'number' },
+                total_poin: { type: 'number' },
                 statistik: {
                   type: 'object',
                   properties: {
@@ -215,6 +222,13 @@ export async function rekapRoutes(fastify: any) {
               properties: {
                 nama_siswa: { type: 'string' },
                 bulan: { type: 'string' },
+                persentase_kehadiran: { type: 'number' },
+                total_hadir: { type: 'number' },
+                total_izin: { type: 'number' },
+                total_sakit: { type: 'number' },
+                total_alpa: { type: 'number' },
+                total_terlambat: { type: 'number' },
+                total_poin: { type: 'number' },
                 statistik: {
                   type: 'object',
                   properties: {
@@ -331,12 +345,14 @@ export async function rekapRoutes(fastify: any) {
               items: {
                 type: 'object',
                 properties: {
+                  siswa_id: { type: 'string' },
                   nama_siswa: { type: 'string' },
                   HADIR: { type: 'number' },
                   SAKIT: { type: 'number' },
                   ALPA: { type: 'number' },
                   IZIN: { type: 'number' },
                   TERLAMBAT: { type: 'number' },
+                  total_poin: { type: 'number' },
                 },
               },
             },
@@ -421,7 +437,9 @@ export async function rekapRoutes(fastify: any) {
               type: 'object',
               properties: {
                 nama: { type: 'string' },
+                nis: { type: 'string' },
                 tanggal: { type: 'string' },
+                status: { type: 'string' },
                 kegiatan: {
                   type: 'array',
                   items: {
@@ -517,9 +535,11 @@ export async function rekapRoutes(fastify: any) {
                   type: 'object',
                   properties: {
                     HADIR: { type: 'number' },
+                    TERLAMBAT: { type: 'number' },
                     IZIN: { type: 'number' },
                     SAKIT: { type: 'number' },
                     ALPA: { type: 'number' },
+                    DISPEN: { type: 'number' },
                   },
                 },
                 total_poin: { type: 'number' },

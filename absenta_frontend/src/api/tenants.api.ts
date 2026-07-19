@@ -54,6 +54,7 @@ interface Tenant {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  hari_sekolah?: string[];
   created_at: string;
   updated_at: string;
   kepala_sekolah?: string | null;
@@ -87,6 +88,7 @@ export interface CreateTenantRequest {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  hari_sekolah?: string[];
   kepala_sekolah?: string;
   nip_kepala?: string;
   jenjang?: string | null;

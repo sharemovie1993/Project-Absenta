@@ -1137,7 +1137,7 @@ export const TenantSettings: React.FC = () => {
               to="/kurikulum/jam-kbm"
               className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 text-xs font-black rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-center inline-block shrink-0 transition-colors"
             >
-              Buka Pengaturan Jam KBM
+              Buka Atur JP/Shift
             </Link>
           </div>
         </CardContent>

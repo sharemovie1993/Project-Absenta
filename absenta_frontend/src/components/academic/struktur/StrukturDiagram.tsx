@@ -94,7 +94,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
           guru_id: val.value, 
           start_date: dateStr,
           unit_id: node.data?.unit_id,
-          kelas_id: node.data?.kelas_id
+          kelas_id: node.data?.kelas_id,
+          jenis_kegiatan_id: node.data?.jenis_kegiatan_id
         });
       }
     },

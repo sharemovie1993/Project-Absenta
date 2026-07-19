@@ -12,6 +12,7 @@ export interface ValidationParams {
   hari: Hari;
   jam_mulai: string; // Format "HH:mm"
   jam_selesai: string; // Format "HH:mm"
+  slot_index?: number;
   tanggal?: Date; // Required for MANUAL context
   
   // Resources
@@ -19,7 +20,7 @@ export interface ValidationParams {
   guru_id?: string;
   
   // Exclusions (for edit scenarios)
-  exclude_jadwal_template_id?: string;
+  exclude_jadwal_kbm_id?: string;
   exclude_sesi_id?: string;
 }
 
@@ -35,7 +36,7 @@ export interface ValidationResult {
 export class JadwalValidationService {
   /**
    * Validates both Class and Teacher conflicts against:
-   * 1. JadwalTemplate (Plan)
+   * 1. JadwalKBM (Plan)
    * 2. SesiAbsensi (Realization)
    */
   async validateConflict(params: ValidationParams): Promise<ValidationResult> {
@@ -60,7 +61,7 @@ export class JadwalValidationService {
           is_valid: false,
           error: {
             code: 'KELAS_CONFLICT',
-            message: `Kelas memiliki jadwal lain pada jam ${jam_mulai} - ${jam_selesai}`,
+            message: `Kelas memiliki jadwal lain pada slot waktu tersebut`,
             details: classConflict,
           },
         };
@@ -99,19 +100,26 @@ export class JadwalValidationService {
   }
 
   private async checkClassConflict(params: ValidationParams) {
-    // A. Check against JadwalTemplate
-    const templateConflict = await prisma.jadwalTemplate.findFirst({
-      where: {
-        tenant_id: params.tenant_id,
-        tahun_pelajaran_id: params.tahun_pelajaran_id,
-        semester_id: params.semester_id,
-        hari: params.hari,
-        kelas_id: params.kelas_id, // Same Class
-        id: params.exclude_jadwal_template_id ? { not: params.exclude_jadwal_template_id } : undefined,
-        // Overlap Logic: (StartA < EndB) && (EndA > StartB)
-        jam_mulai: { lt: params.jam_selesai },
-        jam_selesai: { gt: params.jam_mulai },
-      },
+    // A. Check against JadwalKBM
+    const whereClause: any = {
+      tenant_id: params.tenant_id,
+      tahun_pelajaran_id: params.tahun_pelajaran_id,
+      semester_id: params.semester_id,
+      hari: params.hari,
+      kelas_id: params.kelas_id, // Same Class
+      id: params.exclude_jadwal_kbm_id ? { not: params.exclude_jadwal_kbm_id } : undefined,
+    };
+
+    if (typeof params.slot_index === 'number') {
+      whereClause.slot_index = params.slot_index;
+    } else {
+      // Overlap Logic: (StartA < EndB) && (EndA > StartB)
+      whereClause.jam_mulai = { lt: params.jam_selesai };
+      whereClause.jam_selesai = { gt: params.jam_mulai };
+    }
+
+    const templateConflict = await prisma.jadwalKBM.findFirst({
+      where: whereClause,
       include: {
         Mapel: true,
         Guru: true,
@@ -183,15 +191,15 @@ export class JadwalValidationService {
   }
 
   private async checkTeacherConflict(params: ValidationParams) {
-    // A. Check against JadwalTemplate
-    const templateConflict = await prisma.jadwalTemplate.findFirst({
+    // A. Check against JadwalKBM
+    const templateConflict = await prisma.jadwalKBM.findFirst({
       where: {
         tenant_id: params.tenant_id,
         tahun_pelajaran_id: params.tahun_pelajaran_id,
         semester_id: params.semester_id,
         hari: params.hari,
         guru_id: params.guru_id, // Same Teacher
-        id: params.exclude_jadwal_template_id ? { not: params.exclude_jadwal_template_id } : undefined,
+        id: params.exclude_jadwal_kbm_id ? { not: params.exclude_jadwal_kbm_id } : undefined,
         // Overlap Logic
         jam_mulai: { lt: params.jam_selesai },
         jam_selesai: { gt: params.jam_mulai },
@@ -267,15 +275,15 @@ export class JadwalValidationService {
 
     let totalExistingMinutes = 0;
 
-    // A. Check in JadwalTemplate
-    const templates = await prisma.jadwalTemplate.findMany({
+    // A. Check in JadwalKBM
+    const templates = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: params.tenant_id,
         tahun_pelajaran_id: params.tahun_pelajaran_id,
         semester_id: params.semester_id,
         hari: params.hari,
         guru_id: params.guru_id,
-        id: params.exclude_jadwal_template_id ? { not: params.exclude_jadwal_template_id } : undefined,
+        id: params.exclude_jadwal_kbm_id ? { not: params.exclude_jadwal_kbm_id } : undefined,
       },
     });
 

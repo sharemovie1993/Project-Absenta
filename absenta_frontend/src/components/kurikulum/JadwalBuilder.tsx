@@ -17,11 +17,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  getJadwalTemplate, 
-  createJadwalTemplate, 
-  deleteJadwalTemplate,
-  type JadwalTemplate 
-} from '../../api/attendance/jadwalTemplate.api';
+  getJadwalKBM, 
+  createJadwalKBM, 
+  deleteJadwalKBM,
+  type JadwalKBM 
+} from '../../api/attendance/jadwalKBM.api';
 import { getGuruList } from '../../api/academic/guru.api';
 import { getMapelList } from '../../api/academic/mapel.api';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
@@ -77,7 +77,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [mapelList, setMapelList] = useState<any[]>([]);
   
   // All schedules in system for conflict detection
-  const [allJadwal, setAllJadwal] = useState<JadwalTemplate[]>([]);
+  const [allJadwal, setAllJadwal] = useState<JadwalKBM[]>([]);
 
   // Confirmation Dialog State
   const [confirmState, setConfirmState] = useState<{
@@ -200,7 +200,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
     setLoadingData(true);
     try {
-      const res = await getJadwalTemplate({
+      const res = await getJadwalKBM({
         tahun_pelajaran_id: tahunPelajaranId,
         semester_id: semesterId
       });
@@ -310,7 +310,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     // Check 2: Class conflict (Class already has a lesson at this slot)
     const classConflict = allJadwal.find(j => 
       j.hari === day && 
-      j.jam_mulai && j.jam_mulai.startsWith(targetSlot.start) && 
+      j.slot_index === slotIndex && 
       j.kelas_id === targetKelasId &&
       !(j.guru_id === paintGuruId && j.mapel_id === paintMapelId)
     );
@@ -327,30 +327,25 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   // Find slot data for grid rendering
   const getSlotData = (day: string, slotIndex: number) => {
     if (viewMode === 'KELAS') {
-      const targetSlot = resolveSlotTime(selectedKelasId, slotIndex);
       return allJadwal.find(j => 
         j.hari === day && 
-        j.jam_mulai && j.jam_mulai.startsWith(targetSlot.start) && 
+        j.slot_index === slotIndex && 
         j.kelas_id === selectedKelasId
       );
     } else {
       // 1. Search for selected teacher's own schedule
-      const ownSchedule = allJadwal.find(j => {
-        if (j.hari !== day || j.guru_id !== selectedGuruId) return false;
-        if (j.kelas_id) {
-          const classSlot = resolveSlotTime(j.kelas_id, slotIndex);
-          return j.jam_mulai && j.jam_mulai.startsWith(classSlot.start);
-        }
-        return false;
-      });
+      const ownSchedule = allJadwal.find(j => 
+        j.hari === day && 
+        j.guru_id === selectedGuruId &&
+        j.slot_index === slotIndex
+      );
       if (ownSchedule) return ownSchedule;
 
       // 2. If no own schedule, check if the target class is occupied by another teacher
       if (selectedKelasId) {
-        const classSlot = resolveSlotTime(selectedKelasId, slotIndex);
         const foreignSchedule = allJadwal.find(j => 
           j.hari === day && 
-          j.jam_mulai && j.jam_mulai.startsWith(classSlot.start) && 
+          j.slot_index === slotIndex && 
           j.kelas_id === selectedKelasId
         );
         if (foreignSchedule) {
@@ -369,7 +364,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     const key = `${day}-${slotIndex}`;
     setSavingSlot(key);
     try {
-      await deleteJadwalTemplate(id);
+      await deleteJadwalKBM(id);
       setAllJadwal(prev => prev.filter(j => j.id !== id));
       toast.success('Slot jadwal berhasil dikosongkan.');
       if (onRefresh) onRefresh();
@@ -395,7 +390,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       if (!existing) return;
       setSavingSlot(key);
       try {
-        await deleteJadwalTemplate(existing.id);
+        await deleteJadwalKBM(existing.id);
         setAllJadwal(prev => prev.filter(j => j.id !== existing.id));
         toast.success('Slot jadwal berhasil dikosongkan.');
         if (onRefresh) onRefresh();
@@ -436,7 +431,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
       // Check if there is already a lesson in this class at this time slot
       const classExisting = allJadwal.find(j => 
         j.hari === day && 
-        j.jam_mulai && j.jam_mulai.startsWith(slot.start) && 
+        j.slot_index === slotIndex && 
         j.kelas_id === targetKelasId
       );
 
@@ -474,7 +469,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
         setSavingSlot(key);
         try {
-          await deleteJadwalTemplate(classExisting.id);
+          await deleteJadwalKBM(classExisting.id);
         } catch (err) {
           console.warn('Jadwal sudah tidak ada di server, melanjutkan...', err);
         }
@@ -513,7 +508,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
 
         setSavingSlot(key);
         try {
-          await deleteJadwalTemplate(existing.id);
+          await deleteJadwalKBM(existing.id);
         } catch (err) {
           console.warn('Jadwal sudah tidak ada di server, melanjutkan...', err);
         }
@@ -581,6 +576,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           semester_id: semesterId,
           kelas_id: targetKelasId,
           hari: day,
+          slot_index: slotIndex,
           jam_mulai: slot.start,
           jam_selesai: slot.end,
           mapel_id: paintMapelId,
@@ -588,20 +584,21 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           jenis_kegiatan: 'KBM'
         };
 
-        const res = await createJadwalTemplate(payload);
+        const res = await createJadwalKBM(payload);
         if (res?.data) {
           // Re-fetch or locally append to allJadwal
           const mapelObj = mapelList.find(m => m.id === paintMapelId);
           const guruObj = guruList.find(g => g.id === paintGuruId);
           const kelasObj = kelasList.find(k => k.value === targetKelasId);
           
-          const newSlot: JadwalTemplate = {
+          const newSlot: JadwalKBM = {
             id: res.data.id,
             tenant_id: res.data.tenant_id || '',
             tahun_pelajaran_id: tahunPelajaranId,
             semester_id: semesterId,
             kelas_id: targetKelasId,
             hari: day as any,
+            slot_index: slotIndex,
             jam_mulai: slot.start,
             jam_selesai: slot.end,
             jenis_kegiatan: 'KBM',
@@ -647,22 +644,23 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           );
           if (confirmTimpa) {
             try {
-              await deleteJadwalTemplate(conflictId);
+              await deleteJadwalKBM(conflictId);
               
               // Retry creation
-              const res = await createJadwalTemplate(payload);
+              const res = await createJadwalKBM(payload);
               if (res?.data) {
                 const mapelObj = mapelList.find(m => m.id === paintMapelId);
                 const guruObj = guruList.find(g => g.id === paintGuruId);
                 const kelasObj = kelasList.find(k => k.value === targetKelasId);
                 
-                const newSlot: JadwalTemplate = {
+                const newSlot: JadwalKBM = {
                   id: res.data.id,
                   tenant_id: res.data.tenant_id || '',
                   tahun_pelajaran_id: tahunPelajaranId,
                   semester_id: semesterId,
                   kelas_id: targetKelasId,
                   hari: day as any,
+                  slot_index: slotIndex,
                   jam_mulai: slot.start,
                   jam_selesai: slot.end,
                   jenis_kegiatan: 'KBM',

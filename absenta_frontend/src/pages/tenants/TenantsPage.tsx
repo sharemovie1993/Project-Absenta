@@ -618,7 +618,7 @@ export default function TenantsPage() {
         description: 'Halaman ini digunakan untuk mengelola seluruh institusi (sekolah) yang terdaftar di platform.',
         items: [
           { text: 'Gunakan fitur Assist Login untuk masuk ke sistem sebagai Admin sekolah tertentu tanpa password.' },
-          { text: 'Mode "Multi Sesi" memberikan fitur jadwal pelajaran dan rekap yang lebih kompleks.' },
+          { text: 'Mode "Multi Sesi" memberikan fitur jadwal KBM dan rekap yang lebih kompleks.' },
           { text: 'Tenant yang diajukan penghapusan akan tetap berada di database selama 30 hari sebelum dihapus permanen.' }
         ]
       }}

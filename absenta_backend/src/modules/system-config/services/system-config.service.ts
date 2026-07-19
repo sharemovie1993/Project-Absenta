@@ -75,6 +75,8 @@ export interface SystemConfigPayload {
   parent_app_report_absence_enabled?: boolean;
   // BPBK Settings
   bpbk_summons_require_principal_approval?: boolean;
+  // Piket
+  max_izin_sementara_menit?: number;
 }
 
 export const systemConfigService = {
@@ -306,6 +308,7 @@ export const systemConfigService = {
       default_parent_wa: (payload as any).default_parent_wa ?? undefined,
       default_late_threshold: (payload as any).default_late_threshold ?? undefined,
       default_notap_threshold: (payload as any).default_notap_threshold ?? undefined,
+      max_izin_sementara_menit: payload.max_izin_sementara_menit ?? undefined,
       // Parent App Feature Flags
       parent_app_enabled: payload.parent_app_enabled ?? undefined,
       parent_app_dashboard_enabled: payload.parent_app_dashboard_enabled ?? undefined,

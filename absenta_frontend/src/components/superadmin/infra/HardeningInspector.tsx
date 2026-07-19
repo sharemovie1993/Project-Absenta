@@ -1,53 +1,10 @@
 import React from 'react';
-import { AlertTriangle, Sparkles, X, Check, Zap, Gauge, FileCode, Copy } from 'lucide-react';
+import { Sparkles, X, Check, FileCode, Copy } from 'lucide-react';
 import type { HardeningInspectorProps, LiveAuditResult, LighthouseResult } from './infra.types';
-import { CRITICAL_PILLAR_IDS, getGradeInfo } from './infra.utils';
-
-// ─── Radial Progress Component for Lighthouse ────────────────────────────
-const RadialProgress: React.FC<{ score: number; label: string }> = ({ score, label }) => {
-  const radius = 20;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  
-  let colorClass = 'text-rose-500';
-  if (score >= 90) {
-    colorClass = 'text-emerald-400';
-  } else if (score >= 50) {
-    colorClass = 'text-amber-400';
-  }
-  
-  return (
-    <div className="flex flex-col items-center gap-1.5 flex-1 min-w-[70px] bg-slate-950/40 border border-slate-900 p-2.5 rounded-xl">
-      <div className="relative flex items-center justify-center">
-        <svg className="w-12 h-12 transform -rotate-90">
-          <circle
-            cx="24"
-            cy="24"
-            r={radius}
-            className="text-slate-800"
-            strokeWidth="3.5"
-            stroke="currentColor"
-            fill="transparent"
-          />
-          <circle
-            cx="24"
-            cy="24"
-            r={radius}
-            className={colorClass}
-            strokeWidth="3.5"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            stroke="currentColor"
-            fill="transparent"
-          />
-        </svg>
-        <span className="absolute text-[11px] font-black font-mono text-white">{score}</span>
-      </div>
-      <span className="text-[8px] font-black text-slate-400 uppercase text-center tracking-wide block truncate w-full">{label}</span>
-    </div>
-  );
-};
+import { CRITICAL_PILLAR_IDS, getGradeInfo, mapLiveAuditToStandards } from './infra.utils';
+import { RadialProgress } from './components/RadialProgress';
+import { LighthousePanel } from './components/LighthousePanel';
+import { PillarAuditCard } from './components/PillarAuditCard';
 
 // ─── PREMIUM DEV-ONLY HARDENING COMPLIANCE INSPECTOR ──────────────────────────
 
@@ -108,184 +65,34 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
     }
   }, []);
 
-  const handleCopyPrompt = React.useCallback(() => {
-    if (!liveAuditResult?.refactorPrompt) return;
-    navigator.clipboard.writeText(liveAuditResult.refactorPrompt).catch(console.error);
-    setCopiedText(true);
-    setTimeout(() => setCopiedText(false), 2000);
-  }, [liveAuditResult]);
-
   // ④ displayedStandards: mapper live audit ke checklist + tambah Pilar 5 safeEffect
   const displayedStandards = React.useMemo(() => {
-    if (!liveAuditResult) return standards;
-
-    const safe = (val: boolean | undefined, fallback: boolean = true) =>
-      val !== undefined ? val : fallback;
-
-    return standards.map(std => {
-      switch (std.id) {
-        case 'architectural_layout_standard':
-          return { ...std,
-            status: liveAuditResult.usesLayout ? 'VERIFIED' as const : 'FAILED' as const,
-            details: liveAuditResult.usesLayout
-              ? 'Tervalidasi: Halaman dibungkus dengan AcademicPageLayout.'
-              : 'Gagal: Halaman tidak menggunakan AcademicPageLayout.' };
-
-        case 'architectural_shared_components':
-          return { ...std,
-            status: safe(liveAuditResult.usesUiComponents) ? 'VERIFIED' as const : 'FAILED' as const,
-            details: safe(liveAuditResult.usesUiComponents)
-              ? 'Tervalidasi: Mengimpor shared UI components terstandar.'
-              : 'Gagal: Halaman ini menggunakan elemen HTML mentah atau belum mengimpor standard UI.' };
-
-        case 'architectural_safe_mapping':
-          return { ...std,
-            status: liveAuditResult.safeMapping ? 'VERIFIED' as const : 'FAILED' as const,
-            details: liveAuditResult.safeMapping
-              ? 'Tervalidasi: Semua .map menggunakan optional chaining ?.'
-              : 'Gagal: .map digunakan tanpa pertahanan ?. – risiko crash jika data null.' };
-
-        case 'architectural_memoization':
-          return { ...std,
-            status: liveAuditResult.usesMemo ? 'VERIFIED' as const : 'WARNING' as const,
-            details: liveAuditResult.usesMemo
-              ? 'Tervalidasi: useMemo dan useCallback terdeteksi.'
-              : 'Peringatan: Hook memoization tidak ditemukan – DOM churn tinggi.' };
-
-        case 'architectural_strict_typing':
-          return { ...std,
-            status: liveAuditResult.noAnyType ? 'VERIFIED' as const : 'WARNING' as const,
-            details: liveAuditResult.noAnyType
-              ? 'Tervalidasi: Bersih dari tipe data longgar ": any".'
-              : 'Peringatan: Tipe ": any" terdeteksi – keamanan TypeScript melemah.' };
-
-        // ④ Pilar 5: safeEffect – sebelumnya TIDAK ada mapper ini!
-        case 'architectural_safe_effect':
-        case 'memory_leak_safeguards':
-          return { ...std,
-            status: liveAuditResult.safeEffect ? 'VERIFIED' as const : 'FAILED' as const,
-            details: liveAuditResult.safeEffect
-              ? 'Tervalidasi: Cleanup listener/timer terdefinisi dengan return () => {...}.'
-              : 'Gagal: useEffect memiliki listener/timer tanpa cleanup – kebocoran memori!' };
-
-        case 'architectural_strict_colors':
-          return { ...std,
-            status: liveAuditResult.strictColors ? 'VERIFIED' as const : 'WARNING' as const,
-            details: liveAuditResult.strictColors
-              ? 'Tervalidasi: Konsisten dengan palet warna terpusat.'
-              : 'Peringatan: Warna heksadesimal keras atau bracket Tailwind terdeteksi.' };
-
-        case 'architectural_table_sorting':
-          return { ...std,
-            status: safe(liveAuditResult.tableSorting) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.tableSorting)
-              ? 'Tervalidasi: Tabel memiliki implementasi sorting.'
-              : 'Peringatan: <Table> tanpa props sortable/onSort/sortKey.' };
-
-        case 'architectural_empty_state':
-          return { ...std,
-            status: safe(liveAuditResult.emptyState) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.emptyState)
-              ? 'Tervalidasi: Empty state handler terpasang.'
-              : 'Peringatan: Tidak ada fallback tampilan saat data kosong.' };
-
-        case 'architectural_loading_guard':
-          return { ...std,
-            status: safe(liveAuditResult.loadingGuard) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.loadingGuard)
-              ? 'Tervalidasi: Guard isLoading/Skeleton terpasang.'
-              : 'Peringatan: Tidak ada guard loading – risiko flash konten kosong.' };
-
-        case 'architectural_form_a11y':
-          return { ...std,
-            status: safe(liveAuditResult.formA11y) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.formA11y)
-              ? 'Tervalidasi: Form memiliki aria-label/htmlFor.'
-              : 'Peringatan: Input tanpa aria-label/htmlFor – aksesibilitas rendah.' };
-
-        case 'architectural_performance_optimization':
-        case 'code_splitting':
-          return { ...std,
-            status: safe(liveAuditResult.performanceOptimization) ? 'VERIFIED' as const : 'FAILED' as const,
-            details: safe(liveAuditResult.performanceOptimization)
-              ? 'Tervalidasi: Komponen berat dimuat secara asinkron (lazy).'
-              : 'Gagal: Modal/Form terdeteksi tetapi tidak menggunakan lazy() & Suspense.' };
-
-        case 'architectural_user_guidance':
-          return { ...std,
-            status: safe(liveAuditResult.userGuidance) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.userGuidance)
-              ? 'Tervalidasi: Halaman memiliki sistem panduan instruksi.'
-              : 'Peringatan: Halaman tidak menyediakan properti "instruction" pada layout.' };
-
-        case 'architectural_table_pagination':
-          return { ...std,
-            status: safe(liveAuditResult.tablePagination) ? 'VERIFIED' as const : 'FAILED' as const,
-            details: safe(liveAuditResult.tablePagination)
-              ? 'Tervalidasi: Tabel memiliki implementasi pagination.'
-              : 'Gagal: <Table> ditemukan tanpa pagination – risiko crash pada dataset besar.' };
-
-        case 'architectural_toolbar_standard':
-          return { ...std,
-            status: safe(liveAuditResult.standardToolbar) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.standardToolbar)
-              ? 'Tervalidasi: Aksi utama halaman menggunakan properti toolbar layout.'
-              : 'Peringatan: Aksi utama belum menggunakan standar toolbar layout.' };
-
-        case 'architectural_feedback_standard':
-          return { ...std,
-            status: safe(liveAuditResult.standardFeedback) ? 'VERIFIED' as const : 'FAILED' as const,
-            details: safe(liveAuditResult.standardFeedback)
-              ? 'Tervalidasi: Menggunakan sistem feedback modern (Toast/Confirm).'
-              : 'Gagal: Masih menggunakan alert/confirm bawaan browser.' };
-
-        case 'architectural_container_consistency':
-          return { ...std,
-            status: safe(liveAuditResult.standardContainer) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.standardContainer)
-              ? 'Tervalidasi: Menggunakan SectionCard/Card untuk kontainer UI.'
-              : 'Peringatan: Layout belum menggunakan kontainer terstandar.' };
-
-        case 'architectural_advanced_select':
-          return { ...std,
-            status: safe(liveAuditResult.advancedSelect) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe(liveAuditResult.advancedSelect)
-              ? 'Tervalidasi: Menggunakan SearchableSelect untuk input pilihan.'
-              : 'Peringatan: Ditemukan dropdown yang belum menggunakan SearchableSelect.' };
-
-        case 'architectural_table_toolbar_standard':
-          return { ...std,
-            status: safe(liveAuditResult.tableToolbar) ? 'VERIFIED' as const : 'FAILED' as const,
-            details: safe(liveAuditResult.tableToolbar)
-              ? 'Tervalidasi: Menggunakan properti toolbarLeft/Right untuk aksi kontekstual tabel.'
-              : 'Gagal: Aksi operasional tabel diletakkan di luar slot resmi toolbar Table.' };
-
-        case 'architectural_breadcrumb_navigation':
-          return { ...std,
-            status: safe((liveAuditResult as any).breadcrumbNavigation) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe((liveAuditResult as any).breadcrumbNavigation)
-              ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi.'
-              : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
-
-        case 'architectural_pdf_print':
-          return { ...std,
-            status: safe((liveAuditResult as any).standardPdfPrint) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe((liveAuditResult as any).standardPdfPrint)
-              ? 'Tervalidasi: Menggunakan modul cetak PDF terstandar.'
-              : 'Peringatan: Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di \'src/utils/print/\'.' };
-
-        case 'architectural_zod_validation':
-          return { ...std,
-            status: safe((liveAuditResult as any).zodValidationGuard) ? 'VERIFIED' as const : 'WARNING' as const,
-            details: safe((liveAuditResult as any).zodValidationGuard)
-              ? 'Tervalidasi: Form dilindungi oleh skema validasi Zod.'
-              : 'Peringatan: Terdeteksi elemen form input tanpa skema validasi Zod.' };
-
-        default:
-          return std;
-      }
-    });
+    return mapLiveAuditToStandards(standards, liveAuditResult);
   }, [standards, liveAuditResult]);
+
+  // ─── Fallback refactor prompt dari data statis (jika live audit server tidak berjalan) ───
+  const staticRefactorPrompt = React.useMemo(() => {
+    const failedPillars = displayedStandards.filter(s => s.status === 'FAILED' || s.status === 'WARNING');
+    if (failedPillars.length === 0) return null;
+    let prompt = `Tolong lakukan refaktor hardening penuh berdasarkan temuan audit arsitektur statis:\n\n`;
+    failedPillars.forEach((std, idx) => {
+      const prefix = std.status === 'FAILED' ? '❌' : '⚠️';
+      prompt += `${idx + 1}. ${prefix} [${std.name}] – ${std.details}\n`;
+    });
+    prompt += `\nLakukan refaktor struktural ini agar halaman lulus sertifikasi kelayakan hardening 100%!`;
+    return prompt;
+  }, [displayedStandards]);
+
+  // Prompt yang akan ditampilkan dan disalin (live audit lebih prioritas dari statis)
+  const activePrompt = liveAuditResult?.refactorPrompt ?? staticRefactorPrompt;
+
+  const handleCopyPrompt = React.useCallback(() => {
+    const prompt = liveAuditResult?.refactorPrompt || staticRefactorPrompt;
+    if (!prompt) return;
+    navigator.clipboard.writeText(prompt).catch(console.error);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2000);
+  }, [liveAuditResult, staticRefactorPrompt]);
 
   // ─── Weighted Scoring Engine (v2 – Hardened) ───────────────────────────────
   // Pilar kritis memiliki bobot 3x, pilar advisory bobotnya 1x
@@ -472,93 +279,28 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
                     📋 Laporan Audit Kode Sumber ({totalCount} Pilar):
                   </div>
                 </div>
-                  <div className="px-6 pb-5 space-y-2">
-                    {displayedStandards.map((std) => {
-                      const isVerified = std.status === 'VERIFIED';
-                      const isWarning  = std.status === 'WARNING';
-                      const isFailed   = std.status === 'FAILED';
-                      const isCritical = CRITICAL_PILLAR_IDS.has(std.id);
-
-                      let cardClass = 'p-2 rounded-lg border transition-all space-y-1 ';
-                      let iconContainerClass = '';
-                      let statusBadgeClass = '';
-                      let IconComponent = X;
-
-                      if (isVerified) {
-                        cardClass += 'bg-emerald-950/10 border-emerald-900/30 hover:border-emerald-800/50';
-                        iconContainerClass = 'p-1 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-900/40';
-                        statusBadgeClass = 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/40';
-                        IconComponent = Check;
-                      } else if (isWarning) {
-                        cardClass += 'bg-yellow-950/10 border-yellow-900/30 hover:border-yellow-800/50';
-                        iconContainerClass = 'p-1 rounded bg-yellow-950/40 text-yellow-400 border border-yellow-900/40';
-                        statusBadgeClass = 'bg-yellow-950/50 text-yellow-400 border border-yellow-900/40';
-                        IconComponent = AlertTriangle;
-                      } else {
-                        // FAILED – tampilkan lebih mencolok, terutama jika CRITICAL
-                        cardClass += isCritical
-                          ? 'bg-red-950/20 border-red-700/50 ring-1 ring-red-700/30 hover:border-red-600/50'
-                          : 'bg-red-950/10 border-red-900/40 hover:border-red-800/50';
-                        iconContainerClass = 'p-1 rounded bg-red-950/50 text-red-400 border border-red-800/50';
-                        statusBadgeClass = 'bg-red-950/60 text-red-400 border border-red-800/50';
-                        IconComponent = X;
-                      }
-
-                      return (
-                        <div key={std.id} className={cardClass}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={`${iconContainerClass} shrink-0`}>
-                            <IconComponent className="h-3 w-3" />
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-[11px] font-bold text-slate-200 leading-tight block truncate">{std.name}</span>
-                            {!isVerified && isCritical && (
-                              <span className="text-[7px] font-black text-red-400/80 uppercase tracking-wider">
-                                ⚡ CRITICAL
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isCritical && (
-                            <span className="text-[7px] font-black px-1 py-0.25 rounded bg-slate-800 text-slate-500 border border-slate-700 uppercase tracking-wide">3×</span>
-                          )}
-                          <span className={`inline-flex items-center text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ${statusBadgeClass}`}>
-                            {isFailed ? '✗ FAILED' : isWarning ? '⚠ WARN' : '✓ OK'}
-                          </span>
-                        </div>
-                      </div>
-                      {!isVerified && (
-                        <div className="pl-7">
-                          <p className="text-[9px] text-slate-400 font-medium font-sans leading-tight">
-                            {std.description}
-                          </p>
-                          <div className={`text-[8px] font-mono font-medium mt-0.5 ${isFailed ? 'text-red-400/70' : 'text-yellow-400/70'}`}>
-                            {isFailed ? '✗' : '⚠'} {std.details}
-                          </div>
-                        </div>
-                      )}
-                      {isVerified && (
-                        <div className="pl-7 text-[8px] text-emerald-400/70 font-mono font-medium">
-                          ✓ {std.details}
-                        </div>
-                      )}
-                    </div>
-                      );
-                    })}
-                  </div>
+                <div className="px-6 pb-5 space-y-2">
+                  {displayedStandards.map((std) => (
+                    <PillarAuditCard
+                      key={std.id}
+                      std={std}
+                      isCritical={CRITICAL_PILLAR_IDS.has(std.id)}
+                    />
+                  ))}
+                </div>
 
                   {/* Dynamic Copyable Refactoring Instruction Area */}
-                  {liveAuditResult && (
+                  {activePrompt && (
                     <div className="p-4 bg-slate-950/40 border-t border-slate-900 space-y-2">
                     <div className="flex items-center gap-1.5 px-1">
                       <FileCode className="h-3 w-3 text-slate-400" />
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Preview Instruksi:</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        {liveAuditResult ? 'Preview Instruksi (Live):' : 'Preview Instruksi (Statis):'}
+                      </span>
                     </div>
                     <textarea
                       readOnly
-                      value={liveAuditResult.refactorPrompt}
+                      value={activePrompt}
                       className="w-full h-16 p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-[9px] font-mono leading-tight focus:outline-none resize-none scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent"
                     />
                   </div>
@@ -567,113 +309,12 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
               )}
 
               {activeTab === 'lighthouse' && (
-                <div className="flex flex-col flex-1">
-                  {/* Trigger Button */}
-                  <div className="px-6 py-4 bg-slate-900/60 border-b border-slate-950/50 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={handleRunLighthouse}
-                      disabled={isLhAuditing}
-                      className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-600/10 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {isLhAuditing ? (
-                        <span className="flex items-center gap-2">
-                          <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Sedang Menganalisis Lighthouse... (Butuh ~15 detik)
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5">
-                          <Gauge className="h-4 w-4" /> Jalankan Analisis Kinerja Lighthouse
-                        </span>
-                      )}
-                    </button>
-                    {lhError && (
-                      <p className="text-[10px] text-rose-400 font-bold font-sans">⚠️ {lhError}</p>
-                    )}
-                  </div>
-
-                  {/* Lighthouse Results Content */}
-                  {lhResult ? (
-                    <div className="flex-1">
-                      {/* 4 Radial Scores */}
-                      <div className="p-5 bg-slate-950/20 border-b border-slate-900/60">
-                        <div className="flex justify-between items-center gap-2">
-                          <RadialProgress score={lhResult.performance} label="Performa" />
-                          <RadialProgress score={lhResult.accessibility} label="Aksesbilitas" />
-                          <RadialProgress score={lhResult.bestPractices} label="Praktik Baik" />
-                          <RadialProgress score={lhResult.seo} label="SEO" />
-                        </div>
-                      </div>
-
-                      {/* Core Web Vitals Metrics */}
-                      <div className="px-5 py-4 border-b border-slate-900/60 bg-slate-900/10">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-sans mb-3">
-                          ⏱️ Metrik Inti Browser (Core Web Vitals):
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                          <div className="bg-slate-950/40 border border-slate-900/85 p-2.5 rounded-xl space-y-1">
-                            <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider block">LCP (Paint)</span>
-                            <span className="text-xs font-black text-white block font-mono">{lhResult.metrics.lcp}</span>
-                          </div>
-                          <div className="bg-slate-950/40 border border-slate-900/85 p-2.5 rounded-xl space-y-1">
-                            <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider block">CLS (Shift)</span>
-                            <span className="text-xs font-black text-white block font-mono">{lhResult.metrics.cls}</span>
-                          </div>
-                          <div className="bg-slate-950/40 border border-slate-900/85 p-2.5 rounded-xl space-y-1">
-                            <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider block">TBT (Blocking)</span>
-                            <span className="text-xs font-black text-white block font-mono">{lhResult.metrics.tbt}</span>
-                          </div>
-                          <div className="bg-slate-950/40 border border-slate-900/85 p-2.5 rounded-xl space-y-1">
-                            <span className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider block">Speed Index</span>
-                            <span className="text-xs font-black text-white block font-mono">{lhResult.metrics.speedIndex}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Recommendations List */}
-                      <div className="p-5 space-y-3">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest font-sans">
-                          📋 Saran Perbaikan Diagnostik ({lhResult.suggestions.length} Temuan):
-                        </div>
-                        
-                        {lhResult.suggestions.length === 0 ? (
-                          <div className="p-4 rounded-xl border border-emerald-900/30 bg-emerald-950/10 text-center text-xs font-semibold text-emerald-400 font-sans">
-                            🎉 Sempurna! Tidak ada masalah penting yang terdeteksi oleh Lighthouse.
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {lhResult.suggestions.map((sug, idx) => (
-                              <div key={idx} className="p-3 rounded-xl border border-slate-900 bg-slate-900/10 space-y-1 hover:border-slate-800 transition-all text-left">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="inline-flex text-[7.5px] font-black px-1.5 py-0.5 rounded bg-indigo-950/50 text-indigo-400 border border-indigo-900/40 uppercase tracking-wider">
-                                    {sug.category}
-                                  </span>
-                                  {sug.displayValue && (
-                                    <span className="text-[8.5px] font-mono font-bold text-rose-400">{sug.displayValue}</span>
-                                  )}
-                                </div>
-                                <h4 className="text-[11px] font-bold text-slate-200">{sug.title}</h4>
-                                <p className="text-[9.5px] text-slate-400 font-medium font-sans leading-relaxed">{sug.description}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-16 flex flex-col items-center justify-center gap-3 text-center px-6">
-                      <div className="p-4 rounded-full bg-slate-900/40 border border-slate-800 text-slate-500">
-                        <Zap className="h-6 w-6 animate-pulse text-indigo-400" />
-                      </div>
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-bold text-slate-300">Belum Ada Laporan Lighthouse</h4>
-                        <p className="text-[10px] text-slate-500 max-w-xs font-medium font-sans leading-relaxed">
-                          Klik tombol di atas untuk menjalankan audit kecepatan, aksesibilitas, dan SEO langsung dari browser Chrome headless.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <LighthousePanel
+                  lhResult={lhResult}
+                  isLhAuditing={isLhAuditing}
+                  lhError={lhError}
+                  onRunLighthouse={handleRunLighthouse}
+                />
               )}
             </div>
 
@@ -684,8 +325,8 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
                   VALIDATED BY DEEPMIND ANTIGRAVITY
                 </span>
                 
-                {/* Always visible copy button in footer if result exists and on code tab */}
-                {activeTab === 'code' && liveAuditResult && (
+                {/* Always visible copy button in footer if there are issues or result, on code tab */}
+                {activeTab === 'code' && activePrompt && (
                   <button
                     type="button"
                     onClick={handleCopyPrompt}

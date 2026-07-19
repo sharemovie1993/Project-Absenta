@@ -10,6 +10,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Switch } from '../../components/ui/Switch';
 import { Loader } from '../../components/ui/Loader';
 import { Badge } from '../../components/ui/Badge';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { sarprasApi } from '../../api/sarpras.api';
 
@@ -83,6 +84,15 @@ export const SarprasCatalogPage: React.FC = () => {
     if (selectedCategory === 'ALL') return catalogItems;
     return catalogItems.filter(item => item.category_name === selectedCategory);
   }, [catalogItems, selectedCategory]);
+
+  const catalogTabOptions = useMemo(() => [
+    { id: 'ALL', label: 'Semua Kategori', colorClass: 'text-blue-600 dark:text-blue-400' },
+    ...CATEGORY_OPTIONS.map(cat => ({
+      id: cat,
+      label: cat.split(' - ')[1] || cat,
+      colorClass: 'text-blue-600 dark:text-blue-400'
+    }))
+  ], []);
 
   // Create Mutation
   const createMutation = useMutation({
@@ -250,31 +260,12 @@ export const SarprasCatalogPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
-            <button
-              onClick={() => setSelectedCategory('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                selectedCategory === 'ALL'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50'
-                  : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-100'
-              }`}
-            >
-              Semua Kategori
-            </button>
-            {CATEGORY_OPTIONS.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50'
-                    : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-100'
-                }`}
-              >
-                {cat.split(' - ')[1] || cat}
-              </button>
-            ))}
-          </div>
+          <TabSwitcher
+            options={catalogTabOptions}
+            activeTab={selectedCategory}
+            onChange={setSelectedCategory}
+            className="w-full md:w-auto overflow-x-auto scrollbar-none"
+          />
         </div>
 
         {/* Catalog Table */}

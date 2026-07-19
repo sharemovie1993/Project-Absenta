@@ -1,7 +1,7 @@
 import { sesiService } from '../services/sesi.service';
 import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
-import { systemConfigService } from '../../../system-config/services/system-config.service';
-import { getTenantLocalTime, generateSessionsForTenant } from '../../../../jobs/attendanceAutoSession.job';
+import { systemConfigService } from '@/modules/system-config/services/system-config.service';
+import { getTenantLocalTime, generateSessionsForTenant } from '@/jobs/attendanceAutoSession.job';
 
 export const sesiAbsensiController = {
   async create(request: any, reply: any) {

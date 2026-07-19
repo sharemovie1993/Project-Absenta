@@ -35,19 +35,34 @@ export interface LiveAuditResult {
   standardContainer: boolean | undefined;
   advancedSelect: boolean | undefined;
   tableToolbar: boolean | undefined;
+  // Pilar-pilar tambahan (Pilar 16–28)
+  breadcrumbNavigation?: boolean;
+  premiumFeatureGate?: boolean | null;
+  godFileGuard?: boolean;
+  hardcodedConfig?: boolean;
+  analyticsCardGuard?: boolean;
+  importExportGuard?: boolean;
+  standardPdfPrint?: boolean;
+  zodValidationGuard?: boolean;
+  standardTabSwitcher?: boolean;
+  layoutFlowConsistency?: boolean;
   issues: string[];
   refactorPrompt: string;
+  timestamp?: string;
+}
+
+// ③ Type untuk satu pilar/standar hardening
+export interface HardeningStandard {
+  id: string;
+  name: string;
+  description: string;
+  status: 'VERIFIED' | 'WARNING' | 'FAILED';
+  details: string;
 }
 
 export interface HardeningInspectorProps {
   pageName: string;
-  standards: {
-    id: string;
-    name: string;
-    description: string;
-    status: 'VERIFIED' | 'WARNING' | 'FAILED';
-    details: string;
-  }[];
+  standards: HardeningStandard[];
   moduleKey?: string;
 }
 

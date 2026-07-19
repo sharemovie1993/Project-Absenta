@@ -235,6 +235,8 @@ async function main() {
             { label: 'Mata Pelajaran', icon: 'BookOpen', path: '/academic/mapel', required_capability: 'academic.subjects.view.list' },
             { label: 'Guru', icon: 'UserCog', path: '/academic/guru', required_capability: 'academic.teachers.view.list' },
             { label: 'Siswa', icon: 'GraduationCap', path: '/academic/siswa', required_capability: 'academic.students.view.list' },
+            { label: 'Dokumen Legalitas Sekolah', icon: 'FileText', path: '/documents', required_capability: 'documents.view.list' },
+            { label: 'Arsip Digital Kepegawaian', icon: 'Archive', path: '/documents/member-docs', required_capability: 'academic.students.view.detail' },
           ]
         },
         {

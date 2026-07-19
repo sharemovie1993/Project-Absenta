@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getMyJadwalTemplate } from '../api/attendance/jadwalTemplate.api';
+import { getMyJadwalKBM } from '../api/attendance/jadwalKBM.api';
 import { useAuthStore } from '../store/authStore';
 import { useSocket } from './useSocket';
 import { toLocalDate } from '../utils/attendance/time';
@@ -23,7 +23,7 @@ export const useStaffTimeline = (guruId?: string) => {
   // Kita gunakan endpoint tunggal yang sudah melakukan merging di backend
   const { data: timelineRes, isLoading, refetch } = useQuery({
     queryKey: ['staff-timeline-me', toLocalDate()],
-    queryFn: () => getMyJadwalTemplate({ tanggal: toLocalDate() }),
+    queryFn: () => getMyJadwalKBM({ tanggal: toLocalDate() }),
     enabled: !!token && !!guruId,
   });
 

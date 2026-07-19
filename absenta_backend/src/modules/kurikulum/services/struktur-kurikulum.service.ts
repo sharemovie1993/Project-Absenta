@@ -150,7 +150,7 @@ export class StrukturKurikulumService {
     if (!activeSemester) return { current_jp: 0, max_jp: maxJp, is_exceeded: false, nama_guru: guru.nama_guru };
 
     // Count actual scheduled slots for this teacher in the visual grid
-    const schedulesCount = await prisma.jadwalTemplate.count({
+    const schedulesCount = await prisma.jadwalKBM.count({
       where: {
         tenant_id: tenantId,
         guru_id: guruId,
@@ -196,7 +196,7 @@ export class StrukturKurikulumService {
         maxAllocationJp = struct?.jp_per_minggu ?? 2; // Default 2 JP if not set in structure
 
         // Count current slots for this class and subject
-        currentAllocationJp = await prisma.jadwalTemplate.count({
+        currentAllocationJp = await prisma.jadwalKBM.count({
           where: {
             tenant_id: tenantId,
             kelas_id: addKelasId,

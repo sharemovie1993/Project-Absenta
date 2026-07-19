@@ -32,7 +32,7 @@ export async function generateSessionsForTenant(
 }
 
 /**
- * Logika Inti: Menghasilkan Sesi Absensi dari Jadwal KBM (JadwalTemplate) riil ke Database.
+ * Logika Inti: Menghasilkan Sesi Absensi dari Jadwal KBM (JadwalKBM) riil ke Database.
  * Dipanggil secara asynchronous oleh worker untuk satu tenant.
  */
 export async function generateSessionsForTenantDirect(
@@ -87,11 +87,6 @@ export async function generateSessionsForTenantDirect(
       return { success: true, message: `Hari libur terjadwal (${academicHoliday.judul}), skip pembuatan sesi otomatis.`, count: 0 };
     }
 
-    // Cek apakah hari ini adalah hari sekolah bagi tenant ini
-    if (!tenant.hari_sekolah.includes(hariEnum)) {
-      return { success: true, message: `Hari ini (${hariEnum}) bukan hari sekolah untuk ${tenant.name}, skip pembuatan sesi otomatis.`, count: 0 };
-    }
-
     // 2. Ambil konteks akademik aktif (Tahun Pelajaran & Semester)
     const activeYear = await prisma.tahunPelajaran.findFirst({
       where: { tenant_id: tenantId, is_active: true }
@@ -107,60 +102,6 @@ export async function generateSessionsForTenantDirect(
       return { success: false, message: 'Semester aktif tidak ditemukan.' };
     }
 
-    // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini
-    const schedules = await prisma.jadwalTemplate.findMany({
-      where: {
-        tenant_id: tenantId,
-        tahun_pelajaran_id: activeYear.id,
-        semester_id: activeSemester.id,
-        hari: hariEnum,
-        // Filter guru_id dan mapel_id dihapus agar kegiatan seperti Pembiasaan/Ketarunaan tetap dibuatkan sesinya
-      }
-    });
-
-    if (schedules.length === 0) {
-      return { success: true, message: 'Tidak ada jadwal pelajaran terdaftar untuk hari ini.', count: 0 };
-    }
-
-    // Group and merge consecutive slots for the same class + guru + mapel + jenis_kegiatan
-    const grouped: Record<string, typeof schedules> = {};
-    for (const s of schedules) {
-      const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(s);
-    }
-
-    const mergedSchedules: typeof schedules = [];
-
-    for (const key in grouped) {
-      const slots = grouped[key];
-      // Sort by start time (e.g. "07:00", "07:45")
-      slots.sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
-
-      let current = { ...slots[0] };
-      mergedSchedules.push(current);
-
-      for (let i = 1; i < slots.length; i++) {
-        const next = slots[i];
-        
-        // Calculate gap between current.jam_selesai and next.jam_mulai
-        const [currH, currM] = current.jam_selesai.split(':').map(Number);
-        const [nextH, nextM] = next.jam_mulai.split(':').map(Number);
-        
-        const currMins = (currH || 0) * 60 + (currM || 0);
-        const nextMins = (nextH || 0) * 60 + (nextM || 0);
-        const gap = nextMins - currMins;
-
-        // If the gap is 35 minutes or less (covers standard break times), merge them!
-        if (gap <= 35) {
-          current.jam_selesai = next.jam_selesai;
-        } else {
-          current = { ...next };
-          mergedSchedules.push(current);
-        }
-      }
-    }
-
     // Offset timezone lokal
     const TZ_OFFSET: Record<string, number> = {
       'Asia/Jakarta': 7,
@@ -171,65 +112,181 @@ export async function generateSessionsForTenantDirect(
 
     let createdCount = 0;
 
-    for (const schedule of mergedSchedules) {
-      // Cek apakah ada kejadian khusus LIBUR untuk kelas ini
-      const classEvent = classEventsMap.get(schedule.kelas_id);
-      if (classEvent && classEvent.mode_kejadian === 'LIBUR') {
-        continue; // Skip pembuatan sesi untuk kelas ini
-      }
-
-      // Kombinasikan string tanggal dan waktu ke Date UTC
-      const startMulai = new Date(new Date(`${dateStr}T${schedule.jam_mulai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-      const startSelesai = new Date(new Date(`${dateStr}T${schedule.jam_selesai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-      const tanggalTgl = new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
-
-      // Hindari pembuatan sesi ganda (idempotency check)
-      const existing = await prisma.sesiAbsensi.findFirst({
+    // --- KBM GENERATION SECTION ---
+    // Hanya generate KBM jika hari ini adalah Hari Sekolah/Operasional Tenant
+    if (tenant.hari_sekolah.includes(hariEnum)) {
+      // 3. Cari semua jadwal pelajaran (Jadwal KBM) untuk hari ini (Hanya jenis_kegiatan = KBM)
+      const schedules = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
-          kelas_id: schedule.kelas_id,
-          guru_id: schedule.guru_id,
-          mapel_id: schedule.mapel_id,
-          waktu_mulai: startMulai,
-          tanggal: tanggalTgl
+          tahun_pelajaran_id: activeYear.id,
+          semester_id: activeSemester.id,
+          hari: hariEnum,
+          jenis_kegiatan: 'KBM'
         }
       });
 
-      if (!existing) {
-        // Buat sesi absensi
-        const created = await prisma.sesiAbsensi.create({
-          data: {
+      if (schedules.length > 0) {
+        // Group and merge consecutive slots for the same class + guru + mapel + jenis_kegiatan
+        const grouped: Record<string, typeof schedules> = {};
+        for (const s of schedules) {
+          const key = `${s.kelas_id}-${s.guru_id || 'none'}-${s.mapel_id || 'none'}-${s.jenis_kegiatan || 'KBM'}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(s);
+        }
+
+        const mergedSchedules: typeof schedules = [];
+
+        for (const key in grouped) {
+          const slots = grouped[key];
+          slots.sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+
+          let current = { ...slots[0] };
+          mergedSchedules.push(current);
+
+          for (let i = 1; i < slots.length; i++) {
+            const next = slots[i];
+            const [currH, currM] = current.jam_selesai.split(':').map(Number);
+            const [nextH, nextM] = next.jam_mulai.split(':').map(Number);
+            const currMins = (currH || 0) * 60 + (currM || 0);
+            const nextMins = (nextH || 0) * 60 + (nextM || 0);
+            const gap = nextMins - currMins;
+
+            if (gap <= 35) {
+              current.jam_selesai = next.jam_selesai;
+            } else {
+              current = { ...next };
+              mergedSchedules.push(current);
+            }
+          }
+        }
+
+        for (const schedule of mergedSchedules) {
+          const classEvent = classEventsMap.get(schedule.kelas_id);
+          if (classEvent && classEvent.mode_kejadian === 'LIBUR') {
+            continue;
+          }
+
+          const startMulai = new Date(new Date(`${dateStr}T${schedule.jam_mulai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+          const startSelesai = new Date(new Date(`${dateStr}T${schedule.jam_selesai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+          const tanggalTgl = new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+
+          const existing = await prisma.sesiAbsensi.findFirst({
+            where: {
+              tenant_id: tenantId,
+              kelas_id: schedule.kelas_id,
+              guru_id: schedule.guru_id,
+              mapel_id: schedule.mapel_id,
+              waktu_mulai: startMulai,
+              tanggal: tanggalTgl
+            }
+          });
+
+          if (!existing) {
+            const created = await prisma.sesiAbsensi.create({
+              data: {
+                tenant_id: tenantId,
+                kelas_id: schedule.kelas_id,
+                guru_id: schedule.guru_id,
+                mapel_id: schedule.mapel_id,
+                semester_id: schedule.semester_id,
+                tahun_pelajaran_id: schedule.tahun_pelajaran_id,
+                tanggal: tanggalTgl,
+                waktu_mulai: startMulai,
+                waktu_selesai: startSelesai,
+                jenis_kegiatan: schedule.jenis_kegiatan || 'KBM',
+                sumber_sesi: 'TEMPLATE',
+                jadwal_kbm_id: schedule.id,
+                status: 'BERLANGSUNG',
+              }
+            });
+
+            if (schedule.guru_id) {
+              await prisma.absenGuru.create({
+                data: {
+                  tenant_id: tenantId,
+                  sesi_id: created.id,
+                  guru_id: schedule.guru_id,
+                  status: 'Belum Hadir',
+                  tahun_pelajaran_id: schedule.tahun_pelajaran_id,
+                  semester_id: schedule.semester_id
+                }
+              });
+            }
+            createdCount++;
+          }
+        }
+      }
+    }
+
+    // 4. Cari dan generate sesi dari JadwalKegiatan untuk hari ini
+    const activeKegiatans = await prisma.jadwalKegiatan.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: activeYear.id,
+        aktif: true,
+        berlaku_mulai: { lte: today },
+        OR: [
+          { berlaku_sampai: null },
+          { berlaku_sampai: { gte: today } }
+        ],
+        hari: { has: hariEnum }
+      }
+    });
+
+    for (const kegiatan of activeKegiatans) {
+      let targetKelasIds: string[] = [];
+      if (kegiatan.target_semua_kelas) {
+        const allKelas = await prisma.kelas.findMany({
+          where: { tenant_id: tenantId, is_active: true },
+          select: { id: true }
+        });
+        targetKelasIds = allKelas.map(k => k.id);
+      } else {
+        targetKelasIds = kegiatan.target_kelas_ids;
+      }
+
+      const startMulai = new Date(new Date(`${dateStr}T${kegiatan.waktu_mulai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+      const startSelesai = kegiatan.waktu_selesai 
+        ? new Date(new Date(`${dateStr}T${kegiatan.waktu_selesai}:00.000Z`).getTime() - (offset * 60 * 60 * 1000))
+        : new Date(startMulai.getTime() + 60 * 60 * 1000);
+
+      const tanggalTgl = new Date(new Date(`${dateStr}T00:00:00.000Z`).getTime() - (offset * 60 * 60 * 1000));
+
+      for (const kelasId of targetKelasIds) {
+        const classEvent = classEventsMap.get(kelasId);
+        if (classEvent && classEvent.mode_kejadian === 'LIBUR') {
+          continue;
+        }
+
+        const existing = await prisma.sesiAbsensi.findFirst({
+          where: {
             tenant_id: tenantId,
-            kelas_id: schedule.kelas_id,
-            guru_id: schedule.guru_id,
-            mapel_id: schedule.mapel_id,
-            semester_id: schedule.semester_id,
-            tahun_pelajaran_id: schedule.tahun_pelajaran_id,
-            tanggal: tanggalTgl,
+            kelas_id: kelasId,
             waktu_mulai: startMulai,
-            waktu_selesai: startSelesai,
-            jenis_kegiatan: schedule.jenis_kegiatan || 'KBM',
-            sumber_sesi: 'TEMPLATE',
-            jadwal_template_id: schedule.id,
-            status: 'BERLANGSUNG',
+            tanggal: tanggalTgl,
+            jadwal_kegiatan_id: kegiatan.id
           }
         });
 
-        // Inisialisasi daftar hadir guru (AbsenGuru)
-        if (schedule.guru_id) {
-          await prisma.absenGuru.create({
+        if (!existing) {
+          await prisma.sesiAbsensi.create({
             data: {
               tenant_id: tenantId,
-              sesi_id: created.id,
-              guru_id: schedule.guru_id,
-              status: 'Belum Hadir',
-              tahun_pelajaran_id: schedule.tahun_pelajaran_id,
-              semester_id: schedule.semester_id
+              kelas_id: kelasId,
+              semester_id: activeSemester.id,
+              tahun_pelajaran_id: activeYear.id,
+              tanggal: tanggalTgl,
+              waktu_mulai: startMulai,
+              waktu_selesai: startSelesai,
+              jenis_kegiatan: kegiatan.nama,
+              sumber_sesi: 'TEMPLATE',
+              jadwal_kegiatan_id: kegiatan.id,
+              status: 'BERLANGSUNG'
             }
           });
+          createdCount++;
         }
-
-        createdCount++;
       }
     }
 

@@ -8,6 +8,7 @@ import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { useTenant } from '../../../../hooks/useTenant';
 import { useAuthStore } from '../../../../store/authStore';
 import { useSocket } from '../../../../hooks/useSocket';
+import { toLocalDate } from '../../../../utils/attendance/time';
 import { 
   Loader, 
   Activity,
@@ -67,7 +68,7 @@ export default function ModeMultiSesiView({
   const [activeTab, setActiveTab ] = useState<TabType>('gerbang');
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDate();
   const isAdmin = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
   const caps = user?.capabilities || [];
   const positionCodes = user?.position_codes || [];

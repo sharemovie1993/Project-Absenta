@@ -27,7 +27,7 @@ const commands: CommandItem[] = [
   { id: 'siswa', label: 'Data Siswa', path: '/academic/siswa', icon: Users, category: 'Akademik' },
   { id: 'guru', label: 'Data Guru', path: '/academic/guru', icon: Users, category: 'Akademik' },
   { id: 'kelas', label: 'Manajemen Kelas', path: '/academic/kelas', icon: FileText, category: 'Akademik' },
-  { id: 'jadwal', label: 'Jadwal Pelajaran', path: '/kurikulum/jadwal', icon: Zap, category: 'Akademik' },
+  { id: 'jadwal', label: 'Jadwal KBM', path: '/kurikulum/jadwal', icon: Zap, category: 'Akademik' },
   
   // Operasional
   { id: 'attendance-ops', label: 'Operasional Absensi', path: '/attendance/ops', icon: Zap, category: 'Operasional' },

@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { JadwalValidationService } from '../src/modules/jadwal/services/jadwal-validation.service';
+import { JadwalValidationService } from '../../src/modules/jadwal/services/jadwal-validation.service';
 
 const prisma = new PrismaClient();
 const service = new JadwalValidationService();
@@ -283,6 +283,28 @@ async function main() {
     console.log('✅ PASS');
   } else {
     console.error('❌ FAIL', res7);
+    process.exit(1);
+  }
+
+  // CASE 8: KELAS_CONFLICT (by slot_index)
+  console.log('\n👉 Case 8: KELAS_CONFLICT (by slot_index)');
+  // TPL1 is Class A, SENIN, slot_index: 1 (default), jam_mulai: 08:00
+  // Test with different hours but same slot_index: 1
+  const res8 = await service.validateConflict({
+    tenant_id: tenantId,
+    tahun_pelajaran_id: tp.id,
+    semester_id: sem.id,
+    hari: 'SENIN',
+    jam_mulai: '10:00',
+    jam_selesai: '11:00',
+    slot_index: 1, // Same slot_index
+    kelas_id: kelasA.id,
+  });
+
+  if (!res8.is_valid && res8.error?.code === 'KELAS_CONFLICT') {
+    console.log('✅ PASS');
+  } else {
+    console.error('❌ FAIL', res8);
     process.exit(1);
   }
 

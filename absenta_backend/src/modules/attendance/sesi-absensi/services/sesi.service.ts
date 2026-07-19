@@ -30,8 +30,11 @@ export class SesiService {
       waktu_selesai,
       tahun_pelajaran_id,
       sumber_sesi,
+      jadwal_kbm_id,
       jadwal_template_id
     } = payload;
+
+    const resolvedJadwalKBMId = jadwal_kbm_id || jadwal_template_id;
 
     const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
     
@@ -190,7 +193,8 @@ export class SesiService {
         created_by_user_id: (userId && isUUID(userId)) ? userId : null,
         status: 'BERLANGSUNG',
         sumber_sesi: sumber_sesi || 'MANUAL',
-        jadwal_template_id: jadwal_template_id || null,
+        jadwal_kbm_id: resolvedJadwalKBMId || null,
+        keterangan: payload.keterangan || null,
       },
     });
 
@@ -510,6 +514,15 @@ export class SesiService {
       throw new Error('Forbidden: Sesi sudah ditutup atau waktu mengajar sudah habis. Transaksi ditolak.');
     }
 
+    // Validasi waktu mulai: maksimal 15 menit sebelum sesi dimulai
+    if (sesi.waktu_mulai) {
+      const startTime = new Date(sesi.waktu_mulai).getTime();
+      const earlyThreshold = startTime - 15 * 60 * 1000;
+      if (now.getTime() < earlyThreshold) {
+        throw new Error('Forbidden: Sesi KBM belum dimulai. Absensi hanya dapat dilakukan maksimal 15 menit sebelum kelas dimulai.');
+      }
+    }
+
     if (!sesi.guru_id) throw new Error('Forbidden: sesi tidak memiliki guru untuk dikonfirmasi');
     if (String(sesi.guru_id) !== String(guruId)) throw new Error('Forbidden: guru tidak sesuai dengan sesi');
 
@@ -525,6 +538,21 @@ export class SesiService {
 
     const normalizedStatus = status ? (String(status).toUpperCase() === 'HADIR' ? 'Hadir / Mengajar' : status) : 'Hadir / Mengajar';
 
+    // Hitung poin kehadiran Guru
+    const rawStatus = normalizedStatus.toUpperCase();
+    let poinKehadiran = 0;
+    if (rawStatus.includes('HADIR') || rawStatus.includes('MENGAJAR')) {
+      poinKehadiran = isTerlambat ? ATTENDANCE_POINTS.HADIR_TERLAMBAT : ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
+    } else if (rawStatus.includes('SAKIT')) {
+      poinKehadiran = ATTENDANCE_POINTS.SAKIT;
+    } else if (rawStatus.includes('IZIN')) {
+      poinKehadiran = ATTENDANCE_POINTS.IZIN;
+    } else if (rawStatus.includes('DISPEN')) {
+      poinKehadiran = ATTENDANCE_POINTS.DISPEN;
+    } else if (rawStatus.includes('ALPA')) {
+      poinKehadiran = ATTENDANCE_POINTS.ALPA;
+    }
+
     const updated = await prisma.absenGuru.update({
       where: { id: existing.id },
       data: {
@@ -532,6 +560,7 @@ export class SesiService {
         waktu_tap: now,
         is_terlambat: isTerlambat,
         menit_keterlambatan: lateMinutes,
+        poin_kehadiran: poinKehadiran,
         catatan: typeof catatan !== 'undefined' ? catatan : existing.catatan,
         updated_at: new Date(),
       },
@@ -556,6 +585,7 @@ export class SesiService {
   async tapSiswa(tenantId: string, _org: any, sesi_id: string, data: any, userId: string) {
     let { siswa_id, siswa_akademik_id, status, rfid, device_id } = data;
     const startedAt = Date.now();
+    const nowTap = new Date();
 
     // 0. Resolve Siswa ID from Siswa Akademik ID if provided
     if (!siswa_id && siswa_akademik_id) {
@@ -590,17 +620,37 @@ export class SesiService {
          throw new Error(`Perangkat '${device_id}' tidak terdaftar atau belum dihubungkan ke kelas mana pun`);
        }
        
-       const activeSesi = await prisma.sesiAbsensi.findFirst({
+       // 1. Cari sesi yang sedang berjalan (sekarang berada di antara waktu_mulai dan waktu_selesai)
+       let activeSesi = await prisma.sesiAbsensi.findFirst({
          where: { 
            tenant_id: tenantId, 
            kelas_id: device.kelas_id, 
-           status: 'BERLANGSUNG' 
+           status: 'BERLANGSUNG',
+           waktu_mulai: { lte: nowTap },
+           waktu_selesai: { gte: nowTap }
          },
-
-         orderBy: { waktu_mulai: 'desc' },
          select: { id: true }
        });
-       if (!activeSesi) throw new Error('Tidak ada sesi absensi yang aktif untuk kelas ini');
+
+       // 2. Jika tidak ada sesi aktif berjalan, cari sesi berikutnya yang akan dimulai dalam 15 menit ke depan
+       if (!activeSesi) {
+         const fifteenMinutesLater = new Date(nowTap.getTime() + 15 * 60 * 1000);
+         activeSesi = await prisma.sesiAbsensi.findFirst({
+           where: { 
+             tenant_id: tenantId, 
+             kelas_id: device.kelas_id, 
+             status: 'BERLANGSUNG',
+             waktu_mulai: {
+               gte: nowTap,
+               lte: fifteenMinutesLater
+             }
+           },
+           orderBy: { waktu_mulai: 'asc' },
+           select: { id: true }
+         });
+       }
+
+       if (!activeSesi) throw new Error('Tidak ada sesi absensi yang aktif atau akan segera dimulai untuk kelas ini');
        targetSesiId = activeSesi.id;
     }
 
@@ -627,7 +677,6 @@ export class SesiService {
     if (!sesi) throw new Error('Sesi tidak ditemukan di database');
 
     const statusUpperSesi = String(sesi.status || '').toUpperCase();
-    const nowTap = new Date();
     const isExpiredSesi = sesi.waktu_selesai && nowTap > new Date(sesi.waktu_selesai);
 
     if (statusUpperSesi === 'SELESAI' || isExpiredSesi) {
@@ -635,6 +684,15 @@ export class SesiService {
         try { await this.updateStatus(tenantId, _org, targetSesiId, 'SELESAI'); } catch {}
       }
       throw new Error('Forbidden: Sesi sudah ditutup atau waktu mengajar sudah habis. Transaksi ditolak.');
+    }
+
+    // Validasi waktu mulai: maksimal 15 menit sebelum sesi dimulai
+    if (sesi.waktu_mulai) {
+      const startTime = new Date(sesi.waktu_mulai).getTime();
+      const earlyThreshold = startTime - 15 * 60 * 1000;
+      if (nowTap.getTime() < earlyThreshold) {
+        throw new Error('Forbidden: Sesi KBM belum dimulai. Absensi hanya dapat dilakukan maksimal 15 menit sebelum kelas dimulai.');
+      }
     }
 
     const cfgForDay = await systemConfigService.getActive(tenantId);
@@ -748,7 +806,7 @@ export class SesiService {
 
     const existing = await prisma.absenSiswa.findFirst({
       where: { tenant_id: tenantId, sesi_id: sesi_id, siswa_akademik_id: siswaAkademik.id },
-      select: { id: true, status: true, waktu_tap: true, created_at: true },
+      select: { id: true, status: true, waktu_tap: true, created_at: true, catatan: true, is_terlambat: true },
     });
 
     // VALIDASI: Cegah override status non-hadir (SAKIT, IZIN, ALPA, DISPEN) jika scan biasa (status tidak eksplisit)
@@ -760,17 +818,42 @@ export class SesiService {
       }
     }
 
+    // LOGIKA PERLINDUNGAN STATUS (Mencegah Downgrade)
+    let finalStatusToSave = finalStatus;
+    let isTerlambatToSave = isTerlambat;
+    let lateMinutesToSave = isTerlambat ? lateMinutesComputed : 0;
+    let poinToSave = poin;
+    let catatanToSave = existing?.catatan || null;
+
+    if (existing) {
+      const isAlreadyHadir = String(existing.status).toUpperCase() === 'HADIR';
+      const isAlreadyOnTime = !existing.is_terlambat;
+
+      // Jika sudah Hadir dan Tepat Waktu (mungkin via inheritance), jangan buat jadi Terlambat jika tap manual telat
+      if (isAlreadyHadir && isAlreadyOnTime && isTerlambat) {
+        isTerlambatToSave = false;
+        lateMinutesToSave = 0;
+        poinToSave = ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
+      }
+      
+      // Jika tap manual, tambahkan info di catatan tanpa menghapus info inheritance
+      if (catatanToSave && !catatanToSave.includes('Konfirmasi Tap Manual')) {
+        catatanToSave = `${catatanToSave} (Konfirmasi Tap Manual)`;
+      }
+    }
+
     let updated;
     try {
       if (existing) {
         updated = await prisma.absenSiswa.update({
-          where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+          where: { id_created_at: { id: existing.id, created_at: existing.created_at } },
           data: {
-            status: finalStatus,
+            status: finalStatusToSave,
             waktu_tap: nowTap,
-            is_terlambat: isTerlambat,
-            menit_keterlambatan: isTerlambat ? lateMinutesComputed : 0,
-            poin_kehadiran: poin,
+            is_terlambat: isTerlambatToSave,
+            menit_keterlambatan: lateMinutesToSave,
+            poin_kehadiran: poinToSave,
+            catatan: catatanToSave,
             updated_at: new Date()
           }
         });
@@ -800,7 +883,7 @@ export class SesiService {
         // Retry as update.
         const retryExisting = await prisma.absenSiswa.findFirst({
           where: { tenant_id: tenantId, sesi_id: sesi_id, siswa_akademik_id: siswaAkademik.id },
-          select: { id: true, status: true, waktu_tap: true, created_at: true },
+          select: { id: true, status: true, waktu_tap: true, created_at: true, catatan: true, is_terlambat: true },
         });
 
         if (retryExisting) {
@@ -814,13 +897,14 @@ export class SesiService {
           }
 
           updated = await prisma.absenSiswa.update({
-            where: { id_created_at: { id: retryExisting.id, created_at: (retryExisting as any).created_at } },
+            where: { id_created_at: { id: retryExisting.id, created_at: retryExisting.created_at } },
             data: {
-              status: finalStatus,
+              status: finalStatusToSave,
               waktu_tap: nowTap,
-              is_terlambat: isTerlambat,
-              menit_keterlambatan: isTerlambat ? lateMinutesComputed : 0,
-              poin_kehadiran: poin,
+              is_terlambat: isTerlambatToSave,
+              menit_keterlambatan: lateMinutesToSave,
+              poin_kehadiran: poinToSave,
+              catatan: catatanToSave,
               updated_at: new Date()
             }
           });
@@ -989,10 +1073,18 @@ export class SesiService {
 
     if (kbmTargetSessions.length === 0) return;
 
+    const config = await systemConfigService.getActive(tenantId);
+    const thresholdLate = Number(config?.default_late_threshold || 5);
     const catatan = `Hadir (Mengikuti kegiatan ${sourceSesi.jenis_kegiatan})`;
 
     // 3. Eksekusi sinkronisasi kehadiran
     for (const kbm of kbmTargetSessions) {
+      // RE-CALCULATE Lateness for the target session
+      const diffMsTarget = waktuTap.getTime() - kbm.waktu_mulai.getTime();
+      const lateMinutesTarget = Math.max(0, Math.floor(diffMsTarget / 60000));
+      const isTerlambatTarget = lateMinutesTarget >= thresholdLate;
+      const poinTarget = isTerlambatTarget ? ATTENDANCE_POINTS.HADIR_TERLAMBAT : ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
+
       const existing = await prisma.absenSiswa.findFirst({
         where: { tenant_id: tenantId, sesi_id: kbm.id, siswa_akademik_id: siswaAkademikId },
         select: { id: true, status: true, created_at: true }
@@ -1003,11 +1095,14 @@ export class SesiService {
         const protectedStatuses = ['SAKIT', 'IZIN', 'DISPEN'];
         if (!protectedStatuses.includes(String(existing.status).toUpperCase())) {
           await prisma.absenSiswa.update({
-            where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+            where: { id_created_at: { id: existing.id, created_at: existing.created_at } },
             data: {
               status: status,
               waktu_tap: waktuTap,
               catatan: catatan,
+              is_terlambat: isTerlambatTarget,
+              menit_keterlambatan: lateMinutesTarget,
+              poin_kehadiran: poinTarget,
               updated_at: new Date()
             }
           });
@@ -1022,11 +1117,11 @@ export class SesiService {
             status: status,
             waktu_tap: waktuTap,
             catatan: catatan,
-            // Copy snapshots dari sesi asal
+            // Copy snapshots dari sesi asal, tapi hitung ulang keterlambatan
             asal_gerbang: snapshots.asal_gerbang,
-            is_terlambat: snapshots.is_terlambat,
-            menit_keterlambatan: snapshots.menit_keterlambatan,
-            poin_kehadiran: snapshots.poin_kehadiran,
+            is_terlambat: isTerlambatTarget,
+            menit_keterlambatan: lateMinutesTarget,
+            poin_kehadiran: poinTarget,
             kelas_id_snapshot: snapshots.kelas_id_snapshot,
             kelas_nama_snapshot: snapshots.kelas_nama_snapshot,
             tingkat_snapshot: snapshots.tingkat_snapshot,
@@ -1039,7 +1134,7 @@ export class SesiService {
       this.publishRedisEvent('events:session_attendance_update', {
         tenant_id: tenantId,
         sesi_id: kbm.id,
-        record: { siswa_id: siswaId, status: status, waktu_tap: waktuTap }
+        record: { siswa_id: siswaId, status: status, waktu_tap: waktuTap, is_terlambat: isTerlambatTarget, catatan }
       });
     }
   }
@@ -1076,9 +1171,18 @@ export class SesiService {
           where: { tenant_id: tenantId, sesi_id: p.id }
         });
 
+        const config = await systemConfigService.getActive(tenantId);
+        const thresholdLate = Number(config?.default_late_threshold || 5);
         const catatan = `Hadir (Mengikuti kegiatan ${p.jenis_kegiatan})`;
 
         for (const rec of attendanceRecords) {
+          // RE-CALCULATE Lateness for the target session
+          const waktuTap = rec.waktu_tap || new Date();
+          const diffMsTarget = waktuTap.getTime() - targetSesi.waktu_mulai.getTime();
+          const lateMinutesTarget = Math.max(0, Math.floor(diffMsTarget / 60000));
+          const isTerlambatTarget = lateMinutesTarget >= thresholdLate;
+          const poinTarget = isTerlambatTarget ? ATTENDANCE_POINTS.HADIR_TERLAMBAT : ATTENDANCE_POINTS.HADIR_TEPAT_WAKTU;
+
           const existing = await prisma.absenSiswa.findFirst({
             where: { tenant_id: tenantId, sesi_id: targetSesi.id, siswa_akademik_id: rec.siswa_akademik_id },
             select: { id: true, status: true, created_at: true }
@@ -1088,11 +1192,14 @@ export class SesiService {
             const protectedStatuses = ['SAKIT', 'IZIN', 'DISPEN'];
             if (!protectedStatuses.includes(String(existing.status).toUpperCase())) {
               await prisma.absenSiswa.update({
-                where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+                where: { id_created_at: { id: existing.id, created_at: existing.created_at } },
                 data: {
                   status: rec.status,
                   waktu_tap: rec.waktu_tap,
                   catatan: catatan,
+                  is_terlambat: isTerlambatTarget,
+                  menit_keterlambatan: lateMinutesTarget,
+                  poin_kehadiran: poinTarget,
                   updated_at: new Date()
                 }
               });
@@ -1108,9 +1215,9 @@ export class SesiService {
                 waktu_tap: rec.waktu_tap,
                 catatan: catatan,
                 asal_gerbang: rec.asal_gerbang,
-                is_terlambat: rec.is_terlambat,
-                menit_keterlambatan: rec.menit_keterlambatan,
-                poin_kehadiran: rec.poin_kehadiran,
+                is_terlambat: isTerlambatTarget,
+                menit_keterlambatan: lateMinutesTarget,
+                poin_kehadiran: poinTarget,
                 kelas_id_snapshot: rec.kelas_id_snapshot,
                 kelas_nama_snapshot: rec.kelas_nama_snapshot,
                 tingkat_snapshot: rec.tingkat_snapshot,
@@ -1474,9 +1581,11 @@ export class SesiService {
           guru_id: true,
           tanggal: true,
           kelas_id: true,
+          waktu_mulai: true,
+          waktu_selesai: true,
           tahun_pelajaran_id: true,
           semester_id: true,
-          Kelas: { select: { nama_kelas: true } },
+          Kelas: { select: { id: true, nama_kelas: true } },
           Guru: { select: { user_id: true, no_hp: true } }
         }
       });
@@ -1508,19 +1617,59 @@ export class SesiService {
           const targetIds = siswaAkademikIds.filter(id => !existingSet.has(id));
 
           if (targetIds.length > 0) {
+            // Get system config for timeout
+            const sysCfg = await systemConfigService.getActive(tenantId);
+            const maxIzinMenit = sysCfg?.max_izin_sementara_menit ?? 45;
+
+            // INTEGRASI PIKET: Cek izin keluar yang tumpang tindih dengan sesi ini
+            const permits = await prisma.izinKeluarSiswa.findMany({
+              where: {
+                siswa_akademik_id: { in: targetIds },
+                jam_keluar: { lt: sesiFull.waktu_selesai || new Date() },
+                OR: [
+                  { jam_kembali: null },
+                  { jam_kembali: { gt: sesiFull.waktu_mulai || new Date() } }
+                ]
+              }
+            });
+
+            const studentPermitMap = new Map<string, any>();
+            permits.forEach(p => studentPermitMap.set(p.siswa_akademik_id, p));
+
             await prisma.absenSiswa.createMany({
-              data: targetIds.map(id => ({
-                tenant_id: tenantId,
-                sesi_id: sesiId,
-                siswa_akademik_id: id,
-                status: 'ALPA',
-                waktu_tap: null,
-                asal_gerbang: false,
-                kelas_id_snapshot: sesiFull.kelas_id,
-                kelas_nama_snapshot: sesiFull.Kelas?.nama_kelas || null,
-                tingkat_snapshot: null,
-                tahun_pelajaran_id_snapshot: sesiFull.tahun_pelajaran_id
-              })),
+              data: targetIds.map(id => {
+                const permit = studentPermitMap.get(id);
+                let isIzin = !!permit;
+                let finalCatatan = isIzin ? `[PIKET] ${permit.alasan}` : 'Auto-closed by system';
+                let finalStatus = isIzin ? 'IZIN' : 'ALPA';
+
+                // SMART TIMEOUT LOGIC
+                if (isIzin && permit.tipe_izin === 'IZIN_KELUAR' && !permit.jam_kembali) {
+                  const waktuSelesaiSesi = sesiFull.waktu_selesai || new Date();
+                  const diffMenit = Math.floor((waktuSelesaiSesi.getTime() - permit.jam_keluar.getTime()) / (1000 * 60));
+                  
+                  if (diffMenit > maxIzinMenit) {
+                    isIzin = false;
+                    finalStatus = 'ALPA';
+                    finalCatatan = `[BOLOS] Izin keluar sementara melebihi batas ${maxIzinMenit} menit (Durasi: ${diffMenit}m)`;
+                  }
+                }
+                
+                return {
+                  tenant_id: tenantId,
+                  sesi_id: sesiId,
+                  siswa_akademik_id: id,
+                  status: finalStatus,
+                  waktu_tap: null,
+                  asal_gerbang: false,
+                  kelas_id_snapshot: sesiFull.kelas_id,
+                  kelas_nama_snapshot: sesiFull.Kelas?.nama_kelas || null,
+                  tingkat_snapshot: null,
+                  tahun_pelajaran_id_snapshot: sesiFull.tahun_pelajaran_id,
+                  catatan: finalCatatan,
+                  poin_kehadiran: isIzin ? ATTENDANCE_POINTS.IZIN : ATTENDANCE_POINTS.ALPA
+                };
+              }),
               skipDuplicates: true
             });
           }

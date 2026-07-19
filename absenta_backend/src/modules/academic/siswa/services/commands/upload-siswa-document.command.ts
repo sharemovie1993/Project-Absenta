@@ -23,10 +23,15 @@ export async function uploadSiswaDocumentCommand(params: {
   }
 
   // 2. Simpan file fisik
+  const cleanName = student.nama_siswa.replace(/[^\w\- ]+/g, '_').replace(/\s+/g, '_').trim();
+  const nisSegment = student.nis || 'no-nis';
+  const subFolder = `siswa/${nisSegment}_${cleanName}`;
+
   const stored = await storage.saveFile({
     tenantId,
     category: kategori,
-    file
+    file,
+    subFolder
   });
 
   // 3. Simpan record di database

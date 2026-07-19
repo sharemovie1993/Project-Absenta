@@ -284,7 +284,7 @@ export class TahunPelajaranService {
             SesiGerbang: true,
             SiswaAkademik: true,
             AbsenGuru: true,
-            JadwalTemplate: true,
+            JadwalKBM: true,
             StrukturKurikulum: true,
           },
         },
@@ -299,7 +299,7 @@ export class TahunPelajaranService {
       if (counts.SesiGerbang > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki catatan Sesi Gerbang');
       if (counts.SiswaAkademik > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki riwayat data akademik siswa');
       if (counts.AbsenGuru > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki catatan absensi guru');
-      if (counts.JadwalTemplate > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki data jadwal pelajaran');
+      if (counts.JadwalKBM > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki data jadwal pelajaran');
       if (counts.StrukturKurikulum > 0) throw new Error('Tidak dapat menghapus tahun pelajaran yang memiliki data Struktur Kurikulum');
     }
 

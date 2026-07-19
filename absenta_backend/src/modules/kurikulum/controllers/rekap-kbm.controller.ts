@@ -13,8 +13,8 @@ export class RekapKBMController {
       };
       const tenantId = request.tenantId;
 
-      // 1. Ambil data JadwalTemplate untuk memetakan penugasan mengajar riil di kelas
-      const templates = await prisma.jadwalTemplate.findMany({
+      // 1. Ambil data JadwalKBM untuk memetakan penugasan mengajar riil di kelas
+      const templates = await prisma.jadwalKBM.findMany({
         where: {
           tenant_id: tenantId,
           tahun_pelajaran_id: tahun_pelajaran_id || undefined,

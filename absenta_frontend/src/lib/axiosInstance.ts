@@ -31,7 +31,7 @@ const API_URL = BASE_URL.endsWith('/') ? BASE_URL : `${BASE_URL}/`;
 // 2. Create Instance
 const axiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 60000,
   withCredentials: true, // MANDATORY per directive
   headers: {
     'Content-Type': 'application/json',

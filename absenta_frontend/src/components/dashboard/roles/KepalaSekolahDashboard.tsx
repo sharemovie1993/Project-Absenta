@@ -89,8 +89,8 @@ export const KepalaSekolahDashboard: React.FC = () => {
   const quickActions: QuickAction[] = [
     { label: 'Overview', icon: LayoutDashboard, onClick: () => navigate('/dashboard'), color: 'blue' },
     { label: 'Monitoring', icon: Users, onClick: () => navigate('/attendance/rekap'), color: 'indigo' },
+    { label: 'Kejadian Khusus', icon: ShieldCheck, onClick: () => navigate('/attendance/settings?tab=kejadian-khusus'), color: 'rose' },
     { label: 'Laporan PDF', icon: FileText, onClick: () => navigate('/reports'), color: 'emerald' },
-    { label: 'Eskalasi', icon: Bell, onClick: () => navigate('/notifications'), color: 'rose' },
   ];
 
   const infoStrips: InfoStripItem[] = [

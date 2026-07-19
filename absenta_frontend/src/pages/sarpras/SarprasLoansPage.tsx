@@ -23,6 +23,7 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
 const LoanRequestForm = lazy(() => import('../../components/sarpras/LoanRequestForm'));
@@ -310,22 +311,15 @@ const SarprasLoansPage: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-2 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
-            {statusButtons?.map(btn => (
-              <button
-                key={btn.value}
-                type="button"
-                onClick={() => { setStatusFilter(btn.value); setPage(1); }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
-                  statusFilter === btn.value
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
-          </div>
+          <TabSwitcher
+            options={statusButtons.map(btn => ({
+              id: btn.value,
+              label: btn.label,
+              colorClass: 'text-indigo-600 dark:text-indigo-400'
+            }))}
+            activeTab={statusFilter}
+            onChange={(id) => { setStatusFilter(id); setPage(1); }}
+          />
 
           {/* Table wrapped in SectionCard */}
           <SectionCard title="Daftar Laporan Peminjaman" icon={ClipboardList} fullWidth noPadding>

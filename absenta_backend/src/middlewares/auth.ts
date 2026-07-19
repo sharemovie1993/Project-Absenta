@@ -100,7 +100,13 @@ export async function authMiddleware(
     return;
   }
   
-  // Extract token from Authorization header
+  // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
+  const tokenQuery = request.query?.token;
+
+  if (!request.headers.authorization && tokenQuery) {
+    request.headers.authorization = `Bearer ${tokenQuery}`;
+  }
+  
   const authHeader = request.headers.authorization;
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

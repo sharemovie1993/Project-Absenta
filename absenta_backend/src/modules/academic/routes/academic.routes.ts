@@ -16,6 +16,7 @@ import programKeahlianRoutes from '../program-keahlian/routes/program-keahlian.r
 import { AcademicStatsController } from '../controllers/academic-stats.controller';
 import { UniversalSearchController } from '../controllers/universal-search.controller';
 import { PrepChecklistController } from '../controllers/prep-checklist.controller';
+import { MemberDocsController } from '../controllers/member-docs.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { organizationalScopeMiddleware } from '../../../middlewares/organizationalScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
@@ -40,6 +41,30 @@ export async function academicRoutes(fastify: any) {
   const academicStatsController = new AcademicStatsController();
   const universalSearchController = new UniversalSearchController();
   const prepChecklistController = new PrepChecklistController();
+  const memberDocsController = new MemberDocsController();
+
+  // --- MEMBER DOCUMENTS (Vault Agregasi) ---
+  fastify.get(
+    '/member-docs',
+    {
+      preHandler: [
+        requireCapability(['academic.students.view.detail', 'academic.teachers.view.detail']),
+        organizationalScopeMiddleware
+      ]
+    },
+    memberDocsController.listAllMemberDocs.bind(memberDocsController)
+  );
+
+  fastify.post(
+    '/member-docs/:docId/notify-rescan',
+    {
+      preHandler: [
+        requireCapability(['academic.students.manage', 'academic.teachers.update']),
+        organizationalScopeMiddleware
+      ]
+    },
+    memberDocsController.notifyRescan.bind(memberDocsController)
+  );
 
   // --- PREPARATION CHECKLIST ---
   fastify.get(

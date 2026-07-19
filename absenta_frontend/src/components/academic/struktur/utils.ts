@@ -77,7 +77,7 @@ export const transformDataToTree = (
     const nodes = data[kode];
 
     // Kelompok yang butuh grouping per Tingkat & Vertikal
-    const isAcademicOrService = ['KAPROG', 'KABENG', 'TOOLMAN', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'BKK', 'GERBANG', 'PETUGAS_ABSENSI'].includes(kode);
+    const isAcademicOrService = ['KAPROG', 'KABENG', 'TOOLMAN', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'BKK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL'].includes(kode);
 
     if (isAcademicOrService) {
       if (['WALIKELAS', 'PETUGAS_KELAS', 'PETUGAS_ABSENSI'].includes(kode)) {
@@ -125,30 +125,46 @@ export const transformDataToTree = (
           children: levelNodes
         });
       } else {
-        // Logika Kaprog/Kabeng (Horizontal Positions with Vertical Staff)
+        // Logika Kaprog/Kabeng / Pembina Eskul (Horizontal Positions with Vertical Staff)
         const instanceNodes = nodes.map((n: any) => {
           const sortedMembers = [...(n.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
           const headMember = sortedMembers[0];
+          
+          const isEskul = kode === 'PEMBINA_ESKUL';
+          const eskulLabel = isEskul ? n.eskul_name : null;
           const unitLabel = (n.unit_id ? jurusans[n.unit_id] : null) || n.unit_kode || '';
+          
+          const displayLabel = isEskul 
+            ? `${n.nama} ${eskulLabel || ''}`
+            : (unitLabel ? `${n.nama} ${unitLabel}` : n.nama);
+
           return {
-            id: `node-${kode}-${n.id}-${n.unit_id || 'no-unit'}`,
-            label: shortenPosition(unitLabel ? `${n.nama} ${unitLabel}` : n.nama),
+            id: `node-${kode}-${n.id}-${isEskul ? (n.jenis_kegiatan_id || 'no-eskul') : (n.unit_id || 'no-unit')}`,
+            label: shortenPosition(displayLabel),
             subLabel: headMember ? headMember.name : 'Belum diisi',
             type: 'STRUCT' as any,
-            data: { roleCode: kode, realMemberId: headMember?.id, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true, isCoordinator: true },
+            data: { 
+              roleCode: kode, 
+              realMemberId: headMember?.id, 
+              realStrukturId: n.id, 
+              unit_id: n.unit_id, 
+              jenis_kegiatan_id: n.jenis_kegiatan_id,
+              forceVertical: true, 
+              isCoordinator: true 
+            },
             children: [...(n.members || [])]
               .sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime())
               .slice(1)
               .map((m: any) => {
                 const isBPBK = kode === 'BPBK';
                 const isGerbang = kode === 'GERBANG';
-                const isStruct = isBPBK || isGerbang;
+                const isStruct = isBPBK || isGerbang || isEskul;
                 return {
                   id: isStruct ? `staff-${kode}-${n.id}-${m.id}` : `member-${kode}-${n.id}-${m.id}`,
-                  label: isBPBK ? 'STAF BP/BK' : isGerbang ? 'PETUGAS GERBANG' : m.name,
+                  label: isBPBK ? 'STAF BP/BK' : isGerbang ? 'PETUGAS GERBANG' : isEskul ? 'STAF PEMBINA' : m.name,
                   subLabel: isStruct ? m.name : cleanDetails(m.details),
                   type: (isStruct ? 'STRUCT' : 'MEMBER') as any,
-                  data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id }
+                  data: { roleCode: kode, realMemberId: m.id, realStrukturId: n.id, unit_id: n.unit_id, jenis_kegiatan_id: n.jenis_kegiatan_id }
                 };
               })
           };

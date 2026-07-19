@@ -70,6 +70,8 @@ export interface SystemConfigPayload {
   parent_app_report_absence_enabled?: boolean;
   // BPBK settings
   bpbk_summons_require_principal_approval?: boolean;
+  // Piket
+  max_izin_sementara_menit?: number;
   license?: {
     is_active: boolean;
     school_name: string;

@@ -21,7 +21,7 @@ export const backupService = {
       organizationalPositions,
       organizationalAssignments,
       organizationalCapabilities,
-      jadwalTemplate,
+      jadwalKBM,
       pelanggaranSiswa,
       supervisiGuru
     ] = await Promise.all([
@@ -47,7 +47,7 @@ export const backupService = {
       prisma.organizationalCapability.findMany({
         where: { Position: { tenant_id: tenantId } },
       }),
-      prisma.jadwalTemplate.findMany({ where: { tenant_id: tenantId } }),
+      prisma.jadwalKBM.findMany({ where: { tenant_id: tenantId } }),
       prisma.pelanggaranSiswa.findMany({ where: { tenant_id: tenantId } }),
       prisma.supervisiGuru.findMany({ where: { tenant_id: tenantId } }),
     ]);
@@ -73,7 +73,7 @@ export const backupService = {
         organizationalPositions,
         organizationalAssignments,
         organizationalCapabilities,
-        jadwalTemplate,
+        jadwalKBM,
         pelanggaranSiswa,
         supervisiGuru
       }
@@ -102,7 +102,7 @@ export const backupService = {
       organizationalPositions,
       organizationalAssignments,
       organizationalCapabilities,
-      jadwalTemplate,
+      jadwalKBM,
       pelanggaranSiswa,
       supervisiGuru
     } = backupData.data;
@@ -147,7 +147,7 @@ export const backupService = {
 
       guruMapel: 0,
       kelasMapel: 0,
-      jadwalTemplate: 0,
+      jadwalKBM: 0,
       pelanggaran: 0,
       supervisi: 0,
       siswaAkademik: 0
@@ -189,7 +189,7 @@ export const backupService = {
 
       if (guruMapel?.length) { const res = await tx.guruMapel.createMany({ data: sanitize(guruMapel), skipDuplicates: true }); counts.guruMapel = res.count; }
       if (kelasMapel?.length) { const res = await tx.kelasMapel.createMany({ data: sanitize(kelasMapel), skipDuplicates: true }); counts.kelasMapel = res.count; }
-      if (jadwalTemplate?.length) { const res = await tx.jadwalTemplate.createMany({ data: sanitize(jadwalTemplate), skipDuplicates: true }); counts.jadwalTemplate = res.count; }
+      if (jadwalKBM?.length) { const res = await tx.jadwalKBM.createMany({ data: sanitize(jadwalKBM), skipDuplicates: true }); counts.jadwalKBM = res.count; }
       if (organizationalAssignments?.length) {
         const res = await tx.organizationalAssignment.createMany({ data: sanitizeWithUpdatedAt(organizationalAssignments), skipDuplicates: true });
         counts.organizationalAssignments = res.count;

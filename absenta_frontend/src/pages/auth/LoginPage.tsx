@@ -33,7 +33,7 @@ export default function LoginPage() {
     { title: "Presensi Wajah AI & Geolokasi", desc: "Verifikasi kehadiran menggunakan pendeteksian wajah cerdas dan geofencing lokasi presisi." },
     { title: "Notifikasi Otomatis Orang Tua", desc: "Pemberitahuan real-time langsung ke WhatsApp saat siswa masuk, izin, sakit, atau alpa." },
     { title: "Portal Keuangan Terintegrasi", desc: "Kemudahan pengelolaan SPP, tagihan otomatis, dan pembayaran via Payment Gateway." },
-    { title: "Satu Dasbor Akademik Terpadu", desc: "Akses komprehensif untuk nilai, jadwal pelajaran, e-raport, data siswa, dan guru." },
+    { title: "Satu Dasbor Akademik Terpadu", desc: "Akses komprehensif untuk nilai, jadwal KBM, e-raport, data siswa, dan guru." },
     { title: "Keamanan Enkripsi End-to-End", desc: "Perlindungan data sensitif institusi secara aman dengan standar keamanan tingkat tinggi." }
   ], []);
 

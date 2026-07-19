@@ -118,14 +118,14 @@ export async function createSiswaCommand(
       return updateSiswaCommand((existingSiswaByName as any).id, validatedInput as any, scope);
     }
 
-    const generateRandomNis = () => {
-      let s = '';
-      for (let i = 0; i < 10; i++) s += Math.floor(Math.random() * 10).toString();
+    const generateTempNis = () => {
+      let s = '1111';
+      for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
       return s;
     };
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = generateRandomNis();
+      const candidate = generateTempNis();
       const exists = await siswaDb.siswa.findFirst({
         where: { tenant_id: tenantId, nis: candidate },
       });
@@ -135,7 +135,7 @@ export async function createSiswaCommand(
       }
     }
     if (!nisToUse) {
-      nisToUse = Date.now().toString().slice(-10).padStart(10, '0');
+      nisToUse = '1111' + Date.now().toString().slice(-6);
     }
   }
 
@@ -207,7 +207,29 @@ export async function createSiswaCommand(
 
   // --- SANITIZATION & AUTO-FIX ---
   // Ensure string fields are strings (Excel often sends numbers)
-  const nisn = validatedInput.nisn ? String(validatedInput.nisn).trim() : null;
+  // Generate temporary NISN starting with 9999 if empty/null/invalid
+  let nisn = validatedInput.nisn ? String(validatedInput.nisn).trim() : '';
+  if (!nisn || nisn === '-' || nisn === 'KOSONG') {
+    const generateTempNisn = () => {
+      let s = '9999';
+      for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
+      return s;
+    };
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateTempNisn();
+      const exists = await siswaDb.siswa.findFirst({
+        where: { tenant_id: tenantId, nisn: candidate },
+      });
+      if (!exists) {
+        nisn = candidate;
+        break;
+      }
+    }
+    if (!nisn) {
+      nisn = '9999' + Date.now().toString().slice(-6);
+    }
+  }
   const nik = validatedInput.nik ? String(validatedInput.nik).trim() : null;
   const rfid = validatedInput.no_rfid ? String(validatedInput.no_rfid).trim() : null;
 

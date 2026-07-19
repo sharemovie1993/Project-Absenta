@@ -5,7 +5,10 @@ export interface KejadianKhusus {
   tanggal: string; // YYYY-MM-DD
   keterangan: string;
   abaikan_terlambat: boolean;
+  mode_kejadian: 'NORMAL' | 'LIBUR' | 'DISPEN';
   tenant_id: string;
+  kelas_id?: string | null;
+  Kelas?: { id: string; nama_kelas: string };
   created_at: string;
   updated_at: string;
 }
@@ -14,6 +17,8 @@ export interface CreateKejadianKhususPayload {
   tanggal: string;
   keterangan: string;
   abaikan_terlambat: boolean;
+  mode_kejadian?: 'NORMAL' | 'LIBUR' | 'DISPEN';
+  kelas_id?: string | null;
 }
 
 export const getKejadianKhususList = async () => {

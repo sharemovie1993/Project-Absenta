@@ -17,7 +17,7 @@ export const TENANT_MODELS = [
     'GuruMapel',
     'KelasMapel',
     'JenisKegiatanMaster',
-    'JadwalTemplate',
+    'JadwalKBM',
     'StrukturOrganisasi',
     'GuruStrukturOrganisasi',
     'SiswaStrukturOrganisasi',

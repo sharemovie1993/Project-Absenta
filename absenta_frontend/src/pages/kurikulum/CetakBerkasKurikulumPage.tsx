@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useCallback, useMemo } from 'react';
 import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTemplate';
 import { type DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
-import { getJadwalTemplate } from '../../api/attendance/jadwalTemplate.api';
+import { getJadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '@/components/ui/Loader';
@@ -144,7 +144,7 @@ export const CetakBerkasKurikulumPage: React.FC = () => {
     if (['roster', 'roster_teacher'].includes(selectedPrintType)) {
       try {
         const [jadwalRes, jenisRes] = await Promise.all([
-          getJadwalTemplate({
+          getJadwalKBM({
             kelas_id: selectedPrintType === 'roster_teacher' ? undefined : (selectedClassId === 'all' ? undefined : selectedClassId),
             guru_id: selectedPrintType === 'roster_teacher' && selectedGuruId !== 'all' ? selectedGuruId : undefined,
             tahun_pelajaran_id: checklistData?.current_year?.id,

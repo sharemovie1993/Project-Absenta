@@ -32,6 +32,7 @@ export interface StrukturKurikulum {
 export interface Supervisi {
   id: string;
   guru_id: string;
+  supervisor_id?: string | null;
   tanggal: string;
   jam_ke?: number;
   kelas?: string;
@@ -40,11 +41,20 @@ export interface Supervisi {
   nilai?: number;
   status: string;
   is_verified?: boolean;
+  is_self_evaluated?: boolean;
+  target_pembelajaran?: string;
+  nilai_self?: number | null;
+  catatan_self?: string;
   Guru?: {
     nama_guru: string;
     nip?: string;
   };
+  Supervisor?: {
+    nama_guru: string;
+    nip?: string;
+  };
 }
+
 
 export const kurikulumApi = {
   // Struktur Kurikulum

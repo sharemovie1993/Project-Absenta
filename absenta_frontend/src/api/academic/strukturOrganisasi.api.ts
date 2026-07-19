@@ -88,6 +88,7 @@ export interface AssignGuruInput {
   guru_id: string;
   unit_id?: string | null;
   kelas_id?: string | null;
+  jenis_kegiatan_id?: string | null;
   start_date?: string;
   end_date?: string;
 }

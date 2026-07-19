@@ -22,6 +22,7 @@ export const STRUKTUR_CODES = {
   BPBK: 'BPBK',
   BKK: 'BKK',
   KABENG: 'KABENG',
+  PEMBINA_ESKUL: 'PEMBINA_ESKUL',
   BENDAHARA_KOPERASI: 'BENDAHARA_KOPERASI',
   KETUA_KOPERASI: 'KETUA_KOPERASI',
   SEKRETARIS_KOPERASI: 'SEKRETARIS_KOPERASI',
@@ -119,6 +120,14 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
     scope_type: 'kelas',
     deskripsi: 'Monitoring kelas dan siswa binaan',
     order: 24
+  },
+  { 
+    kode: STRUKTUR_CODES.PEMBINA_ESKUL, 
+    nama: 'Pembina Eskul', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Guru pembina kegiatan ekstrakurikuler sekolah',
+    order: 25
   },
   { 
     kode: STRUKTUR_CODES.TOOLMAN, 

@@ -6,7 +6,7 @@ import {
   CalendarCheck, CreditCard, Bell, BarChart3, Wrench, Cog,
   CalendarClock, Mail, Cpu, Server,
 } from 'lucide-react';
-import type { GradeInfo } from './infra.types';
+import type { GradeInfo, HardeningStandard, LiveAuditResult } from './infra.types';
 
 // ─── ICON MAPPINGS ────────────────────────────────────────────────────────────
 
@@ -165,4 +165,236 @@ export function getGradeInfo(scoreValue: number): GradeInfo {
     ringClass: 'border-red-550/25 text-red-500 bg-red-950/10', ringPulse: 'border-red-400/40',
     headerGlow: 'from-red-950/40 via-rose-950/25 to-slate-900'
   };
+}
+
+export function mapLiveAuditToStandards(standards: HardeningStandard[], liveAuditResult: LiveAuditResult | null): HardeningStandard[] {
+  if (!liveAuditResult) return standards;
+
+  const safe = (val: boolean | undefined, fallback: boolean = false) =>
+    val !== undefined ? val : fallback;
+
+  return standards.map(std => {
+    switch (std.id) {
+      case 'architectural_layout_standard':
+        return { ...std,
+          status: liveAuditResult.usesLayout ? 'VERIFIED' as const : 'FAILED' as const,
+          details: liveAuditResult.usesLayout
+            ? 'Tervalidasi: Halaman dibungkus dengan AcademicPageLayout.'
+            : 'Gagal: Halaman tidak menggunakan AcademicPageLayout.' };
+
+      case 'architectural_shared_components':
+        return { ...std,
+          status: safe(liveAuditResult.usesUiComponents) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.usesUiComponents)
+            ? 'Tervalidasi: Mengimpor shared UI components terstandar.'
+            : 'Gagal: Halaman ini menggunakan elemen HTML mentah atau belum mengimpor standard UI.' };
+
+      case 'architectural_safe_mapping':
+        return { ...std,
+          status: liveAuditResult.safeMapping ? 'VERIFIED' as const : 'FAILED' as const,
+          details: liveAuditResult.safeMapping
+            ? 'Tervalidasi: Semua .map menggunakan optional chaining ?.'
+            : 'Gagal: .map digunakan tanpa pertahanan ?. – risiko crash jika data null.' };
+
+      case 'architectural_memoization':
+        return { ...std,
+          status: liveAuditResult.usesMemo ? 'VERIFIED' as const : 'WARNING' as const,
+          details: liveAuditResult.usesMemo
+            ? 'Tervalidasi: useMemo dan useCallback terdeteksi.'
+            : 'Peringatan: Hook memoization tidak ditemukan – DOM churn tinggi.' };
+
+      case 'architectural_strict_typing':
+        return { ...std,
+          status: liveAuditResult.noAnyType ? 'VERIFIED' as const : 'WARNING' as const,
+          details: liveAuditResult.noAnyType
+            ? 'Tervalidasi: Bersih dari tipe data longgar ": any".'
+            : 'Peringatan: Tipe ": any" terdeteksi – keamanan TypeScript melemah.' };
+
+      case 'architectural_safe_effect':
+      case 'memory_leak_safeguards':
+        return { ...std,
+          status: liveAuditResult.safeEffect ? 'VERIFIED' as const : 'FAILED' as const,
+          details: liveAuditResult.safeEffect
+            ? 'Tervalidasi: Cleanup listener/timer terdefinisi dengan return () => {...}.'
+            : 'Gagal: useEffect memiliki listener/timer tanpa cleanup – kebocoran memori!' };
+
+      case 'architectural_strict_colors':
+        return { ...std,
+          status: liveAuditResult.strictColors ? 'VERIFIED' as const : 'WARNING' as const,
+          details: liveAuditResult.strictColors
+            ? 'Tervalidasi: Konsisten dengan palet warna terpusat.'
+            : 'Peringatan: Warna heksadesimal keras atau bracket Tailwind terdeteksi.' };
+
+      case 'architectural_table_sorting':
+        return { ...std,
+          status: safe(liveAuditResult.tableSorting) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.tableSorting)
+            ? 'Tervalidasi: Tabel memiliki implementasi sorting.'
+            : 'Peringatan: <Table> tanpa props sortable/onSort/sortKey.' };
+
+      case 'architectural_empty_state':
+        return { ...std,
+          status: safe(liveAuditResult.emptyState) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.emptyState)
+            ? 'Tervalidasi: Empty state handler terpasang.'
+            : 'Peringatan: Tidak ada fallback tampilan saat data kosong.' };
+
+      case 'architectural_loading_guard':
+        return { ...std,
+          status: safe(liveAuditResult.loadingGuard) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.loadingGuard)
+            ? 'Tervalidasi: Guard isLoading/Skeleton terpasang.'
+            : 'Peringatan: Tidak ada guard loading – risiko flash konten kosong.' };
+
+      case 'architectural_form_a11y':
+        return { ...std,
+          status: safe(liveAuditResult.formA11y) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.formA11y)
+            ? 'Tervalidasi: Form memiliki aria-label/htmlFor.'
+            : 'Peringatan: Input tanpa aria-label/htmlFor – aksesibilitas rendah.' };
+
+      case 'architectural_performance_optimization':
+      case 'code_splitting':
+        return { ...std,
+          status: safe(liveAuditResult.performanceOptimization) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.performanceOptimization)
+            ? 'Tervalidasi: Komponen berat dimuat secara asinkron (lazy).'
+            : 'Gagal: Modal/Form terdeteksi tetapi tidak menggunakan lazy() & Suspense.' };
+
+      case 'architectural_user_guidance':
+        return { ...std,
+          status: safe(liveAuditResult.userGuidance) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.userGuidance)
+            ? 'Tervalidasi: Halaman memiliki sistem panduan instruksi.'
+            : 'Peringatan: Halaman tidak menyediakan properti "instruction" pada layout.' };
+
+      case 'architectural_table_pagination':
+        return { ...std,
+          status: safe(liveAuditResult.tablePagination) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.tablePagination)
+            ? 'Tervalidasi: Tabel memiliki implementasi pagination.'
+            : 'Gagal: <Table> ditemukan tanpa pagination – risiko crash pada dataset besar.' };
+
+      case 'architectural_toolbar_standard':
+        return { ...std,
+          status: safe(liveAuditResult.standardToolbar) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.standardToolbar)
+            ? 'Tervalidasi: Aksi utama halaman menggunakan properti toolbar layout.'
+            : 'Peringatan: Aksi utama belum menggunakan standar toolbar layout.' };
+
+      case 'architectural_feedback_standard':
+        return { ...std,
+          status: safe(liveAuditResult.standardFeedback) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.standardFeedback)
+            ? 'Tervalidasi: Menggunakan sistem feedback modern (Toast/Confirm).'
+            : 'Gagal: Masih menggunakan alert/confirm bawaan browser.' };
+
+      case 'architectural_container_consistency':
+        return { ...std,
+          status: safe(liveAuditResult.standardContainer) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.standardContainer)
+            ? 'Tervalidasi: Menggunakan SectionCard/Card untuk kontainer UI.'
+            : 'Peringatan: Layout belum menggunakan kontainer terstandar.' };
+
+      case 'architectural_advanced_select':
+        return { ...std,
+          status: safe(liveAuditResult.advancedSelect) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.advancedSelect)
+            ? 'Tervalidasi: Menggunakan SearchableSelect untuk input pilihan.'
+            : 'Peringatan: Ditemukan dropdown yang belum menggunakan SearchableSelect.' };
+
+      case 'architectural_table_toolbar_standard':
+        return { ...std,
+          status: safe(liveAuditResult.tableToolbar) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.tableToolbar)
+            ? 'Tervalidasi: Menggunakan properti toolbarLeft/Right untuk aksi kontekstual tabel.'
+            : 'Gagal: Aksi operasional tabel diletakkan di luar slot resmi toolbar Table.' };
+
+      case 'architectural_breadcrumb_navigation':
+        return { ...std,
+          status: safe(liveAuditResult.breadcrumbNavigation) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.breadcrumbNavigation)
+            ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi.'
+            : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
+
+      case 'architectural_pdf_print':
+        return { ...std,
+          status: safe(liveAuditResult.standardPdfPrint) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.standardPdfPrint)
+            ? 'Tervalidasi: Menggunakan modul cetak PDF terstandar.'
+            : 'Peringatan: Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di \'src/utils/print/\'.' };
+
+      case 'architectural_zod_validation':
+        return { ...std,
+          status: safe(liveAuditResult.zodValidationGuard) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.zodValidationGuard)
+            ? 'Tervalidasi: Form dilindungi oleh skema validasi Zod.'
+            : 'Peringatan: Terdeteksi elemen form input tanpa skema validasi Zod.' };
+
+      case 'architectural_layout_flow_consistency':
+        return { ...std,
+          status: safe(liveAuditResult.layoutFlowConsistency) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.layoutFlowConsistency)
+            ? 'Tervalidasi: Aliran tata letak halaman konsisten dengan filter dan statistik berada di atas tabel.'
+            : 'Peringatan: Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data.' };
+
+      // ─── Pilar Tambahan (Pilar 20–27) ──────────────────────────────────────
+      case 'architectural_premium_gate':
+        return { ...std,
+          status: liveAuditResult.premiumFeatureGate == null
+            ? std.status  // null = tidak berlaku (bukan modul berbayar), biarkan status lama
+            : liveAuditResult.premiumFeatureGate ? 'VERIFIED' as const : 'FAILED' as const,
+          details: liveAuditResult.premiumFeatureGate == null
+            ? std.details
+            : liveAuditResult.premiumFeatureGate
+              ? 'Tervalidasi: Halaman dilindungi oleh gerbang lisensi PremiumFeatureGate.'
+              : 'Gagal: Halaman ini berada di modul berbayar tetapi belum dipasangi PremiumFeatureGate.' };
+
+      case 'architectural_god_file':
+        return { ...std,
+          status: safe(liveAuditResult.godFileGuard, true) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.godFileGuard, true)
+            ? 'Tervalidasi: Ukuran berkas kode sumber ringkas dan terkelola secara modular.'
+            : 'Peringatan: Berkas terlalu besar (God File). Didekonsolidasi ke beberapa subkomponen.' };
+
+      case 'architectural_hardcoded_configs':
+        return { ...std,
+          status: safe(liveAuditResult.hardcodedConfig, true) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.hardcodedConfig, true)
+            ? 'Tervalidasi: Bersih dari mock data statis lokal dan URL API ter-hardcode.'
+            : 'Gagal: Terdeteksi data tiruan (mock) atau alamat API statis keras di dalam kode.' };
+
+      case 'architectural_analytics_card':
+        return { ...std,
+          status: safe(liveAuditResult.analyticsCardGuard, true) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.analyticsCardGuard, true)
+            ? 'Tervalidasi: Menggunakan komponen AnalyticsCard terstandarisasi varian premium.'
+            : 'Gagal: Kartu statistik kustom lokal terdeteksi. Gunakan AnalyticsCard dari @/components/ui/.' };
+
+      case 'architectural_import_export':
+        return { ...std,
+          status: safe(liveAuditResult.importExportGuard, true) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.importExportGuard, true)
+            ? 'Tervalidasi: Fitur impor/ekspor data aman dengan loading guard dan penanganan kesalahan.'
+            : 'Gagal: Fitur ekspor/impor tanpa loading guard, try-catch, atau generateImportTemplate standar.' };
+
+      case 'architectural_tab_switcher':
+        return { ...std,
+          status: safe(liveAuditResult.standardTabSwitcher, true) ? 'VERIFIED' as const : 'FAILED' as const,
+          details: safe(liveAuditResult.standardTabSwitcher, true)
+            ? 'Tervalidasi: Navigasi tab menggunakan komponen standard TabSwitcher.'
+            : 'Gagal: Terdeteksi tombol switcher manual. Wajib menggunakan komponen <TabSwitcher />.' };
+
+      // Alias pilar breadcrumbs (ID lama di modul-modul sebelum Pilar 19 distandarisasi)
+      case 'architectural_breadcrumbs':
+        return { ...std,
+          status: safe(liveAuditResult.breadcrumbNavigation, true) ? 'VERIFIED' as const : 'WARNING' as const,
+          details: safe(liveAuditResult.breadcrumbNavigation, true)
+            ? 'Tervalidasi: Navigasi Breadcrumb terdeteksi pada layout.'
+            : 'Peringatan: Halaman tidak melampirkan properti breadcrumbs pada layout.' };
+
+      default:
+        return std;
+    }
+  });
 }
