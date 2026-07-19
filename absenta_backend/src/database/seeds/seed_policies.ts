@@ -311,6 +311,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
   ]);
 
   const admin = uniqueStrings([
+    'academic.manage.academic',
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.students.view.history',

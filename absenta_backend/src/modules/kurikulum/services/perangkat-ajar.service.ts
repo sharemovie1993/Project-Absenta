@@ -1,4 +1,5 @@
 import { prisma } from '../../../utils/prisma';
+import { storageService } from '../../../infra/storage/storage.service';
 
 export class PerangkatAjarService {
   static async uploadPerangkat(
@@ -56,6 +57,12 @@ export class PerangkatAjarService {
     });
   }
 
+  static async getPerangkatById(tenantId: string, id: string) {
+    return prisma.perangkatAjar.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+  }
+
   static async getPerangkat(
     tenantId: string,
     filter: {
@@ -95,6 +102,12 @@ export class PerangkatAjarService {
 
     if (!existing) {
       throw new Error('Perangkat ajar tidak ditemukan atau bukan milik tenant Anda');
+    }
+
+    try {
+      await storageService.delete(existing.file_url);
+    } catch (err) {
+      console.error(`Failed to delete physical file: ${existing.file_url}`, err);
     }
 
     return prisma.perangkatAjar.delete({

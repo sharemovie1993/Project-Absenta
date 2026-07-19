@@ -34,6 +34,7 @@ Completed:
 - **Rekomendasi & Automasi Penjadwalan Supervisi**: Sistem pencari slot mengajar guru otomatis berdasarkan tanggal pilihan serta rekomendasi supervisor bebas bentrok (tidak mengajar & tidak sedang mensupervisi di slot waktu yang sama).
 - **Resilient Cascade Delete for Siswa**: Penulisan ulang `deleteAllSiswa` menggunakan satu transaksi PostgreSQL raw SQL (`$executeRawUnsafe`) berdurasi 2 menit untuk membersihkan secara berurutan data relasi pada 12 tabel (menyelesaikan error foreign key constraint dan limitasi timeout HTTP request).
 - **Wizard Generate NIS Massal**: Penambahan endpoint dan interface 3-step wizard untuk generate NIS massal terurut berdasar Jurusan (A→Z) → Tingkat Kelas → Rombel → Nama Siswa dengan opsi pengaturan urutan kelas dinamis.
+- **Perangkat Ajar Kurikulum Merdeka & Penyimpanan Fisik**: Mengganti input URL perangkat ajar menjadi unggahan berkas fisik (PDF/DOCX/XLSX) yang disimpan secara aman via `DocumentStorageService`. Membatasi kategori berkas khusus Kurikulum Merdeka (`MODUL_AJAR`, `ATP`, `MODUL_PROJEK`, `PROTA`, `PROMES`, `KKTP`). Memperketat hak akses API (Guru hanya melihat & mengunggah dokumen miliknya sendiri, Kurikulum/Admin memiliki akses kontrol penuh). Merancang antarmuka visual premium dengan tab status verifikasi, statistik kepatuhan dokumen, dan progress bar pengunggahan.
 
 In Progress:
 - None

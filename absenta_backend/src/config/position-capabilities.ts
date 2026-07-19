@@ -17,6 +17,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   ],
   [STRUKTUR_CODES.KURIKULUM]: [
     'organization.scope.tenant_wide',
+    'academic.manage.academic',
     'dashboard.view.kurikulum',
     'academic.activities.view.grouped',
     'academic.teaching.rekap',

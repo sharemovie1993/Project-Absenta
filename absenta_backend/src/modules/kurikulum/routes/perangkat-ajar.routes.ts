@@ -10,6 +10,9 @@ export default async function perangkatAjarRoutes(fastify: any) {
   
   // Mengambil daftar perangkat ajar (staf/guru)
   fastify.get('/perangkat', { preHandler: requireCapability('academic.teaching.view') }, PerangkatAjarController.getList);
+
+  // Mengunduh berkas perangkat ajar secara aman
+  fastify.get('/perangkat/:id/download', { preHandler: requireCapability('academic.teaching.view') }, PerangkatAjarController.download);
   
   // Menghapus perangkat ajar
   fastify.delete('/perangkat/:id', { preHandler: requireCapability('academic.manage.kbm') }, PerangkatAjarController.delete);

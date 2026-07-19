@@ -122,8 +122,34 @@ export const kurikulumApi = {
     const response = await api.get('/kurikulum/perangkat', { params });
     return response.data;
   },
-  uploadPerangkatAjar: async (data: { guru_id: string; mapel_id: string; tahun_pelajaran_id: string; semester_id: string; judul: string; jenis: string; file_url: string }) => {
-    const response = await api.post('/kurikulum/perangkat', data);
+  uploadPerangkatAjar: async (data: {
+    guru_id: string;
+    mapel_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    judul: string;
+    jenis: string;
+    file: File;
+    onProgress?: (percent: number) => void;
+  }) => {
+    const formData = new FormData();
+    formData.append('file', data.file);
+    formData.append('guru_id', data.guru_id);
+    formData.append('mapel_id', data.mapel_id);
+    formData.append('tahun_pelajaran_id', data.tahun_pelajaran_id);
+    formData.append('semester_id', data.semester_id);
+    formData.append('judul', data.judul);
+    formData.append('jenis', data.jenis);
+
+    const response = await api.post('/kurikulum/perangkat', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (evt: any) => {
+        if (!data.onProgress) return;
+        const total = Number(evt?.total || 0);
+        const loaded = Number(evt?.loaded || 0);
+        if (total > 0) data.onProgress(Math.round((loaded * 100) / total));
+      },
+    });
     return response.data;
   },
   reviewPerangkatAjar: async (id: string, data: { status: 'APPROVED' | 'REJECTED'; catatan_reviewer?: string | null }) => {
@@ -133,6 +159,15 @@ export const kurikulumApi = {
   deletePerangkatAjar: async (id: string) => {
     const response = await api.delete(`/kurikulum/perangkat/${id}`);
     return response.data;
+  },
+  downloadPerangkatAjarFile: async (id: string): Promise<{ blob: Blob; filename: string }> => {
+    const response = await api.get(`/kurikulum/perangkat/${id}/download`, {
+      responseType: 'blob'
+    });
+    const cd = String(response.headers?.['content-disposition'] || '');
+    const match = cd.match(/filename="?([^"]+)"?/);
+    const filename = match?.[1] || 'document';
+    return { blob: response.data as Blob, filename };
   },
   getStandardReferences: async (jenjang?: string) => {
     const response = await api.get('/kurikulum/struktur/standards', { params: { jenjang } });

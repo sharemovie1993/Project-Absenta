@@ -6,8 +6,8 @@ export const perangkatAjarUploadSchema = z.object({
   tahun_pelajaran_id: z.string().uuid('ID Tahun Pelajaran harus berupa UUID yang valid'),
   semester_id: z.string().uuid('ID Semester harus berupa UUID yang valid'),
   judul: z.string().min(1, 'Judul perangkat ajar wajib diisi').max(255),
-  jenis: z.enum(['RPP', 'MODUL_AJAR', 'SILABUS', 'PROTA', 'PROMES'], {
-    errorMap: () => ({ message: 'Jenis perangkat ajar harus bernilai RPP, MODUL_AJAR, SILABUS, PROTA, atau PROMES' })
+  jenis: z.enum(['RPP', 'MODUL_AJAR', 'SILABUS', 'PROTA', 'PROMES', 'ATP', 'KKTP', 'MODUL_PROJEK'], {
+    errorMap: () => ({ message: 'Jenis perangkat ajar harus bernilai RPP, MODUL_AJAR, SILABUS, PROTA, PROMES, ATP, KKTP, atau MODUL_PROJEK' })
   }),
   file_url: z.string().min(1, 'URL berkas wajib disertakan'),
 });
