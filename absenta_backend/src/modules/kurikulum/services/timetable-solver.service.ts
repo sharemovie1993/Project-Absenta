@@ -89,16 +89,10 @@ export class TimetableSolverService {
     });
     const teacherMap = new Map(teachers.map(t => [t.id, t]));
 
-    // 4. Fetch Guru-Mapel Assignments
+    // 4. Fetch Guru-Mapel Assignments with Scopes (Kelas / Jurusan / Global)
     const guruMapels = await prisma.guruMapel.findMany({
       where: { tenant_id: tenantId },
-      select: { guru_id: true, mapel_id: true }
-    });
-    const mapelToTeachersMap = new Map<string, string[]>();
-    guruMapels.forEach(gm => {
-      const existing = mapelToTeachersMap.get(gm.mapel_id) || [];
-      existing.push(gm.guru_id);
-      mapelToTeachersMap.set(gm.mapel_id, existing);
+      select: { guru_id: true, mapel_id: true, kelas_id: true, jurusan_id: true }
     });
 
     // 5. Fetch Existing JadwalKBM if not overwriting
@@ -153,7 +147,27 @@ export class TimetableSolverService {
 
       for (const st of matchingStruktur) {
         if (!st.Mapel) continue;
-        const eligibleTeachers = mapelToTeachersMap.get(st.mapel_id) || [];
+        
+        // 3-Level Priority Selection for Teachers:
+        // Priority 1: Match specific kelas_id
+        let eligibleTeachers = guruMapels
+          .filter(gm => gm.mapel_id === st.mapel_id && gm.kelas_id === kelas.id)
+          .map(gm => gm.guru_id);
+
+        // Priority 2: Match specific jurusan_id
+        if (eligibleTeachers.length === 0 && kelas.jurusan_id) {
+          eligibleTeachers = guruMapels
+            .filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && gm.jurusan_id === kelas.jurusan_id)
+            .map(gm => gm.guru_id);
+        }
+
+        // Priority 3: Fallback to Global (no kelas_id and no jurusan_id)
+        if (eligibleTeachers.length === 0) {
+          eligibleTeachers = guruMapels
+            .filter(gm => gm.mapel_id === st.mapel_id && !gm.kelas_id && !gm.jurusan_id)
+            .map(gm => gm.guru_id);
+        }
+
         const jpCount = st.jp_per_minggu || 2;
 
         for (let i = 0; i < jpCount; i++) {

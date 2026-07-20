@@ -6,6 +6,8 @@ import { findBestMatch } from '../../../../utils/normalization';
 export interface CreateGuruMapelInput {
   guru_id: string;
   mapel_id: string;
+  kelas_id?: string | null;
+  jurusan_id?: string | null;
 }
 
 export interface GuruMapelResponse {
@@ -13,6 +15,8 @@ export interface GuruMapelResponse {
   tenant_id: string;
   guru_id: string;
   mapel_id: string;
+  kelas_id?: string | null;
+  jurusan_id?: string | null;
   created_at: Date;
   Guru?: {
     id: string;
@@ -21,6 +25,15 @@ export interface GuruMapelResponse {
   Mapel?: {
     id: string;
     nama_mapel: string;
+    kode_mapel?: string;
+  };
+  Kelas?: {
+    id: string;
+    nama_kelas: string;
+  };
+  Jurusan?: {
+    id: string;
+    nama: string;
   };
 }
 
@@ -28,7 +41,7 @@ export class GuruMapelService {
   async listAssignments(
     requestingUserRole: RoleName,
     requestingUserTenantId: string | undefined,
-    filters?: { guru_id?: string; mapel_id?: string }
+    filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string }
   ): Promise<GuruMapelResponse[]> {
     const whereClause: any = {};
 
@@ -38,12 +51,16 @@ export class GuruMapelService {
 
     if (filters?.guru_id) whereClause.guru_id = filters.guru_id;
     if (filters?.mapel_id) whereClause.mapel_id = filters.mapel_id;
+    if (filters?.kelas_id) whereClause.kelas_id = filters.kelas_id;
+    if (filters?.jurusan_id) whereClause.jurusan_id = filters.jurusan_id;
 
     const data = await prisma.guruMapel.findMany({
       where: whereClause,
       include: {
         Guru: { select: { id: true, nama_guru: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Jurusan: { select: { id: true, nama: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -70,7 +87,13 @@ export class GuruMapelService {
 
     // Prevent duplicate assignment
     const existing = await prisma.guruMapel.findFirst({
-      where: { tenant_id: tenantId, guru_id: input.guru_id, mapel_id: input.mapel_id },
+      where: {
+        tenant_id: tenantId,
+        guru_id: input.guru_id,
+        mapel_id: input.mapel_id,
+        kelas_id: input.kelas_id || null,
+        jurusan_id: input.jurusan_id || null
+      },
     });
     if (existing) {
       throw new Error('Assignment already exists');
@@ -81,10 +104,14 @@ export class GuruMapelService {
         tenant_id: tenantId,
         guru_id: input.guru_id,
         mapel_id: input.mapel_id,
+        kelas_id: input.kelas_id || null,
+        jurusan_id: input.jurusan_id || null
       },
       include: {
         Guru: { select: { id: true, nama_guru: true } },
         Mapel: { select: { id: true, nama_mapel: true } },
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Jurusan: { select: { id: true, nama: true } },
       },
     });
 

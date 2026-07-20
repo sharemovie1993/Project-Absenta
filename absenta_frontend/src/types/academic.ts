@@ -251,12 +251,16 @@ export interface GuruMapel {
   tenant_id: string;
   guru_id: string;
   mapel_id: string;
+  kelas_id?: string | null;
+  jurusan_id?: string | null;
   created_at: Date;
   updated_at: Date;
   
   // Relations
   Guru?: Guru;
   Mapel?: Mapel;
+  Kelas?: { id: string; nama_kelas: string };
+  Jurusan?: { id: string; nama: string };
 }
 
 export interface KelasMapel {

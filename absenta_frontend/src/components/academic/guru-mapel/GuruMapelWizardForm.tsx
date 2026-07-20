@@ -3,8 +3,11 @@ import { Save, X, RefreshCw, Layers, Search, CheckSquare, Square, ChevronLeft, C
 import { Button, Alert, ModalFooter, Modal } from '../../ui';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
+import { getJurusanList } from '../../../api/academic/jurusan.api';
+import { getKelasForDropdown } from '../../../api/dropdown.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { Guru, Mapel, GuruMapel } from '../../../types/academic';
+import { cn } from '../../../lib/utils';
 import toast from 'react-hot-toast';
 
 interface GuruMapelWizardFormProps {
@@ -35,19 +38,30 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
   const [inspectMapelId, setInspectMapelId] = useState<string | null>(null);
   const [inspectGuruId, setInspectGuruId] = useState<string | null>(null);
 
+  // Scope Selections
+  const [scopeMode, setScopeMode] = useState<'GLOBAL' | 'JURUSAN' | 'KELAS'>('GLOBAL');
+  const [scopeJurusanId, setScopeJurusanId] = useState<string>('');
+  const [scopeKelasId, setScopeKelasId] = useState<string>('');
+  const [jurusanList, setJurusanList] = useState<any[]>([]);
+  const [kelasList, setKelasList] = useState<any[]>([]);
+
   // Load initial option list
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingInitial(true);
-        const [gurusRes, mapelsRes, assignmentsRes] = await Promise.all([
+        const [gurusRes, mapelsRes, assignmentsRes, jurusansRes, kelasRes] = await Promise.all([
           getGuruList(1, 1000, ''),
           getMapelList(1, 1000, ''),
-          listGuruMapel({})
+          listGuruMapel({}),
+          getJurusanList(1, 100).catch(() => ({ data: [] })),
+          getKelasForDropdown().catch(() => [])
         ]);
         setGurus(gurusRes.data || []);
         setMapels(mapelsRes.data || []);
         setAllAssignments(assignmentsRes.data || []);
+        setJurusanList(jurusansRes.data || []);
+        setKelasList(Array.isArray(kelasRes) ? kelasRes : []);
       } catch (err: any) {
         console.error('Failed to load initial data for wizard:', err);
         setSubmitError('Gagal mengambil data referensi guru/mapel.');
@@ -206,7 +220,9 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
       if (addedGurus.length > 0) {
         await Promise.all(addedGurus.map(g => assignGuruMapel({
           guru_id: g.id,
-          mapel_id: selectedMapelId
+          mapel_id: selectedMapelId,
+          jurusan_id: scopeMode === 'JURUSAN' ? scopeJurusanId || null : null,
+          kelas_id: scopeMode === 'KELAS' ? scopeKelasId || null : null
         })));
       }
 
@@ -341,6 +357,80 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
       {/* Step 2: Select Guru */}
       {step === 2 && (
         <>
+          {/* Scope Selector */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl space-y-2">
+            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+              Cakupan Plotting Mengajar (Opsional):
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setScopeMode('GLOBAL')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  scopeMode === 'GLOBAL'
+                    ? "bg-slate-800 text-white shadow-sm"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Global (Semua Kelas)
+              </button>
+              <button
+                type="button"
+                onClick={() => setScopeMode('JURUSAN')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  scopeMode === 'JURUSAN'
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Khusus Jurusan
+              </button>
+              <button
+                type="button"
+                onClick={() => setScopeMode('KELAS')}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                  scopeMode === 'KELAS'
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Khusus Rombel
+              </button>
+            </div>
+
+            {scopeMode === 'JURUSAN' && (
+              <div className="pt-1">
+                <select
+                  value={scopeJurusanId}
+                  onChange={(e) => setScopeJurusanId(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                >
+                  <option value="">Pilih Target Jurusan...</option>
+                  {jurusanList.map((j: any) => (
+                    <option key={j.id} value={j.id}>{j.nama}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {scopeMode === 'KELAS' && (
+              <div className="pt-1">
+                <select
+                  value={scopeKelasId}
+                  onChange={(e) => setScopeKelasId(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
+                >
+                  <option value="">Pilih Target Rombel/Kelas...</option>
+                  {kelasList.map((k: any) => (
+                    <option key={k.value} value={k.value}>{k.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <div className="relative flex-1">

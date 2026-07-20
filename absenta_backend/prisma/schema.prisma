@@ -707,6 +707,7 @@ model Jurusan {
   organizationalAssigns OrganizationalAssignment[]
   StrukturKurikulum     StrukturKurikulum[]
   Siswa                 Siswa[]
+  GuruMapel             GuruMapel[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -758,6 +759,7 @@ model Kelas {
   AttendanceDevice          AttendanceDevice?
   PrestasiSiswa             PrestasiSiswa[]
   sarprasLocations          SarprasLocation[]
+  GuruMapel                 GuruMapel[]
   RaporSiswa                RaporSiswa[]
   AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
 
@@ -1594,12 +1596,19 @@ model GuruMapel {
   tenant_id  String
   guru_id    String
   mapel_id   String
+  kelas_id   String?
+  jurusan_id String?
   created_at DateTime @default(now())
+
   Guru       Guru     @relation(fields: [guru_id], references: [id])
   Mapel      Mapel    @relation(fields: [mapel_id], references: [id])
+  Kelas      Kelas?   @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  Jurusan    Jurusan? @relation(fields: [jurusan_id], references: [id], onDelete: Cascade)
   Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+  @@index([kelas_id])
+  @@index([jurusan_id])
 }
 
 model KelasMapel {

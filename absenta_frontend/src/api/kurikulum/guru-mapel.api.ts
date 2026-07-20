@@ -17,15 +17,19 @@ export interface SingleGuruMapelResponse {
 export interface CreateGuruMapelPayload {
   guru_id: string;
   mapel_id: string;
+  kelas_id?: string | null;
+  jurusan_id?: string | null;
 }
 
 // GET /api/kurikulum/guru-mapel
 export const listGuruMapel = async (
-  filters?: { guru_id?: string; mapel_id?: string }
+  filters?: { guru_id?: string; mapel_id?: string; kelas_id?: string; jurusan_id?: string }
 ): Promise<ListGuruMapelResponse> => {
   const params = new URLSearchParams();
   if (filters?.guru_id) params.append('guru_id', filters.guru_id);
   if (filters?.mapel_id) params.append('mapel_id', filters.mapel_id);
+  if (filters?.kelas_id) params.append('kelas_id', filters.kelas_id);
+  if (filters?.jurusan_id) params.append('jurusan_id', filters.jurusan_id);
 
   const url = `/kurikulum/guru-mapel${params.toString() ? `?${params.toString()}` : ''}`;
   return requestWithFallback<ListGuruMapelResponse>('get', url);

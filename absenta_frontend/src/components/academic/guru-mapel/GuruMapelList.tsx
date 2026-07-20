@@ -229,6 +229,31 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       )
     },
     {
+      key: 'Scope',
+      label: 'Cakupan Plotting',
+      render: (_: any, gm: GuruMapel) => {
+        if (gm.Kelas?.nama_kelas) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+              Kelas {gm.Kelas.nama_kelas}
+            </span>
+          );
+        }
+        if (gm.Jurusan?.nama) {
+          return (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+              Jurusan {gm.Jurusan.nama}
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            Global (Semua Kelas)
+          </span>
+        );
+      }
+    },
+    {
       key: 'actions',
       label: 'Aksi',
       render: (_: any, gm: GuruMapel) => (
@@ -254,7 +279,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     try {
       exportDataToExcel(items, [
         { header: 'Guru Pengampu', accessor: (row) => row.Guru?.nama_guru || '', width: 30 },
-        { header: 'Mata Pelajaran', accessor: (row) => row.Mapel?.nama_mapel || '', width: 25 }
+        { header: 'Mata Pelajaran', accessor: (row) => row.Mapel?.nama_mapel || '', width: 25 },
+        { header: 'Cakupan Plotting', accessor: (row) => row.Kelas?.nama_kelas ? `Kelas ${row.Kelas.nama_kelas}` : row.Jurusan?.nama ? `Jurusan ${row.Jurusan.nama}` : 'Global', width: 20 }
       ], 'Laporan_Guru_Mapel', 'DATA PENGAMPU MATA PELAJARAN');
     } catch (error: any) {
       toast(error.message || 'Gagal mengekspor data', { icon: '⚠️' });

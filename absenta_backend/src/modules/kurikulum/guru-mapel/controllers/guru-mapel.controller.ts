@@ -17,8 +17,8 @@ export class GuruMapelController {
         return { success: false, message: 'Unauthorized' };
       }
 
-      const { guru_id, mapel_id } = request.query || {};
-      const data = await guruMapelService.listAssignments(user.roleName, user.tenantId, { guru_id, mapel_id });
+      const { guru_id, mapel_id, kelas_id, jurusan_id } = request.query || {};
+      const data = await guruMapelService.listAssignments(user.roleName, user.tenantId, { guru_id, mapel_id, kelas_id, jurusan_id });
 
       reply.status(200);
       return { success: true, message: 'Assignments retrieved successfully', data };
@@ -37,13 +37,18 @@ export class GuruMapelController {
         return { success: false, message: 'Unauthorized' };
       }
 
-      const { guru_id, mapel_id } = request.body;
+      const { guru_id, mapel_id, kelas_id, jurusan_id } = request.body || {};
       if (!guru_id || !mapel_id) {
         reply.status(400);
         return { success: false, message: 'guru_id and mapel_id are required' };
       }
 
-      const input: CreateGuruMapelInput = { guru_id, mapel_id };
+      const input: CreateGuruMapelInput = { 
+        guru_id, 
+        mapel_id, 
+        kelas_id: kelas_id || null, 
+        jurusan_id: jurusan_id || null 
+      };
       const created = await guruMapelService.assignMapelToGuru(user.tenantId, input);
 
       reply.status(201);
