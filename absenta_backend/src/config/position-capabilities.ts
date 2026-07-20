@@ -347,6 +347,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.students.view.history',
+    'academic.structures.view.list',
     'attendance.student.view.stats',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly', // Tambahan: Histori bulanan untuk konseling
