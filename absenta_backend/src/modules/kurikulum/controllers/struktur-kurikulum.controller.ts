@@ -176,3 +176,4 @@ export class StrukturKurikulumController {
     }
   }
 }
+// End of controller class

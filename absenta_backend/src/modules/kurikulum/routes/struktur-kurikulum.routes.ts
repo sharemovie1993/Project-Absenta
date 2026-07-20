@@ -11,6 +11,7 @@ export default async function strukturKurikulumRoutes(fastify: any) {
   fastify.get('/grouped', { preHandler: requireCapability(['academic.structure.manage', 'academic.structures.view.list']) }, StrukturKurikulumController.getByTingkatGrouped);
   fastify.get('/check-beban-guru', { preHandler: requireCapability(['academic.structure.manage', 'academic.structures.view.list']) }, StrukturKurikulumController.checkBebanGuru);
   fastify.get('/beban-guru', { preHandler: requireCapability(['academic.structure.manage', 'academic.structures.view.list']) }, StrukturKurikulumController.getBebanGuruAll);
+  // Re-sync routes config
   fastify.post('/', { preHandler: requireCapability('academic.structure.manage') }, StrukturKurikulumController.upsert);
   fastify.delete('/:id', { preHandler: requireCapability('academic.structure.manage') }, StrukturKurikulumController.delete);
 }
