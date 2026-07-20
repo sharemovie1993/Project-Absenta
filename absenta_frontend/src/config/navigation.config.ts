@@ -220,7 +220,9 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/hubin/monitoring',
       '/kesiswaan/pelanggaran',
       '/kesiswaan/jenis-pelanggaran',
-      '/sarpras/loans'
+      '/sarpras/loans',
+      '/bpbk/cases',
+      '/bpbk/asesmen'
     ]
   },
   {

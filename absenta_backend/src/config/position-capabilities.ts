@@ -89,7 +89,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'affairs.violation.types.view.list',
     'sarpras.loans.manage',
     'sarpras.loans.view.list',
-    'sarpras.loans.request'
+    'sarpras.loans.request',
+    'bk.cases.view.list',
+    'bk.cases.view.detail'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',
