@@ -1407,11 +1407,9 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                     </div>
                   );
                 })}
-              </div>
             </div>
           </div>
-        )}          </div>
-        </div>
+        )}
 
         {/* Premium Confirm Dialog for Overwriting conflicts */}
         <ConfirmDialog
