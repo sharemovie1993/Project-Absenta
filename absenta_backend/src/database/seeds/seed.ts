@@ -316,17 +316,17 @@ async function main() {
     // --- BP/BK ---
     {
       label: 'BP/BK', icon: 'HeartHandshake', path: null, required_features: ['BPBK'], order: 25, children: [
-        { label: 'Dashboard BPBK', icon: 'LayoutDashboard', path: '/bpbk/dashboard', required_capability: 'bk.cases.view.list' },
+        { label: 'Dashboard BPBK', icon: 'LayoutDashboard', path: '/bpbk/dashboard', required_capability: 'bk.cases.view.list, bk.counseling.view.list' },
         { label: 'Data Kasus Siswa', icon: 'Users', path: '/bpbk/siswa', required_capability: 'bk.cases.view.list' },
         { label: 'Kasus BK', icon: 'ShieldAlert', path: '/bpbk/cases', required_capability: 'bk.cases.view.list' },
-        { label: 'Layanan Konseling', icon: 'HeartHandshake', path: '/bpbk/konseling', required_capability: 'bk.cases.view.list' },
-        { label: 'Pemanggilan Orang Tua', icon: 'Mail', path: '/bpbk/pemanggilan', required_capability: 'bk.summons.manage' },
-        { label: 'Home Visit', icon: 'Home', path: '/bpbk/homevisit', required_capability: 'bk.homevisit.manage' },
-        { label: 'Asesmen & Angket', icon: 'ClipboardList', path: '/bpbk/asesmen', required_capability: 'bk.cases.view.list' },
-        { label: 'Rujukan Kasus', icon: 'Send', path: '/bpbk/rujukan', required_capability: 'bk.cases.view.list, bk.referrals.create' },
-        { label: 'Laporan & Statistik', icon: 'BarChart3', path: '/bpbk/reports', required_capability: 'bk.cases.view.list' },
-        { label: 'Log Audit BK', icon: 'History', path: '/bpbk/audit', required_capability: 'bk.cases.view.list' },
-        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/bpbk/cetak-berkas', required_capability: 'bk.cases.view.list' },
+        { label: 'Layanan Konseling', icon: 'HeartHandshake', path: '/bpbk/konseling', required_capability: 'bk.counseling.view.list' },
+        { label: 'Pemanggilan Orang Tua', icon: 'Mail', path: '/bpbk/pemanggilan', required_capability: 'bk.summons.view.list, bk.summons.manage' },
+        { label: 'Home Visit', icon: 'Home', path: '/bpbk/homevisit', required_capability: 'bk.homevisit.view.list, bk.homevisit.manage' },
+        { label: 'Asesmen & Angket', icon: 'ClipboardList', path: '/bpbk/asesmen', required_capability: 'bk.assessment.view.list' },
+        { label: 'Rujukan Kasus', icon: 'Send', path: '/bpbk/rujukan', required_capability: 'bk.referrals.view.list, bk.referrals.create' },
+        { label: 'Laporan & Statistik', icon: 'BarChart3', path: '/bpbk/reports', required_capability: 'bk.reports.view' },
+        { label: 'Log Audit BK', icon: 'History', path: '/bpbk/audit', required_capability: 'bk.audit.view' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/bpbk/cetak-berkas', required_capability: 'bk.reports.view' },
       ]
     },
 
