@@ -28,6 +28,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const { user } = useAuthStore();
   const confirm = useConfirm();
   const [items, setItems] = useState<GuruMapel[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
@@ -81,6 +82,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
           return guru.includes(term) || mapel.includes(term);
         });
         setItems(filtered);
+        setSelectedIds(new Set());
       } else {
         toast.error(res.message || 'Gagal memuat data');
       }
@@ -156,6 +158,52 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       confirm.setLoading(false);
     }
   }, [fetchData, confirm]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      const ids = Array.from(selectedIds);
+      const total = ids.length;
+      const succeeded: string[] = [];
+      const failed: { id: string; name: string; message: string }[] = [];
+
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const gmItem = items.find(item => item.id === id);
+        const name = gmItem ? `${gmItem.Guru?.nama_guru || 'Guru'} - ${gmItem.Mapel?.nama_mapel || 'Mapel'}` : id;
+        try {
+          const res = await removeGuruMapel(id);
+          if (!res.success) throw new Error(res.message || 'Gagal menghapus');
+          succeeded.push(id);
+        } catch (e: any) {
+          failed.push({ id, name, message: e?.message || 'Gagal menghapus' });
+        }
+        confirm.setLoading(true, Math.round(((i + 1) / total) * 100));
+      }
+
+      if (failed.length > 0) {
+        if (succeeded.length > 0) {
+          toast(`Berhasil menghapus ${succeeded.length} pengampu, ${failed.length} gagal.`, { icon: '⚠️' });
+        } else {
+          toast.error(`Gagal menghapus ${failed.length} pengampu.`);
+        }
+      } else {
+        toast.success(`Berhasil menghapus ${succeeded.length} pengampu`);
+      }
+
+      const next = new Set<string>(selectedIds);
+      succeeded.forEach(id => next.delete(id));
+      setSelectedIds(next);
+      
+      fetchData();
+    } catch (err: any) {
+      console.error('Error bulk deleting guru-mapel:', err);
+      toast.error('Terjadi kesalahan saat menghapus data terpilih');
+    } finally {
+      confirm.setLoading(false);
+    }
+  }, [selectedIds, items, fetchData, confirm]);
 
   const columns = useMemo(() => [
     {
@@ -260,6 +308,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
           loading={loading}
           emptyMessage="Belum ada pengampu" 
           compact={true}
+          selectedRowKeys={selectedIds}
+          onSelectedRowKeysChange={setSelectedIds}
+          rowKey="id"
           toolbarLeft={
             <div className="flex flex-wrap items-center gap-2">
                {canManage && onAdd && (
@@ -294,6 +345,29 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                </Button>
             </div>
+          }
+          toolbarRight={
+            selectedIds.size > 0 && canManage && (
+              <Button
+                variant="toolbarDanger"
+                size="toolbar"
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: 'Hapus Pengampu Terpilih',
+                    description: `Anda yakin ingin menghapus ${selectedIds.size} penugasan guru pengampu terpilih?`,
+                    confirmText: 'Hapus',
+                    cancelText: 'Batal',
+                    style: 'danger',
+                    withProgress: true,
+                    progressLabel: `Menghapus ${selectedIds.size} pengampu...`,
+                  });
+                  if (ok) await handleBulkDelete();
+                }}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Hapus Terpilih ({selectedIds.size})
+              </Button>
+            )
           }
         />
       </div>
