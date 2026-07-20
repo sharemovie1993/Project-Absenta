@@ -244,9 +244,10 @@ async function main() {
             { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
             { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
             { label: 'Kartu Siswa', icon: 'Contact', path: '/academic/siswa-cards', required_capability: 'academic.manage.siswa' },
-            { label: 'Kelulusan & Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.transitions.manage' },
+            { label: 'Kelulusan & Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.promotions.manage' },
             { label: 'Struktur Organisasi', icon: 'Network', path: '/academic/struktur-organisasi', required_capability: 'academic.structures.view.list' },
             { label: 'Backup', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
+            { label: 'Log Aktivitas Staf', icon: 'History', path: '/academic/staff-logs', required_capability: 'core.sekolah.view.profile' },
           ]
         }
       ]
