@@ -300,25 +300,43 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       render: (value: string | null, guru: Guru) => {
         const isPendidik = (value || 'PENDIDIK') === 'PENDIDIK';
         const isToggling = togglingJenisPtkId === guru.id;
+        
         return (
-          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            <Badge variant={isPendidik ? 'info' : 'warning'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
-              {isPendidik ? 'Pendidik (Guru)' : 'Tenaga Kependidikan (TU)'}
-            </Badge>
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => handleToggleJenisPtk(guru)}
-                disabled={isToggling}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPendidik ? 'bg-blue-500 hover:bg-blue-600' : 'bg-amber-500 hover:bg-amber-600'} ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={{ transition: 'background-color 0.2s' }}
-                aria-label={`Toggle jenis PTK ${guru.nama_guru}`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isPendidik ? 'translate-x-4' : 'translate-x-0'}`}
-                  style={{ transition: 'transform 0.2s' }}
-                />
-              </button>
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/50 dark:border-slate-700/50 items-center select-none" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={isToggling || (isPendidik && !canManage)}
+              onClick={() => canManage && !isPendidik && handleToggleJenisPtk(guru)}
+              className={cn(
+                "px-3 py-1 text-[10px] font-black tracking-wider uppercase rounded-lg transition-all duration-200",
+                isPendidik 
+                  ? "bg-blue-600 text-white shadow-sm font-black" 
+                  : cn(
+                      "text-slate-400 dark:text-slate-500 font-bold",
+                      canManage ? "hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer" : "cursor-default"
+                    )
+              )}
+            >
+              Guru
+            </button>
+            <button
+              type="button"
+              disabled={isToggling || (!isPendidik && !canManage)}
+              onClick={() => canManage && isPendidik && handleToggleJenisPtk(guru)}
+              className={cn(
+                "px-3 py-1 text-[10px] font-black tracking-wider uppercase rounded-lg transition-all duration-200",
+                !isPendidik 
+                  ? "bg-amber-600 text-white shadow-sm font-black" 
+                  : cn(
+                      "text-slate-400 dark:text-slate-500 font-bold",
+                      canManage ? "hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer" : "cursor-default"
+                    )
+              )}
+            >
+              Staf/TU
+            </button>
+            {isToggling && (
+              <Loader className="w-3.5 h-3.5 ml-1 animate-spin text-slate-400" />
             )}
           </div>
         );
