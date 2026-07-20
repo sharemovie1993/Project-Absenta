@@ -23,6 +23,7 @@ import {
   deleteJadwalKBM,
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
+import { getMapelColor } from '../../utils/mapelColorHelper';
 import { getGuruList } from '../../api/academic/guru.api';
 import { getMapelList } from '../../api/academic/mapel.api';
 import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
@@ -1138,15 +1139,20 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                                 !active && "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
                               )}
                             >
-                              {item ? (
-                                <div className={cn(
-                                  "h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm",
-                                  item.isForeign
-                                    ? "bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed"
-                                    : item.jenis_kegiatan === 'KBM'
-                                      ? "bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-100/80 dark:border-indigo-900/30 hover:border-indigo-200"
-                                      : "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-100/80 dark:border-emerald-900/30 hover:border-emerald-200"
-                                )}>
+                              {item ? (() => {
+                                const mapelStyle = getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
+                                return (
+                                  <div
+                                    className={cn(
+                                      "h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4",
+                                      item.isForeign
+                                        ? "bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed"
+                                        : `${mapelStyle.bg} ${mapelStyle.border}`
+                                    )}
+                                    style={{
+                                      borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex
+                                    }}
+                                  >
                                   <div className="space-y-0.5">
                                     <div className="flex items-center justify-between gap-1">
                                       <span className={cn(
@@ -1184,7 +1190,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                                     <Trash2 size={10} />
                                   </button>
                                 </div>
-                              ) : (
+                              );
+                            })() : (
                                 <div className="h-full w-full flex items-center justify-center">
                                   {toolMode === 'PAINT' && conflict ? (
                                     <div className={cn(

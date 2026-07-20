@@ -19,6 +19,7 @@ import type { Guru, Mapel } from '../../../types/academic';
 import useConfirm from '../../../hooks/useConfirm';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
+import { getMapelColor } from '../../../utils/mapelColorHelper';
 
 interface Props {
   refreshTrigger?: number;
@@ -411,12 +412,23 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       key: 'Mapel',
       label: 'Mata Pelajaran',
       sortable: true,
-      render: (_: any, gm: GuruMapel) => (
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
-          <span className="font-semibold text-slate-800 dark:text-slate-100">{gm.Mapel?.nama_mapel || '-'}</span>
-        </div>
-      )
+      render: (_: any, gm: GuruMapel) => {
+        const mapelName = gm.Mapel?.nama_mapel || '-';
+        const colorStyle = getMapelColor(mapelName);
+
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded-full shrink-0 shadow-sm border border-white/20"
+              style={{ backgroundColor: colorStyle.dotHex }}
+              title={`Warna aSC TimeTables: ${mapelName}`}
+            />
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-extrabold border ${colorStyle.badge}`}>
+              {mapelName}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'Scope',
