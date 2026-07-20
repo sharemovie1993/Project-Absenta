@@ -214,7 +214,7 @@ export class GerbangService {
         return buildErrorResponse(validationResult.error! as any, processingInfo);
       }
 
-      const { siswa, tenantMode, sessionInfo } = validationResult.data!;
+      const { siswa, guru, isGuru = false, tenantMode, sessionInfo } = validationResult.data! as any;
       processingInfo.mode = tenantMode;
 
       const tapTime = resolveTapTime(input, sessionInfo);
@@ -222,7 +222,7 @@ export class GerbangService {
       const t2 = t1;
 
       // Step 3: Mode-specific business logic validation
-      const modeValidation = await this.validateModeSpecificRules(siswa, tenantMode, sessionInfo, tapTime);
+      const modeValidation = await this.validateModeSpecificRules(isGuru ? guru : siswa, tenantMode, sessionInfo, tapTime, isGuru);
       const t3 = Date.now();
       processingInfo.processing_steps!.push('mode_validation_completed');
       
@@ -240,18 +240,19 @@ export class GerbangService {
       }
 
       // Step 4: Process the tap transaction
-      const tapTx = await processTapTransaction({ input, siswa, userId, tenantId, tenantMode, sessionInfo, tapTime });
+      const tapTx = await processTapTransaction({ input, siswa, guru, isGuru, userId, tenantId, tenantMode, sessionInfo, tapTime });
       const t4 = Date.now();
       processingInfo.processing_steps!.push('tap_transaction_completed');
 
       if (tapTx.isDuplicate) {
         await emitDomainEvent({
-          event_type: 'attendance.tap',
+          event_type: 'attendance.tap' as any,
           tenant_id: tenantId,
           source_service: 'attendance',
           payload: {
             tenant_id: tenantId,
-            student_id: input.siswa_id,
+            student_id: isGuru ? undefined : input.siswa_id,
+            guru_id: isGuru ? guru.id : undefined,
             device_id: input.device_id,
             tap_time: new Date().toISOString(),
             source: 'GERBANG',
@@ -260,7 +261,7 @@ export class GerbangService {
             arah: input.arah,
             duplicate: true,
             original_tap: tapTx.record?.waktu_tap,
-            notification_hint: 'STUDENT_MULTI_SCAN',
+            notification_hint: isGuru ? 'TEACHER_MULTI_SCAN' : 'STUDENT_MULTI_SCAN',
           },
         });
 
@@ -277,10 +278,10 @@ export class GerbangService {
       }
 
        // Step 5: Build comprehensive response
-      if (input.arah === JenisTap.GERBANG_DATANG) {
+      if (!isGuru && input.arah === JenisTap.GERBANG_DATANG) {
         void markGatePresent(tenantId, input.siswa_id!);
       }
-      const responseData = await buildTapResponseData(tapTx.record, siswa, tenantMode, sessionInfo, input);
+      const responseData = await buildTapResponseData(tapTx.record, siswa, tenantMode, sessionInfo, input, guru);
       const t5 = Date.now();
       processingInfo.end_time = new Date();
       processingInfo.processing_steps!.push('response_built');
@@ -729,26 +730,37 @@ export class GerbangService {
     }
     validation_steps.push('tenant_mode_validated');
 
-    // Validate student
-    const siswa = await gerbangDb.siswa.findFirst({
+    // Validate student or guru
+    let siswa = await gerbangDb.siswa.findFirst({
       where: { id: input.siswa_id, tenant_id: tenantId },
       include: { Kelas: { select: { nama_kelas: true } } },
     } as any);
 
+    let isGuru = false;
+    let guru = null;
+
     if (!siswa) {
-      validation_steps.push('student_validation_failed');
-      return {
-        success: false,
-        error: {
-          error_type: 'STUDENT_NOT_FOUND',
-          message: 'Student not found or does not belong to this tenant',
-          details: { siswa_id: input.siswa_id, tenant_id: tenantId },
-        },
-        validation_steps,
-      };
+      // Check if it's a Guru / Staff
+      guru = await gerbangDb.guru.findFirst({
+        where: { id: input.siswa_id, tenant_id: tenantId }
+      });
+      if (guru) {
+        isGuru = true;
+      } else {
+        validation_steps.push('student_validation_failed');
+        return {
+          success: false,
+          error: {
+            error_type: 'STUDENT_NOT_FOUND',
+            message: 'Student/Teacher not found or does not belong to this tenant',
+            details: { id: input.siswa_id, tenant_id: tenantId },
+          },
+          validation_steps,
+        };
+      }
     }
 
-    if (siswa.status !== 'AKTIF') {
+    if (siswa && siswa.status !== 'AKTIF') {
       validation_steps.push('student_inactive');
       return {
         success: false,
@@ -760,7 +772,7 @@ export class GerbangService {
         validation_steps,
       };
     }
-    validation_steps.push('student_validation_passed');
+    validation_steps.push('user_validation_passed');
 
     // Get or create session info
     const sessionInfo = await getOrCreateSessionInfo(tenantId);
@@ -768,7 +780,7 @@ export class GerbangService {
 
     return {
       success: true,
-      data: { siswa, tenantMode: (tenantMode || AbsensiMode.SIMPLE) as AbsensiMode, sessionInfo },
+      data: { siswa, guru, isGuru, tenantMode: (tenantMode || AbsensiMode.SIMPLE) as AbsensiMode, sessionInfo } as any,
       validation_steps,
     };
   }
@@ -817,14 +829,12 @@ export class GerbangService {
     };
   }
 
-  /**
-   * Mode-specific business rule validation
-   */
   private async validateModeSpecificRules(
-    siswa: any,
+    user: any,
     tenantMode: AbsensiMode,
     sessionInfo: any,
-    tapTime: Date
+    tapTime: Date,
+    isGuru = false
   ): Promise<{ success: boolean; error?: GerbangErrorDetails }> {
     const now = tapTime;
     const sessionStart = new Date(sessionInfo.waktu_mulai);
@@ -845,10 +855,14 @@ export class GerbangService {
       };
     }
 
+    if (isGuru) {
+      return { success: true };
+    }
+
     // Mode-specific validations
     if (isMultiSesiMode(tenantMode)) {
       // In MULTI_SESI mode, validate integration prerequisites
-      const integrationValidation = await this.validateMultiSesiIntegration(siswa);
+      const integrationValidation = await this.validateMultiSesiIntegration(user);
       if (!integrationValidation.success) {
         return integrationValidation;
       }

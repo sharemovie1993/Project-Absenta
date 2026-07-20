@@ -1406,10 +1406,10 @@ export class RekapService {
   }
 
   async getRekapBulananGuruMe(userId: string, tenantId: string, bulan: string): Promise<any> {
-    // 1. Get Guru ID
+    // 1. Get Guru ID and jenis_ptk
     const guru = await prisma.guru.findFirst({
       where: { user_id: userId, tenant_id: tenantId },
-      select: { id: true, nama_guru: true }
+      select: { id: true, nama_guru: true, jenis_ptk: true }
     });
 
     if (!guru) throw new Error('Profil Guru tidak ditemukan');
@@ -1423,82 +1423,181 @@ export class RekapService {
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4,'0')}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
     const endOfMonth = new Date(`${lastDayStr}T23:59:59.999+07:00`);
 
-    // 3. Fetch Attendance Log (AbsenGuru)
-    const attendanceLogs = await prisma.absenGuru.findMany({
-      where: {
-        guru_id: guru.id,
-        tenant_id: tenantId,
-        SesiAbsensi: {
-          tanggal: { gte: startOfMonth, lte: endOfMonth }
-        }
-      },
-      include: {
-        SesiAbsensi: {
-          select: { tanggal: true, jenis_kegiatan: true, Mapel: { select: { nama_mapel: true } } }
-        }
-      },
-      orderBy: { SesiAbsensi: { tanggal: 'asc' } }
-    });
+    const isTuStaff = guru.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
 
-    // 4. Calculate Stats & Daily Grouping
-    const statistik = { HADIR: 0, TERLAMBAT: 0, ALPA: 0, IZIN: 0, SAKIT: 0, DISPEN: 0 };
-    let totalPoin = 0;
-    const dailyMap = new Map<string, { status: string; poin: number }[]>();
-
-    attendanceLogs.forEach(log => {
-      const dateKey = log.SesiAbsensi?.tanggal.toISOString().split('T')[0];
-      if (!dateKey) return;
-
-      // Normalize teacher status to match frontend standard status labels (HADIR, TERLAMBAT, etc.)
-      const rawStatus = (log.status || '').toUpperCase();
-      let currentStatus = 'ALPA';
-      if (rawStatus.includes('HADIR') || rawStatus.includes('MENGAJAR')) {
-        currentStatus = log.is_terlambat ? 'TERLAMBAT' : 'HADIR';
-      } else if (rawStatus.includes('IZIN')) {
-        currentStatus = 'IZIN';
-      } else if (rawStatus.includes('SAKIT')) {
-        currentStatus = 'SAKIT';
-      } else if (rawStatus.includes('DISPEN')) {
-        currentStatus = 'DISPEN';
-      }
-
-      if ((statistik as any)[currentStatus] !== undefined) {
-        (statistik as any)[currentStatus]++;
-      }
-      totalPoin += log.poin_kehadiran || 0;
-
-      if (!dailyMap.has(dateKey)) dailyMap.set(dateKey, []);
-      dailyMap.get(dateKey)!.push({
-        status: currentStatus,
-        poin: log.poin_kehadiran || 0
+    if (isTuStaff) {
+      // Fetch Gate Logs from AbsenGerbangGuru
+      const gateLogs = await prisma.absenGerbangGuru.findMany({
+        where: {
+          guru_id: guru.id,
+          tenant_id: tenantId,
+          waktu_tap: { gte: startOfMonth, lte: endOfMonth }
+        },
+        orderBy: { waktu_tap: 'asc' }
       });
-    });
 
-    // 5. Finalize Detail for Calendar Dots
-    const detail = Array.from(dailyMap.entries()).map(([date, items]) => {
-      // Logic for daily dot color: prioritize status
-      let primaryStatus = 'HADIR';
-      if (items.some(i => i.status === 'ALPA')) primaryStatus = 'ALPA';
-      else if (items.some(i => i.status === 'SAKIT')) primaryStatus = 'SAKIT';
-      else if (items.some(i => i.status === 'IZIN')) primaryStatus = 'IZIN';
-      else if (items.some(i => i.status === 'DISPEN')) primaryStatus = 'DISPEN';
-      else if (items.some(i => i.status === 'TERLAMBAT')) primaryStatus = 'TERLAMBAT';
+      const statistik = { HADIR: 0, TERLAMBAT: 0, ALPA: 0, IZIN: 0, SAKIT: 0, DISPEN: 0 };
+      let totalPoin = 0;
+      const dailyMap = new Map<string, { datangLog?: any; pulangLog?: any }>();
+
+      // Group gate logs by day
+      gateLogs.forEach(log => {
+        const dateKey = log.waktu_tap?.toISOString().split('T')[0];
+        if (!dateKey) return;
+
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, {});
+        }
+
+        const dayEntry = dailyMap.get(dateKey)!;
+        if (log.arah === 'GERBANG_DATANG') {
+          dayEntry.datangLog = log;
+        } else if (log.arah === 'GERBANG_PULANG') {
+          dayEntry.pulangLog = log;
+        }
+      });
+
+      // Calculate Stats & Detail
+      const detail = Array.from(dailyMap.entries()).map(([date, entry]) => {
+        const checkInLog = entry.datangLog;
+        const checkOutLog = entry.pulangLog;
+
+        let primaryStatus = 'HADIR';
+        let poin = 0;
+
+        if (checkInLog) {
+          // Normalize status
+          const rawStatus = (checkInLog.status || '').toUpperCase();
+          if (rawStatus === 'HADIR' || rawStatus === 'TERLAMBAT') {
+            primaryStatus = checkInLog.is_terlambat ? 'TERLAMBAT' : 'HADIR';
+          } else {
+            primaryStatus = rawStatus;
+          }
+          poin += checkInLog.poin_kehadiran || 0;
+        }
+
+        if (checkOutLog) {
+          poin += checkOutLog.poin_kehadiran || 0;
+        }
+
+        if ((statistik as any)[primaryStatus] !== undefined) {
+          (statistik as any)[primaryStatus]++;
+        }
+        totalPoin += poin;
+
+        const formatTime = (d: Date | null) => {
+          if (!d) return undefined;
+          return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace('.', ':');
+        };
+
+        return {
+          tanggal: date,
+          status: primaryStatus,
+          jam_masuk: checkInLog?.waktu_tap ? formatTime(checkInLog.waktu_tap) : undefined,
+          jam_pulang: checkOutLog?.waktu_tap ? formatTime(checkOutLog.waktu_tap) : undefined,
+          count: (checkInLog ? 1 : 0) + (checkOutLog ? 1 : 0)
+        };
+      });
+
+      // Calculate Attendance Percentage based on weekdays (Monday to Friday) in the current month up to today
+      const today = new Date();
+      let totalSchoolDays = 0;
+      const tempDate = new Date(startOfMonth);
+      const calculationEnd = endOfMonth < today ? endOfMonth : today;
+      while (tempDate <= calculationEnd) {
+        const dayOfWeek = tempDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Sat (6) & Sun (0)
+          totalSchoolDays++;
+        }
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+      if (totalSchoolDays === 0) totalSchoolDays = 20;
+
+      const presentDays = statistik.HADIR + statistik.TERLAMBAT;
+      const persentase_kehadiran = Math.round((presentDays / totalSchoolDays) * 100);
 
       return {
-        tanggal: date,
-        status: primaryStatus,
-        count: items.length
+        nama_guru: guru.nama_guru,
+        bulan,
+        statistik,
+        total_poin: totalPoin,
+        persentase_kehadiran: persentase_kehadiran > 100 ? 100 : persentase_kehadiran,
+        detail
       };
-    });
+    } else {
+      // Normal Teacher KBM logs (Existing flow)
+      const attendanceLogs = await prisma.absenGuru.findMany({
+        where: {
+          guru_id: guru.id,
+          tenant_id: tenantId,
+          SesiAbsensi: {
+            tanggal: { gte: startOfMonth, lte: endOfMonth }
+          }
+        },
+        include: {
+          SesiAbsensi: {
+            select: { tanggal: true, jenis_kegiatan: true, Mapel: { select: { nama_mapel: true } } }
+          }
+        },
+        orderBy: { SesiAbsensi: { tanggal: 'asc' } }
+      });
 
-    return {
-      nama_guru: guru.nama_guru,
-      bulan,
-      statistik,
-      total_poin: totalPoin,
-      persentase_kehadiran: attendanceLogs.length > 0 ? Math.round(((statistik.HADIR + statistik.TERLAMBAT) / attendanceLogs.length) * 100) : 0,
-      detail
-    };
+      const statistik = { HADIR: 0, TERLAMBAT: 0, ALPA: 0, IZIN: 0, SAKIT: 0, DISPEN: 0 };
+      let totalPoin = 0;
+      const dailyMap = new Map<string, { status: string; poin: number }[]>();
+
+      attendanceLogs.forEach(log => {
+        const dateKey = log.SesiAbsensi?.tanggal.toISOString().split('T')[0];
+        if (!dateKey) return;
+
+        const rawStatus = (log.status || '').toUpperCase();
+        let currentStatus = 'ALPA';
+        if (rawStatus.includes('HADIR') || rawStatus.includes('MENGAJAR')) {
+          currentStatus = log.is_terlambat ? 'TERLAMBAT' : 'HADIR';
+        } else if (rawStatus.includes('IZIN')) {
+          currentStatus = 'IZIN';
+        } else if (rawStatus.includes('SAKIT')) {
+          currentStatus = 'SAKIT';
+        } else if (rawStatus.includes('DISPEN')) {
+          currentStatus = 'DISPEN';
+        }
+
+        if ((statistik as any)[currentStatus] !== undefined) {
+          (statistik as any)[currentStatus]++;
+        }
+        totalPoin += log.poin_kehadiran || 0;
+
+        if (!dailyMap.has(dateKey)) dailyMap.set(dateKey, []);
+        dailyMap.get(dateKey)!.push({
+          status: currentStatus,
+          poin: log.poin_kehadiran || 0
+        });
+      });
+
+      const detail = Array.from(dailyMap.entries()).map(([date, items]) => {
+        let primaryStatus = 'HADIR';
+        if (items.some(i => i.status === 'ALPA')) primaryStatus = 'ALPA';
+        else if (items.some(i => i.status === 'SAKIT')) primaryStatus = 'SAKIT';
+        else if (items.some(i => i.status === 'IZIN')) primaryStatus = 'IZIN';
+        else if (items.some(i => i.status === 'DISPEN')) primaryStatus = 'DISPEN';
+        else if (items.some(i => i.status === 'TERLAMBAT')) primaryStatus = 'TERLAMBAT';
+
+        return {
+          tanggal: date,
+          status: primaryStatus,
+          count: items.length
+        };
+      });
+
+      return {
+        nama_guru: guru.nama_guru,
+        bulan,
+        statistik,
+        total_poin: totalPoin,
+        persentase_kehadiran: attendanceLogs.length > 0 ? Math.round(((statistik.HADIR + statistik.TERLAMBAT) / attendanceLogs.length) * 100) : 0,
+        detail
+      };
+    }
   }
 
   /**

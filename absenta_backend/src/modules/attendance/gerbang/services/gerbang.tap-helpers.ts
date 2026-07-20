@@ -38,25 +38,34 @@ export async function buildTapResponseData(
   tenantMode: AbsensiMode,
   sessionInfo: any,
   input: GerbangTapInput,
+  guru?: any
 ): Promise<GerbangTapData> {
+  const isGuru = !!guru;
   const baseData: GerbangTapData = {
     id: tapResult.id,
     tenant_id: tapResult.tenant_id,
     sesi_gerbang_id: tapResult.sesi_gerbang_id,
-    siswa_id: tapResult.siswa_id,
+    siswa_id: isGuru ? undefined : tapResult.siswa_id,
+    guru_id: isGuru ? tapResult.guru_id : undefined,
     arah: tapResult.arah,
     status: tapResult.status,
     waktu_tap: tapResult.waktu_tap,
     created_at: tapResult.created_at,
     updated_at: tapResult.updated_at,
     attendance_mode: tenantMode,
-    siswa_info: {
+    siswa_info: isGuru ? undefined : {
       id: siswa.id,
       nama: siswa.nama_siswa,
       nis: siswa.nis || null,
       foto_url: siswa.foto_url || null,
       nama_kelas: siswa.Kelas?.nama_kelas || null,
     },
+    guru_info: isGuru ? {
+      id: guru.id,
+      nama: guru.nama_guru,
+      nip: guru.nip || null,
+      jenis_ptk: guru.jenis_ptk || 'PENDIDIK',
+    } : undefined,
     session_info: {
       sesi_gerbang_id: sessionInfo.id,
       tanggal: sessionInfo.tanggal,
@@ -67,7 +76,7 @@ export async function buildTapResponseData(
       device_id: input.device_id || null,
       rfid: input.rfid || null,
     },
-  };
+  } as any;
 
   return baseData;
 }

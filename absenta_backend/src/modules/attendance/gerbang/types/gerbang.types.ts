@@ -27,7 +27,8 @@ export interface GerbangTapData {
   id: string;
   tenant_id: string;
   sesi_gerbang_id: string;
-  siswa_id: string;
+  siswa_id?: string;
+  guru_id?: string;
   arah: JenisTap;
   status: AbsenStatus;
   waktu_tap: Date;
@@ -41,6 +42,12 @@ export interface GerbangTapData {
     nis?: string | null;
     foto_url?: string | null;
     nama_kelas?: string | null;
+  };
+  guru_info?: {
+    id: string;
+    nama: string;
+    nip?: string | null;
+    jenis_ptk?: string | null;
   };
   session_info?: {
     sesi_gerbang_id: string;

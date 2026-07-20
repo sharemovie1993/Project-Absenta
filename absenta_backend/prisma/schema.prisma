@@ -32,6 +32,7 @@ model Tenant {
   created_at                DateTime                 @default(now())
   updated_at                DateTime                 @updatedAt
   AbsenGerbangSiswa         AbsenGerbangSiswa[]
+  AbsenGerbangGuru          AbsenGerbangGuru[]
   AbsenGuru                 AbsenGuru[]
   AbsenSiswa                AbsenSiswa[]
   activityLogs              ActivityLog[]
@@ -796,6 +797,7 @@ model Guru {
   SiswaPkl              SiswaPkl[]
   IzinKeluarSiswa       IzinKeluarSiswa[]
   GuruDocument          GuruDocument[]
+  AbsenGerbangGuru      AbsenGerbangGuru[]
 
   Member Member?
 
@@ -1205,6 +1207,7 @@ model SesiGerbang {
   jenis_kegiatan     JenisKegiatan       @default(PEMBIASAAN)
   tahun_pelajaran_id String?
   AbsenGerbangSiswa  AbsenGerbangSiswa[]
+  AbsenGerbangGuru   AbsenGerbangGuru[]
   Sekolah            Sekolah             @relation(fields: [sekolah_id], references: [id])
   Tenant             Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran     TahunPelajaran?     @relation(fields: [tahun_pelajaran_id], references: [id])
@@ -1247,6 +1250,38 @@ model AbsenGerbangSiswa {
   @@index([tenant_id, sesi_gerbang_id, siswa_id, arah])
   @@index([tenant_id, siswa_id, arah])
   @@index([tenant_id, tahun_pelajaran_id_snapshot])
+  @@index([tenant_id, created_at])
+}
+
+model AbsenGerbangGuru {
+  id                          String      @default(uuid())
+  tenant_id                   String
+  sesi_gerbang_id             String
+  guru_id                     String
+  arah                        String      // 'GERBANG_DATANG' | 'GERBANG_PULANG'
+  status                      String      @default("HADIR") // HADIR, TERLAMBAT, ALPA, SAKIT, IZIN
+  waktu_tap                   DateTime?   @db.Timestamptz
+  is_terlambat                Boolean     @default(false)
+  menit_keterlambatan         Int?
+  poin_kehadiran              Int         @default(0)
+  tahun_pelajaran_id_snapshot String?
+  verification_method         String?     // 'RFID' | 'FACE' | 'MANUAL' | 'OFFLINE_SYNC'
+  verification_score          Float?
+  verification_threshold      Float?
+  verification_result         Boolean?
+  catatan                     String?
+  created_at                  DateTime    @default(now()) @db.Timestamptz
+  updated_at                  DateTime    @updatedAt @db.Timestamptz
+
+  SesiGerbang                 SesiGerbang @relation(fields: [sesi_gerbang_id], references: [id])
+  Guru                        Guru        @relation(fields: [guru_id], references: [id])
+  Tenant                      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@id([id, created_at])
+  @@unique([sesi_gerbang_id, guru_id, arah, created_at])
+  @@index([tenant_id])
+  @@index([tenant_id, sesi_gerbang_id, guru_id, arah])
+  @@index([tenant_id, guru_id, arah])
   @@index([tenant_id, created_at])
 }
 
