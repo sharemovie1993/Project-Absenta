@@ -86,7 +86,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.delete',
     'hubin.pkl.view.list',
     'affairs.violations.view.list',
-    'affairs.violation.types.view.list'
+    'affairs.violation.types.view.list',
+    'sarpras.loans.manage',
+    'sarpras.loans.view.list',
+    'sarpras.loans.request'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',

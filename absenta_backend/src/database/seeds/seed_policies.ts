@@ -553,7 +553,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id.startsWith('hubin.') ||
         id.startsWith('kesiswaan.') ||
         id.startsWith('correspondence.') ||
-        id === 'sarpras.loans.request' ||
+        id.startsWith('sarpras.loans.') ||
         id === 'dashboard.view.hubin' ||
         id === 'organization.scope.teaching_restricted' ||
         id.startsWith('cooperative.tickets.') ||
