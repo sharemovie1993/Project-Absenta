@@ -3,6 +3,7 @@ import { Card, Button, Badge, SearchableSelect, ConfirmDialog } from '../ui';
 import { 
   Calendar, 
   User, 
+  Users,
   BookOpen, 
   Paintbrush, 
   Eraser, 
