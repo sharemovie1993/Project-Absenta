@@ -448,7 +448,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.sarpras',
     'sarpras.inventory.view.list',
     'sarpras.loans.view.list',
-    'sarpras.repairs.view.list'
+    'sarpras.repairs.view.list',
+    // Supervisi & Konseling
+    'curriculum.supervision.view.report',
+    'bk.cases.view.list',
+    'bk.referrals.create'
   ],
   [STRUKTUR_CODES.BENDAHARA_KOPERASI]: [
     'academic.structures.view.tree',
