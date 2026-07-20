@@ -306,6 +306,21 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     if (!isAdmin) {
       const currentWs = ROLE_WORKSPACES.find(w => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
 
+      // Extract all available leaf items from backend menu tree
+      const allLeafItems: NavItem[] = [];
+      const extractLeafs = (nodes: NavItem[]) => {
+        nodes.forEach(node => {
+          if (node.children && node.children.length > 0) {
+            extractLeafs(node.children);
+          } else if (node.path && node.path !== '#' && !node.path.startsWith('menu:')) {
+            allLeafItems.push(node);
+          }
+        });
+      };
+      extractLeafs(mapped);
+
+      let primaryItems: NavItem[] = [];
+
       // 1. Dynamic Root Group Workspaces (KURIKULUM, KESISWAAN, SARPRAS, HUBIN, BPBK)
       if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
         const matchedRoot = mapped.find(root => {
@@ -314,41 +329,32 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         });
 
         if (matchedRoot && matchedRoot.children && matchedRoot.children.length > 0) {
-          return cleanEmptyParents(matchedRoot.children);
+          primaryItems = matchedRoot.children;
         } else if (matchedRoot) {
-          return [matchedRoot];
+          primaryItems = [matchedRoot];
         }
       }
 
       // 2. Dynamic Ruang Wali Kelas (Wali Kelas Workspace)
-      if (currentWs.id === 'WALIKELAS_WORKSPACE') {
-        const waliItems: NavItem[] = [];
+      else if (currentWs.id === 'WALIKELAS_WORKSPACE') {
         mapped.forEach(root => {
           const rName = root.label.toUpperCase();
           if (rName.includes('RAPOR')) {
-            if (root.children) waliItems.push(...root.children);
-            else waliItems.push(root);
+            if (root.children) primaryItems.push(...root.children);
+            else primaryItems.push(root);
           } else if (root.children) {
             root.children.forEach(child => {
-              const cLabel = child.label.toLowerCase();
               const cPath = (child.path || '').toLowerCase();
-              if (
-                cPath.includes('/monitoring') || 
-                cPath.includes('/piket') || 
-                cLabel.includes('pelanggaran') || 
-                cPath.includes('/bpbk')
-              ) {
-                waliItems.push(child);
+              if (cPath.includes('/monitoring') || cPath.includes('/piket')) {
+                primaryItems.push(child);
               }
             });
           }
         });
-        if (waliItems.length > 0) return cleanEmptyParents(waliItems);
       }
 
       // 3. Dynamic Ruang Kerja Guru (Teacher Workspace)
-      if (currentWs.id === 'TEACHER_WORKSPACE') {
-        const teacherItems: NavItem[] = [];
+      else if (currentWs.id === 'TEACHER_WORKSPACE') {
         mapped.forEach(root => {
           if (root.children) {
             root.children.forEach(child => {
@@ -358,39 +364,38 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                 cPath.includes('my-attendance') ||
                 cPath.includes('/kurikulum/jadwal') ||
                 cPath.includes('/kurikulum/perangkat') ||
-                cPath.includes('/kurikulum/kalender') ||
-                cPath === '/kesiswaan/pelanggaran' ||
-                cPath === '/kesiswaan/prestasi' ||
-                cPath.startsWith('/cooperative')
+                cPath.includes('/kurikulum/kalender')
               ) {
-                teacherItems.push(child);
+                primaryItems.push(child);
               }
             });
           }
         });
-        if (teacherItems.length > 0) return cleanEmptyParents(teacherItems);
       }
 
-      // Fallback for non-admin: return all leaf items
-      const extractFlatLeafItems = (nodes: NavItem[]): NavItem[] => {
-        const flat: NavItem[] = [];
-        for (const node of nodes) {
-          if (node.children && node.children.length > 0) {
-            flat.push(...extractFlatLeafItems(node.children));
-          } else if (node.path && node.path !== '#' && !node.path.startsWith('menu:')) {
-            flat.push({ ...node, children: undefined });
-          }
-        }
-        return flat;
-      };
+      if (primaryItems.length === 0) {
+        primaryItems = allLeafItems;
+      }
 
-      const flatItems = extractFlatLeafItems(mapped);
-      const seenPaths = new Set<string>();
-      return flatItems.filter(item => {
-        if (seenPaths.has(item.path)) return false;
-        seenPaths.add(item.path);
-        return true;
+      // Collect Cross-Module items (leaf items that are NOT in primaryItems)
+      const primaryPathSet = new Set(primaryItems.map(i => (i.path || '').toLowerCase()));
+      const crossModuleItems = allLeafItems.filter(item => {
+        const p = (item.path || '').toLowerCase();
+        return p && !primaryPathSet.has(p);
       });
+
+      const finalNav: NavItem[] = [...cleanEmptyParents(primaryItems)];
+
+      if (crossModuleItems.length > 0) {
+        finalNav.push({
+          label: 'INFORMASI LINTAS MODUL',
+          type: 'header',
+          icon: LayoutGrid
+        } as NavItem);
+        finalNav.push(...cleanEmptyParents(crossModuleItems));
+      }
+
+      return finalNav;
     }
 
     const finalTree: NavItem[] = [];
@@ -504,11 +509,23 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       }
 
       if (item.type === 'header') {
+        const isCrossModuleHeader = item.label === 'INFORMASI LINTAS MODUL';
         return (
-          <li key={`header-${index}`} className={cn("mt-4 mb-2 px-4", depth > 0 && "hidden")}>
-            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">
-              {item.label}
-            </span>
+          <li key={`header-${index}`} className={cn("mt-5 mb-2.5 px-3.5", depth > 0 && "hidden")}>
+            <div className={cn(
+              "flex items-center gap-2 pb-2",
+              isCrossModuleHeader && "border-b border-emerald-500/20 dark:border-emerald-500/10"
+            )}>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-1.5",
+                isCrossModuleHeader ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"
+              )}>
+                {isCrossModuleHeader && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
+                )}
+                {item.label}
+              </span>
+            </div>
           </li>
         );
       }
