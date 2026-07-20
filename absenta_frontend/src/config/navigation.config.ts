@@ -216,6 +216,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/attendance/monitoring',
       '/attendance/guru-monitoring',
       '/attendance/rekap',
+      '/attendance/tracking-siswa',
       '/hubin/monitoring',
       '/kesiswaan/pelanggaran'
     ]
