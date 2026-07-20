@@ -29,6 +29,7 @@ import { Modal, Badge, Button } from '../../ui';
 // Widgets
 import { StaffScheduleWidget } from '../widgets/StaffScheduleWidget';
 import { StaffImpactWidget } from '../widgets/StaffImpactWidget';
+import { StaffAttendanceLogWidget } from '../widgets/StaffAttendanceLogWidget';
 import { WaliKelasBkDashboardWidget } from '../widgets/WaliKelasBkDashboardWidget';
 import { WakasisBkDashboardWidget } from '../widgets/WakasisBkDashboardWidget';
 
@@ -75,6 +76,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     enabled: !!user?.id,
   });
   const guruProfile = guruProfileRes?.data as any;
+  const isTuStaff = user?.guru_profile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' || guruProfile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
   const { timelineItems, isLoading: timelineLoading, impact } = useStaffTimeline(guruId);
@@ -360,8 +362,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isBpbk)      parts.push('BK');
     if (isBkk)       parts.push('BKK');
     if (isGerbang)   parts.push('Gerbang');
-    return parts.length > 0 ? `Guru / ${parts.join(' & ')}` : 'Tenaga Pendidik';
-  }, [jabatan, isWaliKelas, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang]);
+    return parts.length > 0 
+      ? `Guru / ${parts.join(' & ')}` 
+      : (isTuStaff ? 'Tenaga Kependidikan' : 'Tenaga Pendidik');
+  }, [jabatan, isWaliKelas, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTuStaff]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
@@ -653,14 +657,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
     activeIzinCount, pointsToday, isKesiswaanLoading, navigate, jabatan
   ]);
 
+  const showRightSidebar = hasStructuralRole && (!isTuStaff || structuralPanels.length > 0);
+
   // ─────────────────────────────────────────────────────────────────────────────
   return (
     <>
-      <div className={hasStructuralRole
+      <div className={showRightSidebar
         ? 'grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6'
         : 'grid grid-cols-1 gap-6'
       }>
-        {/* ── Kolom Kiri: Tugas Mengajar ── */}
+        {/* ── Kolom Kiri: Tugas Mengajar atau Absensi Staf ── */}
         <div className="space-y-6">
           {/* Consolidated Welcome & Quick Action Card (Sekat-Sekat Premium) */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -767,16 +773,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
           )}
 
           {activeView === 'personal' && (
-            <StaffScheduleWidget 
-              timelineItems={timelineItems} 
-              isLoading={timelineLoading}
-              processingId={processingSesiId}
-              onAction={handleStaffAction}
-              onOpenJournal={(_sesiId, data) => {
-                setSessionForJournal(data);
-                setJournalModalOpen(true);
-              }}
-            />
+            isTuStaff ? (
+              <StaffAttendanceLogWidget />
+            ) : (
+              <StaffScheduleWidget 
+                timelineItems={timelineItems} 
+                isLoading={timelineLoading}
+                processingId={processingSesiId}
+                onAction={handleStaffAction}
+                onOpenJournal={(sesiId, data) => {
+                  setSessionForJournal(data);
+                  setJournalModalOpen(true);
+                }}
+              />
+            )
           )}
 
           {activeView === 'walikelas' && isWaliKelas && (
@@ -789,17 +799,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
         </div>
 
         {/* ── Kolom Kanan: Panel Jabatan Struktural ── */}
-        {hasStructuralRole && (
+        {showRightSidebar && (
           <div className="space-y-4">
             {structuralPanels.map(p => p.component)}
 
-            {/* Dampak Pembelajaran — selalu tampil paling belakang */}
-            <StaffImpactWidget 
-              totalStudentsTaught={impact.totalStudents}
-              totalSessions={impact.totalSessions}
-              attendanceRate={impact.attendanceRate}
-              isLoading={timelineLoading}
-            />
+            {/* Dampak Pembelajaran — selalu tampil paling belakang, hanya untuk Guru */}
+            {!isTuStaff && (
+              <StaffImpactWidget 
+                totalStudentsTaught={impact.totalStudents}
+                totalSessions={impact.totalSessions}
+                attendanceRate={impact.attendanceRate}
+                isLoading={timelineLoading}
+              />
+            )}
           </div>
         )}
       </div>
