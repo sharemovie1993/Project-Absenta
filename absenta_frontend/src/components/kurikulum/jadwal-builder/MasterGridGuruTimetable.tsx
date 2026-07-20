@@ -1,13 +1,15 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
+import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
 import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
+import { ColorByMode } from './types';
 
 interface Props {
   guruList: any[];
   allJadwal: JadwalKBM[];
   masterGridHari: string;
   slots: number[];
+  colorByMode?: ColorByMode;
 }
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -17,6 +19,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
   allJadwal,
   masterGridHari,
   slots,
+  colorByMode = 'MAPEL',
 }) => {
   const isSemuaHari = masterGridHari === 'SEMUA';
 
@@ -114,8 +117,11 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                           (j) => j.guru_id === guru.id && j.hari === day && j.slot_index === slotIdx
                         );
                         const isConflict = teacherSlots.length > 1;
-                        const item = teacherSlots[0];
-                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+                        const mapelStyle = item
+                          ? colorByMode === 'GURU'
+                            ? getTeacherColor(guru.nama_guru)
+                            : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
+                          : null;
 
                         return (
                           <div
@@ -155,7 +161,11 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                       );
                       const isConflict = teacherSlots.length > 1;
                       const item = teacherSlots[0];
-                      const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+                      const mapelStyle = item
+                        ? colorByMode === 'GURU'
+                          ? getTeacherColor(guru.nama_guru)
+                          : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
+                        : null;
 
                       return (
                         <div

@@ -229,3 +229,33 @@ export function getMapelAbbreviation(mapelName: string = ''): string {
 
   return trimmed.substring(0, 15) + '...';
 }
+
+/**
+ * Dynamic Teacher Color Generator ala aSC TimeTables
+ * Generates distinct HSL palette per teacher for visual recognition
+ */
+export function getTeacherColor(teacherName: string = ''): MapelColorStyle {
+  if (!teacherName || teacherName.trim().length === 0) {
+    return {
+      bg: 'bg-slate-50 dark:bg-slate-900',
+      text: 'text-slate-800 dark:text-slate-200',
+      border: 'border-slate-200 dark:border-slate-800',
+      badge: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800',
+      dotHex: '#94A3B8',
+    };
+  }
+
+  let hash = 0;
+  for (let i = 0; i < teacherName.length; i++) {
+    hash = teacherName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+
+  return {
+    bg: 'bg-slate-50/90 dark:bg-slate-900/50',
+    text: 'text-slate-900 dark:text-slate-100',
+    border: 'border-slate-200 dark:border-slate-800',
+    badge: 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800',
+    dotHex: `hsl(${hue}, 75%, 48%)`,
+  };
+}

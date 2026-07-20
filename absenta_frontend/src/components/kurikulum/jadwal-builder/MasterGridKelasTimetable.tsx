@@ -1,14 +1,16 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
-import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
+import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
 import { DropdownOption } from '../../../api/dropdown.api';
 import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
+import { ColorByMode } from './types';
 
 interface Props {
   kelasList: DropdownOption[];
   allJadwal: JadwalKBM[];
   masterGridHari: string;
   slots: number[];
+  colorByMode?: ColorByMode;
 }
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
@@ -18,6 +20,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
   allJadwal,
   masterGridHari,
   slots,
+  colorByMode = 'MAPEL',
 }) => {
   const isSemuaHari = masterGridHari === 'SEMUA';
 
@@ -110,10 +113,11 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                 {isSemuaHari
                   ? DAYS.map((day) =>
                       slots.map((slotIdx) => {
-                        const item = allJadwal.find(
-                          (j) => j.kelas_id === kelas.value && j.hari === day && j.slot_index === slotIdx
-                        );
-                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+                        const mapelStyle = item
+                          ? colorByMode === 'GURU'
+                            ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
+                            : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
+                          : null;
 
                         return (
                           <div
@@ -141,10 +145,11 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                       })
                     )
                   : slots.map((slotIdx) => {
-                      const item = allJadwal.find(
-                        (j) => j.kelas_id === kelas.value && j.hari === masterGridHari && j.slot_index === slotIdx
-                      );
-                      const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+                        const mapelStyle = item
+                          ? colorByMode === 'GURU'
+                            ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
+                            : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '')
+                          : null;
 
                       return (
                         <div

@@ -67,6 +67,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [showLeftPanel, setShowLeftPanel] = useState<boolean>(true);
+  const [colorByMode, setColorByMode] = useState<ColorByMode>('MAPEL');
 
   const setViewMode = (m: ViewMode) => {
     setViewModeState(m);
@@ -1013,6 +1014,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           viewMode={viewMode}
           setViewMode={setViewMode}
           toolMode={toolMode}
+          colorByMode={colorByMode}
+          setColorByMode={setColorByMode}
           selectedKelasId={selectedKelasId}
           setSelectedKelasId={setSelectedKelasId}
           selectedGuruId={selectedGuruId}
@@ -1037,6 +1040,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           <SingleGridTimetable
             viewMode={viewMode}
             toolMode={toolMode}
+            colorByMode={colorByMode}
             selectedKelasId={selectedKelasId}
             hariSekolah={hariSekolah}
             slots={SLOTS}
@@ -1057,6 +1061,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             allJadwal={allJadwal}
             masterGridHari={masterGridHari}
             slots={SLOTS}
+            colorByMode={colorByMode}
           />
         )}
 
@@ -1067,6 +1072,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             allJadwal={allJadwal}
             masterGridHari={masterGridHari}
             slots={SLOTS}
+            colorByMode={colorByMode}
           />
         )}
 

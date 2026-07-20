@@ -2,12 +2,13 @@ import React from 'react';
 import { RefreshCw, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { cn } from '../../../lib/utils';
-import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
-import { ViewMode, ToolMode } from './types';
+import { getMapelColor, getMapelAbbreviation, getTeacherColor } from '../../../utils/mapelColorHelper';
+import { ViewMode, ToolMode, ColorByMode } from './types';
 
 interface Props {
   viewMode: ViewMode;
   toolMode: ToolMode;
+  colorByMode?: ColorByMode;
   selectedKelasId: string;
   hariSekolah: string[];
   slots: number[];
@@ -23,6 +24,7 @@ interface Props {
 export const SingleGridTimetable: React.FC<Props> = ({
   viewMode,
   toolMode,
+  colorByMode = 'MAPEL',
   selectedKelasId,
   hariSekolah,
   slots,
@@ -136,7 +138,9 @@ export const SingleGridTimetable: React.FC<Props> = ({
                         >
                           {item ? (
                             (() => {
-                              const mapelStyle = getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
+                              const mapelStyle = colorByMode === 'GURU'
+                                ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
+                                : getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
                               return (
                                 <div
                                   className={cn(
