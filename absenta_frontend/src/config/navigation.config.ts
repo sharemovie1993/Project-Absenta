@@ -156,6 +156,7 @@ export interface RoleWorkspaceConfig {
   bg: string;
   solidBg: string;
   desc: string;
+  requiredCapability?: string;
   requiredPositionCode?: string;
   requiredRoleName?: string;
   defaultPath: string;
@@ -196,6 +197,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-blue-50',
     solidBg: 'bg-blue-600',
     desc: 'Monitoring & Rekap Kelas',
+    requiredCapability: 'dashboard.view.walikelas',
     requiredPositionCode: 'WALIKELAS',
     defaultPath: '/attendance/monitoring',
     allowedPathPrefixes: [
@@ -216,6 +218,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-emerald-50',
     solidBg: 'bg-emerald-600',
     desc: 'Struktur, Jadwal & Supervisi',
+    requiredCapability: 'academic.manage.academic',
     requiredPositionCode: 'KURIKULUM',
     defaultPath: '/kurikulum/dashboard',
     allowedPathPrefixes: [
@@ -231,6 +234,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-amber-50',
     solidBg: 'bg-amber-600',
     desc: 'Kedisiplinan & Prestasi',
+    requiredCapability: 'dashboard.view.kesiswaan',
     requiredPositionCode: 'KESISWAAN',
     defaultPath: '/kesiswaan/monitoring',
     allowedPathPrefixes: [
@@ -246,6 +250,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-purple-50',
     solidBg: 'bg-purple-600',
     desc: 'Monitoring & Mutu Sekolah',
+    requiredCapability: 'dashboard.view.kepsek',
     requiredPositionCode: 'KEPALA_SEKOLAH',
     defaultPath: '/kurikulum/dashboard',
     allowedPathPrefixes: [
@@ -258,16 +263,12 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   }
 ];
 
-export const resolveUserWorkspaces = (user: any): RoleWorkspaceConfig[] => {
+export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => boolean): RoleWorkspaceConfig[] => {
   if (!user) return [];
   const roleName = String(user?.role?.name || '').toUpperCase();
   if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName.startsWith('PLATFORM_')) {
     return []; // Admins use full Master Suite
   }
-
-  const positions: string[] = Array.isArray(user?.positions)
-    ? user.positions.map((p: any) => String(p?.code || p).toUpperCase())
-    : [];
 
   const available: RoleWorkspaceConfig[] = [];
   if (roleName === 'GURU') {
@@ -275,9 +276,21 @@ export const resolveUserWorkspaces = (user: any): RoleWorkspaceConfig[] => {
     if (teacherWs) available.push(teacherWs);
   }
 
+  const userCaps = Array.isArray(user?.capabilities) ? user.capabilities : [];
+  const userPositions: string[] = Array.isArray(user?.position_codes)
+    ? user.position_codes.map((p: any) => String(p).toUpperCase())
+    : (Array.isArray(user?.positions) ? user.positions.map((p: any) => String(p?.code || p).toUpperCase()) : []);
+
   ROLE_WORKSPACES.forEach(ws => {
-    if (ws.requiredPositionCode && positions.includes(ws.requiredPositionCode.toUpperCase())) {
-      if (!available.some(a => a.id === ws.id)) {
+    if (ws.requiredCapability || ws.requiredPositionCode) {
+      const hasCap = ws.requiredCapability 
+        ? (canFunc ? canFunc(ws.requiredCapability) : userCaps.includes(ws.requiredCapability))
+        : false;
+      const hasPos = ws.requiredPositionCode
+        ? userPositions.includes(ws.requiredPositionCode.toUpperCase())
+        : false;
+
+      if ((hasCap || hasPos) && !available.some(a => a.id === ws.id)) {
         available.push(ws);
       }
     }

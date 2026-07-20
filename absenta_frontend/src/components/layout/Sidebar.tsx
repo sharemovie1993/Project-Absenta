@@ -307,25 +307,31 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       const currentWs = ROLE_WORKSPACES.find(w => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
       const allowed = currentWs?.allowedPathPrefixes || [];
 
-      const filterByWorkspace = (items: NavItem[]): NavItem[] => {
-        const result: NavItem[] = [];
-        for (const item of items) {
-          const itemChildren = item.children ? filterByWorkspace(item.children) : undefined;
-          const isPathAllowed = allowed.some(prefix => item.path && item.path.toLowerCase().startsWith(prefix.toLowerCase()));
-          
-          if (isPathAllowed || (itemChildren && itemChildren.length > 0)) {
-            result.push({
-              ...item,
-              children: itemChildren && itemChildren.length > 0 ? itemChildren : undefined,
-            });
+      const extractMatchingLeafItems = (nodes: NavItem[]): NavItem[] => {
+        const flat: NavItem[] = [];
+        for (const node of nodes) {
+          if (node.children && node.children.length > 0) {
+            flat.push(...extractMatchingLeafItems(node.children));
+          } else if (node.path && node.path !== '#' && !node.path.startsWith('menu:')) {
+            const isAllowed = allowed.some(prefix => node.path.toLowerCase().startsWith(prefix.toLowerCase()));
+            if (isAllowed) {
+              flat.push({ ...node, children: undefined });
+            }
           }
         }
-        return result;
+        return flat;
       };
 
-      const filteredWsItems = filterByWorkspace(mapped);
-      const cleaned = cleanEmptyParents(filteredWsItems);
-      if (cleaned.length > 0) return cleaned;
+      const flatItems = extractMatchingLeafItems(mapped);
+      
+      const seenPaths = new Set<string>();
+      const uniqueItems = flatItems.filter(item => {
+        if (seenPaths.has(item.path)) return false;
+        seenPaths.add(item.path);
+        return true;
+      });
+
+      if (uniqueItems.length > 0) return uniqueItems;
     }
 
     const finalTree: NavItem[] = [];

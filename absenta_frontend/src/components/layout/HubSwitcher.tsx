@@ -6,7 +6,7 @@ import { useNavStore } from '../../store/navStore';
 import { cn } from '../../lib/utils';
 import Tooltip from '../ui/Tooltip';
 import { type SidebarMenuItem as BackendMenuItem } from '@/api/menu.api';
-import { useAuthStore } from '@/store/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   MASTER_HUBS, 
   getHubByLabel, 
@@ -22,7 +22,7 @@ interface HubSwitcherProps {
 
 export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) {
   const { activeHub, setActiveHub, activeWorkspaceId, setActiveWorkspaceId } = useNavStore();
-  const { user } = useAuthStore();
+  const { user, can } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboardActive = location.pathname === '/dashboard';
@@ -33,8 +33,8 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
   }, [user]);
 
   const userWorkspaces = useMemo(() => {
-    return resolveUserWorkspaces(user);
-  }, [user]);
+    return resolveUserWorkspaces(user, can);
+  }, [user, can]);
 
   const handleHubClick = (hubId: any) => {
     setActiveHub(hubId);
