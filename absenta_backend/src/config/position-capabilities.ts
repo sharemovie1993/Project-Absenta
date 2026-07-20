@@ -118,20 +118,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.delete',
     'notify.announcements.manage', // Sebar pengumuman kesiswaan
     'bk.cases.view.list',
-    'bk.cases.view.detail',
-    'bk.reports.view',
-    'bk.audit.view',
-    'bk.recyclebin.view',
-    'bk.counseling.view.list',
-    'bk.counseling.view.detail',
-    'bk.summons.view.list',
-    'bk.summons.view.detail',
-    'bk.homevisit.view.list',
-    'bk.homevisit.view.detail',
-    'bk.assessment.view.list',
-    'bk.assessment.view.detail',
-    'bk.referrals.view.list',
-    'bk.referrals.view.detail'
+    'bk.cases.view.detail'
   ],
   [STRUKTUR_CODES.KEPALA_SEKOLAH]: [
     'organization.scope.tenant_wide',
