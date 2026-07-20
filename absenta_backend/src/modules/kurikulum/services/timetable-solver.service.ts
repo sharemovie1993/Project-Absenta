@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { Hari } from '@prisma/client';
+import { calculatePositionEquivalency } from './struktur-kurikulum.service';
 
 export interface GenerateAutoJadwalOptions {
   tahun_pelajaran_id: string;
@@ -81,13 +82,40 @@ export class TimetableSolverService {
     const daysToSchedule: Hari[] = (tenant?.hari_sekolah && tenant.hari_sekolah.length > 0)
       ? (tenant.hari_sekolah as Hari[])
       : ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'] as Hari[];
-
-    // 3. Fetch Teachers (PENDIDIK)
+    // 3. Fetch Teachers (PENDIDIK) with Position Equivalency Adjustment
     const teachers = await prisma.guru.findMany({
       where: { tenant_id: tenantId, jenis_ptk: 'PENDIDIK' },
-      select: { id: true, nama_guru: true, max_jp: true }
+      select: {
+        id: true,
+        nama_guru: true,
+        max_jp: true,
+        User: {
+          select: {
+            organizationalAssigns: {
+              where: { is_active: true },
+              select: {
+                Position: {
+                  select: { code: true, name: true }
+                }
+              }
+            }
+          }
+        }
+      }
     });
-    const teacherMap = new Map(teachers.map(t => [t.id, t]));
+
+    const teacherMap = new Map<string, any>();
+    teachers.forEach(t => {
+      const posEquiv = (t.User?.organizationalAssigns || []).reduce((acc, oa) => {
+        return acc + calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
+      }, 0);
+
+      const effectiveMaxKbmJp = Math.max(0, (t.max_jp ?? 24) - posEquiv);
+      teacherMap.set(t.id, {
+        ...t,
+        max_jp: effectiveMaxKbmJp
+      });
+    });
 
     // 4. Fetch Guru-Mapel Assignments with Scopes (Kelas / Jurusan / Global)
     const guruMapels = await prisma.guruMapel.findMany({

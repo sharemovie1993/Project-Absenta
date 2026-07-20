@@ -96,15 +96,26 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
   }, [user]);
 
+  const [bebanGuruMap, setBebanGuruMap] = useState<Map<string, {
+    current_jp: number;
+    max_jp: number;
+    ekuivalen_position_jp: number;
+    total_calculated_jp: number;
+    positions: Array<{ name: string; ekuivalen_jp: number }>;
+  }>>(new Map());
+
   const fetchBebanData = useCallback(async () => {
     try {
       const res = await kurikulumApi.getBebanMengajar();
       if (res?.success && Array.isArray(res?.data)) {
-        const bMap = new Map<string, { current_jp: number; max_jp: number }>();
+        const bMap = new Map<string, any>();
         res.data.forEach((b: any) => {
           bMap.set(b.id, {
             current_jp: b.current_jp || 0,
-            max_jp: b.max_jp || 24
+            max_jp: b.max_jp || 24,
+            ekuivalen_position_jp: b.ekuivalen_position_jp || 0,
+            total_calculated_jp: b.total_calculated_jp || b.current_jp || 0,
+            positions: b.positions || []
           });
         });
         setBebanGuruMap(bMap);
@@ -340,30 +351,44 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
         const bebanInfo = bebanGuruMap.get(gm.guru_id);
-        const totalGuruJp = bebanInfo ? bebanInfo.current_jp : (teacherTotalJpMap.get(gm.guru_id) || 0);
+        const currentKbmJp = bebanInfo ? bebanInfo.current_jp : (teacherTotalJpMap.get(gm.guru_id) || 0);
+        const positionJp = bebanInfo ? bebanInfo.ekuivalen_position_jp : 0;
+        const totalCalculatedJp = bebanInfo ? bebanInfo.total_calculated_jp : currentKbmJp;
         const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;
-        const rawPercentage = Math.round((totalGuruJp / maxJp) * 100);
+
+        const rawPercentage = Math.round((totalCalculatedJp / maxJp) * 100);
         const percentage = Math.min(rawPercentage, 100);
 
         let barColor = 'bg-amber-500';
-        let statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Kurang ${maxJp - totalGuruJp} JP)`;
+        let statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP`;
         let textColor = 'text-amber-700 dark:text-amber-400';
 
-        if (totalGuruJp === maxJp) {
+        if (totalCalculatedJp === maxJp) {
           barColor = 'bg-emerald-500';
-          statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Sesuai 100%)`;
+          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Sesuai 100%)`;
           textColor = 'text-emerald-700 dark:text-emerald-400';
-        } else if (totalGuruJp > maxJp) {
+        } else if (totalCalculatedJp > maxJp) {
           barColor = 'bg-rose-500';
-          statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Lebih ${totalGuruJp - maxJp} JP)`;
+          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Lebih ${totalCalculatedJp - maxJp} JP)`;
           textColor = 'text-rose-600 dark:text-rose-400';
+        } else {
+          statusBadge = `Progress: ${totalCalculatedJp}/${maxJp} JP (Kurang ${maxJp - totalCalculatedJp} JP)`;
         }
+
+        const activePositions = bebanInfo?.positions || [];
 
         return (
           <div className="flex flex-col gap-1 py-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Users className="w-4 h-4 text-slate-400 shrink-0" />
               <span className="font-bold text-slate-800 dark:text-slate-100">{gm.Guru?.nama_guru || '-'}</span>
+              
+              {/* Position Badges from Organizational Structure */}
+              {activePositions.length > 0 && activePositions.map((pos, idx) => (
+                <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800" title={`Ekuivalensi Jabatan: ${pos.name} (+${pos.ekuivalen_jp} JP)`}>
+                  🔰 {pos.name} (+{pos.ekuivalen_jp} JP)
+                </span>
+              ))}
             </div>
 
             {/* Workload Progress Bar & Numbers below Guru Name */}
@@ -376,6 +401,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
               </div>
               <span className={`text-[10px] font-black tracking-tight ${textColor}`}>
                 {statusBadge}
+                {positionJp > 0 && ` [KBM: ${currentKbmJp} + Jabatan: ${positionJp}]`}
               </span>
             </div>
           </div>

@@ -223,6 +223,33 @@ export class StrukturKurikulumService {
     };
   }
 
+export function calculatePositionEquivalency(code: string = '', name: string = ''): number {
+  const upperCode = code.toUpperCase();
+  const upperName = name.toUpperCase();
+
+  if (upperCode.includes('WAKA') || upperName.includes('WAKA') || upperName.includes('WAKIL')) {
+    return 12;
+  }
+  if (
+    upperCode.includes('KAPROG') || 
+    upperName.includes('KAPROG') || 
+    upperName.includes('KEPALA PROGRAM') || 
+    upperName.includes('KEPALA LAB') || 
+    upperName.includes('KEPALA BENGKEL')
+  ) {
+    return 12;
+  }
+  if (upperCode.includes('WALI') || upperName.includes('WALI KELAS')) {
+    return 2;
+  }
+  if (upperCode.includes('PIKET') || upperName.includes('PIKET') || upperName.includes('PEMBINA')) {
+    return 2;
+  }
+  return 0;
+}
+
+export class StrukturKurikulumService {
+  // Existing methods...
   static async getBebanGuruAll(tenantId: string, tahunPelajaranId?: string, semesterId?: string) {
     const teachers = await prisma.guru.findMany({
       where: {
@@ -233,7 +260,24 @@ export class StrukturKurikulumService {
         id: true,
         nama_guru: true,
         nip: true,
-        max_jp: true
+        max_jp: true,
+        user_id: true,
+        User: {
+          select: {
+            organizationalAssigns: {
+              where: { is_active: true },
+              select: {
+                Position: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       orderBy: {
         nama_guru: 'asc'
@@ -250,50 +294,61 @@ export class StrukturKurikulumService {
     const yearId = tahunPelajaranId || activeYear?.id;
     const semId = semesterId || activeSemester?.id;
 
-    if (!yearId || !semId) {
-      return teachers.map(t => ({
-        id: t.id,
-        nama_guru: t.nama_guru,
-        nip: t.nip,
-        max_jp: t.max_jp ?? 24,
-        current_jp: 0,
-        is_exceeded: false
-      }));
+    const countMap = new Map<string, number>();
+
+    if (yearId && semId) {
+      const scheduledCounts = await prisma.jadwalKBM.groupBy({
+        by: ['guru_id'],
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: yearId,
+          semester_id: semId,
+          guru_id: { not: null },
+          mapel_id: { not: null }
+        },
+        _count: {
+          _all: true
+        }
+      });
+
+      scheduledCounts.forEach(c => {
+        if (c.guru_id) {
+          countMap.set(c.guru_id, c._count._all);
+        }
+      });
     }
 
-    const scheduledCounts = await prisma.jadwalKBM.groupBy({
-      by: ['guru_id'],
-      where: {
-        tenant_id: tenantId,
-        tahun_pelajaran_id: yearId,
-        semester_id: semId,
-        guru_id: { not: null },
-        mapel_id: { not: null }
-      },
-      _count: {
-        _all: true
-      }
-    });
-
-    const countMap = new Map<string, number>();
-    scheduledCounts.forEach(c => {
-      if (c.guru_id) {
-        countMap.set(c.guru_id, c._count._all);
-      }
-    });
-
     return teachers.map(t => {
-      const currentJp = countMap.get(t.id) || 0;
+      const currentKbmJp = countMap.get(t.id) || 0;
       const maxJp = t.max_jp ?? 24;
+
+      const positions = (t.User?.organizationalAssigns || []).map(oa => {
+        const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
+        return {
+          id: oa.Position?.id,
+          code: oa.Position?.code,
+          name: oa.Position?.name,
+          ekuivalen_jp: eqJp
+        };
+      }).filter(p => p.ekuivalen_jp > 0);
+
+      const ekuivalenPositionJp = positions.reduce((acc, p) => acc + p.ekuivalen_jp, 0);
+      const totalCalculatedJp = currentKbmJp + ekuivalenPositionJp;
+
       return {
         id: t.id,
         nama_guru: t.nama_guru,
         nip: t.nip,
         max_jp: maxJp,
-        current_jp: currentJp,
-        is_exceeded: currentJp > maxJp
+        current_jp: currentKbmJp,
+        ekuivalen_position_jp: ekuivalenPositionJp,
+        total_calculated_jp: totalCalculatedJp,
+        effective_max_kbm_jp: Math.max(0, maxJp - ekuivalenPositionJp),
+        is_exceeded: totalCalculatedJp > maxJp,
+        positions
       };
     });
   }
+}
 }
 

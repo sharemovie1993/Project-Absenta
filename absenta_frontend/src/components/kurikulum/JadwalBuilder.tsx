@@ -1257,13 +1257,25 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                 </div>
               ) : bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).length > 0 ? (
                 bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).map((b) => {
-                  const percent = Math.min(100, Math.round((b.current_jp / b.max_jp) * 100));
-                  const isExceeded = b.current_jp > b.max_jp;
+                  const totalCalculatedJp = b.total_calculated_jp ?? b.current_jp ?? 0;
+                  const currentKbmJp = b.current_jp ?? 0;
+                  const positionJp = b.ekuivalen_position_jp ?? 0;
+                  const maxJp = b.max_jp ?? 24;
+
+                  const percent = Math.min(100, Math.round((totalCalculatedJp / maxJp) * 100));
+                  const isExceeded = totalCalculatedJp > maxJp;
+                  const activePositions = b.positions || [];
+
                   return (
                     <div key={b.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-800 dark:text-slate-200">{b.nama_guru}</span>
+                          {activePositions.map((pos: any, idx: number) => (
+                            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              🔰 {pos.name} (+{pos.ekuivalen_jp} JP)
+                            </span>
+                          ))}
                           {isExceeded && (
                             <Badge variant="danger" className="text-[9px] scale-90 uppercase">Kelebihan Beban</Badge>
                           )}
@@ -1274,14 +1286,14 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                       <div className="flex items-center gap-4 flex-1 md:justify-end max-w-md w-full">
                         <div className="flex-1 space-y-1">
                           <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                            <span>Progress JP</span>
-                            <span className={isExceeded ? "text-red-500 font-extrabold" : ""}>{b.current_jp} / {b.max_jp} JP</span>
+                            <span>Progress JP {positionJp > 0 ? `(KBM: ${currentKbmJp} + Jabatan: ${positionJp})` : ''}</span>
+                            <span className={isExceeded ? "text-red-500 font-extrabold" : ""}>{totalCalculatedJp} / {maxJp} JP</span>
                           </div>
                           <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                             <div 
                               className={cn(
                                 "h-full rounded-full transition-all duration-500",
-                                isExceeded ? "bg-red-505 bg-rose-500" : percent > 85 ? "bg-amber-500" : "bg-emerald-500"
+                                isExceeded ? "bg-rose-500" : percent === 100 ? "bg-emerald-500" : "bg-amber-500"
                               )} 
                               style={{ width: `${percent}%` }}
                             />
