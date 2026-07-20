@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
+import { getKelasList } from '../../../api/academic/kelas.api';
 import { getJurusanForDropdown, getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
 import type { Guru, Mapel } from '../../../types/academic';
 import useConfirm from '../../../hooks/useConfirm';
@@ -41,6 +42,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
+  const [rawKelasList, setRawKelasList] = useState<any[]>([]);
   const [strukturMap, setStrukturMap] = useState<Map<string, number>>(new Map());
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
@@ -48,12 +50,26 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
 
   const teacherTotalJpMap = useMemo(() => {
     const map = new Map<string, number>();
+    const totalClassesCount = rawKelasList.length || 1;
+
     items.forEach(gm => {
-      const jp = strukturMap.get(gm.mapel_id) || 2;
-      map.set(gm.guru_id, (map.get(gm.guru_id) || 0) + jp);
+      const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
+      let targetClassesCount = 1;
+
+      if (gm.kelas_id) {
+        targetClassesCount = 1;
+      } else if (gm.jurusan_id) {
+        const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
+        targetClassesCount = inJurusan.length > 0 ? inJurusan.length : 1;
+      } else {
+        targetClassesCount = totalClassesCount;
+      }
+
+      const totalAssignmentJp = targetClassesCount * jpPerMinggu;
+      map.set(gm.guru_id, (map.get(gm.guru_id) || 0) + totalAssignmentJp);
     });
     return map;
-  }, [items, strukturMap]);
+  }, [items, strukturMap, rawKelasList]);
 
   const canManage = useMemo(() => {
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
@@ -122,17 +138,19 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [gurus, mapels, jurusans, kelases, strukturRes] = await Promise.all([
+        const [gurus, mapels, jurusans, kelases, rawKelasRes, strukturRes] = await Promise.all([
           getGuruList(1, 100, ''),
           getMapelList(1, 100, ''),
           getJurusanForDropdown().catch(() => []),
           getKelasForDropdown().catch(() => []),
+          getKelasList(1, 100).catch(() => ({ data: [] })),
           kurikulumApi.getStruktur().catch(() => ({ data: [] }))
         ]);
         setGuruOptions(gurus.data);
         setMapelOptions(mapels.data);
         setJurusanDropdown(jurusans);
         setKelasDropdown(kelases);
+        setRawKelasList(rawKelasRes?.data || []);
 
         const sMap = new Map<string, number>();
         const list = strukturRes?.data || (Array.isArray(strukturRes) ? strukturRes : []);
@@ -278,24 +296,25 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const columns = useMemo(() => [
     {
       key: 'Guru',
-      label: 'Guru Pengampu & Beban JP',
+      label: 'Guru Pengampu & Progress JP',
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
         const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || 0;
         const maxJp = (gm.Guru as any)?.max_jp || 24;
-        const percentage = Math.min(Math.round((totalGuruJp / maxJp) * 100), 100);
+        const rawPercentage = Math.round((totalGuruJp / maxJp) * 100);
+        const percentage = Math.min(rawPercentage, 100);
 
         let barColor = 'bg-amber-500';
-        let statusLabel = `Kurang (${totalGuruJp}/${maxJp} JP)`;
+        let statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Kurang ${maxJp - totalGuruJp} JP)`;
         let textColor = 'text-amber-700 dark:text-amber-400';
 
         if (totalGuruJp === maxJp) {
           barColor = 'bg-emerald-500';
-          statusLabel = `Sesuai (${totalGuruJp}/${maxJp} JP)`;
+          statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Sesuai 100%)`;
           textColor = 'text-emerald-700 dark:text-emerald-400';
         } else if (totalGuruJp > maxJp) {
           barColor = 'bg-rose-500';
-          statusLabel = `Lebih (${totalGuruJp}/${maxJp} JP)`;
+          statusBadge = `Progress: ${totalGuruJp}/${maxJp} JP (Lebih ${totalGuruJp - maxJp} JP)`;
           textColor = 'text-rose-600 dark:text-rose-400';
         }
 
@@ -308,14 +327,14 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
 
             {/* Workload Progress Bar & Numbers below Guru Name */}
             <div className="flex items-center gap-2 pl-6">
-              <div className="w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0">
+              <div className="w-28 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0 shadow-inner">
                 <div
-                  className={`h-full rounded-full transition-all ${barColor}`}
+                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <span className={`text-[10px] font-extrabold tracking-tight ${textColor}`}>
-                {statusLabel}
+              <span className={`text-[10px] font-black tracking-tight ${textColor}`}>
+                {statusBadge}
               </span>
             </div>
           </div>
@@ -328,12 +347,28 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
         const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
+        let classCount = 1;
+        if (gm.kelas_id) {
+          classCount = 1;
+        } else if (gm.jurusan_id) {
+          const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
+          classCount = inJurusan.length > 0 ? inJurusan.length : 1;
+        } else {
+          classCount = rawKelasList.length || 1;
+        }
+        const totalMapelJp = classCount * jpPerMinggu;
+
         return (
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
-            <span className="font-semibold text-slate-700 dark:text-slate-200">{gm.Mapel?.nama_mapel || '-'}</span>
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              {jpPerMinggu} JP
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="font-semibold text-slate-800 dark:text-slate-100">{gm.Mapel?.nama_mapel || '-'}</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                {totalMapelJp} JP
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 pl-6 font-medium">
+              {jpPerMinggu} JP/kelas × {classCount} rombel
             </span>
           </div>
         );
