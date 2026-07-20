@@ -40,11 +40,9 @@ export const AutoJadwalWizardModal: React.FC<AutoJadwalWizardModalProps> = ({
       const fetchClasses = async () => {
         try {
           const res = await getKelasForDropdown();
-          if (res?.success) {
-            setClasses(res.data || []);
-            // default select all
-            setSelectedClassIds((res.data || []).map((c: any) => c.value));
-          }
+          const list = Array.isArray(res) ? res : [];
+          setClasses(list);
+          setSelectedClassIds(list.map((c: any) => c.value));
         } catch (e) {
           console.error(e);
           toast.error('Gagal mengambil daftar rombel');
