@@ -312,7 +312,7 @@ export class JadwalKBMController {
       where: scheduleWhere,
       include: {
         Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, User: { select: { full_name: true } } } },
+        Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [{ jam_mulai: 'asc' }],
@@ -585,7 +585,7 @@ export class JadwalKBMController {
       },
       include: {
         Mapel: { select: { nama_mapel: true, kode_mapel: true } },
-        Guru: { select: { id: true, User: { select: { full_name: true } } } },
+        Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [
@@ -762,7 +762,7 @@ export class JadwalKBMController {
         },
         include: {
           Mapel: { select: { nama_mapel: true } },
-          Guru: { select: { User: { select: { full_name: true } } } },
+          Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });
@@ -886,7 +886,7 @@ export class JadwalKBMController {
         },
         include: {
           Mapel: { select: { nama_mapel: true } },
-          Guru: { select: { User: { select: { full_name: true } } } },
+          Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });

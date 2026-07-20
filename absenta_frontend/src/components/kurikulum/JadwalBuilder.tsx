@@ -1173,9 +1173,11 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                                         )
                                       )}
                                     </div>
-                                    <div className="text-[9px] font-bold text-slate-450 dark:text-slate-550 leading-normal">
-                                      {item.isForeign ? `Oleh: ${item.Guru?.User?.full_name || item.Guru?.nama_guru || 'Guru Lain'}` : (item.Guru?.nama_guru || '-')}
-                                    </div>
+                                    <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-normal truncate">
+                                       {item.isForeign 
+                                         ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}` 
+                                         : (item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)'))}
+                                     </div>
                                   </div>
                                   
                                   {/* Delete Hover Action */}
