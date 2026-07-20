@@ -22,6 +22,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../hooks/useAuth';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -70,6 +71,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 
 const SarprasLoansPage: React.FC = () => {
   const { subscription } = useAuthStore();
+  const { can } = useAuth();
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -96,10 +98,12 @@ const SarprasLoansPage: React.FC = () => {
     enabled: subscription !== undefined && !isLocked
   });
 
+  const canViewSarprasDashboard = can('dashboard.view.sarpras');
+
   const { data: statsData, isLoading: isLoadingStats } = useQuery({
     queryKey: ['sarpras-stats'],
     queryFn: sarprasApi.getStats,
-    enabled: subscription !== undefined && !isLocked
+    enabled: subscription !== undefined && !isLocked && canViewSarprasDashboard
   });
 
   // Real client-side interactive sorting implementation (Pilar 7)

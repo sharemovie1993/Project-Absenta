@@ -290,7 +290,6 @@ async function main() {
       label: 'ABSENSI', icon: 'Clock', path: null, required_features: ['ABSENSI'], order: 20, children: [
         { label: 'Dashboard Absensi', icon: 'LayoutDashboard', path: '/attendance/dashboard', required_capability: 'attendance.manage.session, attendance.monitoring.view.live.status' },
         { label: 'Pengaturan Umum', icon: 'Settings', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
-        { label: 'Jadwal KBM', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.teaching.view' },
         { label: 'Petugas Absensi', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.petugas' },
         { label: 'Perangkat Absensi', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
         { label: 'Pendaftaran Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.face.templates' },
