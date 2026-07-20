@@ -381,7 +381,7 @@ export default function JadwalPelajaranPage() {
       >
         <PremiumFeatureGate 
           isLocked={isLocked}
-          moduleName="ABSENSI"
+          moduleName="ACADEMIC"
           featureName="Manajemen Jadwal KBM"
           description="Buat jadwal KBM presensi yang fleksibel untuk berbagai sesi, memudahkan otomatisasi pencatatan kehadiran setiap harinya."
         >
