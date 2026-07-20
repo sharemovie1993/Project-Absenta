@@ -734,7 +734,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   }, [mapelList, paintMapelId]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       
       {/* 🛠️ LEFT PANEL: Toolbox & Cards */}
       <div className="lg:col-span-4 flex flex-col space-y-4">
@@ -1518,7 +1519,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           </div>
         </Modal>
       </div>
-    </div>
+    </>
   );
 };
 
