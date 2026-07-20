@@ -305,7 +305,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.loans.manage',
     'sarpras.loans.request',
     'sarpras.repairs.view.list',
-    'sarpras.repairs.manage'
+    'sarpras.repairs.manage',
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+    'academic.students.view.list'
   ],
   [STRUKTUR_CODES.TOOLMAN]: [
     'organization.scope.unit_restricted',
@@ -318,7 +321,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.loans.manage',
     'sarpras.loans.request',
     'sarpras.repairs.view.list',
-    'sarpras.repairs.manage'
+    'sarpras.repairs.manage',
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+    'academic.students.view.list'
   ],
   [STRUKTUR_CODES.BPBK]: [
     'organization.scope.tenant_wide',
