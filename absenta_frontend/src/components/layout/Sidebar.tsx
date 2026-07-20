@@ -65,11 +65,11 @@ const getIconColor = (label: string, path: string, isActive: boolean) => {
       ? 'text-white bg-rose-600 dark:bg-rose-500' 
       : 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20';
   }
-  // 6. Kurikulum (Teal)
+  // 6. Kurikulum (Sky Blue)
   if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal') || text.includes('mapel') || text.includes('pelajaran') || text.includes('pembelajaran') || text.includes('rpp') || text.includes('modul ajar') || text.includes('silabus') || text.includes('prota') || text.includes('prosem')) {
     return isActive 
-      ? 'text-white bg-teal-600 dark:bg-teal-500' 
-      : 'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/20';
+      ? 'text-white bg-sky-600 dark:bg-sky-500' 
+      : 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/20';
   }
   // 7. Kesiswaan (Amber)
   if (p.startsWith('/kesiswaan') || text.includes('kesiswaan') || text.includes('ekskul') || text.includes('osis') || text.includes('ekstrakurikuler') || text.includes('kedisiplinan') || text.includes('prestasi') || text.includes('beasiswa') || text.includes('alumni')) {
@@ -115,7 +115,7 @@ const getActiveItemStyle = (label: string, path: string) => {
     return 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 shadow-sm shadow-rose-500/10 border-l-2 border-rose-500 pl-[10px]';
   }
   if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal') || text.includes('supervisi') || text.includes('struktur') || text.includes('plotting')) {
-    return 'bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 shadow-sm shadow-teal-500/10 border-l-2 border-teal-500 pl-[10px]';
+    return 'bg-sky-50 dark:bg-sky-950/20 text-sky-700 dark:text-sky-300 shadow-sm shadow-sky-500/10 border-l-2 border-sky-500 pl-[10px]';
   }
   if (p.startsWith('/kesiswaan') || text.includes('kesiswaan') || text.includes('pelanggaran')) {
     return 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 shadow-sm shadow-amber-500/10 border-l-2 border-amber-500 pl-[10px]';
@@ -147,7 +147,7 @@ const getActiveParentStyle = (label: string, path: string) => {
     return 'bg-rose-50/50 dark:bg-rose-900/10 text-rose-700 dark:text-rose-300';
   }
   if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal')) {
-    return 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-300';
+    return 'bg-sky-50/50 dark:bg-sky-900/10 text-sky-700 dark:text-sky-300';
   }
   if (p.startsWith('/kesiswaan') || text.includes('kesiswaan')) {
     return 'bg-amber-50/50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-300';
