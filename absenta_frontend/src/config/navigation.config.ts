@@ -323,7 +323,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/siswa',
       '/academic/guru',
       '/billing/invoices',
-      '/sarpras/inventory'
+      '/sarpras/inventory',
+      '/academic/ppdb-mapping'
     ]
   },
   {
@@ -369,7 +370,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     crossModulePaths: [
       '/academic/siswa',
       '/academic/guru',
-      '/documents/member-docs'
+      '/documents/member-docs',
+      '/academic/ppdb-mapping'
     ]
   },
   {

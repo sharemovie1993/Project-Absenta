@@ -412,6 +412,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'tu.staff.manage',                   // Koordinator TU mengelola kepegawaian staf TU
     'tu.letters.manage',                 // Koordinator TU supervisi persuratan
     'academic.students.view.list',
+    'academic.students.create',
+    'academic.students.update',
+    'academic.students.delete',
+    'academic.manage.siswa',
     'academic.teachers.view.list',
     'academic.structures.view.list',     // Koordinator TU memantau struktur organisasi
     'documents.view.list',               // Koordinator TU melihat arsip digital sekolah
@@ -455,6 +459,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'core.tenants.view.detail',
     'academic.students.view.list',
     'academic.students.manage',          // Kelola data induk siswa (NISN/Dapodik)
+    'academic.students.create',
+    'academic.students.update',
+    'academic.students.delete',
+    'academic.manage.siswa',
     'academic.teachers.view.list',
     'academic.teachers.manage',          // Kelola data induk guru (NUPTK/NIP)
     'tu.staff.view.list',
