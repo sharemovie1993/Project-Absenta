@@ -61,6 +61,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatusKepegawaian, setFilterStatusKepegawaian] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<string>('ALL');
+  const [filterJenisPtk, setFilterJenisPtk] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -80,13 +81,14 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const { user, can } = useAuth();
   
   const isFiltered = useMemo(() => {
-    return searchTerm !== '' || filterStatusKepegawaian !== 'ALL' || filterGender !== 'ALL';
-  }, [searchTerm, filterStatusKepegawaian, filterGender]);
+    return searchTerm !== '' || filterStatusKepegawaian !== 'ALL' || filterGender !== 'ALL' || filterJenisPtk !== 'ALL';
+  }, [searchTerm, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
   const handleResetFilter = () => {
     setSearchTerm('');
     setFilterStatusKepegawaian('ALL');
     setFilterGender('ALL');
+    setFilterJenisPtk('ALL');
   };
   
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -105,7 +107,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const fetchGurus = useCallback(async (page = 1, search = '') => {
     try {
       setLoading(true);
-      const response = await getGuruList(page, itemsPerPage, search, filterStatusKepegawaian, filterGender);
+      const response = await getGuruList(page, itemsPerPage, search, filterStatusKepegawaian, filterGender, filterJenisPtk);
       
       if (response.success) {
         setGurus(response.data);
@@ -121,12 +123,12 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     } finally {
       setLoading(false);
     }
-  }, [itemsPerPage, filterStatusKepegawaian, filterGender]);
+  }, [itemsPerPage, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
   // Debounced search effect
   useEffect(() => {
     fetchGurus(1, debouncedSearchTerm);
-  }, [debouncedSearchTerm, fetchGurus, filterStatusKepegawaian, filterGender]);
+  }, [debouncedSearchTerm, fetchGurus, filterStatusKepegawaian, filterGender, filterJenisPtk]);
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -267,6 +269,18 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       key: 'no_hp', 
       label: 'No. HP',
       render: (value: string | null) => value || '-'
+    },
+    {
+      key: 'jenis_ptk',
+      label: 'Jenis PTK',
+      render: (value: string | null) => {
+        const isTu = value === 'TENAGA_KEPENDIDIKAN';
+        return (
+          <Badge variant={isTu ? 'warning' : 'info'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
+            {isTu ? 'Tenaga Kependidikan (TU)' : 'Pendidik (Guru)'}
+          </Badge>
+        );
+      }
     },
     {
       key: 'status',
@@ -422,6 +436,19 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
               { label: 'Perempuan', value: 'P' }
             ]}
             placeholder="Filter Gender"
+            triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+          />
+        </div>
+        <div className="w-full md:w-52">
+          <SearchableSelect
+            value={filterJenisPtk}
+            onValueChange={setFilterJenisPtk}
+            options={[
+              { label: 'Semua Jenis PTK', value: 'ALL' },
+              { label: 'Pendidik (Guru)', value: 'PENDIDIK' },
+              { label: 'Tenaga Kependidikan', value: 'TENAGA_KEPENDIDIKAN' }
+            ]}
+            placeholder="Filter Jenis PTK"
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>

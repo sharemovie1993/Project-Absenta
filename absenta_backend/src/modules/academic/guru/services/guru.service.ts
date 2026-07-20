@@ -74,6 +74,9 @@ export interface PaginationParams {
   limit: number;
   search?: string;
   user_id?: string;
+  status_kepegawaian?: string;
+  jenis_kelamin?: string;
+  jenis_ptk?: string;
 }
 
 export interface PaginatedGuruResponse {
@@ -96,6 +99,18 @@ export class GuruService {
     // Filter by user_id if provided
     if (params?.user_id) {
       whereClause.user_id = params.user_id;
+    }
+
+    if (params?.status_kepegawaian && params.status_kepegawaian !== 'ALL') {
+      whereClause.status_kepegawaian = params.status_kepegawaian;
+    }
+
+    if (params?.jenis_kelamin && params.jenis_kelamin !== 'ALL') {
+      whereClause.jenis_kelamin = params.jenis_kelamin;
+    }
+
+    if (params?.jenis_ptk && params.jenis_ptk !== 'ALL') {
+      whereClause.jenis_ptk = params.jenis_ptk;
     }
 
     // Add search functionality

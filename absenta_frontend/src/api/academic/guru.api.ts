@@ -62,7 +62,8 @@ export const getGuruList = async (
   limit = 10, 
   search = "",
   status_kepegawaian = "",
-  jenis_kelamin = ""
+  jenis_kelamin = "",
+  jenis_ptk = ""
 ): Promise<PaginatedGuruResponse> => {
   const params = new URLSearchParams({
     page: String(page),
@@ -71,6 +72,7 @@ export const getGuruList = async (
   });
   if (status_kepegawaian && status_kepegawaian !== 'ALL') params.append('status_kepegawaian', status_kepegawaian);
   if (jenis_kelamin && jenis_kelamin !== 'ALL') params.append('jenis_kelamin', jenis_kelamin);
+  if (jenis_ptk && jenis_ptk !== 'ALL') params.append('jenis_ptk', jenis_ptk);
 
   return requestWithFallback<PaginatedGuruResponse>('get', `/academic/guru?${params.toString()}`, {
     headers: { 'X-Skip-403-Redirect': 'true' }

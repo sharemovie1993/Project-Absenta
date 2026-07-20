@@ -29,12 +29,18 @@ export class GuruController {
       
       const search = request.query.search || '';
       const user_id = request.query.user_id || undefined;
+      const status_kepegawaian = request.query.status_kepegawaian || undefined;
+      const jenis_kelamin = request.query.jenis_kelamin || undefined;
+      const jenis_ptk = request.query.jenis_ptk || undefined;
 
       const result = await guruService.getAllGuru(scope, {
         page,
         limit,
         search,
-        user_id
+        user_id,
+        status_kepegawaian,
+        jenis_kelamin,
+        jenis_ptk
       });
 
       reply.status(200);
