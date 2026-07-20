@@ -182,3 +182,26 @@
   2. Mengalihkan alur generate NIS resmi dari otomatis saat pemetaan kelas PPDB menjadi proses manual di halaman siswa setelah kelas stabil (sesuai masukan pengguna).
   3. Membangun **Wizard Generate NIS Massal (3-Step)** di frontend dan endpoint preview/eksekusi di backend untuk memetakan NIS secara teratur berurutan: Jurusan (A→Z) → Tingkat Kelas (10→11→12) → Nama Rombel (e.g. X TKJ 1 sebelum X TKJ 2) → Nama Siswa (A→Z) serta mendukung pengaturan urutan kelas manual (drag & drop/urutkan via tombol) oleh operator.
 - **Rasional**: Mencegah kegagalan *foreign key constraint* (violation) dan *timeout* HTTP request saat melakukan penghapusan massal data siswa, serta memberikan kendali penuh kepada staf Tata Usaha untuk mengatur nomor induk siswa secara terurut dan valid sesuai standar penomoran registrasi sekolah.
+
+2026-07: Pemisahan Domain Capability Jadwal — `academic.schedules` & `kesiswaan.schedules`
+- **Keputusan**: Memecah capability domain `attendance.schedules.*` menjadi dua domain baru yang lebih mencerminkan kepemilikan modul:
+  1. `academic.schedules.*` (view.list, create, update, delete, manage) → untuk **Jadwal KBM** di bawah Modul Kurikulum (`/api/kurikulum/jadwal`).
+  2. `kesiswaan.schedules.*` (view.list, create, update, delete) → untuk **Jadwal Kegiatan / Eskul** di bawah Modul Kesiswaan (`/api/kesiswaan/jadwal-kegiatan`).
+- **Rasional**: Capability `attendance.schedules.*` sebelumnya digunakan oleh dua fitur berbeda domain (Jadwal KBM & Jadwal Kegiatan) yang keduanya tidak termasuk dalam modul Absensi berbayar. Pemisahan ini membuat authorization lebih mudah di-audit, mencegah kebocoran lisensi, dan memastikan posisi RBAC jabatan (seperti Wakasek Kesiswaan vs Wakasek Kurikulum) dapat diberi akses yang presisi tanpa overlap.
+- **Dampak Teknis**:
+  - 9 capability baru ditambahkan ke `docs/action_catalog.md` (catalog canonical).
+  - `src/config/position-capabilities.ts` diperbarui untuk KURIKULUM, KESISWAAN, WALIKELAS, PETUGAS_KELAS, PEMBINA_ESKUL, HUBIN.
+  - `src/database/seeds/seed_policies.ts` diperbarui: ADMIN, GURU, SISWA baseline, dan whitelist `ensureNoOrganizationalInBaseline`.
+  - Seluruh route guards di `jadwal-kbm.routes.ts`, `jadwal-kegiatan.routes.ts`, `anggota-kegiatan-eskul.routes.ts`, `pembina-kegiatan-eskul.routes.ts` diperbarui.
+  - Frontend: `App.tsx`, `JadwalKBMList.tsx`, `JadwalPelajaranPage.tsx`, `PetugasRoute.tsx`, `AttendanceOpsPage.tsx` diperbarui.
+  - Catalog permission: 433 → **442 permissions**.
+
+2026-07: Migrasi Jadwal Kegiatan ke Namespace Kesiswaan (Gratis)
+- **Keputusan**: Memindahkan registrasi rute API Jadwal Kegiatan dari modul Attendance (`plugin.ts`, prefix `/api/attendance/jadwal-kegiatan`) ke router utama (`infra/router.ts`, prefix `/api/kesiswaan/jadwal-kegiatan`).
+- **Rasional**: Jadwal Kegiatan Eskul/Pembiasaan adalah fitur operasional Kesiswaan, bukan fitur inti Absensi berbayar. Penempatan di bawah namespace `/api/attendance/...` sebelumnya menyebabkan fitur ini ikut terkunci oleh `subscription.guard.ts` yang memvalidasi lisensi modul `ABSENSI`. Dengan memindahkannya ke `/api/kesiswaan/...`, guard lisensi otomatis dilewati karena namespace tersebut dikecualikan dari pengecekan subscription berbayar.
+- **Dampak Teknis**:
+  - `src/infra/router.ts` → registrasi baru `/kesiswaan/jadwal-kegiatan`.
+  - `src/modules/attendance/plugin.ts` → hapus registrasi lama.
+  - `src/database/seeds/seed.ts` → menu "Jadwal Kegiatan" ditambahkan ke children sidebar KESISWAAN.
+  - Frontend: `jadwalKegiatan.api.ts` endpoint diubah, `JadwalKegiatanPage.tsx` `isLocked=false` & `moduleName='KESISWAAN'`, `App.tsx` route dipindah ke `/kesiswaan/jadwal-kegiatan`.
+
