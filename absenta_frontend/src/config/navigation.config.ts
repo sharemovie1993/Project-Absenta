@@ -279,7 +279,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     bg: 'bg-rose-50',
     solidBg: 'bg-rose-600',
     desc: 'Konseling & Bimbingan Siswa',
-    requiredCapability: 'bk.cases.view.list',
+    requiredCapability: 'bk.counseling.manage',
     requiredPositionCode: 'BPBK',
     defaultPath: '/bpbk/dashboard',
     targetGroupKeywords: ['BP/BK', 'BPBK', 'BK'],
