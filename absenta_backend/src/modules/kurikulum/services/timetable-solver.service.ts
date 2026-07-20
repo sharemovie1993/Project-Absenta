@@ -125,17 +125,6 @@ export class TimetableSolverService {
       include: { Mapel: true }
     });
 
-    // 7. Build Card Deck (Lessons to place)
-    interface Card {
-      id: string;
-      kelas_id: string;
-      kelas_name: string;
-      mapel_id: string;
-      mapel_name: string;
-      mapel_kode: string;
-      eligible_teacher_ids: string[];
-    }
-
     // 7. Build Subject-Class Decks (Grouping total JP per subject per class)
     interface SubjectDeck {
       id: string;
