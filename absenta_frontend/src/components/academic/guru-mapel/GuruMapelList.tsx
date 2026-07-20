@@ -5,13 +5,14 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar } from 'lucide-react';
-import { listGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown } from 'lucide-react';
+import { listGuruMapel, removeGuruMapel, assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
+import { getJurusanForDropdown, getKelasForDropdown, type DropdownOption } from '../../../api/dropdown.api';
 import type { Guru, Mapel } from '../../../types/academic';
 import useConfirm from '../../../hooks/useConfirm';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -37,6 +38,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
   const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
+  const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
+  const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
+  const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
 
@@ -78,9 +82,11 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       if (res.success) {
         const term = debouncedSearch.toLowerCase();
         const filtered = res.data.filter((gm) => {
-          const guru = gm.Guru?.nama_guru?.toLowerCase() || '';
-          const mapel = gm.Mapel?.nama_mapel?.toLowerCase() || '';
-          return guru.includes(term) || mapel.includes(term);
+          const guruName = gm.Guru?.nama_guru?.toLowerCase() || '';
+          const mapelName = gm.Mapel?.nama_mapel?.toLowerCase() || '';
+          const kelasName = gm.Kelas?.nama_kelas?.toLowerCase() || '';
+          const jurusanName = gm.Jurusan?.nama?.toLowerCase() || '';
+          return guruName.includes(term) || mapelName.includes(term) || kelasName.includes(term) || jurusanName.includes(term);
         });
         setItems(filtered);
         setSelectedIds(new Set());
@@ -105,18 +111,58 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [gurus, mapels] = await Promise.all([
+        const [gurus, mapels, jurusans, kelases] = await Promise.all([
           getGuruList(1, 100, ''),
           getMapelList(1, 100, ''),
+          getJurusanForDropdown().catch(() => []),
+          getKelasForDropdown().catch(() => []),
         ]);
         setGuruOptions(gurus.data);
         setMapelOptions(mapels.data);
+        setJurusanDropdown(jurusans);
+        setKelasDropdown(kelases);
       } catch {
         // ignore
       }
     };
     loadOptions();
   }, []);
+
+  const handleScopeChange = useCallback(async (gm: GuruMapel, newScopeValue: string) => {
+    try {
+      setUpdatingScopeId(gm.id);
+      let jurusan_id: string | null = null;
+      let kelas_id: string | null = null;
+
+      if (newScopeValue.startsWith('JURUSAN:')) {
+        jurusan_id = newScopeValue.replace('JURUSAN:', '');
+      } else if (newScopeValue.startsWith('KELAS:')) {
+        kelas_id = newScopeValue.replace('KELAS:', '');
+      }
+
+      await removeGuruMapel(gm.id);
+
+      const res = await assignGuruMapel({
+        guru_id: gm.guru_id,
+        mapel_id: gm.mapel_id,
+        jurusan_id,
+        kelas_id
+      });
+
+      if (res.success) {
+        toast.success('Cakupan plotting berhasil diperbarui!');
+      } else {
+        toast.error(res.message || 'Gagal mengubah cakupan');
+      }
+      fetchData();
+    } catch (e: any) {
+      console.error('Error changing scope:', e);
+      toast.error('Gagal memperbarui cakupan plotting');
+      fetchData();
+    } finally {
+      setUpdatingScopeId(null);
+    }
+  }, [fetchData]);
 
   const handleDelete = useCallback(async (gm: GuruMapel) => {
     try {
@@ -233,24 +279,75 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       key: 'Scope',
       label: 'Cakupan Plotting',
       render: (_: any, gm: GuruMapel) => {
-        if (gm.Kelas?.nama_kelas) {
+        const currentValue = gm.kelas_id
+          ? `KELAS:${gm.kelas_id}`
+          : gm.jurusan_id
+          ? `JURUSAN:${gm.jurusan_id}`
+          : 'GLOBAL';
+
+        const isUpdating = updatingScopeId === gm.id;
+
+        if (!canManage) {
+          if (gm.Kelas?.nama_kelas) {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                Kelas {gm.Kelas.nama_kelas}
+              </span>
+            );
+          }
+          if (gm.Jurusan?.nama) {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                Jurusan {gm.Jurusan.nama}
+              </span>
+            );
+          }
           return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
-              Kelas {gm.Kelas.nama_kelas}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+              Global (Semua Kelas)
             </span>
           );
         }
-        if (gm.Jurusan?.nama) {
-          return (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-              Jurusan {gm.Jurusan.nama}
-            </span>
-          );
-        }
+
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-            Global (Semua Kelas)
-          </span>
+          <div className="relative inline-flex items-center">
+            <select
+              value={currentValue}
+              disabled={isUpdating}
+              onChange={(e) => handleScopeChange(gm, e.target.value)}
+              className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border appearance-none pr-6 cursor-pointer transition-all focus:outline-none focus:ring-2 disabled:opacity-50 ${
+                gm.kelas_id
+                  ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800 focus:ring-purple-500/50'
+                  : gm.jurusan_id
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 focus:ring-indigo-500/50'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 focus:ring-slate-400/50'
+              }`}
+              title="Klik untuk ubah cakupan (Global / Jurusan / Kelas)"
+            >
+              <option value="GLOBAL">🌐 Global (Semua Kelas)</option>
+              
+              {jurusanDropdown.length > 0 && (
+                <optgroup label="── Khusus Jurusan ──">
+                  {jurusanDropdown.map((j) => (
+                    <option key={j.value} value={`JURUSAN:${j.value}`}>
+                      🎓 Jurusan {j.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+
+              {kelasDropdown.length > 0 && (
+                <optgroup label="── Khusus Kelas/Rombel ──">
+                  {kelasDropdown.map((k) => (
+                    <option key={k.value} value={`KELAS:${k.value}`}>
+                      🏫 Kelas {k.label}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <ChevronDown className="w-3.5 h-3.5 absolute right-1.5 pointer-events-none opacity-60 text-current" />
+          </div>
         );
       }
     },
@@ -285,7 +382,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         </div>
       )
     }
-  ], [canManage, handleDelete, onOpenTimeOff]);
+  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
