@@ -352,8 +352,8 @@ export default function GuruMonitoringPage() {
   return (
     <AcademicPageLayout
       hardeningModuleKey="gurumonitoringpage"
-      title="Monitoring Guru"
-      description="Pantau kehadiran guru dan status sesi KBM secara realtime di seluruh kelas."
+      title="Monitoring Mengajar Guru"
+      description="Pantau kehadiran guru dan status sesi mengajar KBM secara realtime di seluruh kelas."
       stats={stats}
       instruction={instructionData}
       breadcrumbs={memoBreadcrumbs}

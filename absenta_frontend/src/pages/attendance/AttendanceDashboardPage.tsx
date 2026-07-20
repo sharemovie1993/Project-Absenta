@@ -338,8 +338,8 @@ const AttendanceDashboardPage: React.FC = () => {
       description="Kelola jadwal KBM KBM, rekam wajah biometrik siswa, status mesin RFID gerbang, dan log kehadiran real-time."
     >
       <AcademicPageLayout
-        title="Dashboard Absensi"
-        description={isSiswa ? `Halo ${user?.full_name || 'Siswa'}, berikut ringkasan presensi Anda di ${sekolah?.name || 'Sekolah'}.` : `Halo ${user?.full_name || 'Staf'}, pantau operasional presensi ${sekolah?.name || 'Sekolah'} hari ini.`}
+        title="Live Monitoring KBM Kelas"
+        description={isSiswa ? `Halo ${user?.full_name || 'Siswa'}, berikut ringkasan presensi Anda di ${sekolah?.name || 'Sekolah'}.` : `Halo ${user?.full_name || 'Staf'}, pantau operasional presensi & KBM kelas ${sekolah?.name || 'Sekolah'} hari ini.`}
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="attendance_dashboard"

@@ -61,8 +61,8 @@ export default function RekapPage() {
 
   return (
     <AcademicPageLayout
-      title="Rekapitulasi Kehadiran"
-      description="Pusat pelaporan dan analisis kehadiran siswa terpadu."
+      title="Laporan & Rekap Presensi"
+      description="Rekapitulasi data kehadiran siswa dan guru dalam berbagai format laporan."
       stats={memoStats}
       instruction={instructionData}
       breadcrumbs={memoBreadcrumbs}
