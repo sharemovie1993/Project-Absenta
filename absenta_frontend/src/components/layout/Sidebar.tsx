@@ -36,7 +36,7 @@ const getIconColor = (label: string, path: string, isActive: boolean) => {
   const p = path.toLowerCase();
   
   // 1. Absensi
-  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || text.includes('piket') || text.includes('jurnal') || text.includes('ajar') || text.includes('piket')) {
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || text.includes('piket') || text.includes('jurnal') || (text.includes('ajar') && !text.includes('pelajaran') && !text.includes('pembelajaran')) || text.includes('piket')) {
     return isActive 
       ? 'text-white bg-emerald-600 dark:bg-emerald-500' 
       : 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20';
@@ -99,7 +99,7 @@ const getActiveItemStyle = (label: string, path: string) => {
   const text = label.toLowerCase();
   const p = path.toLowerCase();
   
-  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || text.includes('riwayat-ajar')) {
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || (text.includes('riwayat-ajar') || (text.includes('ajar') && !text.includes('pelajaran') && !text.includes('pembelajaran')))) {
     return 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/10 border-l-2 border-emerald-500 pl-[10px]';
   }
   if (p.startsWith('/cooperative') || text.includes('koperasi') || text.includes('kantin') || text.includes('savings') || text.includes('loans') || text.includes('pos')) {
@@ -131,7 +131,7 @@ const getActiveParentStyle = (label: string, path: string) => {
   const text = label.toLowerCase();
   const p = path.toLowerCase();
   
-  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops')) {
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || (text.includes('ajar') && !text.includes('pelajaran') && !text.includes('pembelajaran'))) {
     return 'bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-300';
   }
   if (p.startsWith('/cooperative') || text.includes('koperasi') || text.includes('kantin')) {
