@@ -136,8 +136,20 @@ export class TimetableSolverService {
       eligible_teacher_ids: string[];
     }
 
-    const cards: Card[] = [];
-    let cardCounter = 0;
+    // 7. Build Subject-Class Decks (Grouping total JP per subject per class)
+    interface SubjectDeck {
+      id: string;
+      kelas_id: string;
+      kelas_name: string;
+      mapel_id: string;
+      mapel_name: string;
+      mapel_kode: string;
+      total_jp: number;
+      eligible_teacher_ids: string[];
+    }
+
+    const decks: SubjectDeck[] = [];
+    let deckCounter = 0;
 
     for (const kelas of targetClasses) {
       const matchingStruktur = strukturList.filter(s => 
@@ -168,112 +180,219 @@ export class TimetableSolverService {
             .map(gm => gm.guru_id);
         }
 
-        const jpCount = st.jp_per_minggu || 2;
+        const totalJp = st.jp_per_minggu || 2;
+        deckCounter++;
 
-        for (let i = 0; i < jpCount; i++) {
-          cardCounter++;
-          cards.push({
-            id: `card_${cardCounter}`,
-            kelas_id: kelas.id,
-            kelas_name: kelas.nama_kelas,
-            mapel_id: st.mapel_id,
-            mapel_name: st.Mapel.nama_mapel,
-            mapel_kode: st.Mapel.kode_mapel || '',
-            eligible_teacher_ids: eligibleTeachers
-          });
-        }
+        decks.push({
+          id: `deck_${deckCounter}`,
+          kelas_id: kelas.id,
+          kelas_name: kelas.nama_kelas,
+          mapel_id: st.mapel_id,
+          mapel_name: st.Mapel.nama_mapel,
+          mapel_kode: st.Mapel.kode_mapel || '',
+          total_jp: totalJp,
+          eligible_teacher_ids: eligibleTeachers
+        });
       }
     }
 
-    // Heuristic sort: Cards with FEWER eligible teachers first (MRV)
-    cards.sort((a, b) => {
+    // Sort decks by Most Restricted Variable (MRV) heuristic:
+    // Decks with FEWER eligible teachers first, then by highest total_jp
+    decks.sort((a, b) => {
       const aTeachers = a.eligible_teacher_ids.length || 999;
       const bTeachers = b.eligible_teacher_ids.length || 999;
-      return aTeachers - bTeachers;
+      if (aTeachers !== bTeachers) return aTeachers - bTeachers;
+      return b.total_jp - a.total_jp;
     });
 
     // 8. Solvers Placement Loop
     const generatedSlots: GeneratedSlot[] = [];
     const unplacedCards: UnplacedCard[] = [];
-    const slotIndices = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const maxSlotsPerDay = 10;
+    let totalCardsCount = 0;
 
-    for (const card of cards) {
-      let placed = false;
+    for (const deck of decks) {
+      totalCardsCount += deck.total_jp;
 
-      let selectedTeacherId: string | null = null;
-      let selectedTeacherName = 'Belum Ada Guru';
+      // Select ONE single teacher for all JPs of this subject in this class
+      let assignedTeacherId: string | null = null;
+      let assignedTeacherName = 'Belum Ada Guru';
 
-      if (card.eligible_teacher_ids.length > 0) {
-        const sortedTeachers = [...card.eligible_teacher_ids].sort((t1, t2) => {
+      if (deck.eligible_teacher_ids.length > 0) {
+        const sortedTeachers = [...deck.eligible_teacher_ids].sort((t1, t2) => {
           const load1 = teacherJpCount.get(t1) || 0;
           const load2 = teacherJpCount.get(t2) || 0;
           return load1 - load2;
         });
-        selectedTeacherId = sortedTeachers[0];
-        selectedTeacherName = teacherMap.get(selectedTeacherId)?.nama_guru || 'Guru Pengampu';
+
+        // Pick teacher with available max_jp capacity
+        for (const tId of sortedTeachers) {
+          const teacherObj = teacherMap.get(tId);
+          const currentLoad = teacherJpCount.get(tId) || 0;
+          const maxJp = teacherObj?.max_jp ?? 24;
+          if (currentLoad + deck.total_jp <= maxJp) {
+            assignedTeacherId = tId;
+            break;
+          }
+        }
+
+        // Fallback to teacher with lowest load if all exceed max_jp
+        if (!assignedTeacherId) {
+          assignedTeacherId = sortedTeachers[0];
+        }
+
+        assignedTeacherName = teacherMap.get(assignedTeacherId)?.nama_guru || 'Guru Pengampu';
       }
 
-      for (const day of daysToSchedule) {
-        if (placed) break;
-
-        for (const slotIdx of slotIndices) {
-          const classKey = `${card.kelas_id}_${day}_${slotIdx}`;
-          if (classOccupied.get(classKey)) continue;
-
-          if (selectedTeacherId) {
-            const teacherKey = `${selectedTeacherId}_${day}_${slotIdx}`;
-            if (teacherOccupied.get(teacherKey)) continue;
-
-            const teacherObj = teacherMap.get(selectedTeacherId);
-            const currentLoad = teacherJpCount.get(selectedTeacherId) || 0;
-            const maxJp = teacherObj?.max_jp ?? 24;
-            if (currentLoad >= maxJp) continue;
-          }
-
-          classOccupied.set(classKey, true);
-          if (selectedTeacherId) {
-            const teacherKey = `${selectedTeacherId}_${day}_${slotIdx}`;
-            teacherOccupied.set(teacherKey, true);
-            teacherJpCount.set(selectedTeacherId, (teacherJpCount.get(selectedTeacherId) || 0) + 1);
-          }
-
-          const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
-
-          generatedSlots.push({
-            kelas_id: card.kelas_id,
-            kelas_name: card.kelas_name,
-            mapel_id: card.mapel_id,
-            mapel_name: card.mapel_name,
-            mapel_kode: card.mapel_kode,
-            guru_id: selectedTeacherId,
-            guru_name: selectedTeacherName,
-            hari: day,
-            slot_index: slotIdx,
-            jam_mulai: slotTime.start,
-            jam_selesai: slotTime.end
-          });
-
-          placed = true;
-          break;
+      // Split total_jp into consecutive blocks (e.g. 4 -> [2, 2], 3 -> [2, 1], 5 -> [2, 2, 1])
+      const blocks: number[] = [];
+      let rem = deck.total_jp;
+      while (rem > 0) {
+        if (rem >= 2) {
+          blocks.push(2);
+          rem -= 2;
+        } else {
+          blocks.push(1);
+          rem -= 1;
         }
       }
 
-      if (!placed) {
-        unplacedCards.push({
-          kelas_id: card.kelas_id,
-          kelas_name: card.kelas_name,
-          mapel_id: card.mapel_id,
-          mapel_name: card.mapel_name,
-          guru_id: selectedTeacherId,
-          guru_name: selectedTeacherName,
-          reason: card.eligible_teacher_ids.length === 0 
-            ? 'Belum ada guru yang dipetakan untuk mapel ini' 
-            : 'Tidak ada slot waktu kosong yang memenuhi kriteria tanpa bentrok'
+      const daysUsedForSubject = new Set<Hari>();
+
+      for (const blockSize of blocks) {
+        let blockPlaced = false;
+
+        // Try days that haven't hosted this subject yet first for good distribution across the week
+        const sortedDays = [...daysToSchedule].sort((d1, d2) => {
+          const used1 = daysUsedForSubject.has(d1) ? 1 : 0;
+          const used2 = daysUsedForSubject.has(d2) ? 1 : 0;
+          return used1 - used2;
         });
+
+        for (const day of sortedDays) {
+          if (blockPlaced) break;
+
+          for (let startSlot = 1; startSlot <= maxSlotsPerDay - blockSize + 1; startSlot++) {
+            let canFit = true;
+
+            for (let b = 0; b < blockSize; b++) {
+              const slotIdx = startSlot + b;
+              const classKey = `${deck.kelas_id}_${day}_${slotIdx}`;
+              if (classOccupied.get(classKey)) {
+                canFit = false;
+                break;
+              }
+
+              if (assignedTeacherId) {
+                const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
+                if (teacherOccupied.get(teacherKey)) {
+                  canFit = false;
+                  break;
+                }
+              }
+            }
+
+            if (canFit) {
+              // Reserve all slots in this block
+              for (let b = 0; b < blockSize; b++) {
+                const slotIdx = startSlot + b;
+                const classKey = `${deck.kelas_id}_${day}_${slotIdx}`;
+                classOccupied.set(classKey, true);
+
+                if (assignedTeacherId) {
+                  const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
+                  teacherOccupied.set(teacherKey, true);
+                  teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
+                }
+
+                const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
+
+                generatedSlots.push({
+                  kelas_id: deck.kelas_id,
+                  kelas_name: deck.kelas_name,
+                  mapel_id: deck.mapel_id,
+                  mapel_name: deck.mapel_name,
+                  mapel_kode: deck.mapel_kode,
+                  guru_id: assignedTeacherId,
+                  guru_name: assignedTeacherName,
+                  hari: day,
+                  slot_index: slotIdx,
+                  jam_mulai: slotTime.start,
+                  jam_selesai: slotTime.end
+                });
+              }
+
+              daysUsedForSubject.add(day);
+              blockPlaced = true;
+              break;
+            }
+          }
+        }
+
+        // Fallback: If consecutive block didn't fit, try placing as individual 1-JP slots
+        if (!blockPlaced) {
+          let unplacedCount = blockSize;
+
+          for (const day of daysToSchedule) {
+            if (unplacedCount === 0) break;
+
+            for (let slotIdx = 1; slotIdx <= maxSlotsPerDay; slotIdx++) {
+              if (unplacedCount === 0) break;
+
+              const classKey = `${deck.kelas_id}_${day}_${slotIdx}`;
+              if (classOccupied.get(classKey)) continue;
+
+              if (assignedTeacherId) {
+                const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
+                if (teacherOccupied.get(teacherKey)) continue;
+              }
+
+              classOccupied.set(classKey, true);
+              if (assignedTeacherId) {
+                const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
+                teacherOccupied.set(teacherKey, true);
+                teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
+              }
+
+              const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
+
+              generatedSlots.push({
+                kelas_id: deck.kelas_id,
+                kelas_name: deck.kelas_name,
+                mapel_id: deck.mapel_id,
+                mapel_name: deck.mapel_name,
+                mapel_kode: deck.mapel_kode,
+                guru_id: assignedTeacherId,
+                guru_name: assignedTeacherName,
+                hari: day,
+                slot_index: slotIdx,
+                jam_mulai: slotTime.start,
+                jam_selesai: slotTime.end
+              });
+
+              unplacedCount--;
+            }
+          }
+
+          // Record unplaced JPs if any remained
+          for (let u = 0; u < unplacedCount; u++) {
+            unplacedCards.push({
+              kelas_id: deck.kelas_id,
+              kelas_name: deck.kelas_name,
+              mapel_id: deck.mapel_id,
+              mapel_name: deck.mapel_name,
+              guru_id: assignedTeacherId,
+              guru_name: assignedTeacherName,
+              reason: deck.eligible_teacher_ids.length === 0 
+                ? 'Belum ada guru yang dipetakan untuk mapel ini' 
+                : 'Tidak ada slot waktu kosong yang memenuhi kriteria tanpa bentrok'
+            });
+          }
+        }
       }
     }
 
-    const totalCards = cards.length;
+    const totalCards = totalCardsCount;
     const totalPlaced = generatedSlots.length;
     const totalUnplaced = unplacedCards.length;
     const successRate = totalCards > 0 ? Math.round((totalPlaced / totalCards) * 100) : 0;
