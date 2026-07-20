@@ -25,10 +25,15 @@ export const transformManagementToTree = (
         const area = n.nama.replace(/WAKIL KEPALA SEKOLAH BIDANG|WAKIL KEPALA SEKOLAH|WAKA|& STAF|& STAFF/gi, '').trim();
         const uniqueId = `mgmt-group-${kode}-${n.id}`;
 
+        const isKoordinatorTu = kode === 'TU_KEPALA';
+
         const members = [...(n.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
         const memberSlots: TopologyNodeData[] = members.map((m: any, idx: number) => {
           const isBoss = idx === 0;
-          const rawLabel = isBoss ? `WAKA ${area}` : `STAF ${area}`;
+          let rawLabel = isBoss ? `WAKA ${area}` : `STAF ${area}`;
+          if (isKoordinatorTu) {
+            rawLabel = isBoss ? 'Koordinator TU' : `Staf TU`;
+          }
           return {
             id: isBoss ? `boss-${kode}-${n.id}-${m.id}` : `staff-${kode}-${n.id}-${m.id}`,
             label: shortenPosition(rawLabel),
@@ -40,7 +45,7 @@ export const transformManagementToTree = (
 
         children.push({
           id: uniqueId,
-          label: `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
+          label: isKoordinatorTu ? 'BIDANG TU' : `BIDANG ${area.replace(/& STAF/gi, '').trim()}`, 
           subLabel: '',
           type: 'CATEGORY' as any, // New Type for 1-row design
           data: { roleCode: kode, realStrukturId: n.id, unit_id: n.unit_id, forceVertical: true },
