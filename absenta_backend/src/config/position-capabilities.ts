@@ -381,6 +381,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'hubin.tracer.view',
     'academic.students.view.list',
     'academic.students.view.detail',
+    'academic.structures.view.list',
     'hubin.pkl.view.list',
     'hubin.mou.view.list'
   ],
