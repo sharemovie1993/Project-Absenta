@@ -102,7 +102,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.structures.view.detail',
     'academic.structures.view.tree',
     'attendance.schedules.view.list',
-    'attendance.schedules.manage',
     'attendance.officers.view',
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
