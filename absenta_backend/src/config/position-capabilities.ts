@@ -211,16 +211,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.history',
     'hubin.absensi.view.history',
     'attendance.schedules.view.list',
-    'attendance.schedules.manage',
-    'attendance.schedules.create',
-    'attendance.schedules.update',
-    'attendance.schedules.delete',
     'attendance.officers.view',
     'attendance.officers.manage',
     'attendance.sessions.view.detail',
     'attendance.sessions.update.attendance', // Tambahan: Validasi Izin/Sakit
     'attendance.sessions.tap',
     'attendance.sessions.update.journal',
+    'bk.cases.view.list',
+    'bk.referrals.create',
   ],
   [STRUKTUR_CODES.PEMBINA_ESKUL]: [
     'organization.scope.unit_restricted',
