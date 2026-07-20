@@ -457,6 +457,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'correspondence.outbox.view',
     'sarpras.inventory.view.list',       // Koordinator TU memantau aset/logistik
     'sarpras.loans.view.list',
+    'academic.promotions.manage',
+    'academic.student.card.view.config',
+    'academic.student.card.update.config',
+    'academic.view.student.card',
+    'core.sekolah.view.profile',
   ],
   [STRUKTUR_CODES.TU_PERSURATAN]: [
     'organization.scope.tenant_wide',
@@ -509,6 +514,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'documents.view.list',               // Arsip ijazah & surat keterangan dinas
     'documents.upload',
     'documents.delete',
+    'academic.promotions.manage',
+    'academic.student.card.view.config',
+    'academic.student.card.update.config',
+    'academic.view.student.card',
+    'core.sekolah.view.profile',
   ],
   [STRUKTUR_CODES.TU_SARPRAS]: [
     'organization.scope.tenant_wide',
