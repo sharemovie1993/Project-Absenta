@@ -83,7 +83,7 @@ export function useNotifications(options?: UseNotificationsOptions) {
       }
       setLoading(true);
       setError(null);
-      const res = await getUserNotifications();
+      const res = await getUserNotifications({ headers: { 'X-Skip-403-Redirect': 'true' } });
       if (res.success) {
         const base = res.data.recentNotifications || [];
         setRecent(base.slice(0, 50));

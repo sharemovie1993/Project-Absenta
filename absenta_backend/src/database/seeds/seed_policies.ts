@@ -88,6 +88,10 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'correspondence.inbox.view',
     'correspondence.outbox.view',
     'academic.manage.kbm',
+    'kesiswaan.schedules.view.list',
+    'bk.assessment.view.list',
+    'bk.referrals.view.list',
+    'bk.referrals.manage',
   ]);
 
   const siswa = uniqueStrings([
@@ -527,7 +531,6 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'bk.cases.view.detail',
     'bk.assessment.view.list',
     'bk.referrals.view.list',
-    'bk.referrals.create',
     'bk.cases.manage',
     'bk.counseling.manage',
     'bk.counseling.view.sensitive',
