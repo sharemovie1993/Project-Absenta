@@ -296,11 +296,11 @@ async function main() {
         { label: 'Pendaftaran Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.face.templates' },
         { label: 'Operasional Presensi', icon: 'Activity', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
         { label: 'Jurnal & Riwayat Mengajar', icon: 'FileText', path: '/attendance/riwayat-ajar', required_capability: 'attendance.sessions.update.journal, academic.teaching.view' },
-        { label: 'Monitoring Kelas', icon: 'Monitor', path: '/attendance/monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.walikelas' },
-        { label: 'Kehadiran Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.kepsek' },
+        { label: 'Live Monitoring KBM Kelas', icon: 'Monitor', path: '/attendance/monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.walikelas' },
+        { label: 'Monitoring Mengajar Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.monitoring.view.live.status, dashboard.view.kepsek' },
         { label: 'Kehadiran Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
-        { label: 'Rekap Kehadiran', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
-        { label: 'Tracking Lokasi', icon: 'MapPin', path: '/attendance/tracking-siswa', required_capability: 'attendance.recap.view.global' },
+        { label: 'Laporan & Rekap Presensi', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
+        { label: 'Tracking Aktivitas Siswa', icon: 'MapPin', path: '/attendance/tracking-siswa', required_capability: 'attendance.recap.view.global' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/attendance/cetak-berkas', required_capability: 'attendance.sessions.view.list' }
       ]
     },
