@@ -213,6 +213,9 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/kurikulum/dashboard',
     targetGroupKeywords: ['KURIKULUM'],
     crossModulePaths: [
+      '/attendance/monitoring',
+      '/attendance/guru-monitoring',
+      '/attendance/rekap',
       '/hubin/monitoring',
       '/kesiswaan/pelanggaran'
     ]
