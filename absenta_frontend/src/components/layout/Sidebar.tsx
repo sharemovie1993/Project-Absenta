@@ -393,8 +393,35 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           }
         });
       }
+      // 5. TU Keuangan Workspace
+      else if (currentWs.id === 'TU_KEUANGAN_WORKSPACE') {
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (p === '/billing/invoices') {
+            primaryItems.push(item);
+          }
+        });
+      }
+      // 6. TU Kepegawaian Workspace
+      else if (currentWs.id === 'TU_KEPEGAWAIAN_WORKSPACE') {
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (p === '/academic/siswa' || p === '/academic/guru' || p === '/documents/member-docs') {
+            primaryItems.push(item);
+          }
+        });
+      }
+      // 7. TU Sarpras Workspace
+      else if (currentWs.id === 'TU_SARPRAS_WORKSPACE') {
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (p === '/sarpras/inventory' || p === '/sarpras/loans' || p === '/sarpras/maintenance') {
+            primaryItems.push(item);
+          }
+        });
+      }
 
-      if (primaryItems.length === 0) {
+      if (primaryItems.length === 0 && !currentWs.id.startsWith('TU_')) {
         primaryItems = allLeafItems;
       }
 
