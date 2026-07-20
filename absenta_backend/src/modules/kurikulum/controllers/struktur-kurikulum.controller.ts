@@ -158,4 +158,21 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, error.message || 'Failed to check beban guru', error);
     }
   }
+
+  static async getBebanGuruAll(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { tahun_pelajaran_id, semester_id } = req.query || {};
+
+      const result = await StrukturKurikulumService.getBebanGuruAll(
+        tenant_id,
+        tahun_pelajaran_id || undefined,
+        semester_id || undefined
+      );
+
+      return sendResponse(reply, 200, true, 'Beban mengajar guru retrieved successfully', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Failed to retrieve teaching workload', error);
+    }
+  }
 }

@@ -30,6 +30,7 @@ import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { kurikulumApi } from '../../api/kurikulum.api';
+import { Modal } from '../ui/Modal';
 
 interface JadwalBuilderProps {
   tahunPelajaranId: string;
@@ -115,6 +116,38 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   const [savingSlot, setSavingSlot] = useState<string | null>(null);
   const [mappedMapelIds, setMappedMapelIds] = useState<string[] | null>(null);
   const [loadingMappedMapels, setLoadingMappedMapels] = useState<boolean>(false);
+
+  // Beban guru states
+  const [bebanModalOpen, setBebanModalOpen] = useState(false);
+  const [bebanGuruList, setBebanGuruList] = useState<any[]>([]);
+  const [loadingBeban, setLoadingBeban] = useState(false);
+  const [searchBebanGuru, setSearchBebanGuru] = useState('');
+
+  const fetchBebanGuru = async () => {
+    try {
+      setLoadingBeban(true);
+      const res = await kurikulumApi.getBebanMengajar({
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId
+      });
+      if (res.success) {
+        setBebanGuruList(res.data || []);
+      } else {
+        toast.error('Gagal mengambil data beban guru');
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Terjadi kesalahan saat memuat beban guru');
+    } finally {
+      setLoadingBeban(false);
+    }
+  };
+
+  useEffect(() => {
+    if (bebanModalOpen) {
+      fetchBebanGuru();
+    }
+  }, [bebanModalOpen, tahunPelajaranId, semesterId]);
 
   // Shift config states
   const [shiftJamPelajaran, setShiftJamPelajaran] = useState<any>(null);
@@ -1003,6 +1036,17 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setBebanModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-350"
+              title="Statistik Beban Mengajar Guru"
+            >
+              <Users className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Beban JP Guru</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={fetchSchedules}
               disabled={loadingData}
               className="p-2 border-slate-200 dark:border-slate-800"
@@ -1184,8 +1228,90 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           onConfirm={confirmState.onConfirm}
           onCancel={confirmState.onCancel}
         />
-      </div>
 
+        {/* Modal Rangkuman Beban Mengajar Guru */}
+        <Modal
+          isOpen={bebanModalOpen}
+          onClose={() => setBebanModalOpen(false)}
+          title="Rangkuman Beban Mengajar Guru (JP)"
+          size="2xl"
+        >
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari nama guru..."
+                value={searchBebanGuru}
+                onChange={(e) => setSearchBebanGuru(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200"
+              />
+            </div>
+
+            <div className="max-h-[400px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+              {loadingBeban ? (
+                <div className="flex items-center justify-center py-12 text-xs text-slate-500">
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin text-indigo-500" />
+                  Memuat data beban mengajar...
+                </div>
+              ) : bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).length > 0 ? (
+                bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).map((b) => {
+                  const percent = Math.min(100, Math.round((b.current_jp / b.max_jp) * 100));
+                  const isExceeded = b.current_jp > b.max_jp;
+                  return (
+                    <div key={b.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{b.nama_guru}</span>
+                          {isExceeded && (
+                            <Badge variant="danger" className="text-[9px] scale-90 uppercase">Kelebihan Beban</Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">NIP: {b.nip || '-'}</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 flex-1 md:justify-end max-w-md w-full">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
+                            <span>Progress JP</span>
+                            <span className={isExceeded ? "text-red-500 font-extrabold" : ""}>{b.current_jp} / {b.max_jp} JP</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full rounded-full transition-all duration-500",
+                                isExceeded ? "bg-red-505 bg-rose-500" : percent > 85 ? "bg-amber-500" : "bg-emerald-500"
+                              )} 
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-3 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
+                          onClick={() => {
+                            setViewMode('GURU');
+                            setSelectedGuruId(b.id);
+                            setBebanModalOpen(false);
+                          }}
+                        >
+                          Lihat Jadwal
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-8 text-center text-xs text-slate-500">
+                  Guru tidak ditemukan.
+                </div>
+              )}
+            </div>
+          </div>
+        </Modal>
+      </div>
     </div>
   );
 };

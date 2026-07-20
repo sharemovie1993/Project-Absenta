@@ -222,5 +222,78 @@ export class StrukturKurikulumService {
       kelas_name: kelasName
     };
   }
+
+  static async getBebanGuruAll(tenantId: string, tahunPelajaranId?: string, semesterId?: string) {
+    const teachers = await prisma.guru.findMany({
+      where: {
+        tenant_id: tenantId,
+        jenis_ptk: 'PENDIDIK'
+      },
+      select: {
+        id: true,
+        nama_guru: true,
+        nip: true,
+        max_jp: true
+      },
+      orderBy: {
+        nama_guru: 'asc'
+      }
+    });
+
+    const activeYear = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    const activeSemester = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: activeYear?.id, is_active: true }
+    });
+
+    const yearId = tahunPelajaranId || activeYear?.id;
+    const semId = semesterId || activeSemester?.id;
+
+    if (!yearId || !semId) {
+      return teachers.map(t => ({
+        id: t.id,
+        nama_guru: t.nama_guru,
+        nip: t.nip,
+        max_jp: t.max_jp ?? 24,
+        current_jp: 0,
+        is_exceeded: false
+      }));
+    }
+
+    const scheduledCounts = await prisma.jadwalKBM.groupBy({
+      by: ['guru_id'],
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: yearId,
+        semester_id: semId,
+        guru_id: { not: null },
+        mapel_id: { not: null }
+      },
+      _count: {
+        _all: true
+      }
+    });
+
+    const countMap = new Map<string, number>();
+    scheduledCounts.forEach(c => {
+      if (c.guru_id) {
+        countMap.set(c.guru_id, c._count._all);
+      }
+    });
+
+    return teachers.map(t => {
+      const currentJp = countMap.get(t.id) || 0;
+      const maxJp = t.max_jp ?? 24;
+      return {
+        id: t.id,
+        nama_guru: t.nama_guru,
+        nip: t.nip,
+        max_jp: maxJp,
+        current_jp: currentJp,
+        is_exceeded: currentJp > maxJp
+      };
+    });
+  }
 }
 
