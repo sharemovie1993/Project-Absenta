@@ -48,6 +48,23 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
 
+  // Helper maps to count teachers sharing the same subject in global or jurusan scope
+  const { globalTeachersPerMapel, jurusanTeachersPerMapel } = useMemo(() => {
+    const gMap = new Map<string, number>();
+    const jMap = new Map<string, number>();
+
+    items.forEach(gm => {
+      if (gm.jurusan_id && !gm.kelas_id) {
+        const key = `${gm.mapel_id}_${gm.jurusan_id}`;
+        jMap.set(key, (jMap.get(key) || 0) + 1);
+      } else if (!gm.kelas_id && !gm.jurusan_id) {
+        gMap.set(gm.mapel_id, (gMap.get(gm.mapel_id) || 0) + 1);
+      }
+    });
+
+    return { globalTeachersPerMapel: gMap, jurusanTeachersPerMapel: jMap };
+  }, [items]);
+
   const teacherTotalJpMap = useMemo(() => {
     const map = new Map<string, number>();
     const totalClassesCount = rawKelasList.length || 1;
@@ -60,16 +77,19 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         targetClassesCount = 1;
       } else if (gm.jurusan_id) {
         const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
-        targetClassesCount = inJurusan.length > 0 ? inJurusan.length : 1;
+        const jurusanClassCount = inJurusan.length > 0 ? inJurusan.length : 1;
+        const teacherCount = jurusanTeachersPerMapel.get(`${gm.mapel_id}_${gm.jurusan_id}`) || 1;
+        targetClassesCount = Math.max(1, Math.round(jurusanClassCount / teacherCount));
       } else {
-        targetClassesCount = totalClassesCount;
+        const teacherCount = globalTeachersPerMapel.get(gm.mapel_id) || 1;
+        targetClassesCount = Math.max(1, Math.round(totalClassesCount / teacherCount));
       }
 
       const totalAssignmentJp = targetClassesCount * jpPerMinggu;
       map.set(gm.guru_id, (map.get(gm.guru_id) || 0) + totalAssignmentJp);
     });
     return map;
-  }, [items, strukturMap, rawKelasList]);
+  }, [items, strukturMap, rawKelasList, globalTeachersPerMapel, jurusanTeachersPerMapel]);
 
   const canManage = useMemo(() => {
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
@@ -348,13 +368,25 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       render: (_: any, gm: GuruMapel) => {
         const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
         let classCount = 1;
+        let shareNote = '';
+
         if (gm.kelas_id) {
           classCount = 1;
         } else if (gm.jurusan_id) {
           const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
-          classCount = inJurusan.length > 0 ? inJurusan.length : 1;
+          const jurusanClassCount = inJurusan.length > 0 ? inJurusan.length : 1;
+          const teacherCount = jurusanTeachersPerMapel.get(`${gm.mapel_id}_${gm.jurusan_id}`) || 1;
+          classCount = Math.max(1, Math.round(jurusanClassCount / teacherCount));
+          if (teacherCount > 1) {
+            shareNote = ` (${jurusanClassCount} rombel ÷ ${teacherCount} guru)`;
+          }
         } else {
-          classCount = rawKelasList.length || 1;
+          const totalClassesCount = rawKelasList.length || 1;
+          const teacherCount = globalTeachersPerMapel.get(gm.mapel_id) || 1;
+          classCount = Math.max(1, Math.round(totalClassesCount / teacherCount));
+          if (teacherCount > 1) {
+            shareNote = ` (${totalClassesCount} rombel ÷ ${teacherCount} guru)`;
+          }
         }
         const totalMapelJp = classCount * jpPerMinggu;
 
@@ -368,7 +400,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
               </span>
             </div>
             <span className="text-[10px] text-slate-400 dark:text-slate-500 pl-6 font-medium">
-              {jpPerMinggu} JP/kelas × {classCount} rombel
+              {jpPerMinggu} JP/kelas × {classCount} rombel{shareNote}
             </span>
           </div>
         );
