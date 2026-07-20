@@ -74,7 +74,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                           title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
                         >
                           <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
-                            {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan, item.Mapel?.kode_mapel)}
+                            {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                           </span>
                           <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate">
                             {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}

@@ -158,7 +158,7 @@ export const SingleGridTimetable: React.FC<Props> = ({
                                         )}
                                         title={item.Mapel?.nama_mapel || item.jenis_kegiatan}
                                       >
-                                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan, item.Mapel?.kode_mapel)}
+                                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan)}
                                       </span>
                                       {item.isForeign ? (
                                         <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">
