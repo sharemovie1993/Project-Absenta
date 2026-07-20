@@ -99,7 +99,7 @@ export default function JadwalPelajaranPage() {
   }, [isSiswa, managedKelasIds, selectedKelasId]);
 
   const features = (subscription as { features?: string[] })?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+  const isLocked = false; // Completely unlocked - free under Kurikulum module
 
   // Pillar 4: AbortController for useEffect cleanup
   React.useEffect(() => {
