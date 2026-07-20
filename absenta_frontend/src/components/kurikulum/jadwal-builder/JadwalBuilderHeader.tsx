@@ -130,6 +130,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
         {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
             <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Hari:</span>
+            <button
+              onClick={() => setMasterGridHari('SEMUA')}
+              className={cn(
+                "px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all flex items-center gap-1",
+                masterGridHari === 'SEMUA' 
+                  ? "bg-purple-600 text-white shadow-sm font-extrabold" 
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              )}
+              title="Tampilkan Seluruh Hari (Senin - Sabtu) Mingguan Kontinu"
+            >
+              📅 SEMUA HARI
+            </button>
             {hariSekolah.map(d => (
               <button
                 key={d}
