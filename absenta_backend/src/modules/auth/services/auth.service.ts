@@ -795,7 +795,8 @@ export class AuthService {
         }
         response.guru_profile = {
           id: guru.id,
-          wali_kelas_di: waliKelasDi
+          wali_kelas_di: waliKelasDi,
+          jenis_ptk: guru.jenis_ptk
         };
       }
     }

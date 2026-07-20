@@ -403,7 +403,7 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
   }
 
   const available: RoleWorkspaceConfig[] = [];
-  if (roleName === 'GURU') {
+  if (roleName === 'GURU' && user?.guru_profile?.jenis_ptk !== 'TENAGA_KEPENDIDIKAN') {
     const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
     if (teacherWs) available.push(teacherWs);
   }

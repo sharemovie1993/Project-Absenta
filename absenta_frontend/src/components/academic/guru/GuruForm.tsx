@@ -77,6 +77,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
       status_kepegawaian: 'PNS',
       status: 'ACTIVE',
       pendidikan_terakhir: 'S1',
+      jenis_ptk: 'PENDIDIK',
       no_hp: '',
       mapel_ids: []
     }
@@ -122,7 +123,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           status: (guru as any).User?.status || 'ACTIVE',
           pendidikan_terakhir: guru.pendidikan_terakhir || 'S1',
           rfid_tag: guru.no_rfid || '',
-          max_jp: (guru as any).max_jp || ''
+          max_jp: (guru as any).max_jp || '',
+          jenis_ptk: guru.jenis_ptk || 'PENDIDIK'
         });
       } catch (error) {
         console.error('Error loading guru data:', error);
@@ -180,7 +182,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           status: data.status,
           pendidikan_terakhir: data.pendidikan_terakhir,
           no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
-          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp)
+          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp),
+          jenis_ptk: data.jenis_ptk
         };
         
         await updateGuru(guruId, updatePayload);
@@ -217,7 +220,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           status_kepegawaian: data.status_kepegawaian,
           pendidikan_terakhir: data.pendidikan_terakhir || 'S1',
           no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
-          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp)
+          max_jp: data.max_jp === '' ? undefined : Number(data.max_jp),
+          jenis_ptk: data.jenis_ptk || 'PENDIDIK'
         };
         
         const created = await createGuru(createPayload);

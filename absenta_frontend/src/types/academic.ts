@@ -20,6 +20,7 @@ export interface Guru {
   agama?: string;
   status_kepegawaian?: 'PNS' | 'HONORER' | 'KONTRAK';
   pendidikan_terakhir?: string;
+  jenis_ptk?: string;
   jabatan?: string;
   wali_kelas_di?: { id: string; nama_kelas: string };
   created_at: Date;

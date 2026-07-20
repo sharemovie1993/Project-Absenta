@@ -17,6 +17,11 @@ interface EmploymentSectionProps {
   statusOptions: any[];
 }
 
+const JENIS_PTK_OPTIONS = [
+  { value: 'PENDIDIK', label: 'Pendidik (Guru)' },
+  { value: 'TENAGA_KEPENDIDIKAN', label: 'Tenaga Kependidikan (TU/Staff)' }
+];
+
 export const EmploymentSection = React.memo<EmploymentSectionProps>(({
   register,
   control,
@@ -31,6 +36,7 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
       <SectionCard title="Status Kepegawaian" icon={Briefcase}>
         <DetailRow icon={<Briefcase size={16} />} label="Hubungan Kerja" value={getLabel(watch('status_kepegawaian'), statusKepegawaianOptions)} />
         <DetailRow icon={<GraduationCap size={16} />} label="Pendidikan" value={getLabel(watch('pendidikan_terakhir'), PENDIDIKAN_OPTIONS)} />
+        <DetailRow icon={<Briefcase size={16} />} label="Jenis PTK" value={getLabel(watch('jenis_ptk'), JENIS_PTK_OPTIONS)} />
         <DetailRow icon={<Activity size={16} />} label="Status Akun" value={getLabel(watch('status'), statusOptions)} />
         <DetailRow icon={<CreditCard size={16} />} label="RFID Tag" value={watch('rfid_tag')} />
         <DetailRow icon={<Briefcase size={16} />} label="Kapasitas JP Mengajar" value={watch('max_jp') ? `${watch('max_jp')} JP` : '24 JP (Default)'} />
@@ -40,6 +46,12 @@ export const EmploymentSection = React.memo<EmploymentSectionProps>(({
 
   return (
     <SectionCard title="Status Kepegawaian" icon={Briefcase}>
+      <div className="space-y-2 group">
+        <Label htmlFor="jenis_ptk" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Jenis PTK (Fungsi Kerja)</Label>
+        <Controller control={control} name="jenis_ptk" render={({ field }) => (
+          <SearchableSelect id="jenis_ptk" value={field.value || 'PENDIDIK'} onValueChange={field.onChange} options={JENIS_PTK_OPTIONS} placeholder="Pilih Jenis..." disabled={isViewMode} triggerClassName="h-10 text-[13px] font-bold bg-slate-50/50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl" />
+        )} />
+      </div>
       <div className="space-y-2 group">
         <Label htmlFor="status_kepegawaian" className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Hubungan Kerja</Label>
         <Controller control={control} name="status_kepegawaian" render={({ field }) => (

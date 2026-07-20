@@ -35,6 +35,7 @@ export interface CreateGuruPayload {
   status_kepegawaian?: 'PNS' | 'HONORER' | 'KONTRAK';
   pendidikan_terakhir?: string;
   max_jp?: number;
+  jenis_ptk?: string;
 }
 
 export interface UpdateGuruPayload {
@@ -52,6 +53,7 @@ export interface UpdateGuruPayload {
   status_kepegawaian?: string;
   pendidikan_terakhir?: string;
   max_jp?: number;
+  jenis_ptk?: string;
 }
 
 // Get Guru List - GET /api/academic/guru
