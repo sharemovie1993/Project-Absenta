@@ -77,7 +77,7 @@ const StudentCardPage = () => {
 
     const tabOptions = useMemo(() => {
         const list = [];
-        if (isAdmin()) {
+        if (canView) {
             list.push({ id: 'design', label: 'Desain Kartu', icon: Layout, colorClass: 'text-blue-600 dark:text-blue-400' });
         }
         if (!isSiswa) {
@@ -85,7 +85,7 @@ const StudentCardPage = () => {
         }
         list.push({ id: 'print', label: 'Preview & Cetak', icon: PrinterIcon, colorClass: 'text-violet-600 dark:text-violet-400' });
         return list;
-    }, [isAdmin, isSiswa]);
+    }, [canView, isSiswa]);
 
     useEffect(() => {
         return () => {

@@ -462,6 +462,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.student.card.update.config',
     'academic.view.student.card',
     'core.sekolah.view.profile',
+    'core.users.view.list',
+    'core.users.view.detail',
+    'core.users.view.roles',
+    'core.users.permissions.view',
+    'core.users.effective.capabilities.view',
   ],
   [STRUKTUR_CODES.TU_PERSURATAN]: [
     'organization.scope.tenant_wide',
@@ -519,6 +524,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.student.card.update.config',
     'academic.view.student.card',
     'core.sekolah.view.profile',
+    'core.users.view.list',
+    'core.users.view.detail',
+    'core.users.view.roles',
+    'core.users.permissions.view',
+    'core.users.effective.capabilities.view',
   ],
   [STRUKTUR_CODES.TU_SARPRAS]: [
     'organization.scope.tenant_wide',
