@@ -466,7 +466,6 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           }
         });
       }
-      // 6. TU Kepegawaian Workspace
       else if (currentWs.id === 'TU_KEPEGAWAIAN_WORKSPACE') {
         allLeafItems.forEach(item => {
           const p = (item.path || '').toLowerCase();
@@ -475,7 +474,10 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             p === '/academic/guru' || 
             p === '/documents/member-docs' || 
             p === '/academic/ppdb-mapping' ||
-            p === '/academic/struktur-organisasi'
+            p === '/academic/struktur-organisasi' ||
+            p === '/academic/transition' ||
+            p === '/academic/siswa-cards' ||
+            p === '/academic/staff-logs'
           ) {
             primaryItems.push(item);
           }
