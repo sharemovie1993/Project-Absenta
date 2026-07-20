@@ -1,4 +1,4 @@
-import { AbsenStatus, AbsensiMode, JenisTap } from '@/constants/enums';
+import { AbsenStatus, JenisTap } from '@/constants/enums';
 import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { emitDomainEvent } from '@/infra/event-bus';
