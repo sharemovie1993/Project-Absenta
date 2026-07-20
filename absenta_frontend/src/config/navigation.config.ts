@@ -301,8 +301,9 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredPositionCode: 'KEPALA_SEKOLAH',
     defaultPath: '/kurikulum/dashboard',
     crossModulePaths: [
-      '/attendance/rekap',
-      '/kesiswaan/pelanggaran'
+      '/hubin/monitoring',
+      '/bpbk/cases',
+      '/sarpras/inventory'
     ]
   }
 ];

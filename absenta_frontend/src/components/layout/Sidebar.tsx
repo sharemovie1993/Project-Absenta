@@ -373,6 +373,27 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         });
       }
 
+      // 4. Dynamic Dashboard Kepsek (Kepala Sekolah Workspace)
+      else if (currentWs.id === 'KEPSEK_WORKSPACE') {
+        mapped.forEach(root => {
+          if (root.children) {
+            root.children.forEach(child => {
+              const cPath = (child.path || '').toLowerCase();
+              if (
+                cPath === '/kurikulum/dashboard' ||
+                cPath === '/attendance/guru-monitoring' ||
+                cPath === '/kurikulum/supervisi' ||
+                cPath === '/attendance/rekap' ||
+                cPath === '/kesiswaan/monitoring' ||
+                cPath === '/kurikulum/perangkat'
+              ) {
+                primaryItems.push(child);
+              }
+            });
+          }
+        });
+      }
+
       if (primaryItems.length === 0) {
         primaryItems = allLeafItems;
       }
