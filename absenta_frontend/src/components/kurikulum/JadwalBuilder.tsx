@@ -32,13 +32,12 @@ import { getMyTenant } from '../../api/tenants.api';
 import { cn } from '../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { Modal } from '../ui/Modal';
-
-interface JadwalBuilderProps {
-  tahunPelajaranId: string;
-  semesterId: string;
-  onRefresh?: () => void;
-}
+import { ViewMode, ToolMode, JadwalBuilderProps } from './jadwal-builder/types';
+import { JadwalBuilderHeader } from './jadwal-builder/JadwalBuilderHeader';
+import { SingleGridTimetable } from './jadwal-builder/SingleGridTimetable';
+import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetable';
+import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
+import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
 const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -959,461 +958,67 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           </Card>
         )}
 
-      </div>
-
       {/* 📅 RIGHT COLUMN: TIMETABLE GRID */}
       <div className="lg:col-span-8 flex flex-col space-y-4">
-        
-        {/* Filter Timetable View */}
-        <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20 !overflow-visible">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-purple-600" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Visual Grid Timetable</h3>
-              <p className="text-xs text-slate-500">Tampilkan jadwal KBM aktif untuk penempatan.</p>
-            </div>
-          </div>
+        {/* Header, Switcher & Filters */}
+        <JadwalBuilderHeader
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          toolMode={toolMode}
+          selectedKelasId={selectedKelasId}
+          setSelectedKelasId={setSelectedKelasId}
+          selectedGuruId={selectedGuruId}
+          setSelectedGuruId={setSelectedGuruId}
+          masterGridHari={masterGridHari}
+          setMasterGridHari={setMasterGridHari}
+          kelasList={kelasList}
+          guruSelectOptions={guruSelectOptions}
+          keKelasSelectOptions={keKelasSelectOptions}
+          hariSekolah={hariSekolah}
+          loadingData={loadingData}
+          onRefreshSchedules={fetchSchedules}
+          onOpenBebanModal={() => setBebanModalOpen(true)}
+        />
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* View Switcher with all 4 aSC TimeTables view modes */}
-            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
-              <button
-                onClick={() => setViewMode('KELAS')}
-                className={cn(
-                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                  viewMode === 'KELAS' 
-                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                )}
-              >
-                🏫 Per Kelas
-              </button>
-              <button
-                onClick={() => setViewMode('GURU')}
-                className={cn(
-                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                  viewMode === 'GURU' 
-                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                )}
-              >
-                👨‍🏫 Per Guru
-              </button>
-              <button
-                onClick={() => setViewMode('MASTER_GURU')}
-                className={cn(
-                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                  viewMode === 'MASTER_GURU' 
-                    ? "bg-purple-600 text-white shadow-sm font-extrabold" 
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                )}
-                title="Tabel Raksasa 2D: Semua Guru vs Jam Pelajaran"
-              >
-                🗺️ Master Grid Guru
-              </button>
-              <button
-                onClick={() => setViewMode('MASTER_KELAS')}
-                className={cn(
-                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
-                  viewMode === 'MASTER_KELAS' 
-                    ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                )}
-                title="Tabel Raksasa 2D: Semua Kelas vs Jam Pelajaran"
-              >
-                📊 Master Grid Kelas
-              </button>
-            </div>
-
-            {/* Dynamic Filter Dropdown / Day Selector */}
-            {viewMode === 'KELAS' && (
-              <SearchableSelect
-                value={selectedKelasId}
-                onValueChange={setSelectedKelasId}
-                options={kelasList}
-                placeholder="Pilih Kelas..."
-                searchPlaceholder="Cari Kelas..."
-                className="w-[180px] md:w-[240px]"
-              />
-            )}
-            {viewMode === 'GURU' && (
-              <SearchableSelect
-                value={selectedGuruId}
-                onValueChange={setSelectedGuruId}
-                options={guruSelectOptions}
-                placeholder="Pilih Guru..."
-                searchPlaceholder="Cari Guru..."
-                className="w-[240px] md:w-[320px]"
-              />
-            )}
-            {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
-              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
-                <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Hari:</span>
-                {hariSekolah.map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setMasterGridHari(d)}
-                    className={cn(
-                      "px-2 py-1 text-[11px] font-extrabold rounded-lg transition-all",
-                      masterGridHari === d 
-                        ? "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm" 
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                    )}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Extra Kelas filter for Guru View to direct painting */}
-            {viewMode === 'GURU' && toolMode === 'PAINT' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-450 font-bold shrink-0">Ke Kelas:</span>
-                <SearchableSelect
-                  value={selectedKelasId}
-                  onValueChange={setSelectedKelasId}
-                  options={keKelasSelectOptions}
-                  placeholder="Pilih Kelas..."
-                  searchPlaceholder="Cari Kelas..."
-                  className="w-[150px] md:w-[180px]"
-                />
-              </div>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setBebanModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-350"
-              title="Statistik Beban Mengajar Guru"
-            >
-              <Users className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Beban JP Guru</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchSchedules}
-              disabled={loadingData}
-              className="p-2 border-slate-200 dark:border-slate-800"
-            >
-              <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", loadingData && "animate-spin")} />
-            </Button>
-             {/* 📅 VIEW MODE 1 & 2: SINGLE CLASS / GURU TIMETABLE GRID */}
+        {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}
         {(viewMode === 'KELAS' || viewMode === 'GURU') && (
-          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-            <div className="min-w-[1000px]">
-              
-              {/* Header Days */}
-              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                <div className="p-3.5 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
-                  JAM / WAKTU
-                </div>
-                {hariSekolah.map(day => (
-                  <div 
-                    key={day} 
-                    className="p-3.5 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
-                  >
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Grid Body */}
-              {loadingData ? (
-                <div className="flex flex-col items-center justify-center py-32 space-y-4">
-                  <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Menghubungkan ke mesin jadwal...</p>
-                </div>
-              ) : (
-                <div className="relative">
-                  {SLOTS.map(slotIndex => {
-                    const slot = resolveSlotTime(selectedKelasId, slotIndex);
-                    
-                    const prevSlotIndex = slotIndex > 1 ? slotIndex - 1 : null;
-                    const prevSlot = prevSlotIndex ? resolveSlotTime(selectedKelasId, prevSlotIndex) : null;
-                    const breakDuration = prevSlot && (() => {
-                      const toMins = (t: string) => {
-                        const [h, m] = t.split(':').map(Number);
-                        return (h || 0) * 60 + (m || 0);
-                      };
-                      const prevEndMins = toMins(prevSlot.end);
-                      const currentStartMins = toMins(slot.start);
-                      return currentStartMins - prevEndMins;
-                    })();
-
-                    return (
-                      <React.Fragment key={slotIndex}>
-                        {breakDuration && breakDuration > 0 && (
-                          <div className="grid border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                            <div className="p-2 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
-                              <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
-                            </div>
-                            <div className="p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
-                              <span className="flex items-center gap-1.5">
-                                ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {slot.start})
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        <div className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                          {/* Time Column */}
-                          <div className="p-3 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 shrink-0">
-                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">JAM {slotIndex}</span>
-                            <span className="text-[9px] text-slate-450 dark:text-slate-550 font-bold">
-                              {slot.start} - {slot.end}
-                            </span>
-                          </div>
-
-                          {/* Days Columns */}
-                          {hariSekolah.map(day => {
-                            const item = getSlotData(day, slotIndex) as any;
-                            const conflict = checkConflict(day, slotIndex, viewMode === 'KELAS' ? selectedKelasId : '');
-                            const active = savingSlot === `${day}-${slotIndex}`;
-
-                            return (
-                              <div 
-                                key={`${day}-${slotIndex}`} 
-                                onClick={() => handleSlotClick(day, slotIndex)}
-                                className={cn(
-                                  "p-2 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[90px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none",
-                                  active && "bg-indigo-50/30 dark:bg-indigo-950/10 ring-1 ring-indigo-500/20 z-10",
-                                  !active && "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
-                                )}
-                              >
-                                {item ? (() => {
-                                  const mapelStyle = getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
-                                  return (
-                                    <div
-                                      className={cn(
-                                        "h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4",
-                                        item.isForeign
-                                          ? "bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed"
-                                          : `${mapelStyle.bg} ${mapelStyle.border}`
-                                      )}
-                                      style={{
-                                        borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex
-                                      }}
-                                    >
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center justify-between gap-1">
-                                          <span className={cn(
-                                            "text-[9px] font-black uppercase tracking-wide truncate",
-                                            item.isForeign ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
-                                          )}>
-                                            {item.Mapel?.nama_mapel || item.jenis_kegiatan}
-                                          </span>
-                                          {item.isForeign ? (
-                                            <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">
-                                              TERISI
-                                            </Badge>
-                                          ) : (
-                                            viewMode === 'GURU' && item.Kelas && (
-                                              <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[8px] font-black shrink-0 px-1 border-none">
-                                                {item.Kelas.nama_kelas}
-                                              </Badge>
-                                            )
-                                          )}
-                                        </div>
-                                        <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-normal truncate">
-                                           {item.isForeign 
-                                             ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}` 
-                                             : (item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)'))}
-                                         </div>
-                                      </div>
-                                      
-                                      {/* Delete Hover Action */}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDeleteSlotAction(day, slotIndex, item.id);
-                                        }}
-                                        className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                        title="Hapus jadwal"
-                                      >
-                                        <Trash2 size={10} />
-                                      </button>
-                                    </div>
-                                  );
-                                })() : (
-                                  <div className="h-full w-full flex items-center justify-center">
-                                    {toolMode === 'PAINT' && conflict ? (
-                                      <div className={cn(
-                                        "flex flex-col items-center justify-center p-2 rounded-2xl border text-center transition-all w-full h-full",
-                                        conflict.type === 'TEACHER'
-                                          ? "bg-rose-50/30 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-900/20 text-rose-600 dark:text-rose-450"
-                                          : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/20 text-amber-600 dark:text-amber-450"
-                                      )}>
-                                        <AlertTriangle className="w-4 h-4" />
-                                        <span className="text-[8px] font-black uppercase tracking-wider mt-0.5 leading-tight">
-                                          {conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA KBM'}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
-                                        <Plus size={12} className="stroke-[2.5]" />
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              )}
-
-            </div>
-          </div>
+          <SingleGridTimetable
+            viewMode={viewMode}
+            toolMode={toolMode}
+            selectedKelasId={selectedKelasId}
+            hariSekolah={hariSekolah}
+            slots={SLOTS}
+            loadingData={loadingData}
+            savingSlot={savingSlot}
+            resolveSlotTime={resolveSlotTime}
+            getSlotData={getSlotData}
+            checkConflict={checkConflict}
+            onSlotClick={handleSlotClick}
+            onDeleteSlot={handleDeleteSlotAction}
+          />
         )}
 
-        {/* 🗺️ VIEW MODE 3: MASTER GRID GURU MATRIX VIEW */}
+        {/* Mode 3: Master Grid Guru (Semua Guru vs Jam + Conflict Highlight) */}
         {viewMode === 'MASTER_GURU' && (
-          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-            <div className="min-w-[1200px]">
-              {/* Table Header */}
-              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-purple-50/50 dark:bg-purple-950/20" style={{ gridTemplateColumns: `220px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
-                <div className="p-3 border-r border-slate-200 dark:border-slate-800 font-black text-purple-900 dark:text-purple-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-purple-600" />
-                  NAMA GURU / JAM ({masterGridHari})
-                </div>
-                {SLOTS.map(slotIdx => (
-                  <div key={slotIdx} className="p-2.5 font-black text-slate-700 dark:text-slate-300 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 uppercase">
-                    JAM {slotIdx}
-                  </div>
-                ))}
-              </div>
-
-              {/* Rows per Teacher */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {guruList.map(guru => {
-                  return (
-                    <div key={guru.id} className="grid hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors" style={{ gridTemplateColumns: `220px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
-                      {/* Teacher Name Column */}
-                      <div className="p-2.5 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center">
-                        <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate" title={guru.nama_guru}>
-                          {guru.nama_guru}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-medium">NIP: {guru.nip || '-'}</span>
-                      </div>
-
-                      {/* Slot Cells */}
-                      {SLOTS.map(slotIdx => {
-                        const teacherSlots = allJadwal.filter(j => 
-                          j.guru_id === guru.id && 
-                          j.hari === masterGridHari && 
-                          j.slot_index === slotIdx
-                        );
-                        const isConflict = teacherSlots.length > 1;
-                        const item = teacherSlots[0];
-                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
-
-                        return (
-                          <div key={slotIdx} className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center">
-                            {isConflict ? (
-                              <span className="inline-flex items-center px-1.5 py-1 rounded text-[9px] font-black bg-rose-500 text-white animate-pulse shadow-sm text-center leading-tight" title={`BENTROK! Guru mengajar di ${teacherSlots.length} kelas sekaligus di Jam ${slotIdx}`}>
-                                🚨 BENTROK ({teacherSlots.length} Kelas)
-                              </span>
-                            ) : item ? (
-                              <div
-                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
-                                style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
-                              >
-                                <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
-                                  {item.Kelas?.nama_kelas}
-                                </span>
-                                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 truncate">
-                                  {item.Mapel?.nama_mapel}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <MasterGridGuruTimetable
+            guruList={guruList}
+            allJadwal={allJadwal}
+            masterGridHari={masterGridHari}
+            slots={SLOTS}
+          />
         )}
 
-        {/* 📊 VIEW MODE 4: MASTER GRID KELAS MATRIX VIEW */}
+        {/* Mode 4: Master Grid Kelas (Semua Kelas vs Jam) */}
         {viewMode === 'MASTER_KELAS' && (
-          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-            <div className="min-w-[1200px]">
-              {/* Table Header */}
-              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-indigo-50/50 dark:bg-indigo-950/20" style={{ gridTemplateColumns: `180px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
-                <div className="p-3 border-r border-slate-200 dark:border-slate-800 font-black text-indigo-900 dark:text-indigo-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-indigo-600" />
-                  KELAS / JAM ({masterGridHari})
-                </div>
-                {SLOTS.map(slotIdx => (
-                  <div key={slotIdx} className="p-2.5 font-black text-slate-700 dark:text-slate-300 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 uppercase">
-                    JAM {slotIdx}
-                  </div>
-                ))}
-              </div>
-
-              {/* Rows per Class */}
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {kelasList.map(kelas => {
-                  return (
-                    <div key={kelas.value} className="grid hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors" style={{ gridTemplateColumns: `180px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
-                      {/* Class Name Column */}
-                      <div className="p-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center">
-                        <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 truncate">
-                          {kelas.label}
-                        </span>
-                      </div>
-
-                      {/* Slot Cells */}
-                      {SLOTS.map(slotIdx => {
-                        const item = allJadwal.find(j => 
-                          j.kelas_id === kelas.value && 
-                          j.hari === masterGridHari && 
-                          j.slot_index === slotIdx
-                        );
-                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
-
-                        return (
-                          <div key={slotIdx} className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center">
-                            {item ? (
-                              <div
-                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
-                                style={{ borderLeftColor: mapelStyle?.dotHex }}
-                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
-                              >
-                                <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate">
-                                  {item.Mapel?.nama_mapel || item.jenis_kegiatan}
-                                </span>
-                                <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate">
-                                  {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <MasterGridKelasTimetable
+            kelasList={kelasList}
+            allJadwal={allJadwal}
+            masterGridHari={masterGridHari}
+            slots={SLOTS}
+          />
         )}
 
-        {/* Premium Confirm Dialog for Overwriting conflicts */}
+        {/* Confirm Dialog */}
         <ConfirmDialog
           isOpen={confirmState.isOpen}
           title={confirmState.title}
@@ -1425,100 +1030,18 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           onCancel={confirmState.onCancel}
         />
 
-        {/* Modal Rangkuman Beban Mengajar Guru */}
-        <Modal
+        {/* Modal Beban Mengajar Guru */}
+        <BebanGuruSummaryModal
           isOpen={bebanModalOpen}
           onClose={() => setBebanModalOpen(false)}
-          title="Rangkuman Beban Mengajar Guru (JP)"
-          size="2xl"
-        >
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <Search className="w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama guru..."
-                value={searchBebanGuru}
-                onChange={(e) => setSearchBebanGuru(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-800 dark:text-slate-200"
-              />
-            </div>
-
-            <div className="max-h-[400px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-              {loadingBeban ? (
-                <div className="flex items-center justify-center py-12 text-xs text-slate-500">
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin text-indigo-500" />
-                  Memuat data beban mengajar...
-                </div>
-              ) : bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).length > 0 ? (
-                bebanGuruList.filter(b => b.nama_guru.toLowerCase().includes(searchBebanGuru.toLowerCase())).map((b) => {
-                  const totalCalculatedJp = b.total_calculated_jp ?? b.current_jp ?? 0;
-                  const currentKbmJp = b.current_jp ?? 0;
-                  const positionJp = b.ekuivalen_position_jp ?? 0;
-                  const maxJp = b.max_jp ?? 24;
-
-                  const percent = Math.min(100, Math.round((totalCalculatedJp / maxJp) * 100));
-                  const isExceeded = totalCalculatedJp > maxJp;
-                  const activePositions = b.positions || [];
-
-                  return (
-                    <div key={b.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 dark:text-slate-200">{b.nama_guru}</span>
-                          {activePositions.map((pos: any, idx: number) => (
-                            <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                              🔰 {pos.name} (+{pos.ekuivalen_jp} JP)
-                            </span>
-                          ))}
-                          {isExceeded && (
-                            <Badge variant="danger" className="text-[9px] scale-90 uppercase">Kelebihan Beban</Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">NIP: {b.nip || '-'}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 flex-1 md:justify-end max-w-md w-full">
-                        <div className="flex-1 space-y-1">
-                          <div className="flex justify-between text-[10px] font-bold text-slate-500">
-                            <span>Progress JP {positionJp > 0 ? `(KBM: ${currentKbmJp} + Jabatan: ${positionJp})` : ''}</span>
-                            <span className={isExceeded ? "text-red-500 font-extrabold" : ""}>{totalCalculatedJp} / {maxJp} JP</span>
-                          </div>
-                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full rounded-full transition-all duration-500",
-                                isExceeded ? "bg-rose-500" : percent === 100 ? "bg-emerald-500" : "bg-amber-500"
-                              )} 
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-3 rounded-lg text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-                          onClick={() => {
-                            setViewMode('GURU');
-                            setSelectedGuruId(b.id);
-                            setBebanModalOpen(false);
-                          }}
-                        >
-                          Lihat Jadwal
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-8 text-center text-xs text-slate-500">
-                  Guru tidak ditemukan.
-                </div>
-              )}
-            </div>
-          </div>
-        </Modal>
+          loadingBeban={loadingBeban}
+          bebanGuruList={bebanGuruList}
+          onSelectTeacherForSchedule={(guruId) => {
+            setViewMode('GURU');
+            setSelectedGuruId(guruId);
+            setBebanModalOpen(false);
+          }}
+        />
       </div>
     </div>
   </>
