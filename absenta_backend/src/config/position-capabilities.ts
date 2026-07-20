@@ -250,13 +250,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.subjects.view.list',        // Dropdown Mapel saat buat jadwal
     'academic.structures.view.list',      // Dropdown Kelas saat buat jadwal
     'academic.teaching.view',
-    // ─── Template Jadwal (CRUD penuh) ────────────────────────────────
+    // ─── Template Jadwal (Read Only) ────────────────────────────────
     'attendance.schedules.view.list',
-    'attendance.schedules.manage',
-    'attendance.schedules.create',
-    'attendance.schedules.update',
-    'attendance.schedules.delete',
-    // ─── Sesi Absensi (CRUD penuh) ───────────────────────────────────
+    // ─── Sesi Absensi Operasional HP Petugas Kelas ───────────────────
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
     'attendance.sessions.create',
@@ -266,10 +262,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update.attendance', // Koreksi status kehadiran
     'attendance.sessions.tap',            // Scan siswa
     'attendance.sessions.update.journal', // Isi jurnal KBM
-    // ─── Kejadian Khusus (libur/kegiatan) ───────────────────────────
+    // ─── Kejadian Khusus (Read Only) ────────────────────────────────
     'attendance.events.view.list',        // Lihat daftar kejadian khusus
-    'attendance.events.create',           // Catat hari libur/kegiatan
-    'attendance.events.delete',           // Hapus kejadian khusus
     // ─── Notifikasi & Laporan ────────────────────────────────────────
     'attendance.notifications.send',      // Kirim notif WA saat sesi dibuat
     'attendance.reports.view',            // Lihat feed & rekap
