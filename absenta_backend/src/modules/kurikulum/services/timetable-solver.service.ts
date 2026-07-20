@@ -200,6 +200,9 @@ export class TimetableSolverService {
     const maxSlotsPerDay = 10;
     let totalCardsCount = 0;
 
+    // Track teacher assigned JP count per jurusan for Major Focus strategy
+    const teacherJurusanJp = new Map<string, number>();
+
     for (const deck of decks) {
       totalCardsCount += deck.total_jp;
 
@@ -208,7 +211,19 @@ export class TimetableSolverService {
       let assignedTeacherName = 'Belum Ada Guru';
 
       if (deck.eligible_teacher_ids.length > 0) {
+        const deckClass = targetClasses.find(c => c.id === deck.kelas_id);
+        const currentJurusanId = deckClass?.jurusan_id || 'GENERAL';
+
         const sortedTeachers = [...deck.eligible_teacher_ids].sort((t1, t2) => {
+          // 1. Major Focus: Prioritize teachers who ALREADY teach in this same jurusan
+          const jJp1 = teacherJurusanJp.get(`${t1}_${currentJurusanId}`) || 0;
+          const jJp2 = teacherJurusanJp.get(`${t2}_${currentJurusanId}`) || 0;
+
+          if (jJp1 !== jJp2) {
+            return jJp2 - jJp1; // Higher assigned JP in this jurusan comes first!
+          }
+
+          // 2. Secondary: Lowest total workload across all jurusans
           const load1 = teacherJpCount.get(t1) || 0;
           const load2 = teacherJpCount.get(t2) || 0;
           return load1 - load2;
@@ -292,6 +307,11 @@ export class TimetableSolverService {
                   const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
                   teacherOccupied.set(teacherKey, true);
                   teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
+
+                  const deckClass = targetClasses.find(c => c.id === deck.kelas_id);
+                  const currentJurusanId = deckClass?.jurusan_id || 'GENERAL';
+                  const jKey = `${assignedTeacherId}_${currentJurusanId}`;
+                  teacherJurusanJp.set(jKey, (teacherJurusanJp.get(jKey) || 0) + 1);
                 }
 
                 const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
@@ -341,6 +361,11 @@ export class TimetableSolverService {
                 const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
                 teacherOccupied.set(teacherKey, true);
                 teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
+
+                const deckClass = targetClasses.find(c => c.id === deck.kelas_id);
+                const currentJurusanId = deckClass?.jurusan_id || 'GENERAL';
+                const jKey = `${assignedTeacherId}_${currentJurusanId}`;
+                teacherJurusanJp.set(jKey, (teacherJurusanJp.get(jKey) || 0) + 1);
               }
 
               const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
