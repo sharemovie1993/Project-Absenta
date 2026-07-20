@@ -300,26 +300,36 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     },
     {
       key: 'BebanJP',
-      label: 'Beban JP',
+      label: 'Beban JP Guru',
       render: (_: any, gm: GuruMapel) => {
         const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
         const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || jpPerMinggu;
         const maxJp = (gm.Guru as any)?.max_jp || 24;
-        const isOverload = totalGuruJp > maxJp;
+
+        let statusBg = 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
+        let statusLabel = `Kurang (${totalGuruJp}/${maxJp} JP)`;
+
+        if (totalGuruJp === maxJp) {
+          statusBg = 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
+          statusLabel = `Sesuai (${totalGuruJp}/${maxJp} JP)`;
+        } else if (totalGuruJp > maxJp) {
+          statusBg = 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
+          statusLabel = `Lebih (${totalGuruJp}/${maxJp} JP)`;
+        }
 
         return (
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                <Clock className="w-3 h-3 mr-1 text-emerald-500" />
-                {jpPerMinggu} JP / ming
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                <Clock className="w-3 h-3 mr-1 text-slate-500" />
+                Mapel: {jpPerMinggu} JP
               </span>
             </div>
-            <span className={`text-[10px] font-extrabold ${
-              isOverload ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'
-            }`}>
-              Total Guru: {totalGuruJp}/{maxJp} JP {isOverload ? '⚠️ (Overload)' : ''}
-            </span>
+            <div>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${statusBg}`}>
+                {statusLabel}
+              </span>
+            </div>
           </div>
         );
       }
