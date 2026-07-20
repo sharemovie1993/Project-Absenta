@@ -186,12 +186,35 @@ export function getMapelAbbreviation(mapelName: string = ''): string {
   if (nameLower.includes('informatika') || nameLower.includes('simdig') || nameLower.includes('tik')) return 'INFORMATIKA';
   if (nameLower.includes('bimbingan') || nameLower.includes('konseling') || nameLower.includes('bk')) return 'BK';
 
-  // Common Vocational Subject Patterns
-  if (nameLower.includes('pemrograman web')) return 'PEMROG. WEB';
-  if (nameLower.includes('basis data')) return 'BASIS DATA';
-  if (nameLower.includes('jaringan')) return 'ADM. JARINGAN';
+  // 🎯 Mata Pelajaran Jurusan / Produktif SMK (Standar Singkatan Kejuruan)
+  if (nameLower.includes('dasar-dasar program keahlian') || nameLower.includes('dasar dasar program keahlian')) return 'DDPK';
+  if (nameLower.includes('dasar-dasar teknik otomotif') || nameLower.includes('dasar dasar teknik otomotif')) return 'DDTO';
+  if (nameLower.includes('dasar-dasar teknik komputer') || nameLower.includes('dasar dasar teknik komputer')) return 'DDTKI';
+  if (nameLower.includes('dasar-dasar akuntansi') || nameLower.includes('dasar dasar akuntansi')) return 'DDAKL';
+  if (nameLower.includes('pemrograman web')) return 'PWPB';
   if (nameLower.includes('pemrograman berorientasi objek') || nameLower.includes('pbo')) return 'PBO';
-  if (nameLower.includes('desain grafis') || nameLower.includes('dkv')) return 'DKV / GRAPHIC';
+  if (nameLower.includes('administrasi infrastruktur jaringan')) return 'AIJ';
+  if (nameLower.includes('administrasi sistem jaringan') || nameLower.includes('administrasi server')) return 'ASJ';
+  if (nameLower.includes('teknologi jaringan berbasis luas') || nameLower.includes('tjbl')) return 'TJBL';
+  if (nameLower.includes('produk kreatif') || nameLower.includes('kewirausahaan')) return 'PKKWU';
+  if (nameLower.includes('simulasi dan komunikasi digital') || nameLower.includes('simdig')) return 'SIMDIG';
+  if (nameLower.includes('sistem komputer')) return 'SISKOM';
+  if (nameLower.includes('komputer dan jaringan dasar')) return 'KJD';
+  if (nameLower.includes('pemodelan perangkat lunak')) return 'PPL';
+  if (nameLower.includes('basis data')) return 'BASDAT';
+  if (nameLower.includes('desain grafis') || nameLower.includes('dkv')) return 'DKV';
+
+  // Dynamic Acronym Rule for any "Dasar-Dasar ..." Vocational subject (e.g. Dasar-Dasar Pemasaran -> DDP)
+  if (nameLower.startsWith('dasar-dasar') || nameLower.startsWith('dasar dasar')) {
+    const cleanWords = trimmed
+      .replace(/dasar-dasar/gi, 'Dasar Dasar')
+      .split(/\s+/)
+      .filter(w => !['dan', 'atau', 'pada', 'untuk', 'di', 'ke', 'dari'].includes(w.toLowerCase()));
+    const acronym = cleanWords.map(w => w[0]?.toUpperCase() || '').join('');
+    if (acronym.length >= 3 && acronym.length <= 6) {
+      return acronym;
+    }
+  }
 
   // If short enough (<= 16 chars), return full name directly!
   if (trimmed.length <= 16) {
