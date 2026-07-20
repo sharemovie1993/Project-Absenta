@@ -91,7 +91,7 @@ export class TimetableSolverService {
         max_jp: true,
         User: {
           select: {
-            organizationalAssigns: {
+            organizationalAssignments: {
               where: { is_active: true },
               select: {
                 Position: {
@@ -105,8 +105,8 @@ export class TimetableSolverService {
     });
 
     const teacherMap = new Map<string, any>();
-    teachers.forEach(t => {
-      const posEquiv = (t.User?.organizationalAssigns || []).reduce((acc, oa) => {
+    teachers.forEach((t: any) => {
+      const posEquiv = (t.User?.organizationalAssignments || []).reduce((acc: number, oa: any) => {
         return acc + calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
       }, 0);
 

@@ -262,7 +262,7 @@ export class StrukturKurikulumService {
         user_id: true,
         User: {
           select: {
-            organizationalAssigns: {
+            organizationalAssignments: {
               where: { is_active: true },
               select: {
                 Position: {
@@ -316,11 +316,11 @@ export class StrukturKurikulumService {
       });
     }
 
-    return teachers.map(t => {
+    return teachers.map((t: any) => {
       const currentKbmJp = countMap.get(t.id) || 0;
       const maxJp = t.max_jp ?? 24;
 
-      const positions = (t.User?.organizationalAssigns || []).map(oa => {
+      const positions = (t.User?.organizationalAssignments || []).map((oa: any) => {
         const eqJp = calculatePositionEquivalency(oa.Position?.code, oa.Position?.name);
         return {
           id: oa.Position?.id,
@@ -328,9 +328,9 @@ export class StrukturKurikulumService {
           name: oa.Position?.name,
           ekuivalen_jp: eqJp
         };
-      }).filter(p => p.ekuivalen_jp > 0);
+      }).filter((p: any) => p.ekuivalen_jp > 0);
 
-      const ekuivalenPositionJp = positions.reduce((acc, p) => acc + p.ekuivalen_jp, 0);
+      const ekuivalenPositionJp = positions.reduce((acc: number, p: any) => acc + p.ekuivalen_jp, 0);
       const totalCalculatedJp = currentKbmJp + ekuivalenPositionJp;
 
       return {
