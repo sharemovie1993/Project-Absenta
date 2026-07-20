@@ -478,11 +478,11 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
     
     // Find which root item contains the current path
     const activeRoot = nav.find(root => {
-      if (root.path.split('?')[0] === currentPath) return true;
+      if (root.path && root.path.split('?')[0] === currentPath) return true;
       if (root.children) {
         const checkChildren = (items: NavItem[]): boolean => {
           return items.some(child => {
-            if (child.path.split('?')[0] === currentPath) return true;
+            if (child.path && child.path.split('?')[0] === currentPath) return true;
             if (child.children) return checkChildren(child.children);
             return false;
           });
@@ -492,7 +492,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       return false;
     });
 
-    if (activeRoot && activeRoot.children && !openSubmenus.includes(activeRoot.path)) {
+    if (activeRoot && activeRoot.path && activeRoot.children && !openSubmenus.includes(activeRoot.path)) {
       setOpenSubmenus(prev => [...prev, activeRoot.path]);
     }
   }, [location.pathname, menuTree]);
@@ -534,14 +534,15 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         );
       }
 
+      const itemPath = item.path || '';
       const currentPath = `${location.pathname}${location.search || ''}`;
-      const isActive = currentPath === item.path || location.pathname === item.path;
+      const isActive = currentPath === itemPath || location.pathname === itemPath;
       const hasChildren = item.children && item.children.length > 0;
-      const isSubmenuOpenState = isSubmenuOpen(item.path);
+      const isSubmenuOpenState = isSubmenuOpen(itemPath);
       const hasActiveChild = hasChildren && item.children && isChildActive(item.children);
       const Icon = item.icon;
       const isNonActiveBlocked = ['PENDING_PAYMENT','SUSPENDED','CANCELLED'].includes(String(subscription?.status || '')) && (user?.role?.name !== 'SUPERADMIN');
-      const isAllowedPath = item.path.startsWith('/billing') || item.path.startsWith('/services') || item.path === '/reports' || item.path === '/settings';
+      const isAllowedPath = itemPath.startsWith('/billing') || itemPath.startsWith('/services') || itemPath === '/reports' || itemPath === '/settings';
       const isDisabled = isNonActiveBlocked && !isAllowedPath;
       const isLocked = item.locked;
       const featureState = item.feature_state;
