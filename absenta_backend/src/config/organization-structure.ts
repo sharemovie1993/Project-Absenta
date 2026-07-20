@@ -88,7 +88,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_PERSURATAN, 
-    nama: 'Staf Persuratan & Arsip', 
+    nama: 'Staf Persuratan', 
     scope: 'admin', 
     scope_type: 'global',
     deskripsi: 'Mengelola surat masuk/keluar dan pengarsipan digital',
@@ -96,7 +96,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_KEUANGAN, 
-    nama: 'Staf Keuangan & SPP', 
+    nama: 'Staf Keuangan', 
     scope: 'admin', 
     scope_type: 'global',
     deskripsi: 'Mengelola tagihan SPP, kwitansi, dan pembayaran sekolah',
@@ -104,7 +104,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_KEPEGAWAIAN, 
-    nama: 'Staf Kepegawaian & Dapodik', 
+    nama: 'Staf Kepegawaian', 
     scope: 'admin', 
     scope_type: 'global',
     deskripsi: 'Mengelola data induk siswa (NISN), guru/staf (NUPTK/NIP)',
@@ -112,7 +112,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_SARPRAS, 
-    nama: 'Staf Inventaris & Logistik', 
+    nama: 'Staf Inventaris', 
     scope: 'admin', 
     scope_type: 'global',
     deskripsi: 'Mengelola pengarsipan aset, inventaris barang, dan logistik instansi',
