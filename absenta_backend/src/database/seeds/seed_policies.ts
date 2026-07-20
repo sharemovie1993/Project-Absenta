@@ -557,7 +557,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id === 'dashboard.view.hubin' ||
         id === 'organization.scope.teaching_restricted' ||
         id.startsWith('cooperative.tickets.') ||
-        id.startsWith('bk.cases.') ||
+        id.startsWith('bk.') ||
         // Cooperative member capabilities — GURU anggota koperasi membutuhkan akses
         // ke fitur ini namun capabilities-nya berdomain ORGANIZATIONAL sehingga
         // perlu di-whitelist di sini agar seed tidak gagal.
