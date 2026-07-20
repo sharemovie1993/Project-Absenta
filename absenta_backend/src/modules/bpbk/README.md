@@ -38,3 +38,13 @@ Modul BPBK adalah sistem manajemen bimbingan konseling komprehensif yang diranca
 - **Pattern**: Service Layer, Helper Visibility Filter, Activity Logging (Audit Trail).
 - **Security**: Capability-based Access Control (CBAC), Secure Public View Tokens for official documents.
 - **Integrasi**: `parentNotificationService` (Parent App), `SuratKeluarService` (Correspondence), `WhatsAppService` (Notifications).
+
+## Integrasi Lintas Modul & Ruang Kerja (Cross-Workspace)
+Untuk mendukung sinergi manajemen pembelajaran (KBM), pembinaan siswa, dan Kurikulum Merdeka, beberapa halaman BPBK diintegrasikan ke ruang kerja lain:
+1. **Ruang Kerja Kurikulum (Wakasek Kurikulum)**:
+   - **Monitoring Kasus Pembelajaran** (`/bpbk/cases` via `bk.cases.view.list`): Untuk memantau hambatan belajar siswa yang kritis.
+   - **Asesmen & Pemetaan Minat Siswa** (`/bpbk/asesmen` via `bk.assessment.view.list`): Untuk memetakan gaya belajar (Visual/Auditori/Kinestetik) dan pemilihan mapel pilihan.
+2. **Ruang Kerja Guru (Staf Pengajar)**:
+   - **Rujukan Kasus BK** (`/bpbk/rujukan` via `bk.referrals.view.list` & `bk.referrals.manage`): Untuk merujuk/melimpahkan penanganan masalah siswa di kelas ke guru BK.
+   - **Asesmen & Pemetaan Minat Siswa** (`/bpbk/asesmen` via `bk.assessment.view.list`): Sebagai acuan merancang Pembelajaran Berdiferensiasi di kelas.
+

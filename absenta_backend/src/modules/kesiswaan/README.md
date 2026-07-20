@@ -51,3 +51,9 @@ Modul Kesiswaan pada platform Absenta.id berfokus pada manajemen kedisiplinan, p
   - `Academic Module`: Untuk resolusi ID akademik dan data kelas.
   - `Infra Event Bus`: Menangani event `tenant.created` untuk otomasi seeding.
 - **Database**: Prisma ORM dengan PostgreSQL, menggunakan indexing pada `tenant_id` dan `siswa_id`.
+
+## Integrasi Lintas Modul & Ruang Kerja (Cross-Workspace)
+Untuk menyelaraskan program kesiswaan dengan KBM dan pembina kegiatan, menu **Jadwal Kegiatan** (`/kesiswaan/jadwal-kegiatan` via `kesiswaan.schedules.view.list`) diintegrasikan ke ruang kerja lain:
+1. **Ruang Kerja Kurikulum (Wakasek Kurikulum)**: Untuk memantau agenda sekolah dan ekstrakurikuler agar tidak bentrok dengan jam belajar mengajar.
+2. **Ruang Kerja Guru (Staf Pengajar)**: Untuk memantau jadwal pembinaan ekstrakurikuler yang mereka ampu serta jadwal upacara/apel sekolah.
+

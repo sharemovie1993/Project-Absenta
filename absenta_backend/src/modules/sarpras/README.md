@@ -36,3 +36,14 @@ Modul Sarpras adalah sistem manajemen aset dan inventaris sekolah yang komprehen
 - **Pattern**: Service Layer, Transactional Guard, Scoped Querying.
 - **Security**: Unit-Restricted Access (Jurisdictional Scope), Ownership Validation.
 - **Integrasi**: `Academic Module` (Identity Resolution), `Activity Module` (Audit Logging).
+
+## Pembedaan Kontekstual Lintas Workspace (Kurikulum vs Guru)
+Halaman Peminjaman (`/sarpras/loans`) diintegrasikan secara dinamis berdasarkan Ruang Kerja aktif:
+1. **Ruang Kerja Guru ("Peminjaman Saya")**:
+   - Diperuntukkan secara personal bagi Guru yang sedang login.
+   - Hanya menampilkan daftar aset yang dipinjam guru tersebut dan tombol untuk melakukan pengajuan peminjaman aset pribadi.
+2. **Ruang Kerja Kurikulum ("Kelola Peminjaman Aset KBM")**:
+   - Wakasek Kurikulum bertindak sebagai operator/admin inventaris sarana KBM (Infocus, Tablet, Laptop, HDMI, dsb.).
+   - Menyediakan fitur scan barcode untuk serah terima/pengembalian aset secara cepat.
+   - Menerapkan **Isolasi Aset KBM**: menyaring daftar transaksi & aset secara otomatis hanya untuk kategori pembelajaran/elektronik.
+

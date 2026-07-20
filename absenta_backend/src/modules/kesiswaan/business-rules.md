@@ -40,5 +40,5 @@
   - **KESISWAAN (Wakasek Kesiswaan)**: Full CRUD (`kesiswaan.schedules.create`, `.update`, `.delete`, `.view.list`).
   - **PEMBINA_ESKUL**: Read-only (`kesiswaan.schedules.view.list`).
   - **WALIKELAS**: Read-only (`kesiswaan.schedules.view.list`).
-  - **GURU & SISWA**: Read-only baseline (`kesiswaan.schedules.view.list`).
+  - **GURU, KURIKULUM & SISWA**: Read-only baseline (`kesiswaan.schedules.view.list`).
 - **Auto-Session Integration**: Jadwal kegiatan yang dibuat melalui modul ini tetap menggunakan `attendanceAutoSession.job.ts` di Attendance Engine untuk pembuatan sesi absensi otomatis harian.

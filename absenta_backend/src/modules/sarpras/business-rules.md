@@ -28,3 +28,11 @@
 ### 5. Audit & Keuangan
 - **Audit Logging**: Setiap aksi `CREATE`, `UPDATE`, `DELETE`, `IMPORT`, `LOAN`, dan `REPAIR` wajib mencatat log kejadian lengkap dengan metadata perubahan untuk keperluan audit.
 - **Financial Precision**: Data harga perolehan aset dan biaya perbaikan disimpan menggunakan tipe data `Decimal` untuk menjamin akurasi perhitungan finansial inventaris.
+
+### 6. Isolasi Aset & Akses Peminjaman KBM
+- **KBM Asset Isolation (Kurikulum Workspace)**: Transaksi peminjaman yang diakses melalui ruang kurikulum wajib diisolasi secara ketat hanya menampilkan kategori aset pembelajaran/elektronik (seperti *Infocus, Tablet, Laptop, Kabel HDMI*) untuk menunjang KBM, serta menyembunyikan aset non-KBM (seperti *kendaraan, peralatan olahraga*).
+- **Personal Isolation (Guru Workspace)**: Riwayat peminjaman wajib difilter hanya menampilkan data milik guru yang bersangkutan saat dibuka dari Ruang Kerja Guru.
+- **Role Permissions**:
+  - **GURU**: Memiliki izin baseline `sarpras.loans.view.list` & `sarpras.loans.request` (untuk meminjam secara mandiri).
+  - **KURIKULUM**: Memiliki izin operator penuh `sarpras.loans.manage` untuk menyetujui, menolak, dan melakukan pemindaian barcode pengembalian aset KBM.
+

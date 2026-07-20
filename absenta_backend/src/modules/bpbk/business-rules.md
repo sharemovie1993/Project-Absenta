@@ -37,3 +37,12 @@
 ### 5. Pelaporan & Statistik
 - **Resolution Metrics**: Kecepatan penyelesaian kasus dihitung dari selisih `tanggal_kasus` hingga `closed_at`.
 - **Jurusan/Kelas Distribution**: Analitik risiko dikelompokkan berdasarkan unit organisasi untuk memetakan area intervensi prioritas bagi tim BK.
+
+### 6. Hak Akses Lintas Workspace (Kurikulum & Guru)
+- **KURIKULUM**:
+  - Diberikan izin memantau kasus belajar lewat capability `bk.cases.view.list` (Monitoring Kasus Pembelajaran) & `bk.cases.view.detail`.
+  - Diberikan izin mengunduh/menganalisis hasil tes lewat capability `bk.assessment.view.list` (Asesmen & Pemetaan Minat Siswa).
+- **GURU**:
+  - Diberikan izin melihat profil gaya belajar siswa lewat capability `bk.assessment.view.list`.
+  - Diberikan izin penuh membuat rujukan penanganan kasus siswa lewat capability `bk.referrals.manage` & `bk.referrals.view.list` (Rujukan Kasus).
+
