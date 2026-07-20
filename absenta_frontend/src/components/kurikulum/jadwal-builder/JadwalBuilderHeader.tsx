@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, SearchableSelect } from '../../ui';
-import { Calendar, Users, RefreshCw } from 'lucide-react';
+import { Calendar, Users, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
@@ -21,7 +21,8 @@ interface Props {
   hariSekolah: string[];
   loadingData: boolean;
   onRefreshSchedules: () => void;
-  onOpenBebanModal: () => void;
+  isFocusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -41,6 +42,8 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   loadingData,
   onRefreshSchedules,
   onOpenBebanModal,
+  isFocusMode = false,
+  onToggleFocusMode,
 }) => {
   return (
     <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20 !overflow-visible">
@@ -169,6 +172,24 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           <Users className="w-3.5 h-3.5 text-indigo-500" />
           <span>Beban JP Guru</span>
         </Button>
+
+        {onToggleFocusMode && (
+          <Button
+            variant={isFocusMode ? "primary" : "outline"}
+            size="sm"
+            onClick={onToggleFocusMode}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all",
+              isFocusMode
+                ? "bg-purple-600 text-white shadow-md border-none font-extrabold"
+                : "border-purple-200 dark:border-purple-800/60 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+            )}
+            title={isFocusMode ? "Keluar dari Mode Fokus Layar Penuh (Esc)" : "Masuk ke Mode Fokus Layar Penuh Bebas Gangguan"}
+          >
+            {isFocusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span>{isFocusMode ? "Keluar Fokus" : "Mode Fokus"}</span>
+          </Button>
+        )}
 
         <Button
           variant="outline"
