@@ -1,7 +1,7 @@
 import React from 'react';
 import { RefreshCw, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
-import { cn } from '../../../utils/cn';
+import { cn } from '../../../lib/utils';
 import { getMapelColor } from '../../../utils/mapelColorHelper';
 import { ViewMode, ToolMode } from './types';
 

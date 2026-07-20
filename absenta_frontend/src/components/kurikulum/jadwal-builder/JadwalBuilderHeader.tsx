@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Button, SearchableSelect } from '../../ui';
 import { Calendar, Users, RefreshCw } from 'lucide-react';
-import { cn } from '../../../utils/cn';
+import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
 

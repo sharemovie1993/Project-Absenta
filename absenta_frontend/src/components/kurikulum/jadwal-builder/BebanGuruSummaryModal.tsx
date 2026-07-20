@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button } from '../../ui';
 import { Badge } from '../../ui/Badge';
 import { Search, RefreshCw } from 'lucide-react';
-import { cn } from '../../../utils/cn';
+import { cn } from '../../../lib/utils';
 import { ViewMode, TeacherBebanItem } from './types';
 
 interface Props {
