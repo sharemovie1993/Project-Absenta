@@ -48,10 +48,6 @@ export default async function attendancePlugin(fastify: any) {
     const { deviceRoutes } = await import('./devices/routes/device.routes');
     await subFastify.register(deviceRoutes, { prefix: '/devices' });
 
-    // 11. Jadwal Kegiatan Routes
-    const { jadwalKegiatanRoutes } = await import('./jadwal-kegiatan/routes/jadwal-kegiatan.routes');
-    await subFastify.register(jadwalKegiatanRoutes, { prefix: '/jadwal-kegiatan' });
-
     // 12. Anggota Kegiatan Eskul Routes
     const { anggotaKegiatanEskulRoutes } = await import('./anggota-kegiatan-eskul/anggota-kegiatan-eskul.routes');
     await subFastify.register(anggotaKegiatanEskulRoutes, { prefix: '/anggota-kegiatan-eskul' });

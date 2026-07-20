@@ -278,6 +278,7 @@ async function main() {
         { label: 'Piket & Izin Keluar', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, kesiswaan.piket.manage' },
         { label: 'Kasus Pelanggaran', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, kesiswaan.pelanggaran.manage' },
         { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'kesiswaan.prestasi.view, kesiswaan.prestasi.manage' },
+        { label: 'Jadwal Kegiatan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'attendance.schedules.view.list, kesiswaan.dashboard.view' },
         { label: 'Jenis Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, kesiswaan.dashboard.view' },
         { label: 'Pengaturan Poin', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, kesiswaan.dashboard.view' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'dashboard.view.kesiswaan, kesiswaan.dashboard.view' },

@@ -435,6 +435,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { prestasiRoutes } = await import('../modules/kesiswaan/routes/prestasi.routes');
       await fastify.register(prestasiRoutes, { prefix: '/kesiswaan' });
 
+      const { jadwalKegiatanRoutes } = await import('../modules/attendance/jadwal-kegiatan/routes/jadwal-kegiatan.routes');
+      await fastify.register(jadwalKegiatanRoutes, { prefix: '/kesiswaan/jadwal-kegiatan' });
+
       const { suratMasukRoutes } = await import('../modules/correspondence/routes/surat-masuk.routes');
       await fastify.register(suratMasukRoutes, { prefix: '/correspondence/surat-masuk' });
 

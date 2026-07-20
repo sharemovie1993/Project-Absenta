@@ -276,9 +276,10 @@ export default function JadwalKegiatanPage() {
     >
       {/* Point #9: PremiumFeatureGate */}
       <PremiumFeatureGate
+        isLocked={false}
         featureName="Jadwal Kegiatan Rutin"
-        moduleName="ATTENDANCE"
-        description="Aktifkan modul Kehadiran untuk mengelola jadwal kegiatan rutin dan sesi absensi otomatis."
+        moduleName="KESISWAAN"
+        description="Kelola jadwal kegiatan rutin pembiasaan dan eskul sekolah."
       >
         <SectionCard fullWidth className="p-0">
           {loading ? (

@@ -19,21 +19,21 @@ export interface JadwalKegiatanItem {
 }
 
 export async function getJadwalKegiatan(params?: { aktif?: boolean }): Promise<{ success: boolean; data: JadwalKegiatanItem[] }> {
-  return requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/attendance/jadwal-kegiatan', { params });
+  return requestWithFallback<{ success: boolean; data: JadwalKegiatanItem[] }>('get', '/kesiswaan/jadwal-kegiatan', { params });
 }
 
 export async function getJadwalKegiatanDetail(id: string): Promise<{ success: boolean; data: JadwalKegiatanItem }> {
-  return requestWithFallback<{ success: boolean; data: JadwalKegiatanItem }>('get', `/attendance/jadwal-kegiatan/${id}`);
+  return requestWithFallback<{ success: boolean; data: JadwalKegiatanItem }>('get', `/kesiswaan/jadwal-kegiatan/${id}`);
 }
 
 export async function createJadwalKegiatan(data: Partial<JadwalKegiatanItem>): Promise<{ success: boolean; message: string; data: JadwalKegiatanItem }> {
-  return requestWithFallback<{ success: boolean; message: string; data: JadwalKegiatanItem }>('post', '/attendance/jadwal-kegiatan', { data });
+  return requestWithFallback<{ success: boolean; message: string; data: JadwalKegiatanItem }>('post', '/kesiswaan/jadwal-kegiatan', { data });
 }
 
 export async function updateJadwalKegiatan(id: string, data: Partial<JadwalKegiatanItem>): Promise<{ success: boolean; message: string; data: JadwalKegiatanItem }> {
-  return requestWithFallback<{ success: boolean; message: string; data: JadwalKegiatanItem }>('put', `/attendance/jadwal-kegiatan/${id}`, { data });
+  return requestWithFallback<{ success: boolean; message: string; data: JadwalKegiatanItem }>('put', `/kesiswaan/jadwal-kegiatan/${id}`, { data });
 }
 
 export async function deleteJadwalKegiatan(id: string): Promise<{ success: boolean; message: string }> {
-  return requestWithFallback<{ success: boolean; message: string }>('delete', `/attendance/jadwal-kegiatan/${id}`);
+  return requestWithFallback<{ success: boolean; message: string }>('delete', `/kesiswaan/jadwal-kegiatan/${id}`);
 }

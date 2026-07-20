@@ -1267,7 +1267,7 @@ function App() {
                         <AttendanceSettingsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/attendance/jadwal-kegiatan" element={
+                    <Route path="/kesiswaan/jadwal-kegiatan" element={
                       <ProtectedRoute requiredCapability="attendance.schedules.view.list">
                         <JadwalKegiatanPage />
                       </ProtectedRoute>
