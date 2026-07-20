@@ -11,7 +11,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/',
       {
         preHandler: [
-          requireCapability('attendance.schedules.view.list'),
+          requireCapability('academic.schedules.view.list'),
           determineDataScope(),
         ],
       },
@@ -21,7 +21,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/my',
       {
         preHandler: [
-          requireCapability('attendance.schedules.view.list'),
+          requireCapability('academic.schedules.view.list'),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.listMySchedule(req, reply),
@@ -30,7 +30,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/:id',
       {
         preHandler: [
-          requireCapability('attendance.schedules.view.list'),
+          requireCapability('academic.schedules.view.list'),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.getDetail(req, reply),
@@ -39,7 +39,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/',
       {
         preHandler: [
-          requireCapability('attendance.schedules.create'),
+          requireCapability('academic.schedules.create'),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.create(req, reply),
@@ -48,7 +48,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/:id',
       {
         preHandler: [
-          requireCapability('attendance.schedules.update'),
+          requireCapability('academic.schedules.update'),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.update(req, reply),
@@ -57,7 +57,7 @@ export async function jadwalKBMRoutes(fastify: any) {
       '/:id',
       {
         preHandler: [
-          requireCapability('attendance.schedules.delete'),
+          requireCapability('academic.schedules.delete'),
         ],
       },
       (req: any, reply: any) => jadwalKBMController.delete(req, reply),
@@ -66,7 +66,7 @@ export async function jadwalKBMRoutes(fastify: any) {
     router.get(
       '/import/template',
       {
-        preHandler: [requireCapability('attendance.schedules.create')],
+        preHandler: [requireCapability('academic.schedules.create')],
       },
       (req: any, reply: any) => jadwalKBMController.getImportTemplate(req, reply),
     );
@@ -74,7 +74,7 @@ export async function jadwalKBMRoutes(fastify: any) {
     router.post(
       '/import',
       {
-        preHandler: [requireCapability('attendance.schedules.create')],
+        preHandler: [requireCapability('academic.schedules.create')],
       },
       (req: any, reply: any) => jadwalKBMController.importFromExcel(req, reply),
     );

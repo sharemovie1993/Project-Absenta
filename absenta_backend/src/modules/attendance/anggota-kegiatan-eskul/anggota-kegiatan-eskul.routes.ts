@@ -4,21 +4,21 @@ import { requireCapability } from '@/middlewares/requireCapability';
 export async function anggotaKegiatanEskulRoutes(fastify: any) {
   // GET /api/attendance/anggota-kegiatan-eskul/siswa-picker?search=&kelas_id=
   fastify.get('/siswa-picker', {
-    preHandler: [requireCapability('attendance.schedules.view.list')]
+    preHandler: [requireCapability('kesiswaan.schedules.view.list')]
   }, anggotaKegiatanEskulController.getSiswaAkademikList);
 
   // GET /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId
   fastify.get('/:jenisKegiatanId', {
-    preHandler: [requireCapability('attendance.schedules.view.list')]
+    preHandler: [requireCapability('kesiswaan.schedules.view.list')]
   }, anggotaKegiatanEskulController.getMembers);
 
   // POST /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId/add
   fastify.post('/:jenisKegiatanId/add', {
-    preHandler: [requireCapability('attendance.schedules.create')]
+    preHandler: [requireCapability('kesiswaan.schedules.create')]
   }, anggotaKegiatanEskulController.addMembers);
 
   // DELETE /api/attendance/anggota-kegiatan-eskul/member/:anggotaId
   fastify.delete('/member/:anggotaId', {
-    preHandler: [requireCapability('attendance.schedules.delete')]
+    preHandler: [requireCapability('kesiswaan.schedules.delete')]
   }, anggotaKegiatanEskulController.removeMember);
 }

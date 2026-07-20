@@ -48,6 +48,7 @@ export default function AttendanceOpsPage() {
   const siswaHasPetugasKelasAccess =
     siswaCaps.includes('attendance.sessions.create') ||
     siswaCaps.includes('attendance.sessions.view.list') ||
+    siswaCaps.includes('academic.schedules.view.list') ||
     siswaCaps.includes('attendance.schedules.view.list');
   const isSiswaDenied = user?.role?.name === 'SISWA' && petugasChecked && !isPetugasSiswa && !siswaHasPetugasKelasAccess;
   const isGuruDenied = user?.role?.name === 'GURU' && petugasGuruChecked && !isPetugasGuru;

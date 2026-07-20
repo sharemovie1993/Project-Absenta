@@ -91,7 +91,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
         const jenisMaster = (jenisRes.data || []).filter((j: JenisKegiatanMaster) => j.aktif).filter((j: JenisKegiatanMaster) => String(j.tipe).toUpperCase() !== 'GERBANG');
         setJenisOptions(jenisMaster.map((j: JenisKegiatanMaster) => ({ value: j.id, label: j.nama, tipe: String(j.tipe) })));
 
-        const canSelectKelas = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('attendance.schedules.view.list');
+        const canSelectKelas = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('academic.schedules.view.list') || can('attendance.schedules.view.list');
         if (canSelectKelas) {
           const kelasRes = await kelasApi.getAll({ limit: 100 });
           if (controller.signal.aborted) return;
@@ -128,7 +128,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
 
   // 2. Fetch Jadwal when Kelas changes
   useEffect(() => {
-    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '') || can('attendance.schedules.view.list');
+    const isAdmin = ['ADMIN', 'SUPERADMIN'].includes(user?.role?.name || '') || can('academic.schedules.view.list') || can('attendance.schedules.view.list');
     if (isAdmin && (!selectedKelasId || !activeTahunId || !activeSemesterId)) return;
     // SISWA also needs a kelas_id to fetch (PETUGAS_KELAS has it injected from parent)
     if (!isAdmin && user?.role?.name === 'SISWA' && !selectedKelasId) return;
@@ -275,7 +275,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
         </div>
         
         <div className="flex items-center gap-2">
-            {!kelasId && (user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('attendance.schedules.view.list')) && (
+            {!kelasId && (user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('academic.schedules.view.list') || can('attendance.schedules.view.list')) && (
               <div className="w-[200px]">
                   <SearchableSelect
                     value={selectedKelasId}
@@ -302,7 +302,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
               </CardHeader>
               <CardContent className="flex-1 p-4 space-y-3 bg-white dark:bg-slate-950">
                 <div className="flex justify-end mb-2">
-                  {can('attendance.schedules.create') && (
+                  {(can('academic.schedules.create') || can('attendance.schedules.create')) && (
                     <Button variant="outline" size="sm" className="rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900" onClick={() => addPendingRow(day)}>
                       <Plus className="mr-2 h-3 w-3" /> Tambah baris
                     </Button>
@@ -324,7 +324,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
                           <span>Jam {item.slot_index || 1} ({item.jam_mulai} - {item.jam_selesai})</span>
                         </Badge>
                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            {can('attendance.schedules.update') && (
+                            {(can('academic.schedules.update') || can('attendance.schedules.update')) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -334,7 +334,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
                                 <Edit2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {can('attendance.schedules.delete') && (
+                            {(can('academic.schedules.delete') || can('attendance.schedules.delete')) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

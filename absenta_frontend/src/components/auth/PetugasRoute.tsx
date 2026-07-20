@@ -46,6 +46,7 @@ export const PetugasRoute = () => {
         const hasPetugasKelasAccess =
           caps.includes('attendance.sessions.create') ||
           caps.includes('attendance.sessions.view.list') ||
+          caps.includes('academic.schedules.view.list') ||
           caps.includes('attendance.schedules.view.list');
 
         if (hasPetugasKelasAccess) {

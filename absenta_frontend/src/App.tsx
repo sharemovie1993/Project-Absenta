@@ -778,12 +778,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/jadwal" element={
-                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
                         <JadwalPelajaranPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/jam-kbm" element={
-                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
                         <JamKBMPage />
                       </ProtectedRoute>
                     } />
@@ -1268,12 +1268,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/kesiswaan/jadwal-kegiatan" element={
-                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                      <ProtectedRoute requiredCapability="kesiswaan.schedules.view.list">
                         <JadwalKegiatanPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/anggota-kegiatan-eskul" element={
-                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                      <ProtectedRoute requiredCapability="kesiswaan.schedules.view.list">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <AnggotaKegiatanEskulPage />
                         </Suspense>

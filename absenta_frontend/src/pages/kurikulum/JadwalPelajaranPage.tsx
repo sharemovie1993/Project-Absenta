@@ -58,7 +58,8 @@ export default function JadwalPelajaranPage() {
   const myKelasId = (user?.guru_profile as { wali_kelas_di?: { id: string } })?.wali_kelas_di?.id;
   const isWaliKelas = !!myKelasId;
 
-  const canManage = can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete');
+  const canManage = can('academic.schedules.create') || can('academic.schedules.update') || can('academic.schedules.delete') ||
+                    can('attendance.schedules.create') || can('attendance.schedules.update') || can('attendance.schedules.delete');
   
   // ── 2. View State Logic ─────────────────────────────────────────────────────
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'builder'>(isGuru ? 'grid' : 'list');
@@ -306,7 +307,7 @@ export default function JadwalPelajaranPage() {
     }
   }, [canManage, confirm]);
 
-  const canViewTpl = can('attendance.schedules.view.list');
+  const canViewTpl = can('academic.schedules.view.list') || can('attendance.schedules.view.list');
   const isAllowed = absensiMode === 'MULTI_SESI' && canViewTpl;
 
   // Pillar 2: Memoize complex JSX

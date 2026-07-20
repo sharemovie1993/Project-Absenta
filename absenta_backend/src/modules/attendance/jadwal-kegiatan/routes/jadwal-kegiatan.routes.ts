@@ -5,35 +5,35 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function jadwalKegiatanRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [
-      requireCapability('attendance.schedules.view.list'),
+      requireCapability('kesiswaan.schedules.view.list'),
       determineDataScope()
     ]
   }, jadwalKegiatanController.getAll);
 
   fastify.get('/:id', {
     preHandler: [
-      requireCapability('attendance.schedules.view.list'),
+      requireCapability('kesiswaan.schedules.view.list'),
       determineDataScope()
     ]
   }, jadwalKegiatanController.getDetail);
 
   fastify.post('/', {
     preHandler: [
-      requireCapability('attendance.schedules.create'),
+      requireCapability('kesiswaan.schedules.create'),
       determineDataScope()
     ]
   }, jadwalKegiatanController.create);
 
   fastify.put('/:id', {
     preHandler: [
-      requireCapability('attendance.schedules.update'),
+      requireCapability('kesiswaan.schedules.update'),
       determineDataScope()
     ]
   }, jadwalKegiatanController.update);
 
   fastify.delete('/:id', {
     preHandler: [
-      requireCapability('attendance.schedules.delete'),
+      requireCapability('kesiswaan.schedules.delete'),
       determineDataScope()
     ]
   }, jadwalKegiatanController.delete);

@@ -4,21 +4,21 @@ import { requireCapability } from '@/middlewares/requireCapability';
 export async function pembinaKegiatanEskulRoutes(fastify: any) {
   // GET /api/attendance/pembina-kegiatan-eskul/guru-picker?search=
   fastify.get('/guru-picker', {
-    preHandler: [requireCapability('attendance.schedules.view.list')]
+    preHandler: [requireCapability('kesiswaan.schedules.view.list')]
   }, pembinaKegiatanEskulController.getGuruList);
 
   // GET /api/attendance/pembina-kegiatan-eskul/:jenisKegiatanId
   fastify.get('/:jenisKegiatanId', {
-    preHandler: [requireCapability('attendance.schedules.view.list')]
+    preHandler: [requireCapability('kesiswaan.schedules.view.list')]
   }, pembinaKegiatanEskulController.getPembinas);
 
   // POST /api/attendance/pembina-kegiatan-eskul/:jenisKegiatanId/add
   fastify.post('/:jenisKegiatanId/add', {
-    preHandler: [requireCapability('attendance.schedules.create')]
+    preHandler: [requireCapability('kesiswaan.schedules.create')]
   }, pembinaKegiatanEskulController.addPembinas);
 
   // DELETE /api/attendance/pembina-kegiatan-eskul/member/:pembinaId
   fastify.delete('/member/:pembinaId', {
-    preHandler: [requireCapability('attendance.schedules.delete')]
+    preHandler: [requireCapability('kesiswaan.schedules.delete')]
   }, pembinaKegiatanEskulController.removePembina);
 }

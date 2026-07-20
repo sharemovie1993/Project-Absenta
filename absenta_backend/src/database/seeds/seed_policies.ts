@@ -44,6 +44,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.view.kelas',
     'academic.view.mapel',
     'attendance.reports.view',
+    'academic.schedules.view.list',
+    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'attendance.sessions.view.detail',
     'attendance.recap.view.daily',
@@ -101,6 +103,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.structures.view.list',
     'academic.structures.view.detail',
     'academic.structures.view.tree',
+    'academic.schedules.view.list',
+    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'attendance.officers.view',
     'attendance.sessions.view.list',
@@ -367,6 +371,15 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.sessions.close',
     'attendance.sessions.delete',
     'attendance.reports.view',
+    'academic.schedules.create',
+    'academic.schedules.update',
+    'academic.schedules.delete',
+    'academic.schedules.view.list',
+    'academic.schedules.manage',
+    'kesiswaan.schedules.create',
+    'kesiswaan.schedules.update',
+    'kesiswaan.schedules.delete',
+    'kesiswaan.schedules.view.list',
     'attendance.schedules.create',
     'attendance.schedules.update',
     'attendance.schedules.delete',
@@ -529,6 +542,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     const violating = baseline.filter((id) => {
       // Allow specific features as baseline even if they are marked ORGANIZATIONAL in catalog
       if ((role === 'GURU' || role === 'SISWA') && (
+        id.startsWith('academic.schedules.') ||
+        id.startsWith('kesiswaan.schedules.') ||
         id.startsWith('attendance.schedules.') ||
         id.startsWith('attendance.sessions.') ||
         id.startsWith('attendance.officers.') ||

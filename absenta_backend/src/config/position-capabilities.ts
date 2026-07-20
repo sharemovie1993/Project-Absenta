@@ -69,6 +69,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
     'attendance.reports.view',
+    'academic.schedules.view.list',
+    'academic.schedules.manage',
+    'academic.schedules.create',
+    'academic.schedules.update',
+    'academic.schedules.delete',
     'attendance.schedules.view.list',
     'attendance.schedules.manage',
     'attendance.schedules.create',
@@ -121,6 +126,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.view.list',
     'attendance.events.create',
     'attendance.events.delete',
+    'kesiswaan.schedules.view.list',
+    'kesiswaan.schedules.create',
+    'kesiswaan.schedules.update',
+    'kesiswaan.schedules.delete',
+    'academic.schedules.view.list',
     'attendance.schedules.view.list',
     'notify.announcements.manage', // Sebar pengumuman kesiswaan
     'bk.cases.view.list',
@@ -212,6 +222,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.homeroom.manage',
     'academic.students.view.history',
     'hubin.absensi.view.history',
+    'academic.schedules.view.list',
+    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'attendance.officers.view',
     'attendance.officers.manage',
@@ -227,6 +239,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.overview',
     'academic.students.view.list',
     'academic.students.view.detail',
+    'kesiswaan.schedules.view.list',
     'attendance.schedules.view.list',
     'attendance.sessions.view.list',
     'attendance.sessions.create',
@@ -251,6 +264,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.list',      // Dropdown Kelas saat buat jadwal
     'academic.teaching.view',
     // ─── Template Jadwal (Read Only) ────────────────────────────────
+    'academic.schedules.view.list',
     'attendance.schedules.view.list',
     // ─── Sesi Absensi Operasional HP Petugas Kelas ───────────────────
     'attendance.sessions.view.list',
@@ -297,6 +311,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'reports.hubin.view',
     'academic.structures.view.list',
     'academic.teachers.view.list',
+    'academic.schedules.view.list',
     'attendance.schedules.view.list',
     'affairs.violations.view.list'
   ],
