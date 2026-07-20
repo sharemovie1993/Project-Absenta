@@ -386,46 +386,12 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       key: 'Mapel',
       label: 'Mata Pelajaran',
       sortable: true,
-      render: (_: any, gm: GuruMapel) => {
-        const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
-        let classCount = 1;
-        let shareNote = '';
-
-        if (gm.kelas_id) {
-          classCount = 1;
-        } else if (gm.jurusan_id) {
-          const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
-          const jurusanClassCount = inJurusan.length > 0 ? inJurusan.length : 1;
-          const teacherCount = jurusanTeachersPerMapel.get(`${gm.mapel_id}_${gm.jurusan_id}`) || 1;
-          classCount = Math.max(1, Math.round(jurusanClassCount / teacherCount));
-          if (teacherCount > 1) {
-            shareNote = ` (${jurusanClassCount} rombel ÷ ${teacherCount} guru)`;
-          }
-        } else {
-          const totalClassesCount = rawKelasList.length || 1;
-          const teacherCount = globalTeachersPerMapel.get(gm.mapel_id) || 1;
-          classCount = Math.max(1, Math.round(totalClassesCount / teacherCount));
-          if (teacherCount > 1) {
-            shareNote = ` (${totalClassesCount} rombel ÷ ${teacherCount} guru)`;
-          }
-        }
-        const totalMapelJp = classCount * jpPerMinggu;
-
-        return (
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
-              <span className="font-semibold text-slate-800 dark:text-slate-100">{gm.Mapel?.nama_mapel || '-'}</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                {totalMapelJp} JP
-              </span>
-            </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 pl-6 font-medium">
-              {jpPerMinggu} JP/kelas × {classCount} rombel{shareNote}
-            </span>
-          </div>
-        );
-      }
+      render: (_: any, gm: GuruMapel) => (
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="font-semibold text-slate-800 dark:text-slate-100">{gm.Mapel?.nama_mapel || '-'}</span>
+        </div>
+      )
     },
     {
       key: 'Scope',
