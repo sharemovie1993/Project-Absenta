@@ -161,6 +161,7 @@ export interface RoleWorkspaceConfig {
   requiredRoleName?: string;
   defaultPath: string;
   targetGroupKeywords?: string[];
+  crossModulePaths?: string[];
 }
 
 export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
@@ -174,7 +175,12 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-teal-600',
     desc: 'Aktivitas Harian & KBM',
     requiredRoleName: 'GURU',
-    defaultPath: '/attendance/riwayat-ajar'
+    defaultPath: '/attendance/riwayat-ajar',
+    crossModulePaths: [
+      '/kesiswaan/pelanggaran',
+      '/cooperative/savings',
+      '/sarpras/loans'
+    ]
   },
   {
     id: 'WALIKELAS_WORKSPACE',
@@ -187,7 +193,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     desc: 'Monitoring & Rekap Kelas Binaan',
     requiredCapability: 'dashboard.view.walikelas',
     requiredPositionCode: 'WALIKELAS',
-    defaultPath: '/attendance/monitoring'
+    defaultPath: '/attendance/monitoring',
+    crossModulePaths: [
+      '/bpbk/cases',
+      '/kesiswaan/pelanggaran'
+    ]
   },
   {
     id: 'KURIKULUM_WORKSPACE',
@@ -201,7 +211,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredCapability: 'academic.manage.academic',
     requiredPositionCode: 'KURIKULUM',
     defaultPath: '/kurikulum/dashboard',
-    targetGroupKeywords: ['KURIKULUM']
+    targetGroupKeywords: ['KURIKULUM'],
+    crossModulePaths: [
+      '/hubin/monitoring',
+      '/kesiswaan/pelanggaran'
+    ]
   },
   {
     id: 'KESISWAAN_WORKSPACE',
@@ -215,7 +229,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredCapability: 'dashboard.view.kesiswaan',
     requiredPositionCode: 'KESISWAAN',
     defaultPath: '/kesiswaan/monitoring',
-    targetGroupKeywords: ['KESISWAAN']
+    targetGroupKeywords: ['KESISWAAN'],
+    crossModulePaths: [
+      '/kurikulum/jadwal',
+      '/bpbk/cases'
+    ]
   },
   {
     id: 'SARPRAS_WORKSPACE',
@@ -229,7 +247,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredCapability: 'dashboard.view.sarpras',
     requiredPositionCode: 'SARPRAS',
     defaultPath: '/sarpras/dashboard',
-    targetGroupKeywords: ['SARPRAS']
+    targetGroupKeywords: ['SARPRAS'],
+    crossModulePaths: [
+      '/academic/kelas'
+    ]
   },
   {
     id: 'HUBIN_WORKSPACE',
@@ -243,7 +264,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredCapability: 'dashboard.view.hubin',
     requiredPositionCode: 'HUBIN',
     defaultPath: '/hubin/dashboard',
-    targetGroupKeywords: ['HUBIN']
+    targetGroupKeywords: ['HUBIN'],
+    crossModulePaths: [
+      '/kurikulum/jadwal',
+      '/academic/siswa'
+    ]
   },
   {
     id: 'BPBK_WORKSPACE',
@@ -257,7 +282,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredCapability: 'bk.cases.view.list',
     requiredPositionCode: 'BPBK',
     defaultPath: '/bpbk/dashboard',
-    targetGroupKeywords: ['BP/BK', 'BPBK', 'BK']
+    targetGroupKeywords: ['BP/BK', 'BPBK', 'BK'],
+    crossModulePaths: [
+      '/kesiswaan/pelanggaran',
+      '/academic/siswa'
+    ]
   },
   {
     id: 'KEPSEK_WORKSPACE',
@@ -270,7 +299,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     desc: 'Monitoring & Mutu Sekolah',
     requiredCapability: 'dashboard.view.kepsek',
     requiredPositionCode: 'KEPALA_SEKOLAH',
-    defaultPath: '/kurikulum/dashboard'
+    defaultPath: '/kurikulum/dashboard',
+    crossModulePaths: [
+      '/attendance/rekap',
+      '/kesiswaan/pelanggaran'
+    ]
   }
 ];
 

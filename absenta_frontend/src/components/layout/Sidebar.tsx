@@ -377,11 +377,15 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         primaryItems = allLeafItems;
       }
 
-      // Collect Cross-Module items (leaf items that are NOT in primaryItems)
+      // Collect Cross-Module items strictly matching currentWs.crossModulePaths
+      const allowedCrossPaths = new Set(
+        (currentWs.crossModulePaths || []).map(p => p.toLowerCase())
+      );
       const primaryPathSet = new Set(primaryItems.map(i => (i.path || '').toLowerCase()));
+
       const crossModuleItems = allLeafItems.filter(item => {
         const p = (item.path || '').toLowerCase();
-        return p && !primaryPathSet.has(p);
+        return p && !primaryPathSet.has(p) && allowedCrossPaths.has(p);
       });
 
       const finalNav: NavItem[] = [...cleanEmptyParents(primaryItems)];
