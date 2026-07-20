@@ -62,10 +62,20 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   onRefresh
 }) => {
   // Mode state
-  const [viewMode, setViewMode] = useState<ViewMode>('KELAS');
+  const [viewMode, setViewModeState] = useState<ViewMode>('KELAS');
   const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<ToolMode>('PAINT');
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [showLeftPanel, setShowLeftPanel] = useState<boolean>(true);
+
+  const setViewMode = (m: ViewMode) => {
+    setViewModeState(m);
+    if (m === 'MASTER_GURU' || m === 'MASTER_KELAS') {
+      setShowLeftPanel(false);
+    } else {
+      setShowLeftPanel(true);
+    }
+  };
 
   // Keyboard shortcut listener for Esc key to exit focus mode
   useEffect(() => {
@@ -771,7 +781,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         )}
       
       {/* 🛠️ LEFT PANEL: Toolbox & Cards */}
-      <div className="lg:col-span-4 flex flex-col space-y-4">
+      {showLeftPanel && (
+        <div className="lg:col-span-4 flex flex-col space-y-4">
         
         {/* Toggle Mode Builder */}
         <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900">
@@ -993,9 +1004,10 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
         )}
 
       </div>
+      )}
 
       {/* 📅 RIGHT COLUMN: TIMETABLE GRID */}
-      <div className="lg:col-span-8 flex flex-col space-y-4">
+      <div className={cn("flex flex-col space-y-4 transition-all duration-300", showLeftPanel ? "lg:col-span-8" : "lg:col-span-12")}>
         {/* Header, Switcher & Filters */}
         <JadwalBuilderHeader
           viewMode={viewMode}
@@ -1016,6 +1028,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           onOpenBebanModal={() => setBebanModalOpen(true)}
           isFocusMode={isFocusMode}
           onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
+          showLeftPanel={showLeftPanel}
+          onToggleLeftPanel={() => setShowLeftPanel(prev => !prev)}
         />
 
         {/* Mode 1 & 2: Single Grid Timetable (Per Kelas & Per Guru) */}

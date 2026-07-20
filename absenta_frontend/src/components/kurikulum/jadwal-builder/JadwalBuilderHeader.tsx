@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, SearchableSelect } from '../../ui';
-import { Calendar, Users, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
+import { Calendar, Users, RefreshCw, Maximize2, Minimize2, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
@@ -23,6 +23,8 @@ interface Props {
   onRefreshSchedules: () => void;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
+  showLeftPanel?: boolean;
+  onToggleLeftPanel?: () => void;
 }
 
 export const JadwalBuilderHeader: React.FC<Props> = ({
@@ -44,6 +46,8 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   onOpenBebanModal,
   isFocusMode = false,
   onToggleFocusMode,
+  showLeftPanel = true,
+  onToggleLeftPanel,
 }) => {
   return (
     <Card className="p-4 border-slate-100 dark:border-slate-800/80 shadow-sm bg-white dark:bg-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 relative z-20 !overflow-visible">
@@ -200,6 +204,24 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
           >
             {isFocusMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
             <span>{isFocusMode ? "Keluar Fokus" : "Mode Fokus"}</span>
+          </Button>
+        )}
+
+        {onToggleLeftPanel && (
+          <Button
+            variant={showLeftPanel ? "outline" : "primary"}
+            size="sm"
+            onClick={onToggleLeftPanel}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-2 text-xs font-bold transition-all",
+              !showLeftPanel 
+                ? "bg-indigo-650 text-white shadow-md border-none font-extrabold animate-pulse" 
+                : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300"
+            )}
+            title={showLeftPanel ? "Sembunyikan Panel Kiri (Toolbox & Kartu) untuk Melebarkan Tabel ke 100%" : "Tampilkan kembali Panel Kiri (Toolbox & Kartu)"}
+          >
+            {showLeftPanel ? <PanelLeftClose className="w-3.5 h-3.5 text-slate-500" /> : <PanelLeft className="w-3.5 h-3.5" />}
+            <span>{showLeftPanel ? "Sembunyikan Toolbox" : "🛠️ Toolbox"}</span>
           </Button>
         )}
 
