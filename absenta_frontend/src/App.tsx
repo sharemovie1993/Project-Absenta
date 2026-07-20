@@ -1267,7 +1267,6 @@ function App() {
                         <AttendanceSettingsPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/attendance/jadwal-kbm" element={<Navigate to="/kurikulum/jadwal" replace />} />
                     <Route path="/attendance/jadwal-kegiatan" element={
                       <ProtectedRoute requiredCapability="attendance.schedules.view.list">
                         <JadwalKegiatanPage />
