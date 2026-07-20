@@ -418,6 +418,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.manage.siswa',
     'academic.teachers.view.list',
     'academic.structures.view.list',     // Koordinator TU memantau struktur organisasi
+    'academic.structure.manage',         // Koordinator TU mengelola struktur organisasi (tambah/edit bagan)
+    'academic.structures.create',
+    'academic.structures.update',
+    'academic.structures.delete',
+    'academic.structures.assign.teacher',
+    'academic.structures.revoke.teacher',
+    'academic.structures.assign.student',
+    'academic.structures.revoke.student',
     'documents.view.list',               // Koordinator TU melihat arsip digital sekolah
     'billing.invoices.view.list',        // Koordinator TU memantau arus keuangan / tagihan
     'billing.invoices.view.detail',
@@ -465,6 +473,15 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.manage.siswa',
     'academic.teachers.view.list',
     'academic.teachers.manage',          // Kelola data induk guru (NUPTK/NIP)
+    'academic.structures.view.list',     // Staf kepegawaian melihat struktur organisasi
+    'academic.structure.manage',         // Staf kepegawaian mengelola struktur organisasi (tambah/edit bagan)
+    'academic.structures.create',
+    'academic.structures.update',
+    'academic.structures.delete',
+    'academic.structures.assign.teacher',
+    'academic.structures.revoke.teacher',
+    'academic.structures.assign.student',
+    'academic.structures.revoke.student',
     'tu.staff.view.list',
     'documents.view.list',               // Arsip ijazah & surat keterangan dinas
     'documents.upload',

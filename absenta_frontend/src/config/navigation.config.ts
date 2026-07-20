@@ -324,7 +324,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/guru',
       '/billing/invoices',
       '/sarpras/inventory',
-      '/academic/ppdb-mapping'
+      '/academic/ppdb-mapping',
+      '/academic/struktur-organisasi'
     ]
   },
   {
@@ -371,7 +372,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/siswa',
       '/academic/guru',
       '/documents/member-docs',
-      '/academic/ppdb-mapping'
+      '/academic/ppdb-mapping',
+      '/academic/struktur-organisasi'
     ]
   },
   {

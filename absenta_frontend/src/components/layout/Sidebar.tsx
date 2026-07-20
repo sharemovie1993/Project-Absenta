@@ -406,7 +406,13 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       else if (currentWs.id === 'TU_KEPEGAWAIAN_WORKSPACE') {
         allLeafItems.forEach(item => {
           const p = (item.path || '').toLowerCase();
-          if (p === '/academic/siswa' || p === '/academic/guru' || p === '/documents/member-docs' || p === '/academic/ppdb-mapping') {
+          if (
+            p === '/academic/siswa' || 
+            p === '/academic/guru' || 
+            p === '/documents/member-docs' || 
+            p === '/academic/ppdb-mapping' ||
+            p === '/academic/struktur-organisasi'
+          ) {
             primaryItems.push(item);
           }
         });
