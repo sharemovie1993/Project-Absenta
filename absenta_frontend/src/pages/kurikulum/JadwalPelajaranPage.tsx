@@ -40,7 +40,7 @@ import { getGuruList } from '../../api/academic/guru.api';
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
 const JadwalGrid = lazy(() => import('../../components/kurikulum/JadwalGrid').then(m => ({ default: m.JadwalGrid })));
-const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder').then(m => ({ default: m.JadwalBuilder })));
+const JadwalBuilder = lazy(() => import('../../components/kurikulum/JadwalBuilder'));
 
 const hardeningModuleKey = 'jadwal_pelajaran_page';
 

@@ -1316,3 +1316,5 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     </div>
   );
 };
+
+export default JadwalBuilder;
