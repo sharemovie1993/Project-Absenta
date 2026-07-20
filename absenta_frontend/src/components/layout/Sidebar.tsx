@@ -95,6 +95,70 @@ const getIconColor = (label: string, path: string, isActive: boolean) => {
     : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20';
 };
 
+const getActiveItemStyle = (label: string, path: string) => {
+  const text = label.toLowerCase();
+  const p = path.toLowerCase();
+  
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops') || text.includes('riwayat-ajar')) {
+    return 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300 shadow-sm shadow-emerald-500/10 border-l-2 border-emerald-500 pl-[10px]';
+  }
+  if (p.startsWith('/cooperative') || text.includes('koperasi') || text.includes('kantin') || text.includes('savings') || text.includes('loans') || text.includes('pos')) {
+    return 'bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-300 shadow-sm shadow-orange-500/10 border-l-2 border-orange-500 pl-[10px]';
+  }
+  if (p.startsWith('/hubin') || p.startsWith('/pkl') || text.includes('hubin') || text.includes('pkl') || text.includes('monitoring')) {
+    return 'bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 shadow-sm shadow-purple-500/10 border-l-2 border-purple-500 pl-[10px]';
+  }
+  if (p.startsWith('/sarpras') || text.includes('sarpras') || text.includes('aset') || text.includes('asset') || text.includes('loans')) {
+    return 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 shadow-sm shadow-indigo-500/10 border-l-2 border-indigo-500 pl-[10px]';
+  }
+  if (p.startsWith('/bpbk') || text.includes('bk') || text.includes('konseling') || text.includes('kasus') || text.includes('asesmen')) {
+    return 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 shadow-sm shadow-rose-500/10 border-l-2 border-rose-500 pl-[10px]';
+  }
+  if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal') || text.includes('supervisi') || text.includes('struktur') || text.includes('plotting')) {
+    return 'bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300 shadow-sm shadow-teal-500/10 border-l-2 border-teal-500 pl-[10px]';
+  }
+  if (p.startsWith('/kesiswaan') || text.includes('kesiswaan') || text.includes('pelanggaran')) {
+    return 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 shadow-sm shadow-amber-500/10 border-l-2 border-amber-500 pl-[10px]';
+  }
+  if (p.startsWith('/academic') || p.startsWith('/master') || p.startsWith('/data-master') || p.startsWith('/rapor') || p.startsWith('/cbt')) {
+    return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-sm shadow-blue-500/10 border-l-2 border-blue-500 pl-[10px]';
+  }
+  
+  return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-l-2 border-blue-500 pl-[10px]';
+};
+
+const getActiveParentStyle = (label: string, path: string) => {
+  const text = label.toLowerCase();
+  const p = path.toLowerCase();
+  
+  if (p.startsWith('/attendance') || text.includes('absen') || text.includes('presensi') || text.includes('kehadiran') || text.includes('ops')) {
+    return 'bg-emerald-50/50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-300';
+  }
+  if (p.startsWith('/cooperative') || text.includes('koperasi') || text.includes('kantin')) {
+    return 'bg-orange-50/50 dark:bg-orange-900/10 text-orange-700 dark:text-orange-300';
+  }
+  if (p.startsWith('/hubin') || p.startsWith('/pkl') || text.includes('hubin') || text.includes('pkl')) {
+    return 'bg-purple-50/50 dark:bg-purple-900/10 text-purple-700 dark:text-purple-300';
+  }
+  if (p.startsWith('/sarpras') || text.includes('sarpras') || text.includes('aset') || text.includes('asset')) {
+    return 'bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300';
+  }
+  if (p.startsWith('/bpbk') || text.includes('bk') || text.includes('konseling') || text.includes('kasus')) {
+    return 'bg-rose-50/50 dark:bg-rose-900/10 text-rose-700 dark:text-rose-300';
+  }
+  if (p.startsWith('/kurikulum') || text.includes('kurikulum') || text.includes('jadwal')) {
+    return 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700 dark:text-teal-300';
+  }
+  if (p.startsWith('/kesiswaan') || text.includes('kesiswaan')) {
+    return 'bg-amber-50/50 dark:bg-amber-900/10 text-amber-700 dark:text-amber-300';
+  }
+  if (p.startsWith('/academic') || p.startsWith('/master') || p.startsWith('/data-master') || p.startsWith('/rapor') || p.startsWith('/cbt')) {
+    return 'bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-300';
+  }
+  
+  return 'bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-300';
+};
+
 const hasBackendPathAccess = (
   menuTree: any[],
   backendPath?: string,
@@ -437,9 +501,25 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       );
       const primaryPathSet = new Set(primaryItems.map(i => (i.path || '').toLowerCase()));
 
+      const getModuleOrder = (path: string) => {
+        const p = path.toLowerCase();
+        if (p.startsWith('/attendance')) return 1;
+        if (p.startsWith('/kesiswaan')) return 2;
+        if (p.startsWith('/bpbk')) return 3;
+        if (p.startsWith('/sarpras')) return 4;
+        if (p.startsWith('/hubin')) return 5;
+        if (p.startsWith('/cooperative')) return 6;
+        return 99;
+      };
+
       const crossModuleItems = allLeafItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         return p && !primaryPathSet.has(p) && allowedCrossPaths.has(p);
+      }).sort((a, b) => {
+        const orderA = getModuleOrder(a.path || '');
+        const orderB = getModuleOrder(b.path || '');
+        if (orderA !== orderB) return orderA - orderB;
+        return a.label.localeCompare(b.label);
       });
 
       const finalNav: NavItem[] = [...cleanEmptyParents(primaryItems)];
@@ -649,16 +729,13 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                     aria-expanded={isSubmenuOpenState}
                     style={{ paddingLeft: isOpen ? paddingLeft : 12 }}
                     className={cn(
-                      "flex items-center justify-between w-full pr-3 py-2 rounded-lg transition-colors duration-200 group",
-                      "hover:bg-slate-100 dark:hover:bg-slate-800",
-                      (isActive || hasActiveChild) && [
-                        "bg-blue-50/50 dark:bg-blue-900/10",
-                        "text-blue-700 dark:text-blue-300"
-                      ],
-                      !isActive && !hasActiveChild && "text-slate-700 dark:text-slate-300",
-                      isDisabled && "opacity-50 cursor-not-allowed",
-                      depth > 0 && "py-1.5"
-                    )}
+                       "flex items-center justify-between w-full pr-3 py-2 rounded-lg transition-colors duration-200 group",
+                       "hover:bg-slate-100 dark:hover:bg-slate-800",
+                       (isActive || hasActiveChild) && getActiveParentStyle(item.label, item.path),
+                       !isActive && !hasActiveChild && "text-slate-700 dark:text-slate-300",
+                       isDisabled && "opacity-50 cursor-not-allowed",
+                       depth > 0 && "py-1.5"
+                     )}
                   >
                     <div className="flex items-center space-x-3 overflow-hidden">
                       {featureState === 'LOCKED' ? (
@@ -729,12 +806,12 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                        }
                      }}
                      className={cn(
-                       "flex items-center justify-center w-full rounded-lg transition-colors duration-200 py-3",
-                       "hover:bg-gray-100 dark:hover:bg-gray-800",
-                       isActive && "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300",
-                       !isActive && "text-gray-700 dark:text-gray-300",
-                       isDisabled && "opacity-50 cursor-not-allowed"
-                     )}
+                        "flex items-center justify-center w-full rounded-lg transition-colors duration-200 py-3",
+                        "hover:bg-gray-100 dark:hover:bg-gray-800",
+                        isActive && getActiveItemStyle(item.label, item.path),
+                        !isActive && "text-gray-700 dark:text-gray-300",
+                        isDisabled && "opacity-50 cursor-not-allowed"
+                      )}
                    >
                      {featureState === 'LOCKED' ? (
                        <div className={cn("p-1.5 rounded-lg flex items-center justify-center transition-all", getIconColor(item.label, item.path, isActive))}>
@@ -766,10 +843,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                   className={cn(
                     "flex items-center space-x-3 pr-3 py-2 rounded-lg transition-colors duration-200 group",
                     "hover:bg-slate-100 dark:hover:bg-slate-800",
-                    isActive && [
-                      "bg-blue-50 dark:bg-blue-900/20",
-                      "text-blue-700 dark:text-blue-300 shadow-sm shadow-blue-500/10"
-                    ],
+                    isActive && getActiveItemStyle(item.label, item.path),
                     !isActive && "text-slate-700 dark:text-slate-300",
                     isDisabled && "opacity-50 cursor-not-allowed",
                     depth > 0 && "py-1.5"
