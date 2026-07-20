@@ -222,7 +222,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kesiswaan/jenis-pelanggaran',
       '/sarpras/loans',
       '/bpbk/cases',
-      '/bpbk/asesmen'
+      '/bpbk/asesmen',
+      '/kesiswaan/jadwal-kegiatan'
     ]
   },
   {
