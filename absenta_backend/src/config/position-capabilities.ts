@@ -232,6 +232,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.reports.view',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
+    'kesiswaan.prestasi.manage',
+    'kesiswaan.kegiatan.view',
   ],
   [STRUKTUR_CODES.PETUGAS_KELAS]: [
     'organization.scope.unit_restricted',
