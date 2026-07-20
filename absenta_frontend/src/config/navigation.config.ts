@@ -317,7 +317,14 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-indigo-600',
     desc: 'Supervisi Administrasi TU',
     requiredPositionCode: 'TU_KEPALA',
-    defaultPath: '/correspondence/dashboard'
+    defaultPath: '/correspondence/dashboard',
+    targetGroupKeywords: ['PERSURATAN'],
+    crossModulePaths: [
+      '/academic/siswa',
+      '/academic/guru',
+      '/billing/invoices',
+      '/sarpras/inventory'
+    ]
   },
   {
     id: 'TU_PERSURATAN_WORKSPACE',
@@ -329,7 +336,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-amber-600',
     desc: 'Arsip & Surat Menyurat',
     requiredPositionCode: 'TU_PERSURATAN',
-    defaultPath: '/correspondence/dashboard'
+    defaultPath: '/correspondence/dashboard',
+    targetGroupKeywords: ['PERSURATAN']
   },
   {
     id: 'TU_KEUANGAN_WORKSPACE',
@@ -341,7 +349,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-emerald-600',
     desc: 'Kelola SPP & Billing',
     requiredPositionCode: 'TU_KEUANGAN',
-    defaultPath: '/billing/invoices'
+    defaultPath: '/billing/invoices',
+    crossModulePaths: [
+      '/billing/invoices',
+      '/cooperative/dashboard'
+    ]
   },
   {
     id: 'TU_KEPEGAWAIAN_WORKSPACE',
@@ -353,7 +365,12 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-blue-600',
     desc: 'Kelola Data Induk',
     requiredPositionCode: 'TU_KEPEGAWAIAN',
-    defaultPath: '/academic/siswa'
+    defaultPath: '/academic/siswa',
+    crossModulePaths: [
+      '/academic/siswa',
+      '/academic/guru',
+      '/documents/member-docs'
+    ]
   },
   {
     id: 'TU_SARPRAS_WORKSPACE',
@@ -365,7 +382,12 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-purple-600',
     desc: 'Kelola Aset & Inventaris',
     requiredPositionCode: 'TU_SARPRAS',
-    defaultPath: '/sarpras/inventory'
+    defaultPath: '/sarpras/inventory',
+    crossModulePaths: [
+      '/sarpras/inventory',
+      '/sarpras/loans',
+      '/sarpras/maintenance'
+    ]
   }
 ];
 

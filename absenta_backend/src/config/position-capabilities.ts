@@ -409,31 +409,45 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.tu',
     'core.tenants.view.detail',
     'tu.staff.view.list',
-    'tu.staff.manage',                   // Ka.TU mengelola kepegawaian staf TU
-    'tu.letters.manage',                 // Ka.TU supervisi persuratan
+    'tu.staff.manage',                   // Koordinator TU mengelola kepegawaian staf TU
+    'tu.letters.manage',                 // Koordinator TU supervisi persuratan
     'academic.students.view.list',
     'academic.teachers.view.list',
-    'billing.invoices.view.list',        // Ka.TU pantau arus keuangan
+    'academic.structures.view.list',     // Koordinator TU memantau struktur organisasi
+    'documents.view.list',               // Koordinator TU melihat arsip digital sekolah
+    'billing.invoices.view.list',        // Koordinator TU memantau arus keuangan / tagihan
+    'billing.invoices.view.detail',
+    'billing.payments.view.history',
     'correspondence.inbox.view',
     'correspondence.outbox.view',
+    'sarpras.inventory.view.list',       // Koordinator TU memantau aset/logistik
+    'sarpras.loans.view.list',
   ],
   [STRUKTUR_CODES.TU_PERSURATAN]: [
     'organization.scope.tenant_wide',
     'dashboard.view.tu',
     'core.tenants.view.detail',
-    'tu.letters.manage',
+    'tu.letters.manage',                 // CRUD Surat & Agenda Dinas
     'correspondence.inbox.view',
     'correspondence.inbox.manage',
     'correspondence.outbox.view',
     'correspondence.outbox.manage',
+    'documents.view.list',               // Pengarsipan dokumen dinas
+    'documents.upload',
+    'documents.delete',
   ],
   [STRUKTUR_CODES.TU_KEUANGAN]: [
     'organization.scope.tenant_wide',
     'dashboard.view.tu',
     'core.tenants.view.detail',
-    'academic.students.view.list',       // Referensi siswa untuk tagihan
-    'billing.invoices.view.list',
+    'academic.students.view.list',       // Referensi data siswa untuk penagihan
+    'billing.invoices.view.list',        // Kelola SPP & Billing
+    'billing.invoices.view.detail',
     'billing.invoices.generate',
+    'billing.invoices.cancel',
+    'billing.payments.create',           // Input pembayaran / cicilan SPP
+    'billing.payments.view.history',
+    'billing.payments.view.status',
   ],
   [STRUKTUR_CODES.TU_KEPEGAWAIAN]: [
     'organization.scope.tenant_wide',
@@ -444,13 +458,22 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teachers.view.list',
     'academic.teachers.manage',          // Kelola data induk guru (NUPTK/NIP)
     'tu.staff.view.list',
+    'documents.view.list',               // Arsip ijazah & surat keterangan dinas
+    'documents.upload',
+    'documents.delete',
   ],
   [STRUKTUR_CODES.TU_SARPRAS]: [
     'organization.scope.tenant_wide',
     'dashboard.view.tu',
     'core.tenants.view.detail',
-    'sarpras.loans.view.list',
     'sarpras.inventory.view.list',
+    'sarpras.inventory.manage',          // Menginput aset / barang belanja modal sekolah
+    'sarpras.categories.manage',
+    'sarpras.locations.manage',
+    'sarpras.loans.view.list',
+    'sarpras.loans.manage',             // Menyetujui pinjam barang / ruang
+    'sarpras.repairs.view.list',
+    'sarpras.repairs.manage',            // Jadwal servis & pemeliharaan aset
   ],
   [STRUKTUR_CODES.KAPROG]: [
     'organization.scope.unit_restricted',
