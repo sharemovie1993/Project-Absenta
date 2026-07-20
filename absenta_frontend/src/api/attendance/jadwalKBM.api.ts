@@ -89,3 +89,39 @@ export const importJadwalFromExcel = async (
   const url = `/kurikulum/jadwal-kbm/import?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}`;
   return importDataFromExcel(url, file, onProgress);
 };
+
+export const previewAutoJadwal = async (payload: {
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  kelas_ids?: string[];
+  overwrite_existing?: boolean;
+}) => {
+  return requestWithFallback<{
+    success: boolean;
+    message?: string;
+    data: {
+      success: boolean;
+      total_cards: number;
+      total_placed: number;
+      total_unplaced: number;
+      success_rate: number;
+      generated_schedules: any[];
+      unplaced_cards: any[];
+    };
+  }>('post', '/kurikulum/jadwal-kbm/auto-generate/preview', { data: payload });
+};
+
+export const applyAutoJadwal = async (payload: {
+  tahun_pelajaran_id: string;
+  semester_id: string;
+  generated_schedules: any[];
+  overwrite_existing?: boolean;
+}) => {
+  return requestWithFallback<{
+    success: boolean;
+    message?: string;
+    data: {
+      count: number;
+    };
+  }>('post', '/kurikulum/jadwal-kbm/auto-generate/apply', { data: payload });
+};

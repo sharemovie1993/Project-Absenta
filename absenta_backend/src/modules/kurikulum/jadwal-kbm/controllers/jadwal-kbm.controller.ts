@@ -1069,6 +1069,77 @@ export class JadwalKBMController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async autoGeneratePreview(request: any, reply: any) {
+    try {
+      const { tenantId } = request;
+      const { tahun_pelajaran_id, semester_id, kelas_ids, overwrite_existing } = request.body || {};
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Tahun Pelajaran dan Semester wajib dipilih'
+        });
+      }
+
+      const { TimetableSolverService } = await import('../../services/timetable-solver.service');
+
+      const result = await TimetableSolverService.generate(tenantId, {
+        tahun_pelajaran_id,
+        semester_id,
+        kelas_ids: Array.isArray(kelas_ids) ? kelas_ids : undefined,
+        overwrite_existing: Boolean(overwrite_existing)
+      });
+
+      return reply.send({
+        success: true,
+        message: 'Hasil generasi jadwal otomatis berhasil dihitung',
+        data: result
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Gagal membuat generasi jadwal otomatis'
+      });
+    }
+  }
+
+  async autoGenerateApply(request: any, reply: any) {
+    try {
+      const { tenantId, user } = request;
+      const { tahun_pelajaran_id, semester_id, generated_schedules, overwrite_existing } = request.body || {};
+
+      if (!tahun_pelajaran_id || !semester_id || !Array.isArray(generated_schedules)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Data pratinjau hasil generasi jadwal tidak valid'
+        });
+      }
+
+      const { TimetableSolverService } = await import('../../services/timetable-solver.service');
+
+      const result = await TimetableSolverService.apply(tenantId, {
+        tahun_pelajaran_id,
+        semester_id,
+        generated_schedules,
+        overwrite_existing: Boolean(overwrite_existing),
+        userId: user?.id
+      });
+
+      void this.syncSessionsToday(tenantId);
+
+      return reply.send({
+        success: true,
+        message: `Berhasil menerapkan ${result.count} slot jadwal KBM ke sistem`,
+        data: result
+      });
+    } catch (error: any) {
+      return reply.status(500).send({
+        success: false,
+        message: error.message || 'Gagal menerapkan generasi jadwal'
+      });
+    }
+  }
 }
 
 export const jadwalKBMController = new JadwalKBMController();

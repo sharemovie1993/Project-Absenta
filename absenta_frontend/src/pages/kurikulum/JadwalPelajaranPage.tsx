@@ -13,8 +13,10 @@ import {
   LayoutGrid,
   List,
   Printer,
-  Paintbrush
+  Paintbrush,
+  Sparkles
 } from 'lucide-react';
+import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
 
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
@@ -71,6 +73,7 @@ export default function JadwalPelajaranPage() {
   const [selectedKelasId, setSelectedKelasId] = useState<string>(searchParams.get('kelas_id') || '');
   const [selectedTahunId, setSelectedTahunId] = useState<string>('');
   const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+  const [autoWizardOpen, setAutoWizardOpen] = useState(false);
   const [selectedGuruId, setSelectedGuruId] = useState<string>(searchParams.get('guru_id') || (isGuru ? (myGuruId || '') : ''));
 
   // Logic: Auto-switch filters based on View Mode for Dual-Role (Guru + Walas)
@@ -327,6 +330,18 @@ export default function JadwalPelajaranPage() {
                     Cetak PDF
                 </Button>
             )}
+
+            {canManage && (
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="rounded-xl px-4 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5"
+                    onClick={() => setAutoWizardOpen(true)}
+                >
+                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                    Generate Otomatis
+                </Button>
+            )}
         </div>
 
         {canManage && (
@@ -434,6 +449,14 @@ export default function JadwalPelajaranPage() {
       hardeningModuleKey={hardeningModuleKey}
     >
       {pageContent}
+
+      <AutoJadwalWizardModal
+        isOpen={autoWizardOpen}
+        onClose={() => setAutoWizardOpen(false)}
+        tahunPelajaranId={selectedTahunId}
+        semesterId={selectedSemesterId}
+        onSuccess={() => setRefreshKey(k => k + 1)}
+      />
     </AcademicPageLayout>
   );
 }

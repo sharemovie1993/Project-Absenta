@@ -78,5 +78,21 @@ export async function jadwalKBMRoutes(fastify: any) {
       },
       (req: any, reply: any) => jadwalKBMController.importFromExcel(req, reply),
     );
+
+    router.post(
+      '/auto-generate/preview',
+      {
+        preHandler: [requireCapability('academic.schedules.create')],
+      },
+      (req: any, reply: any) => jadwalKBMController.autoGeneratePreview(req, reply),
+    );
+
+    router.post(
+      '/auto-generate/apply',
+      {
+        preHandler: [requireCapability('academic.schedules.create')],
+      },
+      (req: any, reply: any) => jadwalKBMController.autoGenerateApply(req, reply),
+    );
   });
 }
