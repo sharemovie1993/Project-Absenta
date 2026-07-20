@@ -179,7 +179,7 @@ export const transformDataToTree = (
         });
       }
     } else {
-      // Jalur fallback untuk role lain
+      // Jalur fallback untuk role lain (termasuk TU sub-codes)
       nodes.forEach(node => {
         const sortedMembers = [...(node.members || [])].sort((a: any, b: any) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
         const headMember = sortedMembers[0];
@@ -194,7 +194,7 @@ export const transformDataToTree = (
           label: shortenPosition(displayLabel),
           subLabel: headMember ? headMember.name : 'Belum diisi',
           type: 'STRUCT' as any,
-          data: { roleCode: kode, realStrukturId: node.id, realMemberId: headMember?.id },
+          data: { roleCode: kode, realStrukturId: node.id, realMemberId: headMember?.id, isUnassigned: !headMember, forceVertical: true },
           children: sortedMembers.slice(1).map((m: any) => ({
              id: `member-${kode}-${node.id}-${m.id}`,
              label: m.name,
@@ -211,9 +211,10 @@ export const transformDataToTree = (
   if (allRoots.length === 1) return allRoots[0];
 
   const isKoperasi = groupCodes.some(c => String(c).includes('KOPERASI'));
+  const isTataUsaha = groupCodes.some(c => String(c).startsWith('TU_'));
   return {
     id: `root-group-${groupCodes.join('-')}`,
-    label: isKoperasi ? 'STRUKTUR ORGANISASI KOPERASI' : 'STRUKTUR ORGANISASI',
+    label: isTataUsaha ? 'LINGKUNGAN TATA USAHA' : isKoperasi ? 'STRUKTUR ORGANISASI KOPERASI' : 'STRUKTUR ORGANISASI',
     type: 'GROUP' as any,
     children: allRoots
   };
