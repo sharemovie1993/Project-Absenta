@@ -27,6 +27,11 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.manage.wali.kelas
 - academic.promotions.manage
 - academic.rekap.kbm
+- academic.schedules.create
+- academic.schedules.delete
+- academic.schedules.manage
+- academic.schedules.update
+- academic.schedules.view.list
 - academic.semesters.create
 - academic.semesters.delete
 - academic.semesters.set.active
@@ -414,6 +419,10 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - kesiswaan.piket.manage
 - kesiswaan.kegiatan.view
 - kesiswaan.kegiatan.manage
+- kesiswaan.schedules.create
+- kesiswaan.schedules.delete
+- kesiswaan.schedules.update
+- kesiswaan.schedules.view.list
 
 ## kurikulum
 
