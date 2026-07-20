@@ -32,3 +32,13 @@
   - **Wali Kelas**: Dibatasi hanya untuk siswa di kelas binaannya sendiri (diatur melalui `applyDataScope`).
   - **Student View**: Siswa hanya dapat melihat riwayat pelanggaran dan prestasinya sendiri.
 - **Audit Logging**: Setiap aksi hapus (Delete) pada data pelanggaran atau prestasi wajib divalidasi kepemilikannya berdasarkan `tenant_id` untuk mencegah *cross-tenant data deletion*.
+
+### 5. Jadwal Kegiatan & Keanggotaan Eskul
+- **Domain Ownership**: Jadwal Kegiatan adalah milik domain Kesiswaan (bukan Attendance). Fitur ini bersifat GRATIS dan diakses melalui namespace `/api/kesiswaan/jadwal-kegiatan`.
+- **Capability Authorization**: Seluruh akses ke Jadwal Kegiatan, Anggota Eskul, dan Pembina Eskul divalidasi menggunakan capability domain `kesiswaan.schedules.*`.
+- **Role Access**:
+  - **KESISWAAN (Wakasek Kesiswaan)**: Full CRUD (`kesiswaan.schedules.create`, `.update`, `.delete`, `.view.list`).
+  - **PEMBINA_ESKUL**: Read-only (`kesiswaan.schedules.view.list`).
+  - **WALIKELAS**: Read-only (`kesiswaan.schedules.view.list`).
+  - **GURU & SISWA**: Read-only baseline (`kesiswaan.schedules.view.list`).
+- **Auto-Session Integration**: Jadwal kegiatan yang dibuat melalui modul ini tetap menggunakan `attendanceAutoSession.job.ts` di Attendance Engine untuk pembuatan sesi absensi otomatis harian.

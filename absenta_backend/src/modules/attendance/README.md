@@ -39,6 +39,9 @@ Modul Attendance adalah sistem manajemen kehadiran terpadu di platform Absenta.i
 - **Statistik Bulanan**: Perhitungan poin kehadiran, persentase kehadiran, dan tren keterlambatan.
 
 ### 6. Jadwal Kegiatan (Non-KBM Activity Schedules)
+
+> **Catatan Arsitektur (2026-07)**: Sub-modul Jadwal Kegiatan telah dipindahkan ke Modul Kesiswaan (rute API: `/api/kesiswaan/jadwal-kegiatan`). Akses ke fitur ini kini menggunakan capability domain `kesiswaan.schedules.*`.
+
 - **Penjadwalan Fleksibel**: Membuat template jadwal kegiatan berulang (eskul, pembiasaan, upacara) yang terpisah dari jadwal KBM kurikulum.
 - **Masa Berlaku Otomatis**: Jadwal dapat dikonfigurasi untuk satu semester, dua semester, atau sepanjang tahun pelajaran tanpa input tanggal manual.
 - **Dukungan Hari Libur**: Auto-session job (`attendanceAutoSession.job.ts`) mendukung pembuatan sesi absensi untuk kegiatan hari Sabtu/Minggu bahkan jika bukan hari sekolah resmi (misalnya: latihan rutin Pramuka setiap Sabtu).
@@ -47,6 +50,7 @@ Modul Attendance adalah sistem manajemen kehadiran terpadu di platform Absenta.i
 - **Keanggotaan Terikat Akademik**: Model `AnggotaKegiatanEskul` menghubungkan `SiswaAkademik` (snapshot semester aktif) ke `JenisKegiatanMaster` (eskul).
 - **Kontrol Distribusi Sesi**: Hanya siswa yang terdaftar sebagai anggota eskul yang akan mendapatkan kartu sesi/sesi absensi ketika Jadwal Kegiatan eskul tersebut di-generate — mencegah distribusi sesi ke semua kelas yang tidak relevan.
 - **Manajemen Bulk**: Mendukung penambahan anggota secara massal melalui picker siswa yang dapat difilter per kelas.
+- **Capability Domain**: Guard rute menggunakan `kesiswaan.schedules.*` (sebelumnya `attendance.schedules.*`).
 - **Endpoint API**:
   - `GET /api/attendance/anggota-kegiatan-eskul/siswa-picker` — Daftar siswa aktif untuk picker.
   - `GET /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId` — Daftar anggota eskul.

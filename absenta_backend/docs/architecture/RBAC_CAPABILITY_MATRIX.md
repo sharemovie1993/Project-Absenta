@@ -1,8 +1,13 @@
 ## RBAC Capability Matrix (Seed Policy Audit)
 
-Tanggal: 2026-03-16
+Tanggal: 2026-03-16 | **Terakhir diperbarui: 2026-07-20**
 
 Audit ini memetakan capability default role sistem berdasarkan seed policies (tanpa mengubah kode).
+
+> **Update 2026-07**: Capability `attendance.schedules.*` telah dipecah menjadi dua domain baru:
+> - `academic.schedules.*` → Jadwal KBM (Modul Kurikulum, gratis)
+> - `kesiswaan.schedules.*` → Jadwal Kegiatan Eskul (Modul Kesiswaan, gratis)
+> Catalog sekarang memiliki **442 permissions** (sebelumnya 433).
 
 ### Seed Policy Source
 - Entry seed: `prisma/seed.ts` (memanggil `seedPolicies()`)
@@ -10,10 +15,10 @@ Audit ini memetakan capability default role sistem berdasarkan seed policies (ta
 - Action Catalog canonical: `docs/action_catalog_canonical_futureproof.md`
 
 ### Default Roles (System)
-- SUPERADMIN: full access (seluruh Permission di database hasil seed Action Catalog)
-- ADMIN: 139 capability baseline
-- GURU: 23 capability baseline
-- SISWA: 11 capability baseline
+- SUPERADMIN: full access (seluruh Permission di database hasil seed Action Catalog — 442 permissions)
+- ADMIN: baseline diperluas dengan `academic.schedules.*` (5 cap) dan `kesiswaan.schedules.*` (4 cap)
+- GURU: `academic.schedules.view.list` dan `kesiswaan.schedules.view.list` ditambahkan ke baseline
+- SISWA: `academic.schedules.view.list` dan `kesiswaan.schedules.view.list` ditambahkan ke baseline
 
 ---
 

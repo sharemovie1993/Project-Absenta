@@ -28,9 +28,25 @@ Modul Kesiswaan pada platform Absenta.id berfokus pada manajemen kedisiplinan, p
 - **Daily Monitoring**: Dasbor pemantauan untuk guru piket melihat siswa yang sedang berada di luar area sekolah.
 - **Robust Resolution**: Sistem secara otomatis mencari data akademik aktif siswa saat pembuatan izin hanya dengan menggunakan ID Siswa dasar.
 
+### 4. Jadwal Kegiatan (Penjadwalan Kegiatan Non-KBM)
+> **Catatan Arsitektur (2026-07)**: Sub-modul ini telah dipindahkan dari Modul Attendance ke Modul Kesiswaan sebagai bagian dari pemisahan domain yang lebih bersih. Jadwal Kegiatan adalah fitur **GRATIS** dan tidak memerlukan lisensi berbayar.
+- **Penjadwalan Fleksibel**: Membuat template jadwal kegiatan berulang (eskul, pembiasaan, upacara) yang terpisah dari Jadwal KBM kurikulum.
+- **Masa Berlaku Otomatis**: Jadwal dapat dikonfigurasi untuk satu semester, dua semester, atau sepanjang tahun pelajaran aktif tanpa input tanggal manual.
+- **Manajemen Anggota**: Mendukung pengelolaan anggota dan pembina untuk setiap kegiatan/eskul.
+- **Capability Domain**: `kesiswaan.schedules.*` (view.list, create, update, delete)
+- **Endpoint API**:
+  - `GET /api/kesiswaan/jadwal-kegiatan` — Daftar jadwal kegiatan.
+  - `GET /api/kesiswaan/jadwal-kegiatan/:id` — Detail jadwal kegiatan.
+  - `POST /api/kesiswaan/jadwal-kegiatan` — Buat jadwal kegiatan baru.
+  - `PUT /api/kesiswaan/jadwal-kegiatan/:id` — Perbarui jadwal kegiatan.
+  - `DELETE /api/kesiswaan/jadwal-kegiatan/:id` — Hapus jadwal kegiatan.
+  - `GET /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId` — Daftar anggota eskul.
+  - `POST /api/attendance/anggota-kegiatan-eskul/:jenisKegiatanId/add` — Tambah anggota (bulk).
+  - `GET /api/attendance/pembina-kegiatan-eskul/:jenisKegiatanId` — Daftar pembina eskul.
+
 ## Teknologi & Pattern
 - **Pattern**: Service Layer, Event Consumer (Redis-based), Data Scoping Utility.
-- **Security**: Role-based access control terintegrasi dengan `applyDataScope` untuk isolasi data antar kelas.
+- **Security**: Role-based access control terintegrasi dengan `applyDataScope` untuk isolasi data antar kelas. Capability domain `kesiswaan.schedules.*` digunakan untuk otorisasi akses Jadwal Kegiatan, Anggota Eskul, dan Pembina Eskul.
 - **Integrasi**: 
   - `Academic Module`: Untuk resolusi ID akademik dan data kelas.
   - `Infra Event Bus`: Menangani event `tenant.created` untuk otomasi seeding.
