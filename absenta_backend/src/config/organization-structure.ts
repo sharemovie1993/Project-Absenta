@@ -80,7 +80,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_KEPALA, 
-    nama: 'Kepala Tata Usaha', 
+    nama: 'Koordinator TU', 
     scope: 'admin', 
     scope_type: 'global',
     deskripsi: 'Pimpinan unit Tata Usaha — mengawasi seluruh staf TU',
