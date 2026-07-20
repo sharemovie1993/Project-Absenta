@@ -238,7 +238,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
 
         {/* Smart Magnetic Connectors */}
         {(hasChildren || (
-          ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'].includes(node.data?.roleCode) && 
+          ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK'].includes(node.data?.roleCode) && 
           node.type === 'CATEGORY'
         ) || (
           ['BPBK', 'GERBANG'].includes(node.data?.roleCode) && 
@@ -298,7 +298,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
               {/* Centered Vertical Add Button with Label */}
               {shouldBeVertical && (
                 node.data?.roleCode?.includes('WAKIL') || 
-                ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK', 'BPBK', 'GERBANG'].includes(node.data?.roleCode)
+                ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'TU', 'BKK', 'BPBK', 'GERBANG'].includes(node.data?.roleCode)
               ) && !isEditing && (
                 <div className="relative flex flex-col w-full items-center pt-4 group">
                   <div className={cn("w-[2px] h-8 mb-0", connectorColor, "opacity-50")}></div>
