@@ -159,7 +159,7 @@ export const GuruTimeOffModal: React.FC<GuruTimeOffModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Preferensi Time-Off / Constraints: ${guruName}`}
-      size="xl"
+      size="6xl"
     >
       <div className="p-5 space-y-4">
         {/* Header Info Banner */}
