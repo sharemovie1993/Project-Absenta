@@ -12,6 +12,12 @@ import {
   Calendar,
   AlertTriangle,
   ShieldAlert,
+  Mail,
+  FileText,
+  Wallet,
+  Package,
+  GraduationCap,
+  UserCog,
 } from 'lucide-react';
 
 // Components
@@ -359,6 +365,40 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
+    const isTuStaff = user?.guru_profile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' || guruProfile?.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
+
+    if (isTuStaff) {
+      const actions: QuickAction[] = [
+        { label: 'Kehadiran Saya', icon: User, onClick: () => navigate('/attendance/my-attendance'), color: 'emerald' },
+      ];
+
+      // TU Persuratan / Koordinator TU
+      if (caps.includes('correspondence.inbox.view') || hasRole('TU_PERSURATAN', 'TU_KEPALA')) {
+        actions.push({ label: 'Surat Masuk', icon: Mail, onClick: () => navigate('/correspondence/inbox'), color: 'blue' });
+        actions.push({ label: 'Surat Keluar', icon: FileText, onClick: () => navigate('/correspondence/outbox'), color: 'indigo' });
+      }
+
+      // TU Keuangan
+      if (caps.includes('billing.invoices.view.list') || hasRole('TU_KEUANGAN', 'TU_KEPALA')) {
+        actions.push({ label: 'Tagihan SPP', icon: Wallet, onClick: () => navigate('/billing/invoices'), color: 'amber' });
+      }
+
+      // TU Sarpras
+      if (caps.includes('sarpras.inventory.view.list') || hasRole('TU_SARPRAS', 'TU_KEPALA')) {
+        actions.push({ label: 'Inventaris Aset', icon: Package, onClick: () => navigate('/sarpras/inventory'), color: 'purple' });
+      }
+
+      // TU Kepegawaian / Koordinator TU
+      if (caps.includes('academic.students.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
+        actions.push({ label: 'Data Siswa', icon: GraduationCap, onClick: () => navigate('/academic/siswa'), color: 'rose' });
+      }
+      if (caps.includes('academic.teachers.view.list') || hasRole('TU_KEPEGAWAIAN', 'TU_KEPALA')) {
+        actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange' });
+      }
+
+      return actions;
+    }
+
     const actions: QuickAction[] = [
       { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`),          color: 'blue'   },
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo' },
@@ -371,7 +411,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => navigate('/kesiswaan/pelanggaran'), color: 'amber' });
     
     return actions;
-  }, [isWaliKelas, isKurikulum, navigate, guruId]);
+  }, [isWaliKelas, isKurikulum, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);
 
   // ── 7. Dynamic Structural Panels Ordering ───────────────────────────────────
   const structuralPanels = useMemo(() => {
