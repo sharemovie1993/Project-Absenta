@@ -27,6 +27,7 @@ import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram'
 
 const TABS = [
   { id: 'PIMPINAN', label: 'Pimpinan', codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'] },
+  { id: 'TATA_USAHA', label: 'Tata Usaha', codes: ['TU'] },
   { id: 'KAPROG', label: 'Kaprog', codes: ['KAPROG'] },
   { id: 'KABENG', label: 'Kabeng', codes: ['KABENG'] },
   { id: 'TOOLMAN', label: 'Toolman', codes: ['TOOLMAN'] },

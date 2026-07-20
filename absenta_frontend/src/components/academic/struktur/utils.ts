@@ -218,3 +218,95 @@ export const transformDataToTree = (
     children: allRoots
   };
 };
+
+/**
+ * JALUR KHUSUS TATA USAHA (TU ENV)
+ */
+export const transformTuEnvironmentToTree = (
+  data: GroupedStruktur,
+  jurusans: Record<string, string>
+): TopologyNodeData | null => {
+  if (!data || !data['TU']) return null;
+
+  const tuNodes = data['TU'];
+  if (tuNodes.length === 0) return null;
+  const tuNode = tuNodes[0];
+
+  const members = [...(tuNode.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+
+  // Kepala TU (anggota pertama) tetap di tab Pimpinan
+  // Sisa anggota dipetakan ke slot-slot lingkungan TU
+  const staffMembers = members.slice(1);
+
+  const persuratan = staffMembers.filter(m => /persuratan|arsip|agenda|surat/i.test(m.name + ' ' + m.details));
+  const keuangan = staffMembers.filter(m => /keuangan|spp|kasir|bendahara|tagihan/i.test(m.name + ' ' + m.details));
+  const kepegawaian = staffMembers.filter(m => /kepegawaian|dapodik|data|induk/i.test(m.name + ' ' + m.details));
+  const inventaris = staffMembers.filter(m => /inventaris|logistik|sarpras|barang/i.test(m.name + ' ' + m.details));
+
+  const matchedIds = new Set([
+    ...persuratan.map(m => m.id),
+    ...keuangan.map(m => m.id),
+    ...kepegawaian.map(m => m.id),
+    ...inventaris.map(m => m.id)
+  ]);
+
+  const remaining = staffMembers.filter(m => !matchedIds.has(m.id));
+  if (remaining.length > 0) {
+    // Bagi rata atau masukkan ke persuratan default
+    persuratan.push(...remaining);
+  }
+
+  const slotsConfig = [
+    {
+      id: `tu-persuratan-${tuNode.id}`,
+      label: 'Staf Persuratan & Arsip',
+      members: persuratan,
+    },
+    {
+      id: `tu-keuangan-${tuNode.id}`,
+      label: 'Staf Keuangan & SPP',
+      members: keuangan,
+    },
+    {
+      id: `tu-kepegawaian-${tuNode.id}`,
+      label: 'Staf Kepegawaian & Dapodik',
+      members: kepegawaian,
+    },
+    {
+      id: `tu-inventaris-${tuNode.id}`,
+      label: 'Staf Inventaris & Logistik',
+      members: inventaris,
+    },
+  ];
+
+  const slotNodes = slotsConfig.map(slot => {
+    const headMember = slot.members[0];
+    return {
+      id: slot.id,
+      label: slot.label,
+      subLabel: headMember ? headMember.name : 'Belum diisi',
+      type: 'STRUCT' as any,
+      data: { 
+        roleCode: 'TU', 
+        isUnassigned: !headMember, 
+        realMemberId: headMember?.id, 
+        realStrukturId: tuNode.id,
+        forceVertical: true
+      },
+      children: slot.members.slice(1).map(m => ({
+        id: `member-tu-${tuNode.id}-${m.id}`,
+        label: m.name,
+        subLabel: cleanDetails(m.details),
+        type: 'MEMBER' as any,
+        data: { roleCode: 'TU', realMemberId: m.id, realStrukturId: tuNode.id }
+      }))
+    };
+  });
+
+  return {
+    id: `tu-env-root-${tuNode.id}`,
+    label: 'LINGKUNGAN TATA USAHA',
+    type: 'GROUP' as any,
+    children: slotNodes
+  };
+};
