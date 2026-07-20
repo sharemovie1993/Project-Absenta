@@ -207,44 +207,56 @@ const GuruMapelPage: React.FC = () => {
           title="Pilih Metode Tambah Pengampu" 
           size="lg"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-            <button
-              onClick={() => {
-                handleSelectionClose();
-                handleCreateOpen();
-              }}
-              className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
-            >
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                <FileText size={28} />
-              </div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                Tentukan guru pengampu dan mata pelajaran secara manual satu per satu.
-              </p>
-              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                Mulai Mengisi <ChevronRight size={14} />
-              </span>
-            </button>
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => {
+                  handleSelectionClose();
+                  handleCreateOpen();
+                }}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <FileText size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Tentukan guru pengampu dan mata pelajaran secara manual satu per satu.
+                </p>
+                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Mulai Mengisi <ChevronRight size={14} />
+                </span>
+              </button>
 
-            <button
-              onClick={() => {
-                handleSelectionClose();
-                handleWizardOpen();
-              }}
-              className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
-            >
-              <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                <Sparkles size={28} />
-              </div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Wizard</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                Tentukan guru pengampu untuk banyak mata pelajaran sekaligus dengan langkah demi langkah (Wizard).
-              </p>
-              <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                Mulai Wizard <ChevronRight size={14} />
-              </span>
-            </button>
+              <button
+                onClick={() => {
+                  handleSelectionClose();
+                  handleWizardOpen();
+                }}
+                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
+              >
+                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
+                  <Sparkles size={28} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Wizard</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
+                  Tentukan guru pengampu untuk banyak mata pelajaran sekaligus dengan langkah demi langkah (Wizard).
+                </p>
+                <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
+                  Mulai Wizard <ChevronRight size={14} />
+                </span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={handleSelectionClose}
+                className="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </Modal>
 

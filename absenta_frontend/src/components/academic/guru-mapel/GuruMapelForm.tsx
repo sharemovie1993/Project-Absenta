@@ -5,6 +5,8 @@ import { Button, Alert, ModalFooter } from '../../ui';
 import { Save, X, RefreshCw } from 'lucide-react';
 import { getGuruList } from '../../../api/academic/guru.api';
 import { getMapelList } from '../../../api/academic/mapel.api';
+import { getJurusanList } from '../../../api/academic/jurusan.api';
+import { getKelasForDropdown } from '../../../api/dropdown.api';
 import { assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { Guru, Mapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -21,11 +23,16 @@ interface Props {
 export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
   const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
+  const [jurusanOptions, setJurusanOptions] = useState<any[]>([]);
+  const [kelasOptions, setKelasOptions] = useState<any[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-
+  // Scope Plotting States
+  const [scopeMode, setScopeMode] = useState<'GLOBAL' | 'JURUSAN' | 'KELAS'>('GLOBAL');
+  const [scopeJurusanId, setScopeJurusanId] = useState<string>('');
+  const [scopeKelasId, setScopeKelasId] = useState<string>('');
 
   const {
     control,
@@ -43,12 +50,16 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
     const loadOptions = async () => {
       try {
         setLoadingOptions(true);
-        const [gurus, mapels] = await Promise.all([
+        const [gurus, mapels, jurusans, kelas] = await Promise.all([
           getGuruList(1, 100, ''),
           getMapelList(1, 100, ''),
+          getJurusanList(1, 100).catch(() => ({ data: [] })),
+          getKelasForDropdown().catch(() => [])
         ]);
         setGuruOptions(gurus.data || []);
         setMapelOptions(mapels.data || []);
+        setJurusanOptions(jurusans.data || []);
+        setKelasOptions(Array.isArray(kelas) ? kelas : []);
       } catch (e: any) {
         setError(e?.message || 'Gagal memuat data');
       } finally {
@@ -62,7 +73,12 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
     try {
       setSubmitting(true);
       setError(null);
-      const res = await assignGuruMapel(data);
+      const payload = {
+        ...data,
+        jurusan_id: scopeMode === 'JURUSAN' ? scopeJurusanId || null : null,
+        kelas_id: scopeMode === 'KELAS' ? scopeKelasId || null : null,
+      };
+      const res = await assignGuruMapel(payload);
       if (res.success) {
         toast.success('Penugasan berhasil disimpan');
         onSuccess?.();
@@ -86,6 +102,14 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
           errors={errors}
           guruOptions={guruOptions}
           mapelOptions={mapelOptions}
+          jurusanOptions={jurusanOptions}
+          kelasOptions={kelasOptions}
+          scopeMode={scopeMode}
+          setScopeMode={setScopeMode}
+          scopeJurusanId={scopeJurusanId}
+          setScopeJurusanId={setScopeJurusanId}
+          scopeKelasId={scopeKelasId}
+          setScopeKelasId={setScopeKelasId}
           loading={loadingOptions}
         />
 
