@@ -167,7 +167,7 @@ export interface RoleWorkspaceConfig {
 export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   {
     id: 'TEACHER_WORKSPACE',
-    label: 'Ruang Kerja Guru',
+    label: 'Guru',
     badge: 'Mengajar',
     icon: BookOpen,
     color: 'text-teal-600',
@@ -184,13 +184,13 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'WALIKELAS_WORKSPACE',
-    label: 'Ruang Wali Kelas',
+    label: 'Wali Kelas',
     badge: 'Wali Kelas',
     icon: GraduationCap,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
     solidBg: 'bg-blue-600',
-    desc: 'Monitoring & Rekap Kelas Binaan',
+    desc: 'Monitoring & Rekap Kelas',
     requiredCapability: 'dashboard.view.walikelas',
     requiredPositionCode: 'WALIKELAS',
     defaultPath: '/attendance/monitoring',
@@ -201,13 +201,13 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'KURIKULUM_WORKSPACE',
-    label: 'Manajemen Kurikulum',
+    label: 'Kurikulum',
     badge: 'Kurikulum',
     icon: ShieldCheck,
     color: 'text-emerald-600',
     bg: 'bg-emerald-50',
     solidBg: 'bg-emerald-600',
-    desc: 'Struktur, Jadwal & Supervisi',
+    desc: 'Struktur, Jadwal & KBM',
     requiredCapability: 'academic.manage.academic',
     requiredPositionCode: 'KURIKULUM',
     defaultPath: '/kurikulum/dashboard',
@@ -219,13 +219,13 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'KESISWAAN_WORKSPACE',
-    label: 'Manajemen Kesiswaan',
+    label: 'Kesiswaan',
     badge: 'Kesiswaan',
     icon: Users,
     color: 'text-amber-600',
     bg: 'bg-amber-50',
     solidBg: 'bg-amber-600',
-    desc: 'Kedisiplinan & Prestasi Siswa',
+    desc: 'Kedisiplinan & Prestasi',
     requiredCapability: 'dashboard.view.kesiswaan',
     requiredPositionCode: 'KESISWAAN',
     defaultPath: '/kesiswaan/monitoring',
@@ -237,7 +237,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'SARPRAS_WORKSPACE',
-    label: 'Manajemen Sarpras',
+    label: 'Sarpras',
     badge: 'Sarpras',
     icon: Building2,
     color: 'text-indigo-600',
@@ -254,7 +254,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'HUBIN_WORKSPACE',
-    label: 'Manajemen Hubin',
+    label: 'Hubin',
     badge: 'Hubin',
     icon: Briefcase,
     color: 'text-purple-600',
@@ -272,13 +272,13 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'BPBK_WORKSPACE',
-    label: 'Bimbingan Konseling',
+    label: 'BP/BK',
     badge: 'BP/BK',
     icon: HeartHandshake,
     color: 'text-rose-600',
     bg: 'bg-rose-50',
     solidBg: 'bg-rose-600',
-    desc: 'Konseling & Bimbingan Siswa',
+    desc: 'Konseling & Bimbingan',
     requiredCapability: 'bk.counseling.manage',
     requiredPositionCode: 'BPBK',
     defaultPath: '/bpbk/dashboard',
@@ -290,7 +290,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'KEPSEK_WORKSPACE',
-    label: 'Dashboard Kepsek',
+    label: 'Kepsek',
     badge: 'Eksekutif',
     icon: Briefcase,
     color: 'text-purple-600',
@@ -305,6 +305,67 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/bpbk/cases',
       '/sarpras/inventory'
     ]
+  },
+  // ─── TATA USAHA GRANULAR WORKSPACES ────────────────────────────────
+  {
+    id: 'TU_KOORDINATOR_WORKSPACE',
+    label: 'Koordinator TU',
+    badge: 'TU',
+    icon: ShieldCheck,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    solidBg: 'bg-indigo-600',
+    desc: 'Supervisi Administrasi TU',
+    requiredPositionCode: 'TU_KEPALA',
+    defaultPath: '/correspondence/dashboard'
+  },
+  {
+    id: 'TU_PERSURATAN_WORKSPACE',
+    label: 'TU Persuratan',
+    badge: 'TU',
+    icon: Mail,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    solidBg: 'bg-amber-600',
+    desc: 'Arsip & Surat Menyurat',
+    requiredPositionCode: 'TU_PERSURATAN',
+    defaultPath: '/correspondence/dashboard'
+  },
+  {
+    id: 'TU_KEUANGAN_WORKSPACE',
+    label: 'TU Keuangan',
+    badge: 'TU',
+    icon: Wallet,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    solidBg: 'bg-emerald-600',
+    desc: 'Kelola SPP & Billing',
+    requiredPositionCode: 'TU_KEUANGAN',
+    defaultPath: '/billing/invoices'
+  },
+  {
+    id: 'TU_KEPEGAWAIAN_WORKSPACE',
+    label: 'TU Kepegawaian',
+    badge: 'TU',
+    icon: Users,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+    solidBg: 'bg-blue-600',
+    desc: 'Kelola Data Induk',
+    requiredPositionCode: 'TU_KEPEGAWAIAN',
+    defaultPath: '/academic/siswa'
+  },
+  {
+    id: 'TU_SARPRAS_WORKSPACE',
+    label: 'TU Sarpras',
+    badge: 'TU',
+    icon: Building2,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    solidBg: 'bg-purple-600',
+    desc: 'Kelola Aset & Inventaris',
+    requiredPositionCode: 'TU_SARPRAS',
+    defaultPath: '/sarpras/inventory'
   }
 ];
 
