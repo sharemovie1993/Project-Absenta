@@ -109,6 +109,23 @@ export class TimetableSolverService {
     const teacherOccupied = new Map<string, boolean>();
     const teacherJpCount = new Map<string, number>();
 
+    // 3.5 Fetch & Apply Teacher Time-Off Constraints (Time-Off / Constraints)
+    const guruTimeOffs = await prisma.guruTimeOff.findMany({
+      where: { tenant_id: tenantId }
+    });
+
+    guruTimeOffs.forEach(to => {
+      if (to.slot_index === null || to.slot_index === undefined) {
+        // Full Day Time-Off: Lock all slots 1..10 for this teacher on this day
+        for (let s = 1; s <= 10; s++) {
+          teacherOccupied.set(`${to.guru_id}_${to.hari}_${s}`, true);
+        }
+      } else {
+        // Specific Slot Time-Off: Lock specific slot for this teacher
+        teacherOccupied.set(`${to.guru_id}_${to.hari}_${to.slot_index}`, true);
+      }
+    });
+
     if (!overwrite_existing) {
       existingJadwal.forEach(j => {
         classOccupied.set(`${j.kelas_id}_${j.hari}_${j.slot_index}`, true);

@@ -485,6 +485,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { default: guruMapelRoutes } = await import('../modules/kurikulum/guru-mapel/routes/guru-mapel.routes');
       await fastify.register(guruMapelRoutes, { prefix: '/kurikulum/guru-mapel' });
 
+      // Guru Time-Off (Kurikulum)
+      const { guruTimeOffRoutes } = await import('../modules/kurikulum/guru-time-off/routes/guru-time-off.routes');
+      await fastify.register(guruTimeOffRoutes, { prefix: '/kurikulum/guru-time-off' });
+
       // Wali Kelas (Kurikulum)
       const { waliKelasRoutes } = await import('../modules/kurikulum/wali-kelas/routes/wali-kelas.routes');
       await fastify.register(waliKelasRoutes, { prefix: '/kurikulum/wali-kelas' });

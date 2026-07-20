@@ -5,7 +5,7 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers } from 'lucide-react';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar } from 'lucide-react';
 import { listGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -21,9 +21,10 @@ interface Props {
   refreshTrigger?: number;
   onAdd?: () => void;
   onAddWizard?: () => void;
+  onOpenTimeOff?: (guruId: string, guruName?: string) => void;
 }
 
-const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizard }) => {
+const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizard, onOpenTimeOff }) => {
 
   const { user } = useAuthStore();
   const confirm = useConfirm();
@@ -257,22 +258,34 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       key: 'actions',
       label: 'Aksi',
       render: (_: any, gm: GuruMapel) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {canManage && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleDelete(gm)}
-              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-              title="Hapus Pengampu"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onOpenTimeOff?.(gm.guru_id, gm.Guru?.nama_guru)}
+                className="h-8 px-2 text-[11px] font-extrabold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 border border-amber-200/80 dark:border-amber-900/60 rounded-lg flex items-center gap-1.5 transition-all"
+                title="Atur Time-Off Guru (Preferensi Ketersediaan Hari & Jam)"
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                Time-Off
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleDelete(gm)}
+                className="h-8 w-8 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                title="Hapus Pengampu"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
       )
     }
-  ], [canManage, handleDelete]);
+  ], [canManage, handleDelete, onOpenTimeOff]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {

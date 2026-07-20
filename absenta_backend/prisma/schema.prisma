@@ -42,6 +42,7 @@ model Tenant {
   financialReports          FinancialReport[]
   guru                      Guru[]
   GuruMapel                 GuruMapel[]
+  GuruTimeOff               GuruTimeOff[]
   JenisKegiatanMaster       JenisKegiatanMaster[]
   jurusan                   Jurusan[]
   programKeahlian           ProgramKeahlian[]
@@ -800,6 +801,7 @@ model Guru {
   IzinKeluarSiswa       IzinKeluarSiswa[]
   GuruDocument          GuruDocument[]
   AbsenGerbangGuru      AbsenGerbangGuru[]
+  GuruTimeOff           GuruTimeOff[]
 
   Member Member?
 
@@ -1609,6 +1611,23 @@ model GuruMapel {
   @@index([tenant_id])
   @@index([kelas_id])
   @@index([jurusan_id])
+}
+
+model GuruTimeOff {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  guru_id     String
+  hari        Hari
+  slot_index  Int?     // null = Full Day Time-Off, atau 1..10 untuk jam tertentu
+  keterangan  String?
+  created_at  DateTime @default(now())
+
+  Guru   Guru   @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, guru_id, hari, slot_index])
+  @@index([tenant_id])
+  @@index([guru_id])
 }
 
 model KelasMapel {

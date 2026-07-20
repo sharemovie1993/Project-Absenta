@@ -18,17 +18,30 @@ import { Loader } from '../../components/ui/Loader';
 const GuruMapelForm = lazy(() => import('../../components/academic/guru-mapel/GuruMapelForm').then(module => ({ default: module.default })));
 const GuruMapelWizardForm = lazy(() => import('../../components/academic/guru-mapel/GuruMapelWizardForm').then(module => ({ default: module.GuruMapelWizardForm })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
+const GuruTimeOffModal = lazy(() => import('../../components/academic/guru-mapel/GuruTimeOffModal').then(module => ({ default: module.GuruTimeOffModal })));
 
 const GuruMapelPage: React.FC = () => {
   const { can, isLoading: authLoading } = useAuth();
   const [selectionOpen, setSelectionOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [timeOffGuruId, setTimeOffGuruId] = useState<string | null>(null);
+  const [timeOffGuruName, setTimeOffGuruName] = useState<string>('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [stats, setStats] = useState<AcademicStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  const handleOpenTimeOff = useCallback((guruId: string, guruName?: string) => {
+    setTimeOffGuruId(guruId);
+    setTimeOffGuruName(guruName || 'Guru');
+  }, []);
+
+  const handleCloseTimeOff = useCallback(() => {
+    setTimeOffGuruId(null);
+    setTimeOffGuruName('');
+  }, []);
 
   const handleSelectionOpen = useCallback(() => setSelectionOpen(true), []);
   const handleSelectionClose = useCallback(() => setSelectionOpen(false), []);
@@ -195,6 +208,7 @@ const GuruMapelPage: React.FC = () => {
           <GuruMapelList 
             onAdd={canManage ? handleSelectionOpen : undefined} 
             onAddWizard={canManage ? handleWizardOpen : undefined} 
+            onOpenTimeOff={canManage ? handleOpenTimeOff : undefined}
             refreshTrigger={refreshTrigger} 
           />
         </SectionCard>
@@ -279,6 +293,14 @@ const GuruMapelPage: React.FC = () => {
         >
           <GuruMapelWizardForm onSuccess={handleWizardSuccess} onCancel={handleWizardClose} />
         </Modal>
+
+        <GuruTimeOffModal
+          isOpen={!!timeOffGuruId}
+          onClose={handleCloseTimeOff}
+          guruId={timeOffGuruId}
+          guruName={timeOffGuruName}
+          onSuccess={() => setRefreshTrigger(prev => prev + 1)}
+        />
 
         <ExcelImportModal
           isOpen={isImportOpen}
