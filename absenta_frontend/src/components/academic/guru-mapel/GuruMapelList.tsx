@@ -44,6 +44,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [rawKelasList, setRawKelasList] = useState<any[]>([]);
   const [strukturMap, setStrukturMap] = useState<Map<string, number>>(new Map());
+  const [bebanGuruMap, setBebanGuruMap] = useState<Map<string, { current_jp: number; max_jp: number }>>(new Map());
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
@@ -95,6 +96,24 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
   }, [user]);
 
+  const fetchBebanData = useCallback(async () => {
+    try {
+      const res = await kurikulumApi.getBebanMengajar();
+      if (res?.success && Array.isArray(res?.data)) {
+        const bMap = new Map<string, { current_jp: number; max_jp: number }>();
+        res.data.forEach((b: any) => {
+          bMap.set(b.id, {
+            current_jp: b.current_jp || 0,
+            max_jp: b.max_jp || 24
+          });
+        });
+        setBebanGuruMap(bMap);
+      }
+    } catch (e) {
+      console.error('Failed to load beban guru data:', e);
+    }
+  }, []);
+
   const handleSearchGuru = useCallback(async (query: string) => {
     try {
       setIsLoadingGuru(true);
@@ -122,6 +141,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      fetchBebanData();
       const res = await listGuruMapel({
         guru_id: selectedGuruId || undefined,
         mapel_id: selectedMapelId || undefined
@@ -145,7 +165,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedGuruId, selectedMapelId]);
+  }, [debouncedSearch, selectedGuruId, selectedMapelId, fetchBebanData]);
 
   useEffect(() => {
     fetchData();
@@ -319,8 +339,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       label: 'Guru Pengampu & Progress JP',
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
-        const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || 0;
-        const maxJp = (gm.Guru as any)?.max_jp || 24;
+        const bebanInfo = bebanGuruMap.get(gm.guru_id);
+        const totalGuruJp = bebanInfo ? bebanInfo.current_jp : (teacherTotalJpMap.get(gm.guru_id) || 0);
+        const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;
         const rawPercentage = Math.round((totalGuruJp / maxJp) * 100);
         const percentage = Math.min(rawPercentage, 100);
 
@@ -513,7 +534,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         </div>
       )
     }
-  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, strukturMap, teacherTotalJpMap]);
+  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, strukturMap, teacherTotalJpMap, bebanGuruMap]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
