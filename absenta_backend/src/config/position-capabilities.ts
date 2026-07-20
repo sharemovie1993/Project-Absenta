@@ -140,7 +140,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.history',
     'academic.years.view.list',
     'academic.semesters.view.list',
-    'academic.homeroom.manage', // Untuk melihat penugasan Wali Kelas
     'curriculum.supervision.view.schedule',
     'curriculum.supervision.view.report',
     'curriculum.supervision.create.record', // Kepsek selaku supervisor utama
@@ -153,8 +152,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.view.list',
     'attendance.sessions.view.detail',
     'attendance.events.view.list',
-    'attendance.events.create',
-    'attendance.events.delete',
     'attendance.recap.view.daily',
     'attendance.recap.view.monthly',
     'attendance.recap.view.global',
@@ -174,7 +171,6 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.cases.view.detail',
     'bk.reports.view',
     'bk.audit.view',
-    'bk.recyclebin.view',
     'bk.counseling.view.list',
     'bk.counseling.view.detail',
     'bk.summons.view.list',
