@@ -6,6 +6,8 @@ export type HubType = 'AKADEMIK' | 'KURIKULUM' | 'KESISWAAN' | 'ABSENSI' | 'SARP
 interface NavState {
   activeHub: HubType;
   setActiveHub: (hub: HubType) => void;
+  activeWorkspaceId: string;
+  setActiveWorkspaceId: (id: string) => void;
   detectHubFromPath: (path: string) => void;
 }
 
@@ -14,6 +16,8 @@ export const useNavStore = create<NavState>()(
     (set) => ({
       activeHub: 'AKADEMIK',
       setActiveHub: (hub) => set({ activeHub: hub }),
+      activeWorkspaceId: 'TEACHER_WORKSPACE',
+      setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
       detectHubFromPath: (path) => {
         const p = path.toLowerCase();
         
@@ -36,7 +40,6 @@ export const useNavStore = create<NavState>()(
         } else if (p.startsWith('/correspondence') || p.includes('persuratan') || p.includes('surat')) {
           set({ activeHub: 'PERSURATAN' });
         }
-        // SISTEM detection removed to keep it persistent at the bottom
       },
     }),
     {

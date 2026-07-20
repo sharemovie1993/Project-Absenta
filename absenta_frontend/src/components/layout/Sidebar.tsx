@@ -19,7 +19,7 @@ import Tooltip from '../ui/Tooltip';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { useNavStore, type HubType } from '../../store/navStore';
 import { HubSwitcher } from './HubSwitcher';
-import { getHubByLabel } from '@/config/navigation.config';
+import { getHubByLabel, ROLE_WORKSPACES } from '@/config/navigation.config';
 import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '../../hooks/useJenjang';
@@ -125,7 +125,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
   const location = useLocation();
   const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
-  const { activeHub, setActiveHub, detectHubFromPath } = useNavStore();
+  const { activeHub, setActiveHub, activeWorkspaceId, detectHubFromPath } = useNavStore();
 
   // Auto-detect hub on mount and path change
   useEffect(() => {
@@ -298,6 +298,35 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
   const getFilteredNavigation = () => {
     const sorted = sortTree(menuTree);
     const mapped = mapToNavItems(sorted);
+
+    const isAdmin = String(user?.role?.name || '').toUpperCase() === 'ADMIN' || 
+                    String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN' || 
+                    user?.tenant_id === 'system';
+
+    if (!isAdmin) {
+      const currentWs = ROLE_WORKSPACES.find(w => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
+      const allowed = currentWs?.allowedPathPrefixes || [];
+
+      const filterByWorkspace = (items: NavItem[]): NavItem[] => {
+        const result: NavItem[] = [];
+        for (const item of items) {
+          const itemChildren = item.children ? filterByWorkspace(item.children) : undefined;
+          const isPathAllowed = allowed.some(prefix => item.path && item.path.toLowerCase().startsWith(prefix.toLowerCase()));
+          
+          if (isPathAllowed || (itemChildren && itemChildren.length > 0)) {
+            result.push({
+              ...item,
+              children: itemChildren && itemChildren.length > 0 ? itemChildren : undefined,
+            });
+          }
+        }
+        return result;
+      };
+
+      const filteredWsItems = filterByWorkspace(mapped);
+      const cleaned = cleanEmptyParents(filteredWsItems);
+      if (cleaned.length > 0) return cleaned;
+    }
 
     const finalTree: NavItem[] = [];
     const isSuperAdmin = String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN';

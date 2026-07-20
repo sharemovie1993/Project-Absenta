@@ -9,7 +9,9 @@ import {
   Users,
   FileText,
   Laptop,
-  Mail
+  Mail,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import type { HubType } from '../store/navStore';
 
@@ -143,4 +145,143 @@ export const getHubByLabel = (label: string): HubType | undefined => {
     h.id === cleanLabel || h.keywords.some(k => cleanLabel.includes(k))
   );
   return hub?.id;
+};
+
+export interface RoleWorkspaceConfig {
+  id: string;
+  label: string;
+  badge: string;
+  icon: any;
+  color: string;
+  bg: string;
+  solidBg: string;
+  desc: string;
+  requiredPositionCode?: string;
+  requiredRoleName?: string;
+  defaultPath: string;
+  allowedPathPrefixes: string[];
+}
+
+export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
+  {
+    id: 'TEACHER_WORKSPACE',
+    label: 'Ruang Kerja Guru',
+    badge: 'Mengajar',
+    icon: BookOpen,
+    color: 'text-teal-600',
+    bg: 'bg-teal-50',
+    solidBg: 'bg-teal-600',
+    desc: 'Aktivitas Harian & KBM',
+    requiredRoleName: 'GURU',
+    defaultPath: '/attendance/riwayat-ajar',
+    allowedPathPrefixes: [
+      '/attendance/riwayat-ajar',
+      '/attendance/my-attendance',
+      '/kurikulum/jadwal',
+      '/kurikulum/perangkat',
+      '/kurikulum/kalender',
+      '/kesiswaan/pelanggaran',
+      '/kesiswaan/prestasi',
+      '/cooperative',
+      '/bpbk/referrals',
+      '/sarpras/loans'
+    ]
+  },
+  {
+    id: 'WALIKELAS_WORKSPACE',
+    label: 'Ruang Wali Kelas',
+    badge: 'Bimbingan',
+    icon: GraduationCap,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50',
+    solidBg: 'bg-blue-600',
+    desc: 'Monitoring & Rekap Kelas',
+    requiredPositionCode: 'WALIKELAS',
+    defaultPath: '/attendance/monitoring',
+    allowedPathPrefixes: [
+      '/attendance/monitoring',
+      '/attendance/ops',
+      '/kesiswaan/piket',
+      '/rapor',
+      '/kesiswaan/pelanggaran',
+      '/bpbk'
+    ]
+  },
+  {
+    id: 'KURIKULUM_WORKSPACE',
+    label: 'Manajemen Kurikulum',
+    badge: 'Kurikulum',
+    icon: ShieldCheck,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50',
+    solidBg: 'bg-emerald-600',
+    desc: 'Struktur, Jadwal & Supervisi',
+    requiredPositionCode: 'KURIKULUM',
+    defaultPath: '/kurikulum/dashboard',
+    allowedPathPrefixes: [
+      '/kurikulum'
+    ]
+  },
+  {
+    id: 'KESISWAAN_WORKSPACE',
+    label: 'Manajemen Kesiswaan',
+    badge: 'Kesiswaan',
+    icon: Users,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    solidBg: 'bg-amber-600',
+    desc: 'Kedisiplinan & Prestasi',
+    requiredPositionCode: 'KESISWAAN',
+    defaultPath: '/kesiswaan/monitoring',
+    allowedPathPrefixes: [
+      '/kesiswaan'
+    ]
+  },
+  {
+    id: 'KEPSEK_WORKSPACE',
+    label: 'Dashboard Kepsek',
+    badge: 'Eksekutif',
+    icon: Briefcase,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    solidBg: 'bg-purple-600',
+    desc: 'Monitoring & Mutu Sekolah',
+    requiredPositionCode: 'KEPALA_SEKOLAH',
+    defaultPath: '/kurikulum/dashboard',
+    allowedPathPrefixes: [
+      '/kurikulum/dashboard',
+      '/attendance/guru-monitoring',
+      '/attendance/dashboard',
+      '/sarpras/dashboard',
+      '/kesiswaan/monitoring'
+    ]
+  }
+];
+
+export const resolveUserWorkspaces = (user: any): RoleWorkspaceConfig[] => {
+  if (!user) return [];
+  const roleName = String(user?.role?.name || '').toUpperCase();
+  if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName.startsWith('PLATFORM_')) {
+    return []; // Admins use full Master Suite
+  }
+
+  const positions: string[] = Array.isArray(user?.positions)
+    ? user.positions.map((p: any) => String(p?.code || p).toUpperCase())
+    : [];
+
+  const available: RoleWorkspaceConfig[] = [];
+  if (roleName === 'GURU') {
+    const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
+    if (teacherWs) available.push(teacherWs);
+  }
+
+  ROLE_WORKSPACES.forEach(ws => {
+    if (ws.requiredPositionCode && positions.includes(ws.requiredPositionCode.toUpperCase())) {
+      if (!available.some(a => a.id === ws.id)) {
+        available.push(ws);
+      }
+    }
+  });
+
+  return available;
 };

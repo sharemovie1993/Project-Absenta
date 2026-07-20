@@ -7,7 +7,13 @@ import { cn } from '../../lib/utils';
 import Tooltip from '../ui/Tooltip';
 import { type SidebarMenuItem as BackendMenuItem } from '@/api/menu.api';
 import { useAuthStore } from '@/store/authStore';
-import { MASTER_HUBS, getHubByLabel, type HubConfig } from '@/config/navigation.config';
+import { 
+  MASTER_HUBS, 
+  getHubByLabel, 
+  type HubConfig, 
+  resolveUserWorkspaces,
+  ROLE_WORKSPACES 
+} from '@/config/navigation.config';
 
 interface HubSwitcherProps {
   isSidebarOpen: boolean;
@@ -15,11 +21,20 @@ interface HubSwitcherProps {
 }
 
 export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) {
-  const { activeHub, setActiveHub } = useNavStore();
-  const { user, subscription } = useAuthStore();
+  const { activeHub, setActiveHub, activeWorkspaceId, setActiveWorkspaceId } = useNavStore();
+  const { user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
   const isDashboardActive = location.pathname === '/dashboard';
+
+  const isAdmin = useMemo(() => {
+    const roleName = String(user?.role?.name || '').toUpperCase();
+    return roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName.startsWith('PLATFORM_') || user?.tenant_id === 'system';
+  }, [user]);
+
+  const userWorkspaces = useMemo(() => {
+    return resolveUserWorkspaces(user);
+  }, [user]);
 
   const handleHubClick = (hubId: any) => {
     setActiveHub(hubId);
@@ -41,38 +56,98 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
     }
   };
 
-  const isPlatformUser = useMemo(() => {
-    const roleName = String(user?.role?.name || '').toUpperCase();
-    return roleName === 'SUPERADMIN' || roleName.startsWith('PLATFORM_') || user?.tenant_id === 'system';
-  }, [user]);
-
-  // Set of hub IDs yang AKTIF berdasarkan menuTree dari backend.
-  // Hub yang tidak ada di sini = belum subscribe / terkunci.
-  const unlockedHubIds = useMemo(() => {
-    return new Set(
-      menuTree.map(node => getHubByLabel(node.name)).filter(Boolean)
-    );
-  }, [menuTree]);
-
-  // Aturan: HubSwitcher selalu menampilkan SEMUA hub sebagai etalase platform.
-  // Platform user (superadmin) tidak punya HubSwitcher tenant.
   const visibleHubs = useMemo((): HubConfig[] => {
-    if (isPlatformUser) return [];
+    if (!isAdmin) return [];
     return MASTER_HUBS;
-  }, [isPlatformUser]);
+  }, [isAdmin]);
 
-  if (visibleHubs.length === 0) return null;
+  // Non-Admin Workspace Mode
+  if (!isAdmin) {
+    if (userWorkspaces.length === 0) return null;
 
+    return (
+      <div className="px-3 py-4 space-y-3 mb-2 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 rounded-t-xl">
+        {isSidebarOpen && (
+          <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+            <LayoutGrid size={12} /> Peran & Mode Kerja
+          </div>
+        )}
+        {isSidebarOpen ? (
+          <div className="flex flex-col gap-2 px-1">
+            {userWorkspaces.map((ws) => {
+              const isActive = activeWorkspaceId === ws.id;
+              const Icon = ws.icon;
+              return (
+                <button
+                  key={ws.id}
+                  onClick={() => {
+                    setActiveWorkspaceId(ws.id);
+                    navigate(ws.defaultPath);
+                  }}
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 border text-left",
+                    isActive
+                      ? cn(ws.solidBg, "text-white border-transparent shadow-md")
+                      : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 shadow-sm"
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon size={16} className={cn("shrink-0", isActive ? "text-white" : ws.color)} />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold truncate leading-tight">{ws.label}</p>
+                      <p className={cn("text-[10px] truncate mt-0.5", isActive ? "text-white/80" : "text-slate-400")}>{ws.desc}</p>
+                    </div>
+                  </div>
+                  <span className={cn(
+                    "text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0 ml-2",
+                    isActive ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                  )}>
+                    {ws.badge}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            {userWorkspaces.map((ws) => {
+              const isActive = activeWorkspaceId === ws.id;
+              const Icon = ws.icon;
+              return (
+                <Tooltip key={ws.id} content={ws.label} placement="right">
+                  <button
+                    onClick={() => {
+                      setActiveWorkspaceId(ws.id);
+                      navigate(ws.defaultPath);
+                    }}
+                    className={cn(
+                      "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                      isActive
+                        ? cn(ws.solidBg, "text-white shadow-lg scale-110")
+                        : "bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-gray-100"
+                    )}
+                  >
+                    <Icon size={20} className={isActive ? "text-white" : ws.color} />
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Admin Master Suite Mode (11 Modules)
   return (
     <div className="px-3 py-4 space-y-3 mb-2 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/20 rounded-t-xl">
       {isSidebarOpen && (
         <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-          <LayoutGrid size={12} /> Pilih Modul
+          <LayoutGrid size={12} /> Pilih Modul Master
         </div>
       )}
       {isSidebarOpen ? (
         <div className="grid grid-cols-2 gap-2 px-1">
-          {/* Dashboard Global Button */}
           <Link
             to="/dashboard"
             aria-label="Buka Dashboard Global"
@@ -91,9 +166,7 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
 
           {visibleHubs.map((hub, index) => {
             const isActive = activeHub === hub.id;
-            const isUnlocked = true; // Always unlocked for showcase in HubSwitcher
             const Icon = hub.icon;
-            // Item terakhir ganjil → full width
             const isLastOdd = index === visibleHubs.length - 1 && visibleHubs.length % 2 !== 0;
 
             return (
@@ -126,9 +199,7 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
           })}
         </div>
       ) : (
-        /* ── Collapsed Sidebar (icon only) ── */
         <div className="flex flex-col items-center gap-3">
-          {/* Dashboard Global Icon Button */}
           <Tooltip content="Dashboard Global" placement="right">
             <Link
               to="/dashboard"
@@ -152,7 +223,6 @@ export function HubSwitcher({ isSidebarOpen, menuTree = [] }: HubSwitcherProps) 
 
           {visibleHubs.map((hub) => {
             const isActive = activeHub === hub.id;
-            const isUnlocked = true; // Always unlocked for showcase in HubSwitcher
             const Icon = hub.icon;
             return (
               <Tooltip
