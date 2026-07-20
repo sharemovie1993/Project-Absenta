@@ -118,6 +118,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.view.list',
     'attendance.events.create',
     'attendance.events.delete',
+    'attendance.schedules.view.list',
     'notify.announcements.manage', // Sebar pengumuman kesiswaan
     'bk.cases.view.list',
     'bk.cases.view.detail'
