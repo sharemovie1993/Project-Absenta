@@ -278,58 +278,63 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const columns = useMemo(() => [
     {
       key: 'Guru',
-      label: 'Guru',
+      label: 'Guru Pengampu & Beban JP',
       sortable: true,
-      render: (_: any, gm: GuruMapel) => (
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-gray-400" />
-          <span className="font-medium text-slate-700 dark:text-slate-200">{gm.Guru?.nama_guru || '-'}</span>
-        </div>
-      )
+      render: (_: any, gm: GuruMapel) => {
+        const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || 0;
+        const maxJp = (gm.Guru as any)?.max_jp || 24;
+        const percentage = Math.min(Math.round((totalGuruJp / maxJp) * 100), 100);
+
+        let barColor = 'bg-amber-500';
+        let statusLabel = `Kurang (${totalGuruJp}/${maxJp} JP)`;
+        let textColor = 'text-amber-700 dark:text-amber-400';
+
+        if (totalGuruJp === maxJp) {
+          barColor = 'bg-emerald-500';
+          statusLabel = `Sesuai (${totalGuruJp}/${maxJp} JP)`;
+          textColor = 'text-emerald-700 dark:text-emerald-400';
+        } else if (totalGuruJp > maxJp) {
+          barColor = 'bg-rose-500';
+          statusLabel = `Lebih (${totalGuruJp}/${maxJp} JP)`;
+          textColor = 'text-rose-600 dark:text-rose-400';
+        }
+
+        return (
+          <div className="flex flex-col gap-1 py-1">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-400 shrink-0" />
+              <span className="font-bold text-slate-800 dark:text-slate-100">{gm.Guru?.nama_guru || '-'}</span>
+            </div>
+
+            {/* Workload Progress Bar & Numbers below Guru Name */}
+            <div className="flex items-center gap-2 pl-6">
+              <div className="w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shrink-0">
+                <div
+                  className={`h-full rounded-full transition-all ${barColor}`}
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <span className={`text-[10px] font-extrabold tracking-tight ${textColor}`}>
+                {statusLabel}
+              </span>
+            </div>
+          </div>
+        );
+      }
     },
     {
       key: 'Mapel',
       label: 'Mata Pelajaran',
       sortable: true,
-      render: (_: any, gm: GuruMapel) => (
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-gray-400" />
-          <span className="font-medium text-slate-700 dark:text-slate-200">{gm.Mapel?.nama_mapel || '-'}</span>
-        </div>
-      )
-    },
-    {
-      key: 'BebanJP',
-      label: 'Beban JP Guru',
       render: (_: any, gm: GuruMapel) => {
         const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
-        const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || jpPerMinggu;
-        const maxJp = (gm.Guru as any)?.max_jp || 24;
-
-        let statusBg = 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
-        let statusLabel = `Kurang (${totalGuruJp}/${maxJp} JP)`;
-
-        if (totalGuruJp === maxJp) {
-          statusBg = 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800';
-          statusLabel = `Sesuai (${totalGuruJp}/${maxJp} JP)`;
-        } else if (totalGuruJp > maxJp) {
-          statusBg = 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800';
-          statusLabel = `Lebih (${totalGuruJp}/${maxJp} JP)`;
-        }
-
         return (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                <Clock className="w-3 h-3 mr-1 text-slate-500" />
-                Mapel: {jpPerMinggu} JP
-              </span>
-            </div>
-            <div>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${statusBg}`}>
-                {statusLabel}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{gm.Mapel?.nama_mapel || '-'}</span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              {jpPerMinggu} JP
+            </span>
           </div>
         );
       }
