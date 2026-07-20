@@ -38,12 +38,11 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
 
       updatePosition();
 
-      // Jika ada scroll di manapun, kita update posisinya atau tutup
+      // Jika ada scroll di manapun, kita perbarui posisinya agar mengikuti pergerakan layar
       const handleScroll = (e: Event) => {
         // Jika scroll terjadi di dalam dropdown sendiri, abaikan
         if (containerRef.current?.contains(e.target as Node)) return;
-        // Untuk kestabilan, kita tutup saja saat scroll agar tidak melayang liar
-        onClose();
+        updatePosition();
       };
 
       window.addEventListener('scroll', handleScroll, true);
