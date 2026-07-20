@@ -295,7 +295,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'hubin.tefa.manage',
     'hubin.bkk.manage',
     'hubin.lamaran.manage',
-    'reports.hubin.view'
+    'reports.hubin.view',
+    'academic.structures.view.list',
+    'academic.teachers.view.list',
+    'attendance.schedules.view.list',
+    'affairs.violations.view.list'
   ],
   [STRUKTUR_CODES.SARPRAS]: [
     'organization.scope.tenant_wide',
