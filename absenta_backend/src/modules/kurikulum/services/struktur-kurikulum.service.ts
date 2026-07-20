@@ -1,5 +1,30 @@
 import { prisma } from '../../../utils/prisma';
 
+export function calculatePositionEquivalency(code: string = '', name: string = ''): number {
+  const upperCode = code.toUpperCase();
+  const upperName = name.toUpperCase();
+
+  if (upperCode.includes('WAKA') || upperName.includes('WAKA') || upperName.includes('WAKIL')) {
+    return 12;
+  }
+  if (
+    upperCode.includes('KAPROG') || 
+    upperName.includes('KAPROG') || 
+    upperName.includes('KEPALA PROGRAM') || 
+    upperName.includes('KEPALA LAB') || 
+    upperName.includes('KEPALA BENGKEL')
+  ) {
+    return 12;
+  }
+  if (upperCode.includes('WALI') || upperName.includes('WALI KELAS')) {
+    return 2;
+  }
+  if (upperCode.includes('PIKET') || upperName.includes('PIKET') || upperName.includes('PEMBINA')) {
+    return 2;
+  }
+  return 0;
+}
+
 export class StrukturKurikulumService {
   static async getAll(tenantId: string, filter: { tahun_pelajaran_id?: string; tingkat?: number; jurusan_id?: string }) {
     return prisma.strukturKurikulum.findMany({
@@ -223,33 +248,6 @@ export class StrukturKurikulumService {
     };
   }
 
-export function calculatePositionEquivalency(code: string = '', name: string = ''): number {
-  const upperCode = code.toUpperCase();
-  const upperName = name.toUpperCase();
-
-  if (upperCode.includes('WAKA') || upperName.includes('WAKA') || upperName.includes('WAKIL')) {
-    return 12;
-  }
-  if (
-    upperCode.includes('KAPROG') || 
-    upperName.includes('KAPROG') || 
-    upperName.includes('KEPALA PROGRAM') || 
-    upperName.includes('KEPALA LAB') || 
-    upperName.includes('KEPALA BENGKEL')
-  ) {
-    return 12;
-  }
-  if (upperCode.includes('WALI') || upperName.includes('WALI KELAS')) {
-    return 2;
-  }
-  if (upperCode.includes('PIKET') || upperName.includes('PIKET') || upperName.includes('PEMBINA')) {
-    return 2;
-  }
-  return 0;
-}
-
-export class StrukturKurikulumService {
-  // Existing methods...
   static async getBebanGuruAll(tenantId: string, tahunPelajaranId?: string, semesterId?: string) {
     const teachers = await prisma.guru.findMany({
       where: {
@@ -349,6 +347,5 @@ export class StrukturKurikulumService {
       };
     });
   }
-}
 }
 
