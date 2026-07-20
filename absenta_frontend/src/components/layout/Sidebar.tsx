@@ -305,33 +305,93 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
 
     if (!isAdmin) {
       const currentWs = ROLE_WORKSPACES.find(w => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
-      const allowed = currentWs?.allowedPathPrefixes || [];
 
-      const extractMatchingLeafItems = (nodes: NavItem[]): NavItem[] => {
+      // 1. Dynamic Root Group Workspaces (KURIKULUM, KESISWAAN, SARPRAS, HUBIN, BPBK)
+      if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
+        const matchedRoot = mapped.find(root => {
+          const rootName = String(root.label || '').toUpperCase().trim();
+          return currentWs.targetGroupKeywords!.some(kw => rootName.includes(kw.toUpperCase()));
+        });
+
+        if (matchedRoot && matchedRoot.children && matchedRoot.children.length > 0) {
+          return cleanEmptyParents(matchedRoot.children);
+        } else if (matchedRoot) {
+          return [matchedRoot];
+        }
+      }
+
+      // 2. Dynamic Ruang Wali Kelas (Wali Kelas Workspace)
+      if (currentWs.id === 'WALIKELAS_WORKSPACE') {
+        const waliItems: NavItem[] = [];
+        mapped.forEach(root => {
+          const rName = root.label.toUpperCase();
+          if (rName.includes('RAPOR')) {
+            if (root.children) waliItems.push(...root.children);
+            else waliItems.push(root);
+          } else if (root.children) {
+            root.children.forEach(child => {
+              const cLabel = child.label.toLowerCase();
+              const cPath = (child.path || '').toLowerCase();
+              if (
+                cPath.includes('/monitoring') || 
+                cPath.includes('/piket') || 
+                cLabel.includes('pelanggaran') || 
+                cPath.includes('/bpbk')
+              ) {
+                waliItems.push(child);
+              }
+            });
+          }
+        });
+        if (waliItems.length > 0) return cleanEmptyParents(waliItems);
+      }
+
+      // 3. Dynamic Ruang Kerja Guru (Teacher Workspace)
+      if (currentWs.id === 'TEACHER_WORKSPACE') {
+        const teacherItems: NavItem[] = [];
+        mapped.forEach(root => {
+          if (root.children) {
+            root.children.forEach(child => {
+              const cLabel = child.label.toLowerCase();
+              const cPath = (child.path || '').toLowerCase();
+              if (
+                cPath.includes('riwayat-ajar') ||
+                cPath.includes('my-attendance') ||
+                cPath.includes('/kurikulum/jadwal') ||
+                cPath.includes('/kurikulum/perangkat') ||
+                cPath.includes('/kurikulum/kalender') ||
+                cLabel.includes('pelanggaran') ||
+                cLabel.includes('prestasi') ||
+                cPath.includes('/cooperative')
+              ) {
+                teacherItems.push(child);
+              }
+            });
+          }
+        });
+        if (teacherItems.length > 0) return cleanEmptyParents(teacherItems);
+      }
+
+      // Fallback for non-admin: return all leaf items
+      const extractFlatLeafItems = (nodes: NavItem[]): NavItem[] => {
         const flat: NavItem[] = [];
         for (const node of nodes) {
           if (node.children && node.children.length > 0) {
-            flat.push(...extractMatchingLeafItems(node.children));
+            flat.push(...extractFlatLeafItems(node.children));
           } else if (node.path && node.path !== '#' && !node.path.startsWith('menu:')) {
-            const isAllowed = allowed.some(prefix => node.path.toLowerCase().startsWith(prefix.toLowerCase()));
-            if (isAllowed) {
-              flat.push({ ...node, children: undefined });
-            }
+            flat.push({ ...node, children: undefined });
           }
         }
         return flat;
       };
 
-      const flatItems = extractMatchingLeafItems(mapped);
-      
+      const flatItems = extractFlatLeafItems(mapped);
       const seenPaths = new Set<string>();
-      const uniqueItems = flatItems.filter(item => {
+      return flatItems.filter(item => {
         if (seenPaths.has(item.path)) return false;
         seenPaths.add(item.path);
         return true;
       });
-
-      return uniqueItems;
     }
 
     const finalTree: NavItem[] = [];
