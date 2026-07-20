@@ -224,6 +224,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     }
   }, [fetchGurus, currentPage, debouncedSearchTerm, confirm, onRefresh]);
 
+  const [togglingJenisPtkId, setTogglingJenisPtkId] = useState<string | null>(null);
+
   const handleToggleActive = useCallback(async (guru: Guru) => {
     try {
       setTogglingId(guru.id);
@@ -243,6 +245,28 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       toast.error(errorMessage);
     } finally {
       setTogglingId(null);
+    }
+  }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh]);
+
+  const handleToggleJenisPtk = useCallback(async (guru: Guru) => {
+    try {
+      setTogglingJenisPtkId(guru.id);
+      const currentJenis = guru.jenis_ptk || 'PENDIDIK';
+      const targetState = currentJenis === 'PENDIDIK' ? 'TENAGA_KEPENDIDIKAN' : 'PENDIDIK';
+      const response = await updateGuru(guru.id, { jenis_ptk: targetState });
+      if (response.success) {
+        toast.success(`Fungsi kerja ${guru.nama_guru} berhasil diubah.`);
+        fetchGurus(currentPage, debouncedSearchTerm);
+        onRefresh?.();
+      } else {
+        toast.error(response.message || 'Gagal mengubah jenis PTK');
+      }
+    } catch (error: any) {
+      console.error('Error toggling jenis PTK:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat mengubah jenis PTK';
+      toast.error(errorMessage);
+    } finally {
+      setTogglingJenisPtkId(null);
     }
   }, [fetchGurus, currentPage, debouncedSearchTerm, onRefresh]);
 
@@ -273,12 +297,30 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     {
       key: 'jenis_ptk',
       label: 'Jenis PTK',
-      render: (value: string | null) => {
-        const isTu = value === 'TENAGA_KEPENDIDIKAN';
+      render: (value: string | null, guru: Guru) => {
+        const isPendidik = (value || 'PENDIDIK') === 'PENDIDIK';
+        const isToggling = togglingJenisPtkId === guru.id;
         return (
-          <Badge variant={isTu ? 'warning' : 'info'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
-            {isTu ? 'Tenaga Kependidikan (TU)' : 'Pendidik (Guru)'}
-          </Badge>
+          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <Badge variant={isPendidik ? 'info' : 'warning'} className="text-[10px] py-0.5 px-2.5 rounded-full font-bold">
+              {isPendidik ? 'Pendidik (Guru)' : 'Tenaga Kependidikan (TU)'}
+            </Badge>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => handleToggleJenisPtk(guru)}
+                disabled={isToggling}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPendidik ? 'bg-blue-500 hover:bg-blue-600' : 'bg-amber-500 hover:bg-amber-600'} ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ transition: 'background-color 0.2s' }}
+                aria-label={`Toggle jenis PTK ${guru.nama_guru}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${isPendidik ? 'translate-x-4' : 'translate-x-0'}`}
+                  style={{ transition: 'transform 0.2s' }}
+                />
+              </button>
+            )}
+          </div>
         );
       }
     },
@@ -352,7 +394,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
         </div>
       )
     },
-  ].filter(Boolean) as any, [canManage, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete]);
+  ].filter(Boolean) as any, [canManage, onEdit, onView, selectedIds, gurus, allVisibleSelected, confirm, handleDelete, handleToggleJenisPtk, togglingJenisPtkId]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
