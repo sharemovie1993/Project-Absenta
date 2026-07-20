@@ -44,7 +44,6 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [rawKelasList, setRawKelasList] = useState<any[]>([]);
   const [strukturMap, setStrukturMap] = useState<Map<string, number>>(new Map());
-  const [bebanGuruMap, setBebanGuruMap] = useState<Map<string, { current_jp: number; max_jp: number }>>(new Map());
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
