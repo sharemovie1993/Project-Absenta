@@ -15,6 +15,30 @@ const rekapBreadcrumbs = [
   { label: 'Rekapitulasi Kehadiran', active: true }
 ];
 
+const rekapStats = [
+  {
+    title: "Laporan Harian",
+    value: "Real-time",
+    icon: <FileText size={14} />,
+    gradient: "from-blue-500 to-indigo-600",
+    subtitle: "Update setiap transaksi"
+  },
+  {
+    title: "Laporan Bulanan",
+    value: "Akumulatif",
+    icon: <Calendar size={14} />,
+    gradient: "from-emerald-500 to-teal-600",
+    subtitle: "Ringkasan tiap periode"
+  },
+  {
+    title: "Statistik Kelas",
+    value: "Komparatif",
+    icon: <BarChart3 size={14} />,
+    gradient: "from-purple-500 to-violet-600",
+    subtitle: "Perbandingan performa"
+  }
+];
+
 export default function RekapPage() {
   const { subscription } = useAuthStore();
   const [tab, setTab] = useState('HARIAN_SISWA');
@@ -34,30 +58,6 @@ export default function RekapPage() {
       { text: "Gunakan 'Bulanan Per Kelas' untuk melihat statistik perbandingan antar siswa dalam satu kelas." }
     ]
   };
-
-  const rekapStats = [
-    {
-      title: "Laporan Harian",
-      value: "Real-time",
-      icon: <FileText size={14} />,
-      gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Update setiap transaksi"
-    },
-    {
-      title: "Laporan Bulanan",
-      value: "Akumulatif",
-      icon: <Calendar size={14} />,
-      gradient: "from-emerald-500 to-teal-600",
-      subtitle: "Ringkasan tiap periode"
-    },
-    {
-      title: "Statistik Kelas",
-      value: "Komparatif",
-      icon: <BarChart3 size={14} />,
-      gradient: "from-purple-500 to-violet-600",
-      subtitle: "Perbandingan performa"
-    }
-  ];
 
   return (
     <AcademicPageLayout
