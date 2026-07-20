@@ -55,7 +55,7 @@ interface DropdownOptionResponse {
 
 const breadcrumbs = [
   { label: 'Presensi', path: '/attendance/ops' },
-  { label: 'Monitoring Guru', active: true }
+  { label: 'Monitoring Mengajar Guru', active: true }
 ];
 
 export default function GuruMonitoringPage() {
@@ -187,8 +187,8 @@ export default function GuruMonitoringPage() {
   ], [sessions.length, isConnected]);
 
   const instructionData = {
-    title: "Monitoring Guru",
-    description: "Pantau kegiatan belajar mengajar secara realtime di seluruh kelas.",
+    title: "Monitoring Mengajar Guru",
+    description: "Pantau kehadiran guru dan status sesi KBM secara realtime di seluruh kelas.",
     items: [
       { text: "Data diperbarui secara instan saat guru memulai atau mengakhiri sesi." },
       { text: "Gunakan filter tanggal untuk melihat riwayat sesi sebelumnya." },

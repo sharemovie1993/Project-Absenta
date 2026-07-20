@@ -12,7 +12,7 @@ import Card from '../../../components/ui/Card';
 
 const rekapBreadcrumbs = [
   { label: 'Presensi', path: '/attendance/ops' },
-  { label: 'Rekapitulasi Kehadiran', active: true }
+  { label: 'Laporan & Rekap Presensi', active: true }
 ];
 
 const rekapStats = [
@@ -50,8 +50,8 @@ export default function RekapPage() {
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
   const instructionData = {
-    title: "Panduan Rekapitulasi",
-    description: "Halaman ini menyajikan ringkasan data kehadiran siswa dalam berbagai format laporan.",
+    title: "Panduan Laporan & Rekap Presensi",
+    description: "Halaman ini menyajikan ringkasan data kehadiran siswa dan guru dalam berbagai format laporan.",
     items: [
       { text: "Pilih tab 'Harian Per Siswa' untuk melihat detail log absensi harian." },
       { text: "Gunakan 'Bulanan Per Siswa' untuk melihat akumulasi kehadiran bulanan individu." },
