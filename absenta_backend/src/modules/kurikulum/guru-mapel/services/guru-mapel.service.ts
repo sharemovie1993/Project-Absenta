@@ -116,7 +116,7 @@ export class GuruMapelService {
 
     // Pre-fetch all Guru and Mapel for this tenant
     const [gurus, mapels] = await Promise.all([
-      prisma.guru.findMany({ where: { tenant_id: tenantId }, select: { id: true, nama_guru: true } }),
+      prisma.guru.findMany({ where: { tenant_id: tenantId, jenis_ptk: 'PENDIDIK' }, select: { id: true, nama_guru: true } }),
       prisma.mapel.findMany({ where: { tenant_id: tenantId }, select: { id: true, nama_mapel: true, kode_mapel: true } })
     ]);
 

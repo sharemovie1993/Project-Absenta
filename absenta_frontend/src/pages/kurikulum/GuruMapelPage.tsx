@@ -103,7 +103,7 @@ const GuruMapelPage: React.FC = () => {
     try {
       toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [gurusRes, mapelsRes] = await Promise.all([
-        guruApi.getAll({ limit: 1000 }),
+        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
         mapelApi.getAll({ limit: 1000 })
       ]);
 

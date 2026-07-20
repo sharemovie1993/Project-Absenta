@@ -201,7 +201,7 @@ export const KelasPage: React.FC = () => {
       toast('Menyiapkan referensi data...', { icon: 'ℹ️' });
       const [jurusanRes, guruRes] = await Promise.all([
         jurusanApi.getAll({ limit: 200 }),
-        guruApi.getAll({ limit: 1000 })
+        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' })
       ]);
 
       const jurusanNames = (jurusanRes.data || [])?.map(j => j?.nama).filter(Boolean);

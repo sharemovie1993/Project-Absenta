@@ -321,6 +321,7 @@ export class SupervisiService {
     const allTeachers = await prisma.guru.findMany({
       where: {
         tenant_id: tenantId,
+        jenis_ptk: 'PENDIDIK',
         id: { not: guruId }
       },
       select: {

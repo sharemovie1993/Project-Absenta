@@ -161,7 +161,7 @@ export default function SupervisiPage() {
   const fetchReferenceData = useCallback(async () => {
     try {
       const [guruRes, kelasRes, mapelRes] = await Promise.all([
-        guruApi.getAll({ limit: 1000 }),
+        guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
         kelasApi.getAll({ limit: 1000 }),
         mapelApi.getAll({ limit: 1000 }),
       ]);

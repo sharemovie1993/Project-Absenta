@@ -97,7 +97,7 @@ export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialDat
       try {
         const [mapelRes, guruRes, jenisRes] = await Promise.all([
           mapelApi.getAll({ limit: 100 }),
-          guruApi.getAll({ limit: 100 }),
+          guruApi.getAll({ limit: 100, jenis_ptk: 'PENDIDIK' }),
           jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
         ]);
         

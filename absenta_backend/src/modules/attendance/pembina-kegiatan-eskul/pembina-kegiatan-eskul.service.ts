@@ -147,6 +147,7 @@ export const pembinaKegiatanEskulService = {
     const rows = await prisma.guru.findMany({
       where: {
         tenant_id: tenantId,
+        jenis_ptk: 'PENDIDIK',
         ...(search ? {
           nama_guru: { contains: search, mode: 'insensitive' }
         } : {})

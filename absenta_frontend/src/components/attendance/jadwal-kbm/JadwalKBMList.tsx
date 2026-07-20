@@ -80,7 +80,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
         const [tpRes, mapelRes, guruRes, jenisRes] = await Promise.all([
           getTahunPelajaranList(1, 10, '', 'ACTIVE'),
           mapelApi.getAll({ limit: 100 }),
-          guruApi.getAll({ limit: 100 }),
+          guruApi.getAll({ limit: 100, jenis_ptk: 'PENDIDIK' }),
           jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
         ]);
 

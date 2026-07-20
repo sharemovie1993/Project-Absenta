@@ -15,7 +15,7 @@ export class JadwalKBMService {
 
     // Pre-fetch references
     const [gurus, mapels, kelasList] = await Promise.all([
-      prisma.guru.findMany({ where: { tenant_id: tenantId }, select: { id: true, nama_guru: true } }),
+      prisma.guru.findMany({ where: { tenant_id: tenantId, jenis_ptk: 'PENDIDIK' }, select: { id: true, nama_guru: true } }),
       prisma.mapel.findMany({ where: { tenant_id: tenantId }, select: { id: true, nama_mapel: true } }),
       prisma.kelas.findMany({ where: { tenant_id: tenantId }, select: { id: true, nama_kelas: true } })
     ]);
