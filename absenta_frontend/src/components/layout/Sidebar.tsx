@@ -352,7 +352,6 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         mapped.forEach(root => {
           if (root.children) {
             root.children.forEach(child => {
-              const cLabel = child.label.toLowerCase();
               const cPath = (child.path || '').toLowerCase();
               if (
                 cPath.includes('riwayat-ajar') ||
@@ -360,9 +359,9 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                 cPath.includes('/kurikulum/jadwal') ||
                 cPath.includes('/kurikulum/perangkat') ||
                 cPath.includes('/kurikulum/kalender') ||
-                cLabel.includes('pelanggaran') ||
-                cLabel.includes('prestasi') ||
-                cPath.includes('/cooperative')
+                cPath === '/kesiswaan/pelanggaran' ||
+                cPath === '/kesiswaan/prestasi' ||
+                cPath.startsWith('/cooperative')
               ) {
                 teacherItems.push(child);
               }
