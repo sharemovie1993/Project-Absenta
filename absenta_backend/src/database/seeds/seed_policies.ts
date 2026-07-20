@@ -79,6 +79,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'affairs.violations.report',
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
+    'affairs.violation.types.view.list',
     'kesiswaan.prestasi.view',
     'hubin.guidance.manage',
     'hubin.logbook.manage',

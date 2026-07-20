@@ -85,7 +85,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.events.create',
     'attendance.events.delete',
     'hubin.pkl.view.list',
-    'affairs.violations.view.list'
+    'affairs.violations.view.list',
+    'affairs.violation.types.view.list'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',

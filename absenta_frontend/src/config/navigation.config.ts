@@ -218,7 +218,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/attendance/rekap',
       '/attendance/tracking-siswa',
       '/hubin/monitoring',
-      '/kesiswaan/pelanggaran'
+      '/kesiswaan/pelanggaran',
+      '/kesiswaan/jenis-pelanggaran'
     ]
   },
   {
