@@ -22,6 +22,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { sarprasApi } from '../../api/sarpras.api';
 import { useAuthStore } from '../../store/authStore';
+import { useNavStore } from '../../store/navStore';
 import { useAuth } from '../../hooks/useAuth';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
@@ -70,8 +71,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 const SarprasLoansPage: React.FC = () => {
-  const { subscription } = useAuthStore();
+  const { subscription, user } = useAuthStore();
+  const { activeWorkspaceId } = useNavStore();
   const { can } = useAuth();
+
+  const isPersonalTeacherMode = activeWorkspaceId === 'TEACHER_WORKSPACE';
+  const isKurikulumWorkspace = activeWorkspaceId === 'KURIKULUM_WORKSPACE';
+
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -108,7 +114,11 @@ const SarprasLoansPage: React.FC = () => {
 
   // Real client-side interactive sorting implementation (Pilar 7)
   const loans: LoanRecord[] = useMemo(() => {
-    const list = [...(data?.data?.list || [])];
+    let list = [...(data?.data?.list || [])];
+    // Filter personal loans if accessed from Teacher Workspace
+    if (isPersonalTeacherMode && user?.id) {
+      list = list.filter((l) => l.peminjam_id === user.id || l.Peminjam?.id === user.id);
+    }
     if (sortBy) {
       list.sort((a, b) => {
         let valA: unknown = a[sortBy as keyof LoanRecord];
@@ -132,15 +142,16 @@ const SarprasLoansPage: React.FC = () => {
       });
     }
     return list;
-  }, [data, sortBy, sortOrder]);
+  }, [data, sortBy, sortOrder, isPersonalTeacherMode, user]);
 
   const isEmpty = loans.length === 0; // Empty state guard for compliance check (Pilar 8)
-  const total = useMemo(() => data?.data?.pagination?.total || 0, [data]);
-  const totalPages = useMemo(() => data?.data?.pagination?.totalPages || 0, [data]);
+  const total = useMemo(() => loans.length, [loans]);
+  const totalPages = useMemo(() => Math.ceil(loans.length / limit) || 1, [loans, limit]);
   const stats = useMemo(() => statsData?.data || { totalAssets: 0, totalLoaned: 0, totalBroken: 0 }, [statsData]);
 
   // Count by status from current data
   const pendingCount = useMemo(() => loans.filter((l: LoanRecord) => l.status === 'PENDING').length, [loans]);
+  const activeCount = useMemo(() => loans.filter((l: LoanRecord) => l.status === 'ACTIVE').length, [loans]);
 
   const handleRequestSuccess = useCallback(() => {
     setRequestModalOpen(false);
@@ -152,89 +163,99 @@ const SarprasLoansPage: React.FC = () => {
     setSortOrder(order);
   }, []);
 
-  const columns = useMemo<Column[]>(() => [
-    {
-      key: 'asset',
-      label: 'Aset',
-      sortable: true,
-      render: (_, loan: unknown) => {
-        const l = loan as LoanRecord;
-        return (
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-              <Package size={20} />
+  const columns = useMemo<Column[]>(() => {
+    const cols: Column[] = [
+      {
+        key: 'asset',
+        label: 'Aset',
+        sortable: true,
+        render: (_, loan: unknown) => {
+          const l = loan as LoanRecord;
+          return (
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <Package size={20} />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">{l.Asset?.nama || '-'}</p>
+                <p className="text-xs text-slate-500">{l.Asset?.kode || 'No Code'}</p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-slate-900 dark:text-slate-100">{l.Asset?.nama || '-'}</p>
-              <p className="text-xs text-slate-500">{l.Asset?.kode || 'No Code'}</p>
+          );
+        }
+      }
+    ];
+
+    if (!isPersonalTeacherMode) {
+      cols.push({
+        key: 'peminjam',
+        label: 'Peminjam',
+        sortable: true,
+        render: (_, loan: unknown) => {
+          const l = loan as LoanRecord;
+          return (
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+              <User size={14} className="text-slate-400" />
+              <span className="text-sm">{l.Peminjam?.full_name || '-'}</span>
             </div>
-          </div>
-        );
-      }
-    },
-    {
-      key: 'peminjam',
-      label: 'Peminjam',
-      sortable: true,
-      render: (_, loan: unknown) => {
-        const l = loan as LoanRecord;
-        return (
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-            <User size={14} className="text-slate-400" />
-            <span className="text-sm">{l.Peminjam?.full_name || '-'}</span>
-          </div>
-        );
-      }
-    },
-    {
-      key: 'tanggal_pinjam',
-      label: 'Tanggal Pinjam',
-      sortable: true,
-      render: (val: unknown) => (
-        <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
-          <Calendar size={12} />
-          {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-        </div>
-      )
-    },
-    {
-      key: 'tanggal_kembali_plan',
-      label: 'Rencana Kembali',
-      sortable: true,
-      render: (val: unknown) => (
-        <span className="text-sm text-slate-500">
-          {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-        </span>
-      )
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (status: unknown) => {
-        const s = status as string;
-        const config = STATUS_CONFIG[s] || { label: s, color: 'bg-gray-100 text-gray-600', icon: null };
-        return (
-          <Badge className={`${config.color} flex items-center gap-1 w-fit`}>
-            {config.icon}
-            {config.label}
-          </Badge>
-        );
-      }
-    },
-    {
-      key: 'actions',
-      label: 'Aksi',
-      className: 'text-right',
-      render: (_, loan: unknown) => (
-        <div className="flex justify-end">
-          <Suspense fallback={null}>
-            <LoanStatusActions loan={loan as LoanRecord} />
-          </Suspense>
-        </div>
-      )
+          );
+        }
+      });
     }
-  ], []);
+
+    cols.push(
+      {
+        key: 'tanggal_pinjam',
+        label: 'Tanggal Pinjam',
+        sortable: true,
+        render: (val: unknown) => (
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-400">
+            <Calendar size={12} />
+            {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+          </div>
+        )
+      },
+      {
+        key: 'tanggal_kembali_plan',
+        label: 'Rencana Kembali',
+        sortable: true,
+        render: (val: unknown) => (
+          <span className="text-sm text-slate-500">
+            {val ? new Date(val as string).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+          </span>
+        )
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        sortable: true,
+        render: (status: unknown) => {
+          const s = status as string;
+          const config = STATUS_CONFIG[s] || { label: s, color: 'bg-gray-100 text-gray-600', icon: null };
+          return (
+            <Badge className={`${config.color} flex items-center gap-1 w-fit`}>
+              {config.icon}
+              {config.label}
+            </Badge>
+          );
+        }
+      },
+      {
+        key: 'actions',
+        label: 'Aksi',
+        className: 'text-right',
+        render: (_, loan: unknown) => (
+          <div className="flex justify-end">
+            <Suspense fallback={null}>
+              <LoanStatusActions loan={loan as LoanRecord} />
+            </Suspense>
+          </div>
+        )
+      }
+    );
+
+    return cols;
+  }, [isPersonalTeacherMode]);
 
   const statusButtons = useMemo(() => [
     { value: '', label: 'Semua' },
@@ -245,21 +266,51 @@ const SarprasLoansPage: React.FC = () => {
     { value: 'REJECTED', label: 'Ditolak' },
   ], []);
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Sarpras', path: '/sarpras' },
-    { label: 'Peminjaman Aset', path: '/sarpras/loans' }
-  ], []);
+  const breadcrumbs = useMemo(() => {
+    if (isPersonalTeacherMode) {
+      return [
+        { label: 'Guru', path: '/attendance/riwayat-ajar' },
+        { label: 'Peminjaman Saya', active: true }
+      ];
+    }
+    if (isKurikulumWorkspace) {
+      return [
+        { label: 'Kurikulum', path: '/kurikulum/dashboard' },
+        { label: 'Kelola Peminjaman Aset', active: true }
+      ];
+    }
+    return [
+      { label: 'Sarpras', path: '/sarpras/inventory' },
+      { label: 'Peminjaman Aset', active: true }
+    ];
+  }, [isPersonalTeacherMode, isKurikulumWorkspace]);
+
+  const pageTitle = isPersonalTeacherMode 
+    ? 'Peminjaman Saya' 
+    : isKurikulumWorkspace 
+      ? 'Kelola Peminjaman Aset KBM' 
+      : 'Peminjaman Aset & Inventaris';
+
+  const pageDescription = isPersonalTeacherMode
+    ? 'Riwayat dan status pengajuan peminjaman aset KBM pribadi Anda.'
+    : isKurikulumWorkspace
+      ? 'Kelola persetujuan, serah terima, dan pengembalian peminjaman aset pembelajaran di lingkungan Kurikulum.'
+      : 'Kelola sistem peminjaman barang praktikum dan inventaris sekolah secara terpadu.';
 
   const instruction = useMemo(() => ({
-    title: 'Panduan Peminjaman Aset',
-    description: 'Kelola transaksi peminjaman barang praktikum secara terpadu dan digital.',
-    items: [
-      { text: 'Gunakan fitur Scan Barcode untuk memproses peminjaman cepat di lokasi.' },
-      { text: 'Aksi persetujuan (Approve/Reject) dapat dilakukan di kolom aksi tabel.' },
-      { text: 'Filter data peminjaman berdasarkan status untuk monitoring yang terfokus.' }
+    title: isPersonalTeacherMode ? 'Panduan Peminjaman Saya' : 'Panduan Pengelolaan Peminjaman Aset',
+    description: isPersonalTeacherMode 
+      ? 'Pantau barang yang sedang Anda pinjam dan ajukan peminjaman aset KBM baru.' 
+      : 'Kelola transaksi peminjaman barang praktikum secara terpadu dan digital.',
+    items: isPersonalTeacherMode ? [
+      { text: "Klik 'Ajukan Manual' untuk mengajukan peminjaman aset KBM baru." },
+      { text: "Pantau status pengajuan Anda (Menunggu Approval, Disetujui, Dipinjam, atau Dikembalikan)." }
+    ] : [
+      { text: "Gunakan fitur 'Peminjaman Scan Barcode' untuk serah terima barang cepat di lokasi." },
+      { text: "Aksi persetujuan (Approve/Reject) dan pengembalian dapat dilakukan di kolom aksi tabel." },
+      { text: "Filter data peminjaman berdasarkan status untuk pemantauan yang terfokus." }
     ]
-  }), []);
+  }), [isPersonalTeacherMode]);
 
   const handleOpenScan = useCallback(() => setScanModalOpen(true), []);
   const handleOpenRequest = useCallback(() => setRequestModalOpen(true), []);
@@ -279,8 +330,8 @@ const SarprasLoansPage: React.FC = () => {
       description="Kelola sistem peminjaman barang praktikum secara digital. Mendukung peminjaman manual maupun cepat menggunakan barcode/QR scan."
     >
       <AcademicPageLayout
-        title="Peminjaman Aset"
-        description="Kelola peminjaman sarana dan prasarana sekolah."
+        title={pageTitle}
+        description={pageDescription}
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="sarpras_loans"
@@ -289,28 +340,28 @@ const SarprasLoansPage: React.FC = () => {
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <AnalyticsCard
-              title="Total Aset"
-              value={stats.totalAssets}
-              isLoading={isLoadingStats}
+              title={isPersonalTeacherMode ? "Total Pinjaman Saya" : "Total Aset"}
+              value={isPersonalTeacherMode ? total : stats.totalAssets}
+              isLoading={isLoadingStats || isLoading}
               icon={<Package size={20} />}
               gradient="from-indigo-600 to-blue-500"
-              subtitle="Aset terdaftar"
+              subtitle={isPersonalTeacherMode ? "Riwayat pengajuan" : "Aset terdaftar"}
             />
             <AnalyticsCard
-              title="Sedang Dipinjam"
-              value={stats.totalLoaned}
-              isLoading={isLoadingStats}
+              title={isPersonalTeacherMode ? "Sedang Saya Pinjam" : "Sedang Dipinjam"}
+              value={isPersonalTeacherMode ? activeCount : stats.totalLoaned}
+              isLoading={isLoadingStats || isLoading}
               icon={<ArrowUpRight size={20} />}
               gradient="from-emerald-600 to-teal-500"
               subtitle="Aset aktif dipinjam"
             />
             <AnalyticsCard
-              title="Permintaan Pending"
+              title="Menunggu Persetujuan"
               value={pendingCount}
               isLoading={isLoading}
               icon={<Clock size={20} />}
               gradient="from-amber-500 to-orange-500"
-              subtitle="Menunggu persetujuan"
+              subtitle="Status pending"
             />
           </div>
 
@@ -326,24 +377,26 @@ const SarprasLoansPage: React.FC = () => {
           />
 
           {/* Table wrapped in SectionCard */}
-          <SectionCard title="Daftar Laporan Peminjaman" icon={ClipboardList} fullWidth noPadding>
+          <SectionCard title={isPersonalTeacherMode ? "Daftar Peminjaman Saya" : "Daftar Laporan Peminjaman"} icon={ClipboardList} fullWidth noPadding>
             <Table
               columns={columns}
               data={loans}
               loading={isLoading}
-              emptyMessage="Belum ada data peminjaman. Klik 'Ajukan Pinjaman' untuk memulai."
+              emptyMessage={isPersonalTeacherMode ? "Anda belum memiliki data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang." : "Belum ada data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang."}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
               toolbarRight={
                 <div className="flex gap-2">
-                  <Button
-                    onClick={handleOpenScan}
-                    variant="outline"
-                    className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm font-semibold"
-                  >
-                    <ScanLine className="h-4 w-4 mr-2" /> Peminjaman Scan Barcode
-                  </Button>
+                  {!isPersonalTeacherMode && (
+                    <Button
+                      onClick={handleOpenScan}
+                      variant="outline"
+                      className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm font-semibold"
+                    >
+                      <ScanLine className="h-4 w-4 mr-2" /> Peminjaman Scan Barcode
+                    </Button>
+                  )}
                   <Button
                     onClick={handleOpenRequest}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
