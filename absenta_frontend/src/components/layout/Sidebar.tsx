@@ -331,7 +331,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         return true;
       });
 
-      if (uniqueItems.length > 0) return uniqueItems;
+      return uniqueItems;
     }
 
     const finalTree: NavItem[] = [];

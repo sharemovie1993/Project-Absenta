@@ -191,21 +191,22 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   {
     id: 'WALIKELAS_WORKSPACE',
     label: 'Ruang Wali Kelas',
-    badge: 'Bimbingan',
+    badge: 'Wali Kelas',
     icon: GraduationCap,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
     solidBg: 'bg-blue-600',
-    desc: 'Monitoring & Rekap Kelas',
+    desc: 'Monitoring & Rekap Kelas Binaan',
     requiredCapability: 'dashboard.view.walikelas',
     requiredPositionCode: 'WALIKELAS',
     defaultPath: '/attendance/monitoring',
     allowedPathPrefixes: [
       '/attendance/monitoring',
+      '/attendance/recap',
+      '/attendance/reports',
       '/attendance/ops',
-      '/kesiswaan/piket',
       '/rapor',
-      '/kesiswaan/pelanggaran',
+      '/kesiswaan',
       '/bpbk'
     ]
   },
@@ -222,7 +223,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     requiredPositionCode: 'KURIKULUM',
     defaultPath: '/kurikulum/dashboard',
     allowedPathPrefixes: [
-      '/kurikulum'
+      '/kurikulum',
+      '/academic'
     ]
   },
   {
@@ -233,7 +235,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     color: 'text-amber-600',
     bg: 'bg-amber-50',
     solidBg: 'bg-amber-600',
-    desc: 'Kedisiplinan & Prestasi',
+    desc: 'Kedisiplinan & Prestasi Siswa',
     requiredCapability: 'dashboard.view.kesiswaan',
     requiredPositionCode: 'KESISWAAN',
     defaultPath: '/kesiswaan/monitoring',
@@ -257,8 +259,91 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/dashboard',
       '/attendance/guru-monitoring',
       '/attendance/dashboard',
+      '/attendance/recap',
       '/sarpras/dashboard',
       '/kesiswaan/monitoring'
+    ]
+  },
+  {
+    id: 'SARPRAS_WORKSPACE',
+    label: 'Manajemen Sarpras',
+    badge: 'Sarpras',
+    icon: Building2,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    solidBg: 'bg-indigo-600',
+    desc: 'Aset & Inventaris Sekolah',
+    requiredCapability: 'dashboard.view.sarpras',
+    requiredPositionCode: 'SARPRAS',
+    defaultPath: '/sarpras/dashboard',
+    allowedPathPrefixes: [
+      '/sarpras'
+    ]
+  },
+  {
+    id: 'HUBIN_WORKSPACE',
+    label: 'Manajemen Hubin',
+    badge: 'Hubin',
+    icon: Briefcase,
+    color: 'text-purple-600',
+    bg: 'bg-purple-50',
+    solidBg: 'bg-purple-600',
+    desc: 'PKL & Kemitraan Industri',
+    requiredCapability: 'dashboard.view.hubin',
+    requiredPositionCode: 'HUBIN',
+    defaultPath: '/hubin/dashboard',
+    allowedPathPrefixes: [
+      '/hubin',
+      '/pkl'
+    ]
+  },
+  {
+    id: 'BPBK_WORKSPACE',
+    label: 'Bimbingan Konseling',
+    badge: 'BP/BK',
+    icon: HeartHandshake,
+    color: 'text-rose-600',
+    bg: 'bg-rose-50',
+    solidBg: 'bg-rose-600',
+    desc: 'Konseling & Bimbingan Siswa',
+    requiredCapability: 'bk.cases.view.list',
+    requiredPositionCode: 'BPBK',
+    defaultPath: '/bpbk/dashboard',
+    allowedPathPrefixes: [
+      '/bpbk'
+    ]
+  },
+  {
+    id: 'TU_WORKSPACE',
+    label: 'Tata Usaha',
+    badge: 'TU',
+    icon: Mail,
+    color: 'text-amber-600',
+    bg: 'bg-amber-50',
+    solidBg: 'bg-amber-600',
+    desc: 'Persuratan & Data Master',
+    requiredPositionCode: 'TU',
+    defaultPath: '/correspondence/dashboard',
+    allowedPathPrefixes: [
+      '/correspondence',
+      '/academic'
+    ]
+  },
+  {
+    id: 'KAPROG_WORKSPACE',
+    label: 'Ketua Program',
+    badge: 'Kaprog',
+    icon: BookOpen,
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-50',
+    solidBg: 'bg-cyan-600',
+    desc: 'Monitoring Keahlian / Jurusan',
+    requiredPositionCode: 'KAPROG',
+    defaultPath: '/kurikulum/dashboard',
+    allowedPathPrefixes: [
+      '/kurikulum',
+      '/academic',
+      '/hubin'
     ]
   }
 ];
