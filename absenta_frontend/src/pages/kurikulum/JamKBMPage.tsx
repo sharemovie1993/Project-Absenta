@@ -110,6 +110,12 @@ export default function JamKBMPage() {
 
   useEffect(() => { fetchTenant(); }, [fetchTenant]);
 
+  useEffect(() => {
+    if ((shiftConfig.shifts?.length || 0) <= 1 && activeShiftTab === 'CLASSES') {
+      setActiveShiftTab('SHIFTS');
+    }
+  }, [shiftConfig.shifts, activeShiftTab]);
+
   // ── Save with Zod validation (Point #3) ──
   const handleSave = useCallback(async () => {
     if (!tenant) return;
@@ -236,21 +242,23 @@ export default function JamKBMPage() {
                 <Clock className="w-3.5 h-3.5" />
                 Pengaturan Waktu Shift
               </button>
-              <button
-                id="tab-btn-classes"
-                type="button"
-                aria-selected={activeShiftTab === 'CLASSES'}
-                role="tab"
-                onClick={() => setActiveShiftTab('CLASSES')}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                  activeShiftTab === 'CLASSES'
-                    ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5" />
-                Penugasan Shift Kelas
-              </button>
+              {(shiftConfig.shifts?.length || 0) > 1 && (
+                <button
+                  id="tab-btn-classes"
+                  type="button"
+                  aria-selected={activeShiftTab === 'CLASSES'}
+                  role="tab"
+                  onClick={() => setActiveShiftTab('CLASSES')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                    activeShiftTab === 'CLASSES'
+                      ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  Penugasan Shift Kelas
+                </button>
+              )}
             </div>
             {jenjang && (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-600/10 dark:bg-indigo-500/10 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl">
