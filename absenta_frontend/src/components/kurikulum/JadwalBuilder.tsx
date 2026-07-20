@@ -958,6 +958,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           </Card>
         )}
 
+      </div>
+
       {/* 📅 RIGHT COLUMN: TIMETABLE GRID */}
       <div className="lg:col-span-8 flex flex-col space-y-4">
         {/* Header, Switcher & Filters */}
