@@ -63,7 +63,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
   onRefresh
 }) => {
   // Mode state
-  const [viewMode, setViewMode] = useState<'KELAS' | 'GURU'>('KELAS');
+  const [viewMode, setViewMode] = useState<'KELAS' | 'GURU' | 'MASTER_GURU' | 'MASTER_KELAS'>('KELAS');
+  const [masterGridHari, setMasterGridHari] = useState<string>('SENIN');
   const [toolMode, setToolMode] = useState<'PAINT' | 'ERASER'>('PAINT');
   
   // Selections
@@ -973,34 +974,58 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* View Switcher */}
-            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex">
+            {/* View Switcher with all 4 aSC TimeTables view modes */}
+            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
               <button
                 onClick={() => setViewMode('KELAS')}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
                   viewMode === 'KELAS' 
-                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm" 
-                    : "text-slate-600 dark:text-slate-400"
+                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 )}
               >
-                Berdasarkan Kelas
+                🏫 Per Kelas
               </button>
               <button
                 onClick={() => setViewMode('GURU')}
                 className={cn(
-                  "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
                   viewMode === 'GURU' 
-                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm" 
-                    : "text-slate-600 dark:text-slate-400"
+                    ? "bg-white dark:bg-slate-900 text-purple-600 shadow-sm font-extrabold" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
                 )}
               >
-                Berdasarkan Guru
+                👨‍🏫 Per Guru
+              </button>
+              <button
+                onClick={() => setViewMode('MASTER_GURU')}
+                className={cn(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                  viewMode === 'MASTER_GURU' 
+                    ? "bg-purple-600 text-white shadow-sm font-extrabold" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+                title="Tabel Raksasa 2D: Semua Guru vs Jam Pelajaran"
+              >
+                🗺️ Master Grid Guru
+              </button>
+              <button
+                onClick={() => setViewMode('MASTER_KELAS')}
+                className={cn(
+                  "px-2.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1",
+                  viewMode === 'MASTER_KELAS' 
+                    ? "bg-indigo-600 text-white shadow-sm font-extrabold" 
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                )}
+                title="Tabel Raksasa 2D: Semua Kelas vs Jam Pelajaran"
+              >
+                📊 Master Grid Kelas
               </button>
             </div>
 
-            {/* Dynamic Filter Dropdown */}
-            {viewMode === 'KELAS' ? (
+            {/* Dynamic Filter Dropdown / Day Selector */}
+            {viewMode === 'KELAS' && (
               <SearchableSelect
                 value={selectedKelasId}
                 onValueChange={setSelectedKelasId}
@@ -1009,7 +1034,8 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                 searchPlaceholder="Cari Kelas..."
                 className="w-[180px] md:w-[240px]"
               />
-            ) : (
+            )}
+            {viewMode === 'GURU' && (
               <SearchableSelect
                 value={selectedGuruId}
                 onValueChange={setSelectedGuruId}
@@ -1018,6 +1044,25 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                 searchPlaceholder="Cari Guru..."
                 className="w-[240px] md:w-[320px]"
               />
+            )}
+            {(viewMode === 'MASTER_GURU' || viewMode === 'MASTER_KELAS') && (
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
+                <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Hari:</span>
+                {hariSekolah.map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setMasterGridHari(d)}
+                    className={cn(
+                      "px-2 py-1 text-[11px] font-extrabold rounded-lg transition-all",
+                      masterGridHari === d 
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 shadow-sm" 
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
             )}
 
             {/* Extra Kelas filter for Guru View to direct painting */}
@@ -1055,176 +1100,317 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
             >
               <RefreshCw className={cn("w-3.5 h-3.5 text-slate-500", loadingData && "animate-spin")} />
             </Button>
-          </div>
-        </Card>
-
-        {/* Timetable Interactive Grid */}
-        <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-          <div className="min-w-[1000px]">
-            
-            {/* Header Days */}
-            <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-              <div className="p-3.5 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
-                JAM / WAKTU
-              </div>
-              {hariSekolah.map(day => (
-                <div 
-                  key={day} 
-                  className="p-3.5 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
-                >
-                  {day}
+             {/* 📅 VIEW MODE 1 & 2: SINGLE CLASS / GURU TIMETABLE GRID */}
+        {(viewMode === 'KELAS' || viewMode === 'GURU') && (
+          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="min-w-[1000px]">
+              
+              {/* Header Days */}
+              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
+                <div className="p-3.5 border-r border-slate-200 dark:border-slate-800 font-black text-slate-550 dark:text-slate-450 text-[10px] text-center tracking-widest uppercase">
+                  JAM / WAKTU
                 </div>
-              ))}
-            </div>
-
-            {/* Grid Body */}
-            {loadingData ? (
-              <div className="flex flex-col items-center justify-center py-32 space-y-4">
-                <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Menghubungkan ke mesin jadwal...</p>
+                {hariSekolah.map(day => (
+                  <div 
+                    key={day} 
+                    className="p-3.5 font-black text-slate-800 dark:text-slate-200 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 tracking-widest uppercase"
+                  >
+                    {day}
+                  </div>
+                ))}
               </div>
-            ) : (
-              <div className="relative">
-                {SLOTS.map(slotIndex => {
-                  const slot = resolveSlotTime(selectedKelasId, slotIndex);
-                  
-                  const prevSlotIndex = slotIndex > 1 ? slotIndex - 1 : null;
-                  const prevSlot = prevSlotIndex ? resolveSlotTime(selectedKelasId, prevSlotIndex) : null;
-                  const breakDuration = prevSlot && (() => {
-                    const toMins = (t: string) => {
-                      const [h, m] = t.split(':').map(Number);
-                      return (h || 0) * 60 + (m || 0);
-                    };
-                    const prevEndMins = toMins(prevSlot.end);
-                    const currentStartMins = toMins(slot.start);
-                    return currentStartMins - prevEndMins;
-                  })();
 
-                  return (
-                    <React.Fragment key={slotIndex}>
-                      {breakDuration && breakDuration > 0 && (
-                        <div className="grid border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                          <div className="p-2 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
-                            <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
+              {/* Grid Body */}
+              {loadingData ? (
+                <div className="flex flex-col items-center justify-center py-32 space-y-4">
+                  <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Menghubungkan ke mesin jadwal...</p>
+                </div>
+              ) : (
+                <div className="relative">
+                  {SLOTS.map(slotIndex => {
+                    const slot = resolveSlotTime(selectedKelasId, slotIndex);
+                    
+                    const prevSlotIndex = slotIndex > 1 ? slotIndex - 1 : null;
+                    const prevSlot = prevSlotIndex ? resolveSlotTime(selectedKelasId, prevSlotIndex) : null;
+                    const breakDuration = prevSlot && (() => {
+                      const toMins = (t: string) => {
+                        const [h, m] = t.split(':').map(Number);
+                        return (h || 0) * 60 + (m || 0);
+                      };
+                      const prevEndMins = toMins(prevSlot.end);
+                      const currentStartMins = toMins(slot.start);
+                      return currentStartMins - prevEndMins;
+                    })();
+
+                    return (
+                      <React.Fragment key={slotIndex}>
+                        {breakDuration && breakDuration > 0 && (
+                          <div className="grid border-b border-slate-200 dark:border-slate-800/80 bg-amber-50/10 dark:bg-amber-950/5" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
+                            <div className="p-2 border-r border-slate-200 dark:border-slate-800/80 flex items-center justify-center bg-amber-50/20 dark:bg-amber-950/10">
+                              <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 tracking-wider">BREAK</span>
+                            </div>
+                            <div className="p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
+                              <span className="flex items-center gap-1.5">
+                                ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {slot.start})
+                              </span>
+                            </div>
                           </div>
-                          <div className="p-2 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400/85" style={{ gridColumn: `span ${hariSekolah.length}` }}>
-                            <span className="flex items-center gap-1.5">
-                              ☕ Istirahat: {breakDuration} Menit ({prevSlot.end} - {slot.start})
+                        )}
+                        <div className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
+                          {/* Time Column */}
+                          <div className="p-3 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 shrink-0">
+                            <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">JAM {slotIndex}</span>
+                            <span className="text-[9px] text-slate-450 dark:text-slate-550 font-bold">
+                              {slot.start} - {slot.end}
                             </span>
                           </div>
-                        </div>
-                      )}
-                      <div className="grid border-b last:border-b-0 border-slate-100 dark:border-slate-800/80 group/row" style={{ gridTemplateColumns: `repeat(${hariSekolah.length + 1}, minmax(0, 1fr))` }}>
-                        {/* Time Column */}
-                        <div className="p-3 bg-slate-50/20 dark:bg-slate-900/10 border-r border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-1 shrink-0">
-                          <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 tracking-wider">JAM {slotIndex}</span>
-                          <span className="text-[9px] text-slate-450 dark:text-slate-550 font-bold">
-                            {slot.start} - {slot.end}
-                          </span>
-                        </div>
 
-                        {/* Days Columns */}
-                        {hariSekolah.map(day => {
-                          const item = getSlotData(day, slotIndex) as any;
-                          const conflict = checkConflict(day, slotIndex, viewMode === 'KELAS' ? selectedKelasId : '');
-                          const active = savingSlot === `${day}-${slotIndex}`;
+                          {/* Days Columns */}
+                          {hariSekolah.map(day => {
+                            const item = getSlotData(day, slotIndex) as any;
+                            const conflict = checkConflict(day, slotIndex, viewMode === 'KELAS' ? selectedKelasId : '');
+                            const active = savingSlot === `${day}-${slotIndex}`;
 
-                          return (
-                            <div 
-                              key={`${day}-${slotIndex}`} 
-                              onClick={() => handleSlotClick(day, slotIndex)}
-                              className={cn(
-                                "p-2 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[90px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none",
-                                active && "bg-indigo-50/30 dark:bg-indigo-950/10 ring-1 ring-indigo-500/20 z-10",
-                                !active && "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
-                              )}
-                            >
-                              {item ? (() => {
-                                const mapelStyle = getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
-                                return (
-                                  <div
-                                    className={cn(
-                                      "h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4",
-                                      item.isForeign
-                                        ? "bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed"
-                                        : `${mapelStyle.bg} ${mapelStyle.border}`
-                                    )}
-                                    style={{
-                                      borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex
-                                    }}
-                                  >
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className={cn(
-                                        "text-[9px] font-black uppercase tracking-wide truncate",
-                                        item.isForeign ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
-                                      )}>
-                                        {item.Mapel?.nama_mapel || item.jenis_kegiatan}
-                                      </span>
-                                      {item.isForeign ? (
-                                        <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">
-                                          TERISI
-                                        </Badge>
-                                      ) : (
-                                        viewMode === 'GURU' && item.Kelas && (
-                                          <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[8px] font-black shrink-0 px-1 border-none">
-                                            {item.Kelas.nama_kelas}
-                                          </Badge>
-                                        )
+                            return (
+                              <div 
+                                key={`${day}-${slotIndex}`} 
+                                onClick={() => handleSlotClick(day, slotIndex)}
+                                className={cn(
+                                  "p-2 border-r last:border-r-0 border-slate-100 dark:border-slate-800/50 min-h-[90px] transition-all relative cursor-pointer group/cell flex flex-col justify-between select-none",
+                                  active && "bg-indigo-50/30 dark:bg-indigo-950/10 ring-1 ring-indigo-500/20 z-10",
+                                  !active && "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
+                                )}
+                              >
+                                {item ? (() => {
+                                  const mapelStyle = getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '');
+                                  return (
+                                    <div
+                                      className={cn(
+                                        "h-full w-full rounded-2xl p-2.5 border flex flex-col justify-between relative transition-all shadow-sm border-l-4",
+                                        item.isForeign
+                                          ? "bg-slate-100/40 dark:bg-slate-850/10 border-slate-200 dark:border-slate-800/80 border-dashed"
+                                          : `${mapelStyle.bg} ${mapelStyle.border}`
                                       )}
+                                      style={{
+                                        borderLeftColor: item.isForeign ? undefined : mapelStyle.dotHex
+                                      }}
+                                    >
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center justify-between gap-1">
+                                          <span className={cn(
+                                            "text-[9px] font-black uppercase tracking-wide truncate",
+                                            item.isForeign ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
+                                          )}>
+                                            {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                                          </span>
+                                          {item.isForeign ? (
+                                            <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">
+                                              TERISI
+                                            </Badge>
+                                          ) : (
+                                            viewMode === 'GURU' && item.Kelas && (
+                                              <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 text-[8px] font-black shrink-0 px-1 border-none">
+                                                {item.Kelas.nama_kelas}
+                                              </Badge>
+                                            )
+                                          )}
+                                        </div>
+                                        <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-normal truncate">
+                                           {item.isForeign 
+                                             ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}` 
+                                             : (item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)'))}
+                                         </div>
+                                      </div>
+                                      
+                                      {/* Delete Hover Action */}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteSlotAction(day, slotIndex, item.id);
+                                        }}
+                                        className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                        title="Hapus jadwal"
+                                      >
+                                        <Trash2 size={10} />
+                                      </button>
                                     </div>
-                                    <div className="text-[9px] font-bold text-slate-500 dark:text-slate-400 leading-normal truncate">
-                                       {item.isForeign 
-                                         ? `Oleh: ${item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru Lain'}` 
-                                         : (item.Guru?.nama_guru || item.Guru?.User?.full_name || (item.guru_id ? 'Guru Terjadwal' : '(Belum Set Guru)'))}
-                                     </div>
-                                  </div>
-                                  
-                                  {/* Delete Hover Action */}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteSlotAction(day, slotIndex, item.id);
-                                    }}
-                                    className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-50 dark:bg-rose-950/80 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:text-rose-600 shadow-sm opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                    title="Hapus jadwal"
-                                  >
-                                    <Trash2 size={10} />
-                                  </button>
-                                </div>
-                              );
-                            })() : (
-                                <div className="h-full w-full flex items-center justify-center">
-                                  {toolMode === 'PAINT' && conflict ? (
-                                    <div className={cn(
-                                      "flex flex-col items-center justify-center p-2 rounded-2xl border text-center transition-all w-full h-full",
-                                      conflict.type === 'TEACHER'
-                                        ? "bg-rose-50/30 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-900/20 text-rose-600 dark:text-rose-450"
-                                        : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/20 text-amber-600 dark:text-amber-450"
-                                    )}>
-                                      <AlertTriangle className="w-4 h-4" />
-                                      <span className="text-[8px] font-black uppercase tracking-wider mt-0.5 leading-tight">
-                                        {conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA KBM'}
+                                  );
+                                })() : (
+                                  <div className="h-full w-full flex items-center justify-center">
+                                    {toolMode === 'PAINT' && conflict ? (
+                                      <div className={cn(
+                                        "flex flex-col items-center justify-center p-2 rounded-2xl border text-center transition-all w-full h-full",
+                                        conflict.type === 'TEACHER'
+                                          ? "bg-rose-50/30 dark:bg-rose-950/10 border-rose-100/50 dark:border-rose-900/20 text-rose-600 dark:text-rose-450"
+                                          : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/20 text-amber-600 dark:text-amber-450"
+                                      )}>
+                                        <AlertTriangle className="w-4 h-4" />
+                                        <span className="text-[8px] font-black uppercase tracking-wider mt-0.5 leading-tight">
+                                          {conflict.type === 'TEACHER' ? 'GURU BENTROK' : 'TIMPA KBM'}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
+                                        <Plus size={12} className="stroke-[2.5]" />
                                       </span>
-                                    </div>
-                                  ) : (
-                                    <span className="opacity-0 group-hover/cell:opacity-100 text-slate-350 dark:text-slate-650 transition-opacity duration-200">
-                                      <Plus size={12} className="stroke-[2.5]" />
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
+
+        {/* 🗺️ VIEW MODE 3: MASTER GRID GURU MATRIX VIEW */}
+        {viewMode === 'MASTER_GURU' && (
+          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="min-w-[1200px]">
+              {/* Table Header */}
+              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-purple-50/50 dark:bg-purple-950/20" style={{ gridTemplateColumns: `220px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+                <div className="p-3 border-r border-slate-200 dark:border-slate-800 font-black text-purple-900 dark:text-purple-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-purple-600" />
+                  NAMA GURU / JAM ({masterGridHari})
+                </div>
+                {SLOTS.map(slotIdx => (
+                  <div key={slotIdx} className="p-2.5 font-black text-slate-700 dark:text-slate-300 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 uppercase">
+                    JAM {slotIdx}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows per Teacher */}
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {guruList.map(guru => {
+                  return (
+                    <div key={guru.id} className="grid hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors" style={{ gridTemplateColumns: `220px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+                      {/* Teacher Name Column */}
+                      <div className="p-2.5 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center">
+                        <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate" title={guru.nama_guru}>
+                          {guru.nama_guru}
+                        </span>
+                        <span className="text-[9px] text-slate-400 font-medium">NIP: {guru.nip || '-'}</span>
                       </div>
-                    </React.Fragment>
+
+                      {/* Slot Cells */}
+                      {SLOTS.map(slotIdx => {
+                        const teacherSlots = allJadwal.filter(j => 
+                          j.guru_id === guru.id && 
+                          j.hari === masterGridHari && 
+                          j.slot_index === slotIdx
+                        );
+                        const isConflict = teacherSlots.length > 1;
+                        const item = teacherSlots[0];
+                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+
+                        return (
+                          <div key={slotIdx} className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center">
+                            {isConflict ? (
+                              <span className="inline-flex items-center px-1.5 py-1 rounded text-[9px] font-black bg-rose-500 text-white animate-pulse shadow-sm text-center leading-tight" title={`BENTROK! Guru mengajar di ${teacherSlots.length} kelas sekaligus di Jam ${slotIdx}`}>
+                                🚨 BENTROK ({teacherSlots.length} Kelas)
+                              </span>
+                            ) : item ? (
+                              <div
+                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
+                                style={{ borderLeftColor: mapelStyle?.dotHex }}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - Kelas ${item.Kelas?.nama_kelas}`}
+                              >
+                                <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
+                                  {item.Kelas?.nama_kelas}
+                                </span>
+                                <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 truncate">
+                                  {item.Mapel?.nama_mapel}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>
-            )}
-
+            </div>
           </div>
+        )}
+
+        {/* 📊 VIEW MODE 4: MASTER GRID KELAS MATRIX VIEW */}
+        {viewMode === 'MASTER_KELAS' && (
+          <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+            <div className="min-w-[1200px]">
+              {/* Table Header */}
+              <div className="grid border-b border-slate-200 dark:border-slate-800 bg-indigo-50/50 dark:bg-indigo-950/20" style={{ gridTemplateColumns: `180px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+                <div className="p-3 border-r border-slate-200 dark:border-slate-800 font-black text-indigo-900 dark:text-indigo-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-indigo-600" />
+                  KELAS / JAM ({masterGridHari})
+                </div>
+                {SLOTS.map(slotIdx => (
+                  <div key={slotIdx} className="p-2.5 font-black text-slate-700 dark:text-slate-300 text-[10px] text-center border-r last:border-r-0 border-slate-200 dark:border-slate-800 uppercase">
+                    JAM {slotIdx}
+                  </div>
+                ))}
+              </div>
+
+              {/* Rows per Class */}
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {kelasList.map(kelas => {
+                  return (
+                    <div key={kelas.value} className="grid hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors" style={{ gridTemplateColumns: `180px repeat(${SLOTS.length}, minmax(0, 1fr))` }}>
+                      {/* Class Name Column */}
+                      <div className="p-2.5 border-r border-slate-200 dark:border-slate-800 flex items-center">
+                        <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 truncate">
+                          {kelas.label}
+                        </span>
+                      </div>
+
+                      {/* Slot Cells */}
+                      {SLOTS.map(slotIdx => {
+                        const item = allJadwal.find(j => 
+                          j.kelas_id === kelas.value && 
+                          j.hari === masterGridHari && 
+                          j.slot_index === slotIdx
+                        );
+                        const mapelStyle = item ? getMapelColor(item.Mapel?.nama_mapel || item.jenis_kegiatan || '') : null;
+
+                        return (
+                          <div key={slotIdx} className="p-1 border-r last:border-r-0 border-slate-100 dark:border-slate-800/40 min-h-[52px] flex items-center justify-center">
+                            {item ? (
+                              <div
+                                className={`w-full h-full p-1.5 rounded-xl border border-l-4 flex flex-col justify-center text-center transition-all ${mapelStyle?.bg} ${mapelStyle?.border}`}
+                                style={{ borderLeftColor: mapelStyle?.dotHex }}
+                                title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
+                              >
+                                <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate">
+                                  {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                                </span>
+                                <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate">
+                                  {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 dark:text-slate-700 font-light">-</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}          </div>
         </div>
 
         {/* Premium Confirm Dialog for Overwriting conflicts */}
