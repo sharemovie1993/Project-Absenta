@@ -231,3 +231,49 @@ export const transformDataToTree = (
   };
 };
 
+/**
+ * JALUR KHUSUS TAB TATA USAHA (TU TAB)
+ */
+export const transformTuTabToTree = (
+  data: GroupedStruktur,
+  jurusans: Record<string, string>,
+  tingkatList?: number[]
+): TopologyNodeData | null => {
+  if (!data) return null;
+
+  // 1. Dapatkan node Koordinator TU
+  const tuKepalaNodes = data['TU_KEPALA'] || [];
+  const tuKepalaNode = tuKepalaNodes[0];
+
+  if (!tuKepalaNode) {
+    // Fallback jika database belum di-seed dengan TU_KEPALA
+    return transformDataToTree(['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'], data, jurusans, tingkatList);
+  }
+
+  const sortedMembers = [...(tuKepalaNode.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+  const headMember = sortedMembers[0];
+
+  // 2. Buat node Koordinator TU sebagai root
+  const rootNode: TopologyNodeData = {
+    id: `node-TU_KEPALA-${tuKepalaNode.id}`,
+    label: 'Koordinator TU',
+    subLabel: headMember ? headMember.name : 'Belum diisi',
+    type: 'STRUCT' as any,
+    data: { 
+      roleCode: 'TU_KEPALA', 
+      realStrukturId: tuKepalaNode.id, 
+      realMemberId: headMember?.id, 
+      isUnassigned: !headMember 
+    },
+    children: []
+  };
+
+  // 3. Dapatkan 4 slot staf TU
+  const staffGroup = transformDataToTree(['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'], data, jurusans, tingkatList);
+  if (staffGroup && staffGroup.children) {
+    rootNode.children = staffGroup.children;
+  }
+
+  return rootNode;
+};
+
