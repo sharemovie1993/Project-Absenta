@@ -119,6 +119,21 @@ const SarprasLoansPage: React.FC = () => {
     if (isPersonalTeacherMode && user?.id) {
       list = list.filter((l) => l.peminjam_id === user.id || l.Peminjam?.id === user.id);
     }
+    // Filter Kurikulum KBM learning assets if accessed from Kurikulum Workspace
+    else if (isKurikulumWorkspace) {
+      const kbmKeywords = ['INFOCUS', 'PROYEKTOR', 'PROJECTOR', 'TABLET', 'LAPTOP', 'HDMI', 'SOUND', 'SPEAKER', 'KBM', 'KURIKULUM', 'POINTER', 'SCREEN', 'DISPLAY', 'ELEKTRONIK', 'PEMBELAJARAN'];
+      list = list.filter((l) => {
+        const assetName = String(l.Asset?.nama || '').toUpperCase();
+        const assetCode = String(l.Asset?.kode || '').toUpperCase();
+        const categoryName = String((l.Asset as unknown as { Kategori?: { nama?: string }; kategori?: string })?.Kategori?.nama || (l.Asset as unknown as { kategori?: string })?.kategori || '').toUpperCase();
+        const locationName = String((l.Asset as unknown as { Lokasi?: { nama?: string }; lokasi?: string })?.Lokasi?.nama || (l.Asset as unknown as { lokasi?: string })?.lokasi || '').toUpperCase();
+
+        const isKbmMatch = kbmKeywords.some(kw => 
+          assetName.includes(kw) || assetCode.includes(kw) || categoryName.includes(kw) || locationName.includes(kw)
+        );
+        return isKbmMatch || !categoryName || categoryName.includes('KBM') || categoryName.includes('ELEKTRONIK') || categoryName.includes('UMUM');
+      });
+    }
     if (sortBy) {
       list.sort((a, b) => {
         let valA: unknown = a[sortBy as keyof LoanRecord];
