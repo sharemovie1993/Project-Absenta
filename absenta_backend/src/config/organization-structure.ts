@@ -9,7 +9,12 @@ export interface StrukturOrganisasiDef {
 
 export const STRUKTUR_CODES = {
   KEPALA_SEKOLAH: 'KEPALA_SEKOLAH',
-  TU: 'TU',
+  TU: 'TU',                           // Legacy alias — resolves to TU_KEPALA at runtime
+  TU_KEPALA: 'TU_KEPALA',             // Kepala Tata Usaha
+  TU_PERSURATAN: 'TU_PERSURATAN',     // Staf Persuratan & Arsip Digital
+  TU_KEUANGAN: 'TU_KEUANGAN',         // Staf Keuangan & SPP/Invoicing
+  TU_KEPEGAWAIAN: 'TU_KEPEGAWAIAN',   // Staf Kepegawaian & Data Induk/Dapodik
+  TU_SARPRAS: 'TU_SARPRAS',           // Staf Logistik & Aset Sekolah
   KAPROG: 'KAPROG',
   GERBANG: 'GERBANG',
   PETUGAS_KELAS: 'PETUGAS_KELAS',
@@ -74,12 +79,44 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
     order: 13
   },
   { 
-    kode: STRUKTUR_CODES.TU, 
-    nama: 'Kepala TU', 
+    kode: STRUKTUR_CODES.TU_KEPALA, 
+    nama: 'Kepala Tata Usaha', 
     scope: 'admin', 
     scope_type: 'global',
-    deskripsi: 'Administrasi umum, persuratan, dan tata usaha',
+    deskripsi: 'Pimpinan unit Tata Usaha — mengawasi seluruh staf TU',
     order: 14
+  },
+  { 
+    kode: STRUKTUR_CODES.TU_PERSURATAN, 
+    nama: 'Staf Persuratan & Arsip', 
+    scope: 'admin', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola surat masuk/keluar dan pengarsipan digital',
+    order: 15
+  },
+  { 
+    kode: STRUKTUR_CODES.TU_KEUANGAN, 
+    nama: 'Staf Keuangan & SPP', 
+    scope: 'admin', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola tagihan SPP, kwitansi, dan pembayaran sekolah',
+    order: 16
+  },
+  { 
+    kode: STRUKTUR_CODES.TU_KEPEGAWAIAN, 
+    nama: 'Staf Kepegawaian & Dapodik', 
+    scope: 'admin', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola data induk siswa (NISN), guru/staf (NUPTK/NIP)',
+    order: 17
+  },
+  { 
+    kode: STRUKTUR_CODES.TU_SARPRAS, 
+    nama: 'Staf Inventaris & Logistik', 
+    scope: 'admin', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola pengarsipan aset, inventaris barang, dan logistik instansi',
+    order: 18
   },
   { 
     kode: STRUKTUR_CODES.KAPROG, 

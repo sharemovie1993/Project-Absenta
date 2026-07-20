@@ -26,8 +26,8 @@ import Modal from '@/components/ui/Modal';
 import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram';
 
 const TABS = [
-  { id: 'PIMPINAN', label: 'Pimpinan', codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU', 'BKK'] },
-  { id: 'TATA_USAHA', label: 'Tata Usaha', codes: ['TU'] },
+  { id: 'PIMPINAN', label: 'Pimpinan', codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA', 'BKK'] },
+  { id: 'TATA_USAHA', label: 'Tata Usaha', codes: ['TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'] },
   { id: 'KAPROG', label: 'Kaprog', codes: ['KAPROG'] },
   { id: 'KABENG', label: 'Kabeng', codes: ['KABENG'] },
   { id: 'TOOLMAN', label: 'Toolman', codes: ['TOOLMAN'] },

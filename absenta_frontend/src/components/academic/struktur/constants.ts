@@ -5,7 +5,7 @@ export const GROUP_CONFIG: GroupConfig[] = [
     id: 'G1',
     title: 'Pimpinan & Manajemen',
     subtitle: 'Manajerial Sekolah',
-    codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU'],
+    codes: ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'TU_KEPALA'],
     gradient: 'from-indigo-600 to-indigo-800'
   },
   {

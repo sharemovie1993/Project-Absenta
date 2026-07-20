@@ -457,7 +457,7 @@ export class StrukturOrganisasiService {
     // [ATOMIC REPLACEMENT LOGIC] 
     // Untuk jabatan pimpinan utama, pastikan TIDAK ADA orang lain yang aktif.
     // Tapi untuk jabatan BIDANG/STAF/TU, kita izinkan multi-personil.
-    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU'].includes(position.code);
+    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(position.code);
 
     if (!isMultiStaffRole) {
       await prisma.organizationalAssignment.updateMany({

@@ -401,22 +401,56 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teachers.view.list',
     'academic.students.view.list'
   ],
-  [STRUKTUR_CODES.TU]: [
+  // ═══════════════════════════════════════════════════════════════════
+  // LINGKUNGAN TATA USAHA (GRANULAR SUB-POSISI)
+  // ═══════════════════════════════════════════════════════════════════
+  [STRUKTUR_CODES.TU_KEPALA]: [
     'organization.scope.tenant_wide',
     'dashboard.view.tu',
-    'tu.letters.manage',
+    'core.tenants.view.detail',
     'tu.staff.view.list',
-    'tu.staff.manage', // Tambahan: TU kelola data kepegawaian
+    'tu.staff.manage',                   // Ka.TU mengelola kepegawaian staf TU
+    'tu.letters.manage',                 // Ka.TU supervisi persuratan
     'academic.students.view.list',
-    'academic.students.manage', // Tambahan: TU kelola data induk siswa
     'academic.teachers.view.list',
-    'academic.teachers.manage', // Tambahan: TU kelola data induk guru
-    'billing.invoices.view.list', // Tambahan: TU pantau tagihan/pembayaran
-    'billing.invoices.generate',
+    'billing.invoices.view.list',        // Ka.TU pantau arus keuangan
+    'correspondence.inbox.view',
+    'correspondence.outbox.view',
+  ],
+  [STRUKTUR_CODES.TU_PERSURATAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+    'tu.letters.manage',
     'correspondence.inbox.view',
     'correspondence.inbox.manage',
     'correspondence.outbox.view',
-    'correspondence.outbox.manage'
+    'correspondence.outbox.manage',
+  ],
+  [STRUKTUR_CODES.TU_KEUANGAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+    'academic.students.view.list',       // Referensi siswa untuk tagihan
+    'billing.invoices.view.list',
+    'billing.invoices.generate',
+  ],
+  [STRUKTUR_CODES.TU_KEPEGAWAIAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+    'academic.students.view.list',
+    'academic.students.manage',          // Kelola data induk siswa (NISN/Dapodik)
+    'academic.teachers.view.list',
+    'academic.teachers.manage',          // Kelola data induk guru (NUPTK/NIP)
+    'tu.staff.view.list',
+  ],
+  [STRUKTUR_CODES.TU_SARPRAS]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.tu',
+    'core.tenants.view.detail',
+    'sarpras.loans.view.list',
+    'sarpras.inventory.view.list',
   ],
   [STRUKTUR_CODES.KAPROG]: [
     'organization.scope.unit_restricted',

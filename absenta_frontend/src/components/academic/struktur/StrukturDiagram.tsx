@@ -16,7 +16,7 @@ import { LiveNodeEditor } from './LiveNodeEditor';
 import { TreeErrorBoundary } from './TreeErrorBoundary';
 import { TreeSkeleton } from './NodeSkeleton';
 import { GROUP_CONFIG } from './constants';
-import { transformDataToTree, transformManagementToTree, transformTuEnvironmentToTree } from './utils';
+import { transformDataToTree, transformManagementToTree } from './utils';
 import type { GroupedStruktur, StrukturDiagramProps, TopologyNodeData } from './types';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -44,11 +44,11 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
   }, [rawJenjang]);
 
   const group2Codes = useMemo(() => {
-    if (['SD', 'MI'].includes(rawJenjang)) return ['TU']; // Hanya TU
+    if (['SD', 'MI'].includes(rawJenjang)) return ['TU_KEPALA']; // Hanya Ka.TU
     if (!['SMK', 'MAK'].includes(rawJenjang)) {
-      return ['SARPRAS', 'TU']; // Tanpa BKK
+      return ['SARPRAS', 'TU_KEPALA']; // Tanpa BKK
     }
-    return ['SARPRAS', 'TU', 'BKK'];
+    return ['SARPRAS', 'TU_KEPALA', 'BKK'];
   }, [rawJenjang]);
 
   // Queries
@@ -202,10 +202,6 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
     if (activeTab === 'PIMPINAN') {
       return null;
-    }
-
-    if (activeTab === 'TATA_USAHA') {
-      return transformTuEnvironmentToTree(data, jurusans);
     }
 
     return transformDataToTree(activeCodes, data, jurusans, tingkatList);
