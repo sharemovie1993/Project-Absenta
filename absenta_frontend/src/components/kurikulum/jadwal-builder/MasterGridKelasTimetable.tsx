@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
-import { getMapelColor } from '../../../utils/mapelColorHelper';
+import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { DropdownOption } from '../../../api/dropdown.api';
 import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 
@@ -73,8 +73,8 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                           style={{ borderLeftColor: mapelStyle?.dotHex }}
                           title={`${item.Mapel?.nama_mapel || item.jenis_kegiatan} - ${item.Guru?.nama_guru || 'Guru'}`}
                         >
-                          <span className="font-extrabold text-[9px] text-slate-800 dark:text-slate-100 truncate">
-                            {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                          <span className="font-extrabold text-[10px] text-slate-800 dark:text-slate-100 truncate">
+                            {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan, item.Mapel?.kode_mapel)}
                           </span>
                           <span className="text-[8px] font-medium text-slate-500 dark:text-slate-400 truncate">
                             {item.Guru?.nama_guru || item.Guru?.User?.full_name || '-'}

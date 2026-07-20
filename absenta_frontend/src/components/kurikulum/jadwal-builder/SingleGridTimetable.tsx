@@ -2,7 +2,7 @@ import React from 'react';
 import { RefreshCw, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { cn } from '../../../lib/utils';
-import { getMapelColor } from '../../../utils/mapelColorHelper';
+import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { ViewMode, ToolMode } from './types';
 
 interface Props {
@@ -153,11 +153,12 @@ export const SingleGridTimetable: React.FC<Props> = ({
                                     <div className="flex items-center justify-between gap-1">
                                       <span
                                         className={cn(
-                                          'text-[9px] font-black uppercase tracking-wide truncate',
-                                          item.isForeign ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'
+                                          'text-[10px] font-black uppercase tracking-wide truncate',
+                                          item.isForeign ? 'text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
                                         )}
+                                        title={item.Mapel?.nama_mapel || item.jenis_kegiatan}
                                       >
-                                        {item.Mapel?.nama_mapel || item.jenis_kegiatan}
+                                        {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan, item.Mapel?.kode_mapel)}
                                       </span>
                                       {item.isForeign ? (
                                         <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[8px] font-black shrink-0 px-1 border-none">

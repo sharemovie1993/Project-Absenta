@@ -154,3 +154,57 @@ export function getMapelColor(mapelName: string = '', customColor?: string | nul
     dotHex: `hsl(${hue}, 65%, 50%)`,
   };
 }
+
+/**
+ * Smart Subject Abbreviation Generator ala aSC TimeTables
+ * Returns concise 3-8 character abbreviation for crisp display on timetable slot cards
+ */
+export function getMapelAbbreviation(mapelName: string = '', kodeMapel?: string | null): string {
+  if (kodeMapel && kodeMapel.trim().length > 0 && kodeMapel.trim().length <= 8) {
+    return kodeMapel.trim().toUpperCase();
+  }
+
+  if (!mapelName || mapelName.trim().length === 0) {
+    return 'KBM';
+  }
+
+  const nameLower = mapelName.toLowerCase().trim();
+
+  // Standard Indonesian School Subjects
+  if (nameLower.includes('matematika') || nameLower.includes('mtk')) return 'MTK';
+  if (nameLower.includes('indonesia')) return 'B. INDO';
+  if (nameLower.includes('inggris')) return 'B. ING';
+  if (nameLower.includes('agama') || nameLower.includes('pai')) return 'PAI';
+  if (nameLower.includes('pjok') || nameLower.includes('olahraga') || nameLower.includes('penjas')) return 'PJOK';
+  if (nameLower.includes('pancasila') || nameLower.includes('ppkn') || nameLower.includes('pkn')) return 'PPKn';
+  if (nameLower.includes('sejarah')) return 'SEJ';
+  if (nameLower.includes('fisika')) return 'FIS';
+  if (nameLower.includes('kimia')) return 'KIM';
+  if (nameLower.includes('biologi')) return 'BIO';
+  if (nameLower.includes('geografi')) return 'GEO';
+  if (nameLower.includes('ekonomi')) return 'EKO';
+  if (nameLower.includes('sosiologi')) return 'SOS';
+  if (nameLower.includes('seni')) return 'SENI';
+  if (nameLower.includes('prakarya') || nameLower.includes('pkwu')) return 'PKWU';
+  if (nameLower.includes('informatika') || nameLower.includes('simdig') || nameLower.includes('tik')) return 'INF';
+  if (nameLower.includes('bimbingan') || nameLower.includes('konseling') || nameLower.includes('bk')) return 'BK';
+
+  // Multi-word Subject Acronym Rule (e.g. "Pemrograman Web Dan Perangkat Bergerak" -> "PWPB")
+  const words = mapelName.trim().split(/\s+/);
+  if (words.length >= 2) {
+    const abbr = words
+      .filter(w => !['dan', 'atau', 'pada', 'untuk', 'di', 'ke', 'dari'].includes(w.toLowerCase()))
+      .map(w => w[0]?.toUpperCase() || '')
+      .join('');
+    if (abbr.length >= 2 && abbr.length <= 6) {
+      return abbr;
+    }
+  }
+
+  // Fallback: If single long word (e.g. "PRODUKTIF" -> "PROD.")
+  if (mapelName.length > 8) {
+    return mapelName.substring(0, 7).toUpperCase() + '.';
+  }
+
+  return mapelName.toUpperCase();
+}

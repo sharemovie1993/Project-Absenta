@@ -1,6 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import { getMapelColor } from '../../../utils/mapelColorHelper';
+import { getMapelColor, getMapelAbbreviation } from '../../../utils/mapelColorHelper';
 import { JadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 
 interface Props {
@@ -85,8 +85,8 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                           <span className="font-black text-[10px] text-indigo-700 dark:text-indigo-300 truncate">
                             {item.Kelas?.nama_kelas}
                           </span>
-                          <span className="text-[8px] font-bold text-slate-600 dark:text-slate-400 truncate">
-                            {item.Mapel?.nama_mapel}
+                          <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-200 truncate">
+                            {getMapelAbbreviation(item.Mapel?.nama_mapel || item.jenis_kegiatan, item.Mapel?.kode_mapel)}
                           </span>
                         </div>
                       ) : (
