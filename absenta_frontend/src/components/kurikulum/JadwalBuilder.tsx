@@ -1514,6 +1514,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
                   Guru tidak ditemukan.
                 </div>
               )}
+            </div>
           </div>
         </Modal>
       </div>
