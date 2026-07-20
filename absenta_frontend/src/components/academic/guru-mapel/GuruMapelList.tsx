@@ -5,8 +5,9 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown } from 'lucide-react';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock } from 'lucide-react';
 import { listGuruMapel, removeGuruMapel, assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
+import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
@@ -40,9 +41,19 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
+  const [strukturMap, setStrukturMap] = useState<Map<string, number>>(new Map());
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
+
+  const teacherTotalJpMap = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach(gm => {
+      const jp = strukturMap.get(gm.mapel_id) || 2;
+      map.set(gm.guru_id, (map.get(gm.guru_id) || 0) + jp);
+    });
+    return map;
+  }, [items, strukturMap]);
 
   const canManage = useMemo(() => {
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
@@ -111,16 +122,28 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [gurus, mapels, jurusans, kelases] = await Promise.all([
+        const [gurus, mapels, jurusans, kelases, strukturRes] = await Promise.all([
           getGuruList(1, 100, ''),
           getMapelList(1, 100, ''),
           getJurusanForDropdown().catch(() => []),
           getKelasForDropdown().catch(() => []),
+          kurikulumApi.getStruktur().catch(() => ({ data: [] }))
         ]);
         setGuruOptions(gurus.data);
         setMapelOptions(mapels.data);
         setJurusanDropdown(jurusans);
         setKelasDropdown(kelases);
+
+        const sMap = new Map<string, number>();
+        const list = strukturRes?.data || (Array.isArray(strukturRes) ? strukturRes : []);
+        if (Array.isArray(list)) {
+          list.forEach((s: any) => {
+            if (s.mapel_id && s.jp_per_minggu) {
+              sMap.set(s.mapel_id, s.jp_per_minggu);
+            }
+          });
+        }
+        setStrukturMap(sMap);
       } catch {
         // ignore
       }
@@ -276,6 +299,32 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       )
     },
     {
+      key: 'BebanJP',
+      label: 'Beban JP',
+      render: (_: any, gm: GuruMapel) => {
+        const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
+        const totalGuruJp = teacherTotalJpMap.get(gm.guru_id) || jpPerMinggu;
+        const maxJp = (gm.Guru as any)?.max_jp || 24;
+        const isOverload = totalGuruJp > maxJp;
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <Clock className="w-3 h-3 mr-1 text-emerald-500" />
+                {jpPerMinggu} JP / ming
+              </span>
+            </div>
+            <span className={`text-[10px] font-extrabold ${
+              isOverload ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'
+            }`}>
+              Total Guru: {totalGuruJp}/{maxJp} JP {isOverload ? '⚠️ (Overload)' : ''}
+            </span>
+          </div>
+        );
+      }
+    },
+    {
       key: 'Scope',
       label: 'Cakupan Plotting',
       render: (_: any, gm: GuruMapel) => {
@@ -382,7 +431,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         </div>
       )
     }
-  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange]);
+  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, strukturMap, teacherTotalJpMap]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
