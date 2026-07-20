@@ -194,7 +194,13 @@ export const transformDataToTree = (
           label: shortenPosition(displayLabel),
           subLabel: headMember ? headMember.name : 'Belum diisi',
           type: 'STRUCT' as any,
-          data: { roleCode: kode, realStrukturId: node.id, realMemberId: headMember?.id, isUnassigned: !headMember, forceVertical: true },
+          data: { 
+            roleCode: kode, 
+            realStrukturId: node.id, 
+            realMemberId: headMember?.id, 
+            isUnassigned: !headMember, 
+            forceVertical: String(kode).startsWith('TU_') ? true : undefined 
+          },
           children: sortedMembers.slice(1).map((m: any) => ({
              id: `member-${kode}-${node.id}-${m.id}`,
              label: m.name,
