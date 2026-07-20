@@ -351,8 +351,8 @@ export function TrackingSiswaContent({ hideHeader = false, kelasId }: { hideHead
       instruction={instructionData}
       hardeningModuleKey="trackingsiswapage"
       breadcrumbs={!hideHeader ? [
-        { label: 'Kehadiran', path: '/attendance/rekap' },
-        { label: 'Tracking' }
+        { label: 'Presensi', path: '/attendance/rekap' },
+        { label: 'Tracking Aktivitas Siswa', active: true }
       ] : undefined}
       toolbar={!hideHeader && (
         <Button 
