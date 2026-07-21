@@ -43,8 +43,9 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
                     }
                     body > #print-card-overlay-portal {
                         display: block !important;
-                        position: fixed !important;
-                        inset: 0 !important;
+                        position: relative !important;
+                        width: 100% !important;
+                        height: auto !important;
                         background: white !important;
                         z-index: 99999 !important;
                     }
@@ -60,7 +61,8 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
                         style={{
                             width: `${printLayout.finalW}mm`,
                             height: `${printLayout.finalH}mm`,
-                            pageBreakAfter: pageIdx < pages.length - 1 ? 'always' : 'auto'
+                            pageBreakAfter: pageIdx < pages.length - 1 ? 'always' : 'auto',
+                            breakAfter: pageIdx < pages.length - 1 ? 'page' : 'auto'
                         }}
                     >
                         {pageStudents.map((student: any, idx: number) => {
