@@ -205,3 +205,11 @@
   - `src/database/seeds/seed.ts` → menu "Jadwal Kegiatan" ditambahkan ke children sidebar KESISWAAN.
   - Frontend: `jadwalKegiatan.api.ts` endpoint diubah, `JadwalKegiatanPage.tsx` `isLocked=false` & `moduleName='KESISWAAN'`, `App.tsx` route dipindah ke `/kesiswaan/jadwal-kegiatan`.
 
+2026-07: Component-Level RBAC Hardening, Dynamic Lock States & Graceful Dashboard Gating
+- **Keputusan**:
+  1. Menerapkan proteksi antarmuka (UI) berbasis kapabilitas di tingkat komponen (*Component-Level RBAC*) untuk halaman Struktur Kurikulum (`MasterStrukturPage` & `StrukturKurikulumTable`) dan Pengaturan Jam KBM (`JamKBMPage` & panel sub-komponennya) dengan memanfaatkan properti `readOnly`. Jika pengguna tidak memegang hak manajer (`academic.manage.academic` / `academic.schedules.manage`), antarmuka akan menonaktifkan input waktu, menyembunyikan kotak centang pengeditan, serta menghilangkan tombol simpan/tambah/hapus.
+  2. Mengimplementasikan pemuatan widget terisolasi (*Fail-safe Widget Loading*) pada **Dashboard Kurikulum** (`Dashboard.tsx` & `DashboardComponents.tsx`) dengan membatasi kueri supervisi (`enabled: hasSupervisiAccess`) dan menampilkan widget *Lock Screen* lokal pada modul Progress Supervisi bagi peran seperti `TU_KEPEGAWAIAN` yang tidak memegang hak supervisi. Langkah ini mencegah terjadinya pemblokiran akses global (403 Forbidden screen) pada halaman dashboard.
+  3. Mengubah mekanisme pengurutan menu lintas modul (*Cross-Module Navigation*) pada komponen navigasi utama (`Sidebar.tsx`) dari pengurutan alfabetis/kustom menjadi pewarisan langsung dari urutan *canonical* basis data (`order` dari seeder menu), guna mempertahankan alur logis pengisian data master (Struktur -> Guru Mapel -> Kalender -> Jam KBM -> Jadwal).
+- **Rasional**: Memastikan penerapan prinsip *Least Privilege* dan *Separation of Duties* secara konsisten tanpa merusak pengalaman pengguna (UX) dengan memblokir halaman secara keseluruhan, serta menjaga agar alur pengisian data akademik tetap intuitif dan teratur bagi seluruh peran administrasi sekolah.
+
+
