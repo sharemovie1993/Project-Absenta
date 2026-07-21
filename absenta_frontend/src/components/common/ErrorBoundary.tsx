@@ -36,7 +36,14 @@ export const ErrorBoundary: React.FC<Props> = ({ children, fallback, onError, sh
 
     const handlePromiseRejection = (event: PromiseRejectionEvent) => {
       const reasonStr = String(event.reason || '');
-      if (reasonStr.includes('play()') || reasonStr.includes('AbortError') || reasonStr.includes('NotAllowedError')) {
+      if (
+        reasonStr.includes('play()') || 
+        reasonStr.includes('AbortError') || 
+        reasonStr.includes('NotAllowedError') ||
+        reasonStr.includes('setPhotoOptions') ||
+        reasonStr.includes('applyConstraints') ||
+        reasonStr.includes('ImageCapture')
+      ) {
         return;
       }
       handleError(
