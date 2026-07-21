@@ -97,6 +97,11 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
       foto: null 
     } as NonNullable<PreviewCardProps['student']>);
 
+    const kelasNama = rawStudent.Kelas?.nama_kelas || rawStudent.kelas?.nama || rawStudent.kelas?.nama_kelas || '-';
+    const kelasStripped = stripTingkat(kelasNama);
+    const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
+    const jurusanNama = (rawStudent.Kelas as any)?.Jurusan?.nama || (rawStudent as any)?.Jurusan?.nama || fallbackJurusan;
+
     const isGuruCard = Boolean((rawStudent as any)?.nama_guru || (rawStudent as any)?.nip || (rawStudent as any)?.jenis_ptk);
 
     const displayStudent = {
