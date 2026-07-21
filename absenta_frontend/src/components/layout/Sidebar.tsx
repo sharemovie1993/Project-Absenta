@@ -510,25 +510,9 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       );
       const primaryPathSet = new Set(primaryItems.map(i => (i.path || '').toLowerCase()));
 
-      const getModuleOrder = (path: string) => {
-        const p = path.toLowerCase();
-        if (p.startsWith('/attendance')) return 1;
-        if (p.startsWith('/kesiswaan')) return 2;
-        if (p.startsWith('/bpbk')) return 3;
-        if (p.startsWith('/sarpras')) return 4;
-        if (p.startsWith('/hubin')) return 5;
-        if (p.startsWith('/cooperative')) return 6;
-        return 99;
-      };
-
       const crossModuleItems = allLeafItems.filter(item => {
         const p = (item.path || '').toLowerCase();
         return p && !primaryPathSet.has(p) && allowedCrossPaths.has(p);
-      }).sort((a, b) => {
-        const orderA = getModuleOrder(a.path || '');
-        const orderB = getModuleOrder(b.path || '');
-        if (orderA !== orderB) return orderA - orderB;
-        return a.label.localeCompare(b.label);
       });
 
       const finalNav: NavItem[] = [...cleanEmptyParents(primaryItems)];
