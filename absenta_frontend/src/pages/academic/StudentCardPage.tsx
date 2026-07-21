@@ -380,6 +380,17 @@ const StudentCardPage = () => {
             show_subheader_text: config.show_subheader_text,
             show_school_name: config.show_school_name,
             show_school_address: config.show_school_address,
+            show_back_side: config.show_back_side,
+            back_bg_color: config.back_bg_color,
+            back_text_color: config.back_text_color,
+            back_header_text: config.back_header_text,
+            back_rules: config.back_rules,
+            back_show_signature: config.back_show_signature,
+            back_signature_title: config.back_signature_title,
+            back_principal_name: config.back_principal_name,
+            back_principal_nip: config.back_principal_nip,
+            back_signature_image_url: config.back_signature_image_url,
+            back_stamp_image_url: config.back_stamp_image_url,
             selected_preset: presetName
         };
 

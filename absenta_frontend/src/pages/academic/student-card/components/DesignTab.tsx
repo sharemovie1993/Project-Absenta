@@ -6,19 +6,24 @@ import {
     Input, 
     Switch,
     Badge,
-    Checkbox
+    Checkbox,
+    Textarea
 } from '@/components/ui';
 import { 
     Settings, 
     RotateCcw, 
     CreditCard,
     Printer as PrinterIcon,
-    Sparkles
+    Sparkles,
+    Upload,
+    Loader2
 } from 'lucide-react';
 import { SettingsGroup } from '@/components/academic/student-card/SettingsGroup';
 import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput';
 import { PreviewCard } from '@/components/academic/student-card/PreviewCard';
+import { CardBackPreview } from '@/components/academic/student-card/CardBackPreview';
 import type { StudentCardConfig } from '@/components/academic/student-card/types';
+import axiosInstance from '@/lib/axiosInstance';
 
 // Coordinate Reference (EDITOR_SCALE=2, MM_TO_PX=3.78):
 // Horizontal card: 647px wide × 408px tall
@@ -180,6 +185,41 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     sekolah
 }) => {
     const activePresetName = config.selected_preset || 'Vertical - Versi 1';
+    const [previewSide, setPreviewSide] = React.useState<'front' | 'back'>('front');
+    const [uploadingStamp, setUploadingStamp] = React.useState(false);
+    const [uploadingSign, setUploadingSign] = React.useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'stamp' | 'signature') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        if (type === 'stamp') setUploadingStamp(true);
+        else setUploadingSign(true);
+
+        try {
+            const res = await axiosInstance.post('/upload/file', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            if (res.data?.success && res.data?.data?.url) {
+                const url = res.data.data.url;
+                if (type === 'stamp') {
+                    setConfig(prev => ({ ...prev, back_stamp_image_url: url }));
+                } else {
+                    setConfig(prev => ({ ...prev, back_signature_image_url: url }));
+                }
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+        } finally {
+            if (type === 'stamp') setUploadingStamp(false);
+            else setUploadingSign(false);
+        }
+    };
 
     const applyPreset = (presetName: string) => {
         const preset = CARD_PRESETS.find(p => p.name === presetName);
@@ -858,6 +898,173 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             </div>
                         </div>
                     </SettingsGroup>
+
+                    <SettingsGroup title="Desain Sisi Belakang" defaultOpen={false}>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Aktifkan Cetak Dua Sisi</Label>
+                                <Switch
+                                    checked={!!config.show_back_side}
+                                    onCheckedChange={(c: boolean) => setConfig({ ...config, show_back_side: c })}
+                                    className="scale-90"
+                                />
+                            </div>
+
+                            {config.show_back_side && (
+                                <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Warna Latar</Label>
+                                            <div className="flex gap-2 items-center">
+                                                <Input
+                                                    type="color"
+                                                    value={config.back_bg_color || '#ffffff'}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_bg_color: e.target.value })}
+                                                    className="w-8 h-8 p-1 rounded-lg cursor-pointer"
+                                                />
+                                                <Input
+                                                    value={config.back_bg_color || '#ffffff'}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_bg_color: e.target.value })}
+                                                    className="h-8 text-[10px] font-mono flex-1 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Warna Teks</Label>
+                                            <div className="flex gap-2 items-center">
+                                                <Input
+                                                    type="color"
+                                                    value={config.back_text_color || '#1e293b'}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_text_color: e.target.value })}
+                                                    className="w-8 h-8 p-1 rounded-lg cursor-pointer"
+                                                />
+                                                <Input
+                                                    value={config.back_text_color || '#1e293b'}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_text_color: e.target.value })}
+                                                    className="h-8 text-[10px] font-mono flex-1 rounded-lg"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Judul Sisi Belakang</Label>
+                                        <Input
+                                            value={config.back_header_text || ''}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_header_text: e.target.value })}
+                                            placeholder="TATA TERTIB KARTU..."
+                                            className="h-10 text-xs rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Tata Tertib (Baris Baru = Poin Baru)</Label>
+                                        <Textarea
+                                            value={config.back_rules || ''}
+                                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, back_rules: e.target.value })}
+                                            placeholder="Tulis aturan di sini..."
+                                            rows={5}
+                                            className="text-xs rounded-xl min-h-[100px] dark:bg-slate-950 dark:border-slate-800"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan Tanda Tangan & Stempel</Label>
+                                            <Switch
+                                                checked={!!config.back_show_signature}
+                                                onCheckedChange={(c: boolean) => setConfig({ ...config, back_show_signature: c })}
+                                                className="scale-90"
+                                            />
+                                        </div>
+
+                                        {config.back_show_signature && (
+                                            <div className="space-y-3 bg-slate-50 dark:bg-slate-950/30 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Jabatan Penandatangan</Label>
+                                                    <Input
+                                                        value={config.back_signature_title || ''}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_signature_title: e.target.value })}
+                                                        placeholder="Kepala Sekolah / Kepala Perpustakaan"
+                                                        className="h-8 text-xs rounded-lg bg-white"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Nama Lengkap</Label>
+                                                    <Input
+                                                        value={config.back_principal_name || ''}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_principal_name: e.target.value })}
+                                                        placeholder="Nama Lengkap Penandatangan"
+                                                        className="h-8 text-xs rounded-lg bg-white"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-slate-500 uppercase">NIP / Identifikasi</Label>
+                                                    <Input
+                                                        value={config.back_principal_nip || ''}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_principal_nip: e.target.value })}
+                                                        placeholder="NIP. 1980..."
+                                                        className="h-8 text-xs rounded-lg bg-white"
+                                                    />
+                                                </div>
+
+                                                {/* Upload Tanda Tangan & Stempel */}
+                                                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-slate-400 uppercase">File TTD</Label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="file"
+                                                                id="upload-signature-input"
+                                                                className="hidden"
+                                                                accept="image/*"
+                                                                onChange={(e) => handleImageUpload(e, 'signature')}
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => document.getElementById('upload-signature-input')?.click()}
+                                                                disabled={uploadingSign}
+                                                                className="w-full h-8 text-[9px] font-black uppercase tracking-wider rounded-lg"
+                                                            >
+                                                                {uploadingSign ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} className="mr-1" />}
+                                                                {config.back_signature_image_url ? 'TTD Terunggah' : 'Pilih TTD'}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-1.5">
+                                                        <Label className="text-[9px] font-bold text-slate-400 uppercase">File Stempel</Label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="file"
+                                                                id="upload-stamp-input"
+                                                                className="hidden"
+                                                                accept="image/*"
+                                                                onChange={(e) => handleImageUpload(e, 'stamp')}
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => document.getElementById('upload-stamp-input')?.click()}
+                                                                disabled={uploadingStamp}
+                                                                className="w-full h-8 text-[9px] font-black uppercase tracking-wider rounded-lg"
+                                                            >
+                                                                {uploadingStamp ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} className="mr-1" />}
+                                                                {config.back_stamp_image_url ? 'Stempel Terunggah' : 'Pilih Stempel'}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </SettingsGroup>
                 </div>
             </SectionCard>
 
@@ -871,22 +1078,49 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                     noPadding
                 >
                     <div className="p-12 bg-slate-200/50 dark:bg-slate-950/50 flex flex-col items-center justify-center min-h-[500px] relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
+                        {config.show_back_side && (
+                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-8 w-56 shadow-sm border border-slate-200/30 z-30">
+                                <button
+                                    type="button"
+                                    className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                        previewSide === 'front' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                    onClick={() => setPreviewSide('front')}
+                                >
+                                    Sisi Depan
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                        previewSide === 'back' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                    onClick={() => setPreviewSide('back')}
+                                >
+                                    Sisi Belakang
+                                </button>
+                            </div>
+                        )}
+
                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                            Mode Desain Interaktif (Drag & Drop)
+                            {previewSide === 'front' ? 'Mode Desain Interaktif (Drag & Drop)' : 'Preview Desain Sisi Belakang'}
                         </div>
 
-                        <PreviewCard
-                            student={previewStudent || {
-                                nama_siswa: 'CONTOH NAMA SISWA',
-                                nis: '12345678',
-                                nisn: '0012345678',
-                                kelas: { nama_kelas: 'X - RPL 1' }
-                            }}
-                            config={config}
-                            sekolah={sekolah}
-                            onDragEnd={handleDragEnd}
-                        />
+                        {previewSide === 'front' ? (
+                            <PreviewCard
+                                student={previewStudent || {
+                                    nama_siswa: 'CONTOH NAMA SISWA',
+                                    nis: '12345678',
+                                    nisn: '0012345678',
+                                    kelas: { nama_kelas: 'X - RPL 1' }
+                                }}
+                                config={config}
+                                sekolah={sekolah}
+                                onDragEnd={handleDragEnd}
+                            />
+                        ) : (
+                            <CardBackPreview config={config} />
+                        )}
 
                         <div className="mt-12 flex gap-6">
                             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">

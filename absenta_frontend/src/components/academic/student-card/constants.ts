@@ -66,6 +66,17 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   show_subheader_text: true,
   show_school_name: true,
   show_school_address: true,
+  show_back_side: false,
+  back_bg_color: '#ffffff',
+  back_text_color: '#1e293b',
+  back_header_text: 'TATA TERTIB KARTU PELAJAR',
+  back_rules: '1. Kartu ini wajib dibawa selama berada di lingkungan sekolah.\n2. Kartu tidak dapat dipindahtangankan kepada orang lain.\n3. Apabila kartu hilang, harap segera melapor ke pihak sekolah.\n4. Pengguna wajib menjaga dan merawat kondisi kartu agar tidak rusak.',
+  back_show_signature: true,
+  back_signature_title: 'Kepala Sekolah',
+  back_principal_name: 'Nama Kepala Sekolah, M.Pd',
+  back_principal_nip: 'NIP. 198001012005011001',
+  back_signature_image_url: '',
+  back_stamp_image_url: '',
 };
 
 export const DEFAULT_GURU_CONFIG: StudentCardConfig = {
@@ -89,6 +100,8 @@ export const DEFAULT_GURU_CONFIG: StudentCardConfig = {
   border_width: 1,
   card_pattern: 'dots-grid',
   card_pattern_opacity: 60,
+  back_header_text: 'TATA TERTIB KARTU PEGAWAI',
+  back_rules: '1. Kartu pegawai ini merupakan tanda pengenal resmi di lingkungan sekolah.\n2. Wajib dikenakan/dibawa selama jam kerja dan dinas.\n3. Jika menemukan kartu ini, harap dikembalikan ke bagian tata usaha sekolah.',
 };
 
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {

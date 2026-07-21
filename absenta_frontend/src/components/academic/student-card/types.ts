@@ -26,6 +26,17 @@ export interface StudentCardConfig {
   show_subheader_text?: boolean;
   show_school_name?: boolean;
   show_school_address?: boolean;
+  show_back_side?: boolean;
+  back_bg_color?: string;
+  back_text_color?: string;
+  back_header_text?: string;
+  back_rules?: string;
+  back_show_signature?: boolean;
+  back_signature_title?: string;
+  back_principal_name?: string;
+  back_principal_nip?: string;
+  back_signature_image_url?: string;
+  back_stamp_image_url?: string;
   
   // Element Dimensions (mm)
   photo_width: number;
