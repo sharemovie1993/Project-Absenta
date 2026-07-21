@@ -1903,6 +1903,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       {/* Express Photo Studio Modal */}
       <ExpressPhotoStudioModal
         isOpen={isPhotoStudioOpen}
+        defaultMode="SISWA"
         onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => {
           fetchSiswas(currentPage, searchTerm);

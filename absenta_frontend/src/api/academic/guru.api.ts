@@ -36,6 +36,7 @@ export interface CreateGuruPayload {
   pendidikan_terakhir?: string;
   max_jp?: number;
   jenis_ptk?: string;
+  foto?: string;
 }
 
 export interface UpdateGuruPayload {
@@ -54,6 +55,7 @@ export interface UpdateGuruPayload {
   pendidikan_terakhir?: string;
   max_jp?: number;
   jenis_ptk?: string;
+  foto?: string;
 }
 
 // Get Guru List - GET /api/academic/guru

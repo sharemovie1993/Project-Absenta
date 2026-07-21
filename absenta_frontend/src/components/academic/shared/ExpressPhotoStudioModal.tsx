@@ -25,6 +25,7 @@ interface ExpressPhotoStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  defaultMode?: 'SISWA' | 'GURU';
 }
 
 type Mode = 'SISWA' | 'GURU';
@@ -72,9 +73,10 @@ const playBeep = (type: 'success' | 'error' | 'shutter') => {
 export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  defaultMode
 }) => {
-  const [mode, setMode] = useState<Mode>('SISWA');
+  const [mode, setMode] = useState<Mode>(defaultMode || 'SISWA');
   const [searchQuery, setSearchQuery] = useState('');
   const [targetPerson, setTargetPerson] = useState<Siswa | Guru | null>(null);
   const [step, setStep] = useState<'SCAN_TARGET' | 'CAPTURE_PHOTO' | 'PREVIEW_SAVE'>('SCAN_TARGET');
@@ -144,13 +146,16 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
   // Reset modal state
   useEffect(() => {
     if (isOpen) {
+      if (defaultMode) {
+        setMode(defaultMode);
+      }
       setStep('SCAN_TARGET');
       setSearchQuery('');
       setTargetPerson(null);
       setCapturedPhotoDataUrl(null);
       setLastSavedInfo(null);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultMode]);
 
   // Handle Search Target (QR Scan or Type)
   const handleSearchTarget = useCallback(async (query: string) => {
@@ -237,13 +242,37 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
     playBeep('shutter');
   };
 
+  const getUploadedPhotoUrl = async (dataUrl: string): Promise<string> => {
+    if (!dataUrl.startsWith('data:')) return dataUrl;
+    try {
+      const fetchRes = await fetch(dataUrl);
+      const blob = await fetchRes.blob();
+      const file = new File([blob], `studio-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', file);
+      const { requestWithFallback } = await import('../../../api/apiUtils');
+      const res = await requestWithFallback<{ success: boolean; data: { url: string } }>('post', '/upload/file', {
+        data: formData,
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.success && res.data?.url) {
+        return res.data.url;
+      }
+    } catch (e) {
+      console.error('Failed to upload photo file, falling back to dataUrl:', e);
+    }
+    return dataUrl;
+  };
+
   // Execute Photo Save to DB
   const handleSaveCapturedPhoto = async () => {
     if (!capturedPhotoDataUrl || !targetPerson) return;
     setIsSaving(true);
     try {
+      const finalPhotoUrl = await getUploadedPhotoUrl(capturedPhotoDataUrl);
+
       if (mode === 'SISWA') {
-        const res = await updateSiswa(targetPerson.id, { foto: capturedPhotoDataUrl });
+        const res = await updateSiswa(targetPerson.id, { foto: finalPhotoUrl });
         if (res.success) {
           const personName = (targetPerson as Siswa).nama_siswa;
           const identifier = (targetPerson as Siswa).nisn || (targetPerson as Siswa).nis || '-';
@@ -262,7 +291,7 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
           playBeep('error');
         }
       } else {
-        const res = await updateGuru(targetPerson.id, { foto: capturedPhotoDataUrl });
+        const res = await updateGuru(targetPerson.id, { foto: finalPhotoUrl });
         if (res.success) {
           const personName = (targetPerson as Guru).nama_guru;
           const identifier = (targetPerson as Guru).nip || '-';

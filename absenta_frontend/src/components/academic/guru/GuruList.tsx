@@ -1078,6 +1078,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       {/* Modal Express Photo Studio */}
       <ExpressPhotoStudioModal
         isOpen={isPhotoStudioOpen}
+        defaultMode="GURU"
         onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
       />
