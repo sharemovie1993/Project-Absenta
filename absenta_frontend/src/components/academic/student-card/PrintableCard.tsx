@@ -5,6 +5,7 @@ import { EDITOR_SCALE, MM_TO_PX } from './constants';
 import { computeSmartCardDimensions } from './cardScaleEngine';
 import { Siswa } from '../../../types/academic';
 import { CardPatternLayer } from './CardPatternLayer';
+import { resolveProfilePhotoUrl } from '../../../lib/utils';
 
 const adjustColorBrightness = (hex: string, percent: number) => {
     if (!hex) return hex;
@@ -396,7 +397,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     }`}
                 >
                     {student.foto ? (
-                        <img src={student.foto} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                        <img src={resolveProfilePhotoUrl(student.foto)} crossOrigin="anonymous" className="w-full h-full object-cover" />
                     ) : (
                         <span className="text-[6px] text-slate-400">FOTO</span>
                     )}

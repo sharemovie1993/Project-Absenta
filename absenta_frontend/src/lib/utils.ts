@@ -37,3 +37,16 @@ export function urlBase64ToUint8Array(base64String: string) {
   }
   return outputArray;
 }
+
+export function resolveProfilePhotoUrl(url?: string | null): string {
+  if (!url) return '';
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}token=${encodeURIComponent(token)}`;
+  }
+  return url;
+}

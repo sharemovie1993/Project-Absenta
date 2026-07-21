@@ -12,6 +12,7 @@ import { SiswaFormValues } from '../../../../schemas/academic/siswa.schema';
 import { SectionCard, DetailRow } from './FormShared';
 import { requestWithFallback } from '../../../../api/apiUtils';
 import toast from 'react-hot-toast';
+import { resolveProfilePhotoUrl } from '../../../../lib/utils';
 
 interface PersonalSectionProps {
     register: UseFormRegister<SiswaFormValues>;
@@ -194,7 +195,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
                     <div className="relative w-32 h-40 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden flex items-center justify-center flex-shrink-0 group">
                         {watch('foto') ? (
-                            <img src={watch('foto')} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                            <img src={resolveProfilePhotoUrl(watch('foto'))} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         ) : (
                             <div className="text-center p-3 text-slate-400">
                                 <UserIcon size={32} className="mx-auto mb-2 opacity-40" />
@@ -316,7 +317,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
             <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
                 <div className="relative w-32 h-40 bg-white dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner overflow-hidden flex items-center justify-center flex-shrink-0 group">
                     {watch('foto') ? (
-                        <img src={watch('foto')} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={resolveProfilePhotoUrl(watch('foto'))} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
                         <div className="text-center p-3 text-slate-400">
                             <UserIcon size={32} className="mx-auto mb-2 opacity-40 animate-pulse" />
