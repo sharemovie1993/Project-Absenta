@@ -98,7 +98,7 @@ export const DEFAULT_GURU_CONFIG: StudentCardConfig = {
   photo_y: 170,
   data_x: 180,
   data_y: 190,
-  qrcode_x: 497,
+  qrcode_x: 465,
   qrcode_y: 200,
   photo_shape: 'square',
   show_border: true,
