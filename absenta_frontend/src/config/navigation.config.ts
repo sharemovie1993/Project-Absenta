@@ -379,8 +379,10 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     solidBg: 'bg-blue-600',
     desc: 'Data Induk & Dapodik',
     requiredPositionCode: 'TU_KEPEGAWAIAN',
-    defaultPath: '/academic/siswa',
+    defaultPath: '/academic',
     crossModulePaths: [
+      '/academic',
+      '/kurikulum/dashboard',
       '/academic/siswa',
       '/academic/guru',
       '/documents/member-docs',
