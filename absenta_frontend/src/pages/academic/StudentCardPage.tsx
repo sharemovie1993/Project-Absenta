@@ -552,14 +552,14 @@ const StudentCardPage = () => {
 
     return (
         <AcademicPageLayout
-            title="Kartu Pelajar Digital"
-            description="Desain kartu pelajar dan cetak kartu RFID untuk siswa. Digunakan kapan saja saat pembuatan atau penggantian kartu siswa."
+            title={cardTargetMode === 'GURU' ? 'Kartu Identitas Pegawai & Guru' : 'Kartu Pelajar Digital'}
+            description={cardTargetMode === 'GURU' ? 'Desain dan cetak kartu identitas pegawai/guru dengan barcode RFID & pasfoto formal.' : 'Desain kartu pelajar dan cetak kartu RFID untuk siswa. Digunakan kapan saja saat pembuatan atau penggantian kartu siswa.'}
             stats={academicStats}
             toolbar={pageToolbar}
             breadcrumbs={breadcrumbs}
             hardeningModuleKey="studentcard"
             instruction={{
-                title: "Panduan Kartu Pelajar",
+                title: cardTargetMode === 'GURU' ? 'Panduan Kartu Pegawai' : 'Panduan Kartu Pelajar',
                 description: (
                   <div className="space-y-2">
                     <p>Merancang tampilan kartu pelajar sekolah dan mencetak kartu secara massal dengan kode QR.</p>

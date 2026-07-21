@@ -104,6 +104,10 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
 
     const isGuruCard = Boolean((rawStudent as any)?.nama_guru || (rawStudent as any)?.nip || (rawStudent as any)?.jenis_ptk);
 
+    const resolvedCardTitle = (config.card_title && config.card_title !== 'KARTU PELAJAR' && config.card_title !== 'KARTU IDENTITAS PEGAWAI')
+        ? config.card_title
+        : (isGuruCard ? 'KARTU IDENTITAS PEGAWAI' : 'KARTU PELAJAR');
+
     const displayStudent = {
         ...rawStudent,
         isGuruCard,
@@ -220,7 +224,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 <img src="/logo.png" alt="Absenta Logo" className="w-10 h-10 object-contain drop-shadow-md" />
               )}
               <div className="text-center" style={{ color: 'inherit' }}>
-                {isCenteredCircle && config.card_title && (
+                {isCenteredCircle && (
                   <h1 
                     className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
                     style={{ 
@@ -228,7 +232,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                       color: config.header_style === 'minimal' ? config.primary_color : undefined
                     }}
                   >
-                    {config.card_title}
+                    {resolvedCardTitle}
                   </h1>
                 )}
                 {config.header_text && <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>}
@@ -252,7 +256,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           )}
 
           {/* Card Title — sits exactly below header for non-centered layouts */}
-          {!isCenteredCircle && config.card_title && (
+          {!isCenteredCircle && (
             <div
               className="absolute w-full text-center pointer-events-none z-10"
               style={{ 
@@ -261,7 +265,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               }}
             >
                <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
-                  {config.card_title}
+                  {resolvedCardTitle}
                </h1>
             </div>
           )}
