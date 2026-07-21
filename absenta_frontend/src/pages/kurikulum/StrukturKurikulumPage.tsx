@@ -63,7 +63,7 @@ function normalizeKelompok(raw: string | undefined): string {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const StrukturKurikulumPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { tingkatList, kelompokOptions, jenjang } = useJenjang();
 
   const [selectedTingkat,  setSelectedTingkat]  = useState<number | null>(null);
@@ -284,13 +284,15 @@ const StrukturKurikulumPage: React.FC = () => {
             )}
           </div>
 
-          <Button
-            onClick={handleManagePlotting}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none font-black self-end sm:self-auto"
-          >
-            <Settings className="w-4 h-4 mr-2" />
-            KELOLA PLOTTING JP
-          </Button>
+          {can('academic.manage.academic') && (
+            <Button
+              onClick={handleManagePlotting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none font-black self-end sm:self-auto"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              KELOLA PLOTTING JP
+            </Button>
+          )}
         </div>
 
         {!activeYear && !isLoading && (

@@ -8,6 +8,7 @@ interface JamKBMClassAssignmentPanelProps {
   shiftConfig: ShiftConfig;
   kelasList: KelasOption[];
   onShiftConfigChange: (cfg: ShiftConfig) => void;
+  readOnly?: boolean;
 }
 
 // ── Tingkat color palette (mirrors LeadershipNode / CategoryNode logic) ───────
@@ -37,6 +38,7 @@ export default function JamKBMClassAssignmentPanel({
   shiftConfig,
   kelasList,
   onShiftConfigChange,
+  readOnly = false,
 }: JamKBMClassAssignmentPanelProps) {
   // ── View Mode: 'TREE' (Diagram) | 'TABLE' (Tabular) ──
   const [viewMode, setViewMode] = useState<'TREE' | 'TABLE'>('TREE');
@@ -128,7 +130,16 @@ export default function JamKBMClassAssignmentPanel({
         const assignedShift = shiftConfig?.shifts?.find(s => s.id === assignedShiftId);
         const color = shiftColorMap[assignedShiftId] ?? SHIFT_COLORS[0];
 
-        return (
+        return readOnly ? (
+          assignedShift ? (
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${color.badge} text-[10px] font-bold w-fit`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${color.dot}`} />
+              {assignedShift.name}
+            </div>
+          ) : (
+            <span className="text-xs text-slate-400 font-semibold px-2.5">-</span>
+          )
+        ) : (
           <div className="flex items-center gap-3">
             <SearchableSelect
               id={`select-shift-kelas-tabular-${k.value}`}
@@ -148,7 +159,7 @@ export default function JamKBMClassAssignmentPanel({
         );
       },
     },
-  ], [shiftConfig, defaultShiftId, shiftOptions, shiftColorMap, handleAssignmentChange]);
+  ], [shiftConfig, defaultShiftId, shiftOptions, shiftColorMap, handleAssignmentChange, readOnly]);
 
   if (kelasList.length === 0) {
     return (
@@ -319,18 +330,26 @@ export default function JamKBMClassAssignmentPanel({
 
                                   {/* Shift selector body */}
                                   <div className="px-2 py-2 space-y-1.5 bg-white dark:bg-slate-900">
-                                    <SearchableSelect
-                                      id={`select-shift-kelas-${k.value}`}
-                                      value={assignedShiftId}
-                                      onValueChange={val => handleAssignmentChange(k.value, val)}
-                                      options={shiftOptions}
-                                      placeholder="Pilih shift..."
-                                      triggerClassName="h-7 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg w-full"
-                                    />
-                                    {assignedShift && (
-                                      <p className="text-[9px] font-black text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                        {assignedShift.name}
+                                    {readOnly ? (
+                                      <p className="text-[10px] font-bold text-center text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100/50 dark:border-indigo-900/30 py-1.5 rounded-lg select-none">
+                                        {assignedShift ? assignedShift.name : 'Default'}
                                       </p>
+                                    ) : (
+                                      <>
+                                        <SearchableSelect
+                                          id={`select-shift-kelas-${k.value}`}
+                                          value={assignedShiftId}
+                                          onValueChange={val => handleAssignmentChange(k.value, val)}
+                                          options={shiftOptions}
+                                          placeholder="Pilih shift..."
+                                          triggerClassName="h-7 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg w-full"
+                                        />
+                                        {assignedShift && (
+                                          <p className="text-[9px] font-black text-center text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                            {assignedShift.name}
+                                          </p>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 </div>

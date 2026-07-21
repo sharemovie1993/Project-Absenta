@@ -56,9 +56,10 @@ function PanelLoader() {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function JamKBMPage() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const confirm = useConfirm();
   const { jenjang } = useJenjang();
+  const canManage = can('academic.schedules.manage') || can('academic.manage.academic');
 
   // ── State ──
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -207,16 +208,18 @@ export default function JamKBMPage() {
       breadcrumbs={breadcrumbs}
       instruction={instruction}
       toolbar={
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2"
-        >
-          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Simpan Perubahan
-        </Button>
+        canManage && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2"
+          >
+            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Simpan Perubahan
+          </Button>
+        )
       }
     >
       <div className="max-w-5xl">
@@ -279,6 +282,7 @@ export default function JamKBMPage() {
                   onShiftConfigChange={setShiftConfig}
                   onActiveShiftChange={setActiveSelectedShiftId}
                   onConfirm={handleConfirm}
+                  readOnly={!canManage}
                 />
               </Suspense>
             ) : (
@@ -287,6 +291,7 @@ export default function JamKBMPage() {
                   shiftConfig={shiftConfig}
                   kelasList={kelasList}
                   onShiftConfigChange={setShiftConfig}
+                  readOnly={!canManage}
                 />
               </Suspense>
             )}

@@ -99,7 +99,7 @@ export default function KalenderAkademikPage() {
   
   const canManage = useMemo(() => {
     const caps = (user as unknown as { capabilities?: string[] } | null)?.capabilities ?? [];
-    return caps.includes('academic.structure.manage');
+    return caps.includes('academic.manage.academic');
   }, [user]);
 
   const today = new Date();

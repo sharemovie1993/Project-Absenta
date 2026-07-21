@@ -17,6 +17,7 @@ import { Loader } from '../../components/ui/Loader';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Modal } from '../../components/ui/Modal';
 import { useMasterStrukturState } from '../../hooks/kurikulum/useMasterStrukturState';
+import { useAuth } from '../../hooks/useAuth';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
 import type { Mapel } from '../../types/academic';
 
@@ -31,6 +32,9 @@ const masterStrukturFilterSchema = z.object({
 });
 
 const MasterStrukturPage: React.FC = () => {
+    const { can } = useAuth();
+    const canManage = can('academic.manage.academic');
+
     const {
         selectedTahunId, setSelectedTahunId,
         selectedTingkat, setSelectedTingkat,
@@ -235,17 +239,19 @@ const MasterStrukturPage: React.FC = () => {
                                         <span className="text-xs font-bold opacity-80">JP / Minggu</span>
                                     </div>
                                     <div className="flex gap-2 pt-1.5 no-print relative">
-                                        <Button 
-                                            onClick={() => setShowAddOptions(true)}
-                                            className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
-                                        >
-                                            <Plus size={12} className="mr-1" />
-                                            TAMBAH
-                                        </Button>
+                                        {canManage && (
+                                            <Button 
+                                                onClick={() => setShowAddOptions(true)}
+                                                className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
+                                            >
+                                                <Plus size={12} className="mr-1" />
+                                                TAMBAH
+                                            </Button>
+                                        )}
                                         <Button
                                             onClick={handleCetakPdf}
                                             disabled={isPrinting || !mappingFiltered}
-                                            className="flex-1 bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none flex items-center justify-center gap-1"
+                                            className={`${canManage ? "flex-1" : "w-full"} bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none flex items-center justify-center gap-1`}
                                         >
                                             {isPrinting ? <Loader2 size={12} className="animate-spin" /> : <Printer size={12} />}
                                             CETAK
@@ -371,7 +377,7 @@ const MasterStrukturPage: React.FC = () => {
                                     </h3>
                                     <Badge variant="secondary" className="font-bold">{mappingFiltered.length} Mata Pelajaran</Badge>
                                 </div>
-                                {selectedRowIds.size > 0 && (
+                                {canManage && selectedRowIds.size > 0 && (
                                     <button
                                         onClick={handleBulkDelete}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 text-xs font-black rounded-lg transition-all border border-red-200 dark:border-red-900 shadow-sm"
@@ -393,6 +399,7 @@ const MasterStrukturPage: React.FC = () => {
                                     openEditModal={openEditModal}
                                     handleDelete={handleDelete}
                                     openCreateModal={openCreateModal}
+                                    readOnly={!canManage}
                                 />
                             </Suspense>
                         </Card>

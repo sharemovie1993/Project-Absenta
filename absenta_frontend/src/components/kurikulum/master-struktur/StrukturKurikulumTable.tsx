@@ -17,6 +17,7 @@ interface TableProps {
   openEditModal: (item: StrukturKurikulum) => void;
   handleDelete: (id: string) => void;
   openCreateModal: () => void;
+  readOnly?: boolean;
 }
 
 export const StrukturKurikulumTable: React.FC<TableProps> = ({
@@ -28,47 +29,52 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
   standardReferences,
   openEditModal,
   handleDelete,
-  openCreateModal
+  openCreateModal,
+  readOnly = false
 }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left">
         <thead className="bg-slate-50 dark:bg-slate-800/50 text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-100 dark:border-gray-800">
           <tr>
-            <th className="px-4 py-4 w-10 text-center">
-              <input 
-                type="checkbox"
-                checked={mappingFiltered && mappingFiltered.length > 0 && selectedRowIds.size === mappingFiltered.length}
-                onChange={(e) => handleSelectAllRows(e.target.checked)}
-                className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
-              />
-            </th>
+            {!readOnly && (
+              <th className="px-4 py-4 w-10 text-center">
+                <input 
+                  type="checkbox"
+                  checked={mappingFiltered && mappingFiltered.length > 0 && selectedRowIds.size === mappingFiltered.length}
+                  onChange={(e) => handleSelectAllRows(e.target.checked)}
+                  className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                />
+              </th>
+            )}
             <th className="px-6 py-4">Kelompok</th>
             <th className="px-6 py-4">Mata Pelajaran</th>
             <th className="px-6 py-4 text-center">Beban (JP)</th>
-            <th className="px-6 py-4 text-right">Aksi</th>
+            {!readOnly && <th className="px-6 py-4 text-right">Aksi</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
           {isLoadingMapping ? (
             [1, 2, 3, 4, 5].map(i => (
               <tr key={i}>
-                <td className="px-6 py-4" colSpan={5}><Skeleton className="h-10 w-full rounded-lg" /></td>
+                <td className="px-6 py-4" colSpan={readOnly ? 3 : 5}><Skeleton className="h-10 w-full rounded-lg" /></td>
               </tr>
             ))
           ) : !mappingFiltered || mappingFiltered.length === 0 ? (
             <tr>
-              <td className="px-6 py-20 text-center" colSpan={5}>
+              <td className="px-6 py-20 text-center" colSpan={readOnly ? 3 : 5}>
                 <div className="flex flex-col items-center justify-center space-y-3 opacity-30">
                   <BookOpen size={48} />
                   <p className="text-sm font-bold">Belum ada data struktur kurikulum untuk tingkat ini</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={openCreateModal}
-                    className="mt-4"
-                  >
-                    Tambah Pemetaan Sekarang
-                  </Button>
+                  {!readOnly && (
+                    <Button 
+                      variant="outline" 
+                      onClick={openCreateModal}
+                      className="mt-4"
+                    >
+                      Tambah Pemetaan Sekarang
+                    </Button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -81,14 +87,16 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
                   ? 'bg-indigo-55/10 dark:bg-indigo-950/20' 
                   : 'hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10'
                 }`}>
-                  <td className="px-4 py-4 text-center">
-                    <input 
-                      type="checkbox"
-                      checked={isRowChecked}
-                      onChange={() => handleToggleRowSelect(item.id)}
-                      className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
-                    />
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-4 text-center">
+                      <input 
+                        type="checkbox"
+                        checked={isRowChecked}
+                        onChange={() => handleToggleRowSelect(item.id)}
+                        className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     {(() => {
                       const k = (item.kelompok || 'MATA PELAJARAN UMUM').toUpperCase();
@@ -221,24 +229,26 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
                     <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{item.jp_per_minggu}</span>
                     <span className="text-[10px] font-bold text-gray-400 ml-1">JP</span>
                   </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button 
-                      type="button"
-                      onClick={() => openEditModal(item)}
-                      className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-indigo-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                      aria-label="Edit Alokasi"
-                    >
-                      <Settings size={16} />
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => handleDelete(item.id)}
-                      className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-red-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
-                      aria-label="Hapus Pemetaan"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button 
+                        type="button"
+                        onClick={() => openEditModal(item)}
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-indigo-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                        aria-label="Edit Alokasi"
+                      >
+                        <Settings size={16} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-gray-400 hover:text-red-600 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                        aria-label="Hapus Pemetaan"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })
