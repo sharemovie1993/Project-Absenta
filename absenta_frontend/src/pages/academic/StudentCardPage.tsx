@@ -778,6 +778,12 @@ const StudentCardPage = () => {
                                     previewStudent={previewStudent}
                                     sekolah={tenantInfo || sekolahData}
                                     isSaving={saveConfigMutation.isPending}
+                                    cardTargetMode={cardTargetMode}
+                                    setCardTargetMode={(mode) => {
+                                        setCardTargetMode(mode);
+                                        setSelectedStudents([]);
+                                        setPreviewStudentId('');
+                                    }}
                                 />
                             </TabsContent>
                         )}

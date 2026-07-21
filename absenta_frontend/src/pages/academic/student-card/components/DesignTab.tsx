@@ -21,7 +21,9 @@ import {
     X,
     Check,
     Save,
-    RefreshCw
+    RefreshCw,
+    GraduationCap,
+    User
 } from 'lucide-react';
 import { SettingsGroup } from '@/components/academic/student-card/SettingsGroup';
 import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput';
@@ -181,6 +183,8 @@ interface DesignTabProps {
     previewStudent: any;
     sekolah: any;
     isSaving?: boolean;
+    cardTargetMode?: 'SISWA' | 'GURU';
+    setCardTargetMode?: (mode: 'SISWA' | 'GURU') => void;
 }
 
 export const DesignTab: React.FC<DesignTabProps> = ({
@@ -189,7 +193,9 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     handleDragEnd,
     previewStudent,
     sekolah,
-    isSaving = false
+    isSaving = false,
+    cardTargetMode = 'SISWA',
+    setCardTargetMode
 }) => {
     const activePresetName = config.selected_preset || 'Vertical - Versi 1';
     const [previewSide, setPreviewSide] = React.useState<'front' | 'back'>('front');
@@ -1207,12 +1213,39 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             <div>
                                 <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
                                     <Sparkles size={16} className="text-violet-500 animate-pulse" />
-                                    Mode Fokus: Desain Belakang Kartu
+                                    Mode Fokus: Desain Kartu {cardTargetMode === 'GURU' ? 'Guru & Staf' : 'Siswa'}
                                 </h3>
                                 <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                                     Fokus merancang tata tertib, tanda tangan, dan stempel secara berdampingan tanpa terganggu menu lain.
                                 </p>
                             </div>
+
+                            {setCardTargetMode && (
+                                <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-800 shrink-0">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCardTargetMode('SISWA')}
+                                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                            cardTargetMode === 'SISWA'
+                                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        <GraduationCap size={14} /> 🎓 Kartu Siswa
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCardTargetMode('GURU')}
+                                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                            cardTargetMode === 'GURU'
+                                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                                        }`}
+                                    >
+                                        <User size={14} /> 👔 Kartu Guru & Staf
+                                    </button>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <Button
                                     type="button"
