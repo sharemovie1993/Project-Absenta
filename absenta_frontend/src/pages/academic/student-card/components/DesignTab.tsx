@@ -49,7 +49,7 @@ const HCOORDS = {
     photo_width: 20, photo_height: 26, qrcode_width: 18, qrcode_height: 18,
     photo_x: 14,  photo_y: 170,
     data_x:  180, data_y:  190,
-    qrcode_x: 497, qrcode_y: 200,
+    qrcode_x: 465, qrcode_y: 200,
 };
 const VCOORDS = {
     photo_width: 24, photo_height: 32, qrcode_width: 15, qrcode_height: 15,

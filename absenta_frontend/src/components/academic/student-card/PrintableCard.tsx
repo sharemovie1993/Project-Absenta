@@ -408,11 +408,14 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         left: 0,
                         top: 0,
                         transform: `translate(${qrX_MM}mm, ${qrY_MM}mm)`,
+                        width: `${qrW}mm`,
+                        height: `${qrH}mm`,
+                        boxSizing: 'border-box',
                         zIndex: 20
                     }}
-                    className="bg-white p-1 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center"
+                    className="bg-white p-0.5 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center overflow-hidden"
                 >
-                    <img src={qrUrl} alt="QR" style={{ width: `${qrW}mm`, height: `${qrH}mm` }} className="object-contain" />
+                    <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
                 </div>
             )}
 
