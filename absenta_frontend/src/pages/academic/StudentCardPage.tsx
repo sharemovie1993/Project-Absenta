@@ -700,8 +700,8 @@ const StudentCardPage = () => {
     return (
         <AcademicPageLayout hardeningModuleKey="studentcard">
         <div className="space-y-3">
-            {/* High-Density Workstation Top Bar */}
-            <div className="flex flex-wrap items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm gap-3">
+            {/* High-Density Workstation Top Bar (Sticky) */}
+            <div className="sticky top-[68px] z-40 backdrop-blur-md bg-white/95 dark:bg-slate-900/95 flex flex-wrap items-center justify-between p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-md gap-3">
                 {/* Left: Category Switcher */}
                 <div className="flex items-center gap-2">
                     <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-800 shrink-0">

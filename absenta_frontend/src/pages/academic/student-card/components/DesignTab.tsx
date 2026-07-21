@@ -1153,8 +1153,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 </div>
             </SectionCard>
 
-            {/* Preview Area (Fixed in Viewport Center like Focus Mode) */}
-            <div className="lg:col-span-2 space-y-6 sticky top-[80px] self-start z-30">
+            {/* Preview Area (Floating Sticky beside Form Cursor) */}
+            <div className="lg:col-span-2 space-y-6 sticky top-[130px] self-start z-30">
                 <SectionCard
                     title="Live Editor Preview"
                     icon={CreditCard}
