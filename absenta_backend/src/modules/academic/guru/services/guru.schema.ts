@@ -18,6 +18,7 @@ export const createGuruSchema = z.object({
   status_kepegawaian: z.string().optional().nullable(),
   pendidikan_terakhir: z.string().optional().nullable(),
   jenis_ptk: z.string().optional().nullable(),
+  foto: z.string().optional().nullable(),
 });
 
 export const updateGuruSchema = createGuruSchema.extend({

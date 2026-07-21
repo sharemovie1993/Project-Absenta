@@ -95,6 +95,7 @@ export const createSiswaSchema = z.object({
   }, z.string().email('Format email tidak valid').optional().nullable()),
   status: coerceString.default('AKTIF'),
   user_id: coerceString,
+  foto: z.string().optional().nullable(),
   skipQuotaCheck: z.boolean().optional().default(false),
   orang_tua: z.array(z.any()).optional(),
 });

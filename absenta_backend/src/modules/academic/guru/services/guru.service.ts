@@ -23,6 +23,7 @@ export interface CreateGuruInput {
   status_kepegawaian?: string | null;
   pendidikan_terakhir?: string | null;
   jenis_ptk?: string | null;
+  foto?: string | null;
 }
 
 export interface UpdateGuruInput {
@@ -41,6 +42,7 @@ export interface UpdateGuruInput {
   status_kepegawaian?: string | null;
   pendidikan_terakhir?: string | null;
   jenis_ptk?: string | null;
+  foto?: string | null;
 }
 
 export interface GuruResponse {
@@ -499,6 +501,7 @@ export class GuruService {
     if (input.status_kepegawaian !== undefined) updateData.status_kepegawaian = input.status_kepegawaian;
     if (input.pendidikan_terakhir !== undefined) updateData.pendidikan_terakhir = input.pendidikan_terakhir;
     if (input.jenis_ptk !== undefined) updateData.jenis_ptk = input.jenis_ptk;
+    if (input.foto !== undefined) updateData.foto = input.foto;
 
     const guru = await prisma.guru.update({
       where: { id: guruId },

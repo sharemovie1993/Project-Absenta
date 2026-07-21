@@ -785,6 +785,7 @@ model Guru {
   pendidikan_terakhir   String?
   jenis_ptk             String?                    @default("PENDIDIK") // PENDIDIK atau TENAGA_KEPENDIDIKAN
   max_jp                Int?                       @default(24)
+  foto                  String?
   created_at            DateTime                   @default(now())
   updated_at            DateTime                   @updatedAt
   AbsenGuru             AbsenGuru[]
