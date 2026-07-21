@@ -1136,8 +1136,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 </div>
             </SectionCard>
 
-            {/* Preview Area (Sticky on Scroll) */}
-            <div className="lg:col-span-2 space-y-6 sticky top-[90px] self-start z-30">
+            {/* Preview Area (Fixed in Viewport Center like Focus Mode) */}
+            <div className="lg:col-span-2 space-y-6 sticky top-[80px] self-start z-30">
                 <SectionCard
                     title="Live Editor Preview"
                     icon={CreditCard}
@@ -1147,7 +1147,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 >
                     <div className="p-6 lg:p-8 bg-slate-200/50 dark:bg-slate-950/50 flex-1 flex flex-col items-center justify-center relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
                         {config.show_back_side && (
-                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-4 w-56 shadow-sm border border-slate-200/30 z-30">
+                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-3 w-56 shadow-sm border border-slate-200/30 z-30">
                                 <button
                                     type="button"
                                     className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
@@ -1169,16 +1169,16 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             </div>
                         )}
 
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                             {previewSide === 'front' ? 'Mode Desain Interaktif (Drag & Drop)' : 'Preview Desain Sisi Belakang'}
                         </div>
 
                         <div className={`transform ${
                             config.template === 'vertical' 
-                                ? 'scale-[0.52] lg:scale-[0.58] xl:scale-[0.62]' 
-                                : 'scale-[0.68] lg:scale-[0.74] xl:scale-[0.80]'
-                        } transition-all duration-200 flex items-center justify-center origin-center my-2`}>
+                                ? 'scale-[0.46] lg:scale-[0.50] xl:scale-[0.54]' 
+                                : 'scale-[0.60] lg:scale-[0.65] xl:scale-[0.70]'
+                        } transition-all duration-200 flex items-center justify-center origin-center py-2`}>
                             {previewSide === 'front' ? (
                                 <PreviewCard
                                     student={previewStudent || {
@@ -1196,7 +1196,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             )}
                         </div>
 
-                        <div className="mt-4 flex gap-6">
+                        <div className="mt-2 flex gap-6">
                             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                 <div className="w-3 h-3 rounded-full border-2 border-blue-500" />
                                 Posisi Dinamis
