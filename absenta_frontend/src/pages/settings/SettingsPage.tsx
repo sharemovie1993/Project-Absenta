@@ -36,6 +36,8 @@ const SettingsPage: React.FC = () => {
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
   useEffect(() => {
+    if (!can('core.system.config.view') && !isSuperAdminUser) return;
+
     let active = true;
     easyTunnelApi.info().then(res => {
       if (res.success && active) {
@@ -47,7 +49,7 @@ const SettingsPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [can, isSuperAdminUser]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Sistem', path: '/settings' },
@@ -135,7 +137,8 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    if (canView && !isTenantAdmin) {
+    const canViewSystemConfig = can('core.system.config.view') || isSuperAdminUser;
+    if (canViewSystemConfig && !isTenantAdmin) {
         setLoadingConfig(true);
         fetchActiveSystemConfig()
         .then(d => {
@@ -174,7 +177,7 @@ const SettingsPage: React.FC = () => {
       setLoadingConfig(false);
     }
     return () => { isMounted = false; };
-  }, [canView, isTenantAdmin]);
+  }, [can, isSuperAdminUser, isTenantAdmin]);
 
   const handleSave = useCallback(async () => {
     if (!canEdit) {
