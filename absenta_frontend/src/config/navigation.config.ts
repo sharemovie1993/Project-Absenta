@@ -371,13 +371,13 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   },
   {
     id: 'TU_KEPEGAWAIAN_WORKSPACE',
-    label: 'TU Kepegawaian',
+    label: 'TU Kepegawaian & Dapodik',
     badge: 'TU',
     icon: Users,
     color: 'text-blue-600',
     bg: 'bg-blue-50',
     solidBg: 'bg-blue-600',
-    desc: 'Kelola Data Induk',
+    desc: 'Data Induk & Dapodik',
     requiredPositionCode: 'TU_KEPEGAWAIAN',
     defaultPath: '/academic/siswa',
     crossModulePaths: [

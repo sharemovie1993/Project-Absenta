@@ -104,10 +104,10 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
   },
   { 
     kode: STRUKTUR_CODES.TU_KEPEGAWAIAN, 
-    nama: 'Staf Kepegawaian', 
+    nama: 'Staf Kepegawaian & Dapodik', 
     scope: 'admin', 
     scope_type: 'global',
-    deskripsi: 'Mengelola data induk siswa (NISN), guru/staf (NUPTK/NIP)',
+    deskripsi: 'Mengelola data induk siswa (NISN), guru/staf, dan sinkronisasi Dapodik',
     order: 17
   },
   { 
