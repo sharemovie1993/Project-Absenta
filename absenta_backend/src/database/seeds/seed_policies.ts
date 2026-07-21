@@ -54,6 +54,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.monitoring.view.live.status',
     'documents.upload',
     'documents.view.list',
+    'documents.view.detail',
     'notify.check.status',
     'notify.view.my',
     'notify.view.preferences',
@@ -121,6 +122,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'attendance.student.view.stats',
     'documents.view.list',
     'documents.upload',
+    'documents.view.detail',
     'notify.view.my',
     'notify.view.preferences',
     'notify.update.preferences',
@@ -163,6 +165,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'notify.view.preferences',
     'notify.update.preferences',
     'documents.view.list',
+    'documents.view.detail',
   ]);
 
   const superadmin = uniqueStrings(
