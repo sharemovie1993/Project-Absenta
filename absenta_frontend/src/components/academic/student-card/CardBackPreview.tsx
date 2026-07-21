@@ -106,7 +106,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             <div 
                 className="flex flex-col h-full justify-between relative" 
                 style={{ 
-                    padding: `${3 * SCALE}px ${4 * SCALE}px ${4 * SCALE}px ${4 * SCALE}px`,
+                    padding: `${3 * SCALE}px ${4 * SCALE}px ${2 * SCALE}px ${4 * SCALE}px`,
                     boxSizing: 'border-box',
                     height: backStyle === 'default' 
                         ? `calc(100% - ${2 * SCALE}px)` 
@@ -169,7 +169,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                         className="flex flex-col items-end relative text-right z-10"
                         style={{ 
                             marginTop: `${2 * SCALE}px`,
-                            minHeight: `${12 * SCALE}px`
+                            minHeight: `${10 * SCALE}px`
                         }}
                     >
                         {/* Stamp Image */}
@@ -179,10 +179,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                 alt="Stempel"
                                 style={{
                                     position: 'absolute',
-                                    right: `${8 * SCALE}px`,
+                                    right: `${7 * SCALE}px`,
                                     bottom: `${1 * SCALE}px`,
-                                    width: `${14 * SCALE}px`,
-                                    height: `${14 * SCALE}px`,
+                                    width: `${11 * SCALE}px`,
+                                    height: `${11 * SCALE}px`,
                                     opacity: 0.75,
                                     zIndex: 10,
                                     pointerEvents: 'none',
@@ -200,8 +200,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                     position: 'absolute',
                                     right: `${2 * SCALE}px`,
                                     bottom: `${2 * SCALE}px`,
-                                    width: `${12 * SCALE}px`,
-                                    height: `${8 * SCALE}px`,
+                                    width: `${9 * SCALE}px`,
+                                    height: `${6 * SCALE}px`,
                                     zIndex: 15,
                                     pointerEvents: 'none',
                                     objectFit: 'contain'
@@ -212,7 +212,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                         {/* Text Details */}
                         <div style={{ fontSize: `${5 * EDITOR_SCALE}pt`, zIndex: 20 }} className="leading-tight">
                             <div>{config.back_signature_title || 'Kepala Sekolah'}</div>
-                            <div style={{ height: `${6 * SCALE}px` }} />
+                            <div style={{ height: `${4 * SCALE}px` }} />
                             <div className="font-bold underline">{config.back_principal_name || 'Nama Kepala Sekolah'}</div>
                             <div style={{ fontSize: `${4 * EDITOR_SCALE}pt` }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
                         </div>

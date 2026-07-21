@@ -100,7 +100,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
             <div 
                 className="flex flex-col h-full justify-between relative" 
                 style={{ 
-                    padding: '3mm 4mm 4mm 4mm',
+                    padding: '3mm 4mm 2mm 4mm',
                     boxSizing: 'border-box',
                     height: backStyle === 'default' 
                         ? 'calc(100% - 2mm)' 
@@ -163,7 +163,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                         className="flex flex-col items-end relative text-right z-10"
                         style={{ 
                             marginTop: '2mm',
-                            minHeight: '12mm'
+                            minHeight: '10mm'
                         }}
                     >
                         {/* Stamp Image */}
@@ -173,10 +173,10 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                                 alt="Stempel"
                                 style={{
                                     position: 'absolute',
-                                    right: '8mm',
+                                    right: '7mm',
                                     bottom: '1mm',
-                                    width: '14mm',
-                                    height: '14mm',
+                                    width: '11mm',
+                                    height: '11mm',
                                     opacity: 0.75,
                                     zIndex: 10,
                                     pointerEvents: 'none',
@@ -194,8 +194,8 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                                     position: 'absolute',
                                     right: '2mm',
                                     bottom: '2mm',
-                                    width: '12mm',
-                                    height: '8mm',
+                                    width: '9mm',
+                                    height: '6mm',
                                     zIndex: 15,
                                     pointerEvents: 'none',
                                     objectFit: 'contain'
@@ -206,7 +206,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                         {/* Text Details */}
                         <div style={{ fontSize: '5pt', zIndex: 20 }} className="leading-tight">
                             <div>{config.back_signature_title || 'Kepala Sekolah'}</div>
-                            <div style={{ height: '6mm' }} />
+                            <div style={{ height: '4mm' }} />
                             <div className="font-bold underline">{config.back_principal_name || 'Nama Kepala Sekolah'}</div>
                             <div style={{ fontSize: '4pt' }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
                         </div>
