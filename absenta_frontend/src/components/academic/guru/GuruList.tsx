@@ -6,6 +6,14 @@ import { useAuth } from '../../../hooks/useAuth';
 import { 
   Edit, 
   Trash2, 
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { cn } from '@/lib/utils';
+import useConfirm from '../../../hooks/useConfirm';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../../hooks/useAuth';
+import { 
+  Edit, 
+  Trash2, 
   Eye, 
   Plus, 
   Search, 
@@ -15,7 +23,11 @@ import {
   AlertCircle,
   Sparkles,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Check,
+  Edit2,
+  X,
+  Zap
 } from 'lucide-react';
 import { 
   Button, 
@@ -33,6 +45,7 @@ const Table = lazy(() => import('../../ui/Table').then(module => ({ default: mod
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
+import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { getGuruList, deleteGuru, updateGuru } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -82,6 +95,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+  const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
   
   // States untuk Analitis & Validasi Data NIP Guru
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -755,6 +769,18 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                       Analisis Data NIP
                     </Button>
                   )}
+
+                  {canManage && (
+                     <Button
+                       variant="toolbarOutline"
+                       size="toolbar"
+                       onClick={() => setIsRfidPairingOpen(true)}
+                       className="rounded-xl text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-bold"
+                     >
+                       <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
+                       Pairing RFID Express
+                     </Button>
+                  )}
                  
                  <Button
                    variant="toolbarOutline"
@@ -1039,6 +1065,12 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           )}
         </div>
       </Modal>
+      {/* Modal Express RFID Pairing */}
+      <ExpressRfidPairingModal
+        isOpen={isRfidPairingOpen}
+        onClose={() => setIsRfidPairingOpen(false)}
+        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
+      />
     </div>
   );
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -24,6 +24,7 @@ const Table = lazy(() => import('../../ui/Table').then(module => ({ default: mod
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
+import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
@@ -83,6 +84,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+  const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
   
   // States untuk Analitis & Validasi Data Siswa
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -1149,6 +1151,16 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                       <Sparkles className="w-3.5 h-3.5 mr-1.5" />
                       Generate NIS
                     </Button>
+
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => setIsRfidPairingOpen(true)}
+                      className="rounded-xl border-emerald-200 hover:bg-emerald-50 dark:border-emerald-950/40 dark:hover:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-bold"
+                    >
+                      <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
+                      Pairing RFID Express
+                    </Button>
         
                     <Button
                         variant="toolbarOutline"
@@ -1862,6 +1874,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       <NisGenerateWizard
         isOpen={isNisWizardOpen}
         onClose={() => setIsNisWizardOpen(false)}
+        onSuccess={() => {
+          fetchSiswas(currentPage, searchTerm);
+        }}
+      />
+
+      {/* Express RFID Pairing Modal */}
+      <ExpressRfidPairingModal
+        isOpen={isRfidPairingOpen}
+        onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => {
           fetchSiswas(currentPage, searchTerm);
         }}
