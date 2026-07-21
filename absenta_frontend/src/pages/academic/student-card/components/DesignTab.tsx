@@ -722,6 +722,23 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     disabled={config.show_school_address === false}
                                 />
                             </div>
+
+                            {/* Judul Kartu */}
+                            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Judul Utama Kartu</Label>
+                                    <FontSizeInput
+                                        value={config.card_title_font_size || 14}
+                                        onChange={(v: number) => setConfig({ ...config, card_title_font_size: v })}
+                                    />
+                                </div>
+                                <Input
+                                    value={config.card_title ?? (cardTargetMode === 'GURU' ? 'KARTU PEGAWAI' : 'KARTU PELAJAR')}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, card_title: e.target.value })}
+                                    placeholder="KARTU PELAJAR / KARTU PEGAWAI..."
+                                    className="h-8 text-[11px] font-black tracking-wide rounded-lg dark:bg-slate-950 dark:border-slate-800 uppercase"
+                                />
+                            </div>
                         </div>
                     </SettingsGroup>
 
