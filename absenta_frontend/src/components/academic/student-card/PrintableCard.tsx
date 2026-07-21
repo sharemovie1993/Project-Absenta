@@ -177,7 +177,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
         >
             {/* Card Pattern Layer */}
             <CardPatternLayer config={config} width={widthMM} height={heightMM} scale={1} />
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
             {/* Header (Fixed) */}
             <div 
