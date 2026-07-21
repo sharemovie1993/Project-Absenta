@@ -107,20 +107,23 @@ export const GuruForm = React.memo<GuruFormProps>(({
         studentCardConfigApi.getConfig().catch(() => null)
       ]);
       
-      // Ensure Executive Guru Design preset is used for Guru cards!
-      const baseConfig = configRes || DEFAULT_GURU_CONFIG;
-      const guruConfigObj = {
+      // Maintain distinct Executive Pegawai / Guru design preset for Guru cards!
+      const guruConfigObj: StudentCardConfig = {
         ...DEFAULT_GURU_CONFIG,
-        ...baseConfig,
         card_title: 'KARTU PEGAWAI',
-        primary_color: (baseConfig.primary_color === '#2563eb' || !baseConfig.primary_color) ? '#0f172a' : baseConfig.primary_color,
-        secondary_color: (baseConfig.secondary_color === '#ffffff' || !baseConfig.secondary_color) ? '#d97706' : baseConfig.secondary_color,
-        header_bg_color: (baseConfig.header_bg_color === '#1e3a8a' || !baseConfig.header_bg_color) ? '#0f172a' : baseConfig.header_bg_color,
-        school_name: baseConfig.school_name || (sekolahRes as any)?.nama || '',
-        school_address: baseConfig.school_address || (sekolahRes as any)?.alamat || '',
+        school_name: (sekolahRes as any)?.nama || baseConfig.school_name || '',
+        school_address: (sekolahRes as any)?.alamat || baseConfig.school_address || '',
         header_text: baseConfig.header_text || 'PEMERINTAH KABUPATEN',
         subheader_text: baseConfig.subheader_text || 'DINAS PENDIDIKAN',
-        logo_url: baseConfig.logo_url || (sekolahRes as any)?.logo_url || ''
+        logo_url: (sekolahRes as any)?.logo_url || baseConfig.logo_url || '',
+        print_paper_size: baseConfig.print_paper_size,
+        print_orientation: baseConfig.print_orientation,
+        print_margin_top: baseConfig.print_margin_top,
+        print_margin_bottom: baseConfig.print_margin_bottom,
+        print_margin_left: baseConfig.print_margin_left,
+        print_margin_right: baseConfig.print_margin_right,
+        print_gap_x: baseConfig.print_gap_x,
+        print_gap_y: baseConfig.print_gap_y
       };
       
       const isRfid = guruConfigObj.print_paper_size === 'RFID';
