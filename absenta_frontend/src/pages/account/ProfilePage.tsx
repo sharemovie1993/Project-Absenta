@@ -168,25 +168,25 @@ export default function ProfilePage() {
     return raw && tok ? `${raw}?token=${encodeURIComponent(tok)}` : raw;
   }, [fotoDoc, entityId, isSiswa]);
 
-  // Muat konfigurasi kartu kustom Tenant dari Database (khusus siswa)
+  // Muat konfigurasi kartu kustom Tenant dari Database (siswa / guru)
   const { data: cardConfig, isLoading: isLoadingCardConfig } = useQuery({
     queryKey: ['student-card-config-my', entityId],
     queryFn: () => studentCardConfigApi.getConfig(),
-    enabled: isSiswa && !!entityId,
+    enabled: (isSiswa || isGuru) && !!entityId,
   });
 
-  // Muat profil sekolah Tenant (khusus siswa)
+  // Muat profil sekolah Tenant (siswa / guru)
   const { data: sekolahRes } = useQuery({
     queryKey: ['school-profile-my', entityId],
     queryFn: () => sekolahApi.getProfile(),
-    enabled: isSiswa && !!entityId,
+    enabled: (isSiswa || isGuru) && !!entityId,
   });
 
   // Fetch tenant info — same source as kopsurat (letterhead)
   const { data: tenantResponse } = useQuery({
     queryKey: ['tenant-info-my', user?.tenant_id],
     queryFn: () => getTenantById(user!.tenant_id),
-    enabled: !!user?.tenant_id && isSiswa,
+    enabled: !!user?.tenant_id && (isSiswa || isGuru),
   });
   const tenantInfo = tenantResponse?.data || tenantResponse || null;
 
@@ -631,11 +631,11 @@ export default function ProfilePage() {
             {/* KOLOM KIRI: Proxy Kartu Identitas Digital / Avatar Card */}
             <div className="lg:col-span-5 space-y-6">
               
-              {isSiswa ? (
-                /* PROXY KARTU PELAJAR RESMI (Menghormati Konfigurasi Desain Tenant) */
+              {isSiswa || isGuru ? (
+                /* PROXY KARTU IDENTITAS RESMI (Siswa / Guru) */
                 <div className="flex flex-col items-center justify-center p-5 bg-white dark:bg-slate-850 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm w-full overflow-hidden">
                   <span className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest mb-4">
-                    💳 Kartu Pelajar Digital Resmi
+                    💳 Kartu {isSiswa ? 'Pelajar' : 'Pegawai'} Digital Resmi
                   </span>
                   
                   {/* Switcher Sisi Kartu */}
@@ -668,9 +668,11 @@ export default function ProfilePage() {
                           {cardSide === 'front' ? (
                             <PrintableCard 
                               student={{
-                                ...siswaProfile,
-                                nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
-                                foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
+                                ...(isSiswa ? siswaProfile : guruProfile),
+                                nama_siswa: isSiswa 
+                                  ? (siswaProfile?.nama_siswa || user?.full_name) 
+                                  : (guruProfile?.nama_guru || user?.full_name),
+                                foto: fotoUrl || user?.avatar || (isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
                               } as any}
                               config={resolvedConfig}
                               sekolah={sekolahProfile as any}
@@ -689,9 +691,11 @@ export default function ProfilePage() {
                       {cardSide === 'front' ? (
                         <PrintableCard 
                           student={{
-                            ...siswaProfile,
-                            nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
-                            foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
+                            ...(isSiswa ? siswaProfile : guruProfile),
+                            nama_siswa: isSiswa 
+                              ? (siswaProfile?.nama_siswa || user?.full_name) 
+                              : (guruProfile?.nama_guru || user?.full_name),
+                            foto: fotoUrl || user?.avatar || (isSiswa ? (siswaProfile as any)?.foto : (guruProfile as any)?.foto) || undefined
                           } as any}
                           config={resolvedConfig}
                           sekolah={sekolahProfile as any}
