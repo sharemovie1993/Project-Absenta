@@ -6,9 +6,11 @@ import axiosInstance from '@/lib/axiosInstance';
 import { type SystemConfig } from '@/services/systemConfig';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smartphone, Sparkles } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smartphone, Sparkles, QrCode } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
+import { LoginQrScannerModal } from '@/components/auth/LoginQrScannerModal';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -21,6 +23,22 @@ export default function LoginPage() {
   const [tenantIdDev, setTenantIdDev] = useState<string>('');
   const [devTenants, setDevTenants] = useState<Array<{ id: string; name: string; domain?: string | null }>>([]);
   const [devTenantsLoading, setDevTenantsLoading] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+  const handleScanSuccess = (scannedCode: string) => {
+    setCredentials(prev => ({
+      ...prev,
+      email: scannedCode,
+    }));
+    toast.success(`Kartu Berhasil Discan: ${scannedCode}`, {
+      icon: '🎉',
+      duration: 4000,
+    });
+    setTimeout(() => {
+      const passInput = document.getElementById('loginPassword');
+      if (passInput) passInput.focus();
+    }, 200);
+  };
 
   const { loginAction, isAuthenticated, isLoading, error, user } = useAuthStore();
   const location = useLocation();
@@ -312,19 +330,29 @@ export default function LoginPage() {
              </div>
   
              <form onSubmit={handleSubmit} className="space-y-4">
-                <motion.div variants={itemVariants} transition={{ delay: 0.1 }}>
-                   <Input 
-                      id="loginEmail"
-                      label="NIP / NISN / Email Sekolah"
-                      type="text"
-                      required
-                      size="auth"
-                      leftIcon={<Mail />}
-                      value={credentials.email}
-                      onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                      placeholder="Masukkan NIP, NISN atau Email Anda"
-                   />
-                </motion.div>
+                 <motion.div variants={itemVariants} transition={{ delay: 0.1 }}>
+                    <div className="flex justify-between items-center mb-1.5 ml-1">
+                       <label htmlFor="loginEmail" className="text-xs font-bold text-slate-400 uppercase tracking-widest block">NIP / NISN / Email Sekolah</label>
+                       <button
+                         type="button"
+                         onClick={() => setIsScannerOpen(true)}
+                         className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1 rounded-lg transition-all"
+                       >
+                         <QrCode className="w-3.5 h-3.5" />
+                         Scan Kartu (Kamera)
+                       </button>
+                    </div>
+                    <Input 
+                       id="loginEmail"
+                       type="text"
+                       required
+                       size="auth"
+                       leftIcon={<Mail />}
+                       value={credentials.email}
+                       onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
+                       placeholder="Masukkan NIP, NISN atau Email Anda"
+                    />
+                 </motion.div>
   
                   <motion.div variants={itemVariants} transition={{ delay: 0.2 }}>
                     <div className="flex justify-between items-center mb-1.5 ml-1">
@@ -415,13 +443,18 @@ export default function LoginPage() {
                   </div>
               </div>
           </motion.div>
-       </div>
+        </div>
+
+        {/* Camera QR/Barcode Scanner Modal */}
+        <LoginQrScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={handleScanSuccess}
+        />
       </main>
     </InfraErrorBoundary>
   );
 }
-
-// Static audit compliance comment guards:
 // instruction={{ items: [] }}
 // breadcrumbs={[]}
 // <Card />
