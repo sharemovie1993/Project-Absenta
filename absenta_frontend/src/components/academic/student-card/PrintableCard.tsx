@@ -235,8 +235,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                            alt="Logo" 
                            className="object-contain drop-shadow-sm flex-shrink-0" 
                            style={{
-                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`,
-                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`
                            }}
                          />
                     ) : (
@@ -245,8 +245,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                            alt="Absenta Logo" 
                            className="object-contain drop-shadow-sm flex-shrink-0" 
                            style={{
-                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`,
-                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`
                            }}
                          />
                     )}
