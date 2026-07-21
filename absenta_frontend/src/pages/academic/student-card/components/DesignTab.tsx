@@ -370,7 +370,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     };
 
     const frontSettingsJsx = (
-        <div className="space-y-4">
+        <div className="space-y-4" onFocusCapture={() => setPreviewSide('front')}>
             <SettingsGroup title="Pustaka Preset Kartu" defaultOpen={true}>
                         <div className="space-y-3">
                             <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pilih Preset Template:</Label>
@@ -928,7 +928,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     );
 
     const backSettingsJsx = (
-        <div className="space-y-4">
+        <div className="space-y-4" onFocusCapture={() => setPreviewSide('back')}>
             <div className="flex items-center justify-between">
                                 <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Aktifkan Cetak Dua Sisi</Label>
                                 <Switch
@@ -1137,7 +1137,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
             </SectionCard>
 
             {/* Preview Area (Sticky on Scroll) */}
-            <div className="lg:col-span-2 space-y-6 sticky top-6 self-start">
+            <div className="lg:col-span-2 space-y-6 sticky top-[90px] self-start z-30 transition-all duration-300">
                 <SectionCard
                     title="Live Editor Preview"
                     icon={CreditCard}
