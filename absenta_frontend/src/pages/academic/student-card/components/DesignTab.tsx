@@ -5,7 +5,8 @@ import {
     Label, 
     Input, 
     Switch,
-    Badge
+    Badge,
+    Checkbox
 } from '@/components/ui';
 import { 
     Settings, 
@@ -567,7 +568,14 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Nama Instansi (Header 1)</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox 
+                                            id="show-header-1"
+                                            checked={config.show_header_text !== false}
+                                            onCheckedChange={(c: boolean) => setConfig({ ...config, show_header_text: c })}
+                                        />
+                                        <Label htmlFor="show-header-1" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Nama Instansi (Header 1)</Label>
+                                    </div>
                                     <FontSizeInput
                                         value={config.header_font_size}
                                         onChange={(v: number) => setConfig({ ...config, header_font_size: v })}
@@ -578,11 +586,19 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, header_text: e.target.value })}
                                     placeholder="PEMERINTAH KABUPATEN..."
                                     className="h-10 text-sm font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    disabled={config.show_header_text === false}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Sub Instansi (Header 2)</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox 
+                                            id="show-header-2"
+                                            checked={config.show_subheader_text !== false}
+                                            onCheckedChange={(c: boolean) => setConfig({ ...config, show_subheader_text: c })}
+                                        />
+                                        <Label htmlFor="show-header-2" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Sub Instansi (Header 2)</Label>
+                                    </div>
                                     <FontSizeInput
                                         value={config.subheader_font_size}
                                         onChange={(v: number) => setConfig({ ...config, subheader_font_size: v })}
@@ -593,11 +609,19 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, subheader_text: e.target.value })}
                                     placeholder="DINAS PENDIDIKAN..."
                                     className="h-10 text-sm font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    disabled={config.show_subheader_text === false}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Nama Sekolah</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox 
+                                            id="show-school-name"
+                                            checked={config.show_school_name !== false}
+                                            onCheckedChange={(c: boolean) => setConfig({ ...config, show_school_name: c })}
+                                        />
+                                        <Label htmlFor="show-school-name" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Nama Sekolah</Label>
+                                    </div>
                                     <FontSizeInput
                                         value={config.school_name_font_size}
                                         onChange={(v: number) => setConfig({ ...config, school_name_font_size: v })}
@@ -608,11 +632,19 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, school_name: e.target.value })}
                                     placeholder="SMK NEGERI 1..."
                                     className="h-10 text-sm font-bold rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    disabled={config.show_school_name === false}
                                 />
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Alamat Sekolah</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox 
+                                            id="show-school-address"
+                                            checked={config.show_school_address !== false}
+                                            onCheckedChange={(c: boolean) => setConfig({ ...config, show_school_address: c })}
+                                        />
+                                        <Label htmlFor="show-school-address" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Alamat Sekolah</Label>
+                                    </div>
                                     <FontSizeInput
                                         value={config.school_address_font_size}
                                         onChange={(v: number) => setConfig({ ...config, school_address_font_size: v })}
@@ -623,6 +655,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, school_address: e.target.value })}
                                     placeholder="Jl. Pendidikan No. 1..."
                                     className="h-10 text-[11px] font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    disabled={config.show_school_address === false}
                                 />
                             </div>
                         </div>

@@ -62,6 +62,10 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   // Pattern
   card_pattern: 'solid',
   card_pattern_opacity: 100,
+  show_header_text: true,
+  show_subheader_text: true,
+  show_school_name: true,
+  show_school_address: true,
 };
 
 export const DEFAULT_GURU_CONFIG: StudentCardConfig = {

@@ -22,6 +22,10 @@ export interface StudentCardConfig {
   qrcode_y: number;
   qrcode_scale: number;
   logo_url?: string;
+  show_header_text?: boolean;
+  show_subheader_text?: boolean;
+  show_school_name?: boolean;
+  show_school_address?: boolean;
   
   // Element Dimensions (mm)
   photo_width: number;

@@ -243,10 +243,10 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                     {resolvedCardTitle}
                   </h1>
                 )}
-                {config.header_text && <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>}
-                {config.subheader_text && <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>}
-                <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>
-                <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>
+                {(config.show_header_text ?? true) && config.header_text && <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>}
+                {(config.show_subheader_text ?? true) && config.subheader_text && <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>}
+                {(config.show_school_name ?? true) && <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>}
+                {(config.show_school_address ?? true) && <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>}
               </div>
             </div>
           </div>

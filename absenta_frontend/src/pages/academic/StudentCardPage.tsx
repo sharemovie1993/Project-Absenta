@@ -343,6 +343,10 @@ const StudentCardPage = () => {
             header_text: config.header_text,
             subheader_text: config.subheader_text,
             logo_url: config.logo_url,
+            show_header_text: config.show_header_text,
+            show_subheader_text: config.show_subheader_text,
+            show_school_name: config.show_school_name,
+            show_school_address: config.show_school_address,
             selected_preset: presetName
         };
 
