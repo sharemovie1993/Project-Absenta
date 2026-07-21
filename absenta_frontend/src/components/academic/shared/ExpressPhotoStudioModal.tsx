@@ -247,7 +247,8 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
     try {
       const fetchRes = await fetch(dataUrl);
       const blob = await fetchRes.blob();
-      const file = new File([blob], `studio-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const prefix = mode === 'GURU' ? 'guru-photo' : 'siswa-photo';
+      const file = new File([blob], `${prefix}-${targetPerson?.id || Date.now()}-${Date.now()}.jpg`, { type: 'image/jpeg' });
       const formData = new FormData();
       formData.append('file', file);
       const { requestWithFallback } = await import('../../../api/apiUtils');
@@ -604,7 +605,7 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
                     ) : (
                       <Check className="w-3.5 h-3.5 mr-1.5 stroke-[3px]" />
                     )}
-                    SIMPAN FOTO SISWA
+                    {mode === 'GURU' ? 'SIMPAN FOTO GURU' : 'SIMPAN FOTO SISWA'}
                   </Button>
                 </div>
               </div>

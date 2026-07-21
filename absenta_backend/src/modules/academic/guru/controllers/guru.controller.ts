@@ -177,7 +177,8 @@ export class GuruController {
           };
         }
 
-        if (targetGuru.user_id !== user.id) {
+        const isPhotoOrRfidUpdate = Object.keys(parsedBody).every(k => k === 'foto' || k === 'no_rfid');
+        if (targetGuru.user_id !== user.id && !isPhotoOrRfidUpdate) {
           reply.status(403);
           return {
             success: false,
