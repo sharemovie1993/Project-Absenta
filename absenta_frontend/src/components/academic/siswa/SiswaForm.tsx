@@ -165,6 +165,9 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         autoCenterY: isRfid ? false : (configObj.print_auto_center_y ?? false),
       };
       
+      const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize as keyof typeof PAPER_SIZES]?.width || 210;
+      const paperH = prConfig.paperSize === 'Custom' ? (prConfig.customHeight || 297) : PAPER_SIZES[prConfig.paperSize as keyof typeof PAPER_SIZES]?.height || 297;
+
       const baseW = Math.min(paperW, paperH);
       const baseH = Math.max(paperW, paperH);
 
