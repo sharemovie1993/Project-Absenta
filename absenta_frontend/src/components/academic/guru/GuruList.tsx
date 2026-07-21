@@ -19,7 +19,8 @@ import {
   Check,
   Edit2,
   X,
-  Zap
+  Zap,
+  Camera
 } from 'lucide-react';
 import { 
   Button, 
@@ -38,6 +39,7 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
+import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { getGuruList, deleteGuru, updateGuru } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -88,6 +90,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
+  const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
   
   // States untuk Analitis & Validasi Data NIP Guru
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -771,6 +774,16 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                     <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
                     Pairing RFID Express
                   </Button>
+
+                  <Button
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={() => setIsPhotoStudioOpen(true)}
+                    className="rounded-xl text-sky-600 dark:text-sky-400 border-sky-200 dark:border-sky-800 hover:bg-sky-50 dark:hover:bg-sky-950/30 font-bold"
+                  >
+                    <Camera className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+                    Foto Massal (Studio)
+                  </Button>
                  
                  <Button
                    variant="toolbarOutline"
@@ -1059,6 +1072,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       <ExpressRfidPairingModal
         isOpen={isRfidPairingOpen}
         onClose={() => setIsRfidPairingOpen(false)}
+        onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
+      />
+
+      {/* Modal Express Photo Studio */}
+      <ExpressPhotoStudioModal
+        isOpen={isPhotoStudioOpen}
+        onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
       />
     </div>

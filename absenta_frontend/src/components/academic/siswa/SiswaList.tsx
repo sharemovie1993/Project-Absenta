@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap } from 'lucide-react';
+import { Search, RefreshCw, Plus, Edit, Download, Trash2, Users, Eye, History, FileSpreadsheet, Upload, UserPlus, MoreHorizontal, Key, AlertTriangle, X, KeyRound, LogOut, GraduationCap, CheckSquare, CheckCircle2, AlertCircle, Sparkles, Check, Edit2, Zap, Camera } from 'lucide-react';
 import { 
   Button, 
   Input, 
@@ -85,6 +85,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
+  const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
   
   // States untuk Analitis & Validasi Data Siswa
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -1161,6 +1162,16 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                       <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
                       Pairing RFID Express
                     </Button>
+
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => setIsPhotoStudioOpen(true)}
+                      className="rounded-xl border-sky-200 hover:bg-sky-50 dark:border-sky-950/40 dark:hover:bg-sky-950/20 text-sky-600 dark:text-sky-400 font-bold"
+                    >
+                      <Camera className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+                      Foto Massal (Studio)
+                    </Button>
         
                     <Button
                         variant="toolbarOutline"
@@ -1883,6 +1894,15 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       <ExpressRfidPairingModal
         isOpen={isRfidPairingOpen}
         onClose={() => setIsRfidPairingOpen(false)}
+        onSuccess={() => {
+          fetchSiswas(currentPage, searchTerm);
+        }}
+      />
+
+      {/* Express Photo Studio Modal */}
+      <ExpressPhotoStudioModal
+        isOpen={isPhotoStudioOpen}
+        onClose={() => setIsPhotoStudioOpen(false)}
         onSuccess={() => {
           fetchSiswas(currentPage, searchTerm);
         }}
