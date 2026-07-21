@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, Suspense, lazy, useRe
 import { 
   User as UserIcon, Mail, Phone, MapPin, Calendar, Building2, 
   Key, ShieldAlert, BadgeInfo, Edit3, Settings, Briefcase, Camera, Loader2,
-  GraduationCap, Award, ShieldCheck, Tag, Download, FileText
+  GraduationCap, Award, ShieldCheck, Tag, Download, FileText, X, RefreshCw
 } from 'lucide-react';
 import { 
   Card, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader 
@@ -405,6 +405,112 @@ export default function ProfilePage() {
     });
   };
 
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = async (mode: 'user' | 'environment') => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      const constraints = {
+        video: {
+          facingMode: mode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Error starting camera:', err);
+      toast.error('Gagal mengakses kamera. Pastikan izin kamera telah diberikan.');
+    }
+  };
+
+  const toggleCameraFacing = () => {
+    const nextMode = cameraFacing === 'user' ? 'environment' : 'user';
+    setCameraFacing(nextMode);
+    startCamera(nextMode);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const startX = (video.videoWidth - size) / 2;
+      const startY = (video.videoHeight - size) / 2;
+      ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      setCapturedImage(dataUrl);
+      
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+  };
+
+  const closeCameraModal = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraOpen(false);
+    setCapturedImage(null);
+  };
+
+  const uploadCapturedPhoto = async () => {
+    if (!capturedImage) return;
+    setUploadingFoto(true);
+    const toastId = toast.loading('Mengompresi dan mengunggah foto kamera...');
+    
+    try {
+      const res = await fetch(capturedImage);
+      const blob = await res.blob();
+      
+      const compressedBlob = await compressImage(new File([blob], 'capture.jpg', { type: 'image/jpeg' }), 800, 800, 0.85);
+      const compressedFile = new File([compressedBlob], `formal_photo_${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+      
+      const namePrefix = isSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
+      const autoTitle = `Foto Formal - Kamera Instan - ${namePrefix}`;
+      
+      if (isSiswa) {
+        await uploadSiswaDocument({ siswaId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
+      } else {
+        await uploadGuruDocument({ guruId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
+      }
+      
+      toast.success('Foto profil berhasil diperbarui', { id: toastId });
+      queryClient.invalidateQueries({ queryKey: [isSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
+      closeCameraModal();
+    } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui foto profil', { id: toastId });
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
   // Upload Foto Profil secara instan (mengisi slot FOTO)
   const handleUploadFotoDirect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -612,12 +718,21 @@ export default function ProfilePage() {
                       size="xs"
                       className="h-8.5 text-[10px] font-black rounded-xl border-slate-100 dark:border-slate-800 hover:bg-slate-55 dark:hover:bg-slate-900"
                     >
-                      {uploadingFoto ? (
-                        <Loader2 size={11} className="animate-spin mr-1.5" />
-                      ) : (
-                        <Camera size={11} className="mr-1.5" />
-                      )}
-                      Ganti Foto
+                      Pilih dari Galeri
+                    </Button>
+
+                    <Button
+                      onClick={() => {
+                        setIsCameraOpen(true);
+                        startCamera(cameraFacing);
+                      }}
+                      disabled={uploadingFoto}
+                      variant="outline"
+                      size="xs"
+                      className="h-8.5 text-[10px] font-black rounded-xl border-slate-100 dark:border-slate-800 hover:bg-slate-55 dark:hover:bg-slate-900"
+                    >
+                      <Camera size={11} className="mr-1.5" />
+                      Ambil dari Kamera
                     </Button>
 
                     <Button
@@ -933,6 +1048,108 @@ export default function ProfilePage() {
           onError={handleModalError}
         />
       </Suspense>
+      {/* CAMERA CAPTURE MODAL */}
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 text-white rounded-3xl p-6 max-w-md w-full shadow-2xl relative flex flex-col items-center">
+            
+            {/* Header */}
+            <div className="w-full flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-300">
+                📷 Kamera Instan Absenta
+              </h3>
+              <button 
+                onClick={closeCameraModal}
+                className="p-1.5 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Video Feed or Captured Preview */}
+            <div className="w-full aspect-square bg-black rounded-2xl overflow-hidden relative shadow-inner border border-slate-800 flex items-center justify-center">
+              {!capturedImage ? (
+                <>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    className="w-full h-full object-cover scale-x-[-1]" // mirror effect
+                  />
+                  {/* Square center cropping guide */}
+                  <div className="absolute inset-0 border-[30px] border-black/40 pointer-events-none flex items-center justify-center">
+                    <div className="w-full h-full border-2 border-dashed border-indigo-500/80 rounded-xl" />
+                  </div>
+                </>
+              ) : (
+                <img 
+                  src={capturedImage} 
+                  alt="Captured Preview" 
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+
+            {/* Actions Footer */}
+            <div className="w-full flex flex-col gap-3 mt-6">
+              {!capturedImage ? (
+                <div className="flex gap-2 w-full justify-between items-center">
+                  <Button
+                    onClick={toggleCameraFacing}
+                    variant="outline"
+                    className="flex-1 h-11 text-xs font-bold rounded-2xl border-slate-800 hover:bg-slate-850 text-slate-300"
+                  >
+                    <RefreshCw size={13} className="mr-1.5" />
+                    Kamera {cameraFacing === 'user' ? 'Belakang' : 'Depan'}
+                  </Button>
+                  
+                  <button
+                    onClick={capturePhoto}
+                    className="w-14 h-14 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 border-4 border-white/20"
+                  >
+                    <div className="w-6 h-6 bg-white rounded-full" />
+                  </button>
+
+                  <Button
+                    onClick={closeCameraModal}
+                    variant="outline"
+                    className="flex-1 h-11 text-xs font-bold rounded-2xl border-slate-800 hover:bg-slate-850 text-slate-300"
+                  >
+                    Batal
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-3 w-full">
+                  <Button
+                    onClick={() => {
+                      setCapturedImage(null);
+                      startCamera(cameraFacing);
+                    }}
+                    disabled={uploadingFoto}
+                    variant="outline"
+                    className="flex-1 h-11 text-xs font-black rounded-2xl border-slate-800 hover:bg-slate-850 text-slate-300"
+                  >
+                    Ulangi Foto
+                  </Button>
+                  <Button
+                    onClick={uploadCapturedPhoto}
+                    disabled={uploadingFoto}
+                    className="flex-1 h-11 text-xs font-black rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg"
+                  >
+                    {uploadingFoto ? (
+                      <Loader2 size={13} className="animate-spin mr-1.5" />
+                    ) : (
+                      <Camera size={13} className="mr-1.5" />
+                    )}
+                    Simpan & Upload
+                  </Button>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 }
