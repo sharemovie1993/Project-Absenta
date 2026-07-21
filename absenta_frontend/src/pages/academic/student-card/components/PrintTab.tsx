@@ -314,7 +314,7 @@ export const PrintTab: React.FC<PrintTabProps> = ({
                         width: `${printLayout.finalW}mm`,
                         height: `${printLayout.finalH}mm`,
                         transform: `scale(${zoomLevel})`,
-                        transformOrigin: 'top center',
+                        transformOrigin: isRFID ? 'center' : 'top center',
                         marginBottom: `-${(printLayout.finalH * Math.max(0, 1 - zoomLevel))}mm` // Adjust for scale offset
                     }}
                 >
