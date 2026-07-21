@@ -87,10 +87,11 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       kode: 'TO',
       singkatan: 'TO',
       jurusans: [
-        { nama: 'Teknik Kendaraan Ringan Otomotif', kode: 'TKRO', singkatan: 'TKRO' },
-        { nama: 'Teknik dan Bisnis Sepeda Motor', kode: 'TBSM', singkatan: 'TBSM' },
+        { nama: 'Teknik Kendaraan Ringan', kode: 'TKR', singkatan: 'TKR' },
+        { nama: 'Teknik Sepeda Motor', kode: 'TSM', singkatan: 'TSM' },
         { nama: 'Teknik Alat Berat', kode: 'TAB', singkatan: 'TAB' },
-        { nama: 'Teknik Ototronik', kode: 'TOTR', singkatan: 'TOTR' }
+        { nama: 'Teknik Ototronik', kode: 'TOTR', singkatan: 'TOTR' },
+        { nama: 'Teknik Bodi Kendaraan Ringan', kode: 'TBKR', singkatan: 'TBKR' }
       ]
     },
     {
@@ -124,7 +125,8 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       singkatan: 'AKL',
       jurusans: [
         { nama: 'Akuntansi', kode: 'AKT', singkatan: 'AKT' },
-        { nama: 'Perbankan dan Keuangan Mikro', kode: 'PKM', singkatan: 'PKM' }
+        { nama: 'Layanan Perbankan', kode: 'LPB', singkatan: 'LPB' },
+        { nama: 'Layanan Perbankan Syariah', kode: 'LPS', singkatan: 'LPS' }
       ]
     },
     {
@@ -134,7 +136,7 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       singkatan: 'MPLB',
       jurusans: [
         { nama: 'Manajemen Perkantoran', kode: 'MP', singkatan: 'MP' },
-        { nama: 'Logistik', kode: 'LOG', singkatan: 'LOG' }
+        { nama: 'Manajemen Logistik', kode: 'MLOG', singkatan: 'MLOG' }
       ]
     },
     {
@@ -155,7 +157,7 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       kode: 'KLN',
       singkatan: 'KLN',
       jurusans: [
-        { nama: 'Kuliner (Tata Boga)', kode: 'KUL', singkatan: 'KUL' }
+        { nama: 'Kuliner', kode: 'KUL', singkatan: 'KUL' }
       ]
     },
     {
@@ -189,20 +191,21 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
     // 6. Kesehatan dan Pekerjaan Sosial
     {
       bidang_keahlian: 'Kesehatan dan Pekerjaan Sosial',
-      nama: 'Kesehatan Keperawatan',
-      kode: 'KKP',
-      singkatan: 'KKP',
+      nama: 'Layanan Kesehatan',
+      kode: 'LK',
+      singkatan: 'LK',
       jurusans: [
         { nama: 'Asisten Keperawatan dan Caregiver', kode: 'AKCG', singkatan: 'AKCG' }
       ]
     },
     {
       bidang_keahlian: 'Kesehatan dan Pekerjaan Sosial',
-      nama: 'Kefarmasian',
-      kode: 'KFR',
-      singkatan: 'KFR',
+      nama: 'Teknologi Farmasi',
+      kode: 'TF',
+      singkatan: 'TF',
       jurusans: [
-        { nama: 'Farmasi Klinis dan Komunitas', kode: 'FKK', singkatan: 'FKK' }
+        { nama: 'Farmasi Klinis dan Komunitas', kode: 'FKK', singkatan: 'FKK' },
+        { nama: 'Farmasi Industri', kode: 'FI', singkatan: 'FI' }
       ]
     },
     {
@@ -211,7 +214,7 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       kode: 'PKS',
       singkatan: 'PKS',
       jurusans: [
-        { nama: 'Pekerjaan Sosial', kode: 'PEKS', singkatan: 'PEKS' }
+        { nama: 'Pekerja Sosial', kode: 'PEKS', singkatan: 'PEKS' }
       ]
     },
 
@@ -246,9 +249,9 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       ]
     },
 
-    // 8. Teknologi Konstruksi dan Properti
+    // 8. Teknologi Konstruksi dan Bangunan
     {
-      bidang_keahlian: 'Teknologi Konstruksi dan Properti',
+      bidang_keahlian: 'Teknologi Konstruksi dan Bangunan',
       nama: 'Desain Pemodelan dan Informasi Bangunan',
       kode: 'DPIB',
       singkatan: 'DPIB',
@@ -257,7 +260,7 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
       ]
     },
     {
-      bidang_keahlian: 'Teknologi Konstruksi dan Properti',
+      bidang_keahlian: 'Teknologi Konstruksi dan Bangunan',
       nama: 'Teknik Konstruksi dan Perumahan',
       kode: 'TKP',
       singkatan: 'TKP',
