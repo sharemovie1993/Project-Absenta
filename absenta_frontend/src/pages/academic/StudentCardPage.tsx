@@ -38,6 +38,7 @@ import type {
 } from '../../components/academic/student-card/types';
 import {
     DEFAULT_CONFIG,
+    DEFAULT_GURU_CONFIG,
     DEFAULT_PRINT_CONFIG,
     PAPER_SIZES
 } from '../../components/academic/student-card/constants';
