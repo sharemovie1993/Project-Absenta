@@ -329,7 +329,7 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Express Photo Studio (Capture Foto Massal Kartu Pelajar)"
+      title={mode === 'GURU' ? "Express Photo Studio (Capture Foto Massal Pegawai / Guru)" : "Express Photo Studio (Capture Foto Massal Siswa)"}
       size="3xl"
     >
       <div className="p-6 space-y-6">
@@ -341,37 +341,26 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
             </div>
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                Mode Foto Formal Cetak Kartu Pelajar
+                {mode === 'GURU' ? 'Mode Foto Formal Cetak Kartu Pegawai / Guru' : 'Mode Foto Formal Cetak Kartu Pelajar'}
               </h4>
               <p className="text-[10px] text-slate-400 font-bold">
-                Tembak QR NISN/NIP &rarr; Ambil Foto Webcam &rarr; Auto-Crop 3:4 Loop
+                {mode === 'GURU' ? 'Tembak QR NIP / Ketik Nama Guru → Ambil Foto Webcam → Auto-Crop 3:4 Loop' : 'Tembak QR NISN/NIS → Ambil Foto Webcam → Auto-Crop 3:4 Loop'}
               </p>
             </div>
           </div>
 
-          <div className="inline-flex p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl">
-            <button
-              type="button"
-              onClick={() => { setMode('SISWA'); setStep('SCAN_TARGET'); setTargetPerson(null); }}
-              className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                mode === 'SISWA'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <GraduationCap size={14} /> Siswa
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('GURU'); setStep('SCAN_TARGET'); setTargetPerson(null); }}
-              className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                mode === 'GURU'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <User size={14} /> Guru & Staf
-            </button>
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black uppercase tracking-wider shadow-xs">
+            {mode === 'GURU' ? (
+              <>
+                <User size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Target: Guru & Staf</span>
+              </>
+            ) : (
+              <>
+                <GraduationCap size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Target: Siswa</span>
+              </>
+            )}
           </div>
         </div>
 
