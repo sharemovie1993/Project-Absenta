@@ -145,31 +145,48 @@ export const GuruForm = React.memo<GuruFormProps>(({
       const finalW = prConfig.orientation === 'portrait' ? paperW : paperH;
       const finalH = prConfig.orientation === 'portrait' ? paperH : paperW;
 
-      let columnsCount = 1;
-      let rowsCount = 1;
+      const cardW = guruConfigObj.template === 'vertical' ? 54 : 85.6;
+      const cardH = guruConfigObj.template === 'vertical' ? 85.6 : 54;
 
-      if (!isRfid) {
-        const cW = guruConfigObj.card_width || 85.6;
-        const cH = guruConfigObj.card_height || 54;
+      const availW = finalW - prConfig.marginLeft - prConfig.marginRight;
+      const availH = finalH - prConfig.marginTop - prConfig.marginBottom;
 
-        const availableW = finalW - prConfig.marginLeft - prConfig.marginRight;
-        const availableH = finalH - prConfig.marginTop - prConfig.marginBottom;
+      const cols = isRfid ? 1 : Math.max(1, Math.floor((availW + prConfig.gapX) / (cardW + prConfig.gapX)));
+      const rows = isRfid ? 1 : Math.max(1, Math.floor((availH + prConfig.gapY) / (cardH + prConfig.gapY)));
 
-        columnsCount = Math.max(1, Math.floor((availableW + prConfig.gapX) / (cW + prConfig.gapX)));
-        rowsCount = Math.max(1, Math.floor((availableH + prConfig.gapY) / (cH + prConfig.gapY)));
-      }
+      const totalGridW = cols * cardW + (cols - 1) * prConfig.gapX;
+      const totalGridH = rows * cardH + (rows - 1) * prConfig.gapY;
+
+      const effectiveMarginLeft = (prConfig.autoCenterX && !isRfid) ? (finalW - totalGridW) / 2 : prConfig.marginLeft;
+      const effectiveMarginTop  = (prConfig.autoCenterY && !isRfid) ? (finalH - totalGridH) / 2 : prConfig.marginTop;
+
+      const layoutObj = {
+        finalW,
+        finalH,
+        cols,
+        rows,
+        cardW,
+        cardH,
+        effectiveMarginLeft,
+        effectiveMarginTop
+      };
 
       setPrintOverlayData({
         config: guruConfigObj,
         printConfig: prConfig,
-        printLayout: { columns: columnsCount, rows: rowsCount, totalCardsPerPage: columnsCount * rowsCount },
+        printLayout: layoutObj,
         sekolah: sekolahRes || { nama: '', alamat: '' },
-        person: targetGuru
+        pages: [[targetGuru]]
       });
+
+      setTimeout(() => {
+        window.print();
+        setPrintingCard(false);
+      }, 500);
+
     } catch (err: any) {
       console.error('Failed to print guru card:', err);
       toast.error('Gagal memuat konfigurasi cetak kartu');
-    } finally {
       setPrintingCard(false);
     }
   };
@@ -509,16 +526,15 @@ export const GuruForm = React.memo<GuruFormProps>(({
         </ModalFooter>
       </form>
 
-      {printOverlayData && createPortal(
+      {printOverlayData && (
         <PrintOverlay
+          isPrinting={true}
           config={printOverlayData.config}
           printConfig={printOverlayData.printConfig}
           printLayout={printOverlayData.printLayout}
           sekolah={printOverlayData.sekolah}
-          students={[printOverlayData.person]}
-          onClose={() => setPrintOverlayData(null)}
-        />,
-        document.body
+          pages={printOverlayData.pages}
+        />
       )}
     </div>
   );
