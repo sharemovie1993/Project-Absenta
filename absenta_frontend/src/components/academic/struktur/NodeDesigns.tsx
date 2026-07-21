@@ -90,7 +90,7 @@ export const LeadershipNode = React.memo<NodeDesignProps>(({ node }) => {
       {/* Position Header */}
       <div className={cn(headerBg, "px-4 flex-1 flex items-center justify-center gap-1")}>
         {icon}
-        <span className={cn(cfg.colors.textTop, "text-[10px] font-black uppercase tracking-widest block whitespace-nowrap truncate text-center")}>
+        <span className={cn(cfg.colors.textTop, "text-[9.5px] font-black uppercase tracking-widest block whitespace-normal break-words line-clamp-2 px-1 text-center")}>
           {node.label}
         </span>
       </div>

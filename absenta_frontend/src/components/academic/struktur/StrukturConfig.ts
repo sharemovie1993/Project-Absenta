@@ -29,8 +29,8 @@ export const STRUKTUR_CONFIG = {
     },
     leadership: {
       minHeight: '70px',
-      minWidth: '200px',
-      maxWidth: '260px',
+      minWidth: '220px',
+      maxWidth: '280px',
       rounded: 'rounded-none',
       colors: {
         top: 'bg-indigo-600 dark:bg-indigo-500',
@@ -42,7 +42,7 @@ export const STRUKTUR_CONFIG = {
     },
     member: {
       minHeight: '52px',
-      minWidth: '200px',
+      minWidth: '220px',
       rounded: 'rounded-xl',
       colors: {
         bg: 'bg-white dark:bg-slate-900',

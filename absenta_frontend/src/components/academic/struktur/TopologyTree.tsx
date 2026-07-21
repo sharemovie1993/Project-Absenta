@@ -161,7 +161,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
             "relative z-10 flex flex-col transition-all select-none border focus-visible:ring-4 focus-visible:ring-blue-500 focus-visible:outline-none", 
             (node.type === 'STRUCT' || node.type === 'ROOT' || node.type === 'GROUP' || node.type === 'CATEGORY') && !isUnassigned ? "rounded-none" : "rounded-xl",
             isStructuralNode ? (node.type === 'CATEGORY' ? "min-h-[70px]" : "min-h-[64px]") : "min-h-[52px]",
-            node.type !== 'MEMBER' && !shouldBeVertical ? "min-w-[200px] max-w-[260px]" : "w-full min-w-[200px]",
+            node.type !== 'MEMBER' && !shouldBeVertical ? "min-w-[220px] max-w-[280px]" : "w-full min-w-[220px]",
             getNodeStyles(node.type),
             isUnassigned && cn("border-blue-500 dark:border-blue-400 bg-white dark:bg-slate-900", cfg.shadows.ambient, cfg.animations.pulse),
             (isActionable || hasChildren) ? "cursor-pointer" : "cursor-default opacity-95",
