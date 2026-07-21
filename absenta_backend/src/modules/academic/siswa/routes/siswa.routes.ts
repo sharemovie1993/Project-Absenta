@@ -239,7 +239,7 @@ export default async function siswaRoutes(fastify: any) {
   // POST /siswa/:id/documents - Upload document
   fastify.post('/:id/documents', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign'], { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
@@ -272,7 +272,7 @@ export default async function siswaRoutes(fastify: any) {
   // DELETE /siswa/:id/documents/:docId - Delete document
   fastify.delete('/:id/documents/:docId', {
     preHandler: [
-      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign'], { exemptRoles: [RoleName.SISWA] }),
+      requireCapability(['affairs.violations.report', 'academic.students.manage', 'correspondence.sign', 'academic.students.update'], { exemptRoles: [RoleName.SISWA] }),
       validateSiswaSelfOrAdmin,
       organizationalScopeMiddleware
     ]
