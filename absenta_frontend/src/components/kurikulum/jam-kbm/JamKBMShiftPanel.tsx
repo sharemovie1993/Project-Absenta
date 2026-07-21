@@ -493,12 +493,13 @@ export default function JamKBMShiftPanel({
                   type="number"
                   aria-label="Durasi per jam pelajaran dalam menit"
                   value={parsed.slot_duration ?? 45}
-                onChange={e => handleBaseConfigChange('slot_duration', e.target.value)}
-                min={20} max={120}
-                className="w-full px-3 py-2 bg-white/80 dark:bg-slate-900/80 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 backdrop-blur-sm"
-              />
-              <span className="text-xs font-bold text-indigo-400/70 shrink-0">mnt</span>
-            </div>
+                  onChange={e => handleBaseConfigChange('slot_duration', e.target.value)}
+                  min={20} max={120}
+                  className="w-full px-3 py-2 bg-white/80 dark:bg-slate-900/80 border border-indigo-200/60 dark:border-indigo-800/40 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 backdrop-blur-sm"
+                />
+                <span className="text-xs font-bold text-indigo-400/70 shrink-0">mnt</span>
+              </div>
+            )}
           </div>
         </div>
 
