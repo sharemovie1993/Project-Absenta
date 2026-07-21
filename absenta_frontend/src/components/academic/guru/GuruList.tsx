@@ -12,7 +12,10 @@ import {
   RefreshCw, 
   Download, 
   FileSpreadsheet,
-  AlertCircle 
+  AlertCircle,
+  Sparkles,
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 import { 
   Button, 
@@ -78,6 +81,81 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
+  
+  // States untuk Analitis & Validasi Data NIP Guru
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisStepText, setAnalysisStepText] = useState('');
+  const [activeAnalysisTab, setActiveAnalysisTab] = useState<'missingNip' | 'duplicateNip'>('missingNip');
+  const [analysisResults, setAnalysisResults] = useState<{
+    totalChecked: number;
+    missingNip: Guru[];
+    duplicateNip: { nip: string; gurus: Guru[] }[];
+  }>({
+    totalChecked: 0,
+    missingNip: [],
+    duplicateNip: [],
+  });
+
+  const handleRunAnalysis = async () => {
+    setIsAnalysing(true);
+    setAnalysisProgress(0);
+    setShowAnalysisModal(true);
+    setAnalysisStepText('Menghubungkan ke server dan mengambil data guru...');
+
+    try {
+      setAnalysisProgress(20);
+      const res = await getGuruList(1, 5000);
+      setAnalysisProgress(50);
+      const allGurus = res.data || [];
+      const totalCount = allGurus.length;
+
+      // 1. Cek NIP Kosong / NIP Sementara (9999xxxxxx)
+      setAnalysisStepText('Memeriksa guru yang belum memiliki NIP atau NIP sementara (9999)...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(75);
+      const missingNip = allGurus.filter(g => !g.nip || g.nip.trim() === '' || g.nip === '-' || g.nip.startsWith('9999'));
+
+      // 2. Cek NIP Duplikat
+      setAnalysisStepText('Mendeteksi duplikasi NIP di dalam sistem...');
+      await new Promise(r => setTimeout(r, 200));
+      setAnalysisProgress(90);
+      const nipGroups: Record<string, Guru[]> = {};
+      allGurus.forEach(g => {
+        const nip = g.nip ? g.nip.trim() : '';
+        if (nip && nip !== '-' && !nip.startsWith('9999')) {
+          if (!nipGroups[nip]) nipGroups[nip] = [];
+          nipGroups[nip].push(g);
+        }
+      });
+      const duplicateNip = Object.entries(nipGroups)
+        .filter(([_, gurus]) => gurus.length > 1)
+        .map(([nip, gurus]) => ({ nip, gurus }));
+
+      setAnalysisStepText('Menyusun hasil laporan kualitas data guru...');
+      await new Promise(r => setTimeout(r, 150));
+      setAnalysisProgress(100);
+
+      setAnalysisResults({
+        totalChecked: totalCount,
+        missingNip,
+        duplicateNip,
+      });
+
+      if (missingNip.length > 0) setActiveAnalysisTab('missingNip');
+      else if (duplicateNip.length > 0) setActiveAnalysisTab('duplicateNip');
+      else setActiveAnalysisTab('missingNip');
+
+      setIsAnalysing(false);
+      toast.success('Pemeriksaan kualitas NIP guru selesai!');
+    } catch (err) {
+      console.error('Failed to run guru data analysis:', err);
+      toast.error('Gagal memvalidasi data guru.');
+      setIsAnalysing(false);
+      setShowAnalysisModal(false);
+    }
+  };
   
   const { user, can } = useAuth();
   
@@ -628,6 +706,18 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                     </Button>
                  )}
                  
+                 {canManage && (
+                    <Button
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={handleRunAnalysis}
+                      className="rounded-xl text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 mr-1.5 text-indigo-500 animate-pulse" />
+                      Analisis Data NIP
+                    </Button>
+                  )}
+                 
                  <Button
                    variant="toolbarOutline"
                    size="toolbar"
@@ -650,7 +740,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
      
                  <Button
                    variant="toolbarOutline"
-                   size="toolbarIcon"
+                   size="toolbar"
                    onClick={() => fetchGurus(currentPage, debouncedSearchTerm)}
                    aria-label="Refresh Data"
                    className="rounded-xl"
@@ -715,6 +805,200 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           <div className="flex justify-end pt-2">
             <Button variant="outline" className="rounded-xl px-6" onClick={() => setBulkErrorModalOpen(false)}>Tutup</Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Modal Analisis Kualitas Data NIP Guru */}
+      <Modal
+        isOpen={showAnalysisModal}
+        onClose={() => !isAnalysing && setShowAnalysisModal(false)}
+        title="Laporan Validasi & Kualitas Data NIP Guru"
+        size="3xl"
+      >
+        <div className="p-6 space-y-6">
+          {isAnalysing ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-100 dark:border-indigo-950 border-t-indigo-600 animate-spin" />
+                <Sparkles size={20} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400 animate-pulse" />
+              </div>
+              <div className="text-center space-y-1">
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">Memeriksa Data Guru...</h4>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight leading-relaxed animate-pulse">{analysisStepText}</p>
+              </div>
+              <div className="w-full max-w-md bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-indigo-500 to-purple-600 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${analysisProgress}%` }}
+                />
+              </div>
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{analysisProgress}% Selesai</span>
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveAnalysisTab('missingNip')}
+                  className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
+                    activeAnalysisTab === 'missingNip'
+                      ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20 ring-2 ring-red-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">NIP Kosong / Sementara (9999)</span>
+                    <AlertCircle size={16} className={analysisResults.missingNip.length > 0 ? 'text-red-500' : 'text-slate-400'} />
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className={`text-2xl font-black ${analysisResults.missingNip.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-600'}`}>
+                      {analysisResults.missingNip.length}
+                    </span>
+                    {analysisResults.missingNip.length > 0 && <span className="text-[10px] font-black text-red-500 uppercase tracking-tight">Guru</span>}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveAnalysisTab('duplicateNip')}
+                  className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden ${
+                    activeAnalysisTab === 'duplicateNip'
+                      ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 ring-2 ring-rose-500/20'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Duplikasi NIP</span>
+                    <AlertTriangle size={16} className={analysisResults.duplicateNip.length > 0 ? 'text-rose-500' : 'text-slate-400'} />
+                  </div>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className={`text-2xl font-black ${analysisResults.duplicateNip.length > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600'}`}>
+                      {analysisResults.duplicateNip.length}
+                    </span>
+                    {analysisResults.duplicateNip.length > 0 && <span className="text-[10px] font-black text-rose-500 uppercase tracking-tight">Grup Duplikat</span>}
+                  </div>
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/50 min-h-[260px] max-h-[360px] overflow-y-auto">
+                {activeAnalysisTab === 'missingNip' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Daftar Guru Tanpa NIP / NIP Sementara (9999)</h4>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Guru yang tidak memiliki NIP resmi atau berawalan 9999xxxxxx</p>
+                      </div>
+                      <Badge variant={analysisResults.missingNip.length > 0 ? 'error' : 'success'}>
+                        {analysisResults.missingNip.length} Guru
+                      </Badge>
+                    </div>
+
+                    {analysisResults.missingNip.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center justify-center text-center text-slate-400 space-y-2">
+                        <CheckCircle2 size={32} className="text-emerald-500" />
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Semua Guru Sudah Punya NIP Resmi!</p>
+                        <p className="text-[10px] text-slate-400">Tidak ada guru dengan NIP kosong atau NIP sementara 9999.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {analysisResults.missingNip.map(guru => (
+                          <div key={guru.id} className="flex justify-between items-center p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs">
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{guru.nama_guru}</p>
+                              <p className="text-[10px] text-slate-400">
+                                NIP Saat ini: <span className="font-mono font-bold text-red-500">{guru.nip ? (guru.nip.startsWith('9999') ? 'NIP SEMENTARA (9999)' : `"${guru.nip}"`) : 'KOSONG'}</span>
+                                {guru.status_kepegawaian ? ` • ${guru.status_kepegawaian}` : ''}
+                              </p>
+                            </div>
+                            {onEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] rounded-lg border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                onClick={() => {
+                                  setShowAnalysisModal(false);
+                                  onEdit(guru);
+                                }}
+                              >
+                                Edit NIP
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeAnalysisTab === 'duplicateNip' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Deteksi Duplikasi NIP Guru</h4>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Daftar NIP yang digunakan oleh lebih dari 1 guru</p>
+                      </div>
+                      <Badge variant={analysisResults.duplicateNip.length > 0 ? 'error' : 'success'}>
+                        {analysisResults.duplicateNip.length} Grup Duplikat
+                      </Badge>
+                    </div>
+
+                    {analysisResults.duplicateNip.length === 0 ? (
+                      <div className="py-8 flex flex-col items-center justify-center text-center text-slate-400 space-y-2">
+                        <CheckCircle2 size={32} className="text-emerald-500" />
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Tidak Ada NIP Duplikat!</p>
+                        <p className="text-[10px] text-slate-400">Seluruh NIP guru bersifat unik di dalam sistem sekolah Anda.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {analysisResults.duplicateNip.map((group, index) => (
+                          <div key={index} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-rose-200 dark:border-rose-900/50 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[11px] font-black font-mono text-rose-600 dark:text-rose-400">NIP: {group.nip}</span>
+                              <span className="text-[9px] font-black text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-full">{group.gurus.length} Guru Memakai NIP Ini</span>
+                            </div>
+                            <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                              {group.gurus.map(guru => (
+                                <div key={guru.id} className="flex justify-between items-center text-[11px] text-slate-700 dark:text-slate-300">
+                                  <span>{guru.nama_guru} ({guru.status_kepegawaian || 'Guru'})</span>
+                                  {onEdit && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setShowAnalysisModal(false);
+                                        onEdit(guru);
+                                      }}
+                                      className="text-[10px] font-bold text-indigo-600 hover:underline"
+                                    >
+                                      Edit
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer info & Actions */}
+              <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>Total Data Diperiksa: {analysisResults.totalChecked} Guru</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAnalysisModal(false)}
+                >
+                  Tutup
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

@@ -369,15 +369,35 @@ export class GuruService {
       associatedUserId = createdUser.id;
     }
 
-    // Check if NIP is unique within tenant (if provided and valid)
-    // Removed strict uniqueness check as per requirement (NIP is optional and not unique)
+    // Auto-generate temporary NIP starting with 9999 if empty/null/invalid
+    let nipToUse = input.nip ? String(input.nip).trim() : '';
+    if (!nipToUse || nipToUse === '-' || nipToUse === 'KOSONG') {
+      const generateTempNip = () => {
+        let s = '9999';
+        for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
+        return s;
+      };
 
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const candidate = generateTempNip();
+        const exists = await prisma.guru.findFirst({
+          where: { tenant_id: tenantId, nip: candidate },
+        });
+        if (!exists) {
+          nipToUse = candidate;
+          break;
+        }
+      }
+      if (!nipToUse) {
+        nipToUse = '9999' + Date.now().toString().slice(-6);
+      }
+    }
 
     const guru = await prisma.guru.create({
       data: {
         tenant_id: tenantId,
         user_id: associatedUserId!,
-        nip: input.nip || null,
+        nip: nipToUse,
         nama_guru: input.nama_guru,
         no_rfid: input.no_rfid || null,
         no_hp: input.no_hp ?? null,
@@ -628,8 +648,10 @@ export class GuruService {
         if (row.nip !== undefined && row.nip !== null && String(row.nip).trim() !== '' && String(row.nip).trim() !== '-') {
           nip = String(row.nip).trim();
         } else {
-          // Generate a placeholder NIP: 999 + last 6 digits of timestamp + 3 random digits
-          nip = `999${Date.now().toString().slice(-6)}${Math.floor(100 + Math.random() * 900)}`;
+          // Generate a placeholder NIP starting with 9999 (10 digits)
+          let s = '9999';
+          for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
+          nip = s;
           isNipGenerated = true;
         }
 
