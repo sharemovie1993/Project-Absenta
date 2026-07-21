@@ -16,7 +16,10 @@ import {
     Printer as PrinterIcon,
     Sparkles,
     Upload,
-    Loader2
+    Loader2,
+    Maximize2,
+    X,
+    Check
 } from 'lucide-react';
 import { SettingsGroup } from '@/components/academic/student-card/SettingsGroup';
 import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput';
@@ -188,6 +191,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     const [previewSide, setPreviewSide] = React.useState<'front' | 'back'>('front');
     const [uploadingStamp, setUploadingStamp] = React.useState(false);
     const [uploadingSign, setUploadingSign] = React.useState(false);
+    const [isFocusMode, setIsFocusMode] = React.useState(false);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'stamp' | 'signature') => {
         const file = e.target.files?.[0];
@@ -912,6 +916,15 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                             {config.show_back_side && (
                                 <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsFocusMode(true)}
+                                        className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 border-0"
+                                    >
+                                        <Maximize2 size={13} />
+                                        Buka Mode Fokus Sisi Belakang
+                                    </Button>
+
                                     <div className="space-y-2">
                                         <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Varian Desain Sisi Belakang</Label>
                                         <div className="grid grid-cols-2 gap-2">
@@ -1169,6 +1182,235 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                     </div>
                 </SectionCard>
             </div>
+
+            {/* Focus Mode Overlay */}
+            {isFocusMode && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-slate-200/50 dark:border-slate-800">
+                        {/* Header Area */}
+                        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20">
+                            <div>
+                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                                    <Sparkles size={16} className="text-violet-500 animate-pulse" />
+                                    Mode Fokus: Desain Belakang Kartu
+                                </h3>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                    Fokus merancang tata tertib, tanda tangan, dan stempel secara berdampingan tanpa terganggu menu lain.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="primary"
+                                onClick={() => setIsFocusMode(false)}
+                                className="h-9 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white border-0"
+                            >
+                                <Check size={14} />
+                                Selesai & Keluar
+                            </Button>
+                        </div>
+
+                        {/* Split Workspace */}
+                        <div className="flex-1 flex overflow-hidden">
+                            {/* Left Panel: Preview (60% width) */}
+                            <div className="w-[55%] bg-slate-100 dark:bg-slate-950/60 flex flex-col items-center justify-center p-8 overflow-auto border-r border-slate-100 dark:border-slate-800 relative">
+                                <div className="absolute top-4 left-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                    Live Preview
+                                </div>
+                                
+                                <div className="transform scale-[1.1] transition-transform">
+                                    <CardBackPreview config={config} />
+                                </div>
+
+                                <div className="mt-8 text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">
+                                    Format Kartu standard (85.6mm x 54mm)
+                                </div>
+                            </div>
+
+                            {/* Right Panel: Controls (45% width) */}
+                            <div className="w-[45%] p-6 overflow-y-auto bg-white dark:bg-slate-900 space-y-5">
+                                {/* Varian Desain */}
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Varian Desain</Label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {([
+                                            { id: 'default', label: 'Header Strip' },
+                                            { id: 'minimal', label: 'Minimalis' },
+                                            { id: 'full-header', label: 'Full Header Bar' },
+                                            { id: 'accent-border', label: 'Bingkai Aksen' },
+                                            { id: 'split-gradient', label: 'Gradasi Halus' }
+                                        ] as const).map((styleOpt) => (
+                                            <Button
+                                                key={styleOpt.id}
+                                                type="button"
+                                                variant={(config.back_style || 'default') === styleOpt.id ? 'primary' : 'outline'}
+                                                onClick={() => setConfig({ ...config, back_style: styleOpt.id })}
+                                                className="h-8 text-[9px] font-bold rounded-xl"
+                                            >
+                                                {styleOpt.label}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Colors */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Warna Latar</Label>
+                                        <div className="flex gap-2 items-center">
+                                            <Input
+                                                type="color"
+                                                value={config.back_bg_color || '#ffffff'}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_bg_color: e.target.value })}
+                                                className="w-8 h-8 p-1 rounded-lg cursor-pointer"
+                                            />
+                                            <Input
+                                                value={config.back_bg_color || '#ffffff'}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_bg_color: e.target.value })}
+                                                className="h-8 text-[10px] font-mono flex-1 rounded-lg"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Warna Teks</Label>
+                                        <div className="flex gap-2 items-center">
+                                            <Input
+                                                type="color"
+                                                value={config.back_text_color || '#1e293b'}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_text_color: e.target.value })}
+                                                className="w-8 h-8 p-1 rounded-lg cursor-pointer"
+                                            />
+                                            <Input
+                                                value={config.back_text_color || '#1e293b'}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_text_color: e.target.value })}
+                                                className="h-8 text-[10px] font-mono flex-1 rounded-lg"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Title */}
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Judul Sisi Belakang</Label>
+                                    <Input
+                                        value={config.back_header_text || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_header_text: e.target.value })}
+                                        placeholder="TATA TERTIB KARTU..."
+                                        className="h-9 text-xs rounded-xl"
+                                    />
+                                </div>
+
+                                {/* Rules */}
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Tata Tertib (Baris Baru = Poin Baru)</Label>
+                                    <Textarea
+                                        value={config.back_rules || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, back_rules: e.target.value })}
+                                        placeholder="Tulis aturan di sini..."
+                                        rows={6}
+                                        className="text-xs rounded-xl min-h-[120px]"
+                                    />
+                                </div>
+
+                                {/* Signature block */}
+                                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan TTD & Stempel</Label>
+                                        <Switch
+                                            checked={!!config.back_show_signature}
+                                            onCheckedChange={(c: boolean) => setConfig({ ...config, back_show_signature: c })}
+                                            className="scale-90"
+                                        />
+                                    </div>
+
+                                    {config.back_show_signature && (
+                                        <div className="space-y-3 bg-slate-50 dark:bg-slate-950/30 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Jabatan</Label>
+                                                <Input
+                                                    value={config.back_signature_title || ''}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_signature_title: e.target.value })}
+                                                    placeholder="Kepala Sekolah / Kepala Perpustakaan"
+                                                    className="h-8 text-xs rounded-lg bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Nama Lengkap</Label>
+                                                <Input
+                                                    value={config.back_principal_name || ''}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_principal_name: e.target.value })}
+                                                    placeholder="Nama Lengkap Penandatangan"
+                                                    className="h-8 text-xs rounded-lg bg-white"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[10px] font-bold text-slate-500 uppercase">NIP / Identifikasi</Label>
+                                                <Input
+                                                    value={config.back_principal_nip || ''}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_principal_nip: e.target.value })}
+                                                    placeholder="NIP. 1980..."
+                                                    className="h-8 text-xs rounded-lg bg-white"
+                                                />
+                                            </div>
+
+                                            {/* Signature/Stamp Upload */}
+                                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[9px] font-bold text-slate-400 uppercase">Tanda Tangan</Label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            id="focus-signature-input"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleImageUpload(e, 'signature')}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => document.getElementById('focus-signature-input')?.click()}
+                                                            disabled={uploadingSign}
+                                                            className="w-full h-8 text-[9px] font-black uppercase tracking-wider rounded-lg"
+                                                        >
+                                                            {uploadingSign ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} className="mr-1" />}
+                                                            {config.back_signature_image_url ? 'TTD Ok' : 'Pilih TTD'}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-1">
+                                                    <Label className="text-[9px] font-bold text-slate-400 uppercase">Stempel Resmi</Label>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            id="focus-stamp-input"
+                                                            className="hidden"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleImageUpload(e, 'stamp')}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => document.getElementById('focus-stamp-input')?.click()}
+                                                            disabled={uploadingStamp}
+                                                            className="w-full h-8 text-[9px] font-black uppercase tracking-wider rounded-lg"
+                                                        >
+                                                            {uploadingStamp ? <Loader2 size={10} className="animate-spin" /> : <Upload size={10} className="mr-1" />}
+                                                            {config.back_stamp_image_url ? 'Stempel Ok' : 'Pilih Stempel'}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
