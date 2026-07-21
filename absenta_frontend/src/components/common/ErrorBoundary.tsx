@@ -35,6 +35,10 @@ export const ErrorBoundary: React.FC<Props> = ({ children, fallback, onError, sh
     };
 
     const handlePromiseRejection = (event: PromiseRejectionEvent) => {
+      const reasonStr = String(event.reason || '');
+      if (reasonStr.includes('play()') || reasonStr.includes('AbortError') || reasonStr.includes('NotAllowedError')) {
+        return;
+      }
       handleError(
         event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
         { componentStack: event.reason?.stack || '' }
@@ -73,12 +77,12 @@ export const ErrorBoundary: React.FC<Props> = ({ children, fallback, onError, sh
               {error ? getErrorMessage(error) : 'Terjadi kesalahan yang tidak diketahui.'}
             </p>
 
-            {showDetails && error && (
+            {error && (
               <details className="bg-gray-50 p-3 rounded-md">
                 <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
-                  Detail Teknis
+                  Detail Teknis (Klik untuk melihat log)
                 </summary>
-                <div className="text-xs text-gray-600 space-y-2">
+                <div className="text-xs text-gray-650 space-y-2">
                   <div>
                     <strong>Error ID:</strong> {errorId}
                   </div>
