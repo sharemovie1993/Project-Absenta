@@ -427,34 +427,34 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                             <div className="grid grid-cols-2 gap-4 pt-2">
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Warna Utama</Label>
-                                    <div className="flex gap-2 items-center">
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Warna Utama</Label>
+                                    <div className="flex gap-1.5 items-center">
                                         <Input
                                             type="color"
                                             value={config.primary_color}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, primary_color: e.target.value })}
-                                            className="w-10 h-10 p-1.5 rounded-xl border-slate-200 dark:border-slate-800 cursor-pointer"
+                                            className="w-8 h-8 p-1 rounded-lg border-slate-200 dark:border-slate-800 cursor-pointer"
                                         />
                                         <Input
                                             value={config.primary_color}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, primary_color: e.target.value })}
-                                            className="h-10 text-xs font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                            className="h-8 text-[10px] font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg px-2 flex-1"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Warna Header</Label>
-                                    <div className="flex gap-2 items-center">
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Warna Header</Label>
+                                    <div className="flex gap-1.5 items-center">
                                         <Input
                                             type="color"
                                             value={config.header_bg_color || config.primary_color}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, header_bg_color: e.target.value })}
-                                            className="w-10 h-10 p-1.5 rounded-xl border-slate-200 dark:border-slate-800 cursor-pointer"
+                                            className="w-8 h-8 p-1 rounded-lg border-slate-200 dark:border-slate-800 cursor-pointer"
                                         />
                                         <Input
                                             value={config.header_bg_color || config.primary_color}
                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, header_bg_color: e.target.value })}
-                                            className="h-10 text-xs font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
+                                            className="h-8 text-[10px] font-mono bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg px-2 flex-1"
                                         />
                                     </div>
                                 </div>
@@ -635,7 +635,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     value={config.header_text}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, header_text: e.target.value })}
                                     placeholder="PEMERINTAH KABUPATEN..."
-                                    className="h-10 text-sm font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    className="h-8 text-[11px] font-medium rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                     disabled={config.show_header_text === false}
                                 />
                             </div>
@@ -647,7 +647,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             checked={config.show_subheader_text !== false}
                                             onCheckedChange={(c: boolean) => setConfig({ ...config, show_subheader_text: c })}
                                         />
-                                        <Label htmlFor="show-header-2" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Sub Instansi (Header 2)</Label>
+                                        <Label htmlFor="show-header-2" className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider cursor-pointer whitespace-nowrap">Sub Instansi (Header 2)</Label>
                                     </div>
                                     <FontSizeInput
                                         value={config.subheader_font_size}
@@ -658,7 +658,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     value={config.subheader_text}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, subheader_text: e.target.value })}
                                     placeholder="DINAS PENDIDIKAN..."
-                                    className="h-10 text-sm font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    className="h-8 text-[11px] font-medium rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                     disabled={config.show_subheader_text === false}
                                 />
                             </div>
@@ -670,7 +670,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             checked={config.show_school_name !== false}
                                             onCheckedChange={(c: boolean) => setConfig({ ...config, show_school_name: c })}
                                         />
-                                        <Label htmlFor="show-school-name" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Nama Sekolah</Label>
+                                        <Label htmlFor="show-school-name" className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider cursor-pointer whitespace-nowrap">Nama Sekolah</Label>
                                     </div>
                                     <FontSizeInput
                                         value={config.school_name_font_size}
@@ -681,7 +681,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     value={config.school_name}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, school_name: e.target.value })}
                                     placeholder="SMK NEGERI 1..."
-                                    className="h-10 text-sm font-bold rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    className="h-8 text-[11px] font-bold rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                     disabled={config.show_school_name === false}
                                 />
                             </div>
@@ -693,7 +693,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             checked={config.show_school_address !== false}
                                             onCheckedChange={(c: boolean) => setConfig({ ...config, show_school_address: c })}
                                         />
-                                        <Label htmlFor="show-school-address" className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight cursor-pointer">Alamat Sekolah</Label>
+                                        <Label htmlFor="show-school-address" className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider cursor-pointer whitespace-nowrap">Alamat Sekolah</Label>
                                     </div>
                                     <FontSizeInput
                                         value={config.school_address_font_size}
@@ -704,7 +704,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     value={config.school_address}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, school_address: e.target.value })}
                                     placeholder="Jl. Pendidikan No. 1..."
-                                    className="h-10 text-[11px] font-medium rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                    className="h-8 text-[11px] font-medium rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                     disabled={config.show_school_address === false}
                                 />
                             </div>
@@ -715,22 +715,22 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-1 block">Lebar (mm)</Label>
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Lebar (mm)</Label>
                                     <Input
                                         type="number"
                                         value={config.card_width || 85.6}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, card_width: parseFloat(e.target.value) })}
-                                        className="h-10 text-sm rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                        className="h-8 text-xs rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                         step="0.1"
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-1 block">Tinggi (mm)</Label>
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Tinggi (mm)</Label>
                                     <Input
                                         type="number"
                                         value={config.card_height || 54}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, card_height: parseFloat(e.target.value) })}
-                                        className="h-10 text-sm rounded-xl dark:bg-slate-950 dark:border-slate-800"
+                                        className="h-8 text-xs rounded-lg dark:bg-slate-950 dark:border-slate-800"
                                         step="0.1"
                                     />
                                 </div>
@@ -738,7 +738,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                             <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
                                 <div className="flex items-center justify-between mb-3">
-                                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan Border</Label>
+                                    <Label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Tampilkan Border</Label>
                                     <Switch
                                         checked={!!config.show_border}
                                         onCheckedChange={(c: boolean) => setConfig({ ...config, show_border: c })}
@@ -782,7 +782,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                         <div className="space-y-4">
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan Foto Siswa</Label>
+                                    <Label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Tampilkan Foto Siswa</Label>
                                     <Switch
                                         checked={!!config.show_photo}
                                         onCheckedChange={(c: boolean) => setConfig({ ...config, show_photo: c })}
@@ -797,7 +797,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                                 type="number"
                                                 value={config.photo_width || 24}
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, photo_width: parseFloat(e.target.value) })}
-                                                className="h-9 text-xs rounded-lg"
+                                                className="h-8 text-xs rounded-lg"
                                             />
                                         </div>
                                         <div>
@@ -806,7 +806,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                                 type="number"
                                                 value={config.photo_height || 32}
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, photo_height: parseFloat(e.target.value) })}
-                                                className="h-9 text-xs rounded-lg"
+                                                className="h-8 text-xs rounded-lg"
                                             />
                                         </div>
                                         <div className="col-span-2 pt-1">
@@ -836,7 +836,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan QR Code</Label>
+                                    <Label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Tampilkan QR Code</Label>
                                     <Switch
                                         checked={!!config.show_qrcode}
                                         onCheckedChange={(c: boolean) => setConfig({ ...config, show_qrcode: c })}
@@ -851,7 +851,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                                 type="number"
                                                 value={config.qrcode_width || 20}
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, qrcode_width: parseFloat(e.target.value) })}
-                                                className="h-9 text-xs rounded-lg"
+                                                className="h-8 text-xs rounded-lg"
                                             />
                                         </div>
                                         <div>
@@ -873,14 +873,14 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Ukuran Nama</Label>
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Ukuran Nama</Label>
                                     <FontSizeInput
                                         value={config.student_name_font_size}
                                         onChange={(v: number) => setConfig({ ...config, student_name_font_size: v })}
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Ukuran Detail</Label>
+                                    <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 block">Ukuran Detail</Label>
                                     <FontSizeInput
                                         value={config.student_details_font_size}
                                         onChange={(v: number) => setConfig({ ...config, student_details_font_size: v })}
@@ -888,11 +888,11 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                 </div>
                             </div>
 
-                            <div className="pt-2">
+                            <div className="pt-1">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="w-full text-[11px] font-bold h-10 rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    className="w-full text-[10px] font-bold uppercase tracking-wider h-8 rounded-lg border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800"
                                     onClick={() => {
                                         setConfig(prev => ({
                                             ...prev,
@@ -982,30 +982,30 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Judul Sisi Belakang</Label>
-                                        <Input
-                                            value={config.back_header_text || ''}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_header_text: e.target.value })}
-                                            placeholder="TATA TERTIB KARTU..."
-                                            className="h-10 text-xs rounded-xl dark:bg-slate-950 dark:border-slate-800"
-                                        />
-                                    </div>
+                                     <div className="space-y-1">
+                                         <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Judul Sisi Belakang</Label>
+                                         <Input
+                                             value={config.back_header_text || ''}
+                                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, back_header_text: e.target.value })}
+                                             placeholder="TATA TERTIB KARTU..."
+                                             className="h-8 text-[11px] rounded-lg dark:bg-slate-950 dark:border-slate-800"
+                                         />
+                                     </div>
 
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">Tata Tertib (Baris Baru = Poin Baru)</Label>
-                                        <Textarea
-                                            value={config.back_rules || ''}
-                                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, back_rules: e.target.value })}
-                                            placeholder="Tulis aturan di sini..."
-                                            rows={5}
-                                            className="text-xs rounded-xl min-h-[100px] dark:bg-slate-950 dark:border-slate-800"
-                                        />
-                                    </div>
+                                     <div className="space-y-1">
+                                         <Label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Tata Tertib (Baris Baru = Poin Baru)</Label>
+                                         <Textarea
+                                             value={config.back_rules || ''}
+                                             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setConfig({ ...config, back_rules: e.target.value })}
+                                             placeholder="Tulis aturan di sini..."
+                                             rows={5}
+                                             className="text-xs rounded-lg min-h-[100px] dark:bg-slate-950 dark:border-slate-800"
+                                         />
+                                     </div>
 
                                     <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                                         <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">Tampilkan Tanda Tangan & Stempel</Label>
+                                            <Label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">Tampilkan Tanda Tangan & Stempel</Label>
                                             <Switch
                                                 checked={!!config.back_show_signature}
                                                 onCheckedChange={(c: boolean) => setConfig({ ...config, back_show_signature: c })}
@@ -1241,8 +1241,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                         {/* Three-Column Split Workspace */}
                         <div className="flex-1 flex overflow-hidden">
-                            {/* Column 1: Front Configuration (320px fixed width) */}
-                            <div className="w-[320px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
+                            {/* Column 1: Front Configuration (360px fixed width) */}
+                            <div className="w-[360px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
                                 <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
                                     Desain Sisi Depan
                                 </div>
@@ -1279,8 +1279,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                                 <div className={`transform ${
                                     config.template === 'vertical' 
-                                        ? 'scale-[0.55] lg:scale-[0.6] xl:scale-[0.65]' 
-                                        : 'scale-[0.72] lg:scale-[0.78] xl:scale-[0.82]'
+                                        ? 'scale-[0.48] lg:scale-[0.52] xl:scale-[0.55]' 
+                                        : 'scale-[0.62] lg:scale-[0.68] xl:scale-[0.72]'
                                 } transition-all duration-200 flex items-center justify-center origin-center`}>
                                     {previewSide === 'front' ? (
                                         <PreviewCard
@@ -1304,8 +1304,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                 </div>
                             </div>
 
-                            {/* Column 3: Back Configuration (340px fixed width) */}
-                            <div className="w-[340px] flex-shrink-0 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
+                            {/* Column 3: Back Configuration (360px fixed width) */}
+                            <div className="w-[360px] flex-shrink-0 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
                                 <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
                                     Desain Sisi Belakang
                                 </div>
