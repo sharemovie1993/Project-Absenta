@@ -471,6 +471,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'core.users.view.roles',
     'core.users.permissions.view',
     'core.users.effective.capabilities.view',
+    'core.users.create',
+    'core.users.update',
+    'core.users.delete',
+    'core.users.reset.password',
+    'core.users.update.email',
   ],
   [STRUKTUR_CODES.TU_PERSURATAN]: [
     'organization.scope.tenant_wide',
@@ -537,6 +542,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'core.users.view.roles',
     'core.users.permissions.view',
     'core.users.effective.capabilities.view',
+    'core.users.create',
+    'core.users.update',
+    'core.users.delete',
+    'core.users.reset.password',
+    'core.users.update.email',
   ],
   [STRUKTUR_CODES.TU_SARPRAS]: [
     'organization.scope.tenant_wide',
