@@ -174,7 +174,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
 
   return (
     <div className={cn(
-      "space-y-4 max-w-full overflow-x-hidden relative transition-all duration-300",
+      "space-y-4 max-w-full relative transition-all duration-300",
       isTvMode ? "p-6 min-h-screen" : "px-4 pt-2 pb-6"
     )}>
 
