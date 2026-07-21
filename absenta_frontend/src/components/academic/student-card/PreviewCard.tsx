@@ -102,11 +102,19 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
     const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
     const jurusanNama = (rawStudent.Kelas as any)?.Jurusan?.nama || (rawStudent as any)?.Jurusan?.nama || fallbackJurusan;
 
+    const getDynamicTitleFontSize = (title: string, basePt: number) => {
+        const len = title.length;
+        if (len <= 14) return basePt;
+        if (len <= 18) return basePt * 0.82;
+        if (len <= 23) return basePt * 0.68;
+        return basePt * 0.55;
+    };
+
     const isGuruCard = Boolean((rawStudent as any)?.nama_guru || (rawStudent as any)?.nip || (rawStudent as any)?.jenis_ptk);
 
-    const resolvedCardTitle = (config.card_title && config.card_title !== 'KARTU PELAJAR' && config.card_title !== 'KARTU IDENTITAS PEGAWAI')
+    const resolvedCardTitle = (config.card_title && config.card_title !== 'KARTU PELAJAR' && config.card_title !== 'KARTU IDENTITAS PEGAWAI' && config.card_title !== 'KARTU PEGAWAI')
         ? config.card_title
-        : (isGuruCard ? 'KARTU IDENTITAS PEGAWAI' : 'KARTU PELAJAR');
+        : (isGuruCard ? 'KARTU PEGAWAI' : 'KARTU PELAJAR');
 
     const displayStudent = {
         ...rawStudent,
@@ -228,7 +236,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                   <h1 
                     className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
                     style={{ 
-                      fontSize: `${(config.card_title_font_size || 14) * 0.45 * EDITOR_SCALE}pt`,
+                      fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, (config.card_title_font_size || 14) * 0.45) * EDITOR_SCALE}pt`,
                       color: config.header_style === 'minimal' ? config.primary_color : undefined
                     }}
                   >
@@ -264,7 +272,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                           ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 16 : 6)}px` 
               }}
             >
-               <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${config.card_title_font_size * EDITOR_SCALE}pt` }}>
+               <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14) * EDITOR_SCALE}pt` }}>
                   {resolvedCardTitle}
                </h1>
             </div>

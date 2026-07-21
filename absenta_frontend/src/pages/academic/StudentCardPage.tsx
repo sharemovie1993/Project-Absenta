@@ -609,6 +609,10 @@ const StudentCardPage = () => {
                                         setCardTargetMode(m);
                                         setSelectedStudents([]);
                                         setPreviewStudentId('');
+                                        setConfig(prev => ({
+                                            ...prev,
+                                            card_title: m === 'GURU' ? 'KARTU PEGAWAI' : 'KARTU PELAJAR'
+                                        }));
                                     }}
                                     selectedKelas={selectedKelas}
                                     setSelectedKelas={setSelectedKelas}
