@@ -16,6 +16,8 @@ import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { DEFAULT_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
 import { PrintOverlay } from '@/pages/academic/student-card/components/PrintOverlay';
+import { useAuthStore } from '../../../store/authStore';
+import { getTenantById } from '../../../api/tenants.api';
 import { SiswaTimelineAndExitTab } from './SiswaTimelineAndExitTab';
 import {
   getKelasForDropdown,
@@ -68,29 +70,83 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
     if (!siswaId || !siswaData) return;
     try {
       setPrintingCard(true);
+      const { user } = useAuthStore.getState();
+      
       const [sekolahRes, configRes] = await Promise.all([
-        sekolahApi.getProfile(),
-        studentCardConfigApi.getConfig()
+        sekolahApi.getProfile().catch(() => null),
+        studentCardConfigApi.getConfig().catch(() => null)
       ]);
+
+      let tenantInfo = null;
+      if (user?.tenant_id) {
+        try {
+          const tenantRes = await getTenantById(user.tenant_id);
+          tenantInfo = tenantRes?.data || tenantRes || null;
+        } catch (err) {
+          console.error('Failed to fetch tenant info for print:', err);
+        }
+      }
       
       let parsedConfig = DEFAULT_CONFIG;
       if (configRes) {
-        parsedConfig = { ...DEFAULT_CONFIG, ...configRes };
+        let savedSiswaConfig = null;
         if (configRes.layout_presets) {
           try {
             const presets = JSON.parse(configRes.layout_presets);
             if (presets.siswa_active_config) {
-              parsedConfig = {
-                ...DEFAULT_CONFIG,
-                ...presets.siswa_active_config,
-              };
+              savedSiswaConfig = presets.siswa_active_config;
             }
           } catch (e) {
             console.error('Failed to parse siswa active config:', e);
           }
         }
+
+        if (savedSiswaConfig) {
+          parsedConfig = {
+            ...DEFAULT_CONFIG,
+            ...configRes,
+            ...savedSiswaConfig,
+          };
+        } else {
+          parsedConfig = {
+            ...DEFAULT_CONFIG,
+            ...configRes,
+          };
+        }
       }
-      const configObj = parsedConfig;
+
+      // Merge tenantInfo & sekolahProfile metadata (consistent with StudentCardPage)
+      const sekolahData = sekolahRes?.data || sekolahRes || null;
+      const resolvedName: string    = (tenantInfo as any)?.name    || sekolahData?.nama    || '';
+      const resolvedAddress: string = (tenantInfo as any)?.address || sekolahData?.alamat  || '';
+      const resolvedLogo: string    = (tenantInfo as any)?.logo_url || sekolahData?.logo_url || '';
+      const resolvedHeader: string  = (tenantInfo as any)?.nama_dinas_atas   || '';
+      const resolvedSubheader: string = (tenantInfo as any)?.nama_dinas_bawah || '';
+
+      const resolvedKepsek = sekolahData?.kepala_sekolah || '';
+      const resolvedNipKepsek = sekolahData?.nip_kepala || '';
+
+      const finalKepsek = resolvedKepsek || 
+        (parsedConfig.back_principal_name === 'Nama Kepala Sekolah, M.Pd' ? '' : parsedConfig.back_principal_name) || 
+        'Nama Kepala Sekolah, M.Pd';
+      
+      const finalNip = resolvedNipKepsek || 
+        (parsedConfig.back_principal_nip === 'NIP. 198001012005011001' ? '' : parsedConfig.back_principal_nip) || 
+        'NIP. 198001012005011001';
+
+      const configObj = {
+        ...parsedConfig,
+        school_name: resolvedName || parsedConfig.school_name || '',
+        school_address: resolvedAddress || parsedConfig.school_address || '',
+        logo_url: resolvedLogo || parsedConfig.logo_url || '',
+        header_text: resolvedHeader || parsedConfig.header_text || '',
+        subheader_text: resolvedSubheader || parsedConfig.subheader_text || '',
+        back_signature_title: parsedConfig.back_signature_title || 'Kepala Sekolah',
+        back_principal_name: finalKepsek,
+        back_principal_nip: finalNip,
+        back_stamp_image_url: parsedConfig.back_stamp_image_url || resolvedLogo || undefined,
+      };
+
       const sekolahObj = sekolahRes || { nama: '', alamat: '' };
       
       const isRfid = configObj.print_paper_size === 'RFID';

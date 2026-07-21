@@ -18,6 +18,8 @@ import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { DEFAULT_GURU_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
 import { PrintOverlay } from '@/pages/academic/student-card/components/PrintOverlay';
+import { useAuthStore } from '../../../store/authStore';
+import { getTenantById } from '../../../api/tenants.api';
 import { guruSchema, type GuruFormValues } from '../../../schemas/academic/guru.schema';
 import type { Guru } from '../../../types/academic';
 import toast from 'react-hot-toast';
@@ -107,31 +109,78 @@ export const GuruForm = React.memo<GuruFormProps>(({
         studentCardConfigApi.getConfig().catch(() => null)
       ]);
       
+      const { user } = useAuthStore.getState();
+      let tenantInfo = null;
+      if (user?.tenant_id) {
+        try {
+          const tenantRes = await getTenantById(user.tenant_id);
+          tenantInfo = tenantRes?.data || tenantRes || null;
+        } catch (err) {
+          console.error('Failed to fetch tenant info for print:', err);
+        }
+      }
+      
        // Maintain distinct Executive Pegawai / Guru design preset for Guru cards!
       const baseConfig = configRes || DEFAULT_GURU_CONFIG;
       let parsedGuruConfig = DEFAULT_GURU_CONFIG;
-      if (configRes && configRes.layout_presets) {
-        try {
-          const presets = JSON.parse(configRes.layout_presets);
-          if (presets.guru_active_config) {
-            parsedGuruConfig = {
-              ...DEFAULT_GURU_CONFIG,
-              ...presets.guru_active_config,
-            };
+      if (configRes) {
+        let savedGuruConfig = null;
+        if (configRes.layout_presets) {
+          try {
+            const presets = JSON.parse(configRes.layout_presets);
+            if (presets.guru_active_config) {
+              savedGuruConfig = presets.guru_active_config;
+            }
+          } catch (e) {
+            console.error('Failed to parse guru active config:', e);
           }
-        } catch (e) {
-          console.error('Failed to parse guru active config:', e);
+        }
+
+        if (savedGuruConfig) {
+          parsedGuruConfig = {
+            ...DEFAULT_GURU_CONFIG,
+            ...configRes,
+            ...savedGuruConfig,
+          };
+        } else {
+          parsedGuruConfig = {
+            ...DEFAULT_GURU_CONFIG,
+            ...configRes,
+          };
         }
       }
+
+      // Merge tenantInfo & sekolahProfile metadata (consistent with StudentCardPage)
+      const sekolahData = sekolahRes?.data || sekolahRes || null;
+      const resolvedName: string    = (tenantInfo as any)?.name    || sekolahData?.nama    || '';
+      const resolvedAddress: string = (tenantInfo as any)?.address || sekolahData?.alamat  || '';
+      const resolvedLogo: string    = (tenantInfo as any)?.logo_url || sekolahData?.logo_url || '';
+      const resolvedHeader: string  = (tenantInfo as any)?.nama_dinas_atas   || '';
+      const resolvedSubheader: string = (tenantInfo as any)?.nama_dinas_bawah || '';
+
+      const resolvedKepsek = sekolahData?.kepala_sekolah || '';
+      const resolvedNipKepsek = sekolahData?.nip_kepala || '';
+
+      const finalKepsek = resolvedKepsek || 
+        (parsedGuruConfig.back_principal_name === 'Nama Kepala Sekolah, M.Pd' ? '' : parsedGuruConfig.back_principal_name) || 
+        'Nama Kepala Sekolah, M.Pd';
+      
+      const finalNip = resolvedNipKepsek || 
+        (parsedGuruConfig.back_principal_nip === 'NIP. 198001012005011001' ? '' : parsedGuruConfig.back_principal_nip) || 
+        'NIP. 198001012005011001';
 
       const guruConfigObj: StudentCardConfig = {
         ...parsedGuruConfig,
         card_title: 'KARTU PEGAWAI',
-        school_name: (sekolahRes as any)?.nama || baseConfig.school_name || '',
-        school_address: (sekolahRes as any)?.alamat || baseConfig.school_address || '',
-        header_text: baseConfig.header_text || 'PEMERINTAH KABUPATEN',
-        subheader_text: baseConfig.subheader_text || 'DINAS PENDIDIKAN',
-        logo_url: (sekolahRes as any)?.logo_url || baseConfig.logo_url || '',
+        school_name: resolvedName || parsedGuruConfig.school_name || '',
+        school_address: resolvedAddress || parsedGuruConfig.school_address || '',
+        logo_url: resolvedLogo || parsedGuruConfig.logo_url || '',
+        header_text: resolvedHeader || parsedGuruConfig.header_text || '',
+        subheader_text: resolvedSubheader || parsedGuruConfig.subheader_text || '',
+        back_signature_title: parsedGuruConfig.back_signature_title || 'Kepala Sekolah',
+        back_principal_name: finalKepsek,
+        back_principal_nip: finalNip,
+        back_stamp_image_url: parsedGuruConfig.back_stamp_image_url || resolvedLogo || undefined,
         print_paper_size: baseConfig.print_paper_size,
         print_orientation: baseConfig.print_orientation,
         print_margin_top: baseConfig.print_margin_top,
