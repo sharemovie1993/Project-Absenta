@@ -70,7 +70,7 @@ export default function ProfilePage() {
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: null,
       });
 
