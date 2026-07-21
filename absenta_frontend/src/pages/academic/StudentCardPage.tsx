@@ -10,6 +10,7 @@ import {
     Users
 } from 'lucide-react';
 import { getSiswaList } from '../../api/academic/siswa.api';
+import { getGuruList } from '../../api/academic/guru.api';
 import { getKelasList } from '../../api/academic/kelas.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { getTenantById } from '../../api/tenants.api';
@@ -59,6 +60,7 @@ const StudentCardPage = () => {
 
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState(isSiswa ? 'print' : ((isGuru && !canView) ? 'data' : 'design'));
+    const [cardTargetMode, setCardTargetMode] = useState<'SISWA' | 'GURU'>('SISWA');
     const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
     const [selectedKelas, setSelectedKelas] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -155,13 +157,26 @@ const StudentCardPage = () => {
         )
     });
 
+    const { data: rawGuruData, isLoading: isLoadingGuru } = useQuery({
+        queryKey: ['guru-list', debouncedSearch],
+        queryFn: () => getGuruList(1, 100, debouncedSearch),
+        enabled: cardTargetMode === 'GURU'
+    });
+
     const siswaData = useMemo(() => {
+        if (cardTargetMode === 'GURU') {
+            if (!rawGuruData) return undefined;
+            return {
+                ...rawGuruData,
+                data: rawGuruData.data || []
+            };
+        }
         if (!rawSiswaData) return undefined;
         return {
             ...rawSiswaData,
             data: rawSiswaData.data?.filter((s) => s.status === 'AKTIF' && s.kelas_id) || []
         };
-    }, [rawSiswaData]);
+    }, [cardTargetMode, rawGuruData, rawSiswaData]);
 
     const previewStudent = useMemo(() =>
         siswaData?.data?.find((s) => s.id === previewStudentId),
@@ -589,6 +604,12 @@ const StudentCardPage = () => {
                             <TabsContent value="data" className="p-6 focus-visible:ring-0">
                                 <DataTab 
                                     isGuru={isGuru}
+                                    cardTargetMode={cardTargetMode}
+                                    setCardTargetMode={(m) => {
+                                        setCardTargetMode(m);
+                                        setSelectedStudents([]);
+                                        setPreviewStudentId('');
+                                    }}
                                     selectedKelas={selectedKelas}
                                     setSelectedKelas={setSelectedKelas}
                                     kelasOptions={kelasOptions}
@@ -596,7 +617,7 @@ const StudentCardPage = () => {
                                     setSearchQuery={setSearchQuery}
                                     selectedStudents={selectedStudents}
                                     siswaData={siswaData}
-                                    isLoadingSiswa={isLoadingSiswa}
+                                    isLoadingSiswa={cardTargetMode === 'GURU' ? isLoadingGuru : isLoadingSiswa}
                                     previewStudentId={previewStudentId}
                                     setPreviewStudentId={setPreviewStudentId}
                                     toggleStudent={toggleStudent}

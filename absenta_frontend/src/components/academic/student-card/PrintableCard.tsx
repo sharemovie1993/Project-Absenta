@@ -103,9 +103,15 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const fallbackJurusan = kelasStripped !== '-' ? kelasStripped.split(' ')[0] : '';
     const jurusanNama = (student.Kelas as any)?.Jurusan?.nama || (student as any)?.Jurusan?.nama || fallbackJurusan;
 
+    const isGuruCard = Boolean((student as any)?.nama_guru || (student as any)?.nip || (student as any)?.jenis_ptk);
+
     const displayStudent = {
         ...student,
-        nama: student.nama_siswa || student.nama,
+        isGuruCard,
+        nama: (student as any)?.nama_guru || student.nama_siswa || student.nama || 'Ahmad Fauzi, S.Pd',
+        nip: (student as any)?.nip || student.nis,
+        jenisPtk: (student as any)?.jenis_ptk === 'PENDIDIK' ? 'Guru' : ((student as any)?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Staf TU' : ((student as any)?.jenis_ptk || student.nisn || '-')),
+        statusPegawai: (student as any)?.status_kepegawaian || kelasStripped,
         kelasNama,
         kelasStripped,
         jurusanNama,
@@ -114,17 +120,18 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const [qrUrl, setQrUrl] = useState('');
     
     useEffect(() => {
-        const qrValue = student.nisn;
-        // Validasi format NISN Nasional resmi: Harus string angka sepanjang tepat 10 digit
-        const isValidNisn = qrValue && /^\d{10}$/.test(qrValue);
+        const qrValue = displayStudent.isGuruCard 
+          ? (displayStudent.nip || displayStudent.id) 
+          : (displayStudent.nisn || displayStudent.id);
         
-        if (isValidNisn) {
+        if (qrValue) {
             QRCode.toDataURL(qrValue, { margin: 1, width: 100 })
-                .then(setQrUrl);
+                .then(setQrUrl)
+                .catch(() => setQrUrl(''));
         } else {
             setQrUrl('');
         }
-    }, [student.nisn]);
+    }, [displayStudent]);
 
     const getLuminance = (hex: string) => {
         if (!hex) return 255;
@@ -272,10 +279,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     gap: '2px'
                 }}
             >
-                {/* NAMA SISWA */}
+                {/* NAMA SISWA / GURU */}
                 <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size)}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
                     <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
-                        Nama Siswa
+                        {displayStudent.isGuruCard ? 'Nama Pegawai / Guru' : 'Nama Siswa'}
                     </div>
                     <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
                         {displayStudent.nama}
@@ -285,35 +292,48 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 {/* Divider */}
                 <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-                {/* NIS / NISN */}
+                {/* FIELD ROW 1 */}
                 <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
                     <div>
-                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>NIS</div>
-                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nis || '-'}</div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
+                          {displayStudent.isGuruCard ? 'NIP / NUPTK' : 'NIS'}
+                        </div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nip || (displayStudent.isGuruCard ? '-' : displayStudent.nis || '-')}</div>
                     </div>
                     <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
                     <div>
-                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>NISN</div>
-                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nisn || '-'}</div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
+                          {displayStudent.isGuruCard ? 'Fungsi / PTK' : 'NISN'}
+                        </div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.isGuruCard ? displayStudent.jenisPtk : (displayStudent.nisn || '-')}</div>
                     </div>
                 </div>
 
                 {/* Divider */}
                 <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
 
-                {/* JURUSAN / KELAS */}
+                {/* FIELD ROW 2 */}
                 <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
-                    {displayStudent.jurusanNama && (
+                    {displayStudent.isGuruCard ? (
+                      <div>
+                          <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Status</div>
+                          <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.statusPegawai || 'Aktif'}</div>
+                      </div>
+                    ) : (
+                      <>
+                        {displayStudent.jurusanNama && (
+                            <div>
+                                <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
+                                <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
+                            </div>
+                        )}
+                        {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
                         <div>
-                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
-                            <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
+                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
+                            <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
                         </div>
+                      </>
                     )}
-                    {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
-                    <div>
-                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
-                        <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
-                    </div>
                 </div>
             </div>
 

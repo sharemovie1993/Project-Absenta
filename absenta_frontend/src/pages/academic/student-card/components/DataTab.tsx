@@ -9,12 +9,17 @@ import {
 import { 
     Search, 
     Users, 
-    Loader2 
+    Loader2,
+    GraduationCap,
+    User,
+    CreditCard
 } from 'lucide-react';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 interface DataTabProps {
     isGuru: boolean;
+    cardTargetMode: 'SISWA' | 'GURU';
+    setCardTargetMode: (val: 'SISWA' | 'GURU') => void;
     selectedKelas: string;
     setSelectedKelas: (val: string) => void;
     kelasOptions: any[];
@@ -31,6 +36,8 @@ interface DataTabProps {
 
 export const DataTab: React.FC<DataTabProps> = ({
     isGuru,
+    cardTargetMode,
+    setCardTargetMode,
     selectedKelas,
     setSelectedKelas,
     kelasOptions,
@@ -44,10 +51,54 @@ export const DataTab: React.FC<DataTabProps> = ({
     toggleStudent,
     selectAll
 }) => {
+    const isGuruMode = cardTargetMode === 'GURU';
+
     return (
-        <div className="animate-in fade-in duration-500">
-            {isGuru && (
-                <div className="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-xl border border-blue-100/50 dark:border-blue-800/50 flex items-center shadow-sm">
+        <div className="animate-in fade-in duration-500 space-y-4">
+            {/* Mode Switcher */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs">
+                        <CreditCard size={18} />
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                            Kategori Kartu Cetak Identitas
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-bold">
+                            Pilih apakah ingin mencetak Kartu Pelajar Siswa atau Kartu Identitas Pegawai/Guru
+                        </p>
+                    </div>
+                </div>
+
+                <div className="inline-flex p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl">
+                    <button
+                        type="button"
+                        onClick={() => setCardTargetMode('SISWA')}
+                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                            !isGuruMode
+                                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <GraduationCap size={14} /> Siswa
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setCardTargetMode('GURU')}
+                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                            isGuruMode
+                                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <User size={14} /> Guru & Staf
+                    </button>
+                </div>
+            </div>
+
+            {isGuru && !isGuruMode && (
+                <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-xl border border-blue-100/50 dark:border-blue-800/50 flex items-center shadow-sm">
                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mr-4">
                         <Users className="w-5 h-5" />
                     </div>
@@ -57,9 +108,10 @@ export const DataTab: React.FC<DataTabProps> = ({
                     </div>
                 </div>
             )}
+
             <SectionCard
-                title="Daftar Siswa"
-                icon={Users}
+                title={isGuruMode ? "Daftar Guru & Staf Pegawai" : "Daftar Siswa"}
+                icon={isGuruMode ? User : Users}
                 fullWidth
                 className="shadow-sm border-slate-100 dark:border-slate-800"
                 noPadding
@@ -72,22 +124,26 @@ export const DataTab: React.FC<DataTabProps> = ({
                             </div>
                             <div>
                                 <h4 className="text-sm font-bold uppercase tracking-wider">Cari & Filter</h4>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Database Siswa Aktif</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">
+                                    Database {isGuruMode ? 'Guru & Staf Pegawai' : 'Siswa Aktif'}
+                                </p>
                             </div>
                         </div>
                         <div className="flex gap-2 w-full md:w-auto">
-                            <SearchableSelect
-                                value={selectedKelas}
-                                onValueChange={setSelectedKelas}
-                                options={kelasOptions}
-                                placeholder="Pilih Kelas"
-                                searchPlaceholder="Cari Kelas..."
-                                triggerClassName="h-10 w-full md:w-[180px] rounded-xl font-bold text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                            />
+                            {!isGuruMode && (
+                                <SearchableSelect
+                                    value={selectedKelas}
+                                    onValueChange={setSelectedKelas}
+                                    options={kelasOptions}
+                                    placeholder="Pilih Kelas"
+                                    searchPlaceholder="Cari Kelas..."
+                                    triggerClassName="h-10 w-full md:w-[180px] rounded-xl font-bold text-xs bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                                />
+                            )}
                             <div className="relative w-full md:w-64">
                                 <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                                 <Input
-                                    placeholder="Cari siswa..."
+                                    placeholder={isGuruMode ? "Cari guru/NIP..." : "Cari siswa..."}
                                     value={searchQuery}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                                     className="h-10 pl-10 rounded-xl text-sm font-medium bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
@@ -96,13 +152,16 @@ export const DataTab: React.FC<DataTabProps> = ({
                         </div>
                     </div>
                 </div>
+
                 <div>
                     <div className="px-6 py-4 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
                         <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg px-2.5 py-1 text-[11px] font-black">
                                 {selectedStudents.length}
                             </Badge>
-                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">SISWA TERPILIH</span>
+                            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                                {isGuruMode ? 'PEGAWAI TERPILIH' : 'SISWA TERPILIH'}
+                            </span>
                         </div>
                         <Button
                             variant="toolbarOutline"
@@ -124,9 +183,9 @@ export const DataTab: React.FC<DataTabProps> = ({
                                         onCheckedChange={selectAll}
                                     />
                                 </div>
-                                <div className="col-span-3">NIS / NISN</div>
-                                <div className="col-span-5">NAMA LENGKAP SISWA</div>
-                                <div className="col-span-3">ROMBEL / KELAS</div>
+                                <div className="col-span-3">{isGuruMode ? 'NIP / NUPTK' : 'NIS / NISN'}</div>
+                                <div className="col-span-5">{isGuruMode ? 'NAMA LENGKAP GURU & STAF' : 'NAMA LENGKAP SISWA'}</div>
+                                <div className="col-span-3">{isGuruMode ? 'FUNGSI PTK / STATUS' : 'ROMBEL / KELAS'}</div>
                             </div>
 
                             {/* Table Body */}
@@ -139,7 +198,9 @@ export const DataTab: React.FC<DataTabProps> = ({
                                 ) : siswaData?.data?.length === 0 ? (
                                     <div className="p-12 text-center">
                                         <Search className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-                                        <p className="text-sm font-bold text-slate-400">Tidak ada siswa ditemukan</p>
+                                        <p className="text-sm font-bold text-slate-400">
+                                            Tidak ada {isGuruMode ? 'guru' : 'siswa'} ditemukan
+                                        </p>
                                     </div>
                                 ) : siswaData?.data?.map((s: any) => (
                                     <div
@@ -157,18 +218,22 @@ export const DataTab: React.FC<DataTabProps> = ({
                                         </div>
                                         <div className="col-span-3">
                                             <div className="flex flex-col">
-                                                <span className="font-black text-slate-900 dark:text-slate-100 tracking-tight">{s.nis}</span>
-                                                <span className="text-[10px] text-slate-400 font-bold">{s.nisn}</span>
+                                                <span className="font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                                                    {isGuruMode ? (s.nip || 'Tanpa NIP') : s.nis}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-bold">
+                                                    {isGuruMode ? (s.User?.email || '-') : s.nisn}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="col-span-5">
                                             <span className={`font-bold transition-colors ${s.id === previewStudentId ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                {s.nama_siswa}
+                                                {isGuruMode ? s.nama_guru : s.nama_siswa}
                                             </span>
                                         </div>
                                         <div className="col-span-3">
                                             <Badge variant="outline" className="rounded-lg border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                                                {s.kelas?.nama_kelas}
+                                                {isGuruMode ? (s.jenis_ptk === 'PENDIDIK' ? 'Guru' : 'Staf TU') : (s.kelas?.nama_kelas || s.Kelas?.nama_kelas || '-')}
                                             </Badge>
                                         </div>
                                     </div>
