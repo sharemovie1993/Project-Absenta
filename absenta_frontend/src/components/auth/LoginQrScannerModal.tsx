@@ -1,11 +1,50 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
-import { X, SwitchCamera, Camera, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, SwitchCamera, Camera, AlertCircle, RefreshCw, Upload, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 
 interface LoginQrScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
   onScanSuccess: (code: string) => void;
+}
+
+/**
+ * Smart extractor to safely extract NISN / NIP / Email from raw QR text or JSON payload
+ */
+function extractIdentityFromQrText(rawText: string): string {
+  const trimmed = rawText.trim();
+  if (!trimmed) return '';
+
+  // Try parsing as JSON if QR contains encoded object
+  try {
+    const obj = JSON.parse(trimmed);
+    if (obj && typeof obj === 'object') {
+      const candidate = obj.nisn || obj.nip || obj.nis || obj.email || obj.username || obj.id || obj.code;
+      if (candidate && typeof candidate === 'string') {
+        return candidate.trim();
+      }
+      if (candidate && typeof candidate === 'number') {
+        return String(candidate);
+      }
+    }
+  } catch {
+    // Plain text payload
+  }
+
+  // Handle URL format (e.g., https://absenta.id/student/12345678)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const url = new URL(trimmed);
+      const segments = url.pathname.split('/').filter(Boolean);
+      if (segments.length > 0) {
+        return segments[segments.length - 1];
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }
+
+  return trimmed;
 }
 
 export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
@@ -14,12 +53,31 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
   onScanSuccess,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [statusText, setStatusText] = useState<string>('Menginisialisasi kamera...');
   const [hasError, setHasError] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [isFileLoading, setIsFileLoading] = useState<boolean>(false);
+
+  // Play audio beep feedback
+  const playBeep = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = 880; // A5 pitch
+      gain.gain.value = 0.12;
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch {
+      // Audio Context fallback ignored
+    }
+  };
 
   // Stop active camera controls
   const stopCamera = useCallback(() => {
@@ -29,6 +87,17 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
     }
     setIsScanning(false);
   }, []);
+
+  // Handle successful code extraction
+  const handleDecodedCode = useCallback((rawText: string) => {
+    const extractedCode = extractIdentityFromQrText(rawText);
+    if (extractedCode) {
+      playBeep();
+      stopCamera();
+      onScanSuccess(extractedCode);
+      onClose();
+    }
+  }, [stopCamera, onScanSuccess, onClose]);
 
   // Start scanning on selected device
   const startScanner = useCallback(
@@ -61,25 +130,9 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
             if (result) {
               const scannedText = result.getText().trim();
               if (scannedText) {
-                // Play audio beep feedback if possible
-                try {
-                  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                  const osc = audioCtx.createOscillator();
-                  const gain = audioCtx.createGain();
-                  osc.connect(gain);
-                  gain.connect(audioCtx.destination);
-                  osc.frequency.value = 880; // A5 pitch
-                  gain.gain.value = 0.1;
-                  osc.start();
-                  osc.stop(audioCtx.currentTime + 0.15);
-                } catch {
-                  // Audio Context fallback ignored
-                }
-
                 controls.stop();
                 controlsRef.current = null;
-                onScanSuccess(scannedText);
-                onClose();
+                handleDecodedCode(scannedText);
               }
             }
           }
@@ -92,12 +145,12 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
         setStatusText(
           err?.name === 'NotAllowedError'
             ? 'Izin kamera ditolak. Silakan izinkan akses kamera di browser Anda.'
-            : 'Gagal membuka kamera. Pastikan kamera terhubung dan tidak digunakan aplikasi lain.'
+            : 'Gagal membuka kamera. Anda juga dapat mengunggah foto kartu dari galeri.'
         );
         setIsScanning(false);
       }
     },
-    [devices, stopCamera, onScanSuccess, onClose]
+    [devices, stopCamera, handleDecodedCode]
   );
 
   useEffect(() => {
@@ -120,6 +173,36 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
     setSelectedDeviceId(nextDeviceId);
   };
 
+  // Scan QR from Image File Upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsFileLoading(true);
+    setStatusText('Membaca QR Code dari file foto...');
+
+    try {
+      const imageUrl = URL.createObjectURL(file);
+      const codeReader = new BrowserMultiFormatReader();
+      const result = await codeReader.decodeFromImageUrl(imageUrl);
+      
+      URL.revokeObjectURL(imageUrl);
+
+      if (result) {
+        handleDecodedCode(result.getText().trim());
+      } else {
+        alert('Gagal mendeteksi QR Code atau Barcode pada foto ini. Pastikan foto terlihat jelas.');
+      }
+    } catch (err) {
+      console.error('File QR Decode Error:', err);
+      alert('Gagal membaca QR Code dari foto ini. Pastikan foto kartu terfokus dan tidak kabur.');
+    } finally {
+      setIsFileLoading(false);
+      setStatusText('Arahkan QR Code atau Barcode ke dalam kotak...');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -136,7 +219,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
                 Scan Kartu NISN / NIP
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Pindai QR Code atau Barcode pada Kartu Pelajar/Pegawai
+                Pindai QR / Barcode atau unggah foto kartu
               </p>
             </div>
           </div>
@@ -149,7 +232,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
         </div>
 
         {/* Video Scanner Area */}
-        <div className="relative aspect-square max-h-[380px] bg-black flex items-center justify-center overflow-hidden">
+        <div className="relative aspect-square max-h-[360px] bg-black flex items-center justify-center overflow-hidden">
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
@@ -174,28 +257,65 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
             </div>
           )}
 
+          {/* Loading File Overlay */}
+          {isFileLoading && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center text-white gap-3 z-20">
+              <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+              <p className="text-xs font-bold text-slate-200">Membaca QR dari gambar foto...</p>
+            </div>
+          )}
+
           {/* Error Message Display */}
-          {hasError && (
+          {hasError && !isFileLoading && (
             <div className="p-6 text-center text-white flex flex-col items-center gap-3">
               <AlertCircle className="w-12 h-12 text-red-400" />
               <p className="text-sm font-medium text-slate-200">{statusText}</p>
-              <button
-                onClick={() => startScanner(selectedDeviceId)}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-lg transition-all"
-              >
-                <RefreshCw className="w-4 h-4" /> Coba Lagi
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => startScanner(selectedDeviceId)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-lg transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" /> Coba Lagi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold shadow-lg transition-all"
+                >
+                  <Upload className="w-4 h-4" /> Upload Foto Kartu
+                </button>
+              </div>
             </div>
           )}
         </div>
 
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
         {/* Footer / Controls */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[280px]">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[220px]">
             {!hasError && statusText}
           </p>
 
           <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-xl text-xs font-bold transition-colors"
+              title="Unggah foto kartu dari galeri"
+            >
+              <ImageIcon className="w-4 h-4" />
+              Upload Foto
+            </button>
+
             {devices.length > 1 && (
               <button
                 type="button"
