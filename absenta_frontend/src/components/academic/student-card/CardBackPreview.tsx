@@ -34,8 +34,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
         return { backgroundColor: bgClr };
     };
 
-    // Since EDITOR_SCALE was 2, we multiply the base pt font sizes by 2 to match legacy scale
-    const FONT_SCALE = 2;
+    // Since the card container uses physical mm units, font sizes in pt scale correctly without multipliers
+    const FONT_SCALE = 1;
 
     return (
         <div

@@ -44,7 +44,10 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                 position: 'relative',
                 overflow: 'hidden',
                 boxSizing: 'border-box',
-                fontFamily: "'Outfit', 'Inter', sans-serif"
+                fontFamily: "'Outfit', 'Inter', sans-serif",
+                // Force background print
+                printColorAdjust: 'exact',
+                WebkitPrintColorAdjust: 'exact',
             }}
             className="rounded-2xl select-none print:shadow-none"
         >
@@ -75,6 +78,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                     {config.logo_url ? (
                         <img 
                             src={config.logo_url} 
+                            crossOrigin="anonymous"
                             alt="Logo" 
                             style={{ 
                                 width: '7mm', 
@@ -170,6 +174,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                         {config.back_stamp_image_url && (
                             <img 
                                 src={config.back_stamp_image_url} 
+                                crossOrigin="anonymous"
                                 alt="Stempel"
                                 style={{
                                     position: 'absolute',
@@ -189,6 +194,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                         {config.back_signature_image_url && (
                             <img 
                                 src={config.back_signature_image_url} 
+                                crossOrigin="anonymous"
                                 alt="Tanda Tangan"
                                 style={{
                                     position: 'absolute',

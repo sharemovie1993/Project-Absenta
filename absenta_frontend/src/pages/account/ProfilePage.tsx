@@ -23,7 +23,7 @@ import { sekolahApi } from '../../api/academic/sekolah.api';
 import { getTenantById } from '../../api/tenants.api';
 import { PrintableCard } from '../../components/academic/student-card/PrintableCard';
 import { CardBackPreview } from '../../components/academic/student-card/CardBackPreview';
-import { DEFAULT_CONFIG } from '../../components/academic/student-card/constants';
+import { DEFAULT_CONFIG, DEFAULT_GURU_CONFIG } from '../../components/academic/student-card/constants';
 import toast from 'react-hot-toast';
 
 const EditProfileModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.EditProfileModal })));
@@ -194,34 +194,37 @@ export default function ProfilePage() {
   }, [sekolahRes]);
 
   const resolvedConfig = useMemo(() => {
+    const defaultConf = isGuru ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG;
     if (!cardConfig) {
-      return DEFAULT_CONFIG;
+      return defaultConf;
     }
 
     let activeConfig: any = { ...cardConfig };
 
     // Parse layout presets if they exist (just like in StudentCardPage)
-    let savedSiswaConfig = null;
+    let savedPresetConfig = null;
     if (cardConfig.layout_presets) {
       try {
         const presets = JSON.parse(cardConfig.layout_presets);
-        if (presets.siswa_active_config) {
-          savedSiswaConfig = presets.siswa_active_config;
+        if (isGuru && presets.guru_active_config) {
+          savedPresetConfig = presets.guru_active_config;
+        } else if (isSiswa && presets.siswa_active_config) {
+          savedPresetConfig = presets.siswa_active_config;
         }
       } catch (e) {
         console.error('Error parsing layout presets in profile:', e);
       }
     }
 
-    if (savedSiswaConfig) {
+    if (savedPresetConfig) {
       activeConfig = {
-        ...DEFAULT_CONFIG,
+        ...defaultConf,
         ...cardConfig,
-        ...savedSiswaConfig,
+        ...savedPresetConfig,
       };
     } else {
       activeConfig = {
-        ...DEFAULT_CONFIG,
+        ...defaultConf,
         ...cardConfig,
       };
     }
