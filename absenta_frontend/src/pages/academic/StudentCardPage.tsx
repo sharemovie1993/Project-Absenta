@@ -218,10 +218,10 @@ const StudentCardPage = () => {
                             ...presets[activePresetKey],
                         };
                     } else {
-                        // Fallback if not stored yet
+                        // Fallback if not stored yet: defaults are overridden by saved DB values
                         activeConfig = {
-                            ...remoteConfig,
                             ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
+                            ...remoteConfig,
                         };
                     }
                 } catch (e) {
@@ -229,8 +229,8 @@ const StudentCardPage = () => {
                 }
             } else {
                 activeConfig = {
-                    ...remoteConfig,
                     ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
+                    ...remoteConfig,
                 };
             }
 
