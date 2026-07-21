@@ -1119,7 +1119,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Control Sidebar */}
+            {/* Control Sidebar (Independently Scrollable) */}
             <SectionCard
                 title="Konfigurasi Desain"
                 icon={Settings}
@@ -1127,7 +1127,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 className="lg:col-span-1 shadow-sm border-slate-100 dark:border-slate-800"
                 noPadding
             >
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-4 max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
                     {frontSettingsJsx}
 
                     <SettingsGroup title="Desain Sisi Belakang" defaultOpen={false}>
@@ -1142,10 +1142,10 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                     title="Live Editor Preview"
                     icon={CreditCard}
                     fullWidth
-                    className="shadow-sm border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[540px]"
+                    className="shadow-sm border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[500px]"
                     noPadding
                 >
-                    <div className="p-8 lg:p-12 bg-slate-200/50 dark:bg-slate-950/50 flex-1 flex flex-col items-center justify-center relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
+                    <div className="p-8 lg:p-12 bg-slate-200/50 dark:bg-slate-950/50 flex-1 flex flex-col items-center justify-center relative border-b border-slate-100 dark:border-slate-800 shadow-inner overflow-hidden">
                         {config.show_back_side && (
                             <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-8 w-56 shadow-sm border border-slate-200/30 z-30">
                                 <button
