@@ -265,7 +265,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 className="absolute w-full text-center pointer-events-none z-10"
                 style={{ 
                     top: `${resolvedHeaderHeight * MM_TO_PX + 
-                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 8 : 3)}px` 
+                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3)}px` 
                 }}
               >
                    <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14)}pt` }}>

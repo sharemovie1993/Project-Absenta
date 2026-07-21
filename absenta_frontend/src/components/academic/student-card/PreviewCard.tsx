@@ -269,7 +269,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               className="absolute w-full text-center pointer-events-none z-10"
               style={{ 
                   top: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE + 
-                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 16 : 6)}px` 
+                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 2 : -6)}px` 
               }}
             >
                <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14) * EDITOR_SCALE}pt` }}>
