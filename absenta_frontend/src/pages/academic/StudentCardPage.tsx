@@ -207,41 +207,73 @@ const StudentCardPage = () => {
 
     useEffect(() => {
         if (remoteConfig) {
-            let activeConfig = remoteConfig;
-            if (remoteConfig.layout_presets) {
-                try {
-                    const presets = JSON.parse(remoteConfig.layout_presets);
-                    const activePresetKey = cardTargetMode === 'GURU' ? 'guru_active_config' : 'siswa_active_config';
-                    if (presets[activePresetKey]) {
-                        activeConfig = {
-                            ...remoteConfig,
-                            ...presets[activePresetKey],
-                        };
-                    } else {
-                        // Fallback if not stored yet: defaults are overridden by saved DB values
-                        activeConfig = {
-                            ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
-                            ...remoteConfig,
-                        };
+            let activeConfig: any = { ...remoteConfig };
+
+            if (cardTargetMode === 'GURU') {
+                let savedGuruConfig = null;
+                if (remoteConfig.layout_presets) {
+                    try {
+                        const presets = JSON.parse(remoteConfig.layout_presets);
+                        if (presets.guru_active_config) {
+                            savedGuruConfig = presets.guru_active_config;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing layout presets:', e);
                     }
-                } catch (e) {
-                    console.error('Error parsing layout presets:', e);
+                }
+                
+                if (savedGuruConfig) {
+                    activeConfig = {
+                        ...remoteConfig,
+                        ...savedGuruConfig,
+                    };
+                } else {
+                    // Strictly fallback to DEFAULT_GURU_CONFIG for styling, only keep school metadata
+                    activeConfig = {
+                        ...DEFAULT_GURU_CONFIG,
+                        school_name: remoteConfig.school_name || DEFAULT_GURU_CONFIG.school_name || '',
+                        school_address: remoteConfig.school_address || DEFAULT_GURU_CONFIG.school_address || '',
+                        logo_url: remoteConfig.logo_url || DEFAULT_GURU_CONFIG.logo_url || '',
+                        header_text: remoteConfig.header_text || DEFAULT_GURU_CONFIG.header_text || '',
+                        subheader_text: remoteConfig.subheader_text || DEFAULT_GURU_CONFIG.subheader_text || '',
+                        layout_presets: remoteConfig.layout_presets,
+                    };
                 }
             } else {
-                activeConfig = {
-                    ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
-                    ...remoteConfig,
-                };
+                // SISWA Mode
+                let savedSiswaConfig = null;
+                if (remoteConfig.layout_presets) {
+                    try {
+                        const presets = JSON.parse(remoteConfig.layout_presets);
+                        if (presets.siswa_active_config) {
+                            savedSiswaConfig = presets.siswa_active_config;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing layout presets:', e);
+                    }
+                }
+
+                if (savedSiswaConfig) {
+                    activeConfig = {
+                        ...remoteConfig,
+                        ...savedSiswaConfig,
+                    };
+                } else {
+                    // Fallback to remoteConfig root columns (historical Siswa config) over DEFAULT_CONFIG
+                    activeConfig = {
+                        ...DEFAULT_CONFIG,
+                        ...remoteConfig,
+                    };
+                }
             }
 
-            setConfig(prev => ({
-                ...prev,
-                ...(activeConfig as any),
+            setConfig({
+                ...activeConfig,
                 // tenantInfo (kopsurat source) takes priority
-                school_name: resolvedName    || activeConfig.school_name    || prev.school_name    || '',
-                school_address: resolvedAddress || activeConfig.school_address || prev.school_address || '',
-                logo_url:    resolvedLogo    || activeConfig.logo_url       || prev.logo_url       || '',
-            }));
+                school_name: resolvedName    || activeConfig.school_name    || '',
+                school_address: resolvedAddress || activeConfig.school_address || '',
+                logo_url:    resolvedLogo    || activeConfig.logo_url       || '',
+            });
 
             setPrintConfig(prev => ({
                 ...prev,
