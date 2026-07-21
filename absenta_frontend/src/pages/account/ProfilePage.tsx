@@ -353,39 +353,94 @@ export default function ProfilePage() {
     setErrorMsg(msg);
   }, []);
 
+  const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get 2D canvas context'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error('Canvas to Blob conversion returned null'));
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   // Upload Foto Profil secara instan (mengisi slot FOTO)
   const handleUploadFotoDirect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
-    const maxBytes = 5 * 1024 * 1024; // 5MB limit
 
     if (!allowedMime.includes(file.type)) {
       toast.error('Format foto tidak didukung. Gunakan JPG, PNG, atau WEBP.');
       return;
     }
-    if (file.size > maxBytes) {
-      toast.error('Ukuran foto terlalu besar (maksimal 5MB).');
-      return;
-    }
 
     setUploadingFoto(true);
+    const toastId = toast.loading('Memproses dan mengompresi foto kamera...');
     try {
+      // Compress client-side to maximum 800x800 resolution at 85% quality (usually resulting in ~100KB)
+      const compressedBlob = await compressImage(file, 800, 800, 0.85);
+      const compressedFile = new File([compressedBlob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+
       const cleanFileName = file.name.replace(/\.[^.]+$/, '').substring(0, 30);
       const namePrefix = isSiswa ? (siswaProfile?.nama_siswa || user?.full_name) : (guruProfile?.nama_guru || user?.full_name);
       const autoTitle = `Foto Formal - ${cleanFileName} - ${namePrefix}`;
 
       if (isSiswa) {
-        await uploadSiswaDocument({ siswaId: entityId, file, judul: autoTitle, kategori: 'FOTO' });
+        await uploadSiswaDocument({ siswaId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
       } else {
-        await uploadGuruDocument({ guruId: entityId, file, judul: autoTitle, kategori: 'FOTO' });
+        await uploadGuruDocument({ guruId: entityId, file: compressedFile, judul: autoTitle, kategori: 'FOTO' });
       }
 
-      toast.success('Foto profil berhasil diperbarui');
+      toast.success('Foto profil berhasil diperbarui', { id: toastId });
       queryClient.invalidateQueries({ queryKey: [isSiswa ? 'siswa-docs' : 'guru-docs', entityId] });
     } catch (err: any) {
-      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui foto profil');
+      toast.error(err instanceof Error ? err.message : 'Gagal memperbarui foto profil', { id: toastId });
     } finally {
       setUploadingFoto(false);
     }
