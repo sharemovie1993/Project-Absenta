@@ -363,26 +363,40 @@ export const PrintTab: React.FC<PrintTabProps> = ({
                         }}
                     />
 
-                    {/* Cards Preview (First Page Only) */}
-                    {pages.length > 0 && pages[0].map((student: any, idx: number) => {
-                        const col = idx % printLayout.cols;
-                        const row = Math.floor(idx / printLayout.cols);
+                    {/* Cards Preview (Fallback to Sample Student if empty) */}
+                    {(() => {
+                        const sampleStudent = {
+                            id: 'sample-preview-1',
+                            nama: 'A. SYARIF HIDAYAT',
+                            nama_siswa: 'A. SYARIF HIDAYAT',
+                            nis: '12345678',
+                            nisn: '0012345678',
+                            kelas: { nama: 'X - RPL 1', nama_kelas: 'X - RPL 1' }
+                        };
+                        const listToRender = (pages.length > 0 && pages[0].length > 0) 
+                            ? pages[0] 
+                            : [sampleStudent];
 
-                        return (
-                            <div
-                                key={student.id}
-                                className="absolute"
-                                style={{
-                                    left: `${printLayout.effectiveMarginLeft + (col * (printLayout.cardW + printConfig.gapX))}mm`,
-                                    top: `${printLayout.effectiveMarginTop + (row * (printLayout.cardH + printConfig.gapY))}mm`,
-                                    width: `${printLayout.cardW}mm`,
-                                    height: `${printLayout.cardH}mm`,
-                                }}
-                            >
-                                <PrintableCard student={student} config={config} sekolah={sekolah} />
-                            </div>
-                        );
-                    })}
+                        return listToRender.map((student: any, idx: number) => {
+                            const col = idx % printLayout.cols;
+                            const row = Math.floor(idx / printLayout.cols);
+
+                            return (
+                                <div
+                                    key={student.id || idx}
+                                    className="absolute"
+                                    style={{
+                                        left: `${printLayout.effectiveMarginLeft + (col * (printLayout.cardW + printConfig.gapX))}mm`,
+                                        top: `${printLayout.effectiveMarginTop + (row * (printLayout.cardH + printConfig.gapY))}mm`,
+                                        width: `${printLayout.cardW}mm`,
+                                        height: `${printLayout.cardH}mm`,
+                                    }}
+                                >
+                                    <PrintableCard student={student} config={config} sekolah={sekolah} />
+                                </div>
+                            );
+                        });
+                    })()}
                 </div>
             </div>
         </div>
