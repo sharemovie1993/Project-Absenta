@@ -25,7 +25,15 @@ export async function sekolahRoutes(fastify: any) {
   });
 
   fastify.get('/me', {
-    preHandler: [requireCapability('core.sekolah.view.profile')],
+    preHandler: [
+      async (request: any, reply: any) => {
+        const role = request.user?.roleName || request.user?.role?.name;
+        if (role === 'SISWA' || role === 'GURU') {
+          return;
+        }
+        await requireCapability('core.sekolah.view.profile')(request, reply);
+      }
+    ],
     handler: sekolahController.getCurrent.bind(sekolahController),
   });
 

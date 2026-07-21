@@ -21,6 +21,8 @@ import {
 import { studentCardConfigApi } from '../../api/academic/student-card-config.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { PrintableCard } from '../../components/academic/student-card/PrintableCard';
+import { CardBackPreview } from '../../components/academic/student-card/CardBackPreview';
+import { DEFAULT_CONFIG } from '../../components/academic/student-card/constants';
 import toast from 'react-hot-toast';
 
 const EditProfileModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.EditProfileModal })));
@@ -32,33 +34,6 @@ const GuruDocsPanel = lazy(() => import('../../components/academic/guru/GuruDocs
 
 type GuruProfile = Guru;
 type SiswaProfile = Siswa;
-
-const DEFAULT_CARD_CONFIG = {
-  template: 'horizontal',
-  card_title: 'KARTU PELAJAR',
-  header_text: 'KARTU PELAJAR DIGITAL',
-  subheader_text: 'MEMBER CARD',
-  school_name: 'Absenta School',
-  school_address: 'Alamat Sekolah',
-  header_font_size: 7,
-  subheader_font_size: 6,
-  school_name_font_size: 9,
-  school_address_font_size: 6,
-  card_title_font_size: 11,
-  student_name_font_size: 10,
-  student_details_font_size: 8,
-  primary_color: '#3b82f6',
-  secondary_color: '#ffffff',
-  show_photo: true,
-  photo_shape: 'square',
-  show_qrcode: true,
-  photo_x: 20,
-  photo_y: 60,
-  photo_scale: 1,
-  qrcode_x: 230,
-  qrcode_y: 100,
-  qrcode_scale: 1,
-} as any;
 
 export default function ProfilePage() {
   const { user, isLoading: isAuthLoading } = useAuthStore();
@@ -76,6 +51,7 @@ export default function ProfilePage() {
   const [showChangePwd, setShowChangePwd] = useState(false);
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [activeProfileTab, setActiveProfileTab] = useState<'biodata' | 'jobdesk' | 'berkas'>('biodata');
+  const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
 
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -156,6 +132,17 @@ export default function ProfilePage() {
   const sekolahProfile = useMemo(() => {
     return sekolahRes?.data || sekolahRes || null;
   }, [sekolahRes]);
+
+  const resolvedConfig = useMemo(() => {
+    const base = cardConfig || DEFAULT_CONFIG;
+    return {
+      ...DEFAULT_CONFIG,
+      ...base,
+      back_principal_name: base.back_principal_name || sekolahProfile?.kepala_sekolah || base.back_principal_name,
+      back_principal_nip: base.back_principal_nip || sekolahProfile?.nip_kepala || base.back_principal_nip,
+      back_stamp_image_url: base.back_stamp_image_url || sekolahProfile?.logo_url || base.back_stamp_image_url,
+    };
+  }, [cardConfig, sekolahProfile]);
 
   const summaryName = user?.full_name || '';
   const summaryEmail = user?.email || '';
@@ -371,6 +358,24 @@ export default function ProfilePage() {
                     💳 Kartu Pelajar Digital Resmi
                   </span>
                   
+                  {/* Switcher Sisi Kartu */}
+                  <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl mb-4 text-[10px] font-black uppercase tracking-wider">
+                    <button
+                      type="button"
+                      onClick={() => setCardSide('front')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors ${cardSide === 'front' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    >
+                      Sisi Depan
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCardSide('back')}
+                      className={`px-3 py-1.5 rounded-lg transition-colors ${cardSide === 'back' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    >
+                      Sisi Belakang
+                    </button>
+                  </div>
+                  
                   {isLoadingCardConfig ? (
                     <div className="w-full aspect-[1.58/1] bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse flex items-center justify-center">
                       <Loader2 size={24} className="animate-spin text-slate-300" />
@@ -379,15 +384,19 @@ export default function ProfilePage() {
                     /* Pembungkus Mencegah Overflow & Mengskala Sesuai Resolusi */
                     <div className="w-full overflow-auto py-1 scrollbar-none flex justify-center items-center">
                       <div className="origin-center scale-[0.82] sm:scale-95 md:scale-100 transition-all duration-300 shrink-0">
-                        <PrintableCard 
-                          student={{
-                            ...siswaProfile,
-                            nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
-                            foto: fotoUrl || undefined
-                          } as any}
-                          config={cardConfig || DEFAULT_CARD_CONFIG}
-                          sekolah={sekolahProfile as any}
-                        />
+                        {cardSide === 'front' ? (
+                          <PrintableCard 
+                            student={{
+                              ...siswaProfile,
+                              nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
+                              foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
+                            } as any}
+                            config={resolvedConfig}
+                            sekolah={sekolahProfile as any}
+                          />
+                        ) : (
+                          <CardBackPreview config={resolvedConfig} />
+                        )}
                       </div>
                     </div>
                   )}
