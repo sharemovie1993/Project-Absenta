@@ -450,7 +450,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               if (footerStyle === 'hidden') return null;
               
               const footerBg = config.footer_bg_color || config.primary_color;
-              const heightPx = (config.footer_height || 4) * EDITOR_SCALE;
+              const heightPx = (config.footer_height || 4) * MM_TO_PX * EDITOR_SCALE;
               
               if (footerStyle === 'accent-line') {
                   return (
