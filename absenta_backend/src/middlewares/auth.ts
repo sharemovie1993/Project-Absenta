@@ -101,7 +101,7 @@ export async function authMiddleware(
   }
   
   // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
-  const tokenQuery = request.query?.token;
+  const tokenQuery = (request.query as any)?.token;
 
   if (!request.headers.authorization && tokenQuery) {
     request.headers.authorization = `Bearer ${tokenQuery}`;

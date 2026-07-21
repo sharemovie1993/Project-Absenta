@@ -25,6 +25,7 @@ import { PrintableCard } from '../../components/academic/student-card/PrintableC
 import { CardBackPreview } from '../../components/academic/student-card/CardBackPreview';
 import { DEFAULT_CONFIG, DEFAULT_GURU_CONFIG } from '../../components/academic/student-card/constants';
 import toast from 'react-hot-toast';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 const EditProfileModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.EditProfileModal })));
 const ChangePasswordModal = lazy(() => import('./components/ProfileEditModals').then(m => ({ default: m.ChangePasswordModal })));
@@ -160,12 +161,11 @@ export default function ProfilePage() {
     return docs.find(d => d.kategori === 'FOTO');
   }, [docs]);
 
-  // Bangun URL preview foto profil dengan token otentikasi
+  // Bangun URL preview foto profil dengan token otentikasi menggunakan helper terpusat
   const fotoUrl = useMemo(() => {
     if (!fotoDoc || !entityId) return null;
     const raw = getMemberDocPreviewUrl(isSiswa ? 'SISWA' : 'GURU', entityId, fotoDoc.id);
-    const tok = localStorage.getItem('access_token');
-    return raw && tok ? `${raw}?token=${encodeURIComponent(tok)}` : raw;
+    return resolveProfilePhotoUrl(raw);
   }, [fotoDoc, entityId, isSiswa]);
 
   // Muat konfigurasi kartu kustom Tenant dari Database (siswa / guru)
