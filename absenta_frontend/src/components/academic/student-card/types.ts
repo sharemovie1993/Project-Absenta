@@ -27,6 +27,7 @@ export interface StudentCardConfig {
   show_school_name?: boolean;
   show_school_address?: boolean;
   show_back_side?: boolean;
+  back_style?: 'default' | 'minimal' | 'full-header' | 'accent-border' | 'split-gradient';
   back_bg_color?: string;
   back_text_color?: string;
   back_header_text?: string;

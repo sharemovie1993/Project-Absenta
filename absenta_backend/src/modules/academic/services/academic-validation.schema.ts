@@ -94,6 +94,7 @@ export const upsertStudentCardConfigSchema = z.object({
   school_name: z.string().nullable().optional(),
   school_address: z.string().nullable().optional(),
   show_back_side: z.boolean().optional(),
+  back_style: z.string().optional(),
   back_bg_color: z.string().optional(),
   back_text_color: z.string().optional(),
   back_header_text: z.string().nullable().optional(),

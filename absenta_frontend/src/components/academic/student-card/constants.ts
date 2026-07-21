@@ -67,6 +67,7 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   show_school_name: true,
   show_school_address: true,
   show_back_side: false,
+  back_style: 'default',
   back_bg_color: '#ffffff',
   back_text_color: '#1e293b',
   back_header_text: 'TATA TERTIB KARTU PELAJAR',

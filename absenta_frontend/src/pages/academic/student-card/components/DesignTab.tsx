@@ -912,7 +912,30 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                             {config.show_back_side && (
                                 <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-2">
+                                        <Label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight mb-2 block">Varian Desain Sisi Belakang</Label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {([
+                                                { id: 'default', label: 'Header Strip' },
+                                                { id: 'minimal', label: 'Minimalis' },
+                                                { id: 'full-header', label: 'Full Header Bar' },
+                                                { id: 'accent-border', label: 'Bingkai Aksen' },
+                                                { id: 'split-gradient', label: 'Gradasi Halus' }
+                                            ] as const).map((styleOpt) => (
+                                                <Button
+                                                    key={styleOpt.id}
+                                                    type="button"
+                                                    variant={(config.back_style || 'default') === styleOpt.id ? 'primary' : 'outline'}
+                                                    onClick={() => setConfig({ ...config, back_style: styleOpt.id })}
+                                                    className="h-9 text-[10px] font-bold rounded-xl"
+                                                >
+                                                    {styleOpt.label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                                         <div>
                                             <Label className="text-[10px] uppercase font-bold text-slate-500 mb-1 block">Warna Latar</Label>
                                             <div className="flex gap-2 items-center">

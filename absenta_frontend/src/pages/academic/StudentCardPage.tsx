@@ -397,6 +397,7 @@ const StudentCardPage = () => {
             show_school_name: config.show_school_name,
             show_school_address: config.show_school_address,
             show_back_side: config.show_back_side,
+            back_style: config.back_style,
             back_bg_color: config.back_bg_color,
             back_text_color: config.back_text_color,
             back_header_text: config.back_header_text,

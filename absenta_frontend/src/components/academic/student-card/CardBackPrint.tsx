@@ -13,6 +13,7 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
     const bgClr = config.back_bg_color || '#ffffff';
     const textClr = config.back_text_color || '#1e293b';
     const accentClr = config.primary_color || '#2563eb';
+    const backStyle = config.back_style || 'default';
 
     // Parse rules
     const rules = (config.back_rules || '')
@@ -20,12 +21,22 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
         .map(r => r.trim())
         .filter(r => r.length > 0);
 
+    // Dynamic background style
+    const getBackgroundStyle = () => {
+        if (backStyle === 'split-gradient') {
+            return {
+                background: `linear-gradient(135deg, ${accentClr}1a 0%, ${bgClr} 100%)`
+            };
+        }
+        return { backgroundColor: bgClr };
+    };
+
     return (
         <div
             style={{
                 width: `${cardW}mm`,
                 height: `${cardH}mm`,
-                backgroundColor: bgClr,
+                ...getBackgroundStyle(),
                 color: textClr,
                 borderColor: config.show_border ? config.border_color || '#e2e8f0' : 'transparent',
                 borderWidth: config.show_border ? `${config.border_width || 1}px` : '0px',
@@ -37,33 +48,88 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
             }}
             className="rounded-2xl select-none print:shadow-none"
         >
-            {/* Header Accent Line */}
-            <div 
-                style={{ 
-                    height: '2mm', 
-                    backgroundColor: accentClr,
-                    width: '100%'
-                }} 
-            />
+            {/* VARIANT 1: Default Top Accent Line */}
+            {backStyle === 'default' && (
+                <div 
+                    style={{ 
+                        height: '2mm', 
+                        backgroundColor: accentClr,
+                        width: '100%'
+                    }} 
+                />
+            )}
 
-            {/* Content Area */}
+            {/* VARIANT 3: Full Header Bar */}
+            {backStyle === 'full-header' && (
+                <div 
+                    style={{ 
+                        backgroundColor: accentClr,
+                        color: '#ffffff',
+                        padding: '2mm 3mm',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2mm',
+                        borderBottom: '0.5mm solid rgba(255,255,255,0.2)'
+                    }}
+                >
+                    {config.logo_url ? (
+                        <img 
+                            src={config.logo_url} 
+                            alt="Logo" 
+                            style={{ 
+                                width: '7mm', 
+                                height: '7mm', 
+                                objectFit: 'contain'
+                            }} 
+                        />
+                    ) : (
+                        <div style={{ width: '7mm', height: '7mm', backgroundColor: 'rgba(255,255,255,0.2)' }} className="rounded flex items-center justify-center text-[8px] font-bold">🏫</div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '5.2pt', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {config.school_name || 'NAMA SEKOLAH'}
+                        </div>
+                        <div style={{ fontSize: '3.5pt', opacity: 0.85, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {config.school_address || 'Alamat Sekolah'}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Content Area Wrap */}
             <div 
-                className="flex flex-col h-full justify-between" 
+                className="flex flex-col h-full justify-between relative" 
                 style={{ 
                     padding: '3mm 4mm 4mm 4mm',
                     boxSizing: 'border-box',
-                    height: 'calc(100% - 2mm)'
+                    height: backStyle === 'default' 
+                        ? 'calc(100% - 2mm)' 
+                        : (backStyle === 'full-header' ? 'calc(100% - 11mm)' : '100%')
                 }}
             >
+                {/* VARIANT 4: Accent Border overlay */}
+                {backStyle === 'accent-border' && (
+                    <div 
+                        style={{
+                            position: 'absolute',
+                            inset: '1.5mm',
+                            border: `0.5mm solid ${accentClr}44`,
+                            borderRadius: '8px',
+                            pointerEvents: 'none',
+                            zIndex: 1
+                        }}
+                    />
+                )}
+
                 {/* Rules Section */}
-                <div className="flex-1">
+                <div className="flex-1 z-10">
                     <h4 
                         style={{ 
                             fontSize: isVertical ? '6.5pt' : '7.5pt',
-                            color: accentClr,
+                            color: backStyle === 'full-header' ? textClr : accentClr,
                             fontWeight: 800,
                             letterSpacing: '0.05em',
-                            textAlign: 'center',
+                            textAlign: backStyle === 'minimal' ? 'center' : 'left',
                             marginBottom: '2mm',
                             textTransform: 'uppercase'
                         }}
@@ -94,13 +160,13 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                 {/* Signature Block */}
                 {config.back_show_signature && (
                     <div 
-                        className="flex flex-col items-end relative"
+                        className="flex flex-col items-end relative text-right z-10"
                         style={{ 
                             marginTop: '2mm',
                             minHeight: '12mm'
                         }}
                     >
-                        {/* Stamp Image (Overlapped underneath signature) */}
+                        {/* Stamp Image */}
                         {config.back_stamp_image_url && (
                             <img 
                                 src={config.back_stamp_image_url} 
@@ -138,9 +204,9 @@ export const CardBackPrint: React.FC<CardBackPrintProps> = ({ config }) => {
                         )}
 
                         {/* Text Details */}
-                        <div style={{ fontSize: '5pt', zIndex: 20 }} className="text-right leading-tight">
+                        <div style={{ fontSize: '5pt', zIndex: 20 }} className="leading-tight">
                             <div>{config.back_signature_title || 'Kepala Sekolah'}</div>
-                            <div style={{ height: '6mm' }} /> {/* Spacer for signature image */}
+                            <div style={{ height: '6mm' }} />
                             <div className="font-bold underline">{config.back_principal_name || 'Nama Kepala Sekolah'}</div>
                             <div style={{ fontSize: '4pt' }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
                         </div>
