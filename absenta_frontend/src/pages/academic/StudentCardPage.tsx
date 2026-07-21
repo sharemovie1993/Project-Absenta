@@ -270,12 +270,26 @@ const StudentCardPage = () => {
                 }
             }
 
+            const resolvedKepsek = sekolahData?.kepala_sekolah || '';
+            const resolvedNipKepsek = sekolahData?.nip_kepala || '';
+
+            const finalKepsek = resolvedKepsek || 
+                (activeConfig.back_principal_name === 'Nama Kepala Sekolah, M.Pd' ? '' : activeConfig.back_principal_name) || 
+                'Nama Kepala Sekolah, M.Pd';
+            
+            const finalNip = resolvedNipKepsek || 
+                (activeConfig.back_principal_nip === 'NIP. 198001012005011001' ? '' : activeConfig.back_principal_nip) || 
+                'NIP. 198001012005011001';
+
             setConfig({
                 ...activeConfig,
                 // tenantInfo (kopsurat source) takes priority
                 school_name: resolvedName    || activeConfig.school_name    || '',
                 school_address: resolvedAddress || activeConfig.school_address || '',
                 logo_url:    resolvedLogo    || activeConfig.logo_url       || '',
+                back_signature_title: activeConfig.back_signature_title || 'Kepala Sekolah',
+                back_principal_name: finalKepsek,
+                back_principal_nip: finalNip,
             });
 
             setPrintConfig(prev => ({
