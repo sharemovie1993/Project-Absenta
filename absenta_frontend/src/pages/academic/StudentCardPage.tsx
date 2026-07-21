@@ -55,9 +55,10 @@ const StudentCardPage = () => {
     const isGuru = role === 'GURU' || role === 'WALIKELAS';
 
     const canView = user?.capabilities?.includes('academic.student.card.view.config') || isAdmin();
+    const canEdit = user?.capabilities?.includes('academic.student.card.update.config') || isAdmin();
 
     const queryClient = useQueryClient();
-    const [activeTab, setActiveTab] = useState(isSiswa ? 'print' : (isGuru ? 'data' : 'design'));
+    const [activeTab, setActiveTab] = useState(isSiswa ? 'print' : ((isGuru && !canView) ? 'data' : 'design'));
     const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
     const [selectedKelas, setSelectedKelas] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -97,8 +98,8 @@ const StudentCardPage = () => {
 
     useEffect(() => {
         if (isSiswa && activeTab !== 'print') setActiveTab('print');
-        if (isGuru && activeTab === 'design') setActiveTab('data');
-    }, [isSiswa, isGuru, activeTab]);
+        if (isGuru && !canView && activeTab === 'design') setActiveTab('data');
+    }, [isSiswa, isGuru, canView, activeTab]);
 
     useEffect(() => {
         if (isSiswa) setPrintMode('single');
@@ -439,7 +440,7 @@ const StudentCardPage = () => {
 
     const pageToolbar = (
         <div className="flex flex-wrap items-center gap-2">
-            {activeTab === 'design' && isAdmin() && (
+            {activeTab === 'design' && canEdit && (
                 <Button
                     variant="toolbarPrimary"
                     size="toolbar"
@@ -572,7 +573,7 @@ const StudentCardPage = () => {
                     </div>
 
                     <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>
-                        {isAdmin() && (
+                        {canView && (
                             <TabsContent value="design" className="p-6 focus-visible:ring-0">
                                 <DesignTab 
                                     config={config}
