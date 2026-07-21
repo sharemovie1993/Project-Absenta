@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback, Suspense, lazy, useRe
 import { 
   User as UserIcon, Mail, Phone, MapPin, Calendar, Building2, 
   Key, ShieldAlert, BadgeInfo, Edit3, Settings, Briefcase, Camera, Loader2,
-  GraduationCap, Award, ShieldCheck, Tag
+  GraduationCap, Award, ShieldCheck, Tag, Download, FileText
 } from 'lucide-react';
 import { 
   Card, CardContent, Button, Alert, AlertTitle, AlertDescription, Loader 
@@ -20,6 +20,7 @@ import {
 } from '../../api/memberDocs.api';
 import { studentCardConfigApi } from '../../api/academic/student-card-config.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getTenantById } from '../../api/tenants.api';
 import { PrintableCard } from '../../components/academic/student-card/PrintableCard';
 import { CardBackPreview } from '../../components/academic/student-card/CardBackPreview';
 import { DEFAULT_CONFIG } from '../../components/academic/student-card/constants';
@@ -55,6 +56,57 @@ export default function ProfilePage() {
 
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [isDownloading, setIsDownloading] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const downloadCard = async (format: 'png' | 'pdf') => {
+    if (!cardRef.current) return;
+    setIsDownloading(true);
+    const toastId = toast.loading(`Mempersiapkan download ${format.toUpperCase()}...`);
+
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null,
+      });
+
+      const fileName = `Kartu_Pelajar_${(siswaProfile?.nama_siswa || user?.full_name || 'Siswa').replace(/\s+/g, '_')}_${cardSide === 'front' ? 'Depan' : 'Belakang'}`;
+
+      if (format === 'png') {
+        const imgData = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = imgData;
+        link.download = `${fileName}.png`;
+        link.click();
+        toast.success('Kartu berhasil disimpan sebagai PNG!', { id: toastId });
+      } else {
+        const { jsPDF } = await import('jspdf');
+        const isVertical = resolvedConfig.template === 'vertical';
+        const cardWidth = isVertical ? 54 : 85.6;
+        const cardHeight = isVertical ? 85.6 : 54;
+
+        const pdf = new jsPDF({
+          orientation: isVertical ? 'portrait' : 'landscape',
+          unit: 'mm',
+          format: [cardWidth, cardHeight],
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', 0, 0, cardWidth, cardHeight);
+        pdf.save(`${fileName}.pdf`);
+        toast.success('Kartu berhasil disimpan sebagai PDF!', { id: toastId });
+      }
+    } catch (error) {
+      console.error('Download card error:', error);
+      toast.error('Gagal mendownload kartu. Harap coba lagi.', { id: toastId });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   // Load profile data
   useEffect(() => {
@@ -129,20 +181,83 @@ export default function ProfilePage() {
     enabled: isSiswa && !!entityId,
   });
 
+  // Fetch tenant info — same source as kopsurat (letterhead)
+  const { data: tenantResponse } = useQuery({
+    queryKey: ['tenant-info-my', user?.tenant_id],
+    queryFn: () => getTenantById(user!.tenant_id),
+    enabled: !!user?.tenant_id && isSiswa,
+  });
+  const tenantInfo = tenantResponse?.data || tenantResponse || null;
+
   const sekolahProfile = useMemo(() => {
     return sekolahRes?.data || sekolahRes || null;
   }, [sekolahRes]);
 
   const resolvedConfig = useMemo(() => {
-    const base = cardConfig || DEFAULT_CONFIG;
+    if (!cardConfig) {
+      return DEFAULT_CONFIG;
+    }
+
+    let activeConfig: any = { ...cardConfig };
+
+    // Parse layout presets if they exist (just like in StudentCardPage)
+    let savedSiswaConfig = null;
+    if (cardConfig.layout_presets) {
+      try {
+        const presets = JSON.parse(cardConfig.layout_presets);
+        if (presets.siswa_active_config) {
+          savedSiswaConfig = presets.siswa_active_config;
+        }
+      } catch (e) {
+        console.error('Error parsing layout presets in profile:', e);
+      }
+    }
+
+    if (savedSiswaConfig) {
+      activeConfig = {
+        ...DEFAULT_CONFIG,
+        ...cardConfig,
+        ...savedSiswaConfig,
+      };
+    } else {
+      activeConfig = {
+        ...DEFAULT_CONFIG,
+        ...cardConfig,
+      };
+    }
+
+    // Merge tenantInfo & sekolahProfile metadata (consistent with StudentCardPage)
+    const sekolahData = sekolahProfile;
+    const resolvedName: string    = (tenantInfo as any)?.name    || sekolahData?.nama    || '';
+    const resolvedAddress: string = (tenantInfo as any)?.address || sekolahData?.alamat  || '';
+    const resolvedLogo: string    = (tenantInfo as any)?.logo_url || sekolahData?.logo_url || '';
+    const resolvedHeader: string  = (tenantInfo as any)?.nama_dinas_atas   || '';
+    const resolvedSubheader: string = (tenantInfo as any)?.nama_dinas_bawah || '';
+
+    const resolvedKepsek = sekolahData?.kepala_sekolah || '';
+    const resolvedNipKepsek = sekolahData?.nip_kepala || '';
+
+    const finalKepsek = resolvedKepsek || 
+      (activeConfig.back_principal_name === 'Nama Kepala Sekolah, M.Pd' ? '' : activeConfig.back_principal_name) || 
+      'Nama Kepala Sekolah, M.Pd';
+    
+    const finalNip = resolvedNipKepsek || 
+      (activeConfig.back_principal_nip === 'NIP. 198001012005011001' ? '' : activeConfig.back_principal_nip) || 
+      'NIP. 198001012005011001';
+
     return {
-      ...DEFAULT_CONFIG,
-      ...base,
-      back_principal_name: base.back_principal_name || sekolahProfile?.kepala_sekolah || base.back_principal_name,
-      back_principal_nip: base.back_principal_nip || sekolahProfile?.nip_kepala || base.back_principal_nip,
-      back_stamp_image_url: base.back_stamp_image_url || sekolahProfile?.logo_url || base.back_stamp_image_url,
+      ...activeConfig,
+      school_name: resolvedName || activeConfig.school_name || '',
+      school_address: resolvedAddress || activeConfig.school_address || '',
+      logo_url: resolvedLogo || activeConfig.logo_url || '',
+      header_text: resolvedHeader || activeConfig.header_text || '',
+      subheader_text: resolvedSubheader || activeConfig.subheader_text || '',
+      back_signature_title: activeConfig.back_signature_title || 'Kepala Sekolah',
+      back_principal_name: finalKepsek,
+      back_principal_nip: finalNip,
+      back_stamp_image_url: activeConfig.back_stamp_image_url || resolvedLogo || undefined,
     };
-  }, [cardConfig, sekolahProfile]);
+  }, [cardConfig, sekolahProfile, tenantInfo]);
 
   const summaryName = user?.full_name || '';
   const summaryEmail = user?.email || '';
@@ -384,25 +499,27 @@ export default function ProfilePage() {
                     /* Pembungkus Mencegah Overflow & Mengskala Sesuai Resolusi */
                     <div className="w-full overflow-auto py-1 scrollbar-none flex justify-center items-center">
                       <div className="origin-center scale-[0.82] sm:scale-95 md:scale-100 transition-all duration-300 shrink-0">
-                        {cardSide === 'front' ? (
-                          <PrintableCard 
-                            student={{
-                              ...siswaProfile,
-                              nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
-                              foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
-                            } as any}
-                            config={resolvedConfig}
-                            sekolah={sekolahProfile as any}
-                          />
-                        ) : (
-                          <CardBackPreview config={resolvedConfig} />
-                        )}
+                        <div ref={cardRef}>
+                          {cardSide === 'front' ? (
+                            <PrintableCard 
+                              student={{
+                                ...siswaProfile,
+                                nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
+                                foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
+                              } as any}
+                              config={resolvedConfig}
+                              sekolah={sekolahProfile as any}
+                            />
+                          ) : (
+                            <CardBackPreview config={resolvedConfig} />
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Tombol Kamera/Upload Foto di bawah Kartu Pelajar */}
-                  <div className="mt-4 flex items-center justify-center">
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2 items-center justify-center">
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -422,7 +539,29 @@ export default function ProfilePage() {
                       ) : (
                         <Camera size={11} className="mr-1.5" />
                       )}
-                      Ganti Foto Kartu Pelajar
+                      Ganti Foto
+                    </Button>
+
+                    <Button
+                      onClick={() => downloadCard('png')}
+                      disabled={isDownloading}
+                      variant="outline"
+                      size="xs"
+                      className="h-8.5 text-[10px] font-black rounded-xl border-slate-100 dark:border-slate-800 hover:bg-slate-55 dark:hover:bg-slate-900"
+                    >
+                      <Download size={11} className="mr-1.5" />
+                      Download PNG
+                    </Button>
+
+                    <Button
+                      onClick={() => downloadCard('pdf')}
+                      disabled={isDownloading}
+                      variant="outline"
+                      size="xs"
+                      className="h-8.5 text-[10px] font-black rounded-xl border-slate-100 dark:border-slate-800 hover:bg-slate-55 dark:hover:bg-slate-900"
+                    >
+                      <FileText size={11} className="mr-1.5" />
+                      Download PDF
                     </Button>
                   </div>
                 </div>

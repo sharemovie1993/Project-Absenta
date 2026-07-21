@@ -68,7 +68,10 @@ export async function getAllSiswaQuery(
   // Apply Isolate/Scope filter from Organization Engine
   const isElevatedContext = params?.context === 'elevated' && org?.is_elevated_context === true;
 
-  if (org && org.tenant_wide !== true && !isElevatedContext) {
+  if (org && org.is_siswa === true) {
+    // A student can ONLY query their own record
+    whereClause.user_id = safeUserId;
+  } else if (org && org.tenant_wide !== true && !isElevatedContext) {
     if (safeStatus === 'CALON') {
       // CALON students don't have a class. Filter by direct jurusan_id if unit restricted.
       if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {

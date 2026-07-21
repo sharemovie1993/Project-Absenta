@@ -67,6 +67,7 @@ export const organizationalScopeMiddleware = async (request: any, _reply: any) =
     is_elevated_context: isPiketOrGate || isTenantWide,
     is_unit_restricted: hasUnitRestrictedCap && !isTenantWide,
     is_teaching_restricted: hasTeachingRestrictedCap && !isTenantWide,
+    is_siswa: user?.roleName === RoleName.SISWA,
     
     // Legacy support (will be phased out)
     is_wali_kelas: hasUnitRestrictedCap && scope.kelas_ids.length > 0,

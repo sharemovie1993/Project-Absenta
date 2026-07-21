@@ -25,7 +25,11 @@ export const siswaController = {
       const { page, limit } = getPaginationParams(request);
       
       const search = request.query.search as string;
-      const user_id = (request.query.user_id as string | undefined) || undefined;
+      let user_id = (request.query.user_id as string | undefined) || undefined;
+      const role = request.user?.roleName || request.user?.role?.name;
+      if (role === RoleName.SISWA) {
+        user_id = request.user.id || request.user.userId;
+      }
       const kelas_id = request.query.kelas_id as string | undefined;
       const status = request.query.status as string | undefined;
       const context = request.query.context as string | undefined;

@@ -1,6 +1,5 @@
 import React from 'react';
 import type { StudentCardConfig } from './types';
-import { EDITOR_SCALE, MM_TO_PX } from './constants';
 
 interface CardBackPreviewProps {
     config: StudentCardConfig;
@@ -11,9 +10,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
     const cWidth = config.card_width || 85.6;
     const cHeight = config.card_height || 54;
 
-    const SCALE = MM_TO_PX * EDITOR_SCALE;
-    const cardW = (isVertical ? cHeight : cWidth) * SCALE;
-    const cardH = (isVertical ? cWidth : cHeight) * SCALE;
+    const widthMM = isVertical ? cHeight : cWidth;
+    const heightMM = isVertical ? cWidth : cHeight;
 
     const bgClr = config.back_bg_color || '#ffffff';
     const textClr = config.back_text_color || '#1e293b';
@@ -36,20 +34,26 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
         return { backgroundColor: bgClr };
     };
 
+    // Since EDITOR_SCALE was 2, we multiply the base pt font sizes by 2 to match legacy scale
+    const FONT_SCALE = 2;
+
     return (
         <div
             style={{
-                width: `${cardW}px`,
-                height: `${cardH}px`,
+                width: `${widthMM}mm`,
+                height: `${heightMM}mm`,
                 ...getBackgroundStyle(),
                 color: textClr,
                 borderColor: config.show_border ? config.border_color || '#e2e8f0' : 'transparent',
-                borderWidth: config.show_border ? `${(config.border_width || 1) * EDITOR_SCALE}px` : '0px',
+                borderWidth: config.show_border ? `${config.border_width || 1}px` : '0px',
                 borderStyle: 'solid',
                 position: 'relative',
                 overflow: 'hidden',
                 boxSizing: 'border-box',
-                fontFamily: "'Outfit', 'Inter', sans-serif"
+                fontFamily: "'Outfit', 'Inter', sans-serif",
+                // Force background print
+                printColorAdjust: 'exact',
+                WebkitPrintColorAdjust: 'exact',
             }}
             className="shadow-xl rounded-2xl select-none"
         >
@@ -57,7 +61,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             {backStyle === 'default' && (
                 <div 
                     style={{ 
-                        height: `${2 * SCALE}px`, 
+                        height: '2mm', 
                         backgroundColor: accentClr,
                         width: '100%'
                     }} 
@@ -70,11 +74,11 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     style={{ 
                         backgroundColor: accentClr,
                         color: '#ffffff',
-                        padding: `${2 * SCALE}px ${3 * SCALE}px`,
+                        padding: '2mm 3mm',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: `${2 * SCALE}px`,
-                        borderBottom: `0.5mm solid rgba(255,255,255,0.2)`
+                        gap: '2mm',
+                        borderBottom: '0.5mm solid rgba(255,255,255,0.2)'
                     }}
                 >
                     {config.logo_url ? (
@@ -82,20 +86,20 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                             src={config.logo_url} 
                             alt="Logo" 
                             style={{ 
-                                width: `${7 * SCALE}px`, 
-                                height: `${7 * SCALE}px`, 
+                                width: '7mm', 
+                                height: '7mm', 
                                 objectFit: 'contain',
                                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))'
                             }} 
                         />
                     ) : (
-                        <div style={{ width: `${7 * SCALE}px`, height: `${7 * SCALE}px`, backgroundColor: 'rgba(255,255,255,0.2)' }} className="rounded flex items-center justify-center text-[8px] font-bold">🏫</div>
+                        <div style={{ width: '7mm', height: '7mm', backgroundColor: 'rgba(255,255,255,0.2)' }} className="rounded flex items-center justify-center text-[8px] font-bold">🏫</div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: `${5.2 * EDITOR_SCALE}pt`, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: `${5.2 * FONT_SCALE}pt`, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {config.school_name || 'NAMA SEKOLAH'}
                         </div>
-                        <div style={{ fontSize: `${3.5 * EDITOR_SCALE}pt`, opacity: 0.85, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: `${3.5 * FONT_SCALE}pt`, opacity: 0.85, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {config.school_address || 'Alamat Sekolah'}
                         </div>
                     </div>
@@ -106,11 +110,11 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             <div 
                 className="flex flex-col h-full justify-between relative" 
                 style={{ 
-                    padding: `${3 * SCALE}px ${4 * SCALE}px ${2 * SCALE}px ${4 * SCALE}px`,
+                    padding: '3mm 4mm 2mm 4mm',
                     boxSizing: 'border-box',
                     height: backStyle === 'default' 
-                        ? `calc(100% - ${2 * SCALE}px)` 
-                        : (backStyle === 'full-header' ? `calc(100% - ${11 * SCALE}px)` : '100%')
+                        ? 'calc(100% - 2mm)' 
+                        : (backStyle === 'full-header' ? 'calc(100% - 11mm)' : '100%')
                 }}
             >
                 {/* VARIANT 4: Accent Border overlay */}
@@ -118,7 +122,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     <div 
                         style={{
                             position: 'absolute',
-                            inset: `${1.5 * SCALE}px`,
+                            inset: '1.5mm',
                             border: `0.5mm solid ${accentClr}44`,
                             borderRadius: '8px',
                             pointerEvents: 'none',
@@ -131,12 +135,12 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                 <div className="flex-1 z-10">
                     <h4 
                         style={{ 
-                            fontSize: `${(isVertical ? 6.5 : 7.5) * EDITOR_SCALE}pt`,
+                            fontSize: `${(isVertical ? 6.5 : 7.5) * FONT_SCALE}pt`,
                             color: backStyle === 'full-header' ? textClr : accentClr,
                             fontWeight: 800,
                             letterSpacing: '0.05em',
                             textAlign: backStyle === 'minimal' ? 'center' : 'left',
-                            marginBottom: `${2 * SCALE}px`,
+                            marginBottom: '2mm',
                             textTransform: 'uppercase'
                         }}
                     >
@@ -145,7 +149,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     
                     <ul 
                         style={{ 
-                            fontSize: `${(isVertical ? 5.5 : 6.5) * EDITOR_SCALE}pt`, 
+                            fontSize: `${(isVertical ? 5.5 : 6.5) * FONT_SCALE}pt`, 
                             lineHeight: 1.3,
                             color: textClr,
                             listStyleType: 'none',
@@ -157,7 +161,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                         {rules.map((rule, idx) => (
                             <li key={idx} className="flex items-start gap-1">
                                 <span style={{ color: accentClr, fontWeight: 'bold' }}>•</span>
-                                <span style={{ fontSize: `${(isVertical ? 5.5 : 6.5) * EDITOR_SCALE}pt` }} className="leading-relaxed">{rule}</span>
+                                <span style={{ fontSize: `${(isVertical ? 5.5 : 6.5) * FONT_SCALE}pt` }} className="leading-relaxed">{rule}</span>
                             </li>
                         ))}
                     </ul>
@@ -168,8 +172,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     <div 
                         className="flex flex-col items-end relative text-right z-10"
                         style={{ 
-                            marginTop: `${2 * SCALE}px`,
-                            minHeight: `${10 * SCALE}px`
+                            marginTop: '2mm',
+                            minHeight: '10mm'
                         }}
                     >
                         {/* Stamp Image */}
@@ -179,10 +183,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                 alt="Stempel"
                                 style={{
                                     position: 'absolute',
-                                    right: `${7 * SCALE}px`,
-                                    bottom: `${1 * SCALE}px`,
-                                    width: `${11 * SCALE}px`,
-                                    height: `${11 * SCALE}px`,
+                                    right: '7mm',
+                                    bottom: '1mm',
+                                    width: '11mm',
+                                    height: '11mm',
                                     opacity: 0.75,
                                     zIndex: 10,
                                     pointerEvents: 'none',
@@ -198,10 +202,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                 alt="Tanda Tangan"
                                 style={{
                                     position: 'absolute',
-                                    right: `${2 * SCALE}px`,
-                                    bottom: `${2 * SCALE}px`,
-                                    width: `${9 * SCALE}px`,
-                                    height: `${6 * SCALE}px`,
+                                    right: '2mm',
+                                    bottom: '2mm',
+                                    width: '9mm',
+                                    height: '6mm',
                                     zIndex: 15,
                                     pointerEvents: 'none',
                                     objectFit: 'contain'
@@ -210,11 +214,11 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                         )}
 
                         {/* Text Details */}
-                        <div style={{ fontSize: `${5 * EDITOR_SCALE}pt`, zIndex: 20 }} className="leading-tight">
+                        <div style={{ fontSize: `${5 * FONT_SCALE}pt`, zIndex: 20 }} className="leading-tight">
                             <div>{config.back_signature_title || 'Kepala Sekolah'}</div>
-                            <div style={{ height: `${4 * SCALE}px` }} />
+                            <div style={{ height: '4mm' }} />
                             <div className="font-bold underline">{config.back_principal_name || 'Nama Kepala Sekolah'}</div>
-                            <div style={{ fontSize: `${4 * EDITOR_SCALE}pt` }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
+                            <div style={{ fontSize: `${4 * FONT_SCALE}pt` }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
                         </div>
                     </div>
                 )}
