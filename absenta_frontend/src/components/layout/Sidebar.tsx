@@ -477,7 +477,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             p === '/academic/struktur-organisasi' ||
             p === '/academic/transition' ||
             p === '/academic/siswa-cards' ||
-            p === '/academic/staff-logs'
+            p === '/academic/staff-logs' ||
+            p === '/users'
           ) {
             primaryItems.push(item);
           }
