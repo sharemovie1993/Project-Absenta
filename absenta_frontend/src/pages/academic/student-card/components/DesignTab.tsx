@@ -1191,17 +1191,6 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                 <CardBackPreview config={config} />
                             )}
                         </div>
-
-                        <div className="mt-2 flex gap-6">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                <div className="w-3 h-3 rounded-full border-2 border-blue-500" />
-                                Posisi Dinamis
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                <div className="w-3 h-3 rounded-full border-2 border-slate-300" />
-                                Ukuran Presisi
-                            </div>
-                        </div>
                     </div>
                     <div className="p-4 bg-white dark:bg-slate-900 flex items-center justify-between">
                         <div className="flex items-center gap-2">
