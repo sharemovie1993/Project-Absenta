@@ -442,6 +442,12 @@ const StudentCardPage = () => {
         saveConfigMutation.mutate(cleanConfig);
     }, [config, printConfig, cardTargetMode, saveConfigMutation]);
 
+    useEffect(() => {
+        const handleSaveEvent = () => handleSaveConfig();
+        window.addEventListener('save-card-config', handleSaveEvent);
+        return () => window.removeEventListener('save-card-config', handleSaveEvent);
+    }, [handleSaveConfig]);
+
     const handleDragEnd = useCallback((field: 'photo' | 'qrcode' | 'data', info: { offset: { x: number; y: number } }) => {
         const { x, y } = info.offset;
         if (field === 'photo') {
@@ -771,6 +777,7 @@ const StudentCardPage = () => {
                                     handleDragEnd={handleDragEnd}
                                     previewStudent={previewStudent}
                                     sekolah={tenantInfo || sekolahData}
+                                    isSaving={saveConfigMutation.isPending}
                                 />
                             </TabsContent>
                         )}

@@ -19,7 +19,9 @@ import {
     Loader2,
     Maximize2,
     X,
-    Check
+    Check,
+    Save,
+    RefreshCw
 } from 'lucide-react';
 import { SettingsGroup } from '@/components/academic/student-card/SettingsGroup';
 import { FontSizeInput } from '@/components/academic/student-card/FontSizeInput';
@@ -178,6 +180,7 @@ interface DesignTabProps {
     handleDragEnd: (field: 'photo' | 'qrcode' | 'data', info: any) => void;
     previewStudent: any;
     sekolah: any;
+    isSaving?: boolean;
 }
 
 export const DesignTab: React.FC<DesignTabProps> = ({
@@ -185,7 +188,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
     setConfig,
     handleDragEnd,
     previewStudent,
-    sekolah
+    sekolah,
+    isSaving = false
 }) => {
     const activePresetName = config.selected_preset || 'Vertical - Versi 1';
     const [previewSide, setPreviewSide] = React.useState<'front' | 'back'>('front');
@@ -1209,15 +1213,30 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     Fokus merancang tata tertib, tanda tangan, dan stempel secara berdampingan tanpa terganggu menu lain.
                                 </p>
                             </div>
-                            <Button
-                                type="button"
-                                variant="primary"
-                                onClick={() => setIsFocusMode(false)}
-                                className="h-9 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white border-0"
-                            >
-                                <Check size={14} />
-                                Selesai & Keluar
-                            </Button>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('save-card-config'))}
+                                    disabled={isSaving}
+                                    className="h-9 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                                >
+                                    {isSaving ? (
+                                        <RefreshCw size={13} className="animate-spin" />
+                                    ) : (
+                                        <Save size={13} />
+                                    )}
+                                    Simpan Desain
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="primary"
+                                    onClick={() => setIsFocusMode(false)}
+                                    className="h-9 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white border-0"
+                                >
+                                    <Check size={14} />
+                                    Selesai & Keluar
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Three-Column Split Workspace */}
