@@ -97,7 +97,10 @@ export const updateGuru = async (
   id: string, 
   payload: UpdateGuruPayload
 ): Promise<SingleGuruResponse> => {
-  return requestWithFallback<SingleGuruResponse>('put', `/academic/guru/${id}`, { data: payload });
+  return requestWithFallback<SingleGuruResponse>('put', `/academic/guru/${id}`, { 
+    data: payload,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
 };
 
 // Delete Guru - DELETE /api/academic/guru/:id

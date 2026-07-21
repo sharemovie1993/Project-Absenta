@@ -52,7 +52,7 @@ export default async function guruRoutes(fastify: any) {
   // PUT /guru/:id - Update guru
   fastify.put('/:id', {
     preHandler: [
-      requireCapability('academic.teachers.update', { exemptRoles: [RoleName.GURU] }),
+      requireCapability('academic.teachers.update', { exemptRoles: [RoleName.GURU, RoleName.ADMIN_SEKOLAH, RoleName.STAF] }),
       organizationalScopeMiddleware,
       determineDataScope()
     ]
