@@ -449,8 +449,11 @@ const StudentCardPage = () => {
         const paperW = printConfig.paperSize === 'Custom' ? (printConfig.customWidth || 210) : PAPER_SIZES[printConfig.paperSize].width;
         const paperH = printConfig.paperSize === 'Custom' ? (printConfig.customHeight || 297) : PAPER_SIZES[printConfig.paperSize].height;
 
-        const finalW = printConfig.orientation === 'portrait' ? paperW : paperH;
-        const finalH = printConfig.orientation === 'portrait' ? paperH : paperW;
+        const baseW = Math.min(paperW, paperH);
+        const baseH = Math.max(paperW, paperH);
+
+        const finalW = printConfig.orientation === 'portrait' ? baseW : baseH;
+        const finalH = printConfig.orientation === 'portrait' ? baseH : baseW;
 
         const cardW = config.template === 'vertical' ? 54 : 85.6;
         const cardH = config.template === 'vertical' ? 85.6 : 54;

@@ -29,7 +29,7 @@ export const PrintOverlay: React.FC<PrintOverlayProps> = ({
                 @media print {
                     @page {
                         size: ${printConfig.paperSize === 'RFID' 
-                            ? (printConfig.orientation === 'portrait' ? '54mm 85.6mm' : '85.6mm 54mm') 
+                            ? (printConfig.orientation === 'portrait' ? '54mm 85.6mm portrait' : '85.6mm 54mm landscape') 
                             : (printConfig.paperSize === 'Custom' ? 'auto' : printConfig.paperSize)} ${printConfig.paperSize === 'RFID' ? '' : printConfig.orientation};
                         margin: 0;
                     }

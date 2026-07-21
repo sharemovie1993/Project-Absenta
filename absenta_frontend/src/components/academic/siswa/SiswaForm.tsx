@@ -109,11 +109,11 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         autoCenterY: isRfid ? false : (configObj.print_auto_center_y ?? false),
       };
       
-      const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize].width;
-      const paperH = prConfig.paperSize === 'Custom' ? (prConfig.customHeight || 297) : PAPER_SIZES[prConfig.paperSize].height;
+      const baseW = Math.min(paperW, paperH);
+      const baseH = Math.max(paperW, paperH);
 
-      const finalW = prConfig.orientation === 'portrait' ? paperW : paperH;
-      const finalH = prConfig.orientation === 'portrait' ? paperH : paperW;
+      const finalW = prConfig.orientation === 'portrait' ? baseW : baseH;
+      const finalH = prConfig.orientation === 'portrait' ? baseH : baseW;
 
       const cardW = configObj.template === 'vertical' ? 54 : 85.6;
       const cardH = configObj.template === 'vertical' ? 85.6 : 54;
