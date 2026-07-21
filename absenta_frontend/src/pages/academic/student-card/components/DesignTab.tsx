@@ -1174,11 +1174,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             {previewSide === 'front' ? 'Mode Desain Interaktif (Drag & Drop)' : 'Preview Desain Sisi Belakang'}
                         </div>
 
-                        <div className={`transform ${
-                            config.template === 'vertical' 
-                                ? 'scale-[0.46] lg:scale-[0.50] xl:scale-[0.54]' 
-                                : 'scale-[0.60] lg:scale-[0.65] xl:scale-[0.70]'
-                        } transition-all duration-200 flex items-center justify-center origin-center py-2`}>
+                        <div className="transform scale-[0.50] transition-all duration-200 flex items-center justify-center origin-center my-[-100px]">
                             {previewSide === 'front' ? (
                                 <PreviewCard
                                     student={previewStudent || {
