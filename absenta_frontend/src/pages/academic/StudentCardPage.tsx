@@ -225,6 +225,7 @@ const StudentCardPage = () => {
                 
                 if (savedGuruConfig) {
                     activeConfig = {
+                        ...DEFAULT_GURU_CONFIG,
                         ...remoteConfig,
                         ...savedGuruConfig,
                     };
@@ -256,6 +257,7 @@ const StudentCardPage = () => {
 
                 if (savedSiswaConfig) {
                     activeConfig = {
+                        ...DEFAULT_CONFIG,
                         ...remoteConfig,
                         ...savedSiswaConfig,
                     };
