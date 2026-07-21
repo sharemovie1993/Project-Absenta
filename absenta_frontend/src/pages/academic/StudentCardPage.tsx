@@ -205,13 +205,40 @@ const StudentCardPage = () => {
 
     useEffect(() => {
         if (remoteConfig) {
+            let activeConfig = remoteConfig;
+            if (remoteConfig.layout_presets) {
+                try {
+                    const presets = JSON.parse(remoteConfig.layout_presets);
+                    const activePresetKey = cardTargetMode === 'GURU' ? 'guru_active_config' : 'siswa_active_config';
+                    if (presets[activePresetKey]) {
+                        activeConfig = {
+                            ...remoteConfig,
+                            ...presets[activePresetKey],
+                        };
+                    } else {
+                        // Fallback if not stored yet
+                        activeConfig = {
+                            ...remoteConfig,
+                            ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
+                        };
+                    }
+                } catch (e) {
+                    console.error('Error parsing layout presets:', e);
+                }
+            } else {
+                activeConfig = {
+                    ...remoteConfig,
+                    ...(cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG),
+                };
+            }
+
             setConfig(prev => ({
                 ...prev,
-                ...(remoteConfig as any),
+                ...(activeConfig as any),
                 // tenantInfo (kopsurat source) takes priority
-                school_name: resolvedName    || remoteConfig.school_name    || prev.school_name    || '',
-                school_address: resolvedAddress || remoteConfig.school_address || prev.school_address || '',
-                logo_url:    resolvedLogo    || remoteConfig.logo_url       || prev.logo_url       || '',
+                school_name: resolvedName    || activeConfig.school_name    || prev.school_name    || '',
+                school_address: resolvedAddress || activeConfig.school_address || prev.school_address || '',
+                logo_url:    resolvedLogo    || activeConfig.logo_url       || prev.logo_url       || '',
             }));
 
             setPrintConfig(prev => ({
@@ -229,22 +256,19 @@ const StudentCardPage = () => {
                 autoCenterX: remoteConfig.print_auto_center_x ?? prev.autoCenterX,
                 autoCenterY: remoteConfig.print_auto_center_y ?? prev.autoCenterY,
             }));
-        }
-    }, [remoteConfig, resolvedName, resolvedAddress, resolvedLogo]);
-
-    useEffect(() => {
-        if (resolvedName && !remoteConfig) {
+        } else {
+            const defaultConfig = cardTargetMode === 'GURU' ? DEFAULT_GURU_CONFIG : DEFAULT_CONFIG;
             setConfig(prev => ({
                 ...prev,
-                school_name:    resolvedName,
-                school_address: resolvedAddress,
-                logo_url:       resolvedLogo || prev.logo_url || '',
-                // Also fill header lines if not yet customized
-                header_text:    prev.header_text    || resolvedHeader,
-                subheader_text: prev.subheader_text || resolvedSubheader,
+                ...defaultConfig,
+                school_name: resolvedName || prev.school_name || '',
+                school_address: resolvedAddress || prev.school_address || '',
+                logo_url: resolvedLogo || prev.logo_url || '',
+                header_text: resolvedHeader || prev.header_text || 'PEMERINTAH KABUPATEN',
+                subheader_text: resolvedSubheader || prev.subheader_text || 'DINAS PENDIDIKAN',
             }));
         }
-    }, [resolvedName, resolvedAddress, resolvedLogo, resolvedHeader, resolvedSubheader, remoteConfig]);
+    }, [remoteConfig, resolvedName, resolvedAddress, resolvedLogo, resolvedHeader, resolvedSubheader, cardTargetMode]);
 
     const saveConfigMutation = useMutation({
         mutationFn: studentCardConfigApi.updateConfig,
@@ -269,8 +293,9 @@ const StudentCardPage = () => {
         }
 
         // Save current active config values under the active preset name
-        const presetName = config.selected_preset || 'Vertical - Versi 1';
-        currentPresets[presetName] = {
+        const defaultPresetName = cardTargetMode === 'GURU' ? 'Executive Pegawai (Slate & Gold)' : 'Vertical - Versi 1';
+        const presetName = config.selected_preset || defaultPresetName;
+        const activeConfigValues = {
             template: config.template,
             primary_color: config.primary_color,
             secondary_color: config.secondary_color,
@@ -311,9 +336,26 @@ const StudentCardPage = () => {
             show_border: config.show_border,
             border_color: config.border_color,
             border_width: config.border_width,
+            school_name: config.school_name,
+            school_address: config.school_address,
+            header_text: config.header_text,
+            subheader_text: config.subheader_text,
+            logo_url: config.logo_url,
+            selected_preset: presetName
         };
 
+        currentPresets[presetName] = activeConfigValues;
+
+        // ALSO save to target-specific active config key
+        const activePresetKey = cardTargetMode === 'GURU' ? 'guru_active_config' : 'siswa_active_config';
+        currentPresets[activePresetKey] = activeConfigValues;
+
         cleanConfig.layout_presets = JSON.stringify(currentPresets);
+
+        // For backward compatibility / root direct reads, sync root fields with Siswa design
+        if (cardTargetMode === 'SISWA') {
+            Object.assign(cleanConfig, activeConfigValues);
+        }
 
         // Merge Print Config
         cleanConfig.print_paper_size = printConfig.paperSize;
@@ -330,7 +372,7 @@ const StudentCardPage = () => {
         cleanConfig.print_auto_center_y = printConfig.autoCenterY;
 
         saveConfigMutation.mutate(cleanConfig);
-    }, [config, printConfig, saveConfigMutation]);
+    }, [config, printConfig, cardTargetMode, saveConfigMutation]);
 
     const handleDragEnd = useCallback((field: 'photo' | 'qrcode' | 'data', info: { offset: { x: number; y: number } }) => {
         const { x, y } = info.offset;
@@ -578,15 +620,61 @@ const StudentCardPage = () => {
                 ]
             }}
         >
-            <div className="p-1">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                        <TabSwitcher
-                            options={tabOptions}
-                            activeTab={activeTab}
-                            onChange={setActiveTab}
-                        />
+        <div className="p-1 space-y-4">
+            {/* Global Category Selector */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shrink-0">
+                        <CreditCard size={18} />
                     </div>
+                    <div>
+                        <h3 className="text-sm font-black text-slate-850 dark:text-slate-100 uppercase tracking-wide">Target Desain & Cetak</h3>
+                        <p className="text-[11px] text-slate-400 font-bold">Pilih kategori kartu identitas yang ingin dikelola</p>
+                    </div>
+                </div>
+                
+                <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-850 rounded-xl border border-slate-200/50 dark:border-slate-800 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCardTargetMode('SISWA');
+                            setSelectedStudents([]);
+                            setPreviewStudentId('');
+                        }}
+                        className={`px-4 py-2 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                            cardTargetMode === 'SISWA'
+                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <GraduationCap size={14} /> 🎓 Kartu Siswa
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCardTargetMode('GURU');
+                            setSelectedStudents([]);
+                            setPreviewStudentId('');
+                        }}
+                        className={`px-4 py-2 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                            cardTargetMode === 'GURU'
+                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        <User size={14} /> 👔 Kartu Guru & Staf
+                    </button>
+                </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                    <TabSwitcher
+                        options={tabOptions}
+                        activeTab={activeTab}
+                        onChange={setActiveTab}
+                    />
+                </div>
 
                     <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>
                         {canView && (

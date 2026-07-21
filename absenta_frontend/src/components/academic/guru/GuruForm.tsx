@@ -107,9 +107,25 @@ export const GuruForm = React.memo<GuruFormProps>(({
         studentCardConfigApi.getConfig().catch(() => null)
       ]);
       
-      // Maintain distinct Executive Pegawai / Guru design preset for Guru cards!
+       // Maintain distinct Executive Pegawai / Guru design preset for Guru cards!
+      const baseConfig = configRes || DEFAULT_GURU_CONFIG;
+      let parsedGuruConfig = DEFAULT_GURU_CONFIG;
+      if (configRes && configRes.layout_presets) {
+        try {
+          const presets = JSON.parse(configRes.layout_presets);
+          if (presets.guru_active_config) {
+            parsedGuruConfig = {
+              ...DEFAULT_GURU_CONFIG,
+              ...presets.guru_active_config,
+            };
+          }
+        } catch (e) {
+          console.error('Failed to parse guru active config:', e);
+        }
+      }
+
       const guruConfigObj: StudentCardConfig = {
-        ...DEFAULT_GURU_CONFIG,
+        ...parsedGuruConfig,
         card_title: 'KARTU PEGAWAI',
         school_name: (sekolahRes as any)?.nama || baseConfig.school_name || '',
         school_address: (sekolahRes as any)?.alamat || baseConfig.school_address || '',

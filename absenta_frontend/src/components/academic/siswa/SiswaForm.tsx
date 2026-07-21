@@ -73,7 +73,24 @@ export const SiswaForm: React.FC<SiswaFormProps> = React.memo(({
         studentCardConfigApi.getConfig()
       ]);
       
-      const configObj = configRes || DEFAULT_CONFIG;
+      let parsedConfig = DEFAULT_CONFIG;
+      if (configRes) {
+        parsedConfig = { ...DEFAULT_CONFIG, ...configRes };
+        if (configRes.layout_presets) {
+          try {
+            const presets = JSON.parse(configRes.layout_presets);
+            if (presets.siswa_active_config) {
+              parsedConfig = {
+                ...DEFAULT_CONFIG,
+                ...presets.siswa_active_config,
+              };
+            }
+          } catch (e) {
+            console.error('Failed to parse siswa active config:', e);
+          }
+        }
+      }
+      const configObj = parsedConfig;
       const sekolahObj = sekolahRes || { nama: '', alamat: '' };
       
       const isRfid = configObj.print_paper_size === 'RFID';

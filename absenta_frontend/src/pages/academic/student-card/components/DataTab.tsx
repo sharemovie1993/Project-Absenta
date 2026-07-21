@@ -55,47 +55,6 @@ export const DataTab: React.FC<DataTabProps> = ({
 
     return (
         <div className="animate-in fade-in duration-500 space-y-4">
-            {/* Mode Switcher */}
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs">
-                        <CreditCard size={18} />
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                            Kategori Kartu Cetak Identitas
-                        </h4>
-                        <p className="text-[10px] text-slate-400 font-bold">
-                            Pilih apakah ingin mencetak Kartu Pelajar Siswa atau Kartu Identitas Pegawai/Guru
-                        </p>
-                    </div>
-                </div>
-
-                <div className="inline-flex p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl">
-                    <button
-                        type="button"
-                        onClick={() => setCardTargetMode('SISWA')}
-                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                            !isGuruMode
-                                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <GraduationCap size={14} /> Siswa
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setCardTargetMode('GURU')}
-                        className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                            isGuruMode
-                                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <User size={14} /> Guru & Staf
-                    </button>
-                </div>
-            </div>
 
             {isGuru && !isGuruMode && (
                 <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10 text-blue-700 dark:text-blue-400 rounded-xl border border-blue-100/50 dark:border-blue-800/50 flex items-center shadow-sm">
