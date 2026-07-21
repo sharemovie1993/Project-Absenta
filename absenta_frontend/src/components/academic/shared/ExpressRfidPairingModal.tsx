@@ -22,6 +22,7 @@ interface ExpressRfidPairingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  defaultMode?: 'SISWA' | 'GURU';
 }
 
 type Mode = 'SISWA' | 'GURU';
@@ -61,9 +62,10 @@ const playBeep = (type: 'success' | 'error') => {
 export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  defaultMode
 }) => {
-  const [mode, setMode] = useState<Mode>('SISWA');
+  const [mode, setMode] = useState<Mode>(defaultMode || 'SISWA');
   const [searchQuery, setSearchQuery] = useState('');
   const [targetPerson, setTargetPerson] = useState<Siswa | Guru | null>(null);
   const [rfidInput, setRfidInput] = useState('');
@@ -88,13 +90,16 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
+      if (defaultMode) {
+        setMode(defaultMode);
+      }
       setStep('SCAN_TARGET');
       setSearchQuery('');
       setTargetPerson(null);
       setRfidInput('');
       setLastPairedInfo(null);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultMode]);
 
   // Handle Target Search (Scan QR / Manual Type)
   const handleSearchTarget = useCallback(async (query: string) => {
@@ -145,18 +150,18 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
   };
 
   // Handle Pairing RFID Card
-  const handleExecutePairing = useCallback(async (rfidCode: string) => {
-    const cleanRfid = rfidCode.trim();
+  const handleExecutePairing = async (rfidTag: string) => {
+    const cleanRfid = rfidTag.trim();
     if (!cleanRfid || !targetPerson) return;
     setIsSaving(true);
     try {
       if (mode === 'SISWA') {
-        const res = await updateSiswa(targetPerson.id, { no_rfid: cleanRfid });
+        const res = await updateSiswa(targetPerson.id, { rfid_tag: cleanRfid });
         if (res.success) {
           const personName = (targetPerson as Siswa).nama_siswa;
           const identifier = (targetPerson as Siswa).nisn || (targetPerson as Siswa).nis || '-';
           setLastPairedInfo({ name: personName, identifier, rfid: cleanRfid });
-          toast.success(`⚡ Berhasil menghubungkan RFID ${cleanRfid} ke ${personName}!`);
+          toast.success(`🎉 RFID [${cleanRfid}] berhasil dipairing ke ${personName}!`);
           playBeep('success');
           onSuccess?.();
           
@@ -175,7 +180,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
           const personName = (targetPerson as Guru).nama_guru;
           const identifier = (targetPerson as Guru).nip || '-';
           setLastPairedInfo({ name: personName, identifier, rfid: cleanRfid });
-          toast.success(`⚡ Berhasil menghubungkan RFID ${cleanRfid} ke Guru ${personName}!`);
+          toast.success(`🎉 RFID [${cleanRfid}] berhasil dipairing ke Guru ${personName}!`);
           playBeep('success');
           onSuccess?.();
           
@@ -196,7 +201,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
     } finally {
       setIsSaving(false);
     }
-  }, [mode, targetPerson, onSuccess]);
+  };
 
   // RFID Keydown (RFID Reader sends Enter after card tap)
   const handleRfidKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -217,7 +222,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Fast-Track Express RFID Pairing (Hands-Free Loop)"
+      title={mode === 'GURU' ? "Fast-Track Express RFID Pairing Pegawai / Guru" : "Fast-Track Express RFID Pairing Siswa"}
       size="3xl"
     >
       <div className="p-6 space-y-6">
@@ -229,7 +234,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
             </div>
             <div>
               <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                Mode Penempelan Kartu RFID Massal
+                {mode === 'GURU' ? 'Mode Penempelan Kartu RFID Pegawai / Guru Massal' : 'Mode Penempelan Kartu RFID Siswa Massal'}
               </h4>
               <p className="text-[10px] text-slate-400 font-bold">
                 Cukup tembak QR Kartu Cetak -&gt; Tap Mesin RFID -&gt; Auto-Save Loop
@@ -237,29 +242,18 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
             </div>
           </div>
 
-          <div className="inline-flex p-1 bg-slate-200/60 dark:bg-slate-800 rounded-xl">
-            <button
-              type="button"
-              onClick={() => { setMode('SISWA'); handleResetCurrentStep(); }}
-              className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                mode === 'SISWA'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <GraduationCap size={14} /> Siswa
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMode('GURU'); handleResetCurrentStep(); }}
-              className={`px-3.5 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                mode === 'GURU'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <User size={14} /> Guru & Staf
-            </button>
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black uppercase tracking-wider shadow-xs">
+            {mode === 'GURU' ? (
+              <>
+                <User size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Target: Guru & Staf</span>
+              </>
+            ) : (
+              <>
+                <GraduationCap size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Target: Siswa</span>
+              </>
+            )}
           </div>
         </div>
 

@@ -1894,6 +1894,7 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       {/* Express RFID Pairing Modal */}
       <ExpressRfidPairingModal
         isOpen={isRfidPairingOpen}
+        defaultMode="SISWA"
         onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => {
           fetchSiswas(currentPage, searchTerm);

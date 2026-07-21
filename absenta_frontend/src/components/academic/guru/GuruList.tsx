@@ -1071,6 +1071,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       {/* Modal Express RFID Pairing */}
       <ExpressRfidPairingModal
         isOpen={isRfidPairingOpen}
+        defaultMode="GURU"
         onClose={() => setIsRfidPairingOpen(false)}
         onSuccess={() => fetchGurus(currentPage, debouncedSearchTerm)}
       />
