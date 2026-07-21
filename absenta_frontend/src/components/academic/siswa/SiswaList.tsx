@@ -23,8 +23,9 @@ import {
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { QuickEditCell } from '../shared/QuickEditCell';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
-import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal } from '../../../api/academic/siswa.api';
+import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
 import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa, Kelas } from '../../../types/academic';
@@ -681,13 +682,49 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       key: 'nis', 
       label: 'NIS',
       sortable: true,
-      render: (value: string) => value || '-'
+      render: (value: string, siswa: Siswa) => (
+        <QuickEditCell
+          value={value}
+          placeholder="Tanpa NIS"
+          canEdit={canManage}
+          tempBadgePrefix="1111"
+          onSave={async (newVal) => {
+            const res = await updateSiswa(siswa.id, { nis: newVal || null });
+            if (res.success) {
+              toast.success(`NIS ${siswa.nama_siswa} berhasil diperbarui`);
+              fetchSiswas(currentPage, searchTerm);
+              onRefresh?.();
+            } else {
+              toast.error(res.message || 'Gagal memperbarui NIS');
+              throw new Error(res.message);
+            }
+          }}
+        />
+      )
     },
     { 
       key: 'nisn', 
       label: 'NISN',
       sortable: true,
-      render: (value: string) => value || '-'
+      render: (value: string, siswa: Siswa) => (
+        <QuickEditCell
+          value={value}
+          placeholder="Tanpa NISN"
+          canEdit={canManage}
+          tempBadgePrefix="9999"
+          onSave={async (newVal) => {
+            const res = await updateSiswa(siswa.id, { nisn: newVal || null });
+            if (res.success) {
+              toast.success(`NISN ${siswa.nama_siswa} berhasil diperbarui`);
+              fetchSiswas(currentPage, searchTerm);
+              onRefresh?.();
+            } else {
+              toast.error(res.message || 'Gagal memperbarui NISN');
+              throw new Error(res.message);
+            }
+          }}
+        />
+      )
     },
     { 
       key: 'jenis_kelamin', 

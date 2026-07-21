@@ -32,6 +32,7 @@ import {
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { QuickEditCell } from '../shared/QuickEditCell';
 import { getGuruList, deleteGuru, updateGuru } from '../../../api/academic/guru.api';
 import type { Guru } from '../../../types/academic';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -366,12 +367,49 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       key: 'nip', 
       label: 'NIP',
       sortable: true,
-      render: (value: string | null) => value || '-'
+      render: (value: string | null, guru: Guru) => (
+        <QuickEditCell
+          value={value}
+          placeholder="Tanpa NIP"
+          canEdit={canManage}
+          tempBadgePrefix="9999"
+          onSave={async (newVal) => {
+            const res = await updateGuru(guru.id, { nip: newVal || null });
+            if (res.success) {
+              toast.success(`NIP ${guru.nama_guru} berhasil diperbarui`);
+              fetchGurus(currentPage, debouncedSearchTerm);
+              onRefresh?.();
+            } else {
+              toast.error(res.message || 'Gagal memperbarui NIP');
+              throw new Error(res.message);
+            }
+          }}
+        />
+      )
     },
     { 
       key: 'no_hp', 
       label: 'No. HP',
-      render: (value: string | null) => value || '-'
+      render: (value: string | null, guru: Guru) => (
+        <QuickEditCell
+          value={value}
+          placeholder="Tanpa No. HP"
+          canEdit={canManage}
+          type="tel"
+          isMonospace={false}
+          onSave={async (newVal) => {
+            const res = await updateGuru(guru.id, { no_hp: newVal || null });
+            if (res.success) {
+              toast.success(`No. HP ${guru.nama_guru} berhasil diperbarui`);
+              fetchGurus(currentPage, debouncedSearchTerm);
+              onRefresh?.();
+            } else {
+              toast.error(res.message || 'Gagal memperbarui No. HP');
+              throw new Error(res.message);
+            }
+          }}
+        />
+      )
     },
     {
       key: 'jenis_ptk',
