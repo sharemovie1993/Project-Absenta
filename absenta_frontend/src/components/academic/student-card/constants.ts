@@ -64,6 +64,29 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   card_pattern_opacity: 100,
 };
 
+export const DEFAULT_GURU_CONFIG: StudentCardConfig = {
+  ...DEFAULT_CONFIG,
+  template: 'horizontal',
+  card_title: 'KARTU PEGAWAI',
+  primary_color: '#0f172a',
+  secondary_color: '#0284c7',
+  header_bg_color: '#0f172a',
+  header_text_color: '#ffffff',
+  header_style: 'gradient',
+  photo_x: 14,
+  photo_y: 170,
+  data_x: 180,
+  data_y: 190,
+  qrcode_x: 497,
+  qrcode_y: 200,
+  photo_shape: 'square',
+  show_border: true,
+  border_color: '#cbd5e1',
+  border_width: 1,
+  card_pattern: 'dots-grid',
+  card_pattern_opacity: 60,
+};
+
 export const DEFAULT_PRINT_CONFIG: PrintConfig = {
     paperSize: 'A4',
     orientation: 'portrait',

@@ -41,6 +41,7 @@ import {
 } from '../../components/academic/student-card/constants';
 
 // Local Components with Lazy Loading
+import { CARD_PRESETS } from './student-card/components/DesignTab';
 const DesignTab = lazy(() => import('./student-card/components/DesignTab').then(m => ({ default: m.DesignTab })));
 const DataTab = lazy(() => import('./student-card/components/DataTab').then(m => ({ default: m.DataTab })));
 const PrintTab = lazy(() => import('./student-card/components/PrintTab').then(m => ({ default: m.PrintTab })));
@@ -609,10 +610,20 @@ const StudentCardPage = () => {
                                         setCardTargetMode(m);
                                         setSelectedStudents([]);
                                         setPreviewStudentId('');
-                                        setConfig(prev => ({
-                                            ...prev,
-                                            card_title: m === 'GURU' ? 'KARTU PEGAWAI' : 'KARTU PELAJAR'
-                                        }));
+                                        const targetPresetName = m === 'GURU' ? 'Executive Pegawai (Slate & Gold)' : 'Horizontal - Versi 1 (Siswa)';
+                                        const preset = CARD_PRESETS.find(p => p.name === targetPresetName);
+                                        if (preset) {
+                                            setConfig(prev => ({
+                                                ...prev,
+                                                ...preset,
+                                                selected_preset: preset.name,
+                                                school_name: prev.school_name || preset.school_name,
+                                                school_address: prev.school_address || preset.school_address,
+                                                header_text: prev.header_text || preset.header_text,
+                                                subheader_text: prev.subheader_text || preset.subheader_text,
+                                                logo_url: prev.logo_url || preset.logo_url
+                                            }));
+                                        }
                                     }}
                                     selectedKelas={selectedKelas}
                                     setSelectedKelas={setSelectedKelas}
