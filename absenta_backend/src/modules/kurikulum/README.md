@@ -42,6 +42,14 @@ Modul Kurikulum adalah pusat pengaturan struktur pendidikan dan penjaminan mutu 
   - **KURIKULUM (Wakasek)**: Full CRUD.
   - **PETUGAS_KELAS, WALIKELAS, HUBIN, PEMBINA_ESKUL, GURU, SISWA**: Read-only (`academic.schedules.view.list`).
 
+### 4. Otorisasi Lintas Modul & Read-Only Access
+- **Akses Lintas Modul (Cross-Module Navigation)**: Peran seperti `TU_KEPEGAWAIAN` (Staf Kepegawaian & Dapodik) diizinkan mengakses menu kurikulum secara terbatas untuk sinkronisasi Dapodik dan administrasi kepegawaian.
+- **Component-Level RBAC**:
+  - Halaman **Struktur Kurikulum** (`MasterStrukturPage` & `StrukturKurikulumTable`) menyembunyikan tombol kelola JP, penambahan, penghapusan, dan kotak centang edit jika pengguna tidak memiliki kapabilitas `academic.manage.academic`.
+  - Halaman **Pengaturan Jam KBM** (`JamKBMPage` & panel sub-komponennya) menonaktifkan input waktu, penyisipan istirahat, tombol tambah/hapus shift, dan tombol simpan jika pengguna tidak memiliki `academic.schedules.manage`.
+  - Halaman **Kalender Akademik** menyembunyikan tombol atur/tambah kegiatan untuk non-manajer.
+  - **Dashboard Kurikulum** secara dinamis menonaktifkan kueri supervisi (`enabled: hasSupervisiAccess`) dan menampilkan widget *Lock Screen* lokal pada modul Progress Supervisi bagi peran kepegawaian yang tidak memegang hak `curriculum.supervision.view.schedule`.
+
 ## Teknologi & Pattern
 - **Pattern**: Service Layer, Smart Upsert (Conflict Resolution), Filtered Querying.
 - **Integrasi**: Terhubung erat dengan modul `Academic` (Mapel, Jurusan, Tahun Pelajaran) dan `Guru`.
