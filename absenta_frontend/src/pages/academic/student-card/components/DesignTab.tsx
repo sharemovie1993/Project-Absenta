@@ -1197,10 +1197,9 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
             {/* Focus Mode Overlay */}
             {isFocusMode && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[9999] flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-slate-200/50 dark:border-slate-800">
-                        {/* Header Area */}
-                        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20">
+                <div className="fixed inset-0 bg-slate-50 dark:bg-slate-950 z-[9999] flex flex-col overflow-hidden">
+                    {/* Header Area */}
+                    <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shadow-sm">
                             <div>
                                 <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
                                     <Sparkles size={16} className="text-violet-500 animate-pulse" />
@@ -1291,7 +1290,6 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             </div>
                         </div>
                     </div>
-                </div>
             )}
         </div>
     );
