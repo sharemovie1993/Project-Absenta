@@ -85,6 +85,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const qrY_MM = resolvedQrY / PX_TO_MM_SCALE;
     const dataX_MM = (config.data_x || 0) / PX_TO_MM_SCALE;
     const dataY_MM = resolvedDataY / PX_TO_MM_SCALE;
+    const headerX_MM = (config.header_x || 0) / PX_TO_MM_SCALE;
+    const headerY_MM = (config.header_y || 0) / PX_TO_MM_SCALE;
+    const titleX_MM = (config.title_x || 0) / PX_TO_MM_SCALE;
+    const titleY_MM = (config.title_y || 0) / PX_TO_MM_SCALE;
 
     // Strip tingkat prefix (X, XI, XII) from class name
     const stripTingkat = (nama: string) =>
@@ -179,6 +183,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
             <div 
                 className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 shadow-sm animate-in fade-in z-10 overflow-hidden"
                 style={{ 
+                    transform: `translate(${headerX_MM}mm, ${headerY_MM}mm)`,
                     height: `${resolvedHeaderHeight}mm`,
                     color: config.header_style === 'minimal' 
                         ? (config.header_bg_color || config.primary_color)
@@ -268,7 +273,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <div 
                   className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
                   style={{
-                    top: `${resolvedHeaderHeight}mm`,
+                    top: `${resolvedHeaderHeight + headerY_MM}mm`,
                     height: '3mm',
                     background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
                   }}
@@ -280,8 +285,9 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
               <div
                 className="absolute w-full text-center pointer-events-none z-10"
                 style={{ 
+                    transform: `translateX(${titleX_MM}mm)`,
                     top: `${resolvedHeaderHeight * MM_TO_PX + 
-                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3)}px` 
+                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3) + (config.title_y || 0) / EDITOR_SCALE}px` 
                 }}
               >
                    <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14)}pt` }}>

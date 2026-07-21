@@ -912,7 +912,9 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                             ...prev,
                                             photo_x: 0, photo_y: 0,
                                             qrcode_x: 0, qrcode_y: 0,
-                                            data_x: 0, data_y: 0
+                                            data_x: 0, data_y: 0,
+                                            header_x: 0, header_y: 0,
+                                            title_x: 0, title_y: 0
                                         }));
                                     }}
                                 >

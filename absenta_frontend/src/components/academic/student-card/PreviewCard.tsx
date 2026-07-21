@@ -181,10 +181,15 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           <CardPatternLayer config={config} width={width} height={height} scale={EDITOR_SCALE} />
           <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-          {/* Header */}
-          <div 
-            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden"
+          {/* Header (Draggable) */}
+          <motion.div 
+            drag
+            dragMomentum={false}
+            onDragEnd={(e, info) => onDragEnd('header', info)}
+            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden cursor-move border border-transparent hover:border-dashed hover:border-blue-400 hover:bg-blue-500/10 transition-all duration-200"
             style={{ 
+                x: config.header_x || 0,
+                y: config.header_y || 0,
                 height: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
                 color: config.header_style === 'minimal' 
                     ? (config.header_bg_color || config.primary_color)
@@ -265,33 +270,37 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 {(config.show_school_address ?? true) && <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Elegant header wave decoration */}
           {(!config.header_style || config.header_style === 'solid' || config.header_style === 'gradient') && (
             <div 
               className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
               style={{
-                top: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
+                top: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE + (config.header_y || 0)}px`,
                 height: '14px',
                 background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
               }}
             />
           )}
 
-          {/* Card Title — sits exactly below header for non-centered layouts */}
+          {/* Card Title (Draggable) */}
           {!isCenteredCircle && (
-            <div
-              className="absolute w-full text-center pointer-events-none z-10"
+            <motion.div
+              drag
+              dragMomentum={false}
+              onDragEnd={(e, info) => onDragEnd('title', info)}
+              className="absolute w-full text-center z-10 cursor-move border border-transparent hover:border-dashed hover:border-violet-400 hover:bg-violet-500/10 rounded-lg transition-all duration-200"
               style={{ 
+                  x: config.title_x || 0,
                   top: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE + 
-                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 2 : -6)}px` 
+                          ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 2 : -6) + (config.title_y || 0)}px` 
               }}
             >
                <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14) * EDITOR_SCALE}pt` }}>
                   {resolvedCardTitle}
                </h1>
-            </div>
+            </motion.div>
           )}
 
           {/* Content Area */}

@@ -75,9 +75,13 @@ export interface StudentCardConfig {
   student_name_font_size: number;
   student_details_font_size: number;
 
-  // Data Positioning
+  // Data & Element Positioning
   data_x?: number;
   data_y?: number;
+  header_x?: number;
+  header_y?: number;
+  title_x?: number;
+  title_y?: number;
 
   // Print Settings
   print_paper_size?: string;

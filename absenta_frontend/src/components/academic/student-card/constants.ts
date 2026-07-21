@@ -56,9 +56,13 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   student_name_font_size: 10,
   student_details_font_size: 8,
 
-  // Data block position
+  // Data & element block positions
   data_x: 14,
   data_y: 420,
+  header_x: 0,
+  header_y: 0,
+  title_x: 0,
+  title_y: 0,
 
   // Pattern
   card_pattern: 'solid',

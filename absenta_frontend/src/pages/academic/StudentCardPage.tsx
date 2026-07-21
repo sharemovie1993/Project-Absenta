@@ -448,7 +448,7 @@ const StudentCardPage = () => {
         return () => window.removeEventListener('save-card-config', handleSaveEvent);
     }, [handleSaveConfig]);
 
-    const handleDragEnd = useCallback((field: 'photo' | 'qrcode' | 'data', info: { offset: { x: number; y: number } }) => {
+    const handleDragEnd = useCallback((field: 'photo' | 'qrcode' | 'data' | 'header' | 'title', info: { offset: { x: number; y: number } }) => {
         const { x, y } = info.offset;
         if (field === 'photo') {
             setConfig(prev => ({
@@ -467,6 +467,18 @@ const StudentCardPage = () => {
                 ...prev,
                 data_x: (prev.data_x || 0) + x,
                 data_y: (prev.data_y || 0) + y
+            }));
+        } else if (field === 'header') {
+            setConfig(prev => ({
+                ...prev,
+                header_x: (prev.header_x || 0) + x,
+                header_y: (prev.header_y || 0) + y
+            }));
+        } else if (field === 'title') {
+            setConfig(prev => ({
+                ...prev,
+                title_x: (prev.title_x || 0) + x,
+                title_y: (prev.title_y || 0) + y
             }));
         }
     }, []);
