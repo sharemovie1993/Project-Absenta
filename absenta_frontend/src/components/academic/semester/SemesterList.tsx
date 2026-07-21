@@ -27,6 +27,7 @@ interface SemesterListProps {
   onEdit?: (semester: Semester) => void;
   onView?: (semester: Semester) => void;
   onAdd?: () => void;
+  onRefresh?: () => void;
   refreshTrigger?: number;
   tahunPelajaranId?: string;
   toolbarRight?: React.ReactNode;
@@ -36,6 +37,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
   onEdit, 
   onView, 
   onAdd,
+  onRefresh,
   refreshTrigger = 0,
   tahunPelajaranId,
   toolbarRight
@@ -209,6 +211,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       if (response.success) {
         toast.success(response.message || 'Semester berhasil dihapus');
         fetchSemesters(currentPage, searchTerm);
+        onRefresh?.();
       } else {
         toast.error(response.message || 'Gagal menghapus semester');
       }
@@ -220,7 +223,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       setLoading(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSemesters, currentPage, searchTerm]);
+  }, [confirm, fetchSemesters, currentPage, searchTerm, onRefresh]);
 
   // Handle set active
   const handleSetActive = useCallback(async (semester: Semester) => {
@@ -254,6 +257,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       if (response.success) {
         toast.success(`Semester "${semester.nama_semester}" berhasil diaktifkan`);
         fetchSemesters(currentPage, searchTerm);
+        onRefresh?.();
       } else {
         toast.error('Gagal mengaktifkan semester');
       }
@@ -264,7 +268,7 @@ const SemesterList: React.FC<SemesterListProps> = React.memo(({
       setActivating(false);
       confirm.setLoading(false);
     }
-  }, [confirm, fetchSemesters, currentPage, searchTerm]);
+  }, [confirm, fetchSemesters, currentPage, searchTerm, onRefresh]);
 
   // Table columns configuration
   const columns = useMemo(() => [

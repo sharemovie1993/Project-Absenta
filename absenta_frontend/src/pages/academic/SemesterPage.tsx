@@ -141,6 +141,7 @@ export const SemesterPage: React.FC = () => {
             onAdd={canCreate ? handleCreateSemester : undefined}
             onEdit={canEdit ? handleEditSemester : undefined}
             onView={handleViewSemester}
+            onRefresh={() => setRefreshTrigger(prev => prev + 1)}
             refreshTrigger={refreshTrigger}
             toolbarRight={canSetActive ? (
               <Card className="p-2 border-gray-100 dark:border-slate-800 dark:bg-slate-900/50 shadow-none">
