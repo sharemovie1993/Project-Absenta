@@ -456,6 +456,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.assign.student',
     'academic.structures.revoke.student',
     'documents.view.list',               // Koordinator TU melihat arsip digital sekolah
+    'documents.view.detail',
     'billing.invoices.view.list',        // Koordinator TU memantau arus keuangan / tagihan
     'billing.invoices.view.detail',
     'billing.payments.view.history',
@@ -512,6 +513,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'correspondence.outbox.view',
     'correspondence.outbox.manage',
     'documents.view.list',               // Pengarsipan dokumen dinas
+    'documents.view.detail',
     'documents.upload',
     'documents.delete',
   ],
@@ -555,6 +557,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.revoke.student',
     'tu.staff.view.list',
     'documents.view.list',               // Arsip ijazah & surat keterangan dinas
+    'documents.view.detail',
     'documents.upload',
     'documents.delete',
     'academic.promotions.manage',
