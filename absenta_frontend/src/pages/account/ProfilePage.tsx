@@ -59,15 +59,16 @@ export default function ProfilePage() {
 
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const downloadCardRef = useRef<HTMLDivElement>(null);
 
   const downloadCard = async (format: 'png' | 'pdf') => {
-    if (!cardRef.current) return;
+    if (!downloadCardRef.current) return;
     setIsDownloading(true);
     const toastId = toast.loading(`Mempersiapkan download ${format.toUpperCase()}...`);
 
     try {
       const html2canvas = (await import('html2canvas-pro')).default;
-      const canvas = await html2canvas(cardRef.current, {
+      const canvas = await html2canvas(downloadCardRef.current, {
         scale: 3,
         useCORS: true,
         allowTaint: false,
@@ -520,6 +521,25 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Hidden print/download wrapper (unscaled and off-screen for perfect html2canvas capturing) */}
+                  <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', zIndex: -9999, pointerEvents: 'none' }}>
+                    <div ref={downloadCardRef} style={{ transform: 'none', margin: 0, padding: 0 }}>
+                      {cardSide === 'front' ? (
+                        <PrintableCard 
+                          student={{
+                            ...siswaProfile,
+                            nama_siswa: siswaProfile?.nama_siswa || user?.full_name,
+                            foto: fotoUrl || user?.avatar || (siswaProfile as any)?.foto || (siswaProfile as any)?.foto_url || undefined
+                          } as any}
+                          config={resolvedConfig}
+                          sekolah={sekolahProfile as any}
+                        />
+                      ) : (
+                        <CardBackPreview config={resolvedConfig} />
+                      )}
+                    </div>
+                  </div>
 
                   {/* Tombol Kamera/Upload Foto di bawah Kartu Pelajar */}
                   <div className="mt-4 flex flex-col sm:flex-row gap-2 items-center justify-center">
