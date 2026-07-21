@@ -1222,16 +1222,16 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                         {/* Three-Column Split Workspace */}
                         <div className="flex-1 flex overflow-hidden">
-                            {/* Column 1: Front Configuration (30% width) */}
-                            <div className="w-[30%] border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
+                            {/* Column 1: Front Configuration (320px fixed width) */}
+                            <div className="w-[320px] flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
                                 <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
                                     Desain Sisi Depan
                                 </div>
                                 {frontSettingsJsx}
                             </div>
 
-                            {/* Column 2: Center Editor Preview (40% width) */}
-                            <div className="w-[40%] bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-center overflow-y-auto space-y-6 border-r border-slate-200 dark:border-slate-800 relative">
+                            {/* Column 2: Center Editor Preview (Flexible width) */}
+                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-center overflow-y-auto space-y-6 border-r border-slate-200 dark:border-slate-800 relative">
                                 <div className="absolute top-4 left-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-450">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                                     Live Preview Desain Kartu
@@ -1258,7 +1258,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     </button>
                                 </div>
 
-                                <div className="transform scale-[1.1] transition-transform">
+                                <div className="transform scale-[0.95] xl:scale-[1.0] transition-transform duration-200 flex items-center justify-center">
                                     {previewSide === 'front' ? (
                                         <PreviewCard
                                             student={previewStudent || {
@@ -1281,8 +1281,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                 </div>
                             </div>
 
-                            {/* Column 3: Back Configuration (30% width) */}
-                            <div className="w-[30%] bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
+                            {/* Column 3: Back Configuration (340px fixed width) */}
+                            <div className="w-[340px] flex-shrink-0 bg-white dark:bg-slate-900 p-6 overflow-y-auto space-y-6">
                                 <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2 mb-2">
                                     Desain Sisi Belakang
                                 </div>
