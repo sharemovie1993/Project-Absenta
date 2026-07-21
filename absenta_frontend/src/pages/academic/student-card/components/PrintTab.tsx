@@ -49,10 +49,10 @@ export const PrintTab: React.FC<PrintTabProps> = ({
     sekolah
 }) => {
     const isRFID = printConfig.paperSize === 'RFID';
-    const [zoomLevel, setZoomLevel] = React.useState<number>(isRFID ? 1.4 : 0.55);
+    const [zoomLevel, setZoomLevel] = React.useState<number>(isRFID ? 1.0 : 0.55);
 
     React.useEffect(() => {
-        setZoomLevel(isRFID ? 1.4 : 0.55);
+        setZoomLevel(isRFID ? 1.0 : 0.55);
     }, [isRFID]);
 
     return (
