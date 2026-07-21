@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardList, FileText } from 'lucide-react';
+import { ClipboardList, FileText, Lock } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, LabelList } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -173,7 +173,7 @@ export interface SupervisiRecentItem {
 }
 
 export function SupervisiPanel({
-  pct, pieData, selesai, terjadwal, belum, total, recent, loading,
+  pct, pieData, selesai, terjadwal, belum, total, recent, loading, hasPermission = true,
 }: {
   pct: number;
   pieData: PieDataItem[];
@@ -183,7 +183,23 @@ export function SupervisiPanel({
   total: number;
   recent: SupervisiRecentItem[];
   loading: boolean;
+  hasPermission?: boolean;
 }) {
+  if (!hasPermission) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 bg-slate-50/50 dark:bg-slate-900/30 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center gap-3">
+        <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-2xl">
+          <Lock size={22} />
+        </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200">Akses Dibatasi</h4>
+          <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+            Data supervisi akademik hanya dapat diakses oleh Kepala Sekolah dan Wakasek Kurikulum.
+          </p>
+        </div>
+      </div>
+    );
+  }
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">

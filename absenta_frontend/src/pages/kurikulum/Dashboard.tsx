@@ -23,6 +23,7 @@ import { getJadwalKBM } from '@/api/attendance/jadwalKBM.api';
 import { useTvStore } from '@/store/tvStore';
 import { useTvStore as useTvStoreLocal } from '@/store/tvStore'; // unused mapping prevention
 import { useJenjang } from '@/hooks/useJenjang';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
   EmptyState, DistribusiChart, SupervisiPanel, PerangkatPanel,
@@ -50,6 +51,8 @@ const chartLabelStyle = { fill: '#475569', fontSize: 10, fontWeight: 'bold' };
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function KurikulumDashboard() {
   const { isTvMode } = useTvStore();
+  const { can } = useAuth();
+  const hasSupervisiAccess = can('curriculum.supervision.view.schedule');
   const [lastRefresh, setLastRefresh] = React.useState(new Date());
   const { jenjang, kelompokOptions, tingkatList } = useJenjang();
   const isVocational = useMemo(() => ['SMK', 'MAK'].includes(jenjang || ''), [jenjang]);
@@ -116,6 +119,7 @@ export default function KurikulumDashboard() {
   });
   const { data: supR, isLoading: lSup } = useQuery({
     queryKey: ['kurikulum', 'supervisi-dash'], queryFn: () => kurikulumApi.getSupervisi({ limit: 200 }),
+    enabled: hasSupervisiAccess,
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: jwR } = useQuery({
@@ -410,7 +414,7 @@ export default function KurikulumDashboard() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6 min-h-[360px]">
                       <h3 className="text-sm font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-4">Progress Supervisi</h3>
-                      <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+                      <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} hasPermission={hasSupervisiAccess} />
                     </Card>
                     <Card className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 shadow-sm rounded-2xl p-6 min-h-[360px] flex flex-col justify-between">
                       <div className="space-y-4 flex-1">
@@ -691,7 +695,7 @@ export default function KurikulumDashboard() {
                   <ShieldCheck size={15} className="text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
-              <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} />
+              <SupervisiPanel pct={supPct} pieData={pieData} selesai={supSelesai} terjadwal={supTerjadwal} belum={supBelum} total={supRows.length} recent={recentSup} loading={lSup} hasPermission={hasSupervisiAccess} />
             </Card>
 
             {/* Resolusi Konflik (Beban + Bentrok) */}
