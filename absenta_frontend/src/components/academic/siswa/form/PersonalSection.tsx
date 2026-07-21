@@ -34,6 +34,11 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
     siswaId
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
+
+    useEffect(() => {
+        setCurrentFoto(watch('foto') || '');
+    }, [watch('foto')]);
     const [isWebcamOpen, setIsWebcamOpen] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -74,6 +79,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 if (uploadRes.success && uploadRes.data) {
                     const downloadUrl = `/academic/siswa/${siswaId}/documents/${uploadRes.data.id}/download`;
                     setValue('foto', downloadUrl);
+                    setCurrentFoto(downloadUrl);
                     toast.success('Foto berhasil diperbarui & disinkronkan', { id: 'upload-photo' });
                 } else {
                     toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
@@ -91,6 +97,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 
                 if (res.success && res.data?.url) {
                     setValue('foto', res.data.url);
+                    setCurrentFoto(res.data.url);
                     toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
                 } else {
                     toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
@@ -107,6 +114,10 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
         setTimeout(() => {
             startWebcam();
         }, 100);
+    };
+
+    const handleStartCamera = () => {
+        startWebcam();
     };
 
     const startWebcam = async () => {
@@ -137,10 +148,10 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
         stopWebcam();
     };
 
-    const capturePhoto = () => {
-        if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
+    const handleCapture = () => {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video && canvas) {
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 canvas.width = 300;
@@ -180,6 +191,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
 
     const handleRemovePhoto = async () => {
         setValue('foto', '');
+        setCurrentFoto('');
         toast.success('Foto dihapus');
 
         if (isViewMode && siswaId) {
@@ -201,8 +213,8 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                 {/* Premium Photo Header View */}
                 <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
                     <div className="relative w-32 h-40 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md overflow-hidden flex items-center justify-center flex-shrink-0 group">
-                        {watch('foto') ? (
-                            <img src={resolveProfilePhotoUrl(watch('foto'))} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        {currentFoto ? (
+                            <img src={resolveProfilePhotoUrl(currentFoto)} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                         ) : (
                             <div className="text-center p-3 text-slate-400">
                                 <UserIcon size={32} className="mx-auto mb-2 opacity-40" />
@@ -211,13 +223,13 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                         )}
                     </div>
                     <div className="flex-1 space-y-3 text-center md:text-left">
-                        <h4 className="text-xs font-black text-slate-950 dark:text-slate-100 uppercase tracking-widest">Foto Resmi Siswa</h4>
+                        <h4 className="text-xs font-black text-slate-955 dark:text-slate-100 uppercase tracking-widest">Foto Resmi Siswa</h4>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tighter leading-relaxed max-w-md">
                             Foto ini terintegrasi penuh ke semua modul, termasuk kartu identitas elektronik dan verifikasi absensi gerbang otomatis.
                         </p>
                         <div className="flex flex-wrap items-center gap-3 justify-center md:justify-start pt-1">
-                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${watch('foto') ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
-                                {watch('foto') ? 'Terverifikasi' : 'Belum Terunggah'}
+                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${currentFoto ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
+                                {currentFoto ? 'Terverifikasi' : 'Belum Terunggah'}
                             </span>
                             <Button
                                 type="button"
@@ -235,7 +247,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                                 <Camera size={12} />
                                 Ambil dari Kamera
                             </Button>
-                            {watch('foto') && (
+                            {currentFoto && (
                                 <Button
                                     type="button"
                                     onClick={handleRemovePhoto}
@@ -323,8 +335,8 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
             {/* Premium Photo Header Edit/Capture Panel */}
             <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm">
                 <div className="relative w-32 h-40 bg-white dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner overflow-hidden flex items-center justify-center flex-shrink-0 group">
-                    {watch('foto') ? (
-                        <img src={resolveProfilePhotoUrl(watch('foto'))} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {currentFoto ? (
+                        <img src={resolveProfilePhotoUrl(currentFoto)} alt="Foto Siswa" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
                         <div className="text-center p-3 text-slate-400">
                             <UserIcon size={32} className="mx-auto mb-2 opacity-40 animate-pulse" />
@@ -354,7 +366,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                             <Camera size={12} />
                             Ambil dari Kamera
                         </Button>
-                        {watch('foto') && (
+                        {currentFoto && (
                             <Button
                                 type="button"
                                 onClick={handleRemovePhoto}

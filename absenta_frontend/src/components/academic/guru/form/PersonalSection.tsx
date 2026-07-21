@@ -36,6 +36,11 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
   getLabel
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentFoto, setCurrentFoto] = useState<string>(watch('foto') || '');
+
+  useEffect(() => {
+    setCurrentFoto(watch('foto') || '');
+  }, [watch('foto')]);
   const [isWebcamOpen, setIsWebcamOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,6 +81,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
         if (uploadRes.success && uploadRes.data) {
           const downloadUrl = `/academic/guru/${guruId}/documents/${uploadRes.data.id}/download`;
           setValue('foto', downloadUrl);
+          setCurrentFoto(downloadUrl);
           toast.success('Foto berhasil diperbarui & disinkronkan', { id: 'upload-photo' });
         } else {
           toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
@@ -93,6 +99,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
         
         if (res.success && res.data?.url) {
           setValue('foto', res.data.url);
+          setCurrentFoto(res.data.url);
           toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
         } else {
           toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
@@ -108,56 +115,50 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
     setIsWebcamOpen(true);
     setTimeout(() => {
       startWebcam();
-    }, 300);
+    }, 100);
+  };
+
+  const handleStartCamera = () => {
+    startWebcam();
   };
 
   const startWebcam = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720, facingMode: 'user' },
-        audio: false
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       });
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
-      console.error('Error accessing camera:', err);
-      toast.error('Gagal mengakses kamera. Pastikan izin telah diberikan.');
+      console.error('Webcam access error:', err);
+      toast.error('Gagal mengakses kamera. Pastikan izin kamera aktif.');
       setIsWebcamOpen(false);
     }
   };
 
-  const handleCloseWebcam = () => {
+  const stopWebcam = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
-    setIsWebcamOpen(false);
   };
 
-  const captureSnapshot = () => {
+  const handleCloseWebcam = () => {
+    setIsWebcamOpen(false);
+    stopWebcam();
+  };
+
+  const handleCapture = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-
       if (ctx) {
-        const targetWidth = 600;
-        const targetHeight = 800; // 3:4 aspect ratio
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-
-        const videoWidth = video.videoWidth;
-        const videoHeight = video.videoHeight;
-        
-        const cropWidth = Math.min(videoWidth, videoHeight * (3 / 4));
-        const cropHeight = cropWidth * (4 / 3);
-        const startX = (videoWidth - cropWidth) / 2;
-        const startY = (videoHeight - cropHeight) / 2;
-
-        ctx.drawImage(video, startX, startY, cropWidth, cropHeight, 0, 0, targetWidth, targetHeight);
-
+        canvas.width = 300;
+        canvas.height = 400;
+        ctx.drawImage(video, 0, 0, 300, 400);
         canvas.toBlob(async (blob) => {
           if (blob) {
             const file = new File([blob], `guru-photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
@@ -171,6 +172,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
 
   const handleRemovePhoto = async () => {
     setValue('foto', '');
+    setCurrentFoto('');
     toast.success('Foto dihapus dari form');
     if (guruId) {
       try {
@@ -185,7 +187,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
     }
   };
 
-  const photoUrl = watch('foto');
+  const photoUrl = currentFoto;
 
   const PhotoHeaderCard = (
     <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm mb-6">
