@@ -1136,16 +1136,16 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 </div>
             </SectionCard>
 
-            {/* Preview Area (Sticky on Scroll) */}
-            <div className="lg:col-span-2 space-y-6 sticky top-[90px] self-start z-30 transition-all duration-300">
+            {/* Preview Area (Fixed in Middle like Focus Mode) */}
+            <div className="lg:col-span-2 space-y-6 sticky top-[90px] self-start z-30">
                 <SectionCard
                     title="Live Editor Preview"
                     icon={CreditCard}
                     fullWidth
-                    className="shadow-sm border-slate-100 dark:border-slate-800 overflow-hidden"
+                    className="shadow-sm border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[540px]"
                     noPadding
                 >
-                    <div className="p-12 bg-slate-200/50 dark:bg-slate-950/50 flex flex-col items-center justify-center min-h-[500px] relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
+                    <div className="p-8 lg:p-12 bg-slate-200/50 dark:bg-slate-950/50 flex-1 flex flex-col items-center justify-center relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
                         {config.show_back_side && (
                             <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-8 w-56 shadow-sm border border-slate-200/30 z-30">
                                 <button
