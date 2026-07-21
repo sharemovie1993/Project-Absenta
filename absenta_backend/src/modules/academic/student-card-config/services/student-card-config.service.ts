@@ -166,11 +166,32 @@ export class StudentCardConfigService {
     if (updateData.print_custom_width) updateData.print_custom_width = parseFloat(updateData.print_custom_width);
     if (updateData.print_custom_height) updateData.print_custom_height = parseFloat(updateData.print_custom_height);
 
+    // Destructure out fields that don't exist as columns in the DB model
+    const {
+      show_header_text,
+      show_subheader_text,
+      show_school_name,
+      show_school_address,
+      show_back_side,
+      back_style,
+      back_bg_color,
+      back_text_color,
+      back_header_text,
+      back_rules,
+      back_show_signature,
+      back_signature_title,
+      back_principal_name,
+      back_principal_nip,
+      back_signature_image_url,
+      back_stamp_image_url,
+      ...dbUpdateData
+    } = updateData;
+
     return prisma.studentCardConfig.upsert({
       where: { tenant_id: tenantId },
-      update: updateData,
+      update: dbUpdateData,
       create: {
-        ...updateData,
+        ...dbUpdateData,
         tenant_id: tenantId,
       },
     });
