@@ -478,7 +478,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             p === '/academic/transition' ||
             p === '/academic/siswa-cards' ||
             p === '/academic/staff-logs' ||
-            p === '/users'
+            p === '/users' ||
+            p === '/settings'
           ) {
             primaryItems.push(item);
           }

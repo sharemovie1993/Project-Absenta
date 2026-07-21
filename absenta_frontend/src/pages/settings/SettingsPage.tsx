@@ -30,7 +30,7 @@ const SettingsPage: React.FC = () => {
   const isTenantAdmin = user?.role?.name === 'ADMIN' && !isSuperAdminUser;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') || (isTenantAdmin ? 'tenant_profile' : 'general')).toLowerCase();
+  const initialTab = (searchParams.get('tab') || (isTenantAdmin || !can('core.system.config.view') ? 'tenant_profile' : 'general')).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -54,7 +54,7 @@ const SettingsPage: React.FC = () => {
     { label: 'Pengaturan', path: '/settings' }
   ], []);
 
-  const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.view'), [isSuperAdminUser, isTenantAdmin, can]);
+  const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.view') || can('core.sekolah.view.profile'), [isSuperAdminUser, isTenantAdmin, can]);
   const canEdit = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.system.config.update'), [isSuperAdminUser, isTenantAdmin, can]);
 
   const [config, setConfig] = useState<SystemConfigPayload>({
@@ -214,7 +214,7 @@ const SettingsPage: React.FC = () => {
   const tabs = useMemo(() => {
     const showEasyTunnel = import.meta.env.VITE_DEPLOY_SCENARIO === 'hybrid';
 
-    const list = isTenantAdmin
+    const list = (isTenantAdmin || !can('core.system.config.view'))
       ? [
           { id: 'tenant_profile', label: 'Profil Sekolah' }
         ]

@@ -422,7 +422,7 @@ async function main() {
       label: 'SISTEM', icon: 'Shield', path: null, required_features: ['CORE'], order: 50, children: [
         { label: 'Paket & Langganan', icon: 'Crown', path: '/service-center', required_capability: 'billing.subscriptions.view.active' },
         { label: 'User Management', icon: 'UserCog', path: '/users', required_capability: 'core.users.create' },
-        { label: 'Settings', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update' },
+        { label: 'Settings', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
         { label: 'WhatsApp Settings', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'whatsapp.manage.config', required_features: ['WHATSAPP'] },
         { label: 'Tiket Bantuan', icon: 'HelpCircle', path: '/support', required_capability: 'support.tickets.view' },
       ]
