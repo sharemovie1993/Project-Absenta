@@ -61,33 +61,40 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
     const handleUploadFile = async (file: File) => {
         try {
             toast.loading('Mengunggah foto...', { id: 'upload-photo' });
-            const formData = new FormData();
-            formData.append('file', file);
             
-            const res = await requestWithFallback<{ success: boolean; message: string; data: { url: string } }>('post', '/upload/file', {
-                data: formData,
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-            
-            if (res.success && res.data?.url) {
-                setValue('foto', res.data.url);
-                toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
-
-                if (isViewMode && siswaId) {
-                    try {
-                        toast.loading('Menyimpan ke database...', { id: 'save-photo' });
-                        const { updateSiswa } = await import('../../../../api/academic/siswa.api');
-                        await updateSiswa(siswaId, { foto: res.data.url });
-                        toast.success('Foto berhasil disimpan', { id: 'save-photo' });
-                    } catch (dbErr) {
-                        console.error('Failed to save photo to DB:', dbErr);
-                        toast.error('Gagal menyimpan foto', { id: 'save-photo' });
-                    }
+            if (siswaId) {
+                const { uploadSiswaDocument } = await import('../../../../api/memberDocs.api');
+                const uploadRes = await uploadSiswaDocument({
+                    siswaId,
+                    file,
+                    judul: 'Foto Formal - Siswa',
+                    kategori: 'FOTO'
+                });
+                
+                if (uploadRes.success && uploadRes.data) {
+                    const downloadUrl = `/academic/siswa/${siswaId}/documents/${uploadRes.data.id}/download`;
+                    setValue('foto', downloadUrl);
+                    toast.success('Foto berhasil diperbarui & disinkronkan', { id: 'upload-photo' });
+                } else {
+                    toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
                 }
             } else {
-                toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const res = await requestWithFallback<{ success: boolean; message: string; data: { url: string } }>('post', '/upload/file', {
+                    data: formData,
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                if (res.success && res.data?.url) {
+                    setValue('foto', res.data.url);
+                    toast.success('Foto berhasil diperbarui', { id: 'upload-photo' });
+                } else {
+                    toast.error('Gagal mengunggah foto', { id: 'upload-photo' });
+                }
             }
         } catch (err) {
             console.error('Error uploading photo:', err);

@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { resolvePublicApiBaseUrl } from "./axiosInstance";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -43,10 +44,20 @@ export function resolveProfilePhotoUrl(url?: string | null): string {
   if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
+  
+  // Ensure it has /api prefix
+  const cleanUrl = url.startsWith('/api') ? url : `/api${url}`;
+  
+  // Prepend backend base host URL (removing trailing /api if necessary to avoid double /api)
+  const apiBase = resolvePublicApiBaseUrl() || '';
+  const host = apiBase.endsWith('/api') ? apiBase.substring(0, apiBase.length - 4) : apiBase;
+  
+  let resolvedUrl = `${host}${cleanUrl}`;
+  
   const token = localStorage.getItem('access_token');
   if (token) {
-    const separator = url.includes('?') ? '&' : '?';
-    return `${url}${separator}token=${encodeURIComponent(token)}`;
+    const separator = resolvedUrl.includes('?') ? '&' : '?';
+    return `${resolvedUrl}${separator}token=${encodeURIComponent(token)}`;
   }
-  return url;
+  return resolvedUrl;
 }

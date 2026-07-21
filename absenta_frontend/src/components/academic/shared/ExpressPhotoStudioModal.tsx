@@ -242,27 +242,41 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
     playBeep('shutter');
   };
 
-  const getUploadedPhotoUrl = async (dataUrl: string): Promise<string> => {
-    if (!dataUrl.startsWith('data:')) return dataUrl;
-    try {
-      const fetchRes = await fetch(dataUrl);
-      const blob = await fetchRes.blob();
-      const prefix = mode === 'GURU' ? 'guru-photo' : 'siswa-photo';
-      const file = new File([blob], `${prefix}-${targetPerson?.id || Date.now()}-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      const formData = new FormData();
-      formData.append('file', file);
-      const { requestWithFallback } = await import('../../../api/apiUtils');
-      const res = await requestWithFallback<{ success: boolean; data: { url: string } }>('post', '/upload/file', {
-        data: formData,
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (res.success && res.data?.url) {
-        return res.data.url;
-      }
-    } catch (e) {
-      console.error('Failed to upload photo file, falling back to dataUrl:', e);
-    }
-    return dataUrl;
+  const compressImage = (file: File, maxW = 800, maxH = 800, quality = 0.85): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxW) {
+              height = Math.round((height * maxW) / width);
+              width = maxW;
+            }
+          } else {
+            if (height > maxH) {
+              width = Math.round((width * maxH) / height);
+              height = maxH;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas compression returned null blob'));
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
   };
 
   // Execute Photo Save to DB
@@ -270,10 +284,24 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
     if (!capturedPhotoDataUrl || !targetPerson) return;
     setIsSaving(true);
     try {
-      const finalPhotoUrl = await getUploadedPhotoUrl(capturedPhotoDataUrl);
+      const fetchRes = await fetch(capturedPhotoDataUrl);
+      const rawBlob = await fetchRes.blob();
+      const prefix = mode === 'GURU' ? 'guru-photo' : 'siswa-photo';
+      const file = new File([rawBlob], `${prefix}-${targetPerson.id}.jpg`, { type: 'image/jpeg' });
+
+      // Compress client side
+      const compressedBlob = await compressImage(file);
+      const compressedFile = new File([compressedBlob], `${prefix}-${targetPerson.id}.jpg`, { type: 'image/jpeg' });
 
       if (mode === 'SISWA') {
-        const res = await updateSiswa(targetPerson.id, { foto: finalPhotoUrl });
+        const { uploadSiswaDocument } = await import('../../../api/memberDocs.api');
+        const res = await uploadSiswaDocument({
+          siswaId: targetPerson.id,
+          file: compressedFile,
+          judul: `Foto Formal - Studio Massal - ${targetPerson.nama_siswa}`,
+          kategori: 'FOTO'
+        });
+        
         if (res.success) {
           const personName = (targetPerson as Siswa).nama_siswa;
           const identifier = (targetPerson as Siswa).nisn || (targetPerson as Siswa).nis || '-';
@@ -292,7 +320,14 @@ export const ExpressPhotoStudioModal: React.FC<ExpressPhotoStudioModalProps> = (
           playBeep('error');
         }
       } else {
-        const res = await updateGuru(targetPerson.id, { foto: finalPhotoUrl });
+        const { uploadGuruDocument } = await import('../../../api/memberDocs.api');
+        const res = await uploadGuruDocument({
+          guruId: targetPerson.id,
+          file: compressedFile,
+          judul: `Foto Formal - Studio Massal - ${(targetPerson as Guru).nama_guru}`,
+          kategori: 'FOTO'
+        });
+        
         if (res.success) {
           const personName = (targetPerson as Guru).nama_guru;
           const identifier = (targetPerson as Guru).nip || '-';
