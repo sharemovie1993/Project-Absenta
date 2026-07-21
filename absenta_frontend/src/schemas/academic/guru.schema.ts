@@ -16,6 +16,7 @@ export const guruSchema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
   max_jp: z.number().int().min(0, 'JP minimal 0').optional().or(z.literal('')),
   jenis_ptk: z.string().optional(),
+  foto: z.string().optional().nullable(),
   // For assignments
   mapel_ids: z.array(z.string()).optional(),
 });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '../../../lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,13 +8,18 @@ import { Loader } from '../../ui/Loader';
 import { Alert } from '../../ui/Alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/Tabs';
 import { ModalFooter } from '../../ui/Modal';
-import { Save, X, RefreshCw } from 'lucide-react';
+import { Save, X, RefreshCw, Printer, Users } from 'lucide-react';
 
 const GuruDocsPanel = lazy(() => import('./GuruDocsPanel').then(module => ({ default: module.GuruDocsPanel })));
 import { createGuru, updateGuru, getGuruDetail, type CreateGuruPayload, type UpdateGuruPayload } from '../../../api/academic/guru.api';
 import { getMapelList, type Mapel } from '../../../api/academic/mapel.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
+import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
+import { DEFAULT_GURU_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
+import { PrintOverlay } from '@/pages/academic/student-card/components/PrintOverlay';
 import { guruSchema, type GuruFormValues } from '../../../schemas/academic/guru.schema';
+import type { Guru } from '../../../types/academic';
 import toast from 'react-hot-toast';
 
 // Modular Sections
@@ -50,13 +56,83 @@ export const GuruForm = React.memo<GuruFormProps>(({
   const isViewMode = mode === 'view';
   const isEditMode = mode === 'edit';
 
-
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [mapelList, setMapelList] = useState<Mapel[]>([]);
   const [loadingMapel, setLoadingMapel] = useState(false);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [submitError, setSubmitError] = useState<string>('');
+  const [guruData, setGuruData] = useState<Guru | null>(null);
+
+  const [printingCard, setPrintingCard] = useState(false);
+  const [printOverlayData, setPrintOverlayData] = useState<{
+    config: any;
+    printConfig: any;
+    printLayout: any;
+    sekolah: any;
+  } | null>(null);
+
+  const handlePrintGuruCard = async () => {
+    if (!guruId || !guruData) return;
+    try {
+      setPrintingCard(true);
+      const [sekolahRes, configRes] = await Promise.all([
+        sekolahApi.getProfile(),
+        studentCardConfigApi.getConfig()
+      ]);
+      
+      const configObj = configRes || DEFAULT_GURU_CONFIG;
+      const sekolahObj = sekolahRes || { nama: '', alamat: '' };
+      
+      const isRfid = configObj.print_paper_size === 'RFID';
+      const prConfig = {
+        paperSize: (configObj.print_paper_size as any) || 'A4',
+        orientation: isRfid ? (configObj.template === 'horizontal' ? 'landscape' : 'portrait') : ((configObj.print_orientation as any) || 'portrait'),
+        marginTop: isRfid ? 0 : (configObj.print_margin_top ?? 10),
+        marginBottom: isRfid ? 0 : (configObj.print_margin_bottom ?? 10),
+        marginLeft: isRfid ? 0 : (configObj.print_margin_left ?? 10),
+        marginRight: isRfid ? 0 : (configObj.print_margin_right ?? 10),
+        gapX: isRfid ? 0 : (configObj.print_gap_x ?? 5),
+        gapY: isRfid ? 0 : (configObj.print_gap_y ?? 5),
+        customWidth: configObj.print_custom_width ?? 210,
+        customHeight: configObj.print_custom_height ?? 297,
+        autoCenterX: isRfid ? false : (configObj.print_auto_center_x ?? false),
+        autoCenterY: isRfid ? false : (configObj.print_auto_center_y ?? false),
+      };
+      
+      const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize].width;
+      const paperH = prConfig.paperSize === 'Custom' ? (prConfig.customHeight || 297) : PAPER_SIZES[prConfig.paperSize].height;
+
+      const finalW = prConfig.orientation === 'portrait' ? paperW : paperH;
+      const finalH = prConfig.orientation === 'portrait' ? paperH : paperW;
+
+      let columnsCount = 1;
+      let rowsCount = 1;
+
+      if (!isRfid) {
+        const cW = configObj.card_width || 85.6;
+        const cH = configObj.card_height || 54;
+
+        const availableW = finalW - prConfig.marginLeft - prConfig.marginRight;
+        const availableH = finalH - prConfig.marginTop - prConfig.marginBottom;
+
+        columnsCount = Math.max(1, Math.floor((availableW + prConfig.gapX) / (cW + prConfig.gapX)));
+        rowsCount = Math.max(1, Math.floor((availableH + prConfig.gapY) / (cH + prConfig.gapY)));
+      }
+
+      setPrintOverlayData({
+        config: configObj,
+        printConfig: prConfig,
+        printLayout: { columns: columnsCount, rows: rowsCount, totalCardsPerPage: columnsCount * rowsCount },
+        sekolah: sekolahObj
+      });
+    } catch (err: any) {
+      console.error('Failed to print guru card:', err);
+      toast.error('Gagal memuat konfigurasi cetak kartu');
+    } finally {
+      setPrintingCard(false);
+    }
+  };
   
   const [originalMapelIds, setOriginalMapelIds] = useState<string[]>([]);
   const [originalAssignmentIds, setOriginalAssignmentIds] = useState<Map<string, string>>(new Map());
@@ -79,6 +155,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
       pendidikan_terakhir: 'S1',
       jenis_ptk: 'PENDIDIK',
       no_hp: '',
+      foto: '',
       mapel_ids: []
     }
   });
@@ -108,6 +185,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
       try {
         setLoadingData(true);
         const guru = await getGuruDetail(guruId);
+        setGuruData(guru);
         
         reset({
           nip: guru.nip || '',
@@ -124,7 +202,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           pendidikan_terakhir: guru.pendidikan_terakhir || 'S1',
           rfid_tag: guru.no_rfid || '',
           max_jp: (guru as any).max_jp || '',
-          jenis_ptk: guru.jenis_ptk || 'PENDIDIK'
+          jenis_ptk: guru.jenis_ptk || 'PENDIDIK',
+          foto: guru.foto || ''
         });
       } catch (error) {
         console.error('Error loading guru data:', error);
@@ -153,11 +232,12 @@ export const GuruForm = React.memo<GuruFormProps>(({
 
         setValue('mapel_ids', currentIds);
       } catch (error) {
-        console.error('Error loading guru-mapel assignments:', error);
+        console.error('Error loading guru mapel assignments:', error);
       } finally {
         setLoadingAssignments(false);
       }
     };
+
     loadAssignments();
   }, [enableMapelAssignments, guruId, mode, setValue]);
 
@@ -170,20 +250,20 @@ export const GuruForm = React.memo<GuruFormProps>(({
 
       if (isEditMode && guruId) {
         const updatePayload: UpdateGuruPayload = {
-          nip: data.nip,
+          nip: data.nip || undefined,
           nama_guru: data.nama,
           email: data.email || undefined,
-          no_hp: data.no_hp,
+          no_hp: data.no_hp?.trim() ? data.no_hp : undefined,
           alamat: data.alamat,
-          tanggal_lahir: data.tanggal_lahir,
+          tanggal_lahir: data.tanggal_lahir?.trim() ? data.tanggal_lahir : undefined,
           jenis_kelamin: data.jenis_kelamin,
           agama: data.agama,
           status_kepegawaian: data.status_kepegawaian,
-          status: data.status,
           pendidikan_terakhir: data.pendidikan_terakhir,
           no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
           max_jp: data.max_jp === '' ? undefined : Number(data.max_jp),
-          jenis_ptk: data.jenis_ptk
+          jenis_ptk: data.jenis_ptk || 'PENDIDIK',
+          foto: data.foto || undefined
         };
         
         await updateGuru(guruId, updatePayload);
@@ -221,7 +301,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
           pendidikan_terakhir: data.pendidikan_terakhir || 'S1',
           no_rfid: data.rfid_tag?.trim() ? data.rfid_tag : undefined,
           max_jp: data.max_jp === '' ? undefined : Number(data.max_jp),
-          jenis_ptk: data.jenis_ptk || 'PENDIDIK'
+          jenis_ptk: data.jenis_ptk || 'PENDIDIK',
+          foto: data.foto || undefined
         };
         
         const created = await createGuru(createPayload);
@@ -268,6 +349,38 @@ export const GuruForm = React.memo<GuruFormProps>(({
           </Alert>
         )}
 
+        {isViewMode && guruData && (
+          <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+                <Users size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Aksi Cepat Pegawai / Guru</h3>
+                <p className="text-[10px] text-slate-600 dark:text-slate-500 font-bold uppercase tracking-tighter">Proses data & cetak kartu identitas pegawai/guru secara instan</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={handlePrintGuruCard}
+                disabled={printingCard}
+                className="hover:border-indigo-200 dark:hover:border-indigo-900 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 rounded-xl"
+              >
+                {printingCard ? (
+                  <RefreshCw size={14} className="mr-2 animate-spin" />
+                ) : (
+                  <Printer size={14} className="mr-2" />
+                )}
+                Cetak Kartu Pegawai
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Tabs defaultValue="data-pribadi" className="w-full">
           <TabsList className={cn(
             'grid w-full mb-8 h-14 p-2 bg-slate-100/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-800/50',
@@ -288,6 +401,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
               errors={errors}
               isViewMode={isViewMode}
               watch={watch}
+              setValue={setValue}
+              guruId={guruId}
               getLabel={getLabel}
             />
           </TabsContent>
@@ -353,6 +468,18 @@ export const GuruForm = React.memo<GuruFormProps>(({
           )}
         </ModalFooter>
       </form>
+
+      {printOverlayData && guruData && createPortal(
+        <PrintOverlay
+          config={printOverlayData.config}
+          printConfig={printOverlayData.printConfig}
+          printLayout={printOverlayData.printLayout}
+          sekolah={printOverlayData.sekolah}
+          students={[guruData as any]}
+          onClose={() => setPrintOverlayData(null)}
+        />,
+        document.body
+      )}
     </div>
   );
 });
