@@ -70,34 +70,73 @@ export const GuruForm = React.memo<GuruFormProps>(({
     printConfig: any;
     printLayout: any;
     sekolah: any;
+    person: any;
   } | null>(null);
 
   const handlePrintGuruCard = async () => {
-    if (!guruId || !guruData) return;
     try {
       setPrintingCard(true);
+      
+      const currentValues = watch();
+      let targetGuru: any = guruData;
+      
+      if (!targetGuru && guruId) {
+        try {
+          targetGuru = await getGuruDetail(guruId);
+          setGuruData(targetGuru);
+        } catch (e) {
+          console.error('Failed to fetch guru detail for printing:', e);
+        }
+      }
+      
+      if (!targetGuru) {
+        targetGuru = {
+          id: guruId || 'temp-id',
+          nama_guru: currentValues.nama || 'Nama Guru',
+          nip: currentValues.nip || null,
+          jenis_ptk: currentValues.jenis_ptk || 'PENDIDIK',
+          status_kepegawaian: currentValues.status_kepegawaian || 'PNS',
+          foto: currentValues.foto || null,
+          no_hp: currentValues.no_hp || '',
+          email: currentValues.email || ''
+        };
+      }
+
       const [sekolahRes, configRes] = await Promise.all([
-        sekolahApi.getProfile(),
-        studentCardConfigApi.getConfig()
+        sekolahApi.getProfile().catch(() => null),
+        studentCardConfigApi.getConfig().catch(() => null)
       ]);
       
-      const configObj = configRes || DEFAULT_GURU_CONFIG;
-      const sekolahObj = sekolahRes || { nama: '', alamat: '' };
+      // Ensure Executive Guru Design preset is used for Guru cards!
+      const baseConfig = configRes || DEFAULT_GURU_CONFIG;
+      const guruConfigObj = {
+        ...DEFAULT_GURU_CONFIG,
+        ...baseConfig,
+        card_title: 'KARTU PEGAWAI',
+        primary_color: (baseConfig.primary_color === '#2563eb' || !baseConfig.primary_color) ? '#0f172a' : baseConfig.primary_color,
+        secondary_color: (baseConfig.secondary_color === '#ffffff' || !baseConfig.secondary_color) ? '#d97706' : baseConfig.secondary_color,
+        header_bg_color: (baseConfig.header_bg_color === '#1e3a8a' || !baseConfig.header_bg_color) ? '#0f172a' : baseConfig.header_bg_color,
+        school_name: baseConfig.school_name || (sekolahRes as any)?.nama || '',
+        school_address: baseConfig.school_address || (sekolahRes as any)?.alamat || '',
+        header_text: baseConfig.header_text || 'PEMERINTAH KABUPATEN',
+        subheader_text: baseConfig.subheader_text || 'DINAS PENDIDIKAN',
+        logo_url: baseConfig.logo_url || (sekolahRes as any)?.logo_url || ''
+      };
       
-      const isRfid = configObj.print_paper_size === 'RFID';
+      const isRfid = guruConfigObj.print_paper_size === 'RFID';
       const prConfig = {
-        paperSize: (configObj.print_paper_size as any) || 'A4',
-        orientation: isRfid ? (configObj.template === 'horizontal' ? 'landscape' : 'portrait') : ((configObj.print_orientation as any) || 'portrait'),
-        marginTop: isRfid ? 0 : (configObj.print_margin_top ?? 10),
-        marginBottom: isRfid ? 0 : (configObj.print_margin_bottom ?? 10),
-        marginLeft: isRfid ? 0 : (configObj.print_margin_left ?? 10),
-        marginRight: isRfid ? 0 : (configObj.print_margin_right ?? 10),
-        gapX: isRfid ? 0 : (configObj.print_gap_x ?? 5),
-        gapY: isRfid ? 0 : (configObj.print_gap_y ?? 5),
-        customWidth: configObj.print_custom_width ?? 210,
-        customHeight: configObj.print_custom_height ?? 297,
-        autoCenterX: isRfid ? false : (configObj.print_auto_center_x ?? false),
-        autoCenterY: isRfid ? false : (configObj.print_auto_center_y ?? false),
+        paperSize: (guruConfigObj.print_paper_size as any) || 'A4',
+        orientation: isRfid ? (guruConfigObj.template === 'horizontal' ? 'landscape' : 'portrait') : ((guruConfigObj.print_orientation as any) || 'portrait'),
+        marginTop: isRfid ? 0 : (guruConfigObj.print_margin_top ?? 10),
+        marginBottom: isRfid ? 0 : (guruConfigObj.print_margin_bottom ?? 10),
+        marginLeft: isRfid ? 0 : (guruConfigObj.print_margin_left ?? 10),
+        marginRight: isRfid ? 0 : (guruConfigObj.print_margin_right ?? 10),
+        gapX: isRfid ? 0 : (guruConfigObj.print_gap_x ?? 5),
+        gapY: isRfid ? 0 : (guruConfigObj.print_gap_y ?? 5),
+        customWidth: guruConfigObj.print_custom_width ?? 210,
+        customHeight: guruConfigObj.print_custom_height ?? 297,
+        autoCenterX: isRfid ? false : (guruConfigObj.print_auto_center_x ?? false),
+        autoCenterY: isRfid ? false : (guruConfigObj.print_auto_center_y ?? false),
       };
       
       const paperW = prConfig.paperSize === 'Custom' ? (prConfig.customWidth || 210) : PAPER_SIZES[prConfig.paperSize].width;
@@ -110,8 +149,8 @@ export const GuruForm = React.memo<GuruFormProps>(({
       let rowsCount = 1;
 
       if (!isRfid) {
-        const cW = configObj.card_width || 85.6;
-        const cH = configObj.card_height || 54;
+        const cW = guruConfigObj.card_width || 85.6;
+        const cH = guruConfigObj.card_height || 54;
 
         const availableW = finalW - prConfig.marginLeft - prConfig.marginRight;
         const availableH = finalH - prConfig.marginTop - prConfig.marginBottom;
@@ -121,10 +160,11 @@ export const GuruForm = React.memo<GuruFormProps>(({
       }
 
       setPrintOverlayData({
-        config: configObj,
+        config: guruConfigObj,
         printConfig: prConfig,
         printLayout: { columns: columnsCount, rows: rowsCount, totalCardsPerPage: columnsCount * rowsCount },
-        sekolah: sekolahObj
+        sekolah: sekolahRes || { nama: '', alamat: '' },
+        person: targetGuru
       });
     } catch (err: any) {
       console.error('Failed to print guru card:', err);
@@ -349,7 +389,7 @@ export const GuruForm = React.memo<GuruFormProps>(({
           </Alert>
         )}
 
-        {isViewMode && guruData && (
+        {isViewMode && (
           <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
@@ -469,13 +509,13 @@ export const GuruForm = React.memo<GuruFormProps>(({
         </ModalFooter>
       </form>
 
-      {printOverlayData && guruData && createPortal(
+      {printOverlayData && createPortal(
         <PrintOverlay
           config={printOverlayData.config}
           printConfig={printOverlayData.printConfig}
           printLayout={printOverlayData.printLayout}
           sekolah={printOverlayData.sekolah}
-          students={[guruData as any]}
+          students={[printOverlayData.person]}
           onClose={() => setPrintOverlayData(null)}
         />,
         document.body
