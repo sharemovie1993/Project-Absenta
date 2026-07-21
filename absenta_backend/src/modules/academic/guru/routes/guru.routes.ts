@@ -3,6 +3,7 @@ import { requireCapability } from '../../../../middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '../../../../middlewares/organizationalScope';
 import { determineDataScope } from '../../../../middlewares/dataScope';
 import { RoleName } from '../../../../constants/enums';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export default async function guruRoutes(fastify: any) {
   // GET /guru - Get all guru
@@ -111,6 +112,11 @@ export default async function guruRoutes(fastify: any) {
     const { id: targetGuruId } = request.params;
 
     if (roleName === RoleName.GURU) {
+      const isAuthorizedToUpdateOthers = await authorizationService.hasUserPermission(String(userId), 'academic.teachers.update');
+      if (isAuthorizedToUpdateOthers) {
+        return;
+      }
+
       const guruProfile = await fastify.prisma.guru.findFirst({
         where: { user_id: userId }
       });
