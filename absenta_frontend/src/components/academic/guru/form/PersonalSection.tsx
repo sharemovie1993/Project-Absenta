@@ -283,7 +283,7 @@ export const PersonalSection = React.memo<PersonalSectionProps>(({
             </Button>
             <Button
               type="button"
-              onClick={captureSnapshot}
+              onClick={handleCapture}
               className="rounded-xl px-6 text-xs font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 flex items-center gap-2"
             >
               <Camera size={14} />
