@@ -121,7 +121,27 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
           if (isMounted) setDevices(videoDevices);
         } catch {}
 
-        const activeDeviceId = selectedDeviceId || (videoDevices.length > 0 ? videoDevices[0].deviceId : undefined);
+        // Prioritize back/rear camera by default if no camera is selected yet
+        let targetDeviceId = selectedDeviceId;
+        if (!targetDeviceId && videoDevices.length > 0) {
+          const backCamera = videoDevices.find((device) => {
+            const label = device.label.toLowerCase();
+            return (
+              label.includes('back') ||
+              label.includes('rear') ||
+              label.includes('environment') ||
+              label.includes('belakang') ||
+              label.includes('out') ||
+              label.includes('camera 0') // Common default main rear camera index
+            );
+          });
+          targetDeviceId = backCamera ? backCamera.deviceId : videoDevices[0].deviceId;
+          if (isMounted && targetDeviceId !== selectedDeviceId) {
+            setSelectedDeviceId(targetDeviceId);
+          }
+        }
+
+        const activeDeviceId = targetDeviceId || (videoDevices.length > 0 ? videoDevices[0].deviceId : undefined);
 
         if (!videoRef.current || !isMounted) return;
 
