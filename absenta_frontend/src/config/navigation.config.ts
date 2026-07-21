@@ -390,7 +390,12 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/siswa-cards',
       '/academic/staff-logs',
       '/users',
-      '/settings'
+      '/settings',
+      '/academic/tahun-pelajaran',
+      '/academic/semester',
+      '/academic/jurusan',
+      '/academic/kelas',
+      '/academic/mapel'
     ]
   },
   {

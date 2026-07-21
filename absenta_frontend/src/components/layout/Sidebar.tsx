@@ -479,7 +479,12 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             p === '/academic/siswa-cards' ||
             p === '/academic/staff-logs' ||
             p === '/users' ||
-            p === '/settings'
+            p === '/settings' ||
+            p === '/academic/tahun-pelajaran' ||
+            p === '/academic/semester' ||
+            p === '/academic/jurusan' ||
+            p === '/academic/kelas' ||
+            p === '/academic/mapel'
           ) {
             primaryItems.push(item);
           }
