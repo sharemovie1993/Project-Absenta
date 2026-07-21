@@ -698,81 +698,48 @@ const StudentCardPage = () => {
     }
 
     return (
-        <AcademicPageLayout
-            title={cardTargetMode === 'GURU' ? 'Kartu Identitas Pegawai & Guru' : 'Kartu Pelajar Digital'}
-            description={cardTargetMode === 'GURU' ? 'Desain dan cetak kartu identitas pegawai/guru dengan barcode RFID & pasfoto formal.' : 'Desain kartu pelajar dan cetak kartu RFID untuk siswa. Digunakan kapan saja saat pembuatan atau penggantian kartu siswa.'}
-            stats={academicStats}
-            toolbar={pageToolbar}
-            breadcrumbs={breadcrumbs}
-            hardeningModuleKey="studentcard"
-            instruction={{
-                title: cardTargetMode === 'GURU' ? 'Panduan Kartu Pegawai' : 'Panduan Kartu Pelajar',
-                description: (
-                  <div className="space-y-2">
-                    <p>Merancang tampilan kartu pelajar sekolah dan mencetak kartu secara massal dengan kode QR.</p>
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-slate-500">
-                      <p><strong>Fungsi:</strong> Mendesain dan mencetak kartu pelajar siswa.</p>
-                      <p><strong>Waktu Penggunaan:</strong> Kapan saja saat menyambut siswa baru atau mencetak kartu pengganti yang hilang.</p>
-                    </div>
-                  </div>
-                ),
-                items: [
-                    { text: "Tab Desain: Geser (drag) elemen Foto, QR, dan Data pada kartu untuk mengatur tata letak." },
-                    { text: "Tab Pilih Siswa: Gunakan filter kelas dan centang siswa yang ingin dicetak kartunya." },
-                    { text: "Tab Preview: Pastikan ukuran kertas dan margin sesuai dengan printer Anda." },
-                    { text: "Gunakan kertas PVC atau Glossy tebal untuk hasil identitas yang lebih profesional." }
-                ]
-            }}
-        >
-        <div className="p-1 space-y-4">
-            {/* Global Category Selector */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shrink-0">
-                        <CreditCard size={18} />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-black text-slate-850 dark:text-slate-100 uppercase tracking-wide">Target Desain & Cetak</h3>
-                        <p className="text-[11px] text-slate-400 font-bold">Pilih kategori kartu identitas yang ingin dikelola</p>
+        <AcademicPageLayout hardeningModuleKey="studentcard">
+        <div className="space-y-3">
+            {/* High-Density Workstation Top Bar */}
+            <div className="flex flex-wrap items-center justify-between bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm gap-3">
+                {/* Left: Category Switcher */}
+                <div className="flex items-center gap-2">
+                    <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/50 dark:border-slate-800 shrink-0">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setCardTargetMode('SISWA');
+                                setSelectedStudents([]);
+                                setPreviewStudentId('');
+                            }}
+                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                cardTargetMode === 'SISWA'
+                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            <GraduationCap size={13} /> 🎓 Kartu Siswa
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setCardTargetMode('GURU');
+                                setSelectedStudents([]);
+                                setPreviewStudentId('');
+                            }}
+                            className={`px-3 py-1.5 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
+                                cardTargetMode === 'GURU'
+                                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
+                                    : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                        >
+                            <User size={13} /> 👔 Kartu Guru & Staf
+                        </button>
                     </div>
                 </div>
-                
-                <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-850 rounded-xl border border-slate-200/50 dark:border-slate-800 shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setCardTargetMode('SISWA');
-                            setSelectedStudents([]);
-                            setPreviewStudentId('');
-                        }}
-                        className={`px-4 py-2 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                            cardTargetMode === 'SISWA'
-                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <GraduationCap size={14} /> 🎓 Kartu Siswa
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setCardTargetMode('GURU');
-                            setSelectedStudents([]);
-                            setPreviewStudentId('');
-                        }}
-                        className={`px-4 py-2 text-xs font-black rounded-lg transition-all flex items-center gap-1.5 ${
-                            cardTargetMode === 'GURU'
-                                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-100 dark:border-slate-800'
-                                : 'text-slate-500 hover:text-slate-700'
-                        }`}
-                    >
-                        <User size={14} /> 👔 Kartu Guru & Staf
-                    </button>
-                </div>
-            </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                {/* Center: Tabs Navigation */}
+                <div className="shrink-0">
                     <TabSwitcher
                         options={tabOptions}
                         activeTab={activeTab}
@@ -780,14 +747,21 @@ const StudentCardPage = () => {
                     />
                 </div>
 
-                    <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>
-                        {canView && (
-                            <TabsContent value="design" className="p-6 focus-visible:ring-0">
-                                <DesignTab 
-                                    config={config}
-                                    setConfig={setConfig}
-                                    handleDragEnd={handleDragEnd}
-                                    previewStudent={previewStudent}
+                {/* Right: Actions (Simpan Desain + Mode Fokus) */}
+                <div className="flex items-center gap-2">
+                    {pageToolbar}
+                </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>
+                    {canView && (
+                        <TabsContent value="design" className="p-0 focus-visible:ring-0">
+                            <DesignTab 
+                                config={config}
+                                setConfig={setConfig}
+                                handleDragEnd={handleDragEnd}
+                                previewStudent={previewStudent}
                                     sekolah={tenantInfo || sekolahData}
                                     isSaving={saveConfigMutation.isPending}
                                     cardTargetMode={cardTargetMode}
