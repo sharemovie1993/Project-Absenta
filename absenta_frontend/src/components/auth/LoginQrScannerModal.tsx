@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { X, SwitchCamera, Camera, AlertCircle, RefreshCw, Upload, Image as ImageIcon } from 'lucide-react';
 
@@ -20,11 +20,8 @@ function extractIdentityFromQrText(rawText: string): string {
     const obj = JSON.parse(trimmed);
     if (obj && typeof obj === 'object') {
       const candidate = obj.nisn || obj.nip || obj.nis || obj.email || obj.username || obj.id || obj.code;
-      if (candidate && typeof candidate === 'string') {
-        return candidate.trim();
-      }
-      if (candidate && typeof candidate === 'number') {
-        return String(candidate);
+      if (candidate) {
+        return String(candidate).trim();
       }
     }
   } catch {
@@ -55,7 +52,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const isInitializingRef = useRef<boolean>(false);
+
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [statusText, setStatusText] = useState<string>('Menginisialisasi kamera...');
@@ -80,8 +77,8 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
     }
   };
 
-  // Stop active camera controls and reset video element stream safely
-  const stopCamera = useCallback(() => {
+  // Safe camera cleanup
+  const cleanupCamera = () => {
     if (controlsRef.current) {
       try {
         controlsRef.current.stop();
@@ -89,111 +86,99 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
       controlsRef.current = null;
     }
 
-    if (videoRef.current) {
+    if (videoRef.current && videoRef.current.srcObject) {
       try {
-        const stream = videoRef.current.srcObject as MediaStream | null;
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
-        videoRef.current.srcObject = null;
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
       } catch {}
+      videoRef.current.srcObject = null;
     }
-    setIsScanning(false);
-  }, []);
+  };
 
-  // Handle successful code extraction
-  const handleDecodedCode = useCallback((rawText: string) => {
-    const extractedCode = extractIdentityFromQrText(rawText);
-    if (extractedCode) {
-      playBeep();
-      stopCamera();
-      onScanSuccess(extractedCode);
-      onClose();
+  // Stable Camera Init Effect (Only runs when modal opens or selected camera changes)
+  useEffect(() => {
+    if (!isOpen) {
+      cleanupCamera();
+      setIsScanning(false);
+      return;
     }
-  }, [stopCamera, onScanSuccess, onClose]);
 
-  // Start scanning on selected device safely
-  const startScanner = useCallback(
-    async (deviceId?: string) => {
-      if (isInitializingRef.current) return;
-      isInitializingRef.current = true;
+    let isMounted = true;
+    let controlsInstance: IScannerControls | null = null;
 
-      stopCamera();
+    const initScanner = async () => {
+      cleanupCamera();
       setHasError(false);
-      setStatusText('Membuka akses kamera...');
+      setStatusText('Membuka kamera...');
 
       try {
-        const codeReader = new BrowserMultiFormatReader();
+        const reader = new BrowserMultiFormatReader();
 
-        // Enumerate devices if not already loaded
-        let availableDevices = devices;
-        if (availableDevices.length === 0) {
-          try {
-            availableDevices = await BrowserMultiFormatReader.listVideoInputDevices();
-            setDevices(availableDevices);
-          } catch {}
-        }
+        // Enumerate devices
+        let videoDevices: MediaDeviceInfo[] = [];
+        try {
+          videoDevices = await BrowserMultiFormatReader.listVideoInputDevices();
+          if (isMounted) setDevices(videoDevices);
+        } catch {}
 
-        const targetDeviceId = deviceId || (availableDevices.length > 0 ? availableDevices[0].deviceId : undefined);
+        const activeDeviceId = selectedDeviceId || (videoDevices.length > 0 ? videoDevices[0].deviceId : undefined);
 
-        if (!videoRef.current) {
-          isInitializingRef.current = false;
-          return;
-        }
+        if (!videoRef.current || !isMounted) return;
 
-        setStatusText('Arahkan QR Code atau Barcode ke dalam kotak...');
+        setStatusText('Arahkan QR Code atau Barcode ke kamera...');
         setIsScanning(true);
 
-        const controls = await codeReader.decodeFromVideoDevice(
-          targetDeviceId,
+        controlsInstance = await reader.decodeFromVideoDevice(
+          activeDeviceId,
           videoRef.current,
           (result, error, controls) => {
-            if (result) {
-              const scannedText = result.getText().trim();
-              if (scannedText) {
+            if (result && isMounted) {
+              const scannedRaw = result.getText().trim();
+              const extracted = extractIdentityFromQrText(scannedRaw);
+              if (extracted) {
+                playBeep();
                 try {
                   controls.stop();
                 } catch {}
-                controlsRef.current = null;
-                handleDecodedCode(scannedText);
+                cleanupCamera();
+                onScanSuccess(extracted);
+                onClose();
               }
             }
           }
         );
 
-        controlsRef.current = controls;
-      } catch (err: any) {
-        // Suppress benign play interruption abort errors
-        if (err?.name !== 'AbortError' && !String(err).includes('play()')) {
-          console.error('Camera Scanner Error:', err);
-          setHasError(true);
-          setStatusText(
-            err?.name === 'NotAllowedError'
-              ? 'Izin kamera ditolak. Silakan izinkan akses kamera di browser Anda.'
-              : 'Gagal membuka kamera. Anda juga dapat mengunggah foto kartu dari galeri.'
-          );
-          setIsScanning(false);
+        if (isMounted) {
+          controlsRef.current = controlsInstance;
+        } else {
+          try {
+            controlsInstance.stop();
+          } catch {}
         }
-      } finally {
-        isInitializingRef.current = false;
+      } catch (err: any) {
+        if (!isMounted) return;
+        console.error('Camera Init Error:', err);
+        setHasError(true);
+        setStatusText(
+          err?.name === 'NotAllowedError'
+            ? 'Izin kamera ditolak. Harap izinkan akses kamera di browser Anda.'
+            : 'Gagal membuka kamera. Anda bisa menggunakan tombol Upload Foto Kartu.'
+        );
+        setIsScanning(false);
       }
-    },
-    [devices, stopCamera, handleDecodedCode]
-  );
+    };
 
-  useEffect(() => {
-    let isMounted = true;
-    if (isOpen) {
-      startScanner(selectedDeviceId);
-    } else {
-      stopCamera();
-    }
+    // Small 150ms delay to ensure video DOM node is mounted and ready
+    const timer = setTimeout(() => {
+      initScanner();
+    }, 150);
 
     return () => {
       isMounted = false;
-      stopCamera();
+      clearTimeout(timer);
+      cleanupCamera();
     };
-  }, [isOpen, selectedDeviceId, startScanner, stopCamera]);
+  }, [isOpen, selectedDeviceId]);
 
   const handleSwitchCamera = () => {
     if (devices.length < 2) return;
@@ -219,7 +204,14 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
       URL.revokeObjectURL(imageUrl);
 
       if (result) {
-        handleDecodedCode(result.getText().trim());
+        const rawText = result.getText().trim();
+        const extracted = extractIdentityFromQrText(rawText);
+        if (extracted) {
+          playBeep();
+          cleanupCamera();
+          onScanSuccess(extracted);
+          onClose();
+        }
       } else {
         alert('Gagal mendeteksi QR Code atau Barcode pada foto ini. Pastikan foto terlihat jelas.');
       }
@@ -266,6 +258,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
           <video
             ref={videoRef}
             className="w-full h-full object-cover"
+            autoPlay
             muted
             playsInline
           />
@@ -303,7 +296,7 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
               <div className="flex gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={() => startScanner(selectedDeviceId)}
+                  onClick={() => setSelectedDeviceId((prev) => prev)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-lg transition-all"
                 >
                   <RefreshCw className="w-4 h-4" /> Coba Lagi
