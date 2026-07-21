@@ -7,7 +7,9 @@ import {
     Shield,
     CreditCard,
     Save,
-    Users
+    Users,
+    GraduationCap,
+    User
 } from 'lucide-react';
 import { getSiswaList } from '../../api/academic/siswa.api';
 import { getGuruList } from '../../api/academic/guru.api';
