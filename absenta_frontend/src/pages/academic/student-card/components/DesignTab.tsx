@@ -1231,8 +1231,8 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             </div>
 
                             {/* Column 2: Center Editor Preview (Flexible width) */}
-                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-start pt-16 pb-12 overflow-y-auto space-y-6 border-r border-slate-200 dark:border-slate-800 relative">
-                                <div className="absolute top-4 left-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-450">
+                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-start pt-10 pb-6 overflow-y-auto space-y-4 border-r border-slate-200 dark:border-slate-800 relative">
+                                <div className="absolute top-3 left-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-450">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                                     Live Preview Desain Kartu
                                 </div>
@@ -1258,7 +1258,11 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                                     </button>
                                 </div>
 
-                                <div className="transform scale-[0.95] xl:scale-[1.0] transition-transform duration-200 flex items-center justify-center">
+                                <div className={`transform ${
+                                    config.template === 'vertical' 
+                                        ? 'scale-[0.55] lg:scale-[0.6] xl:scale-[0.65]' 
+                                        : 'scale-[0.72] lg:scale-[0.78] xl:scale-[0.82]'
+                                } transition-all duration-200 flex items-center justify-center origin-center`}>
                                     {previewSide === 'front' ? (
                                         <PreviewCard
                                             student={previewStudent || {
