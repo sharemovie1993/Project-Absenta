@@ -21,6 +21,27 @@ export async function deleteSiswaDocumentCommand(params: {
     where: { id: documentId }
   });
 
+  if (doc.kategori === 'FOTO') {
+    const student = await prisma.siswa.findUnique({
+      where: { id: siswaId },
+      select: { foto: true }
+    });
+    
+    const downloadUrl = `/academic/siswa/${siswaId}/documents/${documentId}/download`;
+    if (student?.foto === downloadUrl) {
+      const nextFoto = await prisma.siswaDocument.findFirst({
+        where: { siswa_id: siswaId, kategori: 'FOTO', id: { not: documentId } },
+        orderBy: { created_at: 'desc' }
+      });
+      
+      const newUrl = nextFoto ? `/academic/siswa/${siswaId}/documents/${nextFoto.id}/download` : null;
+      await prisma.siswa.update({
+        where: { id: siswaId },
+        data: { foto: newUrl }
+      });
+    }
+  }
+
   // 2. Hapus file fisik
   try {
     await storageService.delete(doc.file_storage_path);

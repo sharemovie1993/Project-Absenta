@@ -21,6 +21,27 @@ export async function deleteGuruDocumentCommand(params: {
     where: { id: documentId }
   });
 
+  if (doc.kategori === 'FOTO') {
+    const teacher = await prisma.guru.findUnique({
+      where: { id: guruId },
+      select: { foto: true }
+    });
+    
+    const downloadUrl = `/academic/guru/${guruId}/documents/${documentId}/download`;
+    if (teacher?.foto === downloadUrl) {
+      const nextFoto = await prisma.guruDocument.findFirst({
+        where: { guru_id: guruId, kategori: 'FOTO', id: { not: documentId } },
+        orderBy: { created_at: 'desc' }
+      });
+      
+      const newUrl = nextFoto ? `/academic/guru/${guruId}/documents/${nextFoto.id}/download` : null;
+      await prisma.guru.update({
+        where: { id: guruId },
+        data: { foto: newUrl }
+      });
+    }
+  }
+
   // 3. Hapus file fisik dari storage
   try {
     await storageService.delete(doc.file_storage_path);

@@ -49,5 +49,13 @@ export async function uploadSiswaDocumentCommand(params: {
     }
   });
 
+  if (kategori === 'FOTO') {
+    const downloadUrl = `/academic/siswa/${siswaId}/documents/${doc.id}/download`;
+    await prisma.siswa.update({
+      where: { id: siswaId },
+      data: { foto: downloadUrl }
+    });
+  }
+
   return doc;
 }

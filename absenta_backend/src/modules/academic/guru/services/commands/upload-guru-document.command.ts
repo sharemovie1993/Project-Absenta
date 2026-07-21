@@ -49,5 +49,13 @@ export async function uploadGuruDocumentCommand(params: {
     }
   });
 
+  if (kategori === 'FOTO') {
+    const downloadUrl = `/academic/guru/${guruId}/documents/${doc.id}/download`;
+    await prisma.guru.update({
+      where: { id: guruId },
+      data: { foto: downloadUrl }
+    });
+  }
+
   return doc;
 }
