@@ -49,12 +49,10 @@ export const PrintTab: React.FC<PrintTabProps> = ({
     sekolah
 }) => {
     const isRFID = printConfig.paperSize === 'RFID';
-    const [zoomLevel, setZoomLevel] = React.useState<number>(isRFID ? 1.4 : 0.75);
+    const [zoomLevel, setZoomLevel] = React.useState<number>(isRFID ? 1.4 : 0.55);
 
     React.useEffect(() => {
-        if (isRFID) {
-            setZoomLevel(1.4);
-        }
+        setZoomLevel(isRFID ? 1.4 : 0.55);
     }, [isRFID]);
 
     return (
@@ -303,43 +301,11 @@ export const PrintTab: React.FC<PrintTabProps> = ({
                     </div>
                 )}
 
-                <div className="w-full max-w-2xl mb-4 flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 z-20">
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-2 px-2">
+                <div className="w-full max-w-2xl mb-4 flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-2.5 rounded-xl shadow-sm border border-slate-200/80 dark:border-slate-800 z-20">
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                        Live Print Preview ({isRFID ? 'Presisi 1:1 Editor' : 'Halaman 1'})
+                        Live Print Preview ({isRFID ? 'Presisi 1:1 Editor' : 'Fit Page Halaman 1'})
                     </div>
-
-                    {!isRFID && (
-                        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                            <button
-                                type="button"
-                                onClick={() => setZoomLevel(0.55)}
-                                className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${
-                                    zoomLevel === 0.55 ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                                55% Fit Page
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setZoomLevel(0.75)}
-                                className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${
-                                    zoomLevel === 0.75 ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                                75% Mode Luas
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setZoomLevel(1.0)}
-                                className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all ${
-                                    zoomLevel === 1.0 ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                                }`}
-                            >
-                                100% Match Editor
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 <div
