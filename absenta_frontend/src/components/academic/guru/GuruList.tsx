@@ -6,14 +6,6 @@ import { useAuth } from '../../../hooks/useAuth';
 import { 
   Edit, 
   Trash2, 
-import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { cn } from '@/lib/utils';
-import useConfirm from '../../../hooks/useConfirm';
-import toast from 'react-hot-toast';
-import { useAuth } from '../../../hooks/useAuth';
-import { 
-  Edit, 
-  Trash2, 
   Eye, 
   Plus, 
   Search, 
