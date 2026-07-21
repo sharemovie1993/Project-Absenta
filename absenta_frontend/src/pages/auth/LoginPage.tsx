@@ -30,14 +30,6 @@ export default function LoginPage() {
       ...prev,
       email: scannedCode,
     }));
-    toast.success(`Kartu Berhasil Discan: ${scannedCode}`, {
-      icon: '🎉',
-      duration: 4000,
-    });
-    setTimeout(() => {
-      const passInput = document.getElementById('loginPassword');
-      if (passInput) passInput.focus();
-    }, 200);
   };
 
   const { loginAction, isAuthenticated, isLoading, error, user } = useAuthStore();

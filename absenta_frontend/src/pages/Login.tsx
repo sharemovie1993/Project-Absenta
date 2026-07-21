@@ -26,14 +26,6 @@ const Login: React.FC = () => {
       ...prev,
       email: scannedCode,
     }));
-    toast.success(`Kartu Berhasil Discan: ${scannedCode}`, {
-      icon: '🎉',
-      duration: 4000,
-    });
-    // Focus password input after scan
-    setTimeout(() => {
-      passwordInputRef.current?.focus();
-    }, 200);
   };
   
   useEffect(() => {
