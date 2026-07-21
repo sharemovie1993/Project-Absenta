@@ -79,20 +79,26 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
 
   // Safe camera cleanup
   const cleanupCamera = () => {
-    if (controlsRef.current) {
-      try {
+    try {
+      if (controlsRef.current) {
         controlsRef.current.stop();
-      } catch {}
-      controlsRef.current = null;
-    }
+        controlsRef.current = null;
+      }
+    } catch {}
 
-    if (videoRef.current && videoRef.current.srcObject) {
-      try {
+    try {
+      if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-      } catch {}
-      videoRef.current.srcObject = null;
-    }
+        if (stream && typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch {}
+          });
+        }
+        videoRef.current.srcObject = null;
+      }
+    } catch {}
   };
 
   // Stable Camera Init Effect (Only runs when modal opens or selected camera changes)
@@ -152,12 +158,20 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
               const extracted = extractIdentityFromQrText(scannedRaw);
               if (extracted) {
                 playBeep();
+                
+                // 1. Stop scanner loop immediately
                 try {
                   controls.stop();
                 } catch {}
                 cleanupCamera();
-                onScanSuccess(extracted);
-                onClose();
+
+                // 2. Perform state transitions after reader loop is stopped to avoid unmount error boundary crash
+                setTimeout(() => {
+                  if (isMounted) {
+                    onScanSuccess(extracted);
+                    onClose();
+                  }
+                }, 80);
               }
             }
           }
@@ -224,8 +238,10 @@ export const LoginQrScannerModal: React.FC<LoginQrScannerModalProps> = ({
         if (extracted) {
           playBeep();
           cleanupCamera();
-          onScanSuccess(extracted);
-          onClose();
+          setTimeout(() => {
+            onScanSuccess(extracted);
+            onClose();
+          }, 80);
         }
       } else {
         alert('Gagal mendeteksi QR Code atau Barcode pada foto ini. Pastikan foto terlihat jelas.');
