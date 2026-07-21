@@ -395,7 +395,14 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/semester',
       '/academic/jurusan',
       '/academic/kelas',
-      '/academic/mapel'
+      '/academic/mapel',
+      '/kurikulum/struktur',
+      '/kurikulum/guru-mapel',
+      '/kurikulum/wali-kelas',
+      '/kurikulum/kalender',
+      '/kurikulum/jam-kbm',
+      '/kurikulum/jadwal',
+      '/kurikulum/rekap-kbm'
     ]
   },
   {
