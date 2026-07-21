@@ -1115,25 +1115,38 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                 >
                     <div className="p-12 bg-slate-200/50 dark:bg-slate-950/50 flex flex-col items-center justify-center min-h-[500px] relative border-b border-slate-100 dark:border-slate-800 shadow-inner">
                         {config.show_back_side && (
-                            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 mb-8 w-56 shadow-sm border border-slate-200/30 z-30">
-                                <button
-                                    type="button"
-                                    className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                                        previewSide === 'front' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                    onClick={() => setPreviewSide('front')}
-                                >
-                                    Sisi Depan
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
-                                        previewSide === 'back' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                                    onClick={() => setPreviewSide('back')}
-                                >
-                                    Sisi Belakang
-                                </button>
+                            <div className="flex items-center gap-3 mb-8 z-30">
+                                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl items-center gap-1 w-56 shadow-sm border border-slate-200/30">
+                                    <button
+                                        type="button"
+                                        className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                            previewSide === 'front' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                        onClick={() => setPreviewSide('front')}
+                                    >
+                                        Sisi Depan
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`flex-1 text-center py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${
+                                            previewSide === 'back' ? 'bg-white dark:bg-slate-800 shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                        onClick={() => setPreviewSide('back')}
+                                    >
+                                        Sisi Belakang
+                                    </button>
+                                </div>
+
+                                {previewSide === 'back' && (
+                                    <Button
+                                        type="button"
+                                        onClick={() => setIsFocusMode(true)}
+                                        className="h-8 px-3.5 text-[10px] font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1 shadow-md border-0"
+                                    >
+                                        <Maximize2 size={11} />
+                                        Mode Fokus Sisi Belakang
+                                    </Button>
+                                )}
                             </div>
                         )}
 
