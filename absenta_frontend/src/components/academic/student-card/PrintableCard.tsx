@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
 import { EDITOR_SCALE, MM_TO_PX } from './constants';
+import { computeSmartCardDimensions } from './cardScaleEngine';
 import { Siswa } from '../../../types/academic';
 import { CardPatternLayer } from './CardPatternLayer';
 
@@ -47,6 +48,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     config, 
     sekolah 
 }) => {
+    const dim = computeSmartCardDimensions(config);
     const isVertical = config.template === 'vertical';
     const resolvedHeaderHeight = config.template === 'horizontal'
         ? Math.min(config.header_height || 18, 20)
@@ -235,8 +237,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                            alt="Logo" 
                            className="object-contain drop-shadow-sm flex-shrink-0" 
                            style={{
-                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`,
-                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`
+                             width: `${dim.logoSizePx * 0.6}px`,
+                             height: `${dim.logoSizePx * 0.6}px`
                            }}
                          />
                     ) : (
@@ -245,8 +247,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                            alt="Absenta Logo" 
                            className="object-contain drop-shadow-sm flex-shrink-0" 
                            style={{
-                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`,
-                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`
+                             width: `${dim.logoSizePx * 0.6}px`,
+                             height: `${dim.logoSizePx * 0.6}px`
                            }}
                          />
                     )}
