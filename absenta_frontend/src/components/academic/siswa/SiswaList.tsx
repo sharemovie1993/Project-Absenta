@@ -25,6 +25,7 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
 import { ExpressRfidPairingModal } from '../shared/ExpressRfidPairingModal';
+import { ExpressPhotoStudioModal } from '../shared/ExpressPhotoStudioModal';
 import { getStatusBadgeClass, getStatusLabel } from '../../../utils/layoutUtils';
 import { getSiswaList, deleteSiswa, deleteAllSiswa, getSiswaDetail, sendParentAccess, bulkUpdateStatus, generateNisMassal, updateSiswa } from '../../../api/academic/siswa.api';
 import { NisGenerateWizard } from './NisGenerateWizard';
