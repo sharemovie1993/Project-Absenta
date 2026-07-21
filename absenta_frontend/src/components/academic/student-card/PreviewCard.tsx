@@ -135,7 +135,7 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
         ? ((rawStudent as any)?.nip || rawStudent.id) 
         : (rawStudent.nisn || rawStudent.nis || rawStudent.id);
       if (qrValue) {
-          QRCode.toDataURL(qrValue, { margin: 1 })
+          QRCode.toDataURL(qrValue, { margin: 4 })
             .then(setQrCodeUrl)
             .catch(console.error);
       }

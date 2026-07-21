@@ -137,7 +137,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
           : (student.nisn || student.nis || student.id);
         
         if (qrValue) {
-            QRCode.toDataURL(qrValue, { margin: 1, width: 100 })
+            QRCode.toDataURL(qrValue, { margin: 4, width: 100 })
                 .then(setQrUrl)
                 .catch(() => setQrUrl(''));
         } else {
