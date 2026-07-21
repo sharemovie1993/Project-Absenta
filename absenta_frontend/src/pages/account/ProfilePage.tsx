@@ -100,9 +100,9 @@ export default function ProfilePage() {
         pdf.save(`${fileName}.pdf`);
         toast.success('Kartu berhasil disimpan sebagai PDF!', { id: toastId });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download card error:', error);
-      toast.error('Gagal mendownload kartu. Harap coba lagi.', { id: toastId });
+      toast.error(`Gagal: ${error?.message || String(error)}`, { id: toastId, duration: 6000 });
     } finally {
       setIsDownloading(false);
     }
