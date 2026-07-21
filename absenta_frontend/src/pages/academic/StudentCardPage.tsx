@@ -9,7 +9,8 @@ import {
     Save,
     Users,
     GraduationCap,
-    User
+    User,
+    Maximize2
 } from 'lucide-react';
 import { getSiswaList } from '../../api/academic/siswa.api';
 import { getGuruList } from '../../api/academic/guru.api';
@@ -569,19 +570,34 @@ const StudentCardPage = () => {
     const pageToolbar = (
         <div className="flex flex-wrap items-center gap-2">
             {activeTab === 'design' && canEdit && (
-                <Button
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                    onClick={handleSaveConfig}
-                    disabled={saveConfigMutation.isPending}
-                >
-                    {saveConfigMutation.isPending ? (
-                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
-                    ) : (
-                        <Save className="w-3.5 h-3.5 mr-2" />
+                <>
+                    <Button
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={handleSaveConfig}
+                        disabled={saveConfigMutation.isPending}
+                    >
+                        {saveConfigMutation.isPending ? (
+                            <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                        ) : (
+                            <Save className="w-3.5 h-3.5 mr-2" />
+                        )}
+                        Simpan Desain
+                    </Button>
+
+                    {config.show_back_side && (
+                        <Button
+                            type="button"
+                            variant="toolbarOutline"
+                            size="toolbar"
+                            onClick={() => window.dispatchEvent(new CustomEvent('open-card-back-focus-mode'))}
+                            className="border-indigo-200 text-indigo-750 hover:bg-indigo-50 dark:border-indigo-900/50 dark:text-indigo-400 font-bold"
+                        >
+                            <Maximize2 className="w-3.5 h-3.5 mr-2" />
+                            Mode Fokus Belakang
+                        </Button>
                     )}
-                    Simpan Desain
-                </Button>
+                </>
             )}
 
             {activeTab === 'print' && (
