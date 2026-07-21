@@ -770,17 +770,15 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                     </Button>
                   )}
 
-                  {canManage && (
-                     <Button
-                       variant="toolbarOutline"
-                       size="toolbar"
-                       onClick={() => setIsRfidPairingOpen(true)}
-                       className="rounded-xl text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-bold"
-                     >
-                       <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
-                       Pairing RFID Express
-                     </Button>
-                  )}
+                  <Button
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={() => setIsRfidPairingOpen(true)}
+                    className="rounded-xl text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-bold"
+                  >
+                    <Zap className="w-3.5 h-3.5 mr-1.5 text-emerald-500 fill-emerald-500 animate-pulse" />
+                    Pairing RFID Express
+                  </Button>
                  
                  <Button
                    variant="toolbarOutline"
