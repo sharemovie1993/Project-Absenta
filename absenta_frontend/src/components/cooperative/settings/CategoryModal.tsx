@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import type { SavingCategory } from './types';
@@ -69,7 +69,7 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
           >
-            <AlertCircle size={18} className="rotate-45" />
+            <X size={18} />
           </button>
         </div>
 

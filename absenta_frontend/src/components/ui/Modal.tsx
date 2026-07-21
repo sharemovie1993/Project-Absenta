@@ -32,10 +32,11 @@ export function ConfirmModal({
           {message}
         </p>
         <div className="flex justify-end space-x-3">
-          <Button variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             {cancelText}
           </Button>
           <Button 
+            type="button"
             variant={variant} 
             onClick={() => {
               onConfirm();
@@ -147,13 +148,14 @@ export function Modal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            {title && (
+            {title ? (
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
                 <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   {title}
                 </h2>
                 {!disableClose && (
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     onClick={onClose}
@@ -164,6 +166,21 @@ export function Modal({
                   </Button>
                 )}
               </div>
+            ) : (
+              !disableClose && (
+                <div className="absolute top-4 right-4 z-50">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={onClose}
+                    className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 p-0 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm"
+                    aria-label="Close modal"
+                  >
+                    <X size={18} />
+                  </Button>
+                </div>
+              )
             )}
             
             {/* Description */}

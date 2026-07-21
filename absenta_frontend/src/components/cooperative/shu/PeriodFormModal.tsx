@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../../ui';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { X, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PeriodFormModalProps {
@@ -97,7 +97,7 @@ export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClo
             type="button"
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
           >
-            <AlertCircle size={18} className="rotate-45" />
+            <X size={18} />
           </button>
         </div>
 
