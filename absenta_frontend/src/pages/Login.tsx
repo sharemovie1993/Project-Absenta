@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import axiosInstance from '../lib/axiosInstance';
 import { InfraErrorBoundary } from '../components/superadmin/infra/InfraErrorBoundary';
-import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, QrCode } from 'lucide-react';
+import { LoginQrScannerModal } from '../components/auth/LoginQrScannerModal';
+import toast from 'react-hot-toast';
 
 const Login: React.FC = () => {
   const [credentials, setCredentials] = useState({
@@ -13,9 +15,26 @@ const Login: React.FC = () => {
   const [localError, setLocalError] = useState('');
   const [tenantName, setTenantName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const passwordInputRef = useRef<HTMLInputElement>(null);
 
   const { loginAction, isAuthenticated, isLoading, error } = useAuthStore();
   const location = useLocation();
+
+  const handleScanSuccess = (scannedCode: string) => {
+    setCredentials(prev => ({
+      ...prev,
+      email: scannedCode,
+    }));
+    toast.success(`Kartu Berhasil Discan: ${scannedCode}`, {
+      icon: '🎉',
+      duration: 4000,
+    });
+    // Focus password input after scan
+    setTimeout(() => {
+      passwordInputRef.current?.focus();
+    }, 200);
+  };
   
   useEffect(() => {
     const fetchTenantInfo = async () => {
@@ -87,9 +106,19 @@ const Login: React.FC = () => {
             <form className="space-y-5" onSubmit={handleSubmit}>
               {/* Email / NISN Input */}
               <div className="space-y-1.5">
-                <label htmlFor="email" className="text-xs font-semibold text-slate-600 dark:text-slate-400 tracking-wide uppercase">
-                  NISN atau Email
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="email" className="text-xs font-semibold text-slate-600 dark:text-slate-400 tracking-wide uppercase">
+                    NISN / NIP / Email
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 px-2.5 py-1 rounded-lg transition-all"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    Scan Kartu (Kamera)
+                  </button>
+                </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-200" />
@@ -99,12 +128,20 @@ const Login: React.FC = () => {
                     name="email"
                     type="text"
                     required
-                    className="block w-full pl-10 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 sm:text-sm"
-                    placeholder="Masukkan NISN atau Email Anda"
+                    className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 sm:text-sm"
+                    placeholder="Masukkan NISN, NIP, atau Email Anda"
                     value={credentials.email}
                     onChange={handleInputChange}
                     disabled={isLoading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    title="Scan Kartu via Kamera"
+                  >
+                    <QrCode className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
@@ -118,6 +155,7 @@ const Login: React.FC = () => {
                     <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-blue-500 transition-colors duration-200" />
                   </div>
                   <input
+                    ref={passwordInputRef}
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
@@ -168,6 +206,13 @@ const Login: React.FC = () => {
             </form>
           </div>
         </div>
+
+        {/* Camera QR/Barcode Scanner Modal */}
+        <LoginQrScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={handleScanSuccess}
+        />
       </div>
     </InfraErrorBoundary>
   );
