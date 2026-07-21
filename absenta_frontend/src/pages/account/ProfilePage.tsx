@@ -602,7 +602,7 @@ export default function ProfilePage() {
                       type="file" 
                       ref={fileInputRef} 
                       onChange={handleUploadFotoDirect}
-                      accept="image/jpeg,image/png,image/webp" 
+                      accept="image/*" 
                       className="hidden"
                     />
                     <Button
