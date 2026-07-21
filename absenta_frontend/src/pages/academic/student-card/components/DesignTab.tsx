@@ -1231,7 +1231,7 @@ export const DesignTab: React.FC<DesignTabProps> = ({
                             </div>
 
                             {/* Column 2: Center Editor Preview (Flexible width) */}
-                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-center overflow-y-auto space-y-6 border-r border-slate-200 dark:border-slate-800 relative">
+                            <div className="flex-1 bg-slate-100 dark:bg-slate-950/60 p-6 flex flex-col items-center justify-start pt-16 pb-12 overflow-y-auto space-y-6 border-r border-slate-200 dark:border-slate-800 relative">
                                 <div className="absolute top-4 left-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-450">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                                     Live Preview Desain Kartu
