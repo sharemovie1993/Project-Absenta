@@ -66,7 +66,7 @@ export default function ProfilePage() {
     const toastId = toast.loading(`Mempersiapkan download ${format.toUpperCase()}...`);
 
     try {
-      const html2canvas = (await import('html2canvas')).default;
+      const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,
