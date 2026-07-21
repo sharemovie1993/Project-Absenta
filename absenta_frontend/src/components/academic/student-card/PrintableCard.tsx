@@ -179,11 +179,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
             <CardPatternLayer config={config} width={widthMM} height={heightMM} scale={1} />
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-            {/* Header */}
+            {/* Header (Fixed) */}
             <div 
                 className="absolute top-0 left-0 right-0 flex flex-col items-center justify-center py-2 shadow-sm animate-in fade-in z-10 overflow-hidden"
                 style={{ 
-                    transform: `translate(${headerX_MM}mm, ${headerY_MM}mm)`,
                     height: `${resolvedHeaderHeight}mm`,
                     color: config.header_style === 'minimal' 
                         ? (config.header_bg_color || config.primary_color)
@@ -225,7 +224,10 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                   scale={1} 
                   isHeader 
                 />
-                <div className="flex items-center gap-2 px-2 w-full justify-center z-10">
+                <div 
+                    className="flex items-center gap-2 px-2 w-full justify-center z-10"
+                    style={{ transform: `translate(${headerX_MM}mm, ${headerY_MM}mm)` }}
+                >
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                          <img 
@@ -273,7 +275,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <div 
                   className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
                   style={{
-                    top: `${resolvedHeaderHeight + headerY_MM}mm`,
+                    top: `${resolvedHeaderHeight}mm`,
                     height: '3mm',
                     background: `linear-gradient(to bottom, ${config.primary_color}, transparent)`,
                   }}

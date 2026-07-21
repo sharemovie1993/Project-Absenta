@@ -181,15 +181,10 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
           <CardPatternLayer config={config} width={width} height={height} scale={EDITOR_SCALE} />
           <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-2xl pointer-events-none" />
 
-          {/* Header (Draggable) */}
-          <motion.div 
-            drag
-            dragMomentum={false}
-            onDragEnd={(e, info) => onDragEnd('header', info)}
-            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden cursor-move border border-transparent hover:border-dashed hover:border-blue-400 hover:bg-blue-500/10 transition-all duration-200"
+          {/* Header Background (Fixed) */}
+          <div 
+            className="absolute top-0 left-0 right-0 z-10 flex flex-col items-center justify-center py-4 shadow-sm overflow-hidden"
             style={{ 
-                x: config.header_x || 0,
-                y: config.header_y || 0,
                 height: `${resolvedHeaderHeight * MM_TO_PX * EDITOR_SCALE}px`,
                 color: config.header_style === 'minimal' 
                     ? (config.header_bg_color || config.primary_color)
@@ -229,7 +224,17 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
               scale={EDITOR_SCALE} 
               isHeader 
             />
-            <div className="flex items-center gap-3 px-4 w-full justify-center z-10">
+            {/* Draggable School Identity Text & Logo */}
+            <motion.div 
+              drag
+              dragMomentum={false}
+              onDragEnd={(e, info) => onDragEnd('header', info)}
+              className="flex items-center gap-3 px-3 py-1 justify-center z-10 cursor-move border border-transparent hover:border-dashed hover:border-blue-300 hover:bg-white/10 rounded-xl transition-all duration-200"
+              style={{
+                x: config.header_x || 0,
+                y: config.header_y || 0
+              }}
+            >
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
                 <img 
@@ -269,8 +274,8 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 {(config.show_school_name ?? true) && <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>}
                 {(config.show_school_address ?? true) && <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size * EDITOR_SCALE}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat Sekolah'}</p>}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
           {/* Elegant header wave decoration */}
           {(!config.header_style || config.header_style === 'solid' || config.header_style === 'gradient') && (
