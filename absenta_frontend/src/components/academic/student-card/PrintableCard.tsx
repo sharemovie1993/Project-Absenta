@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, PanInfo } from 'framer-motion';
 import QRCode from 'qrcode';
 import type { StudentCardConfig } from './types';
 import { EDITOR_SCALE, MM_TO_PX } from './constants';
@@ -33,24 +32,20 @@ interface SekolahData {
 }
 
 interface PrintableCardProps {
-    student?: Partial<Siswa> & { 
+    student: Partial<Siswa> & { 
         nama?: string; 
         nama_siswa?: string;
         kelas?: { nama?: string; nama_kelas?: string }; 
-        foto?: string | null;
+        foto?: string;
     };
     config: StudentCardConfig;
     sekolah?: SekolahData;
-    isInteractive?: boolean;
-    onDragEnd?: (field: 'photo' | 'qrcode' | 'data' | 'header' | 'title', info: PanInfo) => void;
 }
 
 export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({ 
-    student = {}, 
+    student, 
     config, 
-    sekolah,
-    isInteractive = false,
-    onDragEnd
+    sekolah 
 }) => {
     const isVertical = config.template === 'vertical';
     const resolvedHeaderHeight = config.template === 'horizontal'
@@ -129,24 +124,24 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     const displayStudent = {
         ...student,
         isGuruCard,
-        nama: (student as any)?.nama_guru || student.nama_siswa || student.nama || (isGuruCard ? 'Ahmad Fauzi, S.Pd' : 'A. SYARIF HIDAYAT'),
-        nip: (student as any)?.nip || student.nis || '2526100001',
-        jenisPtk: (student as any)?.jenis_ptk === 'PENDIDIK' ? 'Guru' : ((student as any)?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Staf TU' : ((student as any)?.jenis_ptk || student.nisn || '0084354802')),
-        statusPegawai: (student as any)?.status_kepegawaian || (kelasStripped !== '-' ? kelasStripped : 'KUL'),
-        kelasNama: kelasNama !== '-' ? kelasNama : 'X - Kuliner 1',
-        kelasStripped: kelasStripped !== '-' ? kelasStripped : 'KUL',
-        jurusanNama: jurusanNama || 'Kuliner',
+        nama: (student as any)?.nama_guru || student.nama_siswa || student.nama || 'Ahmad Fauzi, S.Pd',
+        nip: (student as any)?.nip || student.nis,
+        jenisPtk: (student as any)?.jenis_ptk === 'PENDIDIK' ? 'Guru' : ((student as any)?.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Staf TU' : ((student as any)?.jenis_ptk || student.nisn || '-')),
+        statusPegawai: (student as any)?.status_kepegawaian || kelasStripped,
+        kelasNama,
+        kelasStripped,
+        jurusanNama,
     };
 
-    const [qrUrl, setQrUrl] = useState<string>('');
-
+    const [qrUrl, setQrUrl] = useState('');
+    
     useEffect(() => {
         const qrValue = displayStudent.isGuruCard 
-            ? ((student as any)?.nip || student.id || 'NIP-GURU-SAMPLE') 
-            : (student.nisn || student.nis || student.id || 'NISN-SISWA-SAMPLE');
-            
+          ? ((student as any)?.nip || student.id) 
+          : (student.nisn || student.nis || student.id);
+        
         if (qrValue) {
-            QRCode.toDataURL(qrValue, { margin: 1, width: 200 })
+            QRCode.toDataURL(qrValue, { margin: 4, width: 100 })
                 .then(setQrUrl)
                 .catch(() => setQrUrl(''));
         } else {
@@ -165,52 +160,14 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     };
     const isDarkBg = getLuminance(config.secondary_color || '#ffffff') < 128;
 
-    const logoSrc = config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url || '/logo.png';
-
-    const headerInnerContent = (
-        <>
-            <img 
-              src={logoSrc} 
-              alt="Logo" 
-              className="object-contain drop-shadow-sm flex-shrink-0" 
-              style={{
-                width: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`,
-                height: `${(config.logo_size || 24) * MM_TO_PX * 0.4233}px`
-              }}
-            />
-            <div className="text-center" style={{ color: 'inherit' }}>
-                {isCenteredCircle && (
-                    <h1 
-                        className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
-                        style={{ 
-                            fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, (config.card_title_font_size || 14) * 0.45)}pt`,
-                            color: config.header_style === 'minimal' ? config.primary_color : undefined
-                        }}
-                    >
-                        {resolvedCardTitle}
-                    </h1>
-                )}
-                {(config.show_header_text ?? true) && config.header_text && <h3 className="font-bold uppercase tracking-wider text-[9px] leading-tight">{config.header_text}</h3>}
-                {(config.show_subheader_text ?? true) && config.subheader_text && <h4 className="font-semibold text-[8px] leading-tight">{config.subheader_text}</h4>}
-                {(config.show_school_name ?? true) && <h2 className="font-extrabold leading-tight text-[11px] mt-0.5">{config.school_name || 'SMK Negeri 1 Plered'}</h2>}
-                {(config.show_school_address ?? true) && <p className="opacity-90 font-medium text-[7.5px] mt-0.5">{config.school_address || 'Jl. Rawasari, Plered - Purwakarta'}</p>}
-            </div>
-        </>
-    );
-
-    const titleInnerContent = (
-        <h1 className="font-black uppercase tracking-widest" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14)}pt` }}>
-            {resolvedCardTitle}
-        </h1>
-    );
-
     return (
         <div 
-            className={`relative overflow-hidden break-inside-avoid page-break-inside-avoid rounded-2xl select-none ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
+            className={`relative overflow-hidden break-inside-avoid page-break-inside-avoid rounded-2xl ${!config.show_border ? 'border border-slate-200 print:border-0' : ''}`}
             style={{
                 width: `${widthMM}mm`,
                 height: `${heightMM}mm`,
                 backgroundColor: config.secondary_color || '#ffffff',
+                // Force background print
                 printColorAdjust: 'exact',
                 WebkitPrintColorAdjust: 'exact',
                 borderColor: config.show_border ? config.border_color : undefined,
@@ -230,11 +187,13 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                     color: config.header_style === 'minimal' 
                         ? (config.header_bg_color || config.primary_color)
                         : (config.header_text_color || '#ffffff'),
+                    printColorAdjust: 'exact',
+                    WebkitPrintColorAdjust: 'exact',
                     ...(() => {
                         const headerBg = config.header_bg_color || config.primary_color;
                         const style = config.header_style || 'solid';
                         if (style === 'gradient') {
-                            return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '0.3mm solid rgba(255,255,255,0.1)' };
+                            return { background: `linear-gradient(135deg, ${headerBg} 0%, ${adjustColorBrightness(headerBg, -20)} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' };
                         }
                         if (style === 'wave') {
                             return { backgroundColor: headerBg, clipPath: 'ellipse(85% 100% at 50% 0%)' };
@@ -248,7 +207,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         if (style === 'minimal') {
                             return { backgroundColor: 'transparent', borderBottom: `0.8mm solid ${headerBg}` };
                         }
-                        return { backgroundColor: headerBg, borderBottom: '0.3mm solid rgba(255,255,255,0.1)' }; // solid
+                        return { backgroundColor: headerBg, borderBottom: '1px solid rgba(255,255,255,0.1)' }; // solid
                     })()
                 }}
             >
@@ -265,31 +224,53 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                   scale={1} 
                   isHeader 
                 />
-                
-                {isInteractive && onDragEnd ? (
-                    <motion.div 
-                        drag
-                        dragMomentum={false}
-                        onDragEnd={(e, info) => onDragEnd('header', info)}
-                        className="flex items-center gap-2 px-2 w-full justify-center z-10 cursor-move border border-transparent hover:border-dashed hover:border-blue-400 hover:bg-white/10 rounded-xl transition-all"
-                        style={{
-                            x: config.header_x || 0,
-                            y: config.header_y || 0
-                        }}
-                    >
-                        {headerInnerContent}
-                    </motion.div>
-                ) : (
-                    <div 
-                        className="flex items-center gap-2 px-2 w-full justify-center z-10"
-                        style={{ transform: `translate(${headerX_MM}mm, ${headerY_MM}mm)` }}
-                    >
-                        {headerInnerContent}
+                <div 
+                    className="flex items-center gap-2 px-2 w-full justify-center z-10"
+                    style={{ transform: `translate(${headerX_MM}mm, ${headerY_MM}mm)` }}
+                >
+                    {/* Logo */}
+                    {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
+                         <img 
+                           src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} 
+                           alt="Logo" 
+                           className="object-contain drop-shadow-sm flex-shrink-0" 
+                           style={{
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`
+                           }}
+                         />
+                    ) : (
+                         <img 
+                           src="/logo.png" 
+                           alt="Absenta Logo" 
+                           className="object-contain drop-shadow-sm flex-shrink-0" 
+                           style={{
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.21165}px`
+                           }}
+                         />
+                    )}
+                      <div className="text-center" style={{ color: 'inherit' }}>
+                        {isCenteredCircle && (
+                          <h1 
+                            className="font-black uppercase tracking-[0.2em] opacity-95 mb-0.5" 
+                            style={{ 
+                              fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, (config.card_title_font_size || 14) * 0.45)}pt`,
+                              color: config.header_style === 'minimal' ? config.primary_color : undefined
+                            }}
+                          >
+                            {resolvedCardTitle}
+                          </h1>
+                        )}
+                        {(config.show_header_text ?? true) && config.header_text && <h3 className="font-bold uppercase tracking-wider" style={{ fontSize: `${config.header_font_size}pt`, lineHeight: 1.2 }}>{config.header_text}</h3>}
+                        {(config.show_subheader_text ?? true) && config.subheader_text && <h4 className="font-semibold" style={{ fontSize: `${config.subheader_font_size}pt`, lineHeight: 1.2 }}>{config.subheader_text}</h4>}
+                        {(config.show_school_name ?? true) && <h2 className="font-extrabold leading-tight mt-0.5" style={{ fontSize: `${config.school_name_font_size}pt`, lineHeight: 1.2 }}>{config.school_name || 'NAMA SEKOLAH'}</h2>}
+                        {(config.show_school_address ?? true) && <p className="opacity-90 font-medium mt-0.5" style={{ fontSize: `${config.school_address_font_size}pt`, lineHeight: 1.2 }}>{config.school_address || 'Alamat'}</p>}
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* Header Wave Decoration */}
+            {/* Elegant header wave decoration */}
             {(!config.header_style || config.header_style === 'solid' || config.header_style === 'gradient') && (
                 <div 
                   className="absolute left-0 right-0 z-0 opacity-[0.12] pointer-events-none"
@@ -301,284 +282,144 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 />
             )}
 
-            {/* Card Title */}
+            {/* Card Title — sits exactly below header for non-centered layouts */}
             {!isCenteredCircle && (
-                isInteractive && onDragEnd ? (
-                    <motion.div
-                        drag
-                        dragMomentum={false}
-                        onDragEnd={(e, info) => onDragEnd('title', info)}
-                        className="absolute w-full text-center z-10 cursor-move border border-transparent hover:border-dashed hover:border-violet-400 hover:bg-violet-500/10 rounded-lg transition-all"
-                        style={{ 
-                            x: config.title_x || 0,
-                            top: `${resolvedHeaderHeight * MM_TO_PX + 
-                                    ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3) + (config.title_y || 0) / EDITOR_SCALE}px` 
-                        }}
-                    >
-                        {titleInnerContent}
-                    </motion.div>
-                ) : (
-                    <div
-                        className="absolute w-full text-center pointer-events-none z-10"
-                        style={{ 
-                            transform: `translateX(${titleX_MM}mm)`,
-                            top: `${resolvedHeaderHeight * MM_TO_PX + 
-                                    ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3) + (config.title_y || 0) / EDITOR_SCALE}px` 
-                        }}
-                    >
-                        {titleInnerContent}
-                    </div>
-                )
+              <div
+                className="absolute w-full text-center pointer-events-none z-10"
+                style={{ 
+                    transform: `translateX(${titleX_MM}mm)`,
+                    top: `${resolvedHeaderHeight * MM_TO_PX + 
+                            ((config.header_style === 'wave' || config.header_style === 'slanted' || config.header_style === 'double-wave') ? 1 : -3) + (config.title_y || 0) / EDITOR_SCALE}px` 
+                }}
+              >
+                   <h1 className="font-black uppercase tracking-wider" style={{ color: config.primary_color, fontSize: `${getDynamicTitleFontSize(resolvedCardTitle, config.card_title_font_size || 14)}pt` }}>
+                      {resolvedCardTitle}
+                   </h1>
+              </div>
             )}
 
-            {/* Data Block */}
-            {isInteractive && onDragEnd ? (
-                <motion.div
-                    drag
-                    dragMomentum={false}
-                    onDragEnd={(e, info) => onDragEnd('data', info)}
-                    style={{
-                        x: config.data_x || 0,
-                        y: resolvedDataY,
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        cursor: 'move',
-                        zIndex: 15,
-                        padding: '3px 3px',
-                        maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
-                        textAlign: isCenteredCircle ? 'center' : undefined,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
-                    }}
-                    className="border border-transparent hover:border-dashed hover:border-slate-300 hover:bg-slate-50/50 rounded-xl transition-all"
-                >
-                    {/* NAMA SISWA / GURU */}
-                    <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size)}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
-                            {displayStudent.isGuruCard ? 'Nama Pegawai / Guru' : 'Nama Siswa'}
-                        </div>
-                        <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                            {displayStudent.nama}
-                        </div>
+            {/* Content — absolute from top:0 left:0 matching PreviewCard */}
+            {/* Content — absolute from top:0 left:0 matching PreviewCard */}
+            <div 
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    transform: `translate(${dataX_MM}mm, ${dataY_MM}mm)`,
+                    zIndex: 15,
+                    padding: '3px 3px',
+                    maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
+                    textAlign: isCenteredCircle ? 'center' : undefined,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                }}
+            >
+                {/* NAMA SISWA / GURU */}
+                <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size)}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                    <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
+                        {displayStudent.isGuruCard ? 'Nama Pegawai / Guru' : 'Nama Siswa'}
                     </div>
-
-                    <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-
-                    <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
-                        <div>
-                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
-                              {displayStudent.isGuruCard ? 'NIP / NUPTK' : 'NIS'}
-                            </div>
-                            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nip || (displayStudent.isGuruCard ? '-' : displayStudent.nis || '-')}</div>
-                        </div>
-                        <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-                        <div>
-                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
-                              {displayStudent.isGuruCard ? 'Fungsi / PTK' : 'NISN'}
-                            </div>
-                            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.isGuruCard ? displayStudent.jenisPtk : (displayStudent.nisn || '-')}</div>
-                        </div>
-                    </div>
-
-                    <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-
-                    <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
-                        {displayStudent.isGuruCard ? (
-                          <div>
-                              <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Status</div>
-                              <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.statusPegawai || 'Aktif'}</div>
-                          </div>
-                        ) : (
-                          <>
-                            {displayStudent.jurusanNama && (
-                                <div>
-                                    <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
-                                    <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
-                                </div>
-                            )}
-                            {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
-                            <div>
-                                <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
-                                <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
-                            </div>
-                          </>
-                        )}
-                    </div>
-                </motion.div>
-            ) : (
-                <div 
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        transform: `translate(${dataX_MM}mm, ${dataY_MM}mm)`,
-                        zIndex: 15,
-                        padding: '3px 3px',
-                        maxWidth: isCenteredCircle ? '190px' : (isVertical ? '110px' : '160px'),
-                        textAlign: isCenteredCircle ? 'center' : undefined,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '2px'
-                    }}
-                >
-                    {/* NAMA SISWA / GURU */}
-                    <div style={{ fontSize: `${getDynamicNameFontSize(displayStudent.nama, config.student_name_font_size)}pt`, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.5px', color: isDarkBg ? 'rgba(255,255,255,0.5)' : config.primary_color || '#64748b', textAlign: isCenteredCircle ? 'center' : undefined }}>
-                            {displayStudent.isGuruCard ? 'Nama Pegawai / Guru' : 'Nama Siswa'}
-                        </div>
-                        <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
-                            {displayStudent.nama}
-                        </div>
-                    </div>
-
-                    <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-
-                    <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
-                        <div>
-                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
-                              {displayStudent.isGuruCard ? 'NIP / NUPTK' : 'NIS'}
-                            </div>
-                            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nip || (displayStudent.isGuruCard ? '-' : displayStudent.nis || '-')}</div>
-                        </div>
-                        <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-                        <div>
-                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
-                              {displayStudent.isGuruCard ? 'Fungsi / PTK' : 'NISN'}
-                            </div>
-                            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.isGuruCard ? displayStudent.jenisPtk : (displayStudent.nisn || '-')}</div>
-                        </div>
-                    </div>
-
-                    <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
-
-                    <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
-                        {displayStudent.isGuruCard ? (
-                          <div>
-                              <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Status</div>
-                              <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.statusPegawai || 'Aktif'}</div>
-                          </div>
-                        ) : (
-                          <>
-                            {displayStudent.jurusanNama && (
-                                <div>
-                                    <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
-                                    <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
-                                </div>
-                            )}
-                            {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
-                            <div>
-                                <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
-                                <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
-                            </div>
-                          </>
-                        )}
+                    <div style={{ fontWeight: 800, color: isDarkBg ? '#fff' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1, textAlign: isCenteredCircle ? 'center' : undefined }}>
+                        {displayStudent.nama}
                     </div>
                 </div>
-            )}
+
+                {/* Divider */}
+                <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+
+                {/* FIELD ROW 1 */}
+                <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
+                    <div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
+                          {displayStudent.isGuruCard ? 'NIP / NUPTK' : 'NIS'}
+                        </div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.nip || (displayStudent.isGuruCard ? '-' : displayStudent.nis || '-')}</div>
+                    </div>
+                    <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+                    <div>
+                        <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>
+                          {displayStudent.isGuruCard ? 'Fungsi / PTK' : 'NISN'}
+                        </div>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.isGuruCard ? displayStudent.jenisPtk : (displayStudent.nisn || '-')}</div>
+                    </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />
+
+                {/* FIELD ROW 2 */}
+                <div style={{ display: 'flex', gap: '6px', fontSize: `${config.student_details_font_size}pt`, justifyContent: isCenteredCircle ? 'center' : undefined }}>
+                    {displayStudent.isGuruCard ? (
+                      <div>
+                          <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Status</div>
+                          <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.statusPegawai || 'Aktif'}</div>
+                      </div>
+                    ) : (
+                      <>
+                        {displayStudent.jurusanNama && (
+                            <div>
+                                <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Jurusan</div>
+                                <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.jurusanNama}</div>
+                            </div>
+                        )}
+                        {displayStudent.jurusanNama && <div style={{ width: '0.5px', background: isDarkBg ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }} />}
+                        <div>
+                            <div style={{ fontSize: '3.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.15em', color: isDarkBg ? 'rgba(255,255,255,0.45)' : config.primary_color || '#64748b', marginBottom: '1px' }}>Kelas</div>
+                            <div style={{ fontWeight: 700, color: isDarkBg ? '#e2e8f0' : '#1e293b' }}>{displayStudent.kelasStripped}</div>
+                        </div>
+                      </>
+                    )}
+                </div>
+            </div>
 
             {/* Photo */}
             {config.show_photo && (
-                isInteractive && onDragEnd ? (
-                    <motion.div
-                        drag
-                        dragMomentum={false}
-                        onDragEnd={(e, info) => onDragEnd('photo', info)}
-                        style={{
-                            x: config.photo_x || 0,
-                            y: config.photo_y || 0,
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: `${photoW}mm`,
-                            height: `${config.photo_shape === 'circle' ? photoW : photoH}mm`,
-                            zIndex: 20,
-                            cursor: 'move',
-                            borderColor: config.photo_shape === 'circle' ? (config.primary_color || '#3b82f6') : undefined,
-                            borderWidth: config.photo_shape === 'circle' ? '0.8mm' : undefined,
-                            borderStyle: config.photo_shape === 'circle' ? 'solid' : undefined
-                        }}
-                        className={`bg-slate-50 flex items-center justify-center overflow-hidden shadow-md ${
-                            config.photo_shape === 'circle' ? 'rounded-full' : 'border border-slate-200 rounded-xl'
-                        }`}
-                    >
-                        {student.foto ? (
-                            <img src={student.foto} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-[6px] text-slate-400">FOTO</span>
-                        )}
-                    </motion.div>
-                ) : (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            transform: `translate(${photoX_MM}mm, ${photoY_MM}mm)`,
-                            width: `${photoW}mm`,
-                            height: `${config.photo_shape === 'circle' ? photoW : photoH}mm`,
-                            zIndex: 20,
-                            borderColor: config.photo_shape === 'circle' ? (config.primary_color || '#3b82f6') : undefined,
-                            borderWidth: config.photo_shape === 'circle' ? '0.8mm' : undefined,
-                            borderStyle: config.photo_shape === 'circle' ? 'solid' : undefined
-                        }}
-                        className={`bg-slate-50 flex items-center justify-center overflow-hidden shadow-md ${
-                            config.photo_shape === 'circle' ? 'rounded-full' : 'border border-slate-200 rounded-xl'
-                        }`}
-                    >
-                        {student.foto ? (
-                            <img src={student.foto} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-[6px] text-slate-400">FOTO</span>
-                        )}
-                    </div>
-                )
+                <div
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        transform: `translate(${photoX_MM}mm, ${photoY_MM}mm)`,
+                        width: `${photoW}mm`,
+                        height: `${config.photo_shape === 'circle' ? photoW : photoH}mm`,
+                        zIndex: 20,
+                        borderColor: config.photo_shape === 'circle' ? (config.primary_color || '#3b82f6') : undefined,
+                        borderWidth: config.photo_shape === 'circle' ? '0.8mm' : undefined,
+                        borderStyle: config.photo_shape === 'circle' ? 'solid' : undefined
+                    }}
+                    className={`bg-slate-50 flex items-center justify-center overflow-hidden shadow-md ${
+                        config.photo_shape === 'circle' ? 'rounded-full' : 'border border-slate-200 rounded-xl'
+                    }`}
+                >
+                    {student.foto ? (
+                        <img src={student.foto} className="w-full h-full object-cover" />
+                    ) : (
+                        <span className="text-[6px] text-slate-400">FOTO</span>
+                    )}
+                </div>
             )}
 
             {/* QR Code */}
-            {config.show_qrcode && (
-                isInteractive && onDragEnd ? (
-                    <motion.div
-                        drag
-                        dragMomentum={false}
-                        onDragEnd={(e, info) => onDragEnd('qrcode', info)}
-                        style={{
-                            x: resolvedQrX,
-                            y: resolvedQrY,
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: `${qrW}mm`,
-                            height: `${qrH}mm`,
-                            boxSizing: 'border-box',
-                            zIndex: 20,
-                            cursor: 'move'
-                        }}
-                        className="bg-white p-0.5 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center overflow-hidden"
-                    >
-                        {qrUrl && <img src={qrUrl} alt="QR" className="w-full h-full object-contain" draggable={false} />}
-                    </motion.div>
-                ) : (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            transform: `translate(${qrX_MM}mm, ${qrY_MM}mm)`,
-                            width: `${qrW}mm`,
-                            height: `${qrH}mm`,
-                            boxSizing: 'border-box',
-                            zIndex: 20
-                        }}
-                        className="bg-white p-0.5 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center overflow-hidden"
-                    >
-                        {qrUrl && <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />}
-                    </div>
-                )
+            {config.show_qrcode && qrUrl && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        transform: `translate(${qrX_MM}mm, ${qrY_MM}mm)`,
+                        width: `${qrW}mm`,
+                        height: `${qrH}mm`,
+                        boxSizing: 'border-box',
+                        zIndex: 20
+                    }}
+                    className="bg-white p-0.5 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center overflow-hidden"
+                >
+                    <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
+                </div>
             )}
 
-            {/* Footer Decoration */}
+             {/* Footer Decoration */}
             {(() => {
                 const footerStyle = config.footer_style || 'solid';
                 if (footerStyle === 'hidden') return null;
@@ -589,29 +430,29 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 if (footerStyle === 'accent-line') {
                     return (
                         <div 
-                          className="absolute bottom-1.5 left-4 right-4 rounded-full shadow-sm"
-                          style={{ height: '0.8mm', backgroundColor: footerBg }}
+                          className="absolute bottom-1 left-3 right-3 rounded-full"
+                          style={{ height: '0.8mm', backgroundColor: footerBg, printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
                         />
                     );
                 }
 
                 return (
                     <div 
-                      className={`absolute bottom-0 left-0 right-0 shadow-inner ${
-                          footerStyle === 'glass' ? 'backdrop-blur-sm border-t border-white/10' : ''
-                      }`}
-                      style={{ 
-                          height: `${heightMm}mm`,
-                          ...(() => {
-                              if (footerStyle === 'gradient') {
-                                  return { background: `linear-gradient(90deg, ${footerBg} 0%, ${adjustColorBrightness(footerBg, -20)} 100%)` };
-                              }
-                              if (footerStyle === 'glass') {
-                                  return { backgroundColor: 'rgba(255, 255, 255, 0.15)' };
-                              }
-                              return { backgroundColor: footerBg }; // solid
-                          })()
-                      }}
+                        className="absolute bottom-0 left-0 right-0"
+                        style={{ 
+                            height: `${heightMm}mm`,
+                            printColorAdjust: 'exact',
+                            WebkitPrintColorAdjust: 'exact',
+                            ...(() => {
+                                if (footerStyle === 'gradient') {
+                                    return { background: `linear-gradient(90deg, ${footerBg} 0%, ${adjustColorBrightness(footerBg, -20)} 100%)` };
+                                }
+                                if (footerStyle === 'glass') {
+                                    return { backgroundColor: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.3)' };
+                                }
+                                return { backgroundColor: footerBg }; // solid
+                            })()
+                        }}
                     />
                 );
             })()}
