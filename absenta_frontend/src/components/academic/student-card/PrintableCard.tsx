@@ -223,9 +223,25 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                 <div className="flex items-center gap-2 px-2 w-full justify-center z-10">
                     {/* Logo */}
                     {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
-                         <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
+                         <img 
+                           src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} 
+                           alt="Logo" 
+                           className="object-contain drop-shadow-sm flex-shrink-0" 
+                           style={{
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`
+                           }}
+                         />
                     ) : (
-                         <img src="/logo.png" alt="Absenta Logo" className="w-6 h-6 object-contain drop-shadow-sm" />
+                         <img 
+                           src="/logo.png" 
+                           alt="Absenta Logo" 
+                           className="object-contain drop-shadow-sm flex-shrink-0" 
+                           style={{
+                             width: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`,
+                             height: `${(config.logo_size || 24) * MM_TO_PX * 0.4}px`
+                           }}
+                         />
                     )}
                       <div className="text-center" style={{ color: 'inherit' }}>
                         {isCenteredCircle && (

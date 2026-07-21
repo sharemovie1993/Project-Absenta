@@ -227,9 +227,25 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
             <div className="flex items-center gap-3 px-4 w-full justify-center z-10">
               {/* Logo Placeholder */}
               {(config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url) ? (
-                <img src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+                <img 
+                  src={config.logo_url || (sekolah as any)?.logo_url || (sekolah as any)?.data?.logo_url} 
+                  alt="Logo" 
+                  className="object-contain drop-shadow-md flex-shrink-0" 
+                  style={{
+                    width: `${(config.logo_size || 24) * EDITOR_SCALE * 0.8}px`,
+                    height: `${(config.logo_size || 24) * EDITOR_SCALE * 0.8}px`
+                  }}
+                />
               ) : (
-                <img src="/logo.png" alt="Absenta Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+                <img 
+                  src="/logo.png" 
+                  alt="Absenta Logo" 
+                  className="object-contain drop-shadow-md flex-shrink-0" 
+                  style={{
+                    width: `${(config.logo_size || 24) * EDITOR_SCALE * 0.8}px`,
+                    height: `${(config.logo_size || 24) * EDITOR_SCALE * 0.8}px`
+                  }}
+                />
               )}
               <div className="text-center" style={{ color: 'inherit' }}>
                 {isCenteredCircle && (

@@ -622,6 +622,14 @@ export const DesignTab: React.FC<DesignTabProps> = ({
 
                     <SettingsGroup title="Identitas Sekolah" defaultOpen={true}>
                         <div className="space-y-4">
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                <Label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Ukuran Logo Sekolah</Label>
+                                <FontSizeInput
+                                    value={config.logo_size || 24}
+                                    onChange={(v: number) => setConfig({ ...config, logo_size: v })}
+                                />
+                            </div>
+
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
