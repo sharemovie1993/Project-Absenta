@@ -133,8 +133,8 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
     
     useEffect(() => {
         const qrValue = displayStudent.isGuruCard 
-          ? (displayStudent.nip || displayStudent.id) 
-          : (displayStudent.nisn || displayStudent.id);
+          ? ((student as any)?.nip || student.id) 
+          : (student.nisn || student.nis || student.id);
         
         if (qrValue) {
             QRCode.toDataURL(qrValue, { margin: 1, width: 100 })
@@ -143,7 +143,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
         } else {
             setQrUrl('');
         }
-    }, [displayStudent]);
+    }, [displayStudent, student]);
 
     const getLuminance = (hex: string) => {
         if (!hex) return 255;

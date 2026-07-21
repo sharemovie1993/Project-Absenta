@@ -132,14 +132,14 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
 
     useEffect(() => {
       const qrValue = displayStudent.isGuruCard 
-        ? (displayStudent.nip || displayStudent.id) 
-        : (displayStudent.nisn || displayStudent.id);
+        ? ((rawStudent as any)?.nip || rawStudent.id) 
+        : (rawStudent.nisn || rawStudent.nis || rawStudent.id);
       if (qrValue) {
           QRCode.toDataURL(qrValue, { margin: 1 })
             .then(setQrCodeUrl)
             .catch(console.error);
       }
-    }, [displayStudent]);
+    }, [displayStudent, rawStudent]);
 
     // Dimensions for Photo and QR (in mm)
     const PHOTO_WIDTH_MM = config.photo_width || 24;
