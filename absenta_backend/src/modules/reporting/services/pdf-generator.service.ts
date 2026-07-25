@@ -981,20 +981,26 @@ export class PdfGeneratorService {
     return this.renderHtmlToPdf(html, 'portrait');
   }
 
-  private static async renderHtmlToPdf(html: string, orientation: 'portrait' | 'landscape') {
+  static async renderHtmlToPdf(html: string, orientation: 'portrait' | 'landscape') {
     let browser: any;
     try {
       browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--font-render-hinting=none'
+        ]
       });
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'load' });
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const pdfBuffer = await page.pdf({
         format: 'A4',
         landscape: orientation === 'landscape',
         printBackground: true,
-        preferCSSPageSize: true
+        preferCSSPageSize: true,
+        margin: { top: '10mm', right: '12mm', bottom: '10mm', left: '12mm' }
       });
       return pdfBuffer;
     } finally {
@@ -1003,4 +1009,6 @@ export class PdfGeneratorService {
       }
     }
   }
+
+
 }

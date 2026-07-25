@@ -155,6 +155,47 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  academic_struktur_organisasi: {
+    moduleName: 'academic_struktur_organisasi',
+    displayName: 'Struktur Organisasi (Akademik)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Mencegah kerusakan visual halaman total melalui penanganan error boundary dan loading state terisolasi.',
+        status: 'VERIFIED',
+        details: 'Terintegrasi di dalam router tree dan loading state.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Memoization)',
+        description: 'Menggunakan useMemo dan useCallback untuk membatasi re-render saat memproses tree data struktur organisasi.',
+        status: 'VERIFIED',
+        details: 'useMemo terpasang pada data arrays, tab list, dan breadcrumbs.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna (Responsive Guide)',
+        description: 'Menyediakan panduan pengguna interaktif (instruction) pada layout halaman utama.',
+        status: 'VERIFIED',
+        details: 'Properti instruction terdeteksi pada AcademicPageLayout.'
+      },
+      {
+        id: 'architectural_container_consistency',
+        name: 'Konsistensi Kontainer UI',
+        description: 'Membungkus konten utama dengan SectionCard untuk standard visual yang selaras.',
+        status: 'VERIFIED',
+        details: 'SectionCard terpasang di sekeliling layout utama.'
+      },
+      {
+        id: 'rbac_protection',
+        name: 'Proteksi Otorisasi Klien (RBAC Shielding)',
+        description: 'Membatasi hak akses edit dan pimpinan berdasarkan otorisasi role pengguna.',
+        status: 'VERIFIED',
+        details: 'Pemeriksaan capability terpasang di render button.'
+      }
+    ]
+  },
   academic_guru: {
     moduleName: 'academic_guru',
     displayName: 'Database Tenaga Pendidik (Akademik)',

@@ -53,6 +53,10 @@ const STATUS_LABELS: Record<string, string> = {
   BELUM: 'Belum Ada Data'
 };
 
+const formatDate = (date: Date | string): string => {
+  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 export const MyAttendancePage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const bulanKey = format(currentDate, 'yyyy-MM');
@@ -101,8 +105,8 @@ export const MyAttendancePage: React.FC = () => {
   }, []);
 
   const getDayStatus = useCallback((date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return rekap?.detail?.find((d: { tanggal: string }) => d.tanggal === dateStr);
+    const dateFormatted = format(date, 'yyyy-MM-dd');
+    return rekap?.detail?.find((d: { tanggal: string }) => d.tanggal === dateFormatted);
   }, [rekap]);
 
   const stats = [
@@ -209,19 +213,19 @@ export const MyAttendancePage: React.FC = () => {
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                </div>
-               <div className="hidden md:flex gap-4">
-                  {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'BELUM').map(([key]) => (
+                <div className="hidden md:flex gap-4">
+                  {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'BELUM')?.map(([key]) => (
                     <div key={key} className="flex items-center gap-2">
                       <div className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[key]}`}></div>
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{key}</span>
                     </div>
                   ))}
-               </div>
+                </div>
             </div>
 
             <div className="p-8">
                <div className="grid grid-cols-7 gap-4 mb-6">
-                 {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map(day => (
+                 {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']?.map(day => (
                    <div key={day} className="text-center text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
                      {day}
                    </div>
@@ -229,7 +233,7 @@ export const MyAttendancePage: React.FC = () => {
                </div>
 
                <div className="grid grid-cols-7 gap-4">
-                 {Array.from({ length: prefixDays }).map((_, i) => (
+                 {Array.from({ length: prefixDays })?.map((_, i) => (
                    <div key={`prefix-${i}`} className="aspect-square opacity-0"></div>
                  ))}
 
@@ -265,7 +269,7 @@ export const MyAttendancePage: React.FC = () => {
         <div className="space-y-8">
            <SectionCard title="Legenda Status" icon={Info} fullWidth>
               <div className="space-y-6">
-                 {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                 {Object.entries(STATUS_LABELS)?.map(([key, label]) => (
                    <div key={key} className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${key === 'BELUM' ? 'bg-slate-100 dark:bg-slate-800' : STATUS_COLORS[key] + ' bg-opacity-10'}`}>
                          <div className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[key]}`}></div>

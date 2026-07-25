@@ -82,4 +82,9 @@ export class DocumentStorageService {
   createReadStream(storagePath: string) {
     return storageService.createReadStream(storagePath);
   }
+
+  exists(storagePath: string) {
+    return storageService.exists(storagePath);
+  }
 }
+

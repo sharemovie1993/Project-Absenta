@@ -26,7 +26,16 @@ export function calculateAttendanceStatus(
   }
 
   // Parse jam masuk target (asumsi tanggal scanMasuk)
-  const targetMasuk = parse(config.jamMasuk, 'HH:mm', scanMasuk);
+  const jamMasukStr = config.jamMasuk && typeof config.jamMasuk === 'string' && config.jamMasuk.trim() ? config.jamMasuk.trim() : '07:00';
+  let targetMasuk: Date;
+  try {
+    targetMasuk = parse(jamMasukStr, 'HH:mm', scanMasuk);
+    if (isNaN(targetMasuk.getTime())) {
+      targetMasuk = parse('07:00', 'HH:mm', scanMasuk);
+    }
+  } catch {
+    targetMasuk = parse('07:00', 'HH:mm', scanMasuk);
+  }
   
   // Hitung selisih menit (scanMasuk - targetMasuk)
   const diffMenit = differenceInMinutes(scanMasuk, targetMasuk);
@@ -36,7 +45,7 @@ export function calculateAttendanceStatus(
   let isLateIgnored = false;
 
   // Cek Keterlambatan
-  if (diffMenit > config.toleransiMenit) {
+  if (diffMenit > (config.toleransiMenit ?? 15)) {
     if (config.abaikanTerlambat) {
       status = 'HADIR';
       isLateIgnored = true;
@@ -45,9 +54,6 @@ export function calculateAttendanceStatus(
       menitTerlambat = diffMenit;
     }
   }
-
-  // TODO: Implementasi Pulang Cepat logic if needed (scanPulang < jamPulang)
-  // Saat ini fokus ke Masuk dulu sesuai request user
 
   return {
     status,
@@ -60,14 +66,14 @@ export function calculateAttendanceStatus(
  * Helper untuk resolve konfigurasi final (Hierarchy: SpecialEvent -> Class -> Tenant)
  */
 export function resolveAttendanceConfig(
-  tenant: { jam_masuk_default: string; jam_pulang_default: string; toleransi_keterlambatan_menit: number },
-  kelas: { jam_masuk: string | null; jam_pulang: string | null } | null,
-  specialEvent: { abaikan_terlambat: boolean } | null
+  tenant: { jam_masuk_default?: string | null; jam_pulang_default?: string | null; toleransi_keterlambatan_menit?: number | null } | null,
+  kelas: { jam_masuk?: string | null; jam_pulang?: string | null } | null,
+  specialEvent: { abaikan_terlambat?: boolean } | null
 ): AttendanceRuleConfig {
   return {
-    jamMasuk: kelas?.jam_masuk || tenant.jam_masuk_default,
-    jamPulang: kelas?.jam_pulang || tenant.jam_pulang_default,
-    toleransiMenit: tenant.toleransi_keterlambatan_menit,
+    jamMasuk: kelas?.jam_masuk || tenant?.jam_masuk_default || '07:00',
+    jamPulang: kelas?.jam_pulang || tenant?.jam_pulang_default || '14:00',
+    toleransiMenit: tenant?.toleransi_keterlambatan_menit ?? 15,
     abaikanTerlambat: specialEvent?.abaikan_terlambat || false
   };
 }

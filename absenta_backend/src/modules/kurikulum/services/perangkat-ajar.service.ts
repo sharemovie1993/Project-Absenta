@@ -58,10 +58,38 @@ export class PerangkatAjarService {
   }
 
   static async getPerangkatById(tenantId: string, id: string) {
-    return prisma.perangkatAjar.findFirst({
+    const item = await prisma.perangkatAjar.findFirst({
       where: { id, tenant_id: tenantId },
+      include: {
+        Guru: true,
+        Mapel: true,
+        TahunPelajaran: true,
+        Semester: true,
+      },
     });
+
+    if (!item) return null;
+
+    // Fetch rich html_content from GlobalPerangkatAjarLibrary matching title/jenis
+    try {
+      const lib = await prisma.globalPerangkatAjarLibrary.findFirst({
+        where: {
+          judul: { contains: item.judul, mode: 'insensitive' },
+          jenis: item.jenis,
+        },
+        select: { html_content: true },
+        orderBy: { created_at: 'desc' }
+      });
+
+      if (lib?.html_content) {
+        (item as any).html_content = lib.html_content;
+      }
+    } catch (e) {}
+
+    return item;
   }
+
+
 
   static async getPerangkat(
     tenantId: string,
@@ -114,4 +142,27 @@ export class PerangkatAjarService {
       where: { id },
     });
   }
+
+  static async bulkDeletePerangkat(tenantId: string, ids: string[]) {
+    if (!ids || ids.length === 0) return { count: 0 };
+    const items = await prisma.perangkatAjar.findMany({
+      where: { id: { in: ids }, tenant_id: tenantId },
+      select: { id: true, file_url: true }
+    });
+
+    for (const item of items) {
+      if (item.file_url) {
+        try {
+          await storageService.delete(item.file_url);
+        } catch (err) {
+          console.error(`Failed to delete physical file: ${item.file_url}`, err);
+        }
+      }
+    }
+
+    return prisma.perangkatAjar.deleteMany({
+      where: { id: { in: items.map((i) => i.id) }, tenant_id: tenantId }
+    });
+  }
 }
+

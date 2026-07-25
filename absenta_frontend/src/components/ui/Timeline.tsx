@@ -20,20 +20,12 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
   status = 'default',
   isLast = false
 }) => {
-  const statusColors = {
-    default: 'bg-slate-200 dark:bg-slate-700 text-slate-500',
-    success: 'bg-emerald-500 text-white',
-    warning: 'bg-amber-500 text-white',
-    error: 'bg-rose-500 text-white',
-    info: 'bg-blue-500 text-white'
-  };
-
-  const statusBorder = {
-    default: 'border-slate-200 dark:border-slate-800',
-    success: 'border-emerald-100 dark:border-emerald-900/30',
-    warning: 'border-amber-100 dark:border-amber-900/30',
-    error: 'border-rose-100 dark:border-rose-900/30',
-    info: 'border-blue-100 dark:border-blue-900/30'
+  const statusClasses = {
+    default: 'bg-slate-50 dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800/80',
+    success: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-900/30',
+    warning: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-200/50 dark:border-amber-900/30',
+    error: 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 border-rose-200/50 dark:border-rose-900/30',
+    info: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-900/30'
   };
 
   return (
@@ -43,9 +35,8 @@ export const TimelineItem: React.FC<TimelineItemProps> = ({
       )}
       
       <div className={cn(
-        "absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center z-10 shadow-sm border-4",
-        statusColors[status],
-        statusBorder[status]
+        "absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center z-10 shadow-sm border",
+        statusClasses[status]
       )}>
         {icon || <div className="w-1.5 h-1.5 rounded-full bg-current" />}
       </div>

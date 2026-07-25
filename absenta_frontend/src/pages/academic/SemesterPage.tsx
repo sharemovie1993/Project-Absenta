@@ -36,7 +36,6 @@ export const SemesterPage: React.FC = () => {
   // Load academic stats
   useEffect(() => {
     const loadStats = async () => {
-      if (!canView) return;
       try {
         setIsLoadingStats(true);
         const response = await getAcademicStats();
@@ -48,27 +47,31 @@ export const SemesterPage: React.FC = () => {
       }
     };
     loadStats();
-  }, [canView, refreshTrigger]);
+  }, [refreshTrigger]);
 
   const navigate = useNavigate();
 
-  const academicStats = useMemo(() => [
-    {
-      title: "Total Semester",
-      value: stats?.total_semester || 0,
-      icon: <Clock size={14} />,
-      gradient: "from-indigo-500 to-purple-600"
-    },
-    {
-      title: "Semester Aktif",
-      value: stats?.semester?.nama_semester 
-        ? `${stats.semester.nama_semester} (${stats.tahun_pelajaran?.tahun || ''})` 
-        : '-',
-      icon: <Calendar size={14} />,
-      gradient: "from-green-500 to-emerald-600",
-      onClick: () => navigate('/academic/tahun-pelajaran')
-    }
-  ], [stats, navigate]);
+  const academicStats = useMemo(() => {
+    const semName = stats?.semester?.nama_semester || stats?.active_semester;
+    const yearName = stats?.tahun_pelajaran?.tahun || (stats?.semester as any)?.TahunPelajaran?.tahun || '';
+
+    return [
+      {
+        title: "Total Semester",
+        value: stats?.total_semester || 0,
+        icon: <Clock size={14} />,
+        gradient: "from-indigo-500 to-purple-600"
+      },
+      {
+        title: "Semester Aktif",
+        value: semName ? `${semName}${yearName ? ` (${yearName})` : ''}` : '-',
+        icon: <Calendar size={14} />,
+        gradient: "from-green-500 to-emerald-600",
+        onClick: () => navigate('/academic/tahun-pelajaran')
+      }
+    ];
+  }, [stats, navigate]);
+
 
   const handleCreateSemester = useCallback(() => {
     setModalState({ mode: 'create', isOpen: true });

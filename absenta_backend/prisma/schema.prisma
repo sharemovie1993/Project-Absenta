@@ -4000,6 +4000,46 @@ model GlobalJurusanPreset {
   Program GlobalProgramPreset @relation(fields: [program_preset_id], references: [id], onDelete: Cascade)
 }
 
+model GlobalTopikPreset {
+  id          String   @id @default(uuid())
+  jenjang     String   // PAUD, SD, MI, SMP, MTs, SMA, MA, SMK, MAK, SLB, ALL
+  nama_mapel  String   // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
+  kode_mapel  String?  // Matching kode_mapel di GlobalMapelPreset / GlobalKurikulumStandard
+  fase        String?  // PAUD, A, B, C, D, E, F
+  tingkat     Int?     // Kelas 1 - 12
+  judul_topik String   // Nama topik / materi pokok
+  deskripsi   String?  // Ringkasan cakupan materi (opsional)
+  kategori    String   @default("UMUM") // UMUM, KEJURUAN, P5, MULOK
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([jenjang, nama_mapel, judul_topik])
+  @@index([jenjang, nama_mapel])
+  @@index([kode_mapel])
+}
+
+
+model GlobalPerangkatAjarLibrary {
+  id              String   @id @default(uuid())
+  jenjang         String   // PAUD, SD, SMP, SMA, SMK, SLB, ALL
+  nama_mapel      String   // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
+  kode_mapel      String?
+  tingkat         Int?     // Kelas 1 - 12
+  fase            String?  // PAUD, A, B, C, D, E, F
+  jenis           String   // MODUL_AJAR, ATP, MODUL_PROJEK, PROTA, PROMES, KKTP
+  judul           String   // Judul dokumen template
+  topik           String?  // Topik / materi pokok
+  file_url        String   // Path file PDF pre-generated
+  html_content    String?  @db.Text // Content HTML master untuk kustomisasi
+  downloads_count Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([jenjang, nama_mapel, jenis])
+}
+
+
+
 // =============================================================================
 // KALENDER AKADEMIK � Modul Kurikulum
 // Menyimpan event kalender akademik per tahun pelajaran per tenant

@@ -144,7 +144,7 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
           : (student.nisn || student.nis || student.id);
         
         if (qrValue) {
-            QRCode.toDataURL(qrValue, { margin: 4, width: 100 })
+            QRCode.toDataURL(qrValue, { errorCorrectionLevel: 'L', margin: 0, width: 200 })
                 .then(setQrUrl)
                 .catch(() => setQrUrl(''));
         } else {
@@ -417,9 +417,9 @@ export const PrintableCard: React.FC<PrintableCardProps> = React.memo(({
                         boxSizing: 'border-box',
                         zIndex: 20
                     }}
-                    className="bg-white p-0.5 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center overflow-hidden"
+                    className="bg-white flex items-center justify-center overflow-hidden rounded-md"
                 >
-                    <img src={qrUrl} alt="QR" className="w-full h-full object-contain" />
+                    <img src={qrUrl} alt="QR" className="w-full h-full object-fill" />
                 </div>
             )}
 

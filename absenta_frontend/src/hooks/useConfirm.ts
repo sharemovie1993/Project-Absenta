@@ -13,10 +13,13 @@ export interface UseConfirmOptions {
   progressLabel?: string;
 }
 
-export default function useConfirm() {
+export function useConfirm() {
   const { confirm, setConfirmLoading } = useConfirmContext();
 
   const showConfirm = (options: UseConfirmOptions) => confirm(options);
 
   return Object.assign(showConfirm, { setLoading: setConfirmLoading });
 }
+
+export default useConfirm;
+

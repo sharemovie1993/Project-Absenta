@@ -39,6 +39,10 @@ export const organizationalScopeMiddleware = async (request: any, _reply: any) =
       'attendance.gate.view.logs',
       'attendance.gate.bypass',
       'attendance.gate.face.enroll',
+      'attendance.scan',
+      'attendance.sessions.tap',
+      'attendance.sessions.view.list',
+      'academic.students.view.list',
       'affairs.violations.report' // Allow global reporting context
     ], 
     { user }
@@ -46,9 +50,10 @@ export const organizationalScopeMiddleware = async (request: any, _reply: any) =
   const isPiketOrGate = piketAuth.allowed;
 
   // Determine if we should elevate to tenant_wide based on request parameters
-  const isElevatedContext = isPiketOrGate && (
+  const isElevatedContext = (isPiketOrGate || isGlobalAdmin) && (
     request.query?.elevated_context === 'true' || 
     request.query?.tenant_wide === 'true' || 
+    request.query?.context === 'elevated' ||
     request.headers?.['x-elevated-context'] === 'true'
   );
 

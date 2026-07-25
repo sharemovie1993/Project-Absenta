@@ -40,47 +40,22 @@ export async function getOrCreateSessionInfo(tenantId: string): Promise<any> {
 
   if (sesiGerbang) return sesiGerbang;
 
-  const redis = getRedisConnection();
-  const lockKey = `absenta:lock:session:create:${tenantId}:${dayStr}`;
-  const lockValue = Date.now().toString();
-  const acquired = await (redis as any).set(lockKey, lockValue, 'EX', 5, 'NX');
+  let sekolah = await gerbangDb.sekolah.findFirst({
+    where: { tenant_id: tenantId },
+  });
 
-  if (!acquired) {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const retryResult = await gerbangDb.sesiGerbang.findFirst({
-      where: {
+  if (!sekolah) {
+    sekolah = await gerbangDb.sekolah.create({
+      data: {
         tenant_id: tenantId,
-        tanggal: { gte: startOfDay, lte: endOfDay },
+        nama: 'Default School',
       },
     });
-    if (!retryResult) throw new Error('Gagal mendapatkan sesi gerbang (Lock contention)');
-    return retryResult;
   }
 
+  const activeYear = await gerbangDb.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } } as any);
+
   try {
-    sesiGerbang = await gerbangDb.sesiGerbang.findFirst({
-      where: {
-        tenant_id: tenantId,
-        tanggal: { gte: startOfDay, lte: endOfDay },
-      },
-    });
-
-    if (sesiGerbang) return sesiGerbang;
-
-    let sekolah = await gerbangDb.sekolah.findFirst({
-      where: { tenant_id: tenantId },
-    });
-
-    if (!sekolah) {
-      sekolah = await gerbangDb.sekolah.create({
-        data: {
-          tenant_id: tenantId,
-          nama: 'Default School',
-        },
-      });
-    }
-
-    const activeYear = await gerbangDb.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } } as any);
     sesiGerbang = await gerbangDb.sesiGerbang.create({
       data: {
         tenant_id: tenantId,
@@ -91,14 +66,21 @@ export async function getOrCreateSessionInfo(tenantId: string): Promise<any> {
         tahun_pelajaran_id: (activeYear as any)?.id || null,
       },
     });
-
-    return sesiGerbang;
-  } finally {
-    const currentVal = await (redis as any).get(lockKey);
-    if (currentVal === lockValue) {
-      await (redis as any).del(lockKey);
-    }
+  } catch (err: any) {
+    // In case of unique constraint (concurrent creation), retry findFirst
+    sesiGerbang = await gerbangDb.sesiGerbang.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tanggal: { gte: startOfDay, lte: endOfDay },
+      },
+    });
   }
+
+  if (!sesiGerbang) {
+    throw new Error('Gagal mendapatkan atau membuat sesi gerbang');
+  }
+
+  return sesiGerbang;
 }
 
 export async function getSessionsForDate(tenantId: string, date?: Date): Promise<GerbangServiceResponse<{ sessions: any[]; date: string }>> {

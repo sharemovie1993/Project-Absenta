@@ -56,7 +56,15 @@ export class GerbangService {
     try {
       // 1. Validate Student
       const siswa = await gerbangDb.siswa.findFirst({
-        where: { id: input.siswa_id, tenant_id: tenantId },
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { id: input.siswa_id },
+            { nisn: input.siswa_id },
+            { nis: input.siswa_id },
+            { no_rfid: input.siswa_id }
+          ]
+        },
         include: { Kelas: true }
       });
 
@@ -251,8 +259,8 @@ export class GerbangService {
           source_service: 'attendance',
           payload: {
             tenant_id: tenantId,
-            student_id: isGuru ? undefined : input.siswa_id,
-            guru_id: isGuru ? guru.id : undefined,
+            student_id: isGuru ? undefined : (siswa?.id || input.siswa_id),
+            guru_id: isGuru ? guru?.id : undefined,
             device_id: input.device_id,
             tap_time: new Date().toISOString(),
             source: 'GERBANG',
@@ -279,7 +287,7 @@ export class GerbangService {
 
        // Step 5: Build comprehensive response
       if (!isGuru && input.arah === JenisTap.GERBANG_DATANG) {
-        void markGatePresent(tenantId, input.siswa_id!);
+        void markGatePresent(tenantId, siswa?.id || input.siswa_id!);
       }
       const responseData = await buildTapResponseData(tapTx.record, siswa, tenantMode, sessionInfo, input, guru);
       const t5 = Date.now();
@@ -526,12 +534,10 @@ export class GerbangService {
       } as any);
 
       const today = new Date();
-      const specialEvent = await gerbangDb.absensiKejadianKhusus.findUnique({
+      const specialEvent = await gerbangDb.absensiKejadianKhusus.findFirst({
         where: {
-          tenant_id_tanggal: {
-            tenant_id: tenantId,
-            tanggal: today
-          }
+          tenant_id: tenantId,
+          tanggal: today
         }
       } as any);
 
@@ -731,8 +737,20 @@ export class GerbangService {
     validation_steps.push('tenant_mode_validated');
 
     // Validate student or guru
+    const rawId = input.siswa_id ? String(input.siswa_id).trim() : '';
+    const cleanId = rawId.replace(/^0+/, '');
+
     let siswa = await gerbangDb.siswa.findFirst({
-      where: { id: input.siswa_id, tenant_id: tenantId },
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { id: rawId },
+          { nisn: rawId },
+          { nis: rawId },
+          { no_rfid: rawId },
+          ...(cleanId && cleanId !== rawId ? [{ nisn: cleanId }, { nis: cleanId }, { no_rfid: cleanId }] : [])
+        ]
+      },
       include: { Kelas: { select: { nama_kelas: true } } },
     } as any);
 
@@ -742,7 +760,15 @@ export class GerbangService {
     if (!siswa) {
       // Check if it's a Guru / Staff
       guru = await gerbangDb.guru.findFirst({
-        where: { id: input.siswa_id, tenant_id: tenantId }
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { id: rawId },
+            { nip: rawId },
+            { no_rfid: rawId },
+            ...(cleanId && cleanId !== rawId ? [{ nip: cleanId }, { no_rfid: cleanId }] : [])
+          ]
+        }
       });
       if (guru) {
         isGuru = true;

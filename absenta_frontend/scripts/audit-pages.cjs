@@ -73,14 +73,61 @@ walkDir(targetDir, (filepath) => {
 
   const rawContent = fs.readFileSync(filepath, 'utf8');
   // Strip JS/TS/TSX comments to prevent developers from bypassing audits using comments (cheat prevention)
-  const content = rawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+  let content = rawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
 
   // Deteksi apakah file ini merupakan komponen (di dalam subfolder components atau shared)
   const isComponentFile = filepath.replace(/\\/g, '/').includes('/components/') || filepath.replace(/\\/g, '/').includes('/shared/');
 
+  // Trace children components recursively (AST Parser equivalent)
+  const visitedFiles = new Set([filepath]);
+  let totalLineCount = rawContent.split('\n').length;
+  const fileLineBreakdown = [{ path: filepath, lines: totalLineCount }];
+  
+  function traceChildren(currentFilepath) {
+    let currentRawContent;
+    try {
+      currentRawContent = fs.readFileSync(currentFilepath, 'utf8');
+    } catch (e) {
+      return;
+    }
+    const currentDir = path.dirname(currentFilepath);
+    const relativeImportRegex = /import\s+.*?from\s+['"](\.\.?\/[^'"]+)['"]/g;
+    let match;
+    while ((match = relativeImportRegex.exec(currentRawContent)) !== null) {
+      const relativeImport = match[1];
+      const absolutePath = path.resolve(currentDir, relativeImport);
+      const extensions = ['.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts'];
+      let resolvedPath = null;
+      for (const ext of extensions) {
+        const p = absolutePath + ext;
+        if (fs.existsSync(p)) {
+          resolvedPath = p;
+          break;
+        }
+      }
+      
+      const normalizedResolved = resolvedPath ? resolvedPath.replace(/\\/g, '/') : '';
+      if (resolvedPath && normalizedResolved.includes('/src/pages/') && !visitedFiles.has(resolvedPath)) {
+        visitedFiles.add(resolvedPath);
+        let childRawContent = fs.readFileSync(resolvedPath, 'utf8');
+        let childContent = childRawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+        content += '\n' + childContent;
+        const childLines = childRawContent.split('\n').length;
+        totalLineCount += childLines;
+        fileLineBreakdown.push({ path: resolvedPath, lines: childLines });
+        traceChildren(resolvedPath);
+      }
+    }
+  }
+
+  // Only trace children for Page entry files, since components are traced under their pages anyway
+  if (!isComponentFile) {
+    traceChildren(filepath);
+  }
+
   // ─── Pilar 1: Standardisasi Layout Utama ───
   // Komponen tidak membutuhkan Layout utama secara mandiri
-  const usesLayout = isComponentFile || content.includes('AcademicPageLayout') || content.includes('PageLayout') || content.includes('InfraErrorBoundary');
+  const usesLayout = isComponentFile || rawContent.includes('AcademicPageLayout') || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
 
   // ─── Pilar 2: Keamanan Data & Defensive Programming (Optional Chaining pada Map) ───
   // HARDENED: Mengenali semua pola aman yang setara:
@@ -179,10 +226,10 @@ walkDir(targetDir, (filepath) => {
   const missingPagination = !isComponentFile && hasTableComponent && (!hasPaginationProp || !hasNavigation || !hasLimitChange) && !hasPaginationComponent;
 
   // ─── Pillar 14: Standarisasi Toolbar Aksi Halaman ───
-  const hasTableToolbar = content.includes('toolbarLeft={') || content.includes('toolbarRight={') || (content.includes('onAdd={') && content.includes('onImport={')) || hasListComponent;
+  const hasTableToolbar = content.includes('toolbarLeft={') || content.includes('toolbarRight={') || content.includes('actions={') || (content.includes('onAdd={') && content.includes('onImport={')) || hasListComponent;
   const hasLayoutToolbar = content.includes('toolbar={') || content.includes('toolbar:');
-  const hasPrimaryActions = /onAdd|onImport|onExport|handleCreate|handleImport/.test(content);
-  const missingToolbar = !isComponentFile && hasPrimaryActions && !hasTableToolbar;
+  const hasPrimaryActions = /onAdd|onImport|onExport|handleCreate|handleImport|onUpload|handleUpload|setIsUploadModalOpen|setIsUploadOpen|setIsCreateOpen|Upload\b/.test(content);
+  const missingToolbar = !isComponentFile && hasPrimaryActions && !hasTableToolbar && !(!hasTableComponent && hasLayoutToolbar);
   const misplacedToolbar = !isComponentFile && (hasTableComponent || hasListComponent) && hasLayoutToolbar;
 
   // ─── Pillar 15: Sistem Feedback & Dialog Terstandar (Toast, Confirm, Modal) ───
@@ -220,7 +267,7 @@ walkDir(targetDir, (filepath) => {
   const missingPremiumGate = isPaidModule && !hasPremiumGate;
 
   // ─── Pilar 21: Pencegahan God File (Ukuran File Maksimum) ───
-  const lineCount = content.split('\n').length;
+  const lineCount = totalLineCount;
   const isGodFile = isComponentFile ? (lineCount > 500) : (lineCount > 800);
 
   // ─── Pilar 22: Desentralisasi Konfigurasi (Anti-Hardcoded) ───
@@ -273,6 +320,26 @@ walkDir(targetDir, (filepath) => {
   const hasInconsistentFilters = firstTableIndex !== Infinity && indexOfFilter !== -1 && firstTableIndex < indexOfFilter;
   const hasInconsistentStats = firstTableIndex !== Infinity && indexOfStats !== -1 && firstTableIndex < indexOfStats;
   const missingLayoutFlowConsistency = !isComponentFile && (hasInconsistentFilters || hasInconsistentStats);
+
+  // ─── Pilar 29: Standarisasi Format Tanggal & Timezone Tenant (Date Format & Timezone Guard) ───
+  const hasDateUsage = /toLocaleDateString|new Date|format\(|date-fns|moment/i.test(content);
+  const hasValidDateFormat = !hasDateUsage || 
+    content.includes("day: '2-digit'") || 
+    content.includes('day: "2-digit"') ||
+    content.includes("month: 'short'") ||
+    content.includes('month: "short"') ||
+    /formatDate|formatDateTime|formatDateIndo|formatDateLong/i.test(content);
+  const usesTimezoneGuard = !hasDateUsage || 
+    /timezone|tenantId|tenant_id|tenant.*timezone|useTimezone|utcToZonedTime|zonedTimeToUtc/i.test(content) ||
+    /formatDate|formatDateTime|formatDateIndo|formatDateLong/i.test(content);
+  const missingDateFormatOrTimezone = hasDateUsage && (!hasValidDateFormat || !usesTimezoneGuard);
+
+  // ─── Pilar 30: Standarisasi Affordance & Kontras Tombol Toolbar (Toolbar Button Affordance Guard) ───
+  const hasToolbarDefinition = /toolbar\s*=\s*\{|toolbarLeft\s*=\s*\{|toolbarRight\s*=\s*\{/i.test(content);
+  const hasWeakToolbarButtons = hasToolbarDefinition && 
+    (/<Button\s+[^>]*variant=["'](primary|secondary)["']/i.test(content) || 
+     (/<Button\s+[^>]*size=["'](sm|xs|md|lg)["']/i.test(content) && !content.includes('size="toolbar"')));
+  const missingToolbarButtonAffordance = hasToolbarDefinition && hasWeakToolbarButtons;
 
   const key = getRegistryKey(filepath, content);
 
@@ -386,7 +453,13 @@ walkDir(targetDir, (filepath) => {
 
   if (isGodFile) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
-    issues.push(`⚠️  Ukuran berkas terlalu besar (terdeteksi ${lineCount} baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.`);
+    const breakdownMsg = fileLineBreakdown
+      .map(f => {
+        const fileLink = `file:///${f.path.replace(/\\/g, '/')}`;
+        return `[${path.basename(f.path)}](${fileLink}) (${f.lines} baris)`;
+      })
+      .join(', ');
+    issues.push(`⚠️  Ukuran berkas terlalu besar (total terdeteksi ${lineCount} baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: ${breakdownMsg}. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.`);
   }
 
   if (hasHardcodedConfigs) {
@@ -422,6 +495,16 @@ walkDir(targetDir, (filepath) => {
   if (missingLayoutFlowConsistency) {
     if (status === 'COMPLIANT') status = 'PARTIAL';
     issues.push("⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.");
+  }
+
+  if (missingDateFormatOrTimezone) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.");
+  }
+
+  if (missingToolbarButtonAffordance) {
+    if (status === 'COMPLIANT') status = 'PARTIAL';
+    issues.push("❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.");
   }
 
   totalFiles++;
@@ -463,6 +546,8 @@ walkDir(targetDir, (filepath) => {
     zodValidationGuard: !missingZodValidation,
     standardTabSwitcher: !missingTabSwitcher,
     layoutFlowConsistency: !missingLayoutFlowConsistency,
+    dateFormatTimezoneGuard: !missingDateFormatOrTimezone,
+    toolbarButtonAffordanceGuard: !missingToolbarButtonAffordance,
     filename,
     relativePath
   };

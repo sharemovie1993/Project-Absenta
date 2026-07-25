@@ -18,11 +18,10 @@ import { useScanner } from '../../../../hooks/useScanner';
 import { useGateLogic } from '../../../../hooks/useGateLogic';
 import { PageLoader, Card } from '../../../../components/ui';
 
-// Lazy load UI components
-const GerbangStatusHero = lazy(() => import('../../../../components/attendance/gerbang/GerbangStatusHero').then(m => ({ default: m.GerbangStatusHero })));
-const GerbangKeyRfidInput = lazy(() => import('../../../../components/attendance/gerbang/GerbangKeyRfidInput').then(m => ({ default: m.GerbangKeyRfidInput })));
-const GerbangQrInput = lazy(() => import('../../../../components/attendance/gerbang/GerbangQrInput').then(m => ({ default: m.GerbangQrInput })));
-const GerbangFaceInput = lazy(() => import('../../../../components/attendance/gerbang/GerbangFaceInput').then(m => ({ default: m.GerbangFaceInput })));
+import { GerbangStatusHero } from '../../../../components/attendance/gerbang/GerbangStatusHero';
+import { GerbangKeyRfidInput } from '../../../../components/attendance/gerbang/GerbangKeyRfidInput';
+import { GerbangQrInput } from '../../../../components/attendance/gerbang/GerbangQrInput';
+import { GerbangFaceInput } from '../../../../components/attendance/gerbang/GerbangFaceInput';
 
 import { type Student } from '../../../../components/common/SmartStudentPicker';
 
@@ -79,10 +78,11 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         const res = await siswaApi.getAll({
           search: term,
           limit: 8,
-          search_fields: ['id', 'no_rfid', 'nis', 'nama_siswa'],
+          search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
+          elevated_context: 'true',
           context: 'elevated'
         } as any);
-        const list = (res.data || []).filter((s: Student) => s.status === 'AKTIF' || !s.status);
+        const list = (res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status);
         setSearchCandidates(list);
         setShowDropdown(list.length > 0);
       } catch (err) {
@@ -95,32 +95,134 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
   // 3. Scanner / QR Logic
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('user');
+  const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [cameraDeviceId, setCameraDeviceId] = useState<string | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
+  const lastSubmittedTokenRef = useRef<string>('');
+  const lastSubmittedTimeRef = useRef<number>(0);
   
   const handleScanToken = useCallback(async (tokenRaw: string, directStudentData: Student | null = null) => {
+    const t = tokenRaw.trim();
+    if (t.length < 2) return;
+    const now = Date.now();
+    if (t === lastSubmittedTokenRef.current && now - lastSubmittedTimeRef.current < 5000) {
+      console.warn('[GATE_TAP_DEBUG] Anti-looping guard blocked duplicate scan for token:', t);
+      return;
+    }
+    console.log('[GATE_TAP_DEBUG] handleScanToken received token:', t);
+    if (isProcessingRef.current) {
+      console.warn('[GATE_TAP_DEBUG] Ignored scan because previous scan is still processing:', t);
+      return;
+    }
+    isProcessingRef.current = true;
+    lastSubmittedTokenRef.current = t;
+    lastSubmittedTimeRef.current = now;
+
     try {
-      const t = tokenRaw.trim();
-      if (t.length < 6) return;
-      let found = directStudentData;
-      if (!found) {
-        const res = await siswaApi.getAll({ search: t, limit: 1, search_fields: ['id', 'no_rfid', 'nis'], context: 'elevated' } as any);
-        found = (res.data as Student[])?.[0] || null;
+      let targetId: string = t;
+      let targetName: string = '';
+
+      if (directStudentData) {
+        targetId = directStudentData.id;
+        targetName = directStudentData.nama_siswa || directStudentData.nama_guru || '';
+      } else {
+        // 1. Try finding Siswa strictly by NISN
+        try {
+          const resSiswa = await siswaApi.getAll({
+            search: t,
+            limit: 1,
+            search_fields: ['nisn'],
+            elevated_context: 'true',
+            context: 'elevated'
+          } as any);
+          const foundSiswa = (resSiswa.data as Student[])?.[0];
+          if (foundSiswa?.id) {
+            targetId = foundSiswa.id;
+            targetName = foundSiswa.nama_siswa || '';
+          }
+        } catch (e) {}
+
+        // 2. If Siswa not found, try finding Guru strictly by NIP
+        if (!targetName) {
+          try {
+            const resGuru = await guruApi.getAll({
+              search: t,
+              limit: 1,
+              search_fields: ['nip'],
+              elevated_context: 'true',
+              context: 'elevated'
+            } as any);
+            const foundGuru = (resGuru.data as any[])?.[0];
+            if (foundGuru?.id) {
+              targetId = foundGuru.id;
+              targetName = foundGuru.nama_guru || '';
+            }
+          } catch (e) {}
+        }
       }
-      if (!found?.id) { toast.error('Siswa tidak ditemukan'); setHidToken(''); return; }
-      
+
+      // If bypass mode is active
       if (isBypassMode) {
-        const res = await bypassLate({ siswa_id: found.id, note: 'Bypass Mode' });
-        if (res.success) { toast.success(`BYPASS: ${found.nama_siswa}`); await playBeep('success'); await refreshStats(); onTapSuccess?.(); }
+        const res = await bypassLate({ siswa_id: targetId, note: 'Bypass Mode' });
+        if (res.success) {
+          const sInfo = (res as any).data;
+          const nama = sInfo?.nama_siswa || targetName || 'Siswa';
+          const kelas = sInfo?.kelas && sInfo.kelas !== '-' ? ` - ${sInfo.kelas}` : '';
+          toast.success(`BYPASS BERHASIL: ${nama}${kelas}`);
+          await playBeep('success');
+          await refreshStats();
+          onTapSuccess?.();
+        } else {
+          toast.error((res as any).message || 'Gagal memproses bypass');
+        }
         return;
       }
 
-      const tapRes = await submitTap({ siswa_id: found.id, arah: inputDirection, device_id: '', rfid: '' });
-      if (tapRes.success) { toast.success(found.nama_siswa || ''); await playBeep('success'); await refreshStats(); onTapSuccess?.(); }
-    } catch (e: any) { toast.error(e.message || 'Gagal mencatat tap'); } finally { setHidToken(''); }
+      // Submit tap directly to backend (backend resolves by NISN, NIS, RFID, NIP, or ID)
+      const tapRes = await submitTap({ siswa_id: targetId, arah: inputDirection, device_id: '', rfid: '' });
+      if (tapRes.success) {
+        const sInfo = (tapRes as any).data?.siswa_info;
+        const gInfo = (tapRes as any).data?.guru_info;
+        
+        let successMsg = '';
+        if (sInfo?.nama) {
+          const kelasLabel = sInfo.nama_kelas ? ` - ${sInfo.nama_kelas}` : '';
+          successMsg = `PRESENSI BERHASIL: ${sInfo.nama}${kelasLabel}`;
+        } else if (gInfo?.nama) {
+          successMsg = `PRESENSI BERHASIL: ${gInfo.nama} (${gInfo.jenis_ptk || 'Pegawai'})`;
+        } else {
+          successMsg = (tapRes as any).message || `PRESENSI BERHASIL: ${targetName || 'Siswa'}`;
+        }
+
+        toast.success(successMsg);
+        await playBeep('success');
+        await refreshStats();
+        onTapSuccess?.();
+      } else {
+        toast.error((tapRes as any).message || 'Gagal mencatat tap');
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || e.message || 'Gagal mencatat tap');
+    } finally {
+      setHidToken('');
+      isProcessingRef.current = false;
+    }
   }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, playBeep]);
 
-  const { scannerStatus, startScanner, stopScanner } = useScanner({ cameraFacing, cameraDeviceId, onScan: handleScanToken, videoRef });
+  // Auto-submit RFID / barcode scanner input when 8+ digits are typed
+  useEffect(() => {
+    const term = debouncedHidToken.trim();
+    if (!term) {
+      lastSubmittedTokenRef.current = '';
+      return;
+    }
+    if (/^\d{8,}$/.test(term) && lastSubmittedTokenRef.current !== term) {
+      lastSubmittedTokenRef.current = term;
+      handleScanToken(term);
+    }
+  }, [debouncedHidToken, handleScanToken]);
+
+  const { scannerStatus, startScanner, stopScanner, cycleCamera } = useScanner({ cameraFacing, cameraDeviceId, onScan: handleScanToken, videoRef });
 
   // 4. Face Logic (Briefly encapsulated for now, ideally moved to hook later)
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
@@ -148,12 +250,16 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
 
   // Tab Effects
   useEffect(() => {
+    console.log('[GATE_INPUT_DEBUG] Tab effect fired, inputTab =', inputTab);
     if (inputTab === 'QR') {
+      console.log('[GATE_INPUT_DEBUG] Triggering startScanner() for QR mode');
       startScanner();
     } else {
+      console.log('[GATE_INPUT_DEBUG] Triggering stopScanner() for non-QR mode');
       stopScanner();
     }
     return () => {
+      console.log('[GATE_INPUT_DEBUG] Cleanup triggering stopScanner()');
       stopScanner();
     };
   }, [inputTab, startScanner, stopScanner]);
@@ -186,7 +292,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         <div className="p-8">
           <Suspense fallback={<PageLoader />}>
             {inputTab === 'HID' && <GerbangKeyRfidInput hidToken={hidToken} onHidTokenChange={setHidToken} autoSubmitGateHID={handleScanToken} isBypassMode={isBypassMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown} searchCandidates={searchCandidates} onSelectStudent={(t, s) => handleScanToken(t, s)} onSubmit={handleScanToken} />}
-            {inputTab === 'QR' && <GerbangQrInput videoRef={videoRef} scannerStatus={scannerStatus} onSwitchCamera={() => setCameraFacing(f => f === 'user' ? 'environment' : 'user')} />}
+            {inputTab === 'QR' && <GerbangQrInput scannerStatus={scannerStatus} onSwitchCamera={cycleCamera} />}
             {inputTab === 'FACE' && <GerbangFaceInput videoRef={videoRef} currentDetections={currentDetections} displaySize={displaySize} isIdentifying={isIdentifying} isFlashing={isFlashing} isAutoScanActive={isAutoScanActive} setIsAutoScanActive={setIsAutoScanActive} lastVerification={lastVerification} lastIdentifiedStudent={lastIdentifiedStudent} inputDirection={inputDirection} cameraFacing={cameraFacing} onSwitchCamera={() => setCameraFacing(f => f === 'user' ? 'environment' : 'user')} faceSiswaId={faceSiswaId} setFaceSiswaId={setFaceSiswaId} selectedFaceSiswaId={selectedFaceSiswaId} setSelectedFaceSiswaId={setSelectedFaceSiswaId} onSelectStudent={(s) => { setSelectedFaceSiswaId(s.id); setFaceSiswaId(s.nama_siswa || ''); }} handleFaceVerifyTap={() => {}} tapSubmitting={false} handleFaceEnroll={() => {}} enrollSubmitting={false} />}
           </Suspense>
         </div>

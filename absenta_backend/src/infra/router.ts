@@ -134,6 +134,12 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const { authRoutes } = await import('../modules/auth/routes/auth.routes');
         await fastify.register(authRoutes, { prefix: '/auth' });
 
+        // Public Kalender iCal Export (Sync for Google/Apple Calendar)
+        fastify.get('/kurikulum/kalender/export', async (request: any, reply: any) => {
+          const { KalenderAkademikController } = await import('../modules/kurikulum/controllers/kalender-akademik.controller');
+          return KalenderAkademikController.exportICal(request, reply);
+        });
+
         // Public route for viewing central invoice details on the public payment page
         fastify.get('/invoice/public/:token', async (request: any, reply: any) => {
           const { token } = request.params;

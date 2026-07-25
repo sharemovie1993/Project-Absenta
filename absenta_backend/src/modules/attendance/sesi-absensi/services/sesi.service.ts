@@ -58,9 +58,28 @@ export class SesiService {
       throw new Error('Guru wajib dipilih untuk kegiatan KBM/Eskul');
     }
 
-    const tgl = new Date(tanggal);
-    const mulai = new Date(waktu_mulai);
-    const selesai = waktu_selesai ? new Date(waktu_selesai) : new Date(mulai.getTime() + 60 * 60 * 1000);
+    const parseSafeDate = (input: any) => {
+      if (!input) return new Date();
+      if (input instanceof Date) return isNaN(input.getTime()) ? new Date() : input;
+      const str = String(input).trim();
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(str)) {
+        const parts = str.split(' ');
+        const dateParts = parts[0].split('/');
+        const day = dateParts[0].padStart(2, '0');
+        const month = dateParts[1].padStart(2, '0');
+        const year = dateParts[2];
+        const timePart = parts[1] || '00:00:00';
+        const isoStr = `${year}-${month}-${day}T${timePart}`;
+        const d = new Date(isoStr);
+        if (!isNaN(d.getTime())) return d;
+      }
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? new Date() : d;
+    };
+
+    const tgl = parseSafeDate(tanggal);
+    const mulai = parseSafeDate(waktu_mulai);
+    const selesai = waktu_selesai ? parseSafeDate(waktu_selesai) : new Date(mulai.getTime() + 60 * 60 * 1000);
 
     const cfgForDay = await systemConfigService.getActive(tenantId);
     const tzForDay = String(cfgForDay?.timezone || '').trim();
@@ -269,52 +288,72 @@ export class SesiService {
     
     // Use guruIdFilter from query if provided by SesiGuard, otherwise fallback to org logic
     let guruIdFilterFinal = query.guruIdFilter;
-    if (!guruIdFilterFinal && org && org.is_guru && org.user_id && org.tenant_wide !== true) {
-       // Relational filter fallback
+
+    // Resolve guru ID directly if only_me or guru_id=me is specified
+    if (query.only_me === 'true' || query.only_me === true || query.guru_id === 'me') {
+      const currentUserId = query.currentUserId || org?.user_id || query.userId;
+      if (currentUserId) {
+        const guruRec = await prisma.guru.findFirst({
+          where: { user_id: String(currentUserId), tenant_id: tenantId },
+          select: { id: true }
+        });
+        if (guruRec) {
+          guruIdFilterFinal = guruRec.id;
+        }
+      }
+    } else if (!guruIdFilterFinal && org && org.is_guru && org.user_id && org.tenant_wide !== true) {
        guruIdFilterFinal = { User: { id: org.user_id } };
     }
 
     // Direct filter from query, merge with allowed
     let kelasFilter: any = kelas_id;
     if (org?.tenant_wide === true) {
-        // Pimpinan sees everything, but if they specifically search for a class, apply it.
         kelasFilter = kelas_id || undefined;
     } else if (allowed !== null) {
       if (kelasFilter) {
           if (!allowed.includes(String(kelasFilter))) {
-              // Requested kelas but no permission, return empty or throw
               return [];
           }
       } else {
-          // No specific kelas requested, return all allowed
           kelasFilter = { in: allowed };
       }
     }
 
+    const whereClause: any = {
+      tenant_id: tenantId,
+      ...(dateFilter && { tanggal: dateFilter }),
+      ...(jenis_kegiatan && { jenis_kegiatan }),
+      ...(tahun_pelajaran_id && { tahun_pelajaran_id: String(tahun_pelajaran_id) }),
+      ...(semester_id && { semester_id: String(semester_id) }),
+    };
+
+    if (guruIdFilterFinal) {
+      if (typeof guruIdFilterFinal === 'string') {
+        whereClause.guru_id = guruIdFilterFinal;
+      } else {
+        whereClause.Guru = guruIdFilterFinal;
+      }
+      if (kelasFilter) {
+        whereClause.kelas_id = kelasFilter;
+      }
+    } else if (org?.tenant_wide === true) {
+      if (kelasFilter) {
+        whereClause.kelas_id = kelasFilter;
+      }
+    } else {
+      whereClause.OR = [
+        {
+          AND: [
+            kelasFilter ? { kelas_id: kelasFilter } : {},
+            guruIdFilterFinal ? { guru_id: guruIdFilterFinal } : {}
+          ]
+        },
+        guruIdFilterFinal ? { guru_id: guruIdFilterFinal } : { id: 'impossible-id' }
+      ];
+    }
+
     const sessions = await prisma.sesiAbsensi.findMany({
-      where: {
-        tenant_id: tenantId,
-        ...(dateFilter && { tanggal: dateFilter }),
-        ...(jenis_kegiatan && { jenis_kegiatan }),
-        ...(tahun_pelajaran_id && { tahun_pelajaran_id: String(tahun_pelajaran_id) }),
-        ...(semester_id && { semester_id: String(semester_id) }),
-        ...(org?.tenant_wide === true 
-          ? (kelasFilter ? { kelas_id: kelasFilter } : {}) // Management sees everything or filtered by class
-          : {
-            // Regular user logic: (In Allowed Classes) OR (Is the designated Teacher)
-            OR: [
-              {
-                AND: [
-                  kelasFilter ? { kelas_id: kelasFilter } : {},
-                  guruIdFilterFinal ? { guru_id: guruIdFilterFinal } : {}
-                ]
-              },
-              // Always allow if they are the designated teacher, regardless of class scope
-              guruIdFilterFinal ? { guru_id: guruIdFilterFinal } : { id: 'impossible-id' }
-            ]
-          }
-        )
-      },
+      where: whereClause,
       include: {
         Semester: { select: { id: true, nama_semester: true } },
         TahunPelajaran: { select: { id: true, tahun: true } },
@@ -704,31 +743,46 @@ export class SesiService {
       const sign = m[1] === '-' ? -1 : 1;
       return sign * (Number(m[2]) * 60 + Number(m[3]));
     })();
-    const anchorDate = (sesi as any).tanggal ? new Date((sesi as any).tanggal) : new Date();
-    const dayIso = new Date(anchorDate.getTime() + offsetMinutesForDay * 60 * 1000).toISOString().slice(0, 10);
-    const startOfDay = new Date(`${dayIso}T00:00:00.000${offsetForDay}`);
-    const endOfDay = new Date(`${dayIso}T23:59:59.999${offsetForDay}`);
+    // Resolve local date ISO string (e.g. "2026-07-24") based on tenant timezone
+    const getLocalDayIso = (d: Date) => {
+      const utcMs = d.getTime() + offsetMinutesForDay * 60 * 1000;
+      return new Date(utcMs).toISOString().slice(0, 10);
+    };
 
+    const todayLocalIso = getLocalDayIso(nowTap);
+    const sesiLocalIso = (sesi as any).tanggal ? getLocalDayIso(new Date((sesi as any).tanggal)) : todayLocalIso;
+
+    // Check gate tap for today's date first, then fallback to session date
     let gateTap: { id: string } | null = null;
-    try {
-      const redis = getRedisConnection();
-      const key = `absenta:gate_present:${tenantId}:${dayIso}:${siswa_id}`;
-      const val = await redis.get(key);
-      if (val === '1') gateTap = { id: 'cache' };
-    } catch { }
-    if (!gateTap) {
-      const gateSession = await cacheService.getOrSet(
-        CACHE_KEYS.ATTENDANCE.SESSIONS(tenantId, dayIso),
-        async () => prisma.sesiGerbang.findFirst({
-          where: { tenant_id: tenantId, tanggal: { gte: startOfDay, lte: endOfDay } },
+    const targetDayIsos = Array.from(new Set([todayLocalIso, sesiLocalIso]));
+
+    for (const targetDayIso of targetDayIsos) {
+      if (gateTap) break;
+
+      try {
+        const redis = getRedisConnection();
+        const key = `absenta:gate_present:${tenantId}:${targetDayIso}:${siswa_id}`;
+        const val = await redis.get(key);
+        if (val === '1') gateTap = { id: 'cache' };
+      } catch { }
+
+      if (!gateTap) {
+        const startOfDay = new Date(`${targetDayIso}T00:00:00.000${offsetForDay}`);
+        const endOfDay = new Date(`${targetDayIso}T23:59:59.999${offsetForDay}`);
+
+        const gateSession = await cacheService.getOrSet(
+          CACHE_KEYS.ATTENDANCE.SESSIONS(tenantId, targetDayIso),
+          async () => prisma.sesiGerbang.findFirst({
+            where: { tenant_id: tenantId, tanggal: { gte: startOfDay, lte: endOfDay } },
+            select: { id: true },
+          }),
+          CACHE_TTL.REAL_TIME
+        );
+        gateTap = gateSession ? await prisma.absenGerbangSiswa.findFirst({
+          where: { tenant_id: tenantId, sesi_gerbang_id: gateSession.id, siswa_id, arah: { in: [JenisTap.GERBANG_DATANG, 'MASUK'] } },
           select: { id: true },
-        }),
-        CACHE_TTL.REAL_TIME
-      );
-      gateTap = gateSession ? await prisma.absenGerbangSiswa.findFirst({
-        where: { tenant_id: tenantId, sesi_gerbang_id: gateSession.id, siswa_id, arah: { in: [JenisTap.GERBANG_DATANG, 'MASUK'] } },
-        select: { id: true },
-      }) : null;
+        }) : null;
+      }
     }
 
     const currentMode = await getEffectiveAbsensiMode(tenantId);

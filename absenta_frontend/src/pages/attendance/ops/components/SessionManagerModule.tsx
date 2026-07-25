@@ -353,6 +353,8 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
       const payload = {
         ...petugasForm,
         kelas_id: kelasId,
+        guru_id: petugasForm.guru_id && petugasForm.guru_id.trim() !== '' ? petugasForm.guru_id : undefined,
+        mapel_id: petugasForm.mapel_id && petugasForm.mapel_id.trim() !== '' ? petugasForm.mapel_id : undefined,
         tanggal: tanggalSesi,
         waktu_mulai: normalizeDateTimeWithTanggal(tanggalSesi, petugasForm.waktu_mulai),
         waktu_selesai: normalizeDateTimeWithTanggal(tanggalSesi, petugasForm.waktu_selesai),

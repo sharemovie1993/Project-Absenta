@@ -62,4 +62,18 @@ export async function kalenderAkademikRoutes(fastify: any) {
     { preHandler: [requireCapability('superadmin.tenants.manage'), determineDataScope()] },
     KalenderAkademikController.deletePreset
   );
+
+  // POST /bulk-seed - Bulk seed standard national holidays for active school year
+  fastify.post(
+    '/bulk-seed',
+    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    KalenderAkademikController.bulkSeed
+  );
+
+  // DELETE /bulk-delete - Bulk delete calendar events
+  fastify.delete(
+    '/bulk-delete',
+    { preHandler: [requireCapability('academic.structure.manage'), determineDataScope()] },
+    KalenderAkademikController.bulkDelete
+  );
 }

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from
 import { Plus, Search, Archive, Users, UserCheck, CalendarPlus } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { z } from 'zod';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -40,6 +41,10 @@ const TAB_OPTIONS = [
 
 const ALL_KATEGORI = { label: 'Semua Tipe', value: 'ALL' };
 
+const searchSchema = z.object({
+  query: z.string().max(100, 'Pencarian terlalu panjang')
+});
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MemberDocsPage() {
@@ -56,6 +61,14 @@ export default function MemberDocsPage() {
   const [uploadOpen,   setUploadOpen]   = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm, 400);
+
+  // Zod Validation Guard for search input
+  useEffect(() => {
+    const result = searchSchema.safeParse({ query: searchTerm });
+    if (!result.success) {
+      toast.error(result.error.errors[0]?.message || 'Input pencarian tidak valid');
+    }
+  }, [searchTerm]);
 
   // ── Permissions ────────────────────────────────────────────────────────────
   const canManage = useMemo(() =>
@@ -119,8 +132,9 @@ export default function MemberDocsPage() {
   const totalSiswa = siswaDocsRes?.pagination?.total ?? 0;
   const totalGuru  = guruDocsRes?.pagination?.total  ?? 0;
   const totalToday = useMemo(() => {
-    const today = new Date().toLocaleDateString('id-ID');
-    return docs.filter(d => new Date(d.created_at).toLocaleDateString('id-ID') === today).length;
+    const formatOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' };
+    const today = new Date().toLocaleDateString('id-ID', formatOpts);
+    return (docs || [])?.filter(d => new Date(d.created_at).toLocaleDateString('id-ID', formatOpts) === today).length;
   }, [docs]);
 
   const stats = useMemo(() => [
@@ -189,74 +203,83 @@ export default function MemberDocsPage() {
         ],
       }}
     >
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="space-y-4">
+        {/* Tab Navigator (Floating outside card, matching Jurusan page layout) */}
+        <TabSwitcher
+          options={TAB_OPTIONS}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as MemberDocEntityType)}
+        />
 
-        {/* ── Tab + toolbar ────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <TabSwitcher
-            options={TAB_OPTIONS}
-            activeTab={activeTab}
-            onChange={(id) => setActiveTab(id as MemberDocEntityType)}
-          />
-          {canManage && (
-            <Button
-              onClick={() => setUploadOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 dark:shadow-none self-end sm:self-auto"
-            >
-              <Plus size={14} className="mr-1.5" /> Upload Berkas
-            </Button>
-          )}
-        </div>
-
-        {/* ── Filter bar ───────────────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Cari nama ${activeTab === 'SISWA' ? 'siswa' : 'guru'} atau judul berkas...`}
-              aria-label="Cari berkas"
-              className="w-full pl-9 pr-3 h-9 text-xs rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-            />
-          </div>
-          <Suspense fallback={<div className="h-9 w-40 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
-            <SearchableSelect
-              id="kategori-filter"
-              value={kategoriFilter}
-              onValueChange={setKategoriFilter}
-              options={[ALL_KATEGORI, ...KATEGORI_OPTIONS]}
-              placeholder="Semua Tipe"
-            />
-          </Suspense>
-          <div className="w-48">
-            <Suspense fallback={<div className="h-9 w-48 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
-              <SearchableSelect
-                id="entity-filter"
-                value={selectedEntityFilter}
-                onValueChange={setSelectedEntityFilter}
-                options={[
-                  { label: `Semua ${activeTab === 'SISWA' ? 'Siswa' : 'Guru'}`, value: '' },
-                  ...(activeTab === 'SISWA' ? siswaOptions : guruOptions)
-                ]}
-                placeholder={`Pilih ${activeTab === 'SISWA' ? 'Siswa' : 'Guru'}...`}
-                clearable
+        {/* Unified Wrapper Card (Pembungkus) */}
+        <SectionCard fullWidth className="p-6">
+          {/* Top Panel: Filters & Upload Button */}
+          <div className="space-y-4 pb-6 border-b border-slate-100 dark:border-slate-800">
+            {/* Search Input (Row 1: full width, memanjang ke kanan) */}
+            <div className="relative w-full">
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={`Cari nama ${activeTab === 'SISWA' ? 'siswa' : 'guru'} atau judul berkas...`}
+                aria-label="Cari berkas"
+                className="w-full pl-11 pr-4 h-11 text-xs rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
               />
-            </Suspense>
+            </div>
+
+            {/* Dropdowns & Actions (Row 2: horizontal flex) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="w-48">
+                  <Suspense fallback={<div className="h-9 w-48 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
+                    <SearchableSelect
+                      id="kategori-filter"
+                      value={kategoriFilter}
+                      onValueChange={setKategoriFilter}
+                      options={[ALL_KATEGORI, ...KATEGORI_OPTIONS]}
+                      placeholder="Semua Tipe"
+                    />
+                  </Suspense>
+                </div>
+                <div className="w-48">
+                  <Suspense fallback={<div className="h-9 w-48 bg-slate-50 dark:bg-slate-900 rounded-2xl animate-pulse" />}>
+                    <SearchableSelect
+                      id="entity-filter"
+                      value={selectedEntityFilter}
+                      onValueChange={setSelectedEntityFilter}
+                      options={[
+                        { label: `Semua ${activeTab === 'SISWA' ? 'Siswa' : 'Guru'}`, value: '' },
+                        ...(activeTab === 'SISWA' ? siswaOptions : guruOptions)
+                      ]}
+                      placeholder={`Pilih ${activeTab === 'SISWA' ? 'Siswa' : 'Guru'}...`}
+                      clearable
+                    />
+                  </Suspense>
+                </div>
+                {(debouncedSearch || kategoriFilter !== 'ALL' || selectedEntityFilter) && (
+                  <p className="text-[10px] font-bold text-gray-400 uppercase ml-1">
+                    {docs.length} hasil
+                  </p>
+                )}
+              </div>
+
+              {/* Upload Button */}
+              {canManage && (
+                <Button
+                  onClick={() => setUploadOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 dark:shadow-none h-9 px-4 text-xs font-bold uppercase tracking-widest gap-2 self-end sm:self-auto"
+                >
+                  <Plus size={14} /> Upload Berkas
+                </Button>
+              )}
+            </div>
           </div>
-          {(debouncedSearch || kategoriFilter !== 'ALL' || selectedEntityFilter) && (
-            <p className="text-[10px] font-bold text-gray-400 uppercase">
-              {docs.length} hasil
-            </p>
-          )}
-        </div>
 
-        {/* ── 2-panel layout ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* 2-column documents preview layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch pt-6">
 
-          {/* List panel */}
-          <div className="lg:col-span-5 flex">
-            <SectionCard fullWidth className="flex flex-col w-full min-w-0 overflow-hidden p-0">
+            {/* List panel */}
+            <div className="lg:col-span-5 flex flex-col min-w-0 border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-950 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <h3 className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                   {activeTab === 'SISWA' ? 'Berkas Siswa' : 'Berkas Guru'}
@@ -276,16 +299,13 @@ export default function MemberDocsPage() {
                   entityNameMap={entityNameMap}
                 />
               </div>
-            </SectionCard>
-          </div>
+            </div>
 
-          {/* Viewer panel */}
-          <div className="lg:col-span-7 flex">
-            <SectionCard fullWidth className={cn(
-              'flex flex-col w-full min-w-0 p-5 transition-all duration-300',
+            <div className={cn(
+              'lg:col-span-7 flex flex-col min-w-0 p-5 border rounded-2xl transition-all duration-300',
               selectedDoc
-                ? 'border-indigo-100 dark:border-indigo-900/30'
-                : 'border-slate-100 dark:border-slate-800',
+                ? 'border-indigo-100 bg-indigo-50/10 dark:border-indigo-900/20 dark:bg-indigo-950/5'
+                : 'border-slate-100 bg-slate-50/50 dark:border-slate-800/10 dark:bg-slate-900/10',
             )}>
               <MemberDocsViewer
                 doc={selectedDoc}
@@ -294,9 +314,9 @@ export default function MemberDocsPage() {
                 entityName={selectedEntityName}
                 className="flex-1"
               />
-            </SectionCard>
+            </div>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       {/* ── Upload Modal (lazy) ─────────────────────────────────────────── */}

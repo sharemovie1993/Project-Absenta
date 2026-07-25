@@ -1,5 +1,6 @@
 import React from 'react';
 import type { StudentCardConfig } from './types';
+import { MM_TO_PX, EDITOR_SCALE } from './constants';
 
 interface CardBackPreviewProps {
     config: StudentCardConfig;
@@ -12,6 +13,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
 
     const widthMM = isVertical ? cHeight : cWidth;
     const heightMM = isVertical ? cWidth : cHeight;
+
+    const scale = MM_TO_PX * EDITOR_SCALE;
+    const widthPX = widthMM * scale;
+    const heightPX = heightMM * scale;
 
     const bgClr = config.back_bg_color || '#ffffff';
     const textClr = config.back_text_color || '#1e293b';
@@ -34,18 +39,18 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
         return { backgroundColor: bgClr };
     };
 
-    // Since the card container uses physical mm units, font sizes in pt scale correctly without multipliers
-    const FONT_SCALE = 1;
+    // Use EDITOR_SCALE for font scaling to match PreviewCard front side zoom
+    const FONT_SCALE = EDITOR_SCALE;
 
     return (
         <div
             style={{
-                width: `${widthMM}mm`,
-                height: `${heightMM}mm`,
+                width: `${widthPX}px`,
+                height: `${heightPX}px`,
                 ...getBackgroundStyle(),
                 color: textClr,
                 borderColor: config.show_border ? config.border_color || '#e2e8f0' : 'transparent',
-                borderWidth: config.show_border ? `${config.border_width || 1}px` : '0px',
+                borderWidth: config.show_border ? `${(config.border_width || 1) * EDITOR_SCALE}px` : '0px',
                 borderStyle: 'solid',
                 position: 'relative',
                 overflow: 'hidden',
@@ -61,7 +66,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             {backStyle === 'default' && (
                 <div 
                     style={{ 
-                        height: '2mm', 
+                        height: `${2 * scale}px`, 
                         backgroundColor: accentClr,
                         width: '100%'
                     }} 
@@ -74,11 +79,11 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     style={{ 
                         backgroundColor: accentClr,
                         color: '#ffffff',
-                        padding: '2mm 3mm',
+                        padding: `${2 * scale}px ${3 * scale}px`,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '2mm',
-                        borderBottom: '0.5mm solid rgba(255,255,255,0.2)'
+                        gap: `${2 * scale}px`,
+                        borderBottom: `${0.5 * scale}px solid rgba(255,255,255,0.2)`
                     }}
                 >
                     {config.logo_url ? (
@@ -87,14 +92,14 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                             crossOrigin="anonymous"
                             alt="Logo" 
                             style={{ 
-                                width: '7mm', 
-                                height: '7mm', 
+                                width: `${7 * scale}px`, 
+                                height: `${7 * scale}px`, 
                                 objectFit: 'contain',
                                 filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))'
                             }} 
                         />
                     ) : (
-                        <div style={{ width: '7mm', height: '7mm', backgroundColor: 'rgba(255,255,255,0.2)' }} className="rounded flex items-center justify-center text-[8px] font-bold">🏫</div>
+                        <div style={{ width: `${7 * scale}px`, height: `${7 * scale}px`, backgroundColor: 'rgba(255,255,255,0.2)' }} className="rounded flex items-center justify-center text-[8px] font-bold">🏫</div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: `${5.2 * FONT_SCALE}pt`, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -111,11 +116,11 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
             <div 
                 className="flex flex-col h-full justify-between relative" 
                 style={{ 
-                    padding: '3mm 4mm 2mm 4mm',
+                    padding: `${3 * scale}px ${4 * scale}px ${2 * scale}px ${4 * scale}px`,
                     boxSizing: 'border-box',
                     height: backStyle === 'default' 
-                        ? 'calc(100% - 2mm)' 
-                        : (backStyle === 'full-header' ? 'calc(100% - 11mm)' : '100%')
+                        ? `calc(100% - ${2 * scale}px)` 
+                        : (backStyle === 'full-header' ? `calc(100% - ${11 * scale}px)` : '100%')
                 }}
             >
                 {/* VARIANT 4: Accent Border overlay */}
@@ -123,8 +128,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     <div 
                         style={{
                             position: 'absolute',
-                            inset: '1.5mm',
-                            border: `0.5mm solid ${accentClr}44`,
+                            inset: `${1.5 * scale}px`,
+                            border: `${0.5 * scale}px solid ${accentClr}44`,
                             borderRadius: '8px',
                             pointerEvents: 'none',
                             zIndex: 1
@@ -141,7 +146,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                             fontWeight: 800,
                             letterSpacing: '0.05em',
                             textAlign: backStyle === 'minimal' ? 'center' : 'left',
-                            marginBottom: '2mm',
+                            marginBottom: `${2 * scale}px`,
                             textTransform: 'uppercase'
                         }}
                     >
@@ -173,8 +178,8 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                     <div 
                         className="flex flex-col items-end relative text-right z-10"
                         style={{ 
-                            marginTop: '2mm',
-                            minHeight: '10mm'
+                            marginTop: `${2 * scale}px`,
+                            minHeight: `${10 * scale}px`
                         }}
                     >
                         {/* Stamp Image */}
@@ -185,10 +190,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                 alt="Stempel"
                                 style={{
                                     position: 'absolute',
-                                    right: '7mm',
-                                    bottom: '1mm',
-                                    width: '11mm',
-                                    height: '11mm',
+                                    right: `${7 * scale}px`,
+                                    bottom: `${1 * scale}px`,
+                                    width: `${11 * scale}px`,
+                                    height: `${11 * scale}px`,
                                     opacity: 0.75,
                                     zIndex: 10,
                                     pointerEvents: 'none',
@@ -205,10 +210,10 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                                 alt="Tanda Tangan"
                                 style={{
                                     position: 'absolute',
-                                    right: '2mm',
-                                    bottom: '2mm',
-                                    width: '9mm',
-                                    height: '6mm',
+                                    right: `${2 * scale}px`,
+                                    bottom: `${2 * scale}px`,
+                                    width: `${9 * scale}px`,
+                                    height: `${6 * scale}px`,
                                     zIndex: 15,
                                     pointerEvents: 'none',
                                     objectFit: 'contain'
@@ -219,7 +224,7 @@ export const CardBackPreview: React.FC<CardBackPreviewProps> = ({ config }) => {
                         {/* Text Details */}
                         <div style={{ fontSize: `${5 * FONT_SCALE}pt`, zIndex: 20 }} className="leading-tight">
                             <div>{config.back_signature_title || 'Kepala Sekolah'}</div>
-                            <div style={{ height: '4mm' }} />
+                            <div style={{ height: `${4 * scale}px` }} />
                             <div className="font-bold underline">{config.back_principal_name || 'Nama Kepala Sekolah'}</div>
                             <div style={{ fontSize: `${4 * FONT_SCALE}pt` }} className="text-slate-400">{config.back_principal_nip || '-'}</div>
                         </div>

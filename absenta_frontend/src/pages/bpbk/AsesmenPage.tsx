@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { AsesmenSection } from './components/AsesmenSection';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { SectionCard } from '../../components/ui';
+import { Loader } from '../../components/ui/Loader';
+
+const AsesmenSection = lazy(() => import('./components/AsesmenSection').then(m => ({ default: m.AsesmenSection })));
 
 export default function AsesmenPage() {
   return (
@@ -27,9 +30,11 @@ export default function AsesmenPage() {
           ]
         }}
       >
-        <div className="w-full min-w-0">
-          <AsesmenSection />
-        </div>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+          <Suspense fallback={<Loader />}>
+            <AsesmenSection />
+          </Suspense>
+        </SectionCard>
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

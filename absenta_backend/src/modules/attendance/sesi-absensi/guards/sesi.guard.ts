@@ -199,8 +199,9 @@ export class SesiGuard {
         if (guru) {
             const org = request.organizationalScope;
             const hasPrivilegedStructure = org?.tenant_wide === true || (org?.positions || []).some((p: any) => p.code === 'PETUGAS_KELAS');
+            const forceOnlyMe = request.query.only_me === 'true' || request.query.only_me === true || request.query.guru_id === 'me';
 
-            if (!hasPrivilegedStructure) {
+            if (!hasPrivilegedStructure || forceOnlyMe) {
                 request.query.guruIdFilter = guru.id;
             }
         }

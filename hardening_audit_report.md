@@ -8,10 +8,10 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **191 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **46 Halaman** | 24% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **87 Halaman** | 46% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **58 Halaman** | 30% | **Prioritas Utama Refaktor** |
+| **Total Halaman Utama** | **193 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **35 Halaman** | 18% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **94 Halaman** | 49% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **64 Halaman** | 33% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -24,6 +24,23 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `ProfilePage.tsx`
+* **Lokasi File:** [ProfilePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/account/ProfilePage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1160 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [ProfilePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/account/ProfilePage.tsx) (1160 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Mendeteksi ekspor PDF manual/mentah. Gunakan modul cetak PDF terstandar di 'src/utils/print/' untuk menjaga konsistensi template kop surat resmi.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -35,9 +52,20 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.
   * ❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 859 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 859 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [AnggotaKegiatanEskulPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AnggotaKegiatanEskulPage.tsx) (859 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+
+---
+
+### 📄 Halaman: `AttendanceDashboardPage.tsx`
+* **Lokasi File:** [AttendanceDashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceDashboardPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1058 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [AttendanceDashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceDashboardPage.tsx) (534 baris), [AttendanceTvModeLayout.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/components/AttendanceTvModeLayout.tsx) (346 baris), [AttendanceDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/components/AttendanceDashboardComponents.tsx) (178 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -50,6 +78,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -58,6 +87,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -67,6 +97,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -76,6 +107,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -96,6 +128,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -103,15 +136,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [MonitoringKbmPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/monitoring/MonitoringKbmPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
-
----
-
-### 📄 Halaman: `MyAttendancePage.tsx`
-* **Lokasi File:** [MyAttendancePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/MyAttendancePage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
 
 ---
@@ -141,8 +165,15 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [RekapPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1193 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [RekapPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapPage.tsx) (121 baris), [RekapHarianSiswaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapHarianSiswaPage.tsx) (370 baris), [RekapBulananSiswaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananSiswaPage.tsx) (375 baris), [RekapBulananKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananKelasPage.tsx) (327 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout> (secara default me-render varian premium). Cara 2: Impor langsung <AnalyticsCard variant="premium"> dari '@/components/ui/AnalyticsCard'.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -152,9 +183,10 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -164,6 +196,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -174,7 +208,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
@@ -184,7 +218,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
@@ -200,7 +234,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 1108 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1108 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CheckoutPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/CheckoutPage.tsx) (1108 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -232,6 +266,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -241,6 +276,19 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `AuditPage.tsx`
+* **Lokasi File:** [AuditPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/AuditPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -261,6 +309,32 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `PemanggilanPage.tsx`
+* **Lokasi File:** [PemanggilanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/PemanggilanPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Menggunakan listeners/timer (addEventListener, setInterval, setTimeout) di dalam useEffect tetapi lupa menulis fungsi return cleanup (Kebocoran Memori Klien)
+  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1460 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PemanggilanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/PemanggilanPage.tsx) (37 baris), [PemanggilanSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/PemanggilanSection.tsx) (1036 baris), [PemanggilanCard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/PemanggilanCard.tsx) (387 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+
+---
+
+### 📄 Halaman: `ReportsPage.tsx`
+* **Lokasi File:** [ReportsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/ReportsPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout> (secara default me-render varian premium). Cara 2: Impor langsung <AnalyticsCard variant="premium"> dari '@/components/ui/AnalyticsCard'.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
 ### 📄 Halaman: `Announcements.tsx`
 * **Lokasi File:** [Announcements.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Announcements.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
@@ -268,6 +342,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting. Hubungkan properti 'sortBy', 'sortOrder', 'onSort', dan tandai kolom dengan 'sortable: true'.
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -278,8 +353,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 644 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 644 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [OpnameDetail.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/OpnameDetail.tsx) (644 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -291,10 +367,11 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Menggunakan listeners/timer (addEventListener, setInterval, setTimeout) di dalam useEffect tetapi lupa menulis fungsi return cleanup (Kebocoran Memori Klien)
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -305,6 +382,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -316,17 +394,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-
----
-
-### 📄 Halaman: `Savings.tsx`
-* **Lokasi File:** [Savings.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Savings.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -335,9 +404,21 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `DashboardPage.tsx`
+* **Lokasi File:** [DashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/dashboard/DashboardPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
+  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
 
 ---
 
@@ -351,6 +432,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
+  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
@@ -383,14 +465,42 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `KalenderAkademikPage.tsx`
-* **Lokasi File:** [KalenderAkademikPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/KalenderAkademikPage.tsx)
+### 📄 Halaman: `BkkPage.tsx`
+* **Lokasi File:** [BkkPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/BkkPage.tsx)
 * **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1157 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [BkkPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/BkkPage.tsx) (60 baris), [BkkSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/BkkSection.tsx) (505 baris), [BkkModals.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/bkk/BkkModals.tsx) (343 baris), [JobCard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/bkk/JobCard.tsx) (98 baris), [BkkPelamarTab.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/bkk/BkkPelamarTab.tsx) (151 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `TefaPage.tsx`
+* **Lokasi File:** [TefaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TefaPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `TracerStudyPage.tsx`
+* **Lokasi File:** [TracerStudyPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TracerStudyPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `SettingsPage.tsx`
+* **Lokasi File:** [SettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/SettingsPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting. Hubungkan properti 'sortBy', 'sortOrder', 'onSort', dan tandai kolom dengan 'sortable: true'.
+  * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
 
@@ -412,10 +522,12 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -430,6 +542,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -474,6 +587,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -485,6 +599,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -543,19 +658,10 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-
----
-
-### 📄 Halaman: `SarprasInventoryPage.tsx`
-* **Lokasi File:** [SarprasInventoryPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/SarprasInventoryPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State. Pastikan terdapat pengecekan kondisi data kosong (seperti 'data.length === 0', 'isEmpty', atau penegasian '!data.length').
-  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
 
 ---
 
@@ -567,6 +673,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -593,6 +700,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Komponen berat (Modal, Form, Excel, Loader) terdeteksi tetapi tidak menggunakan lazy() & Suspense (Beban Bundle Awal Berat)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -660,8 +768,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -674,8 +783,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 1626 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1628 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [EasyTunnelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/system/EasyTunnelPage.tsx) (1628 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -687,6 +797,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -711,7 +822,18 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [PpdbMappingPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/ppdb/PpdbMappingPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 811 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 948 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PpdbMappingPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/ppdb/PpdbMappingPage.tsx) (881 baris), [KelasExpandedPanel.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/ppdb/KelasExpandedPanel.tsx) (67 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `SemesterPage.tsx`
+* **Lokasi File:** [SemesterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/SemesterPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -720,41 +842,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-
----
-
-### 📄 Halaman: `StaffActivityLogPage.tsx`
-* **Lokasi File:** [StaffActivityLogPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/StaffActivityLogPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-
----
-
-### 📄 Halaman: `StudentCardPage.tsx`
-* **Lokasi File:** [StudentCardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/StudentCardPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-
----
-
-### 📄 Halaman: `ProfilePage.tsx`
-* **Lokasi File:** [ProfilePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/account/ProfilePage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-
----
-
-### 📄 Halaman: `AttendanceDashboardPage.tsx`
-* **Lokasi File:** [AttendanceDashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceDashboardPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
 
 ---
 
@@ -771,7 +858,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 934 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [JadwalKegiatanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/JadwalKegiatanPage.tsx) (453 baris), [JadwalKegiatanFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/JadwalKegiatanFormModal.tsx) (481 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -804,7 +891,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 808 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 808 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [SessionManagerModule.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/ops/components/SessionManagerModule.tsx) (808 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -815,6 +903,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -824,6 +913,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -832,6 +922,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -842,6 +933,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -866,7 +958,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
@@ -889,7 +981,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
 
 ---
@@ -900,7 +992,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 872 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PaymentsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/PaymentsPage.tsx) (708 baris), [PaymentColumns.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/components/PaymentColumns.tsx) (164 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
@@ -913,6 +1006,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -927,19 +1022,11 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `AsesmenPage.tsx`
-* **Lokasi File:** [AsesmenPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/AsesmenPage.tsx)
+### 📄 Halaman: `TripayHealthPage.tsx`
+* **Lokasi File:** [TripayHealthPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/TripayHealthPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `AuditPage.tsx`
-* **Lokasi File:** [AuditPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/AuditPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -947,7 +1034,12 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [CasesPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/CasesPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1100 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CasesPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/CasesPage.tsx) (37 baris), [CasesSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/CasesSection.tsx) (484 baris), [CaseTable.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/cases/CaseTable.tsx) (213 baris), [CaseFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/cases/CaseFormModal.tsx) (159 baris), [CaseDetailModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/components/cases/CaseDetailModal.tsx) (207 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -955,7 +1047,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [DashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/DashboardPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -963,7 +1055,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [HomeVisitPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/HomeVisitPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -971,23 +1065,10 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [KonselingPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/KonselingPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `PemanggilanPage.tsx`
-* **Lokasi File:** [PemanggilanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/PemanggilanPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
-
----
-
-### 📄 Halaman: `ReportsPage.tsx`
-* **Lokasi File:** [ReportsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/ReportsPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -995,7 +1076,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [RujukanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/RujukanPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1003,7 +1086,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [SiswaKasusPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/SiswaKasusPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
 
@@ -1015,6 +1099,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
   * ⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -1022,7 +1108,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [CoopTvMode.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/CoopTvMode.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 504 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 504 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CoopTvMode.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/CoopTvMode.tsx) (504 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1039,6 +1126,23 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+
+---
+
+### 📄 Halaman: `ReceiptModal.tsx`
+* **Lokasi File:** [ReceiptModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ReceiptModal.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `Dashboard.tsx`
+* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Dashboard.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1350 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Dashboard.tsx) (665 baris), [CoopTvMode.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/CoopTvMode.tsx) (504 baris), [ReceiptModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ReceiptModal.tsx) (181 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1062,8 +1166,19 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [Products.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Products.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+
+---
+
+### 📄 Halaman: `Savings.tsx`
+* **Lokasi File:** [Savings.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Savings.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
+  * ⚠️  Terdeteksi fitur ekspor/impor data tetapi belum memenuhi standar audit. Petunjuk Perbaikan: 1) Gunakan helper standar ter-style 'generateImportTemplate' dari '@/utils/export.utils' untuk unduhan template Excel. 2) Pastikan proses impor/ekspor dilindungi loading guard (state 'isExporting'/'processing') untuk menghindari double-submit. 3) Bungkus logika dengan try-catch block untuk menangani error secara aman.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1072,7 +1187,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
 
 ---
@@ -1083,6 +1198,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1093,6 +1209,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1104,6 +1221,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -1127,27 +1246,15 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Komponen <Table> ditemukan tetapi tidak memiliki implementasi sorting. Hubungkan properti 'sortBy', 'sortOrder', 'onSort', dan tandai kolom dengan 'sortable: true'.
   * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
-### 📄 Halaman: `DashboardPage.tsx`
-* **Lokasi File:** [DashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/dashboard/DashboardPage.tsx)
+### 📄 Halaman: `AbsensiPklPage.tsx`
+* **Lokasi File:** [AbsensiPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/AbsensiPklPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
-
----
-
-### 📄 Halaman: `DocumentCenterPage.tsx`
-* **Lokasi File:** [DocumentCenterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/documents/DocumentCenterPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
-  * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1159,11 +1266,35 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `JobCard.tsx`
+* **Lokasi File:** [JobCard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/bkk/JobCard.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
 ### 📄 Halaman: `BkkSection.tsx`
 * **Lokasi File:** [BkkSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/BkkSection.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 505 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 505 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [BkkSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/BkkSection.tsx) (505 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `HubinDashboardComponents.tsx`
+* **Lokasi File:** [HubinDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinDashboardComponents.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `HubinDashboardSection.tsx`
+* **Lokasi File:** [HubinDashboardSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinDashboardSection.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1172,6 +1303,23 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout> (secara default me-render varian premium). Cara 2: Impor langsung <AnalyticsCard variant="premium"> dari '@/components/ui/AnalyticsCard'.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `TefaSection.tsx`
+* **Lokasi File:** [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `TracerStudySection.tsx`
+* **Lokasi File:** [TracerStudySection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TracerStudySection.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1180,7 +1328,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1082 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [HubinDashboardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/HubinDashboardPage.tsx) (323 baris), [HubinTvModeLayout.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinTvModeLayout.tsx) (412 baris), [HubinDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinDashboardComponents.tsx) (347 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1189,6 +1338,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1197,6 +1347,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1206,6 +1357,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1214,6 +1366,26 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+
+---
+
+### 📄 Halaman: `MonitoringKesiswaanPage.tsx`
+* **Lokasi File:** [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 918 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx) (768 baris), [MonitoringKesiswaanComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/components/MonitoringKesiswaanComponents.tsx) (150 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
+
+---
+
+### 📄 Halaman: `PelanggaranPage.tsx`
+* **Lokasi File:** [PelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PelanggaranPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1229,7 +1401,17 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [PrestasiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PrestasiPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `Dashboard.tsx`
+* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1241,13 +1423,11 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `StrukturKurikulumPage.tsx`
-* **Lokasi File:** [StrukturKurikulumPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/StrukturKurikulumPage.tsx)
+### 📄 Halaman: `JamKBMPage.tsx`
+* **Lokasi File:** [JamKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JamKBMPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 863 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -1256,9 +1436,9 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (terdeteksi 837 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-  * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 845 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [SupervisiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/SupervisiPage.tsx) (640 baris), [SupervisiAnalyticsDashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/SupervisiAnalyticsDashboard.tsx) (205 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Terdeteksi kartu statistik/analitik kustom lokal. Gunakan komponen AnalyticsCard terstandarisasi varian premium. Disarankan Cara 1: Lewatkan data via properti 'stats={[...]}' pada <AcademicPageLayout> (secara default me-render varian premium). Cara 2: Impor langsung <AnalyticsCard variant="premium"> dari '@/components/ui/AnalyticsCard'.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1270,7 +1450,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
@@ -1292,6 +1472,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1318,6 +1499,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1355,11 +1537,38 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `SarprasDashboardComponents.tsx`
+* **Lokasi File:** [SarprasDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasDashboardComponents.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
+### 📄 Halaman: `SarprasTvModeLayout.tsx`
+* **Lokasi File:** [SarprasTvModeLayout.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasTvModeLayout.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+
+---
+
 ### 📄 Halaman: `SarprasDashboard.tsx`
 * **Lokasi File:** [SarprasDashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/SarprasDashboard.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi properti "toolbar" pada Layout saat Tabel hadir (Pindahkan aksi ke toolbar Table untuk konsistensi)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 859 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [SarprasDashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/SarprasDashboard.tsx) (326 baris), [SarprasTvModeLayout.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasTvModeLayout.tsx) (334 baris), [SarprasDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasDashboardComponents.tsx) (199 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
+
+---
+
+### 📄 Halaman: `SarprasInventoryPage.tsx`
+* **Lokasi File:** [SarprasInventoryPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/SarprasInventoryPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State. Pastikan terdapat pengecekan kondisi data kosong (seperti 'data.length === 0', 'isEmpty', atau penegasian '!data.length').
 
 ---
 
@@ -1368,6 +1577,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1376,6 +1586,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -1383,7 +1595,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [SettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/settings/SettingsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
 
 ---
@@ -1423,6 +1635,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1441,6 +1654,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
 
 ---
 
@@ -1465,7 +1679,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
 ---
@@ -1477,7 +1691,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti "instruction" (UX: Pengguna kehilangan panduan fitur)
-  * ⚠️  Halaman menggunakan Layout tetapi tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
   * ⚠️  Halaman menggunakan Layout tetapi tidak menyediakan properti 'breadcrumbs' (UX: Pengguna kehilangan konteks lokasi navigasi).
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
 
@@ -1504,8 +1718,22 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `SemesterPage.tsx`
-* **Lokasi File:** [SemesterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/SemesterPage.tsx)
+### 📄 Halaman: `StaffActivityLogPage.tsx`
+* **Lokasi File:** [StaffActivityLogPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/StaffActivityLogPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `StrukturOrganisasiPage.tsx`
+* **Lokasi File:** [StrukturOrganisasiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/struktur-organisasi/StrukturOrganisasiPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `StudentCardPage.tsx`
+* **Lokasi File:** [StudentCardPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/StudentCardPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1532,6 +1760,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `MyAttendancePage.tsx`
+* **Lokasi File:** [MyAttendancePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/MyAttendancePage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
 ### 📄 Halaman: `ModeMultiSesiView.tsx`
 * **Lokasi File:** [ModeMultiSesiView.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/ops/components/ModeMultiSesiView.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1546,22 +1781,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `TripayHealthPage.tsx`
-* **Lokasi File:** [TripayHealthPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/TripayHealthPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `ReceiptModal.tsx`
-* **Lokasi File:** [ReceiptModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ReceiptModal.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `Dashboard.tsx`
-* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Dashboard.tsx)
+### 📄 Halaman: `AsesmenPage.tsx`
+* **Lokasi File:** [AsesmenPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/AsesmenPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1574,15 +1795,15 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `AbsensiPklPage.tsx`
-* **Lokasi File:** [AbsensiPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/AbsensiPklPage.tsx)
+### 📄 Halaman: `DocumentCenterPage.tsx`
+* **Lokasi File:** [DocumentCenterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/documents/DocumentCenterPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
 ---
 
-### 📄 Halaman: `BkkPage.tsx`
-* **Lokasi File:** [BkkPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/BkkPage.tsx)
+### 📄 Halaman: `MemberDocsPage.tsx`
+* **Lokasi File:** [MemberDocsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/documents/MemberDocsPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1602,43 +1823,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `JobCard.tsx`
-* **Lokasi File:** [JobCard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/bkk/JobCard.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `HubinDashboardComponents.tsx`
-* **Lokasi File:** [HubinDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinDashboardComponents.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `HubinDashboardSection.tsx`
-* **Lokasi File:** [HubinDashboardSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/HubinDashboardSection.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `TefaSection.tsx`
-* **Lokasi File:** [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `TracerFormSubfields.tsx`
 * **Lokasi File:** [TracerFormSubfields.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/tracer/TracerFormSubfields.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `TracerStudySection.tsx`
-* **Lokasi File:** [TracerStudySection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TracerStudySection.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1651,43 +1837,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `TefaPage.tsx`
-* **Lokasi File:** [TefaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TefaPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `TracerStudyPage.tsx`
-* **Lokasi File:** [TracerStudyPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/TracerStudyPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `JenisPelanggaranPage.tsx`
 * **Lokasi File:** [JenisPelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/JenisPelanggaranPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `MonitoringKesiswaanPage.tsx`
-* **Lokasi File:** [MonitoringKesiswaanPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/MonitoringKesiswaanPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `PelanggaranPage.tsx`
-* **Lokasi File:** [PelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PelanggaranPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `SettingsPage.tsx`
-* **Lokasi File:** [SettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/SettingsPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1700,13 +1851,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `Dashboard.tsx`
-* **Lokasi File:** [Dashboard.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/Dashboard.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `GuruMapelPage.tsx`
 * **Lokasi File:** [GuruMapelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/GuruMapelPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -1714,8 +1858,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `JamKBMPage.tsx`
-* **Lokasi File:** [JamKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/JamKBMPage.tsx)
+### 📄 Halaman: `KalenderAkademikPage.tsx`
+* **Lokasi File:** [KalenderAkademikPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/KalenderAkademikPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1737,6 +1881,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `RekapKBMPage.tsx`
 * **Lokasi File:** [RekapKBMPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/RekapKBMPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `StrukturKurikulumPage.tsx`
+* **Lokasi File:** [StrukturKurikulumPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kurikulum/StrukturKurikulumPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1772,20 +1923,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `ReportsPage.tsx`
 * **Lokasi File:** [ReportsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/reports/ReportsPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `SarprasDashboardComponents.tsx`
-* **Lokasi File:** [SarprasDashboardComponents.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasDashboardComponents.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `SarprasTvModeLayout.tsx`
-* **Lokasi File:** [SarprasTvModeLayout.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/sarpras/components/SarprasTvModeLayout.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

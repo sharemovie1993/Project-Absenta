@@ -247,10 +247,25 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
       activityviewer: { path: '/documents/activities' },
       sarprasdashboard: { path: '/sarpras/dashboard' },
       dashboardsarpras: { path: '/sarpras/dashboard' },
+      katalogpresetmapel: { path: '/superadmin/mapel-presets' },
+      presetmapel: { path: '/superadmin/mapel-presets' },
+      katalogpresettopik: { path: '/superadmin/topik-presets' },
+      presettopik: { path: '/superadmin/topik-presets' },
+      bankkataloglibrary: { path: '/superadmin/library-templates' },
+      kataloglibrary: { path: '/superadmin/library-templates' },
+      presetlibrary: { path: '/superadmin/library-templates' },
+      katalogpresetjurusan: { path: '/superadmin/jurusan-presets' },
+      presetjurusan: { path: '/superadmin/jurusan-presets' },
+      katalogpresetkalender: { path: '/superadmin/calendar-presets' },
+      presetkalender: { path: '/superadmin/calendar-presets' },
+      katalogstandarjp: { path: '/superadmin/kurikulum-standards' },
+      standarjp: { path: '/superadmin/kurikulum-standards' },
     };
+
 
     return map[k] ?? null;
   };
+
 
   const mapToNavItems = (nodes: BackendMenuItem[]): NavItem[] => {
     const isSdSmp = ['SD', 'MI', 'SMP', 'MTs'].includes(String(jenjang || '').toUpperCase());
@@ -428,7 +443,9 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                 cPath.includes('my-attendance') ||
                 cPath.includes('/kurikulum/jadwal') ||
                 cPath.includes('/kurikulum/perangkat') ||
-                cPath.includes('/kurikulum/kalender')
+                cPath.includes('/kurikulum/kalender') ||
+                cPath.includes('/rapor/nilai') ||
+                cPath.includes('/rapor/p5')
               ) {
                 primaryItems.push(child);
               }

@@ -40,6 +40,7 @@
     "file-saver": "^2.0.5",
     "framer-motion": "^12.23.24",
     "html2canvas-pro": "^2.3.0",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.548.0",

@@ -98,15 +98,16 @@ export const gerbangController = {
 
       if (['SUPERADMIN', 'ADMIN'].includes(roleName)) {
         allowed = true;
-      } else if (roleName === RoleName.GURU || roleName === RoleName.SISWA) {
-        // 1. Check by Capability (Dinamis dari Database - Menghindari Token Stale)
-        const hasScanPermission = await authorizationService.hasUserPermission(String(userId), 'attendance.scan');
-        console.log(`[DEBUG_GERBANG] Result hasScanPermission: ${hasScanPermission}`);
-        
-        if (hasScanPermission) {
+      } else {
+        const hasScanPermission = await authorizationService.isUserAuthorized(String(userId), [
+          'attendance.scan',
+          'attendance.gate.tap.entry',
+          'attendance.piket.view'
+        ], { user: request.user });
+
+        if (hasScanPermission.allowed) {
           allowed = true;
         } else {
-          // 2. Fallback to strict Organizational Assignment (Legacy check)
           const now = new Date();
           const active = await prisma.organizationalAssignment.findFirst({
             where: {
@@ -114,12 +115,10 @@ export const gerbangController = {
               user_id: String(userId),
               is_active: true,
               AND: [{ OR: [{ start_date: null }, { start_date: { lte: now } }] }, { OR: [{ end_date: null }, { end_date: { gte: now } }] }],
-              Position: { scope_type: 'attendance' },
             },
             select: { id: true },
           });
           allowed = !!active;
-          console.log(`[DEBUG_GERBANG] Fallback active check: ${allowed}`);
         }
       }
       

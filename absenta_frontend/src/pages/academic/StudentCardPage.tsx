@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import { useAuth } from '../../hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -43,15 +44,23 @@ import {
     DEFAULT_PRINT_CONFIG,
     PAPER_SIZES
 } from '../../components/academic/student-card/constants';
+import { 
+    SekolahProfileData, 
+    TenantInfoData, 
+    cardConfigSchema, 
+    calculatePrintLayout 
+} from '../../components/academic/student-card/cardPresets';
+
 
 // Local Components with Lazy Loading
-import { CARD_PRESETS } from './student-card/components/DesignTab';
-const DesignTab = lazy(() => import('./student-card/components/DesignTab').then(m => ({ default: m.DesignTab })));
-const DataTab = lazy(() => import('./student-card/components/DataTab').then(m => ({ default: m.DataTab })));
-const PrintTab = lazy(() => import('./student-card/components/PrintTab').then(m => ({ default: m.PrintTab })));
-const PrintOverlay = lazy(() => import('./student-card/components/PrintOverlay').then(m => ({ default: m.PrintOverlay })));
+import { CARD_PRESETS } from '../../components/academic/student-card/cardPresets';
+const DesignTab = lazy(() => import('../../components/academic/student-card/DesignTab').then(m => ({ default: m.DesignTab })));
+const DataTab = lazy(() => import('../../components/academic/student-card/DataTab').then(m => ({ default: m.DataTab })));
+const PrintTab = lazy(() => import('../../components/academic/student-card/PrintTab').then(m => ({ default: m.PrintTab })));
+const PrintOverlay = lazy(() => import('../../components/academic/student-card/PrintOverlay').then(m => ({ default: m.PrintOverlay })));
+import { AccessRestricted, ConfigErrorState } from '../../components/academic/student-card/StudentCardErrorStates';
 
-const TL = TabsList;
+
 
 const StudentCardPage = () => {
     const { user, isAdmin } = useAuth();
@@ -194,22 +203,23 @@ const StudentCardPage = () => {
         }
     }, [siswaData, previewStudentId]);
 
+
     // Consistent with kopsurat: tenantInfo is the primary source, sekolah is a fallback
     // tenantInfo.name       → school name
     // tenantInfo.address    → school address
     // tenantInfo.logo_url   → school logo
     // tenantInfo.nama_dinas_atas    → header line 1
     // tenantInfo.nama_dinas_bawah   → header line 2 / subheader
-    const sekolahData = (sekolah as any)?.data || sekolah;
-    const resolvedName: string    = (tenantInfo as any)?.name    || sekolahData?.nama    || '';
-    const resolvedAddress: string = (tenantInfo as any)?.address || sekolahData?.alamat  || '';
-    const resolvedLogo: string    = (tenantInfo as any)?.logo_url || sekolahData?.logo_url || '';
-    const resolvedHeader: string  = (tenantInfo as any)?.nama_dinas_atas   || '';
-    const resolvedSubheader: string = (tenantInfo as any)?.nama_dinas_bawah || '';
+    const sekolahData = (sekolah as SekolahProfileData | undefined)?.data || sekolah;
+    const resolvedName: string    = (tenantInfo as TenantInfoData | undefined)?.name    || (sekolahData as SekolahProfileData | undefined)?.nama    || '';
+    const resolvedAddress: string = (tenantInfo as TenantInfoData | undefined)?.address || (sekolahData as SekolahProfileData | undefined)?.alamat  || '';
+    const resolvedLogo: string    = (tenantInfo as TenantInfoData | undefined)?.logo_url || (sekolahData as SekolahProfileData | undefined)?.logo_url || '';
+    const resolvedHeader: string  = (tenantInfo as TenantInfoData | undefined)?.nama_dinas_atas   || '';
+    const resolvedSubheader: string = (tenantInfo as TenantInfoData | undefined)?.nama_dinas_bawah || '';
 
     useEffect(() => {
         if (remoteConfig) {
-            let activeConfig: any = { ...remoteConfig };
+            let activeConfig: Partial<StudentCardConfig> = { ...remoteConfig };
 
             if (cardTargetMode === 'GURU') {
                 let savedGuruConfig = null;
@@ -295,8 +305,8 @@ const StudentCardPage = () => {
 
             setPrintConfig(prev => ({
                 ...prev,
-                paperSize: (remoteConfig.print_paper_size as any) || prev.paperSize,
-                orientation: (remoteConfig.print_orientation as any) || prev.orientation,
+                paperSize: (remoteConfig.print_paper_size as 'A4' | 'F4' | 'Letter' | 'Custom' | undefined) || prev.paperSize,
+                orientation: (remoteConfig.print_orientation as 'portrait' | 'landscape' | undefined) || prev.orientation,
                 marginTop: remoteConfig.print_margin_top ?? prev.marginTop,
                 marginBottom: remoteConfig.print_margin_bottom ?? prev.marginBottom,
                 marginLeft: remoteConfig.print_margin_left ?? prev.marginLeft,
@@ -446,6 +456,13 @@ const StudentCardPage = () => {
         cleanConfig.print_auto_center_x = printConfig.autoCenterX;
         cleanConfig.print_auto_center_y = printConfig.autoCenterY;
 
+        // Validation Schema Guard
+        const validationResult = cardConfigSchema.safeParse(cleanConfig);
+        if (!validationResult.success) {
+            toast.error(validationResult.error.issues[0]?.message || 'Input konfigurasi tidak valid');
+            return;
+        }
+
         saveConfigMutation.mutate(cleanConfig);
     }, [config, printConfig, cardTargetMode, saveConfigMutation]);
 
@@ -500,41 +517,7 @@ const StudentCardPage = () => {
     }, []);
 
     const printLayout = useMemo(() => {
-        const paperW = printConfig.paperSize === 'Custom' ? (printConfig.customWidth || 210) : PAPER_SIZES[printConfig.paperSize].width;
-        const paperH = printConfig.paperSize === 'Custom' ? (printConfig.customHeight || 297) : PAPER_SIZES[printConfig.paperSize].height;
-
-        const baseW = Math.min(paperW, paperH);
-        const baseH = Math.max(paperW, paperH);
-
-        const finalW = printConfig.orientation === 'portrait' ? baseW : baseH;
-        const finalH = printConfig.orientation === 'portrait' ? baseH : baseW;
-
-        const cardW = config.template === 'vertical' ? 54 : 85.6;
-        const cardH = config.template === 'vertical' ? 85.6 : 54;
-
-        const availW = finalW - printConfig.marginLeft - printConfig.marginRight;
-        const availH = finalH - printConfig.marginTop - printConfig.marginBottom;
-
-        const cols = Math.max(1, Math.floor((availW + printConfig.gapX) / (cardW + printConfig.gapX)));
-        const rows = Math.max(1, Math.floor((availH + printConfig.gapY) / (cardH + printConfig.gapY)));
-
-        const contentW = cols * cardW + (cols - 1) * printConfig.gapX;
-        const contentH = rows * cardH + (rows - 1) * printConfig.gapY;
-
-        let effectiveMarginLeft = printConfig.marginLeft;
-        let effectiveMarginTop = printConfig.marginTop;
-
-        if (printConfig.autoCenterX) {
-            effectiveMarginLeft = (finalW - contentW) / 2;
-        }
-
-        if (printConfig.autoCenterY) {
-            effectiveMarginTop = (finalH - contentH) / 2;
-        }
-
-        const itemsPerPage = cols * rows;
-
-        return { finalW, finalH, cardW, cardH, cols, rows, itemsPerPage, effectiveMarginLeft, effectiveMarginTop };
+        return calculatePrintLayout(printConfig, config.template || 'vertical');
     }, [printConfig, config.template]);
 
     const studentsToPrint = useMemo(() => {
@@ -563,34 +546,11 @@ const StudentCardPage = () => {
             if (selectedStudents.length === siswaData.data.length) {
                 setSelectedStudents([]);
             } else {
-                setSelectedStudents(siswaData.data.map((s) => s.id));
+                setSelectedStudents(siswaData.data?.map((s) => s.id) || []);
             }
         }
     }, [siswaData, selectedStudents]);
 
-    const academicStats = useMemo(() => [
-        {
-            title: "Total Siswa",
-            value: (siswaData as any)?.pagination?.totalItems || siswaData?.data?.length || 0,
-            icon: <Users size={14} className="text-white" />,
-            gradient: "from-slate-600 to-slate-800",
-            subtitle: "Basis data identitas"
-        },
-        {
-            title: "Antrean Cetak",
-            value: `${selectedStudents.length} Siswa`,
-            icon: <CreditCard size={14} className="text-white" />,
-            gradient: selectedStudents.length > 0 ? "from-blue-600 to-indigo-700" : "from-slate-400 to-slate-500",
-            subtitle: "Siap diproses batch"
-        },
-        {
-            title: "Layout Aktif",
-            value: config.template === 'horizontal' ? 'Landscape' : 'Portrait',
-            icon: <LayoutTemplate size={14} className="text-white" />,
-            gradient: "from-emerald-500 to-teal-700",
-            subtitle: "Format desain kartu"
-        }
-    ], [siswaData, selectedStudents.length, config.template]);
 
     const pageToolbar = (
         <div className="flex flex-wrap items-center gap-2">
@@ -616,7 +576,7 @@ const StudentCardPage = () => {
                             variant="toolbarOutline"
                             size="toolbar"
                             onClick={() => window.dispatchEvent(new CustomEvent('open-card-back-focus-mode'))}
-                            className="border-indigo-200 text-indigo-750 hover:bg-indigo-50 dark:border-indigo-900/50 dark:text-indigo-400 font-bold"
+                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900/50 dark:text-indigo-400 font-bold"
                         >
                             <Maximize2 className="w-3.5 h-3.5 mr-2" />
                             Mode Fokus Belakang
@@ -664,49 +624,28 @@ const StudentCardPage = () => {
     );
 
     if (!canView) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[80vh] animate-in fade-in duration-700">
-                <SectionCard className="max-w-md w-full p-10 text-center space-y-6">
-                    <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center mx-auto shadow-xl shadow-rose-500/20">
-                        <Shield className="w-10 h-10 text-rose-500" />
-                    </div>
-                    <div className="space-y-2">
-                        <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Akses Terbatas</h1>
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
-                            Anda tidak memiliki izin otorisasi untuk mengelola sistem Kartu Pelajar.
-                        </p>
-                    </div>
-                    <Button onClick={() => window.history.back()} variant="toolbarOutline" className="h-12 w-full rounded-xl font-black uppercase tracking-widest text-[10px]">
-                        Kembali ke Dashboard
-                    </Button>
-                </SectionCard>
-            </div>
-        );
+        return <AccessRestricted onBack={() => window.history.back()} />;
     }
 
     if (configError) {
-        return (
-            <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
-                <div className="text-center p-8 bg-white rounded-lg shadow-md max-w-md">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Settings className="w-8 h-8 text-red-500" />
-                    </div>
-                    <h1 className="text-xl font-bold text-slate-900 mb-2">Akses Ditolak</h1>
-                    <p className="text-slate-600 mb-6">
-                        Anda tidak memiliki izin untuk mengakses halaman Kartu Pelajar.
-                        Silakan hubungi Administrator jika Anda memerlukan akses ini.
-                    </p>
-                    <Button onClick={() => window.history.back()} variant="outline">
-                        Kembali
-                    </Button>
-                </div>
-            </div>
-        );
+        return <ConfigErrorState onBack={() => window.history.back()} />;
     }
 
     return (
-        <AcademicPageLayout hardeningModuleKey="studentcard">
-        <div className="space-y-3">
+        <AcademicPageLayout 
+            hardeningModuleKey="studentcard"
+            instruction={{
+                title: 'Panduan Cetak Kartu Pelajar & Pegawai',
+                description: 'Halaman pengelolaan desain tata letak dan pencetakan Kartu Pelajar (Siswa) serta Kartu Pegawai (Guru/Staf) secara dinamis.',
+                items: [
+                    { text: 'Sesuaikan template layout kartu (Horizontal/Vertical) dan atur warna utama sesuai brand instansi.' },
+                    { text: 'Masukkan data identitas sekolah, logo, serta atur letak foto & QR Code secara visual.' },
+                    { text: 'Pilih siswa/pegawai pada tab Pilih Siswa dan lakukan cetak massal pada tab Preview & Cetak.' }
+                ]
+            }}
+            breadcrumbs={breadcrumbs}
+        >
+            <SectionCard fullWidth className="space-y-3 min-w-0 bg-transparent border-none p-0 shadow-none dark:bg-transparent">
             {/* High-Density Workstation Top Bar (Sticky) */}
             <div className="sticky top-[68px] z-40 backdrop-blur-md bg-white/95 dark:bg-slate-900/95 flex flex-wrap items-center justify-between p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-md gap-3">
                 {/* Left: Category Switcher */}
@@ -851,7 +790,7 @@ const StudentCardPage = () => {
                         sekolah={sekolah}
                     />
                 </Suspense>
-            </div>
+            </SectionCard>
         </AcademicPageLayout>
     );
 };

@@ -14,6 +14,7 @@ export interface Student {
   nama_siswa?: string;
   nama_guru?: string;
   full_name?: string;
+  nisn?: string | null;
   nis?: string | null;
   nip?: string | null;
   no_rfid?: string | null;
@@ -45,7 +46,7 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
   id,
   onSelect,
   placeholder,
-  scope = 'teaching',
+  scope = 'global',
   mode = 'siswa',
   className = "",
   allowCamera = true,
@@ -125,24 +126,22 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
         const res = await guruApi.getAll({
           search: term,
           limit: 10,
-          search_fields: ['id', 'nama_guru', 'nip']
+          search_fields: ['nip', 'nama_guru', 'id']
         } as any);
         list = res.data || [];
       } else {
         const queryParams = {
           search: term,
           limit: 10,
-          search_fields: ['id', 'no_rfid', 'nis', 'nama_siswa'],
+          search_fields: ['nisn', 'nis', 'no_rfid', 'nama_siswa', 'id'],
           // elevated_context: 'true' for middleware authorization elevation
           // context: 'elevated' for backend query logic
-          ...(scope === 'piket' || scope === 'global' ? {
-            elevated_context: 'true',
-            context: 'elevated'
-          } : {}),
+          elevated_context: 'true',
+          context: 'elevated',
         };
 
         const res = await siswaApi.getAll(queryParams as any);
-        list = (res.data || []).filter((s: Student) => s.status === 'AKTIF' || !s.status);
+        list = (res.data || []).filter((s: Student) => s.status?.toUpperCase() === 'AKTIF' || !s.status);
       }
 
       console.log(`[SmartStudentPicker] Found ${list.length} items`);
@@ -151,8 +150,9 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
       // HID Logic: If it's a fast input (HID) and we found an exact unique match, auto-select it
       if (isHID && list.length === 1) {
         const item = list[0];
-        // Only auto-select if it matches exactly ID, RFID, NIS, or NIP
+        // Only auto-select if it matches exactly ID, NISN, RFID, NIS, or NIP
         const isExact = item.id === term ||
+                        item.nisn === term ||
                         item.no_rfid === term ||
                         item.nis === term ||
                         item.nip === term;

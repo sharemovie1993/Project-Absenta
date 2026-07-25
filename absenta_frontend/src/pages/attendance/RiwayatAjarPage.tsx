@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
-import { guruApi } from '../../api/academic.api';
+import { useAuth } from '../../hooks/useAuth';
+import { guruApi, kelasApi } from '../../api/academic.api';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../api/attendanceGerbang.api';
 import { 
   History, 
   BookOpen, 
   Presentation,
-  Target
+  Target,
+  Award
 } from 'lucide-react';
 import { 
   Loader,
@@ -35,6 +37,7 @@ interface SesiAjar {
   waktu_selesai: string;
   jenis_kegiatan: string;
   status?: 'BERLANGSUNG' | 'SELESAI';
+  Guru?: { nama_guru: string };
   Kelas?: { nama_kelas: string };
   Mapel?: { nama_mapel: string };
   ProgresMateri?: { 
@@ -54,12 +57,36 @@ interface GroupedRiwayat {
 
 export const RiwayatAjarPage: React.FC = () => {
   const { user, tenantId, subscription } = useAuthStore();
+  const { can } = useAuth();
   
+  const roleName = user?.role?.name || '';
+  const positionCodes = (user as any)?.position_codes || [];
+
+  // Determine if current user is a Supervisor / Manager (Kurikulum, Kepsek, Admin, TU Kepegawaian)
+  const isManager = useMemo(() => {
+    // Explicit admin/manager roles
+    if (['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KEPALA_SEKOLAH'].includes(roleName)) {
+      return true;
+    }
+    // Structural manager positions
+    const managerPositions = ['KURIKULUM', 'KEPALA_SEKOLAH', 'TU_KEPALA', 'TU_KEPEGAWAIAN'];
+    if (Array.isArray(positionCodes) && positionCodes.some((c: string) => managerPositions.includes(c))) {
+      return true;
+    }
+    // Standard GURU, WALIKELAS, PETUGAS_KELAS etc. are NOT school-wide managers
+    return false;
+  }, [roleName, positionCodes]);
+
   const features = user?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+
   const [search, setSearch] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  // Manager-only filters
+  const [selectedGuruId, setSelectedGuruId] = useState<string>('');
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
   
   // Modal states
   const [selectedSesiForDetail, setSelectedSesiForDetail] = useState<SesiAjar | null>(null);
@@ -68,26 +95,52 @@ export const RiwayatAjarPage: React.FC = () => {
   const [journalInitialData, setJournalInitialData] = useState<SesiAjar['ProgresMateri'] | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   
-  // 1. Get Guru ID from current user context securely using getMe()
+  // 1. Fetch Teacher & Class Options for Manager Filter
+  const { data: guruOptionsData } = useQuery({
+    queryKey: ['guru-list-options', tenantId],
+    queryFn: () => guruApi.getAll({ limit: 500 }),
+    enabled: isManager,
+    staleTime: 600000,
+  });
+  const guruOptions = (guruOptionsData?.data || []).map(g => ({ id: g.id, nama_guru: g.nama_guru }));
+
+  const { data: kelasOptionsData } = useQuery({
+    queryKey: ['kelas-list-options', tenantId],
+    queryFn: () => kelasApi.getAll({ limit: 200 }),
+    enabled: isManager,
+    staleTime: 600000,
+  });
+  const kelasOptions = (kelasOptionsData?.data || []).map(k => ({ id: k.id, nama_kelas: k.nama_kelas }));
+
+  // 2. Get Guru Profile if user is a Teacher
   const { data: guruData } = useQuery({
     queryKey: ['guru-profile', user?.id, tenantId],
     queryFn: () => guruApi.getMe(),
     staleTime: 600000,
+    enabled: true, // Always fetch loggedInGuruId to ensure user's own guru_id is available
   });
-  const guruId = guruData?.data?.id;
+  const loggedInGuruId = guruData?.data?.id || user?.guru_profile?.id;
 
-  // 2. Fetch History
+  // Determine effective guru_id parameter for API
+  // If manager and selected "-- SEMUA GURU --", pass undefined to fetch all
+  // If standard Guru, strictly lock to loggedInGuruId
+  const effectiveGuruId = isManager
+    ? (selectedGuruId || undefined)
+    : loggedInGuruId;
+
+  // 3. Fetch History Sessions
   const { data: sesiData, isLoading, refetch } = useQuery({
-    queryKey: ['guru-riwayat-ajar', guruId, selectedMonth, selectedYear, tenantId],
+    queryKey: ['guru-riwayat-ajar', effectiveGuruId, selectedKelasId, selectedMonth, selectedYear, tenantId, isManager],
     queryFn: () => getSesiAbsensiList({ 
-      guru_id: guruId!,
+      guru_id: effectiveGuruId,
+      kelas_id: selectedKelasId || undefined,
       summary: true, 
       journals: true 
     }),
-    enabled: !!guruId,
+    enabled: isManager || !!loggedInGuruId,
   });
 
-  // 3. Process & Group History
+  // 4. Process & Group History
   const riwayatGrouped = useMemo((): GroupedRiwayat[] => {
     const list = (sesiData?.data || []) as SesiAjar[];
     const filtered = list.filter((s) => {
@@ -99,7 +152,8 @@ export const RiwayatAjarPage: React.FC = () => {
         return (
           (s.Kelas?.nama_kelas?.toLowerCase().includes(q) || false) || 
           (s.Mapel?.nama_mapel?.toLowerCase().includes(q) || false) ||
-          (s.jenis_kegiatan?.toLowerCase().includes(q) || false)
+          (s.jenis_kegiatan?.toLowerCase().includes(q) || false) ||
+          (s.Guru?.nama_guru?.toLowerCase().includes(q) || false)
         );
       }
       return true;
@@ -133,23 +187,25 @@ export const RiwayatAjarPage: React.FC = () => {
     const totalSiswa = allSesi.reduce((acc, curr) => acc + (curr.summary?.TOTAL || 0), 0);
     const avgKehadiran = totalSiswa > 0 ? Math.round((totalHadir / totalSiswa) * 100) : 0;
     const jurnalTerisi = allSesi.filter(s => !!s.ProgresMateri).length;
-    return { totalSesi, avgKehadiran, jurnalTerisi };
+    const kepatuhanJurnal = totalSesi > 0 ? Math.round((jurnalTerisi / totalSesi) * 100) : 0;
+
+    return { totalSesi, avgKehadiran, jurnalTerisi, kepatuhanJurnal };
   }, [sesiData]);
 
   const stats = useMemo(() => [
     {
-      title: "Total Sesi",
+      title: isManager ? "Total Sesi Sekolah" : "Total Sesi",
       value: statsCalculation.totalSesi.toString(),
       icon: <Presentation size={14} />,
       gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Sesi bulan ini"
+      subtitle: isManager ? "Sesi KBM sekolah bulan ini" : "Sesi bulan ini"
     },
     {
-      title: "Tuntas Jurnal",
-      value: statsCalculation.jurnalTerisi.toString(),
-      icon: <BookOpen size={14} />,
+      title: isManager ? "Kepatuhan Jurnal" : "Tuntas Jurnal",
+      value: isManager ? `${statsCalculation.kepatuhanJurnal}%` : statsCalculation.jurnalTerisi.toString(),
+      icon: isManager ? <Award size={14} /> : <BookOpen size={14} />,
       gradient: "from-amber-500 to-orange-600",
-      subtitle: "Materi terisi"
+      subtitle: isManager ? `${statsCalculation.jurnalTerisi} dari ${statsCalculation.totalSesi} jurnal terisi` : "Materi terisi"
     },
     {
       title: "Rata Kehadiran",
@@ -158,7 +214,7 @@ export const RiwayatAjarPage: React.FC = () => {
       gradient: "from-emerald-500 to-teal-600",
       subtitle: "Rasio siswa hadir"
     }
-  ], [statsCalculation]);
+  ], [statsCalculation, isManager]);
 
   const handleExport = useCallback(async () => {
     if (isExporting) return;
@@ -169,25 +225,39 @@ export const RiwayatAjarPage: React.FC = () => {
 
     setIsExporting(true);
     try {
-      // Catatan Hardening: Halaman ini hanya mengekspor CSV, jika butuh template impor Excel di masa depan gunakan 'generateImportTemplate' dari '@/utils/export.utils'
       const flatList = riwayatGrouped?.flatMap(g => g.sessions || []) || [];
-      const headers = ['Tanggal', 'Waktu', 'Kelas', 'Mata Pelajaran', 'Kehadiran Siswa', 'Materi Jurnal'];
-      const rows = flatList?.map(s => [
-        format(new Date(s.tanggal), 'yyyy-MM-dd'),
-        format(new Date(s.waktu_mulai), 'HH:mm'),
-        s.Kelas?.nama_kelas || '-',
-        s.Mapel?.nama_mapel || s.jenis_kegiatan || '-',
-        `${s.summary?.HADIR || 0} / ${s.summary?.TOTAL || 0}`,
-        s.ProgresMateri?.judul_materi || '-'
-      ]) || [];
+      const headers = isManager
+        ? ['Tanggal', 'Waktu', 'Guru Pengajar', 'Kelas', 'Mata Pelajaran', 'Kehadiran Siswa', 'Materi Jurnal']
+        : ['Tanggal', 'Waktu', 'Kelas', 'Mata Pelajaran', 'Kehadiran Siswa', 'Materi Jurnal'];
+
+      const rows = flatList?.map(s => {
+        const base = [
+          format(new Date(s.tanggal), 'yyyy-MM-dd'),
+          format(new Date(s.waktu_mulai), 'HH:mm'),
+        ];
+        if (isManager) {
+          base.push(s.Guru?.nama_guru || '-');
+        }
+        base.push(
+          s.Kelas?.nama_kelas || '-',
+          s.Mapel?.nama_mapel || s.jenis_kegiatan || '-',
+          `${s.summary?.HADIR || 0} / ${s.summary?.TOTAL || 0}`,
+          s.ProgresMateri?.judul_materi || '-'
+        );
+        return base;
+      }) || [];
+
       const csvContent = [
         headers.join(','),
         ...rows?.map(row => row?.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n');
+
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `Riwayat_Ajar_${selectedYear}_${selectedMonth + 1}.csv`;
+      link.download = isManager
+        ? `Rekap_Jurnal_Sekolah_${selectedYear}_${selectedMonth + 1}.csv`
+        : `Riwayat_Ajar_${selectedYear}_${selectedMonth + 1}.csv`;
       link.href = url;
       link.click();
       toast.success('Buku Jurnal Riwayat berhasil diunduh');
@@ -197,7 +267,7 @@ export const RiwayatAjarPage: React.FC = () => {
     } finally {
       setIsExporting(false);
     }
-  }, [riwayatGrouped, sesiData?.data?.length, selectedMonth, selectedYear, isExporting]);
+  }, [riwayatGrouped, sesiData?.data?.length, selectedMonth, selectedYear, isExporting, isManager]);
 
   const pageContent = useMemo(() => (
     <div className="space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -212,6 +282,13 @@ export const RiwayatAjarPage: React.FC = () => {
           setSelectedYear={setSelectedYear}
           onExport={handleExport}
           isExportDisabled={!sesiData?.data?.length || isExporting}
+          isManager={isManager}
+          selectedGuruId={selectedGuruId}
+          setSelectedGuruId={setSelectedGuruId}
+          selectedKelasId={selectedKelasId}
+          setSelectedKelasId={setSelectedKelasId}
+          guruOptions={guruOptions}
+          kelasOptions={kelasOptions}
         />
       </Suspense>
 
@@ -246,6 +323,8 @@ export const RiwayatAjarPage: React.FC = () => {
                       <SesiAjarCard
                         key={sesi.id}
                         sesi={sesi}
+                        isManager={isManager}
+                        isReadOnly={isManager} // Strict read-only mode for managers as requested
                         onOpenJournal={(sesiId, initialData) => {
                           setJournalSesiId(sesiId);
                           setJournalInitialData(initialData);
@@ -264,7 +343,11 @@ export const RiwayatAjarPage: React.FC = () => {
                 <History className="w-10 h-10 text-slate-200" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Riwayat Kosong</h3>
-              <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-widest max-w-xs mx-auto">Anda belum memiliki catatan sesi mengajar pada periode terpilih.</p>
+              <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-widest max-w-xs mx-auto">
+                {isManager 
+                  ? "Tidak ada catatan sesi mengajar sekolah pada periode dan filter terpilih."
+                  : "Anda belum memiliki catatan sesi mengajar pada periode terpilih."}
+              </p>
             </div>
           )}
         </div>
@@ -302,7 +385,7 @@ export const RiwayatAjarPage: React.FC = () => {
           }}
           sesiId={journalSesiId}
           initialData={journalInitialData}
-          readOnly={false}
+          readOnly={isManager} // Read-Only for managers
         />
       </Suspense>
     </div>
@@ -321,13 +404,18 @@ export const RiwayatAjarPage: React.FC = () => {
     journalSesiId, 
     journalInitialData, 
     refetch,
-    isExporting
+    isExporting,
+    isManager,
+    selectedGuruId,
+    selectedKelasId,
+    guruOptions,
+    kelasOptions
   ]);
 
   return (
     <PageLayout
-      title="Riwayat Mengajar"
-      description="Visualisasi jejak langkah pendidikan dan progres KBM Anda."
+      title={isManager ? "Supervisi Riwayat Mengajar" : "Riwayat Mengajar"}
+      description={isManager ? "Monitoring kepatuhan KBM dan audit Jurnal Mengajar seluruh guru sekolah." : "Visualisasi jejak langkah pendidikan dan progres KBM Anda."}
       breadcrumbs={[
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Presensi', path: '/attendance' },
@@ -335,9 +423,13 @@ export const RiwayatAjarPage: React.FC = () => {
       ]}
       stats={stats}
       instruction={{
-        title: "Riwayat Mengajar",
-        description: "Visualisasi jejak langkah pendidikan Anda dalam satu garis waktu.",
-        items: [
+        title: isManager ? "Supervisi Riwayat Mengajar" : "Riwayat Mengajar",
+        description: isManager ? "Pantau kepatuhan KBM dan jurnal seluruh guru sekolah." : "Visualisasi jejak langkah pendidikan Anda dalam satu garis waktu.",
+        items: isManager ? [
+          { text: "Gunakan filter 'Pilih Guru' atau 'Pilih Kelas' untuk menyaring riwayat KBM spesifik." },
+          { text: "Warna HIJAU menunjukkan sesi dengan jurnal materi yang sudah tuntas terisi." },
+          { text: "Klik 'Lihat Jurnal' pada kartu sesi untuk memantau isi materi KBM guru (Mode Read-Only)." }
+        ] : [
           { text: "Warna HIJAU menunjukkan sesi dengan jurnal materi yang sudah tuntas." },
           { text: "Gunakan tombol Export untuk mengunduh buku jurnal mengajar Anda." },
           { text: "Klik pada kartu sesi untuk melihat detail absensi siswa di kelas tersebut." }

@@ -156,19 +156,62 @@ export const kurikulumApi = {
     const response = await api.post(`/kurikulum/perangkat/${id}/review`, data);
     return response.data;
   },
+  getPerangkatById: async (id: string) => {
+    const response = await api.get(`/kurikulum/perangkat/${id}`);
+    return response.data;
+  },
+  saveEditorPerangkat: async (data: {
+    perangkat_id?: string;
+    judul: string;
+    jenis: string;
+    mapel_id?: string;
+    guru_id?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    html_content: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/save-editor', data);
+    return response.data;
+  },
+  savePerangkatAjarEditor: async (data: any) => {
+    const response = await api.post('/kurikulum/perangkat/save-editor', data);
+    return response.data;
+  },
   deletePerangkatAjar: async (id: string) => {
     const response = await api.delete(`/kurikulum/perangkat/${id}`);
     return response.data;
   },
+  bulkDeletePerangkatAjar: async (ids: string[]) => {
+    const response = await api.post('/kurikulum/perangkat/bulk-delete', { ids });
+    return response.data;
+  },
+
   downloadPerangkatAjarFile: async (id: string): Promise<{ blob: Blob; filename: string }> => {
     const response = await api.get(`/kurikulum/perangkat/${id}/download`, {
       responseType: 'blob'
     });
+    const blob = response.data as Blob;
+    if (blob.type && (blob.type.includes('json') || blob.type.includes('text'))) {
+      const text = await blob.text();
+      if (text.startsWith('{')) {
+        try {
+          const json = JSON.parse(text);
+          if (json.message || json.error) {
+            throw new Error(json.message || json.error || 'Gagal memuat berkas PDF');
+          }
+        } catch (e: unknown) {
+          if (e instanceof Error && e.message !== 'Gagal memuat berkas PDF' && !e.message.includes('JSON')) {
+            throw e;
+          }
+        }
+      }
+    }
     const cd = String(response.headers?.['content-disposition'] || '');
     const match = cd.match(/filename="?([^"]+)"?/);
-    const filename = match?.[1] || 'document';
-    return { blob: response.data as Blob, filename };
+    const filename = match?.[1] || 'document.pdf';
+    return { blob, filename };
   },
+
   getStandardReferences: async (jenjang?: string) => {
     const response = await api.get('/kurikulum/struktur/standards', { params: { jenjang } });
     return response.data;
@@ -235,6 +278,21 @@ export const kurikulumApi = {
     const response = await api.delete(`/kurikulum/kalender/presets/${id}`);
     return response.data;
   },
+  bulkSeedCalendar: async (tahunPelajaranId: string) => {
+    const response = await api.post('/kurikulum/kalender/bulk-seed', { tahun_pelajaran_id: tahunPelajaranId });
+    return response.data;
+  },
+  exportICal: async (tahunPelajaranId?: string, tenantId?: string) => {
+    const response = await api.get('/kurikulum/kalender/export', {
+      params: { tahun_pelajaran_id: tahunPelajaranId, tenant_id: tenantId },
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+  bulkDeleteCalendar: async (ids: string[]) => {
+    const response = await api.delete('/kurikulum/kalender/bulk-delete', { data: { ids } });
+    return response.data;
+  },
 
   checkBebanGuru: async (guruId: string, addMapelId?: string, addKelasId?: string) => {
     const response = await api.get('/kurikulum/struktur/check-beban-guru', {
@@ -257,6 +315,153 @@ export const kurikulumApi = {
     const response = await api.get('/kurikulum/supervisi/rekomendasi', {
       params: { guru_id: guruId, tanggal }
     });
+    return response.data;
+  },
+
+  // AI-Powered Lesson Plan Generator
+  generatePerangkatAjarAI: async (params: {
+    jenis: string;
+    mapel_name: string;
+    kelas: string;
+    topik: string;
+    alokasi_waktu?: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/generate-ai', params);
+    return response.data as { success: boolean; data: { content: string } };
+  },
+
+  savePerangkatAjarEditor: async (params: {
+    judul: string;
+    jenis: string;
+    mapel_id: string;
+    guru_id?: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    html_content: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/save-editor', params);
+    return response.data;
+  },
+
+  getTopikPresets: async (params?: { jenjang?: string; mapel_name?: string; fase?: string; kategori?: string }) => {
+    const response = await api.get('/kurikulum/perangkat/topik-presets', { params });
+    return response.data as {
+      success: boolean;
+      data: Array<{
+        id: string;
+        jenjang: string;
+        nama_mapel: string;
+        kode_mapel?: string;
+        fase?: string;
+        tingkat?: number;
+        judul_topik: string;
+        deskripsi?: string;
+        kategori: string;
+      }>;
+    };
+  },
+  createTopikPreset: async (data: {
+    jenjang: string;
+    nama_mapel: string;
+    kode_mapel?: string;
+    fase?: string;
+    tingkat?: number;
+    judul_topik: string;
+    deskripsi?: string;
+    kategori?: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/topik-presets', data);
+    return response.data;
+  },
+  updateTopikPreset: async (id: string, data: Partial<{
+    jenjang: string;
+    nama_mapel: string;
+    kode_mapel?: string;
+    fase?: string;
+    tingkat?: number;
+    judul_topik: string;
+    deskripsi?: string;
+    kategori?: string;
+  }>) => {
+    const response = await api.put(`/kurikulum/perangkat/topik-presets/${id}`, data);
+    return response.data;
+  },
+  deleteTopikPreset: async (id: string) => {
+    const response = await api.delete(`/kurikulum/perangkat/topik-presets/${id}`);
+    return response.data;
+  },
+
+
+  getLibraryTemplates: async (params?: { jenjang?: string; nama_mapel?: string; jenis?: string; tingkat?: number; search?: string }) => {
+    const response = await api.get('/kurikulum/perangkat/library', { params });
+    return response.data as {
+      success: boolean;
+      data: Array<{
+        id: string;
+        jenjang: string;
+        nama_mapel: string;
+        kode_mapel?: string;
+        tingkat?: number;
+        fase?: string;
+        jenis: string;
+        judul: string;
+        topik?: string;
+        file_url: string;
+        downloads_count: number;
+        created_at: string;
+      }>;
+    };
+  },
+
+  claimLibraryTemplate: async (data: {
+    library_id: string;
+    mapel_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    guru_id?: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/claim', data);
+    return response.data;
+  },
+
+  createLibraryTemplate: async (data: {
+    jenjang: string;
+    nama_mapel: string;
+    kode_mapel?: string;
+    tingkat?: number;
+    fase?: string;
+    jenis: string;
+    judul: string;
+    topik?: string;
+    html_content?: string;
+  }) => {
+    const response = await api.post('/kurikulum/perangkat/library', data);
+    return response.data;
+  },
+
+  updateLibraryTemplate: async (id: string, data: Partial<{
+    jenjang: string;
+    nama_mapel: string;
+    kode_mapel?: string;
+    tingkat?: number;
+    fase?: string;
+    jenis: string;
+    judul: string;
+    topik?: string;
+    html_content?: string;
+  }>) => {
+    const response = await api.put(`/kurikulum/perangkat/library/${id}`, data);
+    return response.data;
+  },
+
+  deleteLibraryTemplate: async (id: string) => {
+    const response = await api.delete(`/kurikulum/perangkat/library/${id}`);
+    return response.data;
+  },
+
+
+  getGuruMapelAssignments: async (params?: { guru_id?: string; mapel_id?: string; kelas_id?: string }) => {
+    const response = await api.get('/kurikulum/guru-mapel', { params });
     return response.data;
   },
 };

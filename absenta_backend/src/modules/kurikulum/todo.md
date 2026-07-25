@@ -14,5 +14,5 @@
 
 ## Low Priority
 - [ ] **Library Template Kurikulum**: Menyediakan template struktur kurikulum standar (Merdeka/K13) yang dapat di-cloning oleh tenant baru.
-- [ ] **Integrasi Kalender**: Sinkronisasi jadwal supervisi dengan kalender Google atau Outlook bagi Guru dan Supervisor.
+- [x] **Integrasi Kalender (iCal)**: Sinkronisasi agenda kalender akademik sekolah dengan Google Calendar, Outlook, atau Apple Calendar menggunakan format standar iCal feed (.ics).
 - [ ] **Fitur Self-Assessment**: Modul evaluasi diri bagi guru sebelum dilakukan observasi kelas oleh supervisor.

@@ -92,6 +92,21 @@ export function Modal({
   zIndex = 50,
   disableClose = false
 }: ModalProps) {
+  const isMouseDownOnWrapper = React.useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    isMouseDownOnWrapper.current = e.target === e.currentTarget;
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isMouseDownOnWrapper.current && e.target === e.currentTarget) {
+      if (!disableClose) {
+        onClose();
+      }
+    }
+    isMouseDownOnWrapper.current = false;
+  };
+
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -120,7 +135,8 @@ export function Modal({
             placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
           )} 
           style={{ zIndex }}
-          onClick={disableClose ? undefined : onClose}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
         >
           {/* Backdrop */}
           <motion.div

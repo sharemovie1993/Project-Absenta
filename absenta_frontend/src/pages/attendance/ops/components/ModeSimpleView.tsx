@@ -39,6 +39,7 @@ interface ModeSimpleViewProps {
 export default function ModeSimpleView({ 
   user, 
   isPetugasSiswa, 
+  isPetugasGuru,
   kelasLabel,
 }: ModeSimpleViewProps) {
   const isAdmin = user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
@@ -95,8 +96,18 @@ export default function ModeSimpleView({
     };
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
-  // Access Control
-  const canAccessInput = isAdmin || caps.includes('attendance.scan');
+  // Access Control - Expanded to allow all authorized gate/attendance operational users
+  const canAccessInput =
+    isAdmin ||
+    isPetugasGuru ||
+    isPetugasSiswa ||
+    isGerbangPos ||
+    user?.role?.name === 'GURU' ||
+    user?.role?.name === 'PETUGAS' ||
+    user?.role?.name === 'OPERATOR' ||
+    caps.includes('attendance.scan') ||
+    caps.includes('attendance.gate.tap.entry') ||
+    caps.includes('attendance.sessions.create');
   const canAccessManual = isAdmin || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
 
   const totalArrived = miniStats?.masuk || 0;

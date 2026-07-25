@@ -52,7 +52,8 @@ export const sesiAbsensiController = {
         return { success: false, message: 'Unauthorized: tenant_id not found' };
       }
 
-      const data = await sesiService.list(tenantId, scope, query);
+      const queryWithUser = { ...query, currentUserId: request.user?.id };
+      const data = await sesiService.list(tenantId, scope, queryWithUser);
       
       reply.status(200);
       return { success: true, message: 'List sesi absensi', data };

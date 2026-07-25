@@ -26,8 +26,8 @@ export const DEFAULT_CONFIG: StudentCardConfig = {
   // Element Dimensions (mm)
   photo_width: 24,
   photo_height: 32,
-  qrcode_width: 15,
-  qrcode_height: 15,
+  qrcode_width: 22,
+  qrcode_height: 22,
   
   // Card Dimensions (mm)
   card_width: 85.6,

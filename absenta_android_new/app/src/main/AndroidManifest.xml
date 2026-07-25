@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AndroidManifest.xml — absenta_android_new
+    CATATAN: File `google-services.json` (Firebase) harus ditempatkan di direktori `app/`
+    sebelum melakukan build. Dapatkan dari Firebase Console project Absenta.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- ── Permissions ────────────────────────────────────────────────────── -->
+    <!-- Kamera: untuk Scanner QR Gerbang dan Upload Foto Profil -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Internet: untuk komunikasi ke absenta_backend API -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Getaran haptic saat QR berhasil discan -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- NFC: untuk tap kartu RFID via sensor NFC bawaan HP -->
+    <uses-permission android:name="android.permission.NFC" />
+    <!-- Notifikasi: untuk FCM Push Notification (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Baca storage untuk upload berkas/foto (Android < 13) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Baca media gambar (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- ── Hardware Features ──────────────────────────────────────────────── -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+    <application
+        android:name=".MainApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AbsentaNew"
+        android:usesCleartextTraffic="true">
+
+        <!-- ── MainActivity: Entry Point ─────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AbsentaNew"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Deep Link FCM: buka layar tertentu dari notifikasi -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="absenta" android:host="app" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── FCM Service: Push Notification Handler ────────────────────── -->
+        <service
+            android:name=".ui.fcm.AbsentaFirebaseService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- FCM Default Channel -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="absenta_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+
+    </application>
+</manifest>

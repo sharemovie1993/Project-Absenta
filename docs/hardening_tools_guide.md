@@ -1,4 +1,4 @@
-﻿# 🛡️ PANDUAN PENGEMBANG: SISTEM HARDENING & DEV AUDIT ABSENTA.ID
+# 🛡️ PANDUAN PENGEMBANG: SISTEM HARDENING & DEV AUDIT ABSENTA.ID
 
 Panduan ini mendokumentasikan arsitektur alat penjaminan mutu kode (Hardening Tools) pada proyek frontend Absenta.ID. Gunakan dokumen ini sebagai acuan wajib bagi developer (baik manusia maupun AI) saat mendaftarkan pilar/standar hardening baru agar terintegrasi penuh dari ujung ke ujung (end-to-end).
 
@@ -66,7 +66,7 @@ oAnyType | Dilarang menggunakan : any atau s any |
 | 19 | Standarisasi Navigasi Breadcrumb | readcrumbNavigation | Layout wajib memiliki properti readcrumbs |
 | 20 | Shared UI Components | usesUiComponents | Wajib mengimpor komponen dari components/ui |
 | 21 | Proteksi Fitur Berbayar | premiumFeatureGate | Modul berbayar wajib menggunakan <PremiumFeatureGate> |
-| 21B | Pencegahan God File | godFileGuard | Halaman < 800 baris, subkomponen < 500 baris |
+| 21B | Pencegahan God File | godFileGuard | Halaman < 800 baris, subkomponen < 500 baris (Terintegrasi AST Import Tracer untuk melacak ukuran seluruh sub-komponen anak secara akumulatif) |
 | 22 | Desentralisasi Konfigurasi (Anti-Hardcoded) | hardcodedConfig | Dilarang data mock/dummy lokal atau URL API hardcode |
 | 23 | Standarisasi Kartu Analitik/Statistik | nalyticsCardGuard | Wajib menggunakan <AnalyticsCard> atau MemoizedAnalyticsCard |
 | 24 | Standarisasi Impor & Ekspor Data | importExportGuard | Ekspor/impor wajib: loading guard, try-catch, generateImportTemplate |
@@ -170,4 +170,7 @@ pm run dev. Buka menu Inspektor Hardening pada panel superadmin, lalu klik Jalan
   * WARNING (Kuning): Untuk masalah performa minor, optimasi rendering (seperti useMemo), atau redundansi styling visual.
 
 * **Mengapa saya mendapat ReferenceError: hasXxx is not defined saat dev server jalan?**
-  Ini terjadi karena variabel deteksi baru ditambahkan di udit-pages.cjs tetapi **tidak disalin sepenuhnya** ke dev-audit-server.cjs. Pastikan seluruh blok variabel (bukan hanya kondisi missingXxx) ikut disalin. Lihat Langkah 2 di atas.
+  Ini terjadi karena variabel deteksi baru ditambahkan di  udit-pages.cjs tetapi **tidak disalin sepenuhnya** ke dev-audit-server.cjs. Pastikan seluruh blok variabel (bukan hanya kondisi missingXxx) ikut disalin. Lihat Langkah 2 di atas.
+
+* **Bagaimana mesin audit mendeteksi ukuran modul halaman secara akurat?**
+  Mesin audit menggunakan **AST Import Tracer** yang secara rekursif melacak dan menjumlahkan baris kode dari seluruh sub-komponen anak yang diimpor secara relatif oleh halaman utama. Jika ukuran total modul melebihi batas, laporan audit (baik di konsol maupun di inspektor) akan menampilkan rincian kontributor berkas beserta tautan langsung (`file:///`) ke setiap berkas tersebut untuk memudahkan navigasi langsung dari laporan.

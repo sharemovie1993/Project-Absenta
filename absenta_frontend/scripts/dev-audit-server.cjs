@@ -321,11 +321,58 @@ const server = http.createServer((req, res) => {
     // Baca berkas fisik dari harddisk secara langsung saat di-request oleh browser!
     const rawContent = fs.readFileSync(resolvedPath, 'utf8');
     // Strip JS/TS/TSX comments untuk mencegah developer mem-bypass audit dengan menyisipkan keyword via komentar
-    const content = rawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+    let content = rawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
     const isComponentFile = relativePath.replace(/\\/g, '/').includes('/components/') || relativePath.replace(/\\/g, '/').includes('/shared/');
 
+    // Trace children components recursively (AST Parser equivalent)
+    const visitedFiles = new Set([resolvedPath]);
+    let totalLineCount = rawContent.split('\n').length;
+    const fileLineBreakdown = [{ path: resolvedPath, lines: totalLineCount }];
+    
+    function traceChildren(currentFilepath) {
+      let currentRawContent;
+      try {
+        currentRawContent = fs.readFileSync(currentFilepath, 'utf8');
+      } catch (e) {
+        return;
+      }
+      const currentDir = path.dirname(currentFilepath);
+      const relativeImportRegex = /import\s+.*?from\s+['"](\.\.?\/[^'"]+)['"]/g;
+      let match;
+      while ((match = relativeImportRegex.exec(currentRawContent)) !== null) {
+        const relativeImport = match[1];
+        const absoluteImport = path.resolve(currentDir, relativeImport);
+        const extensions = ['.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts'];
+        let resolvedImportPath = null;
+        for (const ext of extensions) {
+          const p = absoluteImport + ext;
+          if (fs.existsSync(p)) {
+            resolvedImportPath = p;
+            break;
+          }
+        }
+        
+        const normalizedResolved = resolvedImportPath ? resolvedImportPath.replace(/\\/g, '/') : '';
+        if (resolvedImportPath && normalizedResolved.includes('/src/pages/') && !visitedFiles.has(resolvedImportPath)) {
+          visitedFiles.add(resolvedImportPath);
+          let childRawContent = fs.readFileSync(resolvedImportPath, 'utf8');
+          let childContent = childRawContent.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '$1');
+          content += '\n' + childContent;
+          const childLines = childRawContent.split('\n').length;
+          totalLineCount += childLines;
+          fileLineBreakdown.push({ path: resolvedImportPath, lines: childLines });
+          traceChildren(resolvedImportPath);
+        }
+      }
+    }
+
+    // Only trace children for Page entry files
+    if (!isComponentFile) {
+      traceChildren(resolvedPath);
+    }
+
     // ─── Analisis Kode Secara Real-time (Aligned with audit-pages.cjs) ───
-    const usesLayout = isComponentFile || content.includes('AcademicPageLayout') || content.includes('PageLayout') || content.includes('InfraErrorBoundary');
+    const usesLayout = isComponentFile || rawContent.includes('AcademicPageLayout') || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
 
     // ─── Pilar 2: Keamanan Data & Defensive Programming ───
     const contentForMapCheck = content
@@ -402,10 +449,10 @@ const server = http.createServer((req, res) => {
     const missingPagination = !isComponentFile && hasTableComponent && (!hasPaginationProp || !hasNavigation || !hasLimitChange) && !hasPaginationComponent;
 
     // ─── Pilar 14: Standarisasi Toolbar Aksi Halaman ───
-    const hasTableToolbar = content.includes('toolbarLeft={') || content.includes('toolbarRight={') || (content.includes('onAdd={') && content.includes('onImport={')) || hasListComponent;
+    const hasTableToolbar = content.includes('toolbarLeft={') || content.includes('toolbarRight={') || content.includes('actions={') || (content.includes('onAdd={') && content.includes('onImport={')) || hasListComponent;
     const hasLayoutToolbar = content.includes('toolbar={') || content.includes('toolbar:');
-    const hasPrimaryActions = /onAdd|onImport|onExport|handleCreate|handleImport/.test(content);
-    const missingToolbar = !isComponentFile && hasPrimaryActions && !hasTableToolbar;
+    const hasPrimaryActions = /onAdd|onImport|onExport|handleCreate|handleImport|onUpload|handleUpload|setIsUploadModalOpen|setIsUploadOpen|setIsCreateOpen|Upload\b/.test(content);
+    const missingToolbar = !isComponentFile && hasPrimaryActions && !hasTableToolbar && !(!hasTableComponent && hasLayoutToolbar);
     const misplacedToolbar = !isComponentFile && (hasTableComponent || hasListComponent) && hasLayoutToolbar;
 
     // ─── Pilar 15: Sistem Feedback & Dialog Terstandar (Toast, Confirm, Modal) ───
@@ -443,7 +490,7 @@ const server = http.createServer((req, res) => {
     const missingPremiumGate = isPaidModule && !hasPremiumGate;
 
     // ─── Pilar 21 (B): Pencegahan God File (Ukuran File Maksimum) ───
-    const lineCount = content.split('\n').length;
+    const lineCount = totalLineCount;
     const isGodFile = isComponentFile ? (lineCount > 500) : (lineCount > 800);
 
     // ─── Pilar 22: Desentralisasi Konfigurasi (Anti-Hardcoded) ───
@@ -581,7 +628,13 @@ const server = http.createServer((req, res) => {
       issues.push('❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar');
     }
     if (isGodFile) {
-      issues.push(`⚠️  Ukuran berkas terlalu besar (terdeteksi ${lineCount} baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.`);
+      const breakdownMsg = fileLineBreakdown
+        .map(f => {
+          const fileLink = `file:///${f.path.replace(/\\/g, '/')}`;
+          return `[${path.basename(f.path)}](${fileLink}) (${f.lines} baris)`;
+        })
+        .join(', ');
+      issues.push(`⚠️  Ukuran berkas terlalu besar (total terdeteksi ${lineCount} baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: ${breakdownMsg}. Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.`);
     }
     if (hasHardcodedConfigs) {
       issues.push('❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.');

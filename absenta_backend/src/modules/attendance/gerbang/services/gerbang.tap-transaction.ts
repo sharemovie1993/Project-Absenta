@@ -54,12 +54,10 @@ export async function processTapTransaction(params: {
       select: { jam_masuk_default: true, jam_pulang_default: true, toleransi_keterlambatan_menit: true },
     });
 
-    const specialEvent = await (tx as any).absensiKejadianKhusus.findUnique({
+    const specialEvent = await (tx as any).absensiKejadianKhusus.findFirst({
       where: {
-        tenant_id_tanggal: {
-          tenant_id: tenantId,
-          tanggal: today,
-        },
+        tenant_id: tenantId,
+        tanggal: today,
       },
     });
 
@@ -85,11 +83,12 @@ export async function processTapTransaction(params: {
     let isDuplicate = false;
     try {
       if (isGuru) {
+        const targetGuruId = guru ? guru.id : input.siswa_id;
         absenRecord = await (tx as any).absenGerbangGuru.create({
           data: {
             tenant_id: tenantId,
             sesi_gerbang_id: sessionInfo.id,
-            guru_id: guru.id,
+            guru_id: targetGuruId,
             arah: input.arah,
             status: finalStatus,
             is_terlambat: isLate,
@@ -101,11 +100,12 @@ export async function processTapTransaction(params: {
           },
         });
       } else {
+        const targetSiswaId = siswa ? siswa.id : input.siswa_id;
         absenRecord = await (tx as any).absenGerbangSiswa.create({
           data: {
             tenant_id: tenantId,
             sesi_gerbang_id: sessionInfo.id,
-            siswa_id: input.siswa_id,
+            siswa_id: targetSiswaId,
             arah: input.arah,
             status: finalStatus,
             is_terlambat: isLate,
@@ -124,10 +124,11 @@ export async function processTapTransaction(params: {
       if (error?.code === 'P2002') {
         isDuplicate = true;
         if (isGuru) {
+          const targetGuruId = guru ? guru.id : input.siswa_id;
           absenRecord = await (tx as any).absenGerbangGuru.findFirst({
             where: {
               sesi_gerbang_id: sessionInfo.id,
-              guru_id: guru.id,
+              guru_id: targetGuruId,
               arah: input.arah,
             },
             include: {
@@ -137,10 +138,11 @@ export async function processTapTransaction(params: {
             },
           });
         } else {
+          const targetSiswaId = siswa ? siswa.id : input.siswa_id;
           absenRecord = await (tx as any).absenGerbangSiswa.findFirst({
             where: {
               sesi_gerbang_id: sessionInfo.id,
-              siswa_id: input.siswa_id,
+              siswa_id: targetSiswaId,
               arah: input.arah,
             },
             include: {

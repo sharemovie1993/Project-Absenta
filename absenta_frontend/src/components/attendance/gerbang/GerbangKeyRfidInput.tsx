@@ -61,7 +61,14 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
             value={hidToken}
             onChange={(e) => {
               onHidTokenChange(e.target.value);
-              autoSubmitGateHID(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (hidToken.trim()) {
+                  onSubmit(hidToken.trim());
+                }
+              }
             }}
             className={`w-full pl-10 md:pl-11 pr-4 py-2.5 md:py-4 text-base md:text-lg font-mono rounded-lg border-2 focus:ring-4 transition-all outline-none ${
               isBypassMode
@@ -83,7 +90,7 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
                 <button
                   key={student.id}
                   onClick={() => {
-                    const token = student.no_rfid || student.nis || student.id;
+                    const token = student.nisn || student.no_rfid || student.nis || student.id;
                     onHidTokenChange(token);
                     onSelectStudent(token, student);
                     setShowDropdown(false);
@@ -96,6 +103,11 @@ const GerbangKeyRfidInputComponent: React.FC<GerbangKeyRfidInputProps> = ({
                       {student.nama_siswa}
                     </div>
                     <div className="text-xs text-gray-500 flex gap-2 mt-0.5">
+                      {student.nisn && (
+                        <span className="bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 px-1.5 rounded font-mono">
+                          NISN: {student.nisn}
+                        </span>
+                      )}
                       {student.nis && (
                         <span className="bg-gray-100 dark:bg-gray-700 px-1.5 rounded">
                           NIS: {student.nis}

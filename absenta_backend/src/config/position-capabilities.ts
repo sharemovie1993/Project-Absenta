@@ -8,6 +8,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.gate.tap.entry',
     'attendance.gate.tap.exit',
     'attendance.gate.face.verify',
+    'attendance.gate.bypass',
     'attendance.piket.view',
     'kesiswaan.piket.view',
     'academic.activities.types.view',
@@ -394,7 +395,19 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.reports.view',
     'bk.audit.view',
     'bk.recyclebin.view',
-    'bk.recyclebin.restore'
+    'bk.recyclebin.restore',
+    // Piket & Kesiswaan capabilities for BPBK officials
+    'attendance.piket.view',
+    'attendance.piket.manage',
+    'kesiswaan.piket.view',
+    'kesiswaan.piket.manage',
+    'kesiswaan.dashboard.view',
+    'kesiswaan.pelanggaran.view',
+    'kesiswaan.pelanggaran.manage',
+    'kesiswaan.prestasi.view',
+    'kesiswaan.prestasi.manage',
+    'kesiswaan.kegiatan.view',
+    'kesiswaan.kegiatan.manage'
   ],
   [STRUKTUR_CODES.BKK]: [
     'organization.scope.tenant_wide',

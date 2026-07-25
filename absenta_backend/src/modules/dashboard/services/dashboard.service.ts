@@ -84,20 +84,33 @@ export class DashboardService {
       }
     });
 
-    // Hitung statistik siswa
-    const siswaHadir = absenSiswaHariIni
+    // Kehadiran siswa dari Tap Gerbang hari ini
+    const gerbangTapSiswaCount = await prisma.absenGerbangSiswa.count({
+      where: absenWhereClause
+    });
+
+    // Kehadiran guru dari Tap Gerbang hari ini
+    const gerbangTapGuruCount = await prisma.absenGerbangGuru.count({
+      where: absenWhereClause
+    });
+
+    // Hitung statistik siswa (gabungkan Sesi Absensi & Gerbang Tap)
+    const sesiSiswaHadir = absenSiswaHariIni
       .filter(item => item.status === 'HADIR')
       .reduce((acc, curr) => acc + (curr._count.siswa_id || 0), 0);
+    
+    const siswaHadir = Math.max(sesiSiswaHadir, gerbangTapSiswaCount);
     
     const siswaIzin = absenSiswaHariIni.filter(item => item.status === 'IZIN').reduce((acc, curr) => acc + (curr._count.siswa_id || 0), 0);
     const siswaSakit = absenSiswaHariIni.filter(item => item.status === 'SAKIT').reduce((acc, curr) => acc + (curr._count.siswa_id || 0), 0);
     const siswaAlpa = absenSiswaHariIni.filter(item => item.status === 'ALPA').reduce((acc, curr) => acc + (curr._count.siswa_id || 0), 0);
 
     // Hitung statistik guru
-    const guruHadir = absenGuruHariIni
+    const sesiGuruHadir = absenGuruHariIni
       .filter(item => item.status === 'HADIR')
       .reduce((acc, curr) => acc + (curr._count.guru_id || 0), 0);
-      
+
+    const guruHadir = Math.max(sesiGuruHadir, gerbangTapGuruCount);
     const guruTidakHadir = absenGuruHariIni.filter(item => item.status === 'ALPA').reduce((acc, curr) => acc + (curr._count.guru_id || 0), 0);
 
     // Hitung persentase
@@ -115,7 +128,8 @@ export class DashboardService {
       guru_hadir: guruHadir,
       guru_tidak_hadir: guruTidakHadir,
       persentase_siswa: persentaseSiswa,
-      persentase_guru: persentaseGuru
+      persentase_guru: persentaseGuru,
+      gate_masuk: gerbangTapSiswaCount + gerbangTapGuruCount
     };
       },
       CACHE_TTL.DASHBOARD

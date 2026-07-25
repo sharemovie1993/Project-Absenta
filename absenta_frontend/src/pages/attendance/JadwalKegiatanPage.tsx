@@ -52,6 +52,11 @@ interface CardItem {
   dbItem: JadwalKegiatanItem | null;
 }
 
+const formatDate = (date: Date | string): string => {
+  // Timezone check: using tenant local timezone default
+  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function JadwalKegiatanPage() {
   // ── State ──
@@ -199,7 +204,7 @@ export default function JadwalKegiatanPage() {
     const matchedDbIds = new Set<string>();
     const filteredMasters = (masterKegiatans ?? []).filter(m => m.nama !== 'KBM' && m.tipe !== 'KBM');
 
-    const list: CardItem[] = filteredMasters.map(master => {
+    const list: CardItem[] = filteredMasters?.map(master => {
       // Point #1: safe array access
       const dbItem = (items ?? []).find(item => item.nama?.toLowerCase() === master.nama?.toLowerCase()) ?? null;
       if (dbItem) matchedDbIds.add(dbItem.id);
@@ -310,12 +315,12 @@ export default function JadwalKegiatanPage() {
                       !isConfigured
                         ? 'bg-slate-50/20 dark:bg-slate-900/10 border-dashed border-slate-300 dark:border-slate-800'
                         : isActive
-                        ? 'bg-white dark:bg-slate-800 border-slate-150 dark:border-slate-700 shadow-sm'
+                        ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm'
                         : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-70'
                     }`}
                   >
                     {/* Time Block */}
-                    <div className="flex items-center gap-4 min-w-[170px] md:border-r border-slate-100 dark:border-slate-750 pr-4 w-full md:w-auto mb-3 md:mb-0">
+                    <div className="flex items-center gap-4 min-w-[170px] md:border-r border-slate-100 dark:border-slate-800 pr-4 w-full md:w-auto mb-3 md:mb-0">
                       <div className={`p-2.5 rounded-xl ${!isConfigured ? 'bg-slate-100 text-slate-400' : 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400'}`}>
                         <Clock size={18} />
                       </div>
@@ -342,7 +347,7 @@ export default function JadwalKegiatanPage() {
                           </span>
                           {isConfigured && (
                             <span className="text-[10px] text-slate-400 font-semibold font-mono">
-                              Mulai: {new Date(item?.berlaku_mulai ?? '').toLocaleDateString('id-ID', { dateStyle: 'short' })}
+                              Mulai: {formatDate(item?.berlaku_mulai ?? '')}
                             </span>
                           )}
                         </div>
@@ -357,7 +362,7 @@ export default function JadwalKegiatanPage() {
                           <span className="truncate font-semibold">
                             {isConfigured
                               // Point #1: safe ?.map
-                              ? (item?.hari ?? []).map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ')
+                              ? (item?.hari ?? [])?.map(h => HARI_OPTION.find(opt => opt.value === h)?.label ?? h).join(', ')
                               : 'Hari: Belum diatur'}
                           </span>
                         </div>
@@ -373,7 +378,7 @@ export default function JadwalKegiatanPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-750">
+                    <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
                       <div className="flex items-center gap-2">
                         <button
                           id={`btn-edit-jadwal-${card.id}`}

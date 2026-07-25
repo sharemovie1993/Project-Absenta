@@ -18,6 +18,9 @@ interface SesiAjarCardProps {
     tanggal: string | Date;
     waktu_mulai: string | Date;
     jenis_kegiatan?: string;
+    Guru?: {
+      nama_guru?: string;
+    };
     Mapel?: {
       nama_mapel?: string;
     };
@@ -35,12 +38,16 @@ interface SesiAjarCardProps {
   };
   onOpenJournal: (sesiId: string, initialData: any) => void;
   onViewDetail: (sesi: any) => void;
+  isManager?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const SesiAjarCard: React.FC<SesiAjarCardProps> = ({
   sesi,
   onOpenJournal,
   onViewDetail,
+  isManager = false,
+  isReadOnly = false,
 }) => {
   const formatTime = (timeStr: string | Date) => {
     try {
@@ -77,8 +84,15 @@ export const SesiAjarCard: React.FC<SesiAjarCardProps> = ({
           <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-2 uppercase tracking-tight group-hover:text-blue-600 transition-colors">
             {sesi.Mapel?.nama_mapel || sesi.jenis_kegiatan || 'Sesi Mandiri'}
           </h3>
-          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest whitespace-nowrap">
-            <School className="w-3.5 h-3.5 text-blue-400" /> {sesi.Kelas?.nama_kelas || 'Umum'}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <School className="w-3.5 h-3.5 text-blue-400" /> {sesi.Kelas?.nama_kelas || 'Umum'}
+            </span>
+            {isManager && sesi.Guru?.nama_guru && (
+              <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-black whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                👨‍🏫 {sesi.Guru.nama_guru}
+              </span>
+            )}
           </div>
         </div>
 
@@ -127,11 +141,15 @@ export const SesiAjarCard: React.FC<SesiAjarCardProps> = ({
         <div className="flex gap-3">
           <Button
             className={`flex-1 h-11 rounded-xl font-black text-[10px] uppercase tracking-widest gap-2 shadow-lg transition-all whitespace-nowrap ${
-              sesi.ProgresMateri ? 'bg-slate-100 text-slate-900 shadow-none' : 'bg-amber-500 text-white shadow-amber-500/20'
+              isReadOnly
+                ? 'bg-slate-800 text-white shadow-none hover:bg-slate-700'
+                : sesi.ProgresMateri
+                ? 'bg-slate-100 text-slate-900 shadow-none hover:bg-slate-200'
+                : 'bg-amber-500 text-white shadow-amber-500/20'
             }`}
             onClick={() => onOpenJournal(sesi.id, sesi.ProgresMateri || null)}
           >
-            <ListTodo size={14} /> {sesi.ProgresMateri ? 'Edit Jurnal' : 'Isi Jurnal'}
+            <ListTodo size={14} /> {isReadOnly ? 'Lihat Jurnal' : (sesi.ProgresMateri ? 'Edit Jurnal' : 'Isi Jurnal')}
           </Button>
           <Button
             variant="outline"

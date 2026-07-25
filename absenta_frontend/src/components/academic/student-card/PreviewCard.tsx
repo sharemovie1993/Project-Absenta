@@ -135,7 +135,11 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
         ? ((rawStudent as any)?.nip || rawStudent.id) 
         : (rawStudent.nisn || rawStudent.nis || rawStudent.id);
       if (qrValue) {
-          QRCode.toDataURL(qrValue, { margin: 4 })
+          QRCode.toDataURL(qrValue, { 
+            errorCorrectionLevel: 'L', 
+            margin: 0, 
+            scale: 8 
+          })
             .then(setQrCodeUrl)
             .catch(console.error);
       }
@@ -438,9 +442,9 @@ export const PreviewCard: React.FC<PreviewCardProps> = React.memo(({
                 zIndex: 20,
                 cursor: 'move'
               }}
-              className="bg-white p-1 rounded-xl shadow-md border border-slate-100/50 flex items-center justify-center"
+              className="bg-white flex items-center justify-center overflow-hidden rounded-md"
             >
-              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full h-full object-contain" draggable={false} />}
+              {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full h-full object-fill" draggable={false} />}
             </motion.div>
           )}
 

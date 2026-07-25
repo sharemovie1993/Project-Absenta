@@ -19,6 +19,8 @@ import { seedMapelPresets } from './seed_mapel_presets';
 import { seedKurikulumStandards } from './seed_kurikulum_standards';
 import { seedJurusanPresets } from './seed_jurusan_presets';
 import { seedCalendarPresets } from './seed_calendar_presets';
+import { seedTopikPresets } from './seed_topik_presets';
+
 import { strukturOrganisasiService } from '../../modules/academic/struktur-organisasi/services/struktur-organisasi.service';
 import { seedDefaultJenisKegiatanForTenant } from '../../modules/academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
 
@@ -449,12 +451,16 @@ async function main() {
       order: 108,
       children: [
         { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Preset Topik', icon: 'Sparkles', path: '/superadmin/topik-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Bank Katalog Library', icon: 'Library', path: '/superadmin/library-templates', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Preset Kalender', icon: 'Calendar', path: '/superadmin/calendar-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Aset Global', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
+
     },
+
     {
       label: 'Billing Platform',
       icon: 'CreditCard',
@@ -931,7 +937,11 @@ async function main() {
   // 15️⃣ Seed Global Calendar Event Presets
   await seedCalendarPresets(prisma);
 
+  // 16️⃣ Seed Global Topik Presets
+  await seedTopikPresets(prisma);
+
   console.log('✨ Seed selesai!');
+
 }
 
 main()

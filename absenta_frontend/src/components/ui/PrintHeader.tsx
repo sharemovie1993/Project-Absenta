@@ -93,6 +93,8 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
     };
   });
 
+
+
   // 3. COMPACT THERMAL LAYOUT (Receipt rolls)
   if (variant === 'compact') {
     const mainSchoolLine = parsedLines[parsedLines.length - 1];

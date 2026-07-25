@@ -9,7 +9,7 @@ export async function gerbangRoutes(fastify: any) {
     preHandler: [
       allowBothModes,
       elevatedScopeMiddleware,
-      requireCapability('attendance.gate.bypass'),
+      requireCapability(['attendance.gate.bypass', 'attendance.gate.tap.entry', 'attendance.scan']),
     ],
     handler: gerbangController.bypass.bind(gerbangController),
     schema: {

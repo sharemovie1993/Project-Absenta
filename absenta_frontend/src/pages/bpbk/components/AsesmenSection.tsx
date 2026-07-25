@@ -9,8 +9,18 @@ import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
-import { Plus, Edit2, Trash2, Paperclip } from 'lucide-react';
-import { uploadSiswaDocument } from '../../../api/academic/siswa.api';
+import { Plus, Edit2, Trash2, Paperclip, Search, Printer, Users, BarChart2, ShieldAlert, FileText } from 'lucide-react';
+import { getKelasList } from '../../../api/academic/kelas.api';
+import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
+import { getMyTenant, type Tenant } from '../../../api/tenants.api';
+import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
+import { useAuthStore } from '../../../store/authStore';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
+import { ASESMEN_PRESETS } from '../data/asesmenConstants';
+import { printAsesmenBlankSheet, printAsesmenResult } from '../utils/asesmenPrinter';
+import { AsesmenFormModal } from './AsesmenFormModal';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -22,6 +32,11 @@ interface Student {
   Kelas?: {
     nama_kelas: string;
   };
+}
+
+interface KelasItem {
+  id: string;
+  nama_kelas: string;
 }
 
 export const AsesmenSection: React.FC = () => {
@@ -36,32 +51,111 @@ export const AsesmenSection: React.FC = () => {
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  const [search, setSearch] = useState('');
+  const [selectedKelas, setSelectedKelas] = useState('');
+  const [selectedTipe, setSelectedTipe] = useState('');
+  const [classes, setClasses] = useState<KelasItem[]>([]);
 
-  const confirm = useConfirm();
+  const debouncedSearch = useDebounce(search, 500);
 
-  // Form states
+  const { user } = useAuthStore();
+  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
+  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
+  const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
+  const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
+
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printPreset, setPrintPreset] = useState('');
+  const [schoolName, setSchoolName] = useState('SMA NEGERI NUSANTARA');
+  const [printKelas, setPrintKelas] = useState('');
+  const [printSiswa, setPrintSiswa] = useState<Student | null>(null);
+
+  // Form State
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedSiswa, setSelectedSiswa] = useState<Student | null>(null);
-  const [formData, setFormData] = useState({
-    siswa_id: '',
-    tanggal: new Date().toISOString().split('T')[0],
-    nama_asesmen: '',
-    hasil_skor: '',
-    keterangan: '',
-    file: null as File | null
-  });
+  const [editingItem, setEditingItem] = useState<AsesmenSiswa | null>(null);
 
-  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    getKelasList(1, 100).then(res => {
+      if (res?.success) {
+        setClasses((res.data || []) as KelasItem[]);
+      }
+    }).catch(err => console.error(err));
+
+    sekolahApi.getProfile().then(res => {
+      if (res?.success && res.data) {
+        setSekolah(res.data);
+        if (res.data?.nama) {
+          setSchoolName(res.data.nama);
+        }
+      }
+    }).catch(err => console.error(err));
+
+    getMyTenant().then(res => {
+      if (res?.success) {
+        setTenantInfo(res.data);
+        if (res.data?.name) {
+          setSchoolName(res.data.name);
+        }
+      }
+    }).catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    const leftLogo = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url;
+    if (leftLogo) {
+      getBase64ImageFromUrl(leftLogo).then(res => setLogoDaerahBase64(res)).catch(() => setLogoDaerahBase64(null));
+    }
+  }, [tenantInfo?.logo_daerah_url, (sekolah as any)?.logo_daerah_url, sekolah]);
+
+  useEffect(() => {
+    const rightLogo = tenantInfo?.logo_url || sekolah?.logo_url;
+    if (rightLogo) {
+      getBase64ImageFromUrl(rightLogo).then(res => setLogoSekolahBase64(res)).catch(() => setLogoSekolahBase64(null));
+    }
+  }, [tenantInfo?.logo_url, sekolah?.logo_url, sekolah]);
+
+  const handlePrint = useCallback(() => {
+    if (!printPreset) {
+      toast.error('Harap pilih instrumen asesmen yang ingin dicetak');
+      return;
+    }
+    printAsesmenBlankSheet(
+      tenantInfo,
+      sekolah,
+      logoDaerahBase64,
+      logoSekolahBase64,
+      printPreset,
+      printKelas,
+      printSiswa
+    );
+    setPrintModalOpen(false);
+  }, [tenantInfo, sekolah, logoDaerahBase64, logoSekolahBase64, printPreset, printKelas, printSiswa]);
+
+  const handlePrintResultClick = useCallback((item: AsesmenSiswa) => {
+    printAsesmenResult(
+      tenantInfo,
+      sekolah,
+      logoDaerahBase64,
+      logoSekolahBase64,
+      item,
+      user?.full_name || user?.name || ''
+    );
+  }, [tenantInfo, sekolah, logoDaerahBase64, logoSekolahBase64, user]);
+
+  const confirm = useConfirm();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await bpbkApi.getAsesmen({
         page,
-        limit
+        limit,
+        search: debouncedSearch || undefined,
+        kelas_name: selectedKelas || undefined,
+        nama_asesmen: selectedTipe || undefined
       });
-      setData(res.data?.list || []);
+      setData((res.data?.list || []) as AsesmenSiswa[]);
       setTotalPages(res.data?.pagination?.totalPages || 1);
       setTotalItems(res.data?.pagination?.totalItems || res.data?.pagination?.total || 0);
     } catch (err) {
@@ -69,36 +163,19 @@ export const AsesmenSection: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit]);
+  }, [page, limit, debouncedSearch, selectedKelas, selectedTipe]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedKelas, selectedTipe]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const resetForm = useCallback(() => {
-    setFormData({
-      siswa_id: '',
-      tanggal: new Date().toISOString().split('T')[0],
-      nama_asesmen: '',
-      hasil_skor: '',
-      keterangan: '',
-      file: null
-    });
-    setSelectedSiswa(null);
-    setSelectedId(null);
-  }, []);
-
   const handleEdit = useCallback((item: AsesmenSiswa) => {
     setSelectedId(item.id);
-    setSelectedSiswa(item.Siswa || null);
-    setFormData({
-      siswa_id: item.siswa_id,
-      tanggal: new Date(item.tanggal).toISOString().split('T')[0],
-      nama_asesmen: item.nama_asesmen,
-      hasil_skor: item.hasil_skor || '',
-      keterangan: item.keterangan || '',
-      file: null
-    });
+    setEditingItem(item);
     setModalOpen(true);
   }, []);
 
@@ -125,67 +202,10 @@ export const AsesmenSection: React.FC = () => {
     }
   }, [confirm, fetchData]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.siswa_id) {
-      toast.error('Harap pilih siswa terlebih dahulu');
-      return;
-    }
-    if (!formData.nama_asesmen.trim()) {
-      toast.error('Harap isi nama/tipe asesmen');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      let docId = undefined;
-
-      if (formData.file) {
-        const uploadRes = (await uploadSiswaDocument(
-          formData.siswa_id,
-          formData.file,
-          `Hasil Asesmen: ${formData.nama_asesmen} - ${selectedSiswa?.nama_siswa || 'Siswa'}`,
-          'LAPORAN_BK'
-        )) as any;
-        docId = uploadRes.data?.id;
-      }
-
-      const payload = {
-        siswa_id: formData.siswa_id,
-        tanggal: new Date(formData.tanggal),
-        nama_asesmen: formData.nama_asesmen,
-        hasil_skor: formData.hasil_skor || undefined,
-        keterangan: formData.keterangan || undefined,
-        dokumen_id: docId
-      };
-
-      if (selectedId) {
-        await bpbkApi.updateAsesmen(selectedId, payload);
-        toast.success('Catatan asesmen berhasil diperbarui');
-      } else {
-        await bpbkApi.createAsesmen(payload);
-        toast.success('Hasil asesmen baru berhasil disimpan');
-      }
-
-      setModalOpen(false);
-      resetForm();
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan hasil asesmen');
-    } finally {
-      setSaving(false);
-    }
-  }, [selectedId, formData, selectedSiswa, fetchData, resetForm]);
-
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);
     setSortOrder(order);
   }, []);
-
-  const handleCloseModal = useCallback(() => {
-    resetForm();
-    setModalOpen(false);
-  }, [resetForm]);
 
   const columns: Column[] = useMemo(() => [
     {
@@ -211,9 +231,21 @@ export const AsesmenSection: React.FC = () => {
     {
       key: 'nama_asesmen',
       label: 'Nama / Tipe Asesmen',
-      render: (value: string) => (
-        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{value}</span>
-      )
+      render: (value: string) => {
+        const isKhusus = value.includes('DCM') || value.includes('Sosiometri');
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{value}</span>
+            <span className={`px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-md border ${
+              isKhusus 
+                ? 'bg-amber-50 text-amber-600 border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30'
+                : 'bg-emerald-50 text-emerald-600 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30'
+            }`}>
+              {isKhusus ? 'Asesmen Khusus' : 'Asesmen Massal'}
+            </span>
+          </div>
+        );
+      }
     },
     {
       key: 'hasil_skor',
@@ -244,6 +276,15 @@ export const AsesmenSection: React.FC = () => {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => handlePrintResultClick(item)}
+            className="w-8 h-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50"
+            title="Cetak Hasil Laporan Asesmen"
+          >
+            <Printer size={13} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => handleEdit(item)}
             className="w-8 h-8 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
           >
@@ -260,7 +301,7 @@ export const AsesmenSection: React.FC = () => {
         </div>
       )
     }
-  ], [handleEdit, handleDelete]);
+  ], [handleEdit, handleDelete, handlePrintResultClick]);
 
   return (
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
@@ -269,14 +310,109 @@ export const AsesmenSection: React.FC = () => {
           <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Layanan Asesmen Psikologis & Angket BK</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Penyimpanan hasil tes sosiometri, kuesioner gaya belajar, dan hasil tes kepribadian siswa</p>
         </div>
-        <Button
-          variant="toolbarPrimary"
-          size="toolbar"
-          onClick={() => { resetForm(); setModalOpen(true); }}
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" />
-          Catat Asesmen
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => {
+              setPrintPreset('');
+              setPrintKelas('');
+              setPrintSiswa(null);
+              setPrintModalOpen(true);
+            }}
+            className="flex items-center gap-1.5"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Cetak Lembar Fisik
+          </Button>
+          <Button
+            variant="toolbarPrimary"
+            size="toolbar"
+            onClick={() => {
+              setSelectedId(null);
+              setEditingItem(null);
+              setModalOpen(true);
+            }}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Catat Asesmen
+          </Button>
+        </div>
+      </div>
+
+      {/* Analytics Summary Cards (Standard Premium Components) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <AnalyticsCard
+          variant="premium"
+          title="Total Dokumen Asesmen"
+          value={totalItems || data?.length || 0}
+          subtitle="Berkas Tersimpan"
+          icon={<FileText className="text-white" size={20} />}
+          gradient="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white border-indigo-400/30"
+          isLoading={loading}
+        />
+        <AnalyticsCard
+          variant="premium"
+          title="Siswa Terasesmen"
+          value={useMemo(() => new Set((data || [])?.map(item => item.siswa_id)).size, [data])}
+          subtitle="Profil Individu"
+          icon={<Users className="text-white" size={20} />}
+          gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30"
+          isLoading={loading}
+        />
+        <AnalyticsCard
+          variant="premium"
+          title="Asesmen Massal"
+          value={useMemo(() => (data || [])?.filter(item => !(item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri'))).length, [data])}
+          subtitle="Kelas / Klasikal"
+          icon={<BarChart2 className="text-white" size={20} />}
+          gradient="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white border-emerald-400/30"
+          isLoading={loading}
+        />
+        <AnalyticsCard
+          variant="premium"
+          title="Asesmen Khusus"
+          value={useMemo(() => (data || [])?.filter(item => item.nama_asesmen?.includes('DCM') || item.nama_asesmen?.includes('Sosiometri')).length, [data])}
+          subtitle="Kasus / Fokus Masalah"
+          icon={<ShieldAlert className="text-white" size={20} />}
+          gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30"
+          isLoading={loading}
+        />
+      </div>
+
+      {/* Panel Pencarian & Penyaringan */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Cari nama siswa atau NIS..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+          />
+        </div>
+        <div>
+          <SearchableSelect
+            options={[
+              { value: '', label: 'Semua Kelas' },
+              ...(classes || [])?.map(cls => ({ value: cls.nama_kelas, label: cls.nama_kelas }))
+            ]}
+            value={selectedKelas}
+            onValueChange={setSelectedKelas}
+            placeholder="Pilih Kelas"
+          />
+        </div>
+        <div>
+          <SearchableSelect
+            options={[
+              { value: '', label: 'Semua Tipe Asesmen' },
+              ...(ASESMEN_PRESETS || [])?.map(preset => ({ value: preset.nama, label: preset.singkatan }))
+            ]}
+            value={selectedTipe}
+            onValueChange={setSelectedTipe}
+            placeholder="Pilih Tipe Asesmen"
+          />
+        </div>
       </div>
 
       {loading && data.length === 0 ? (
@@ -305,114 +441,109 @@ export const AsesmenSection: React.FC = () => {
         />
       )}
 
+      {/* Dynamic modals rendered with lazy/Suspense wrapper */}
       <Suspense fallback={null}>
-        <Modal isOpen={modalOpen} onClose={handleCloseModal} title={selectedId ? 'Perbarui Hasil Asesmen' : 'Catat Asesmen BK Baru'} size="lg">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        {modalOpen && (
+          <AsesmenFormModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSuccess={fetchData}
+            selectedId={selectedId}
+            editingItem={editingItem}
+          />
+        )}
+
+        <Modal isOpen={printModalOpen} onClose={() => setPrintModalOpen(false)} title="Cetak Lembar Fisik Asesmen BK" size="md">
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Pilih jenis instrumen asesmen BK yang ingin dicetak sebagai lembar fisik siswa. Sistem akan otomatis menyusun tata letak soal/angket siap cetak dengan Kop Surat BK.
+            </p>
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa</Label>
-              {selectedSiswa ? (
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Siswa (Opsional - Untuk Cetak Profil Otomatis)</Label>
+              {printSiswa ? (
                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/50 rounded-xl">
                   <div>
-                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{selectedSiswa.nama_siswa}</div>
+                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200">{printSiswa.nama_siswa}</div>
                     <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                      {(selectedSiswa as any).Kelas?.nama_kelas || (selectedSiswa as any).kelas_name || '-'} • NIS: {selectedSiswa.nis || '-'}
+                      {printSiswa.Kelas?.nama_kelas || '-'} • NIS: {printSiswa.nis || '-'}
                     </div>
                   </div>
-                  {!selectedId && (
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      onClick={() => {
-                        setSelectedSiswa(null);
-                        setFormData(prev => ({ ...prev, siswa_id: '' }));
-                      }}
-                      className="text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-1.5 rounded-lg"
-                    >
-                      UBAH SISWA
-                    </Button>
-                  )}
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => {
+                      setPrintSiswa(null);
+                      setPrintKelas('');
+                    }}
+                    className="text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 px-3 py-1.5 rounded-lg"
+                  >
+                    HAPUS
+                  </Button>
                 </div>
               ) : (
                 <Suspense fallback={<div className="h-10 bg-slate-100 animate-pulse rounded-xl" />}>
                   <SmartStudentPicker
                     scope="global"
                     onSelect={(s) => {
-                      setSelectedSiswa(s);
-                      setFormData(prev => ({ ...prev, siswa_id: s.id }));
+                      setPrintSiswa(s);
+                      if (s?.Kelas?.nama_kelas) {
+                        setPrintKelas(s.Kelas.nama_kelas);
+                      }
                     }}
                     mode="siswa"
-                    placeholder="Cari nama atau NIS siswa..."
+                    placeholder="Ketik nama atau NIS siswa untuk isi profil..."
                   />
                 </Suspense>
               )}
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tanggal Tes</Label>
-                <Input
-                  type="date"
-                  value={formData.tanggal}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Hasil / Kategori Skor</Label>
-                <Input
-                  placeholder="Contoh: Sangat Kritis, Gaya Visual, dll"
-                  value={formData.hasil_skor}
-                  onChange={(e) => setFormData(prev => ({ ...prev, hasil_skor: e.target.value }))}
-                  className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-                />
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama Lembaga (Kop Surat Terintegrasi)</Label>
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300">
+                {schoolName || 'Memuat profil lembaga...'}
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Nama / Tipe Asesmen</Label>
-              <Input
-                placeholder="Contoh: Angket Sosiometri Hubungan Sosial Kelas X-1"
-                value={formData.nama_asesmen}
-                onChange={(e) => setFormData(prev => ({ ...prev, nama_asesmen: e.target.value }))}
-                className="h-10 text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Kelas / Rombel Target</Label>
+              <SearchableSelect
+                options={[
+                  { value: '', label: 'Pilih Kelas' },
+                  ...(classes || [])?.map(cls => ({ value: cls.nama_kelas, label: cls.nama_kelas }))
+                ]}
+                value={printKelas}
+                onValueChange={setPrintKelas}
+                placeholder="Pilih Kelas Target"
               />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="deskripsi-asesmen" className="text-xs font-bold uppercase tracking-wider text-slate-500">Deskripsi / Analisis Konselor</Label>
-              <textarea
-                id="deskripsi-asesmen"
-                aria-label="Deskripsi / Analisis Konselor"
-                value={formData.keterangan}
-                onChange={(e) => setFormData(prev => ({ ...prev, keterangan: e.target.value }))}
-                placeholder="Tulis analisis singkat hasil kuesioner..."
-                className="w-full min-h-[100px] p-3 text-xs bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Pilih Instrumen Asesmen</Label>
+              <SearchableSelect
+                options={[
+                  { value: 'AKPD (Angket Kebutuhan Peserta Didik)', label: 'AKPD (Angket Kebutuhan)' },
+                  { value: 'AUM Umum (Alat Ungkap Masalah)', label: 'AUM Umum' },
+                  { value: 'AUM PTSDL (Masalah Belajar)', label: 'AUM PTSDL (Belajar)' },
+                  { value: 'DCM (Daftar Cek Masalah)', label: 'DCM (Daftar Cek Masalah)' },
+                  { value: 'Sosiometri Hubungan Sosial', label: 'Sosiometri Hubungan Sosial' },
+                  { value: 'Angket Gaya Belajar (V-A-K)', label: 'Angket Gaya Belajar (V-A-K)' },
+                  { value: 'Inventori Tugas Perkembangan (ITP)', label: 'ITP (Tugas Perkembangan)' },
+                  { value: 'Kuesioner Minat Karir (RIASEC)', label: 'Kuesioner Minat Karir (RIASEC)' }
+                ]}
+                value={printPreset}
+                onValueChange={setPrintPreset}
+                placeholder="Pilih Instrumen"
               />
             </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Unggah Berkas Laporan Hasil Tes (Opsional)</Label>
-              <Input
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={(e) => setFormData(prev => ({ ...prev, file: e.target.files?.[0] || null }))}
-                className="text-xs border-slate-200/60 dark:border-slate-800 rounded-xl"
-              />
-            </div>
-
             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button type="button" variant="toolbarOutline" size="toolbar" onClick={handleCloseModal}>
+              <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setPrintModalOpen(false)}>
                 Batal
               </Button>
-              <Button type="submit" variant="toolbarPrimary" size="toolbar" className="px-6" disabled={saving}>
-                {saving ? 'Menyimpan...' : 'Simpan Asesmen'}
+              <Button type="button" variant="toolbarPrimary" size="toolbar" className="px-6 flex items-center gap-1.5" onClick={handlePrint}>
+                <Printer className="w-3.5 h-3.5" />
+                Buka Pratinjau Cetak
               </Button>
             </div>
-          </form>
+          </div>
         </Modal>
       </Suspense>
     </Card>
   );
 };
-
-

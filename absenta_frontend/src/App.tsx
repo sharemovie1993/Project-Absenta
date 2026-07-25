@@ -66,7 +66,10 @@ const UpgradeIntelligencePage = lazy(() => import('./pages/superadmin/intelligen
 const RevenueDashboardPage = lazy(() => import('./pages/superadmin/revenue/RevenueDashboardPage'));
 const BackupsPage = lazy(() => import('./pages/superadmin/BackupsPage'));
 const MapelPresetsPage = lazy(() => import('./pages/superadmin/MapelPresetsPage'));
+const TopikPresetsPage = lazy(() => import('./pages/superadmin/TopikPresetsPage'));
+const LibraryTemplatesPage = lazy(() => import('./pages/superadmin/LibraryTemplatesPage'));
 const CalendarPresetsPage = lazy(() => import('./pages/superadmin/CalendarPresetsPage'));
+
 const KurikulumStandardsPage = lazy(() => import('./pages/superadmin/KurikulumStandardsPage'));
 const JurusanPresetsPage = lazy(() => import('./pages/superadmin/JurusanPresetsPage'));
 const SupportTicketPage = lazy(() => import('./pages/support/SupportTicketPage'));
@@ -103,7 +106,7 @@ const JurusanPage = lazy(() => import('./pages/academic/JurusanPage').then(modul
 const JenisKegiatanMasterPage = lazy(() => import('./pages/academic/JenisKegiatanMasterPage'));
 const WaliKelasPage = lazy(() => import('./pages/kurikulum/WaliKelasPage'));
 const GuruMapelPage = lazy(() => import('./pages/kurikulum/GuruMapelPage'));
-const StrukturOrganisasiList = lazy(() => import('./pages/academic/struktur-organisasi/StrukturOrganisasiList'));
+const StrukturOrganisasiPage = lazy(() => import('./pages/academic/struktur-organisasi/StrukturOrganisasiPage'));
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'));
 const WhatsappSettingsPage = lazy(() => import('./pages/settings/WhatsappSettingsPage'));
 const SystemUpdatePage = lazy(() => import('./pages/settings/SystemUpdatePage'));
@@ -207,6 +210,9 @@ const SarprasLoansPage = lazy(() => import('./pages/sarpras/SarprasLoansPage'));
 const SarprasMaintenancePage = lazy(() => import('./pages/sarpras/SarprasMaintenancePage'));
 const SarprasDashboard = lazy(() => import('./pages/sarpras/SarprasDashboard'));
 const SarprasCatalogPage = lazy(() => import('./pages/sarpras/SarprasCatalogPage').then(m => ({ default: m.SarprasCatalogPage })));
+
+
+
 
 // Error Pages
 const ForbiddenPage = lazy(() => import('./pages/error/ForbiddenPage'));
@@ -527,7 +533,7 @@ function App() {
                     } />
                     <Route path="/academic/struktur-organisasi" element={
                       <ProtectedRoute requiredCapability={['academic.structures.view.tree', 'academic.structures.view.list']}>
-                        <StrukturOrganisasiList />
+                        <StrukturOrganisasiPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/academic/backup" element={
@@ -1131,28 +1137,37 @@ function App() {
                             <AdminSupportTicketPage />
                           </ProtectedRoute>
                         } />
-                        <Route path="/superadmin/mapel-presets" element={
-                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
-                            <MapelPresetsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/calendar-presets" element={
-                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
-                            <CalendarPresetsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/jurusan-presets" element={
-                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
-                            <JurusanPresetsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/superadmin/kurikulum-standards" element={
-                          <ProtectedRoute requiredCapability="superadmin.tenants.manage">
-                            <KurikulumStandardsPage />
-                          </ProtectedRoute>
-                        } />
                       </>
                     )}
+
+                    {/* Preset Global Master Routes (ALWAYS ACCESSIBLE TO SUPERADMIN) */}
+                    <Route path="/superadmin/mapel-presets" element={<MapelPresetsPage />} />
+                    <Route path="/superadmin/topik-presets" element={<TopikPresetsPage />} />
+                    <Route path="/superadmin/library-templates" element={<LibraryTemplatesPage />} />
+                    <Route path="/superadmin/library" element={<LibraryTemplatesPage />} />
+                    <Route path="/superadmin/calendar-presets" element={<CalendarPresetsPage />} />
+                    <Route path="/superadmin/jurusan-presets" element={<JurusanPresetsPage />} />
+                    <Route path="/superadmin/kurikulum-standards" element={<KurikulumStandardsPage />} />
+
+                    {/* Preset Global Aliases & Canonical Fallbacks */}
+                    <Route path="/preset-global/mapel" element={<Navigate to="/superadmin/mapel-presets" replace />} />
+                    <Route path="/preset-global/topik" element={<Navigate to="/superadmin/topik-presets" replace />} />
+                    <Route path="/preset-global/library" element={<Navigate to="/superadmin/library-templates" replace />} />
+                    <Route path="/preset-global/library-templates" element={<Navigate to="/superadmin/library-templates" replace />} />
+                    <Route path="/preset-global/bank-library" element={<Navigate to="/superadmin/library-templates" replace />} />
+                    <Route path="/preset-global/kalender" element={<Navigate to="/superadmin/calendar-presets" replace />} />
+                    <Route path="/preset-global/jurusan" element={<Navigate to="/superadmin/jurusan-presets" replace />} />
+                    <Route path="/preset-global/standar-jp" element={<Navigate to="/superadmin/kurikulum-standards" replace />} />
+                    <Route path="/superadmin/preset-mapel" element={<Navigate to="/superadmin/mapel-presets" replace />} />
+                    <Route path="/superadmin/preset-topik" element={<Navigate to="/superadmin/topik-presets" replace />} />
+                    <Route path="/superadmin/preset-library" element={<Navigate to="/superadmin/library-templates" replace />} />
+                    <Route path="/superadmin/preset-kalender" element={<Navigate to="/superadmin/calendar-presets" replace />} />
+                    <Route path="/superadmin/preset-jurusan" element={<Navigate to="/superadmin/jurusan-presets" replace />} />
+                    <Route path="/superadmin/preset-standar-jp" element={<Navigate to="/superadmin/kurikulum-standards" replace />} />
+
+
+
+
                     <Route path="/support" element={
                       <ProtectedRoute requiredCapability="support.tickets.view">
                         <SupportTicketPage />

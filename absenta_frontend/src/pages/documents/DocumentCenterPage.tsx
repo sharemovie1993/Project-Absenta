@@ -31,6 +31,7 @@ import {
   uploadDocument,
   uploadDocumentVersion,
 } from '@/api/documents.api';
+import type { UploadFormValues, MouFormValues, EditMetadataFormValues } from '@/components/documents/DocumentModals';
 
 // Lazy loaded sub-components
 const DocumentTable = lazy(() => import('@/components/documents/DocumentTable').then(m => ({ default: m.DocumentTable })));
@@ -72,7 +73,7 @@ function parseCategoryFromQuery(raw: string | null): DocumentCategory | 'ALL' {
   const aliased = aliasMap[token];
   if (aliased) return aliased;
 
-  const allowed = BASE_CATEGORY_OPTIONS.map((o) => o.value).filter((v) => v !== 'ALL') as DocumentCategory[];
+  const allowed = (BASE_CATEGORY_OPTIONS ?? [])?.map((o) => o.value).filter((v) => v !== 'ALL') as DocumentCategory[];
   if (allowed.includes(token as DocumentCategory)) return token as DocumentCategory;
   return 'ALL';
 }
@@ -84,8 +85,6 @@ const uploadSchema = z.object({
   file: z.any().refine((v) => v instanceof File, 'File wajib dipilih'),
 });
 
-type UploadFormValues = z.infer<typeof uploadSchema>;
-
 const mouSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
@@ -95,15 +94,11 @@ const mouSchema = z.object({
   pihak_kedua_alamat: z.string().optional(),
 });
 
-type MouFormValues = z.infer<typeof mouSchema>;
-
 const editMetadataSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi'),
   category: z.enum(['ADMINISTRATIVE', 'LEGAL', 'MANUAL', 'OTHER']),
   description: z.string().optional(),
 });
-
-type EditMetadataFormValues = z.infer<typeof editMetadataSchema>;
 
 export default function DocumentCenterPage() {
   const confirm = useConfirm();
@@ -121,18 +116,18 @@ export default function DocumentCenterPage() {
       can(CATEGORY_CAPABILITIES[category])
     );
     const includeAll = allowedCategories.length > 1;
-    return BASE_CATEGORY_OPTIONS.filter((o) => {
+    return (BASE_CATEGORY_OPTIONS ?? [])?.filter((o) => {
       if (o.value === 'ALL') return includeAll;
       return allowedCategories.includes(o.value);
     });
   }, [can]);
 
   const initialSelectedCategory = useMemo(() => {
-    const desiredFromState = parseCategoryFromQuery((location.state as any)?.defaultCategory ?? null);
+    const desiredFromState = parseCategoryFromQuery((location.state as { defaultCategory?: string } | null)?.defaultCategory ?? null);
     const desiredFromQuery = parseCategoryFromQuery(searchParams.get('category'));
     const desired = desiredFromState !== 'ALL' ? desiredFromState : desiredFromQuery;
-    const match = categoryOptions.find((o) => o.value === desired)?.value;
-    const fallback = categoryOptions.find((o) => o.value !== 'ALL')?.value ?? 'ALL';
+    const match = (categoryOptions ?? [])?.find((o) => o.value === desired)?.value;
+    const fallback = (categoryOptions ?? [])?.find((o) => o.value !== 'ALL')?.value ?? 'ALL';
     return (match ?? fallback) as DocumentCategory | 'ALL';
   }, [categoryOptions, location.state, searchParams]);
 
@@ -210,8 +205,8 @@ export default function DocumentCenterPage() {
         setCurrentPage(res.pagination.page);
         setTotalPages(res.pagination.totalPages);
         setTotalItems(res.pagination.total);
-      } catch (e: any) {
-        const msg = e?.message || 'Gagal memuat dokumen';
+      } catch (e: unknown) {
+        const msg = (e instanceof Error ? e.message : String(e)) || 'Gagal memuat dokumen';
         setLoadError(msg);
         toast.error(msg);
       } finally {
@@ -235,8 +230,8 @@ export default function DocumentCenterPage() {
     try {
       const signed = await createDocumentSignedUrl(doc.id);
       window.open(signed.download_url, '_blank', 'noopener,noreferrer');
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal mengunduh dokumen');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal mengunduh dokumen');
     }
   }, []);
 
@@ -258,8 +253,8 @@ export default function DocumentCenterPage() {
       }
       toast.success('Dokumen berhasil dihapus');
       fetchDocuments(currentPage);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal menghapus dokumen');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal menghapus dokumen');
     }
   }, [confirm, currentPage, fetchDocuments]);
 
@@ -276,8 +271,8 @@ export default function DocumentCenterPage() {
       }
       const items = Array.isArray(res.data) ? res.data : [];
       setVersionHistoryItems([...items].sort((a, b) => Number(b.version) - Number(a.version)));
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal memuat riwayat versi');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal memuat riwayat versi');
     } finally {
       setVersionHistoryLoading(false);
     }
@@ -287,21 +282,21 @@ export default function DocumentCenterPage() {
     try {
       const signed = await createDocumentSignedUrl(doc.id, { version });
       window.open(signed.download_url, '_blank', 'noopener,noreferrer');
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal mengunduh versi dokumen');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal mengunduh versi dokumen');
     }
   }, []);
 
   const openEditMetadata = useCallback((doc: DocumentItem) => {
     setEditMetadataTarget(doc);
-    resetEditMetadata({ title: doc.title || '', category: (doc.category || 'ADMINISTRATIVE') as any, description: doc.description || '' });
+    resetEditMetadata({ title: doc.title || '', category: (doc.category || 'ADMINISTRATIVE') as 'ADMINISTRATIVE' | 'LEGAL' | 'MANUAL' | 'OTHER', description: doc.description || '' });
     setEditMetadataOpen(true);
   }, [resetEditMetadata]);
 
   const onSubmitEditMetadata = handleSubmitEditMetadata(async (values: EditMetadataFormValues) => {
     if (!editMetadataTarget) return;
     try {
-      const res = await updateDocumentMetadata(editMetadataTarget.id, { title: values.title, category: values.category as any, description: values.description || null });
+      const res = await updateDocumentMetadata(editMetadataTarget.id, { title: values.title, category: values.category, description: values.description || null });
       if (!res.success) {
         toast.error(res.message || 'Gagal memperbarui metadata');
         return;
@@ -309,8 +304,8 @@ export default function DocumentCenterPage() {
       toast.success('Metadata berhasil diperbarui');
       setEditMetadataOpen(false);
       fetchDocuments(currentPage);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal memperbarui metadata');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal memperbarui metadata');
     }
   });
 
@@ -325,9 +320,10 @@ export default function DocumentCenterPage() {
       }
       toast.success('Versi baru berhasil diunggah');
       setVersionUploadOpen(false);
+      setVersionFile(null);
       fetchDocuments(currentPage);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal mengunggah versi');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal mengunggah versi');
     } finally {
       setVersionUploadProgress(null);
     }
@@ -341,15 +337,15 @@ export default function DocumentCenterPage() {
     try {
       setBulkProcessing(true);
       const ids = Array.from(selectedIds);
-      const results = await Promise.allSettled(ids.map(id => softDeleteDocument(id)));
-      const succeeded = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+      const results = await Promise.allSettled((ids ?? [])?.map(id => softDeleteDocument(id)));
+      const succeeded = results.filter(r => r.status === 'fulfilled' && (r.value as { success: boolean }).success).length;
       succeeded === ids.length
         ? toast.success(`Berhasil menghapus ${succeeded} dokumen`)
         : toast(`Berhasil menghapus ${succeeded} dokumen`, { icon: '⚠️' });
       setSelectedIds(new Set());
       fetchDocuments(currentPage);
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal menghapus massal');
+    } catch (err: unknown) {
+      toast.error((err instanceof Error ? err.message : String(err)) || 'Gagal menghapus massal');
     } finally {
       setBulkProcessing(false);
     }
@@ -367,8 +363,8 @@ export default function DocumentCenterPage() {
       setUploadOpen(false);
       reset();
       fetchDocuments(1);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal mengunggah');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal mengunggah');
     } finally {
       setUploadProgress(null);
     }
@@ -385,14 +381,14 @@ export default function DocumentCenterPage() {
       setMouOpen(false);
       resetMou();
       fetchDocuments(1);
-    } catch (e: any) {
-      toast.error(e?.message || 'Gagal generate MoU');
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : String(e)) || 'Gagal generate MoU');
     }
   });
 
   const statsList = useMemo(() => [
     { title: "Total Dokumen", value: totalItems, icon: <FileText className="h-4 w-4 text-white" />, gradient: "from-blue-500 to-indigo-600", subtitle: "Semua arsip aktif" },
-    { title: "Kategori Terpilih", value: selectedCategory === 'ALL' ? 'Semua' : BASE_CATEGORY_OPTIONS.find(o => o.value === selectedCategory)?.label, icon: <Search className="h-4 w-4 text-white" />, gradient: "from-indigo-500 to-purple-600", subtitle: "Filter aktif saat ini" },
+    { title: "Kategori Terpilih", value: selectedCategory === 'ALL' ? 'Semua' : (BASE_CATEGORY_OPTIONS ?? [])?.find(o => o.value === selectedCategory)?.label, icon: <Search className="h-4 w-4 text-white" />, gradient: "from-indigo-500 to-purple-600", subtitle: "Filter aktif saat ini" },
   ], [totalItems, selectedCategory]);
 
   const toolbarSlot = useMemo(() => (
@@ -423,7 +419,6 @@ export default function DocumentCenterPage() {
       title="Dokumen Legalitas Sekolah"
       description="Kelola dokumen administrasi, legal, manual, dan MoU secara terpusat dengan dukungan riwayat versi."
       stats={statsList}
-      toolbar={toolbarSlot}
       hardeningModuleKey="document_center"
       breadcrumbs={[{ label: 'System' }, { label: 'Dokumen Legalitas' }]}
       instruction={{
@@ -441,38 +436,70 @@ export default function DocumentCenterPage() {
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-            <Input placeholder="Cari dokumen berdasarkan judul atau deskripsi..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
+            <Input
+              id="search-query"
+              aria-label="Cari dokumen berdasarkan judul atau deskripsi"
+              placeholder="Cari dokumen berdasarkan judul atau deskripsi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm"
+            />
           </div>
           <div className="w-full md:w-[240px]">
-            <SearchableSelect value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as any)} options={categoryOptions} placeholder="Pilih Kategori" triggerClassName="h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+            <SearchableSelect
+              id="category-filter"
+              aria-label="Pilih Kategori Filter"
+              value={selectedCategory}
+              onValueChange={(v) => setSelectedCategory(v as DocumentCategory | 'ALL')}
+              options={categoryOptions}
+              placeholder="Pilih Kategori"
+              triggerClassName="h-12 rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
           </div>
         </div>
 
         <SectionCard noPadding fullWidth>
-          <Suspense fallback={<PageLoader />}>
-            <DocumentTable
-              documents={documents}
-              selectedIds={selectedIds}
-              allVisibleSelected={documents.length > 0 && documents.every(d => selectedIds.has(d.id))}
-              onSelectAll={(checked) => {
-                const next = new Set(selectedIds);
-                documents.forEach(d => checked ? next.add(d.id) : next.delete(d.id));
-                setSelectedIds(next);
-              }}
-              onSelectOne={(id, checked) => {
-                const next = new Set(selectedIds);
-                checked ? next.add(id) : next.delete(id);
-                setSelectedIds(next);
-              }}
-              onDownload={handleDownload}
-              onVersionHistory={openVersionHistory}
-              onEditMetadata={openEditMetadata}
-              onVersionUpload={(doc) => { setVersionTarget(doc); setVersionUploadOpen(true); }}
-              onDelete={handleDelete}
-              canUpload={canUpload}
-              canDelete={canDelete}
-            />
-          </Suspense>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Daftar Dokumen Resmi Institusi</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Kelola berkas legalitas, MoU, administrasi, dan manual</p>
+            </div>
+            {toolbarSlot}
+          </div>
+
+          {loadError ? (
+            <div className="py-20 flex flex-col items-center justify-center text-rose-500 font-bold text-xs uppercase tracking-widest">{loadError}</div>
+          ) : loading && documents.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+              <Loader className="mb-4" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Dokumen...</p>
+            </div>
+          ) : (
+            <Suspense fallback={<PageLoader />}>
+              <DocumentTable
+                documents={documents}
+                selectedIds={selectedIds}
+                allVisibleSelected={documents.length > 0 && documents.every(d => selectedIds.has(d.id))}
+                onSelectAll={(checked) => {
+                  const next = new Set(selectedIds);
+                  documents.forEach(d => checked ? next.add(d.id) : next.delete(d.id));
+                  setSelectedIds(next);
+                }}
+                onSelectOne={(id, checked) => {
+                  const next = new Set(selectedIds);
+                  checked ? next.add(id) : next.delete(id);
+                  setSelectedIds(next);
+                }}
+                onDownload={handleDownload}
+                onVersionHistory={openVersionHistory}
+                onEditMetadata={openEditMetadata}
+                onVersionUpload={(doc) => { setVersionTarget(doc); setVersionUploadOpen(true); }}
+                onDelete={handleDelete}
+                canUpload={canUpload}
+                canDelete={canDelete}
+              />
+            </Suspense>
+          )}
 
           {documents.length > 0 && (
             <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 gap-4">
@@ -480,7 +507,14 @@ export default function DocumentCenterPage() {
                 <span>Total: {totalItems} Data</span>
                 <div className="flex items-center gap-2">
                   <span className="hidden sm:inline">Rows:</span>
-                  <SearchableSelect value={String(itemsPerPage)} onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }} options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]} triggerClassName="w-[70px] h-8 rounded-lg text-[10px]" />
+                  <SearchableSelect
+                    id="rows-per-page"
+                    aria-label="Jumlah baris per halaman"
+                    value={String(itemsPerPage)}
+                    onValueChange={(v) => { setItemsPerPage(Number(v)); setCurrentPage(1); }}
+                    options={[{ value: '10', label: '10' }, { value: '25', label: '25' }, { value: '50', label: '50' }]}
+                    triggerClassName="w-[70px] h-8 rounded-lg text-[10px]"
+                  />
                 </div>
               </div>
 
@@ -503,8 +537,8 @@ export default function DocumentCenterPage() {
         <Modal isOpen={versionUploadOpen} onClose={() => setVersionUploadOpen(false)} title="Upload Versi Baru" size="md">
             <div className="space-y-4">
                 <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Pilih File Baru</label>
-                    <input type="file" className="w-full text-xs" onChange={(e) => setVersionFile(e.target.files?.[0] || null)} />
+                    <label htmlFor="version-file-input" className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Pilih File Baru</label>
+                    <input id="version-file-input" type="file" className="w-full text-xs" onChange={(e) => setVersionFile(e.target.files?.[0] || null)} />
                     {versionFile && <div className="text-[10px] text-slate-500 font-mono mt-1">{versionFile.name}</div>}
                 </div>
                 {typeof versionUploadProgress === 'number' && (

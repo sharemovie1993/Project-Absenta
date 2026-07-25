@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { z } from 'zod';
 import {
   History,
   Search,
@@ -27,6 +28,7 @@ import { Timeline, TimelineItem } from '../../components/ui/Timeline';
 import { getTenantActivityLogs, type ActivityLogItem } from '../../api/activityLog.api';
 import { getUsersForDropdown, type User as UserType } from '../../api/user.api';
 import toast from 'react-hot-toast';
+import { cn } from '../../lib/utils';
 
 // Lazy loading SearchableSelect to pass audit scanner optimization checks
 const SearchableSelect = lazy(() =>
@@ -71,8 +73,52 @@ function getEventStatusConfig(action: string) {
   }
 }
 
+const filterSchema = z.object({
+  search: z.string().max(100).optional(),
+  selectedUser: z.string().optional(),
+  selectedAction: z.string().max(100).optional(),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).or(z.literal('')).optional(),
+});
+
+function getActionBadgeStyle(action: string): string {
+  // Pencocokan eksak untuk aksi tertentu
+  if (action === 'USER_LOGIN') {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/30';
+  }
+  if (action === 'USER_LOGOUT') {
+    return 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800';
+  }
+
+  // Pencocokan kategori berbasis awalan/prefix
+  if (action.startsWith('ASSESSMENT_')) {
+    return 'bg-purple-50 text-purple-700 border-purple-200/50 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/30';
+  }
+  if (action.startsWith('ACADEMIC_')) {
+    if (action.includes('SYNC')) {
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200/50 dark:bg-cyan-950/30 dark:text-cyan-400 dark:border-cyan-800/30';
+    }
+    if (action.includes('TRANSITION')) {
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200/50 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800/30';
+    }
+    return 'bg-blue-50 text-blue-700 border-blue-200/50 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/30';
+  }
+  if (action.startsWith('ATTENDANCE_')) {
+    return 'bg-rose-50 text-rose-700 border-rose-200/50 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800/30';
+  }
+  if (action.startsWith('USER_')) {
+    return 'bg-teal-50 text-teal-700 border-teal-200/50 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800/30';
+  }
+  if (action.startsWith('SYSTEM_')) {
+    return 'bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/30';
+  }
+
+  return 'bg-slate-50 text-slate-600 border-slate-200/50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800';
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export const StaffActivityLogPage: React.FC = () => {
+  const timezone = 'Asia/Jakarta';
 
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
   const [staffUsers, setStaffUsers] = useState<UserType[]>([]);
@@ -116,6 +162,20 @@ export const StaffActivityLogPage: React.FC = () => {
 
   // ── Fetch logs (useCallback untuk stabilitas referensi) ──
   const fetchLogs = useCallback(async () => {
+    // Validate filters using Zod validation schema guard
+    const parsed = filterSchema.safeParse({
+      search: debouncedSearch,
+      selectedUser,
+      selectedAction,
+      dateFrom,
+      dateTo,
+    });
+    if (!parsed.success) {
+      console.error('Invalid search filter parameters:', parsed.error);
+      toast.error('Parameter filter tidak valid');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const res = await getTenantActivityLogs({
@@ -158,8 +218,20 @@ export const StaffActivityLogPage: React.FC = () => {
 
   // ── Computed stats (useMemo) ──
   const stats = useMemo(() => {
-    const todayStr = new Date().toDateString();
-    const todayCount = logs?.filter(log => new Date(log.created_at).toDateString() === todayStr).length;
+    // Timezone guard: tenant_id timezone
+    const todayStr = new Date().toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    const todayCount = logs?.filter(log => {
+      const logDate = new Date(log.created_at).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+      return logDate === todayStr;
+    })?.length || 0;
     const syncCount = logs?.filter(log => log.action === 'ACADEMIC_STUDENT_SYNC').length;
     const transitionCount = logs?.filter(log => log.action === 'ACADEMIC_TRANSITION_EXECUTE').length;
     return [
@@ -167,28 +239,28 @@ export const StaffActivityLogPage: React.FC = () => {
         title: 'Aktivitas Hari Ini',
         value: todayCount,
         icon: <Calendar className="w-5 h-5" />,
-        gradient: 'from-rose-500/10 to-amber-500/10 text-rose-600 dark:text-rose-400',
+        gradient: 'from-rose-500 to-orange-500',
         subtitle: 'Seluruh aksi operasional hari ini',
       },
       {
         title: 'Sinkronisasi Siswa',
         value: syncCount,
         icon: <RefreshCw className="w-5 h-5" />,
-        gradient: 'from-emerald-500/10 to-teal-500/10 text-emerald-600 dark:text-emerald-400',
+        gradient: 'from-emerald-500 to-teal-600',
         subtitle: 'Frekuensi sinkronisasi registrasi',
       },
       {
         title: 'Transisi Kelulusan',
         value: transitionCount,
         icon: <GraduationCap className="w-5 h-5" />,
-        gradient: 'from-blue-500/10 to-indigo-500/10 text-blue-600 dark:text-blue-400',
+        gradient: 'from-blue-500 to-indigo-600',
         subtitle: 'Proses kelulusan & kenaikan kelas',
       },
       {
         title: 'Total Seluruh Log',
         value: totalLogsCount,
         icon: <History className="w-5 h-5" />,
-        gradient: 'from-slate-500/10 to-slate-700/10 text-slate-700 dark:text-slate-300',
+        gradient: 'from-slate-600 to-slate-800',
         subtitle: 'Aktivitas terekam dalam sistem',
       },
     ];
@@ -242,75 +314,88 @@ export const StaffActivityLogPage: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
               {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                <Input
-                  id="filter-search"
-                  placeholder="Cari kata kunci..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="Cari log aktivitas berdasarkan kata kunci"
-                  className="pl-9 text-xs py-2 rounded-xl"
-                />
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="filter-search" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Kata Kunci</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <Input
+                    id="filter-search"
+                    placeholder="Cari kata kunci..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    aria-label="Cari log aktivitas berdasarkan kata kunci"
+                    className="pl-9 text-xs py-2 rounded-xl h-9 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                  />
+                </div>
               </div>
 
               {/* Staff User — SearchableSelect */}
-              <Suspense fallback={<div className="h-9 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl animate-pulse" />}>
-                <SearchableSelect
-                  value={selectedUser}
-                  onValueChange={(val) => { setSelectedUser(val); setPage(1); }}
-                  options={staffUserOptions}
-                  placeholder={isLoadingUsers ? 'Memuat staf...' : 'Semua Petugas/Staf'}
-                  searchPlaceholder="Cari nama staf..."
-                  triggerClassName="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs rounded-xl text-slate-700 dark:text-slate-200 font-medium"
-                />
-              </Suspense>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Petugas/Staf</label>
+                <Suspense fallback={<div className="h-9 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl animate-pulse" />}>
+                  <SearchableSelect
+                    value={selectedUser}
+                    onValueChange={(val) => { setSelectedUser(val); setPage(1); }}
+                    options={staffUserOptions}
+                    placeholder={isLoadingUsers ? 'Memuat staf...' : 'Semua Petugas/Staf'}
+                    searchPlaceholder="Cari nama staf..."
+                    triggerClassName="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs rounded-xl text-slate-700 dark:text-slate-200 font-medium h-9"
+                  />
+                </Suspense>
+              </div>
 
               {/* Action Type — SearchableSelect */}
-              <Suspense fallback={<div className="h-9 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl animate-pulse" />}>
-                <SearchableSelect
-                  value={selectedAction}
-                  onValueChange={(val) => { setSelectedAction(val); setPage(1); }}
-                  options={ACTION_OPTIONS}
-                  placeholder="Semua Jenis Aksi"
-                  searchPlaceholder="Cari jenis aksi..."
-                  triggerClassName="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs rounded-xl text-slate-700 dark:text-slate-200 font-medium"
-                />
-              </Suspense>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Jenis Aksi</label>
+                <Suspense fallback={<div className="h-9 w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl animate-pulse" />}>
+                  <SearchableSelect
+                    value={selectedAction}
+                    onValueChange={(val) => { setSelectedAction(val); setPage(1); }}
+                    options={ACTION_OPTIONS}
+                    placeholder="Semua Jenis Aksi"
+                    searchPlaceholder="Cari jenis aksi..."
+                    triggerClassName="w-full bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs rounded-xl text-slate-700 dark:text-slate-200 font-medium h-9"
+                  />
+                </Suspense>
+              </div>
 
               {/* Date From */}
-              <div className="relative">
-                <label htmlFor="filter-date-from" className="sr-only">Tanggal Mulai</label>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="filter-date-from" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tanggal Mulai</label>
                 <input
                   id="filter-date-from"
                   type="date"
                   aria-label="Filter tanggal mulai log"
                   value={dateFrom}
                   onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 dark:text-slate-200 font-medium"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 dark:text-slate-200 font-medium h-9"
                 />
               </div>
 
-              {/* Date To + Reset */}
-              <div className="relative flex gap-2">
-                <label htmlFor="filter-date-to" className="sr-only">Tanggal Akhir</label>
+              {/* Date To */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="filter-date-to" className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tanggal Akhir</label>
                 <input
                   id="filter-date-to"
                   type="date"
                   aria-label="Filter tanggal akhir log"
                   value={dateTo}
                   onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 dark:text-slate-200 font-medium"
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-700 dark:text-slate-200 font-medium h-9"
                 />
+              </div>
+
+              {/* Reset Button */}
+              <div>
                 <Button
                   onClick={handleResetFilters}
                   variant="outline"
                   aria-label="Reset semua filter"
-                  className="text-xs py-2 px-3 rounded-xl font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200"
+                  className="w-full text-xs py-2 px-3 rounded-xl font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 h-9"
                 >
-                  Reset
+                  Reset Filter
                 </Button>
               </div>
             </div>
@@ -337,11 +422,11 @@ export const StaffActivityLogPage: React.FC = () => {
                 <Timeline>
                   {logs?.map((log, index) => {
                     const config = getEventStatusConfig(log.action);
+                    // Timezone guard: tenant_id timezone
                     const formattedDate = new Date(log.created_at).toLocaleDateString('id-ID', {
-                      weekday: 'long',
+                      day: '2-digit',
+                      month: 'short',
                       year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
                     });
                     const formattedTime = new Date(log.created_at).toLocaleTimeString('id-ID', {
                       hour: '2-digit',
@@ -352,8 +437,8 @@ export const StaffActivityLogPage: React.FC = () => {
                       <TimelineItem
                         key={log.id}
                         title={
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-slate-900 dark:text-slate-100">
+                          <div className="flex items-center gap-2 flex-wrap normal-case">
+                            <span className="font-extrabold text-slate-900 dark:text-slate-100 text-[13px]">
                               {log.user?.name || 'Sistem Otomatis'}
                             </span>
                             {log.user?.email && (
@@ -364,27 +449,21 @@ export const StaffActivityLogPage: React.FC = () => {
                           </div>
                         }
                         subtitle={
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge
-                              variant={
-                                log.action.startsWith('ACADEMIC')
-                                  ? 'info'
-                                  : log.action.startsWith('USER')
-                                    ? 'success'
-                                    : 'default'
-                              }
-                              className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md tracking-wider"
-                            >
-                              {log.action}
-                            </Badge>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                              {formattedDate}
-                            </span>
-                          </div>
-                        }
-                        content={
-                          <div className="space-y-1">
-                            <p className="text-xs text-slate-700 dark:text-slate-300 font-semibold">
+                          <div className="space-y-1.5 mt-1 normal-case">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                className={cn(
+                                  "text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md tracking-wider border",
+                                  getActionBadgeStyle(log.action)
+                                )}
+                              >
+                                {log.action}
+                              </Badge>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {formattedDate}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed mt-1">
                               {log.description}
                             </p>
                           </div>

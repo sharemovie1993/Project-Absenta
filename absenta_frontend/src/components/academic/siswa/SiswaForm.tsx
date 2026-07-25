@@ -15,7 +15,7 @@ import { createSiswa, updateSiswa, getSiswaDetail, type CreateSiswaPayload, type
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { studentCardConfigApi } from '../../../api/academic/student-card-config.api';
 import { DEFAULT_CONFIG, PAPER_SIZES } from '@/components/academic/student-card/constants';
-import { PrintOverlay } from '@/pages/academic/student-card/components/PrintOverlay';
+import { PrintOverlay } from '@/components/academic/student-card/PrintOverlay';
 import { useAuthStore } from '../../../store/authStore';
 import { getTenantById } from '../../../api/tenants.api';
 import { SiswaTimelineAndExitTab } from './SiswaTimelineAndExitTab';

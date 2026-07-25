@@ -92,15 +92,47 @@ export class AcademicStatsService {
       })
     ]);
 
-    // Get active Tahun Pelajaran and Semester
-    const [activeTahunPelajaran, activeSemester] = await Promise.all([
-      prisma.tahunPelajaran.findFirst({
-        where: { ...whereClause, is_active: true }
-      }),
-      prisma.semester.findFirst({
-        where: { ...whereClause, is_active: true }
-      })
-    ]);
+    // Get active Tahun Pelajaran and Semester with relation & fallbacks
+    let activeTahunPelajaran = await prisma.tahunPelajaran.findFirst({
+      where: { ...whereClause, is_active: true }
+    });
+
+    let activeSemester = await prisma.semester.findFirst({
+      where: { ...whereClause, is_active: true },
+      include: {
+        TahunPelajaran: {
+          select: {
+            id: true,
+            tahun: true,
+            is_active: true,
+          }
+        }
+      }
+    });
+
+    // Fallback 1: If activeSemester exists with parent year, but activeTahunPelajaran was null, sync activeTahunPelajaran
+    if (activeSemester?.TahunPelajaran && !activeTahunPelajaran) {
+      activeTahunPelajaran = activeSemester.TahunPelajaran as any;
+    }
+
+    // Fallback 2: If activeTahunPelajaran exists but activeSemester was null, get first semester of that year
+    if (activeTahunPelajaran && !activeSemester) {
+      activeSemester = await prisma.semester.findFirst({
+        where: {
+          ...(whereClause.tenant_id ? { tenant_id: whereClause.tenant_id } : {}),
+          tahun_pelajaran_id: activeTahunPelajaran.id
+        },
+        include: {
+          TahunPelajaran: {
+            select: {
+              id: true,
+              tahun: true,
+              is_active: true,
+            }
+          }
+        }
+      });
+    }
 
     return {
       total_jurusan: totalJurusan,
@@ -115,6 +147,7 @@ export class AcademicStatsService {
       semester: activeSemester
     };
   }
+
 
   /**
    * Get Yearly Comparison Stats

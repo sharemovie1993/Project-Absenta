@@ -59,3 +59,5 @@ export { DatePicker } from './DatePicker';
 export { Pagination } from './Pagination';
 export { default as Breadcrumb, type BreadcrumbItem } from './Breadcrumb';
 export { PrintSignature, type PrintSignatureProps } from './PrintSignature';
+export { TabSwitcher, type TabOption } from './TabSwitcher';
+

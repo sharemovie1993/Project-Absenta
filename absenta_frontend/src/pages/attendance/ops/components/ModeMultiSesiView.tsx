@@ -57,6 +57,7 @@ interface TabItem {
 export default function ModeMultiSesiView({ 
   user, 
   isPetugasSiswa, 
+  isPetugasGuru,
   kelasLabel,
   petugasLabel,
 }: ModeMultiSesiViewProps) {
@@ -76,8 +77,19 @@ export default function ModeMultiSesiView({
   const isGerbangPos = positionCodes.includes('GERBANG');
   const isWaliKelasPos = positionCodes.includes('WALIKELAS');
 
-  // 1. Scan Gerbang: GERBANG only (via attendance.scan cap)
-  const canAccessInput = isAdmin || caps.includes('attendance.scan');
+  // 1. Scan Gerbang: Allowed for Admin, Gerbang, Guru, Petugas, and users with scan capability
+  const canAccessInput =
+    isAdmin ||
+    isPetugasGuru ||
+    isPetugasSiswa ||
+    isGerbangPos ||
+    isWaliKelasPos ||
+    user?.role?.name === 'GURU' ||
+    user?.role?.name === 'PETUGAS' ||
+    user?.role?.name === 'OPERATOR' ||
+    caps.includes('attendance.scan') ||
+    caps.includes('attendance.gate.tap.entry') ||
+    caps.includes('attendance.sessions.create');
   
   // 2. Cek Manual: WALIKELAS & PETUGAS_KELAS only
   const canAccessManual = isAdmin || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
