@@ -319,58 +319,6 @@ export class GuruService {
       throw new Error('Tenant context is required for creating Guru');
     }
 
-    // Resolve or create associated user
-    let associatedUserId: string | undefined = input.user_id ?? undefined;
-
-    if (associatedUserId) {
-      // Check if user exists and is in the same tenant
-      const user = await prisma.user.findFirst({
-        where: {
-          id: associatedUserId,
-          tenant_id: tenantId,
-        },
-      });
-
-      if (!user) {
-        throw new Error('User not found or not in the same tenant');
-      }
-
-      // Check if user already has a guru profile
-      const existingGuru = await prisma.guru.findFirst({
-        where: {
-          user_id: associatedUserId,
-        },
-      });
-
-      if (existingGuru) {
-        throw new Error('User already has a guru profile');
-      }
-    } else {
-      // Auto-create user for this guru
-      const fullName = input.nama_guru;
-      const baseLocalPart = (input.nip
-        ? String(input.nip)
-        : fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '')).slice(0, 32);
-      const uniqueSuffix = Math.random().toString(36).slice(2, 6);
-      const generatedEmail = `${baseLocalPart}.${uniqueSuffix}@guru.local`;
-
-      const emailToUse = input.email && input.email.trim().length > 0 ? input.email.trim() : generatedEmail;
-
-      // Default temporary password
-      // If DEFAULT_GURU_PASSWORD is not set, generate a random secure password
-      const defaultPassword = process.env.DEFAULT_GURU_PASSWORD || require('crypto').randomBytes(8).toString('hex');
-
-      const createdUser = await userService.createUser({
-        email: emailToUse,
-        password: defaultPassword,
-        full_name: fullName,
-        role: 'GURU',
-        tenant_id: tenantId,
-      });
-
-      associatedUserId = createdUser.id;
-    }
-
     // Auto-generate temporary NIP starting with 9999 if empty/null/invalid
     let nipToUse = input.nip ? String(input.nip).trim() : '';
     if (!nipToUse || nipToUse === '-' || nipToUse === 'KOSONG') {
@@ -393,6 +341,67 @@ export class GuruService {
       if (!nipToUse) {
         nipToUse = '9999' + Date.now().toString().slice(-6);
       }
+    }
+
+    // Resolve or create associated user
+    let associatedUserId: string | undefined = input.user_id ?? undefined;
+
+    if (associatedUserId) {
+      const user = await prisma.user.findFirst({
+        where: {
+          id: associatedUserId,
+          tenant_id: tenantId,
+        },
+      });
+
+      if (!user) {
+        throw new Error('User not found or not in the same tenant');
+      }
+
+      const existingGuru = await prisma.guru.findFirst({
+        where: {
+          user_id: associatedUserId,
+        },
+      });
+
+      if (existingGuru) {
+        throw new Error('User already has a guru profile');
+      }
+    } else {
+      // Auto-create user for this guru
+      const fullName = input.nama_guru;
+      const cleanNip = nipToUse.replace(/[^a-z0-9]+/gi, '');
+      const cleanName = fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '');
+
+      // Default email is constructed from NIP@absenta.id (fallback to name if missing)
+      const baseLocalPart = (cleanNip || cleanName || 'guru').slice(0, 32);
+      const generatedEmail = `${baseLocalPart}@absenta.id`;
+
+      let emailToUse = input.email && input.email.trim().length > 0 ? input.email.trim() : generatedEmail;
+
+      const existingUserByEmail = await prisma.user.findFirst({
+        where: { email: emailToUse, tenant_id: tenantId },
+      });
+
+      if (existingUserByEmail) {
+        const suffix = Math.floor(Math.random() * 10000).toString();
+        const parts = emailToUse.split('@');
+        emailToUse = `${parts[0]}.${suffix}@${parts[1] || 'absenta.id'}`;
+      }
+
+      // Default temporary password
+      // If DEFAULT_GURU_PASSWORD is not set, generate a random secure password
+      const defaultPassword = process.env.DEFAULT_GURU_PASSWORD || require('crypto').randomBytes(8).toString('hex');
+
+      const createdUser = await userService.createUser({
+        email: emailToUse,
+        password: defaultPassword,
+        full_name: fullName,
+        role: 'GURU',
+        tenant_id: tenantId,
+      });
+
+      associatedUserId = createdUser.id;
     }
 
     const guru = await prisma.guru.create({

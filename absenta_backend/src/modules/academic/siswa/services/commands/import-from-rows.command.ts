@@ -2,6 +2,27 @@ import { prisma } from '@/utils/prisma';
 import { findBestMatch } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
 
+function parseExcelDate(val: any): Date | undefined {
+  if (!val) return undefined;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val === 'number') {
+    const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+    if (!isNaN(date.getTime())) return date;
+  }
+  const str = String(val).trim();
+  if (!str || str === '-' || str === 'KOSONG') return undefined;
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) return parsed;
+
+  const parts = str.split(/[\/\.-]/);
+  if (parts.length === 3 && parts[2].length === 4) {
+    const d = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return undefined;
+}
+
 export async function importFromRowsCommand(rows: any[], tenantId: string, options: any): Promise<any> {
   let successCount = 0;
   let failedCount = 0;
@@ -33,8 +54,16 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
   for (const [index, row] of rows.entries()) {
     const rowNumber = row.__rowNum || (index + 2);
     try {
-      const statusInput = String(row.status || row.Status || 'AKTIF').trim().toUpperCase();
-      const isCalon = statusInput === 'CALON';
+      const scenario = String(options?.scenario || options?.type || '').toUpperCase();
+      const defaultStatus = scenario === 'HISTORIS' 
+        ? 'LULUS' 
+        : scenario === 'PPDB' 
+          ? 'CALON' 
+          : String(options?.status || 'AKTIF').trim().toUpperCase();
+
+      const statusInput = String(row.status || row.Status || defaultStatus).trim().toUpperCase();
+      const isCalon = statusInput === 'CALON' || scenario === 'PPDB';
+      const isHistoris = ['LULUS', 'MUTASI', 'TIDAK_AKTIF'].includes(statusInput) || scenario === 'HISTORIS';
 
       const inputJurusan = row.JURUSAN || row.jurusan || row.Jurusan || row.nama_jurusan;
       if (isSmkMak && isCalon && !inputJurusan) {
@@ -52,9 +81,9 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         }
       }
 
-      // Resolve Kelas if NOT CALON
+      // Resolve Kelas if NOT CALON and NOT HISTORIS
       let kelasId: string | undefined = undefined;
-      if (!isCalon) {
+      if (!isCalon && !isHistoris) {
         const inputKelas = row.kelas || row.nama_kelas || row.Kelas;
         if (!inputKelas) throw new Error('Kolom Kelas wajib diisi untuk siswa aktif');
 
@@ -82,6 +111,15 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
           );
         }
         kelasId = matchedKelasAll[0].id;
+      } else if (isHistoris) {
+        const inputKelas = row.kelas || row.nama_kelas || row.Kelas;
+        if (inputKelas) {
+          const matchKelas = findBestMatch(String(inputKelas), kelasAll.map(k => k.nama_kelas));
+          if (matchKelas.match) {
+            const kObj = kelasAll.find(k => k.nama_kelas === matchKelas.match);
+            if (kObj) kelasId = kObj.id;
+          }
+        }
       }
 
       // Smart Match Tahun Pelajaran (Optional - fallback to active if provided in options or leave null)
@@ -123,7 +161,13 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         nama_ayah: row.nama_ayah || row.Ayah,
         nama_ibu: row.nama_ibu || row.Ibu,
         email: row.email || row.Email,
-        status: statusInput
+        status: statusInput,
+        tanggal_masuk: parseExcelDate(
+          row.tanggal_masuk || row.Tanggal_Masuk || row['TANGGAL MASUK (YYYY-MM-DD)'] || row['TANGGAL MASUK'] || row['Tanggal Masuk']
+        ),
+        tanggal_keluar: parseExcelDate(
+          row.tanggal_keluar || row.Tanggal_Keluar || row['TANGGAL KELUAR (YYYY-MM-DD)'] || row['TANGGAL KELUAR'] || row['Tanggal Keluar']
+        )
       };
 
       if (!createInput.nama_siswa) throw new Error('Kolom Nama Siswa wajib diisi');

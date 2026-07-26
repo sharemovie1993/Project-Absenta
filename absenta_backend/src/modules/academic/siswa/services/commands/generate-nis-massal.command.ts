@@ -54,6 +54,8 @@ export async function generateNisMassalCommand(
       id: true,
       nama_siswa: true,
       nis: true,
+      nisn: true,
+      user_id: true,
       kelas_id: true,
       Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
       Jurusan: { select: { id: true, nama: true } }
@@ -138,6 +140,35 @@ export async function generateNisMassalCommand(
         where: { id: student.id },
         data: { nis: newNis }
       });
+
+      // Synchronize User.email if student has linked User and email is using temporary NIS/NISN (1111/9999)
+      if (student.user_id) {
+        const linkedUser = await prisma.user.findUnique({
+          where: { id: student.user_id },
+          select: { id: true, email: true }
+        });
+
+        if (linkedUser) {
+          const isTempEmail = linkedUser.email.startsWith('1111') || linkedUser.email.startsWith('9999');
+          if (isTempEmail) {
+            // Prioritize NISN@absenta.id if valid NISN exists, otherwise newNis@absenta.id
+            const cleanNisn = student.nisn ? String(student.nisn).trim() : '';
+            const hasValidNisn = cleanNisn && !cleanNisn.startsWith('9999') && cleanNisn !== '-' && cleanNisn !== 'KOSONG';
+            const emailPrefix = hasValidNisn ? cleanNisn : newNis;
+            const newEmail = `${emailPrefix}@absenta.id`;
+
+            const emailExists = await prisma.user.findFirst({
+              where: { email: newEmail, id: { not: linkedUser.id } }
+            });
+            if (!emailExists) {
+              await prisma.user.update({
+                where: { id: linkedUser.id },
+                data: { email: newEmail }
+              });
+            }
+          }
+        }
+      }
 
       nextSequence++;
       generated++;

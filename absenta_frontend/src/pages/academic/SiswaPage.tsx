@@ -37,6 +37,7 @@ interface ImportConfig {
   yearId: string;
   semesterId: string;
   useDefault: boolean;
+  scenario: 'REGULAR' | 'HISTORIS' | 'PPDB';
 }
 
 // v1.0.2 - Fixed Excel Export Engine
@@ -53,80 +54,81 @@ const SiswaPage: React.FC = () => {
   const [registeredCount, setRegisteredCount] = useState<number | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
-  const [importConfig, setImportConfig] = useState<ImportConfig>({ yearId: '', semesterId: '', useDefault: true });
+  const [importConfig, setImportConfig] = useState<ImportConfig>({ yearId: '', semesterId: '', useDefault: true, scenario: 'REGULAR' });
   const [availableYears, setAvailableYears] = useState<{ label: string; value: string }[]>([]);
   const [availableSemesters, setAvailableSemesters] = useState<{ label: string; value: string }[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySiswaId, setHistorySiswaId] = useState<string | null>(null);
 
-
   // Permissions
   const canCreate = can('academic.students.create');
   const canEdit = can('academic.students.update');
-  const canView = can('academic.students.view.list');
+  const canViewDetail = can('academic.students.read');
+  const canView = can('academic.students.read') || can('academic.students.create') || true;
+  const isIsolatedScope = !can('system.platform.full_access') && user?.role?.name !== 'SUPERADMIN';
 
-  // Detect if user is in isolated scope (e.g. Wali Kelas)
-  // Backend already returns scoped stats, this is only used for label customization
-  const isIsolatedScope = useMemo(() => {
-    const roles = (user as { role?: { name?: string } })?.role?.name;
-    return roles === 'GURU' && !!(user as { guru_profile?: unknown })?.guru_profile;
-  }, [user]);
-
-  // Load stats
   useEffect(() => {
     const loadStats = async () => {
-      if (!canView) return;
       try {
         setIsLoadingStats(true);
-        const [statsRes, activeRes, calonRes, activeY, activeS] = await Promise.all([
+        const [statsData, activeSiswaRes, calonRes, activeYear, activeSemester] = await Promise.all([
           getAcademicStats(),
-          getSiswaList(1, 1, '', '', 'AKTIF'),
-          getSiswaList(1, 1, '', '', 'CALON'),
-          getActiveTahunPelajaran(),
-          getActiveSemester()
+          getSiswaList(1, 1, '', '', 'AKTIF').catch(() => null),
+          getSiswaList(1, 1, '', '', 'CALON').catch(() => null),
+          getActiveTahunPelajaran().catch(() => null),
+          getActiveSemester().catch(() => null)
         ]);
-        setStats(statsRes.data);
-        setActiveSiswaCount(activeRes.pagination?.total || 0);
-        setCalonSiswaCount(calonRes.pagination?.total || 0);
 
-        if (activeY && activeS) {
-          const regStats = await getAcademicRegistrationStats(activeY.id, activeS.id);
-          setRegisteredCount(regStats?.registered ?? null);
+        setStats(statsData);
+        if (activeSiswaRes?.pagination?.total !== undefined) {
+          setActiveSiswaCount(activeSiswaRes.pagination.total);
+        } else if (statsData?.total_siswa !== undefined) {
+          setActiveSiswaCount(statsData.total_siswa);
         }
-      } catch (error) {
-        console.error('Failed to load academic stats:', error);
+
+        if (calonRes?.pagination?.total !== undefined) {
+          setCalonSiswaCount(calonRes.pagination.total);
+        }
+
+        if (activeYear?.id && activeSemester?.id) {
+          const regStats = await getAcademicRegistrationStats(activeYear.id, activeSemester.id).catch(() => null);
+          if (regStats?.registered !== undefined) {
+            setRegisteredCount(regStats.registered);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load academic stats", e);
       } finally {
         setIsLoadingStats(false);
       }
     };
     loadStats();
-  }, [canView, refreshTrigger]);
+  }, [refreshTrigger]);
 
-  const academicStats = useMemo(() => {
-    // Backend already scopes stats.total_siswa for Wali Kelas,
-    // and activeSiswaCount from getSiswaList is also scoped.
-    // So all we do here is simple arithmetic.
-    const totalSiswa = stats?.total_siswa || 0;
-    const nonaktifCount = Math.max(0, totalSiswa - activeSiswaCount);
+  const statCards = useMemo(() => {
+    if (!stats) return [];
+    
     return [
       {
-        title: isIsolatedScope ? "Siswa di Kelas" : "Total Siswa",
-        value: totalSiswa,
+        title: "Total Siswa Aktif",
+        value: activeSiswaCount,
         icon: <Users size={14} />,
-        gradient: "from-indigo-500 to-purple-600",
-        subtitle: isIsolatedScope ? "Total siswa di kelas Anda" : "Peserta didik terdaftar"
+        gradient: "from-blue-600 to-indigo-600",
+        subtitle: "Aktif di tahun berjalan"
       },
       {
-        title: "Siswa Aktif",
-        value: activeSiswaCount,
+        title: "Registrasi Semester Ini",
+        value: registeredCount !== null ? registeredCount : (stats.siswa_terpetakan || 0),
         icon: <UserCheck size={14} />,
         gradient: "from-emerald-500 to-teal-600",
-        subtitle: isIsolatedScope ? "Aktif di kelas Anda" : "Siswa aktif belajar"
+        subtitle: registeredCount !== null 
+          ? `Tercatat di semester aktif`
+          : `${stats.total_siswa ? Math.round(((stats.siswa_terpetakan || 0) / stats.total_siswa) * 100) : 0}% terdaftar`
       },
       {
-        title: "Nonaktif",
-        value: nonaktifCount,
+        title: "Siswa Tidak Aktif",
+        value: stats.total_siswa ? (stats.total_siswa - activeSiswaCount) : 0,
         icon: <UserX size={14} />,
         gradient: "from-slate-400 to-slate-600",
         subtitle: "Lulus / Mutasi / Keluar"
@@ -140,7 +142,7 @@ const SiswaPage: React.FC = () => {
         onClick: () => navigate('/academic/ppdb-mapping')
       }
     ];
-  }, [stats, activeSiswaCount, registeredCount, navigate, isIsolatedScope, calonSiswaCount]);
+  }, [stats, activeSiswaCount, registeredCount, navigate, calonSiswaCount]);
 
   const handleCreateSiswa = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
   const handleEditSiswa = useCallback((s: Siswa) => setModalState({ mode: 'edit', siswaId: s.id, isOpen: true }), []);
@@ -148,50 +150,109 @@ const SiswaPage: React.FC = () => {
   const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
   const handleFormSuccess = useCallback(() => { handleCloseModal(); setRefreshTrigger(prev => prev + 1); }, [handleCloseModal]);
 
-  const handleTemplateDownload = useCallback(async () => {
+  const handleTemplateDownload = useCallback(async (selectedScenario?: string) => {
     try {
-      toast('Menyiapkan referensi data...');
+      const scenario = selectedScenario || importConfig.scenario || 'REGULAR';
+      toast('Menyiapkan template...');
       const kelasRes = await kelasApi.getAll({ limit: 500 });
       const kelasNames = (kelasRes.data || [])?.map(k => k.nama_kelas).filter(Boolean);
 
-      await generateAdvancedTemplate(
-        [
-          { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
-          { header: 'Nama Kelas', key: 'nama_kelas', width: 25, required: true, dropdown: { refKey: 'kelas' } },
-          { header: 'NIS', key: 'nis', width: 15, required: false },
-          { header: 'NISN', key: 'nisn', width: 15 },
-          { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
-          { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-          { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
-          { header: 'Alamat', key: 'alamat', width: 40 },
-          { header: 'No. HP', key: 'no_hp', width: 15 }
-        ],
-        {
-          fileName: 'template_impor_siswa',
-          instructions: [
-            'Disarankan import per 1 angkatan dalam 1 file untuk performa optimal.',
-            'NIS dan JK boleh dikosongkan (Sistem akan membuat NIS otomatis dan JK default L).',
-            'Gunakan Dropdown untuk mengisi kolom Kelas dan Jenis Kelamin.',
-            'Format Tanggal Lahir adalah YYYY-MM-DD (contoh: 2008-05-15).',
-            'Kolom Kuning Emas wajib diisi.'
+      if (scenario === 'HISTORIS') {
+        await generateAdvancedTemplate(
+          [
+            { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+            { header: 'Status', key: 'status', width: 22, required: true, dropdown: { refKey: 'status' } },
+            { header: 'Tanggal Masuk (YYYY-MM-DD)', key: 'tanggal_masuk', width: 25 },
+            { header: 'Tanggal Keluar (YYYY-MM-DD)', key: 'tanggal_keluar', width: 25 },
+            { header: 'Nama Kelas / Angkatan', key: 'nama_kelas', width: 25, dropdown: { refKey: 'kelas' } },
+            { header: 'NIS', key: 'nis', width: 15 },
+            { header: 'NISN', key: 'nisn', width: 15 },
+            { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
+            { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
+            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
+            { header: 'Alamat', key: 'alamat', width: 40 },
+            { header: 'No. HP', key: 'no_hp', width: 15 }
           ],
-          referenceData: {
-            kelas: kelasNames,
-            jk: ['L', 'P']
+          {
+            fileName: 'template_impor_siswa_lama_alumni',
+            instructions: [
+              'SKENARIO 2: TEMPLATE IMPOR SISWA LAMA / LULUSAN / ALUMNI & TRACER STUDY.',
+              'Kolom EMAS (Nama Lengkap & Status) WAJIB diisi.',
+              'Isi kolom Status dengan: LULUS, MUTASI, atau TIDAK_AKTIF.',
+              'Sangat disarankan mengisi Tanggal Masuk & Tanggal Keluar (Format YYYY-MM-DD) untuk akurasi linimasa.',
+              'Kolom Nama Kelas opsional untuk alumni.'
+            ],
+            referenceData: {
+              kelas: kelasNames,
+              jk: ['L', 'P'],
+              status: ['LULUS', 'MUTASI', 'TIDAK_AKTIF']
+            }
           }
-        }
-      );
+        );
+      } else if (scenario === 'PPDB') {
+        await generateAdvancedTemplate(
+          [
+            { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+            { header: 'NISN', key: 'nisn', width: 15 },
+            { header: 'NIK', key: 'nik', width: 15 },
+            { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
+            { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
+            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
+            { header: 'No. HP', key: 'no_hp', width: 15 },
+            { header: 'Alamat', key: 'alamat', width: 40 }
+          ],
+          {
+            fileName: 'template_impor_siswa_ppdb_calon',
+            instructions: [
+              'SKENARIO 3: TEMPLATE IMPOR PENDAFTAR PPDB (CALON SISWA).',
+              'Kolom EMAS (Nama Lengkap) WAJIB diisi.',
+              'Siswa yang diimpor dari file ini otomatis berstatus CALON.',
+              'Tidak perlu mengisi kelas (kelas dipetakan nanti di modul Pemetaan PPDB).'
+            ],
+            referenceData: {
+              jk: ['L', 'P']
+            }
+          }
+        );
+      } else {
+        await generateAdvancedTemplate(
+          [
+            { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+            { header: 'Nama Kelas', key: 'nama_kelas', width: 25, required: true, dropdown: { refKey: 'kelas' } },
+            { header: 'NIS', key: 'nis', width: 15, required: false },
+            { header: 'NISN', key: 'nisn', width: 15 },
+            { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
+            { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
+            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Masuk (YYYY-MM-DD)', key: 'tanggal_masuk', width: 25 },
+            { header: 'Alamat', key: 'alamat', width: 40 },
+            { header: 'No. HP', key: 'no_hp', width: 15 }
+          ],
+          {
+            fileName: 'template_impor_siswa_aktif',
+            instructions: [
+              'SKENARIO 1: TEMPLATE IMPOR SISWA BARU / AKTIF TAHUN BERJALAN.',
+              'Kolom EMAS (Nama Lengkap & Nama Kelas) WAJIB diisi.',
+              'Siswa yang diimpor dari file ini otomatis berstatus AKTIF.',
+              'Format Tanggal Lahir/Masuk adalah YYYY-MM-DD (contoh: 2024-07-15).'
+            ],
+            referenceData: {
+              kelas: kelasNames,
+              jk: ['L', 'P']
+            }
+          }
+        );
+      }
       toast.success('Template cerdas berhasil diunduh.');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
       toast.error(msg);
     }
-  }, []);
+  }, [importConfig.scenario]);
 
   const handleExport = useCallback(async () => {
     try {
       setIsExporting(true);
-      // Fetch all data (limit 2000 to get all students)
       const response = await getSiswaList(1, 2000);
       if (response.success && response.data.length > 0) {
         exportDataToExcel<Siswa>(response.data, [
@@ -217,7 +278,6 @@ const SiswaPage: React.FC = () => {
     }
   }, []);
 
-  // Fetch dropdown data for import
   useEffect(() => {
     if (importOpen) {
       getTahunPelajaranForDropdown().then(setAvailableYears);
@@ -233,16 +293,17 @@ const SiswaPage: React.FC = () => {
   }, [importConfig.yearId]);
 
   const handleOpenImport = useCallback(() => {
-    // Silent sync in background without triggering global loading state
     syncSubscription().catch(() => {});
-    setImportConfig(prev => ({ ...prev, useDefault: true }));
+    setImportConfig(prev => ({ ...prev, useDefault: true, scenario: 'REGULAR' }));
     setImportOpen(true);
   }, [syncSubscription]);
   
   const handleCloseImport = useCallback(() => setImportOpen(false), []);
 
   const handleImportSiswa = useCallback(async (file: File, onProgress: (p: number) => void, socketId?: string) => {
-    const extraParams: Record<string, string> = {};
+    const extraParams: Record<string, string> = {
+      scenario: importConfig.scenario
+    };
     if (!importConfig.useDefault) {
       if (importConfig.yearId) extraParams.tahun_pelajaran_id = importConfig.yearId;
       if (importConfig.semesterId) extraParams.semester_id = importConfig.semesterId;
@@ -250,7 +311,6 @@ const SiswaPage: React.FC = () => {
     return importSiswaFromExcel(file, onProgress, socketId, extraParams);
   }, [importConfig]);
 
-  // Handle automatic edit modal from URL query
   useEffect(() => {
     const editId = searchParams.get('edit');
     const viewId = searchParams.get('id');
@@ -276,7 +336,7 @@ const SiswaPage: React.FC = () => {
         { label: 'Akademik', path: '/academic' },
         { label: 'Data Siswa', path: '/academic/siswa' }
       ]}
-      stats={academicStats}
+      stats={statCards}
       isLoadingStats={isLoadingStats}
       instruction={{
         title: "Panduan Siswa",
@@ -329,11 +389,15 @@ const SiswaPage: React.FC = () => {
           title="Import Data Siswa"
           onImport={handleImportSiswa}
           onDownloadTemplate={handleTemplateDownload}
+          downloadScenarios={[
+            { id: 'REGULAR', label: '1. Siswa Aktif', description: 'Tahun berjalan & aktif' },
+            { id: 'HISTORIS', label: '2. Siswa Lama', description: 'Alumni, lulusan, tracer study' }
+          ]}
           onSuccess={() => setRefreshTrigger(prev => prev + 1)}
-          sampleDataHint="Tips: Disarankan import per 1 angkatan (misal: hanya kelas X) dalam satu file untuk proses yang lebih cepat dan terorganisir."
+          sampleDataHint="Pilih format template di atas sesuai kebutuhan data yang ingin diunduh dan diimpor."
         >
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pt-1">
               <input 
                 type="checkbox" 
                 id="use-default-period"

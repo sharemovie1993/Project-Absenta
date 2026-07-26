@@ -87,7 +87,6 @@ class MainActivity : ComponentActivity() {
 
             return when {
                 role == "PARENT" || role.contains("PARENT") -> ScreenRoutes.PARENT_DASHBOARD
-                caps.contains("dashboard.view.kepsek") -> ScreenRoutes.EXECUTIVE_DASHBOARD
                 else -> ScreenRoutes.DYNAMIC_MENU_DASHBOARD
             }
         } catch (e: Exception) {

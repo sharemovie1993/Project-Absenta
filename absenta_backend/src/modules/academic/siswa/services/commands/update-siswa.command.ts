@@ -140,9 +140,61 @@ export async function updateSiswaCommand(
       dataToUpdate.user_id = newUser.id;
       console.log(`[SYNC-USER] Created new linked User account for student with email: ${targetEmail}`);
     }
-  }
+  } else if (!email && validatedInput.nisn) {
+    // Auto-sync User.email when NISN is updated via Quick Update, Inline Edit, or Form Edit
+    const cleanNewNisn = String(validatedInput.nisn).trim();
+    const cleanOldNisn = String(existingSiswa.nisn || '').trim();
+    
+    if (cleanNewNisn && cleanNewNisn !== cleanOldNisn && !cleanNewNisn.startsWith('9999') && cleanNewNisn !== '-' && cleanNewNisn !== 'KOSONG') {
+      const targetEmail = `${cleanNewNisn}@absenta.id`;
 
-  // If reverting to CALON, explicitly clear class and active year/semester assignments
+      if (existingSiswa.user_id) {
+        const linkedUser = await siswaDb.user.findUnique({
+          where: { id: existingSiswa.user_id },
+        });
+
+        if (linkedUser && linkedUser.email.toLowerCase() !== targetEmail.toLowerCase()) {
+          const existingUserWithEmail = await siswaDb.user.findFirst({
+            where: { email: targetEmail, id: { not: existingSiswa.user_id } }
+          });
+          if (!existingUserWithEmail) {
+            await siswaDb.user.update({
+              where: { id: existingSiswa.user_id },
+              data: { email: targetEmail }
+            });
+            console.log(`[SYNC-USER] QuickUpdate: Auto-updated User email from ${linkedUser.email} to: ${targetEmail}`);
+          }
+        }
+      } else {
+        // Student has NO linked user account yet. Create user account automatically!
+        const existingUserWithEmail = await siswaDb.user.findFirst({
+          where: { email: targetEmail }
+        });
+        if (!existingUserWithEmail) {
+          const siswaRole = await siswaDb.role.findFirst({
+            where: { name: 'SISWA' }
+          });
+          if (siswaRole) {
+            const defaultPass = cleanNewNisn;
+            const hashedPassword = await bcrypt.hash(defaultPass, 12);
+            const newUser = await siswaDb.user.create({
+              data: {
+                email: targetEmail,
+                password: hashedPassword,
+                full_name: validatedInput.nama_siswa || existingSiswa.nama_siswa,
+                role_id: siswaRole.id,
+                tenant_id: existingSiswa.tenant_id,
+                email_verified: false,
+              }
+            });
+            dataToUpdate.user_id = newUser.id;
+            console.log(`[SYNC-USER] QuickUpdate: Auto-created linked User account for student with email: ${targetEmail}`);
+          }
+        }
+      }
+    }
+  } // If reverting to CALON, explicitly clear class and active year/semester assignments
+  
   if (dataToUpdate.status === 'CALON') {
     dataToUpdate.kelas_id = null;
     dataToUpdate.tahun_pelajaran_id = null;

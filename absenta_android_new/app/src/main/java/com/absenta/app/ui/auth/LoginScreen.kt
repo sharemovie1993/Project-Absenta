@@ -597,9 +597,6 @@ private fun PresetChip(label: String, url: String, onSelect: (String) -> Unit) {
 
 private fun resolveStartDestination(capabilities: List<String>, isParent: Boolean): String {
     if (isParent) return ScreenRoutes.PARENT_DASHBOARD
-    if (capabilities.contains("dashboard.view.kepsek")) {
-        return ScreenRoutes.EXECUTIVE_DASHBOARD
-    }
     return ScreenRoutes.DYNAMIC_MENU_DASHBOARD
 }
 

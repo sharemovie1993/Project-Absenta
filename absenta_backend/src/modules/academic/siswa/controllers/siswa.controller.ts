@@ -569,11 +569,13 @@ export const siswaController = {
       const headers = isSmkMak
         ? [
             'NAMA LENGKAP', 'NIS', 'NISN', 'NIK', 'EMAIL', 'JK (L/P)', 'TEMPAT LAHIR', 
-            'TANGGAL LAHIR (YYYY-MM-DD)', 'ALAMAT', 'NO. HP', 'NAMA KELAS', 'JURUSAN', 'STATUS', 'NO. RFID'
+            'TANGGAL LAHIR (YYYY-MM-DD)', 'TANGGAL MASUK (YYYY-MM-DD)', 'TANGGAL KELUAR (YYYY-MM-DD)',
+            'ALAMAT', 'NO. HP', 'NAMA KELAS', 'JURUSAN', 'STATUS', 'NO. RFID'
           ]
         : [
             'NAMA LENGKAP', 'NIS', 'NISN', 'NIK', 'EMAIL', 'JK (L/P)', 'TEMPAT LAHIR', 
-            'TANGGAL LAHIR (YYYY-MM-DD)', 'ALAMAT', 'NO. HP', 'NAMA KELAS', 'STATUS', 'NO. RFID'
+            'TANGGAL LAHIR (YYYY-MM-DD)', 'TANGGAL MASUK (YYYY-MM-DD)', 'TANGGAL KELUAR (YYYY-MM-DD)',
+            'ALAMAT', 'NO. HP', 'NAMA KELAS', 'STATUS', 'NO. RFID'
           ];
 
       const quickPetunjuk = isSmkMak
@@ -586,7 +588,7 @@ export const siswaController = {
         [quickPetunjuk, '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['2. Agar angka NOL tidak hilang di NO HP/NISN, awali dengan tanda PETIK SATU (\'). Contoh: \'0812345678', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['3. JK (Jenis Kelamin): Isi L untuk Laki-laki, P untuk Perempuan.', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-        ['4. Format Tanggal: YYYY-MM-DD (Contoh: 2010-06-12).', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+        ['4. Format Tanggal: YYYY-MM-DD (Contoh: 2021-07-15). TANGGAL MASUK/KELUAR opsional untuk riwayat historis.', '', '', '', '', '', '', '', '', '', '', '', '', ''],
         ['', '', '', '', '', '', '', '', '', '', '', '', '', ''], // Spacer
         headers
       ];
@@ -666,7 +668,7 @@ export const siswaController = {
         ['3. kelas_id / NAMA KELAS: Bisa diisi ID Kelas atau Nama Kelas (Lihat sheet Referensi). Kosongkan jika PPDB (CALON).'],
         isSmkMak ? ['3b. JURUSAN: WAJIB diisi untuk sekolah SMK/MAK (contoh: RPL, TKJ, Akuntansi)'] : null,
         ['4. jenis_kelamin: Isi dengan "L" (Laki-laki) atau "P" (Perempuan)'],
-        ['5. tanggal_lahir: Format YYYY-MM-DD (Contoh: 2010-06-12)'],
+        ['5. tanggal_lahir / tanggal_masuk / tanggal_keluar: Format YYYY-MM-DD (Contoh: 2021-07-15). TANGGAL MASUK opsional (default: tanggal hari ini/impor). TANGGAL KELUAR diisi jika status LULUS/ALUMNI/PINDAH.'],
         ['6. status: Isi dengan "AKTIF", "CALON" (untuk PPDB belum dipetakan), "TIDAK_AKTIF", "LULUS", "PINDAH"'],
         [''],
         ['Tips: Gunakan sheet "Referensi Kelas" untuk mempermudah mencari nama/id kelas.'],
@@ -882,9 +884,16 @@ export const siswaController = {
                throw new Error('Nama Siswa is required');
             }
 
-            const defaultStatus = String(query.status || 'AKTIF').trim().toUpperCase();
+            const scenario = String(query.scenario || query.type || '').toUpperCase();
+            const defaultStatus = scenario === 'HISTORIS' 
+              ? 'LULUS' 
+              : scenario === 'PPDB' 
+                ? 'CALON' 
+                : String(query.status || 'AKTIF').trim().toUpperCase();
+
             const statusInput = String(input.status || input.Status || defaultStatus).trim().toUpperCase();
-            const isCalon = statusInput === 'CALON';
+            const isCalon = statusInput === 'CALON' || scenario === 'PPDB';
+            const isHistoris = ['LULUS', 'MUTASI', 'TIDAK_AKTIF'].includes(statusInput) || scenario === 'HISTORIS';
 
             const inputJurusan = input.JURUSAN || input.jurusan || input.Jurusan || input.nama_jurusan;
             if (isSmkMak && isCalon && !inputJurusan) {
@@ -904,8 +913,8 @@ export const siswaController = {
             input.jurusan_id = matchedJurusanId;
 
             // Resolve kelas_id
-            let kelasId = input.kelas_id || input.nama_kelas;
-            if (!isCalon) {
+            let kelasId = input.kelas_id || input.nama_kelas || input.Kelas;
+            if (!isCalon && !isHistoris) {
               if (kelasId) {
                  const kelasIdStr = String(kelasId).trim();
                  // check if it's an ID
@@ -943,6 +952,17 @@ export const siswaController = {
                  throw new Error('Kolom Kelas wajib diisi untuk siswa aktif');
               }
               input.kelas_id = kelasId;
+            } else if (isHistoris && kelasId) {
+              const kelasIdStr = String(kelasId).trim();
+              if (kelasIdSet.has(kelasIdStr)) {
+                input.kelas_id = kelasIdStr;
+              } else {
+                const match = findBestMatch(kelasIdStr, kelasList.map(k => k.nama_kelas));
+                if (match.match) {
+                  const matchedK = kelasList.find(k => k.nama_kelas === match.match);
+                  if (matchedK) input.kelas_id = matchedK.id;
+                }
+              }
             } else {
               input.kelas_id = undefined;
             }

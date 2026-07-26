@@ -22,7 +22,12 @@ interface ExcelImportModalProps {
   onClose: () => void;
   title: string;
   onImport: (file: File, onProgress: (progress: number) => void, socketId?: string) => Promise<{ success: boolean; data?: any; errors?: any[] } | any>;
-  onDownloadTemplate: () => Promise<void>;
+  onDownloadTemplate: (scenario?: any) => Promise<void>;
+  downloadScenarios?: Array<{
+    id: string;
+    label: string;
+    description?: string;
+  }>;
   onSuccess?: () => void;
   sampleDataHint?: string;
   templateName?: string;
@@ -44,6 +49,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
   title,
   onImport,
   onDownloadTemplate,
+  downloadScenarios,
   onSuccess,
   templateName,
   description,
@@ -192,17 +198,50 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
           <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-xl text-blue-600 dark:text-blue-400">
             <Download size={20} />
           </div>
-          <div className="flex-1 space-y-1">
+          <div className="flex-1 space-y-2">
             <h4 className="text-xs font-black text-blue-900 dark:text-blue-300 uppercase tracking-tight">
               {description || 'Gunakan Template Standar'}
             </h4>
             <p className="text-[11px] text-blue-700 dark:text-blue-400 leading-relaxed">{sampleDataHint}</p>
-            <button 
-              onClick={onDownloadTemplate}
-              className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:underline pt-1 flex items-center gap-1.5"
-            >
-              {templateName ? `Unduh ${templateName}` : 'Unduh Template Excel'} <Download size={12} />
-            </button>
+            
+            {downloadScenarios && downloadScenarios.length > 0 ? (
+              <div className="pt-1 space-y-1.5">
+                <span className="text-[10px] font-black uppercase text-blue-900/80 dark:text-blue-300/80 block tracking-wider">
+                  Pilih Format Template yang Ingin Diunduh:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {downloadScenarios.map(sc => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => onDownloadTemplate(sc.id)}
+                      className="p-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-left transition-all group flex flex-col justify-between"
+                    >
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-blue-900 dark:text-blue-200 block">
+                          {sc.label}
+                        </span>
+                        {sc.description && (
+                          <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium block leading-tight mt-0.5">
+                            {sc.description}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1 mt-2 group-hover:underline">
+                        Unduh Excel <Download size={10} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => onDownloadTemplate()}
+                className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:underline pt-1 flex items-center gap-1.5"
+              >
+                {templateName ? `Unduh ${templateName}` : 'Unduh Template Excel'} <Download size={12} />
+              </button>
+            )}
           </div>
         </div>
 

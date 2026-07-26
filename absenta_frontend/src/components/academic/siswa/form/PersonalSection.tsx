@@ -620,7 +620,7 @@ export const PersonalSection: React.FC<PersonalSectionProps> = React.memo(({
                         </Button>
                         <Button
                             type="button"
-                            onClick={capturePhoto}
+                            onClick={handleCapture}
                             className="flex-1 h-12 rounded-xl text-[11px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/15 flex items-center justify-center gap-2"
                         >
                             <Camera size={14} />

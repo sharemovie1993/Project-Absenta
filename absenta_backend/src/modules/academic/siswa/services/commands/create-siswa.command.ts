@@ -139,6 +139,30 @@ export async function createSiswaCommand(
     }
   }
 
+  // Generate temporary NISN starting with 9999 if empty/null/invalid
+  let nisn = validatedInput.nisn ? String(validatedInput.nisn).trim() : '';
+  if (!nisn || nisn === '-' || nisn === 'KOSONG') {
+    const generateTempNisn = () => {
+      let s = '9999';
+      for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
+      return s;
+    };
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = generateTempNisn();
+      const exists = await siswaDb.siswa.findFirst({
+        where: { tenant_id: tenantId, nisn: candidate },
+      });
+      if (!exists) {
+        nisn = candidate;
+        break;
+      }
+    }
+    if (!nisn) {
+      nisn = '9999' + Date.now().toString().slice(-6);
+    }
+  }
+
   let associatedUserId: string | undefined = validatedInput.user_id || undefined;
 
   if (associatedUserId) {
@@ -165,11 +189,13 @@ export async function createSiswaCommand(
     }
   } else {
     const fullName = validatedInput.nama_siswa;
-    const baseLocalPart = (validatedInput.nis
-      ? String(validatedInput.nis)
-      : fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '')).slice(0, 32);
-    const uniqueSuffix = Math.random().toString(36).slice(2, 6);
-    const generatedEmail = `${baseLocalPart}.${uniqueSuffix}@siswa.local`;
+    const cleanNisn = nisn ? String(nisn).trim().replace(/[^a-z0-9]+/gi, '') : '';
+    const cleanNis = nisToUse ? String(nisToUse).trim().replace(/[^a-z0-9]+/gi, '') : '';
+    const cleanName = fullName.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '');
+
+    // Default email is constructed from NISN@absenta.id (fallback to NIS or sanitized name if missing)
+    const baseLocalPart = (cleanNisn || cleanNis || cleanName || 'siswa').slice(0, 32);
+    const generatedEmail = `${baseLocalPart}@absenta.id`;
 
     let emailToUse = validatedInput.email && validatedInput.email.trim().length > 0 ? validatedInput.email.trim() : generatedEmail;
 
@@ -180,7 +206,7 @@ export async function createSiswaCommand(
     if (existingUserByEmail) {
       const suffix = Math.floor(Math.random() * 10000).toString();
       const parts = emailToUse.split('@');
-      emailToUse = `${parts[0]}.${suffix}@${parts[1] || 'siswa.local'}`;
+      emailToUse = `${parts[0]}.${suffix}@${parts[1] || 'absenta.id'}`;
     }
 
     const genStrongPassword = () => {
@@ -206,30 +232,6 @@ export async function createSiswaCommand(
   }
 
   // --- SANITIZATION & AUTO-FIX ---
-  // Ensure string fields are strings (Excel often sends numbers)
-  // Generate temporary NISN starting with 9999 if empty/null/invalid
-  let nisn = validatedInput.nisn ? String(validatedInput.nisn).trim() : '';
-  if (!nisn || nisn === '-' || nisn === 'KOSONG') {
-    const generateTempNisn = () => {
-      let s = '9999';
-      for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10).toString();
-      return s;
-    };
-
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const candidate = generateTempNisn();
-      const exists = await siswaDb.siswa.findFirst({
-        where: { tenant_id: tenantId, nisn: candidate },
-      });
-      if (!exists) {
-        nisn = candidate;
-        break;
-      }
-    }
-    if (!nisn) {
-      nisn = '9999' + Date.now().toString().slice(-6);
-    }
-  }
   const nik = validatedInput.nik ? String(validatedInput.nik).trim() : null;
   const rfid = validatedInput.no_rfid ? String(validatedInput.no_rfid).trim() : null;
 
@@ -240,6 +242,22 @@ export async function createSiswaCommand(
   }
 
   const genderToUse = validatedInput.jenis_kelamin && String(validatedInput.jenis_kelamin).trim() ? validatedInput.jenis_kelamin : '';
+
+  let tanggalMasukToUse: Date = new Date();
+  if (input.tanggal_masuk) {
+    const d = new Date(input.tanggal_masuk);
+    if (!isNaN(d.getTime())) {
+      tanggalMasukToUse = d;
+    }
+  }
+
+  let tanggalKeluarToUse: Date | null = null;
+  if (input.tanggal_keluar) {
+    const d = new Date(input.tanggal_keluar);
+    if (!isNaN(d.getTime())) {
+      tanggalKeluarToUse = d;
+    }
+  }
 
   const siswa = await siswaDb.siswa.create({
     data: {
@@ -285,7 +303,9 @@ export async function createSiswaCommand(
       jurusan_id: input.jurusan_id || null,
       tahun_pelajaran_id: input.tahun_pelajaran_id || null,
       semester_id: input.semester_id || null,
-      tanggal_masuk: input.tanggal_masuk || new Date(),
+      tanggal_masuk: tanggalMasukToUse,
+      tanggal_keluar: tanggalKeluarToUse,
+      alasan_keluar: input.alasan_keluar || null,
       status: input.status || 'AKTIF',
       no_rfid: rfid,
       foto: input.foto || null,

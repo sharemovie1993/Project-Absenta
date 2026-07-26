@@ -69,8 +69,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.absenta.app.data.api.ApiClient
+import com.absenta.app.data.api.AttendanceService
+import com.absenta.app.data.api.DashboardService
+import com.absenta.app.data.api.KesiswaanService
+import com.absenta.app.data.api.ParentService
+import com.absenta.app.data.api.PiketService
+import com.absenta.app.data.api.ProfileService
+import com.absenta.app.data.api.SesiKelasService
 import com.absenta.app.data.local.TokenManager
 import com.absenta.app.ui.components.LoadingOverlay
 import com.absenta.app.ui.navigation.ScreenRoutes
@@ -81,12 +92,17 @@ import com.absenta.app.ui.theme.Primary
 import com.absenta.app.ui.theme.PrimaryContainer
 import com.absenta.app.ui.theme.PrimaryDark
 import com.absenta.app.ui.theme.PrimaryLight
+import com.absenta.app.ui.theme.Success
 import com.absenta.app.ui.theme.SurfaceDark
 import com.absenta.app.ui.theme.TextPrimary
 import com.absenta.app.ui.theme.TextSecondary
+import com.absenta.app.ui.theme.TextTertiary
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /** Model item kartu menu berbentuk App Icon 1 Kata */
 private data class MenuCard(
@@ -118,14 +134,130 @@ fun DynamicMenuDashboard(
     var userRole by remember { mutableStateOf("") }
     var menuCategories by remember { mutableStateOf<List<MenuCategory>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }    // === Live API Data States ===
+    var photoUrl by remember { mutableStateOf<String?>(""  ) }
+    var schoolName by remember { mutableStateOf("Absenta") }
+
+    // Role detection flags
+    val normalizedRole = userRole.uppercase()
+    val isSiswa = normalizedRole == "SISWA" || normalizedRole.contains("SISWA")
+    val isParent = normalizedRole == "PARENT" || normalizedRole.contains("ORTU") || normalizedRole.contains("PARENT")
+    val isExec = normalizedRole.contains("KEPSEK") || normalizedRole.contains("KEPALA") || normalizedRole.contains("ADMIN")
+    // Default: GURU / PIKET / WALIKELAS / KURIKULUM etc.
+
+    // GURU stats
+    var sesiCount by remember { mutableStateOf(0) }
+    var piketActive by remember { mutableStateOf(false) }
+    // SISWA stats
+    var kehadiranPersen by remember { mutableStateOf(0.0) }
+    var totalPoin by remember { mutableStateOf(0) }
+    // KEPSEK/ADMIN stats
+    var hadirSiswa by remember { mutableStateOf(0) }
+    var totalSiswa by remember { mutableStateOf(0) }
+    var hadirGuru by remember { mutableStateOf(0) }
+    var totalGuru by remember { mutableStateOf(0) }
+    // ORTU stats
+    var childStatus by remember { mutableStateOf("—") }
+    var childName by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         userName = tokenManager.userNameFlow.firstOrNull() ?: ""
         userRole = tokenManager.userRoleFlow.firstOrNull() ?: "USER"
+        photoUrl = tokenManager.photoUrlFlow.firstOrNull()
         val caps = tokenManager.getCapabilities()
         menuCategories = buildMenuCategories(userRole, caps)
         isLoading = false
+
+        val retrofit = ApiClient.create(tokenManager)
+
+        // === Profile API → Nama, Foto, Sekolah (semua role) ===
+        try {
+            val profileService = retrofit.create(ProfileService::class.java)
+            val profileResp = profileService.getMyProfile()
+            if (profileResp.isSuccessful) {
+                profileResp.body()?.data?.let { user ->
+                    userName = user.fullName ?: user.name ?: userName
+                    photoUrl = user.photoUrl ?: user.fotoUrlRaw ?: user.avatarUrl
+                    schoolName = user.tenantInfo?.name ?: "Absenta"
+                }
+            }
+        } catch (_: Exception) { }
+
+        val roleUpper = userRole.uppercase()
+        val roleSiswa = roleUpper == "SISWA" || roleUpper.contains("SISWA")
+        val roleParent = roleUpper == "PARENT" || roleUpper.contains("ORTU") || roleUpper.contains("PARENT")
+        val roleExec = roleUpper.contains("KEPSEK") || roleUpper.contains("KEPALA") || roleUpper.contains("ADMIN")
+
+        when {
+            // === SISWA: Kehadiran bulan ini + Poin ===
+            roleSiswa -> {
+                try {
+                    val attService = retrofit.create(AttendanceService::class.java)
+                    val currentMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+                    val attResp = attService.getMyAttendance(bulan = currentMonth)
+                    if (attResp.isSuccessful) {
+                        kehadiranPersen = attResp.body()?.data?.persentaseKehadiran ?: 0.0
+                    }
+                } catch (_: Exception) { }
+                try {
+                    val kesService = retrofit.create(KesiswaanService::class.java)
+                    val poinResp = kesService.getMyPoin()
+                    if (poinResp.isSuccessful) {
+                        totalPoin = poinResp.body()?.data?.summary?.netPoin ?: 0
+                    }
+                } catch (_: Exception) { }
+            }
+
+            // === ORTU: Status anak hari ini ===
+            roleParent -> {
+                try {
+                    val parentService = retrofit.create(ParentService::class.java)
+                    val dashResp = parentService.getParentDashboard()
+                    if (dashResp.isSuccessful) {
+                        val child = dashResp.body()?.data?.children?.firstOrNull()
+                            ?: dashResp.body()?.data?.activeChildren?.firstOrNull()
+                        childName = child?.namaLengkap ?: child?.namaSiswa ?: ""
+                        childStatus = child?.gateStatus?.status ?: "Belum Hadir"
+                    }
+                } catch (_: Exception) { }
+            }
+
+            // === KEPSEK/ADMIN: Overview sekolah ===
+            roleExec -> {
+                try {
+                    val dashService = retrofit.create(DashboardService::class.java)
+                    val overResp = dashService.getOverview()
+                    if (overResp.isSuccessful) {
+                        overResp.body()?.data?.let { ov ->
+                            hadirSiswa = ov.hadirSiswa
+                            totalSiswa = ov.totalSiswa
+                            hadirGuru = ov.hadirGuru
+                            totalGuru = ov.totalGuru
+                        }
+                    }
+                } catch (_: Exception) { }
+            }
+
+            // === GURU (default): Sesi + Piket ===
+            else -> {
+                try {
+                    val sesiService = retrofit.create(SesiKelasService::class.java)
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                    val sesiResp = sesiService.listSesi(tanggal = today, onlyMe = true)
+                    if (sesiResp.isSuccessful) {
+                        sesiCount = sesiResp.body()?.data?.size ?: 0
+                    }
+                } catch (_: Exception) { }
+                try {
+                    val sesiService = retrofit.create(SesiKelasService::class.java)
+                    val petugasResp = sesiService.checkPetugasActive()
+                    if (petugasResp.isSuccessful) {
+                        piketActive = petugasResp.body()?.data?.active == true ||
+                                      petugasResp.body()?.data?.isPetugasKelas == true
+                    }
+                } catch (_: Exception) { }
+            }
+        }
     }
 
     if (showLogoutDialog) {
@@ -155,7 +287,9 @@ fun DynamicMenuDashboard(
     Scaffold(
         topBar = {
             DashboardTopBar(
-                onLogoutClick = { showLogoutDialog = true }
+                photoUrl = photoUrl,
+                onLogoutClick = { showLogoutDialog = true },
+                onAvatarClick = { onNavigate(ScreenRoutes.MY_PROFILE) }
             )
         },
         containerColor = BackgroundDark
@@ -170,15 +304,39 @@ fun DynamicMenuDashboard(
                 contentPadding = PaddingValues(bottom = 32.dp, start = 16.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 1. Hero Greeting Card (Blue Gradient)
+                // 1. Hero Greeting Card (Blue Gradient) — Live API data
                 item {
                     Spacer(modifier = Modifier.height(4.dp))
-                    GreetingHeaderCard(name = userName, role = userRole)
+                    GreetingHeaderCard(
+                        name = userName,
+                        role = userRole,
+                        schoolName = schoolName,
+                        photoUrl = photoUrl
+                    )
                 }
 
-                // 2. Quick Stats Row (Sesi Hari Ini & Piket)
+                // 2. Quick Stats Row — Role-Based Live API data
                 item {
-                    QuickStatsRow()
+                    when {
+                        isSiswa -> QuickStatsSiswa(
+                            kehadiranPersen = kehadiranPersen,
+                            totalPoin = totalPoin
+                        )
+                        isParent -> QuickStatsOrtu(
+                            childName = childName,
+                            childStatus = childStatus
+                        )
+                        isExec -> QuickStatsExec(
+                            hadirSiswa = hadirSiswa,
+                            totalSiswa = totalSiswa,
+                            hadirGuru = hadirGuru,
+                            totalGuru = totalGuru
+                        )
+                        else -> QuickStatsGuru(
+                            sesiCount = sesiCount,
+                            piketActive = piketActive
+                        )
+                    }
                 }
 
                 // 2. Render Categories with 4-Column App-Icon Grid
@@ -248,10 +406,14 @@ private fun ModernCategorySection(
     }
 }
 
-/** TopBar Dashboard: Logo + "Dashboard" + Search + Avatar + Logout */
+/** TopBar Dashboard: Logo + "Dashboard" + Search + Avatar (Live Photo) + Logout */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DashboardTopBar(onLogoutClick: () -> Unit) {
+private fun DashboardTopBar(
+    photoUrl: String?,
+    onLogoutClick: () -> Unit,
+    onAvatarClick: () -> Unit
+) {
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -285,20 +447,33 @@ private fun DashboardTopBar(onLogoutClick: () -> Unit) {
             IconButton(onClick = { /* Search placeholder */ }) {
                 Icon(Icons.Default.Search, contentDescription = "Cari", tint = Primary)
             }
-            // Avatar mini
+            // Avatar mini — Foto profil dari API /auth/me
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(PrimaryContainer),
+                    .background(PrimaryContainer)
+                    .clickable { onAvatarClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profil",
-                    tint = Primary,
-                    modifier = Modifier.size(20.dp)
-                )
+                if (!photoUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                            .data(photoUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Foto Profil",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(34.dp).clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Profil",
+                        tint = Primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
             IconButton(onClick = onLogoutClick) {
                 Icon(
@@ -316,9 +491,14 @@ private fun DashboardTopBar(onLogoutClick: () -> Unit) {
     )
 }
 
-/** Greeting Hero Card — Gradient Biru, Sapaan Waktu, Nama, Role Badge + Sekolah, Avatar */
+/** Greeting Hero Card — Live data dari API /auth/me (Nama, Foto, Sekolah) */
 @Composable
-private fun GreetingHeaderCard(name: String, role: String) {
+private fun GreetingHeaderCard(
+    name: String,
+    role: String,
+    schoolName: String = "Absenta",
+    photoUrl: String? = null
+) {
     // Time-based greeting
     val greeting = remember {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -368,7 +548,7 @@ private fun GreetingHeaderCard(name: String, role: String) {
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    // Role Badge + School Name
+                    // Role Badge + School Name (Live dari API)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
@@ -385,7 +565,7 @@ private fun GreetingHeaderCard(name: String, role: String) {
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "·  SMP N 1 Absenta",
+                            text = "·  $schoolName",
                             fontSize = 11.sp,
                             color = Color.White.copy(alpha = 0.8f)
                         )
@@ -394,7 +574,7 @@ private fun GreetingHeaderCard(name: String, role: String) {
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Right: Avatar Circle
+                // Right: Avatar Circle (Live Photo dari API /auth/me)
                 Box(
                     modifier = Modifier
                         .size(52.dp)
@@ -402,98 +582,183 @@ private fun GreetingHeaderCard(name: String, role: String) {
                         .background(Color.White.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = "Avatar",
-                        tint = Color.White,
-                        modifier = Modifier.size(36.dp)
-                    )
+                    if (!photoUrl.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                                .data(photoUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Foto Profil",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(52.dp).clip(CircleShape)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Avatar",
+                            tint = Color.White,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/** Row 2 Kartu Mini: Sesi Hari Ini & Status Piket */
+/** ═══ GURU Quick Stats: Sesi Hari Ini + Status Piket ═══ */
 @Composable
-private fun QuickStatsRow() {
+private fun QuickStatsGuru(sesiCount: Int, piketActive: Boolean) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min),
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Sesi Hari Ini
-        Card(
+        QuickStatCard(
             modifier = Modifier.weight(1f).fillMaxHeight(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            elevation = CardDefaults.cardElevation(2.dp),
-            border = BorderStroke(1.dp, Border)
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Groups,
-                    contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "SESI HARI INI",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextSecondary,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "4 Kelas",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-            }
-        }
+            icon = Icons.Default.Groups,
+            iconTint = Primary,
+            label = "SESI HARI INI",
+            value = "$sesiCount Kelas",
+            valueColor = TextPrimary
+        )
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.AssignmentInd,
+            iconTint = if (piketActive) Success else TextTertiary,
+            label = "PIKET",
+            value = if (piketActive) "Aktif" else "Tidak Aktif",
+            valueColor = if (piketActive) Success else TextTertiary
+        )
+    }
+}
 
-        // Status Piket
-        Card(
+/** ═══ SISWA Quick Stats: Kehadiran Bulan Ini + Poin Saya ═══ */
+@Composable
+private fun QuickStatsSiswa(kehadiranPersen: Double, totalPoin: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QuickStatCard(
             modifier = Modifier.weight(1f).fillMaxHeight(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-            elevation = CardDefaults.cardElevation(2.dp),
-            border = BorderStroke(1.dp, Border)
+            icon = Icons.AutoMirrored.Filled.FactCheck,
+            iconTint = Success,
+            label = "KEHADIRAN",
+            value = "${String.format("%.0f", kehadiranPersen)}%",
+            valueColor = if (kehadiranPersen >= 80) Success else com.absenta.app.ui.theme.Danger
+        )
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.EmojiEvents,
+            iconTint = if (totalPoin >= 0) Primary else com.absenta.app.ui.theme.Danger,
+            label = "POIN SAYA",
+            value = if (totalPoin >= 0) "+$totalPoin" else "$totalPoin",
+            valueColor = if (totalPoin >= 0) Primary else com.absenta.app.ui.theme.Danger
+        )
+    }
+}
+
+/** ═══ KEPSEK/ADMIN Quick Stats: Hadir Siswa + Hadir Guru ═══ */
+@Composable
+private fun QuickStatsExec(
+    hadirSiswa: Int, totalSiswa: Int,
+    hadirGuru: Int, totalGuru: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.School,
+            iconTint = Primary,
+            label = "HADIR SISWA",
+            value = "$hadirSiswa/$totalSiswa",
+            valueColor = TextPrimary
+        )
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.Person,
+            iconTint = Success,
+            label = "HADIR GURU",
+            value = "$hadirGuru/$totalGuru",
+            valueColor = TextPrimary
+        )
+    }
+}
+
+/** ═══ ORTU Quick Stats: Status Anak + Info ═══ */
+@Composable
+private fun QuickStatsOrtu(childName: String, childStatus: String) {
+    val isHadir = childStatus.uppercase().contains("HADIR") ||
+                  childStatus.uppercase().contains("MASUK")
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.School,
+            iconTint = if (isHadir) Success else com.absenta.app.ui.theme.Warning,
+            label = "STATUS ANAK",
+            value = if (isHadir) "Hadir" else childStatus.ifEmpty { "Belum Hadir" },
+            valueColor = if (isHadir) Success else com.absenta.app.ui.theme.Warning
+        )
+        QuickStatCard(
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+            icon = Icons.Default.Person,
+            iconTint = Primary,
+            label = "ANAK",
+            value = childName.ifEmpty { "—" },
+            valueColor = TextPrimary
+        )
+    }
+}
+
+/** Kartu Statistik Mini Reusable — DRY component untuk semua varian role */
+@Composable
+private fun QuickStatCard(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    iconTint: Color,
+    label: String,
+    value: String,
+    valueColor: Color
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Border)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.AssignmentInd,
-                    contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(24.dp)
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+                Text(
+                    text = label,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary,
+                    letterSpacing = 0.5.sp
                 )
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(
-                        text = "PIKET",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextSecondary,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = "Aktif",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Primary
-                    )
-                }
+                Text(
+                    text = value,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = valueColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

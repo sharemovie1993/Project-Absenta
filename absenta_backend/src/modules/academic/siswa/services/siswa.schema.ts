@@ -80,6 +80,9 @@ export const createSiswaSchema = z.object({
     return false;
   }),
   no_kip: coerceString,
+  tanggal_masuk: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
+  tanggal_keluar: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
+  alasan_keluar: coerceString,
   kelas_id: coerceString,
   jurusan_id: coerceString,
   tahun_pelajaran_id: coerceString,
