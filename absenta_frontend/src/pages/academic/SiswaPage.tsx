@@ -14,7 +14,7 @@ import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { getAcademicRegistrationStats, getSiswaList, importSiswaFromExcel } from '../../api/academic/siswa.api';
 import { getSemesterByTahunPelajaranForDropdown, getTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { kelasApi } from '../../api/academic.api';
+import { kelasApi, jurusanApi } from '../../api/academic.api';
 import toast from 'react-hot-toast';
 import { lazy, Suspense } from 'react';
 import { Plus, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
