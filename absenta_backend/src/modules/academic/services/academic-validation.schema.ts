@@ -9,24 +9,6 @@ export const assignWaliKelasStrukturSchema = z.object({
   }).uuid({ message: 'guru_id harus berupa UUID yang valid' })
 });
 
-export const kenaikanKelasSchema = z.object({
-  tahun_sumber_id: z.string({
-    required_error: 'tahun_sumber_id wajib diisi'
-  }).uuid({ message: 'tahun_sumber_id harus berupa UUID yang valid' }),
-  tahun_target_id: z.string({
-    required_error: 'tahun_target_id wajib diisi'
-  }).uuid({ message: 'tahun_target_id harus berupa UUID yang valid' }),
-  mapping: z.array(
-    z.object({
-      sumber_kelas_id: z.string({
-        required_error: 'sumber_kelas_id wajib diisi'
-      }).uuid({ message: 'sumber_kelas_id harus berupa UUID yang valid' }),
-      target_kelas_id: z.string({
-        required_error: 'target_kelas_id wajib diisi'
-      }).uuid({ message: 'target_kelas_id harus berupa UUID yang valid' })
-    })
-  )
-});
 
 export const createStrukturSchema = z.object({
   kode: z.string({

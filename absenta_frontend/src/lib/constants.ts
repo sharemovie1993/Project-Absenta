@@ -92,7 +92,6 @@ export const VALID_ROUTE_SET = new Set<string>([
   '/academic/jurusan',
   '/academic/jenis-kegiatan',
   '/kurikulum/wali-kelas',
-  '/academic/kenaikan-kelas',
   '/academic/transition',
   '/academic/siswa-cards',
   '/academic/mutation',

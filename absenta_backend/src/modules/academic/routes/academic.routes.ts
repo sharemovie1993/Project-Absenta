@@ -5,7 +5,6 @@ import mapelRoutes from '../mapel/routes/mapel.routes';
 import tahunPelajaranRoutes from '../tahun-pelajaran/routes/tahun-pelajaran.routes';
 import semesterRoutes from '../semester/routes/semester.routes';
 import jurusanRoutes from '../jurusan/routes/jurusan.routes';
-import kenaikanKelasRoutes from '../kenaikan-kelas/routes/kenaikan-kelas.routes';
 import jenisKegiatanMasterRoutes from '../jenis-kegiatan-master/routes/jenis-kegiatan-master.routes';
 import transitionRoutes from '../transition/routes/transition.routes';
 import strukturOrganisasiRoutes from '../struktur-organisasi/routes/struktur-organisasi.routes';
@@ -29,7 +28,6 @@ export async function academicRoutes(fastify: any) {
   await fastify.register(tahunPelajaranRoutes, { prefix: '/tahun-pelajaran' });
   await fastify.register(semesterRoutes, { prefix: '/semester' });
   await fastify.register(jurusanRoutes, { prefix: '/jurusan' });
-  await fastify.register(kenaikanKelasRoutes, { prefix: '/kenaikan-kelas' });
   await fastify.register(jenisKegiatanMasterRoutes, { prefix: '/jenis-kegiatan-master' });
   await fastify.register(transitionRoutes, { prefix: '/transition' });
   await fastify.register(strukturOrganisasiRoutes, { prefix: '/struktur-organisasi' });
