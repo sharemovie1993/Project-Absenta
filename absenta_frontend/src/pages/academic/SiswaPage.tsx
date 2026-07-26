@@ -154,8 +154,12 @@ const SiswaPage: React.FC = () => {
     try {
       const scenario = selectedScenario || importConfig.scenario || 'REGULAR';
       toast('Menyiapkan template...');
-      const kelasRes = await kelasApi.getAll({ limit: 500 });
+      const [kelasRes, jurusanRes] = await Promise.all([
+        kelasApi.getAll({ limit: 500 }),
+        jurusanApi.getAll({ limit: 100 }).catch(() => ({ data: [] }))
+      ]);
       const kelasNames = (kelasRes.data || [])?.map(k => k.nama_kelas).filter(Boolean);
+      const jurusanNames = (jurusanRes.data || [])?.map(j => j.nama).filter(Boolean);
 
       if (scenario === 'HISTORIS') {
         await generateAdvancedTemplate(
@@ -165,6 +169,7 @@ const SiswaPage: React.FC = () => {
             { header: 'Tanggal Masuk (YYYY-MM-DD)', key: 'tanggal_masuk', width: 25 },
             { header: 'Tanggal Keluar (YYYY-MM-DD)', key: 'tanggal_keluar', width: 25 },
             { header: 'Nama Kelas / Angkatan', key: 'nama_kelas', width: 25, dropdown: { refKey: 'kelas' } },
+            { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15 },
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
@@ -180,10 +185,11 @@ const SiswaPage: React.FC = () => {
               'Kolom EMAS (Nama Lengkap & Status) WAJIB diisi.',
               'Isi kolom Status dengan: LULUS, MUTASI, atau TIDAK_AKTIF.',
               'Sangat disarankan mengisi Tanggal Masuk & Tanggal Keluar (Format YYYY-MM-DD) untuk akurasi linimasa.',
-              'Kolom Nama Kelas opsional untuk alumni.'
+              'Kolom Nama Kelas & Nama Jurusan opsional untuk alumni.'
             ],
             referenceData: {
               kelas: kelasNames,
+              jurusan: jurusanNames,
               jk: ['L', 'P'],
               status: ['LULUS', 'MUTASI', 'TIDAK_AKTIF']
             }
@@ -193,6 +199,7 @@ const SiswaPage: React.FC = () => {
         await generateAdvancedTemplate(
           [
             { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
+            { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'NIK', key: 'nik', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
@@ -207,9 +214,10 @@ const SiswaPage: React.FC = () => {
               'SKENARIO 3: TEMPLATE IMPOR PENDAFTAR PPDB (CALON SISWA).',
               'Kolom EMAS (Nama Lengkap) WAJIB diisi.',
               'Siswa yang diimpor dari file ini otomatis berstatus CALON.',
-              'Tidak perlu mengisi kelas (kelas dipetakan nanti di modul Pemetaan PPDB).'
+              'Untuk SMK/MAK, sangat disarankan mengisi kolom Nama Jurusan.'
             ],
             referenceData: {
+              jurusan: jurusanNames,
               jk: ['L', 'P']
             }
           }
@@ -219,6 +227,7 @@ const SiswaPage: React.FC = () => {
           [
             { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
             { header: 'Nama Kelas', key: 'nama_kelas', width: 25, required: true, dropdown: { refKey: 'kelas' } },
+            { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15, required: false },
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
@@ -234,10 +243,12 @@ const SiswaPage: React.FC = () => {
               'SKENARIO 1: TEMPLATE IMPOR SISWA BARU / AKTIF TAHUN BERJALAN.',
               'Kolom EMAS (Nama Lengkap & Nama Kelas) WAJIB diisi.',
               'Siswa yang diimpor dari file ini otomatis berstatus AKTIF.',
+              'Jika ada nama kelas yang sama di jurusan berbeda (misal: X TE 3), sertakan kolom Nama Jurusan untuk penentuan kelas presisi.',
               'Format Tanggal Lahir/Masuk adalah YYYY-MM-DD (contoh: 2024-07-15).'
             ],
             referenceData: {
               kelas: kelasNames,
+              jurusan: jurusanNames,
               jk: ['L', 'P']
             }
           }
