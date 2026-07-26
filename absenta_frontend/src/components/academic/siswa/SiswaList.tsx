@@ -19,8 +19,6 @@ import {
   AlertDescription
 } from '../../ui';
 
-// Lazy load Table to improve mobile performance (TBT)
-const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { MobileAcademicList } from '../shared/MobileAcademicList';
 import { QuickEditCell } from '../shared/QuickEditCell';
@@ -37,6 +35,9 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useJenjang } from '../../../hooks/useJenjang';
+
+// Lazy load Table to improve mobile performance (TBT)
+const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
 
 interface SiswaListProps {
   onEdit?: (siswa: Siswa) => void;
