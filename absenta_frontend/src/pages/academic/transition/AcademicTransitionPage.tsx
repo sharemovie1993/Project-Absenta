@@ -8,10 +8,11 @@ import { previewTransition, executeTransition, type TransitionPreviewInput, type
 import { getTahunPelajaranList as fetchTahunPelajaran } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList as fetchSemester } from '../../../api/academic/semester.api';
 import { getGuruList as fetchGuru } from '../../../api/academic/guru.api';
-import { getWaliKelasStrukturList as fetchWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
+import { getKelasList as fetchKelasList } from '../../../api/academic/kelas.api';
 import { useAuthStore } from '../../../store/authStore';
-import type { TahunPelajaran, Semester } from '../../../types/academic';
+import type { TahunPelajaran, Semester, Kelas } from '../../../types/academic';
 import toast from 'react-hot-toast';
+import type { ScopeMode } from './components/TransitionForm';
 
 // Lazy loading subkomponent berat (Pillar 11 – Optimasi Pemuatan)
 const TransitionForm = lazy(() => import('./components/TransitionForm'));
@@ -40,6 +41,11 @@ const AcademicTransitionPage: React.FC = () => {
   const [selectedTahunLamaId, setSelectedTahunLamaId] = useState<string>('');
   const [selectedTahunBaruId, setSelectedTahunBaruId] = useState<string>('');
 
+  // Scope Mode State (All Grades vs Selected Grades)
+  const [scopeMode, setScopeMode] = useState<ScopeMode>('ALL');
+  const [availableTingkat, setAvailableTingkat] = useState<number[]>([]);
+  const [selectedTingkat, setSelectedTingkat] = useState<number[]>([]);
+
   // Validation State
   const [activeSemester, setActiveSemester] = useState<Semester | undefined>(undefined);
   const [semesterBaruGanjil, setSemesterBaruGanjil] = useState<boolean>(false);
@@ -61,6 +67,17 @@ const AcademicTransitionPage: React.FC = () => {
       setTahunPelajaran([]);
     }).finally(() => {
       setLoadingYears(false);
+    });
+
+    // Fetch active kelas to determine available tingkat for scope selection
+    fetchKelasList(1, 1000, '', '', '', '', 'true').then(res => {
+      const tingkats = Array.from(new Set(res.data.map((k: Kelas) => k.tingkat || 0)))
+        .filter(t => t > 0)
+        .sort((a, b) => a - b);
+      setAvailableTingkat(tingkats);
+      setSelectedTingkat(tingkats); // default select all
+    }).catch(err => {
+      console.error('Failed to fetch active kelas tingkat', err);
     });
   }, []);
 
@@ -120,10 +137,28 @@ const AcademicTransitionPage: React.FC = () => {
   const selectedTahunLamaObj = useMemo(() => tahunPelajaran.find(t => t.id === selectedTahunLamaId), [tahunPelajaran, selectedTahunLamaId]);
   const selectedTahunBaruObj = useMemo(() => tahunPelajaran.find(t => t.id === selectedTahunBaruId), [tahunPelajaran, selectedTahunBaruId]);
 
+  const handleTingkatToggle = useCallback((t: number) => {
+    setSelectedTingkat(prev => {
+      if (prev.includes(t)) {
+        if (prev.length === 1) {
+          toast.error('Minimal harus memilih 1 tingkat');
+          return prev;
+        }
+        return prev.filter(x => x !== t);
+      } else {
+        return [...prev, t].sort((a, b) => a - b);
+      }
+    });
+  }, []);
+
   // Step 1 -> 2
   const handleFormNext = useCallback(() => {
+    if (scopeMode === 'SELECTED' && selectedTingkat.length === 0) {
+      toast.error('Harap pilih minimal 1 tingkat yang akan diproses');
+      return;
+    }
     setStep(2);
-  }, []);
+  }, [scopeMode, selectedTingkat]);
 
   // Step 2 -> 3 (Preview)
   const handleMappingNext = useCallback(async (mapping: ClassMapping[]) => {
@@ -339,6 +374,11 @@ const AcademicTransitionPage: React.FC = () => {
                         selectedTahunBaruId={selectedTahunBaruId}
                         onTahunLamaChange={setSelectedTahunLamaId}
                         onTahunBaruChange={setSelectedTahunBaruId}
+                        scopeMode={scopeMode}
+                        onScopeModeChange={setScopeMode}
+                        availableTingkat={availableTingkat}
+                        selectedTingkat={selectedTingkat}
+                        onTingkatToggle={handleTingkatToggle}
                       />
                       <TransitionPrerequisites 
                         tahunAktif={selectedTahunLamaObj}
@@ -365,6 +405,7 @@ const AcademicTransitionPage: React.FC = () => {
                       onBack={() => setStep(1)}
                       initialMapping={mappingKelas}
                       managedClassId={managedClassId}
+                      filterTingkat={scopeMode === 'SELECTED' ? selectedTingkat : undefined}
                     />
                   )}
 

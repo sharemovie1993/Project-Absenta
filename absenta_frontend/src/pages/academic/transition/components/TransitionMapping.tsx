@@ -28,6 +28,7 @@ interface Props {
   onBack: () => void;
   initialMapping?: ClassMapping[];
   managedClassId?: string;
+  filterTingkat?: number[];
 }
 
 // ── Tema warna dinamis per tingkat (index-based, mendukung SD/SMP/SMA) ────
@@ -221,7 +222,7 @@ const TingkatColumn: React.FC<{
 };
 
 // ── Komponen utama ─────────────────────────────────────────────────────────
-const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, managedClassId }) => {
+const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, managedClassId, filterTingkat }) => {
   const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Kelas[]>([]);       // Kelas aktif saja (sumber)
@@ -257,16 +258,24 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
         getKelasList(1, 1000, '', '', '', '', 'true'),
         detectMissingNextClasses(),
       ]);
-      setClasses(activeRes.data);
+      const filteredActive = (filterTingkat && filterTingkat.length > 0)
+        ? activeRes.data.filter(k => filterTingkat.includes(k.tingkat))
+        : activeRes.data;
+
+      setClasses(filteredActive);
       setAllClasses(allRes.data);
       if (missingRes?.data?.missing) {
-        setMissingClasses(missingRes.data.missing);
+        const filteredMissing = (filterTingkat && filterTingkat.length > 0)
+          ? missingRes.data.missing.filter(m => filterTingkat.includes(m.sourceTingkat))
+          : missingRes.data.missing;
+
+        setMissingClasses(filteredMissing);
         // Pre-fill editedNames with suggested names
         const names: Record<string, string> = {};
-        missingRes.data.missing.forEach(m => { names[m.sourceKelasId] = m.suggestedNama; });
+        filteredMissing.forEach(m => { names[m.sourceKelasId] = m.suggestedNama; });
         setEditedNames(names);
       }
-      if (!initialMapping) autoMapClasses(activeRes.data);
+      if (!initialMapping) autoMapClasses(filteredActive);
     } catch (error) {
       console.error('Failed to fetch classes', error);
     } finally {
