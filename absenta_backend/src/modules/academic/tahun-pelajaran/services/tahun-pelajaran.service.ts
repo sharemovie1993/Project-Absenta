@@ -40,7 +40,7 @@ export class TahunPelajaranService {
       whereClause.is_active = false;
     }
 
-    const tahunPelajaran = await prisma.tahunPelajaran.findMany({
+    const list = await prisma.tahunPelajaran.findMany({
       where: whereClause,
       include: {
         _count: {
@@ -56,7 +56,35 @@ export class TahunPelajaranService {
       },
     });
 
-    return tahunPelajaran as TahunPelajaranResponse[];
+    return await this.attachDistinctStudentCounts(list);
+  }
+
+  private async attachDistinctStudentCounts(items: any[]): Promise<any[]> {
+    return Promise.all(
+      items.map(async (tp) => {
+        // Compute distinct siswa_id from SiswaAkademik for this specific school year
+        const distinctAkademik = await prisma.siswaAkademik.groupBy({
+          by: ['siswa_id'],
+          where: { tahun_pelajaran_id: tp.id },
+        });
+
+        let count = distinctAkademik.length;
+
+        // Fallback to Siswa direct count if SiswaAkademik has no entries
+        if (count === 0 && tp._count?.Siswa) {
+          count = tp._count.Siswa;
+        }
+
+        return {
+          ...tp,
+          _count: {
+            ...tp._count,
+            Siswa: count,
+            SiswaAkademik: count,
+          },
+        };
+      })
+    );
   }
 
   async getTahunPelajaranById(tahunPelajaranId: string, requestingUserRole: RoleName, requestingUserTenantId?: string): Promise<TahunPelajaranResponse | null> {
@@ -67,7 +95,7 @@ export class TahunPelajaranService {
       whereClause.tenant_id = requestingUserTenantId;
     }
 
-    const tahunPelajaran = await prisma.tahunPelajaran.findFirst({
+    const item = await prisma.tahunPelajaran.findFirst({
       where: whereClause,
       include: {
         _count: {
@@ -80,7 +108,9 @@ export class TahunPelajaranService {
       },
     });
 
-    return tahunPelajaran as TahunPelajaranResponse | null;
+    if (!item) return null;
+    const [result] = await this.attachDistinctStudentCounts([item]);
+    return result as TahunPelajaranResponse;
   }
 
   async createTahunPelajaran(input: CreateTahunPelajaranInput, tenantId: string): Promise<TahunPelajaranResponse> {
@@ -317,7 +347,7 @@ export class TahunPelajaranService {
       whereClause.tenant_id = requestingUserTenantId;
     }
 
-    const tahunPelajaran = await prisma.tahunPelajaran.findMany({
+    const list = await prisma.tahunPelajaran.findMany({
       where: whereClause,
       include: {
         _count: {
@@ -333,7 +363,7 @@ export class TahunPelajaranService {
       },
     });
 
-    return tahunPelajaran as TahunPelajaranResponse[];
+    return await this.attachDistinctStudentCounts(list);
   }
 
   // Consolidated single-active getter
@@ -342,7 +372,7 @@ export class TahunPelajaranService {
     if (!isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)) {
       whereClause.tenant_id = requestingUserTenantId;
     }
-    const tahunPelajaran = await prisma.tahunPelajaran.findFirst({
+    const item = await prisma.tahunPelajaran.findFirst({
       where: whereClause,
       include: {
         _count: {
@@ -357,7 +387,9 @@ export class TahunPelajaranService {
         tahun: 'desc',
       },
     });
-    return tahunPelajaran as TahunPelajaranResponse | null;
+    if (!item) return null;
+    const [result] = await this.attachDistinctStudentCounts([item]);
+    return result as TahunPelajaranResponse | null;
   }
   // Additional method to set tahun pelajaran as active (and deactivate others)
   async setActiveTahunPelajaran(tahunPelajaranId: string, requestingUserRole: RoleName, requestingUserTenantId?: string): Promise<TahunPelajaranResponse> {
