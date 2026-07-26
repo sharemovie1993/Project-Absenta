@@ -28,4 +28,30 @@ export default async function transitionRoutes(fastify: any) {
       return transitionController.execute(request, reply);
     }
   );
+
+  fastify.get(
+    '/detect-missing-classes',
+    {
+      preHandler: [
+        requireCapability('academic.transitions.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return transitionController.detectMissingClasses(request, reply);
+    }
+  );
+
+  fastify.post(
+    '/create-next-grade-classes',
+    {
+      preHandler: [
+        requireCapability('academic.transitions.manage'),
+        determineDataScope()
+      ]
+    },
+    async (request: any, reply: any) => {
+      return transitionController.createNextGradeClasses(request, reply);
+    }
+  );
 }

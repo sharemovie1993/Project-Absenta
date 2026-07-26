@@ -7,7 +7,8 @@ import {
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getKelasList } from '../../../../api/academic/kelas.api';
 import type { Kelas } from '../../../../types/academic';
-import type { ClassMapping } from '../../../../api/academic/transition.api';
+import type { ClassMapping, MissingNextClassItem } from '../../../../api/academic/transition.api';
+import { detectMissingNextClasses, createNextGradeClasses } from '../../../../api/academic/transition.api';
 import {
   ArrowRight,
   RefreshCw,
@@ -16,6 +17,8 @@ import {
   Loader2,
   GraduationCap,
   CheckCircle2,
+  Wand2,
+  AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../../hooks/useConfirm';
@@ -224,6 +227,15 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
   const [classes, setClasses] = useState<Kelas[]>([]);       // Kelas aktif saja (sumber)
   const [allClasses, setAllClasses] = useState<Kelas[]>([]); // Semua kelas (tujuan)
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [missingClasses, setMissingClasses] = useState<MissingNextClassItem[]>([]);
+  const [creatingClasses, setCreatingClasses] = useState(false);
+  const [editedNames, setEditedNames] = useState<Record<string, string>>({});
+
+  // Dynamic maxTingkat from allClasses (fallback jika jenjang tidak diset)
+  const maxTingkat = useMemo(() => {
+    if (allClasses.length === 0) return 12;
+    return Math.max(...allClasses.map(k => k.tingkat || 0));
+  }, [allClasses]);
 
   useEffect(() => { fetchClasses(); }, []);
 
@@ -239,17 +251,51 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     setLoading(true);
     try {
       // Kelas sumber: hanya yang aktif (ada siswa aktif di semester berjalan)
-      const [activeRes, allRes] = await Promise.all([
+      const [activeRes, allRes, missingRes] = await Promise.all([
         getKelasList(1, 1000, '', '', '', '', 'true'),
         getKelasList(1, 1000),
+        detectMissingNextClasses(),
       ]);
       setClasses(activeRes.data);
       setAllClasses(allRes.data);
+      if (missingRes?.data?.missing) {
+        setMissingClasses(missingRes.data.missing);
+        // Pre-fill editedNames with suggested names
+        const names: Record<string, string> = {};
+        missingRes.data.missing.forEach(m => { names[m.sourceKelasId] = m.suggestedNama; });
+        setEditedNames(names);
+      }
       if (!initialMapping) autoMapClasses(activeRes.data);
     } catch (error) {
       console.error('Failed to fetch classes', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAutoCreateClasses = async () => {
+    const ok = await confirm({
+      title: 'Buat Kelas Tingkat Berikutnya',
+      description: `Sistem akan membuat ${missingClasses.length} kelas baru untuk tingkat berikutnya. Anda bisa ubah nama kelas sebelum dibuat. Lanjutkan?`,
+      confirmText: 'Buat Kelas',
+      cancelText: 'Batal',
+      style: 'warning',
+    });
+    if (!ok) return;
+    setCreatingClasses(true);
+    try {
+      const payload = missingClasses.map(m => ({
+        sourceKelasId: m.sourceKelasId,
+        namaKelas: editedNames[m.sourceKelasId] || m.suggestedNama,
+      }));
+      const res = await createNextGradeClasses(payload);
+      toast.success(`${res.data.created} kelas berhasil dibuat! Silakan lanjutkan pemetaan.`);
+      setMissingClasses([]);
+      await fetchClasses(); // Reload classes after creation
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal membuat kelas');
+    } finally {
+      setCreatingClasses(false);
     }
   };
 
@@ -314,13 +360,16 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     // Set untuk mencatat kelas tujuan yang sudah terpakai (menghindari bentrokan pemetaan ganda)
     const usedTargets = new Set<string>();
 
+    // Compute maxTingkat dynamically from the data
+    const localMaxTingkat = data.length > 0 ? Math.max(...data.map(k => k.tingkat || 0)) : 12;
+
     data.forEach(source => {
       const targetTingkat = source.tingkat + 1;
       const targetKey = `${getGroupKey(source)}:${targetTingkat}`;
       const candidates = byProgramTingkat[targetKey] || [];
 
-      // Kelas XII → LULUS
-      if (source.tingkat >= 12) {
+      // Kelas tingkat tertinggi → LULUS (dinamis berdasarkan jenjang)
+      if (source.tingkat >= localMaxTingkat) {
         newMapping[source.id] = 'LULUS';
         return;
       }
@@ -424,9 +473,14 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     );
     const allAtTarget = allSorted.filter(c => c.tingkat === targetTingkat);
 
-    if (allAtTarget.length === 0) {
-      // XII → LULUS
+    // Jika kelas ini di tingkat tertinggi → hanya LULUS
+    if (source.tingkat >= maxTingkat) {
       return [{ value: 'LULUS', label: 'LULUS / ALUMNI' }];
+    }
+
+    // Jika tidak ada kelas tujuan tersedia (sekolah 1 angkatan / belum dibuat)
+    if (allAtTarget.length === 0) {
+      return [{ value: '', label: `— Kelas ${targetTingkat} belum ada, buat dulu —`, group: 'Perhatian' }];
     }
 
     // Program Keahlian source
@@ -453,9 +507,15 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
       }));
     }
 
-    if (source.tingkat >= 12 || options.length === 0) {
-      options.push({ value: 'LULUS', label: 'LULUS / ALUMNI' });
+    if (otherPK.length > 0) {
+      otherPK.forEach(c => options.push({
+        value: c.id,
+        label: c.nama_kelas,
+        group: 'Program Keahlian Lain'
+      }));
     }
+
+    options.push({ value: 'LULUS', label: 'LULUS / ALUMNI' });
 
     return options;
   };
@@ -514,6 +574,48 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
           </Button>
         </div>
       </div>
+
+      {/* ── Banner Kelas Tujuan Belum Ada (Sekolah 1 Angkatan) ── */}
+      {missingClasses.length > 0 && (
+        <Alert className="bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800 rounded-xl">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-black text-orange-900 dark:text-orange-300 uppercase tracking-tight">
+                  {missingClasses.length} Kelas Tingkat Berikutnya Belum Ada
+                </p>
+                <p className="text-[10px] text-orange-700 dark:text-orange-400 mt-0.5">
+                  Kelas-kelas berikut tidak memiliki pasangan di tingkat selanjutnya. Buat otomatis atau tambahkan manual di menu Kelas.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5 ml-7">
+              {missingClasses.map(m => (
+                <div key={m.sourceKelasId} className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-orange-800 dark:text-orange-300 min-w-[120px]">{m.sourceNama} →</span>
+                  <input
+                    type="text"
+                    value={editedNames[m.sourceKelasId] ?? m.suggestedNama}
+                    onChange={e => setEditedNames(prev => ({ ...prev, [m.sourceKelasId]: e.target.value }))}
+                    className="text-[11px] px-2 py-1 rounded-lg border border-orange-300 dark:border-orange-700 bg-white dark:bg-orange-950/40 text-orange-900 dark:text-orange-200 font-bold w-40 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="ml-7">
+              <Button
+                onClick={handleAutoCreateClasses}
+                disabled={creatingClasses}
+                className="h-8 px-4 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-black uppercase tracking-widest text-[9px] gap-2 shadow-md shadow-orange-500/20"
+              >
+                {creatingClasses ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                {creatingClasses ? 'Membuat...' : `Buat ${missingClasses.length} Kelas Otomatis`}
+              </Button>
+            </div>
+          </div>
+        </Alert>
+      )}
 
       {/* ── Info Mode Terbatas ── */}
       {managedClassId && (
