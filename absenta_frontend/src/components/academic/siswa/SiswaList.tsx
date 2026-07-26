@@ -77,6 +77,54 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
 
+  // Bulk Class Change Handler
+  const handleBulkClassUpdate = useCallback(async () => {
+    if (!selectedBulkClassId) {
+      toast.error('Pilih kelas tujuan terlebih dahulu');
+      return;
+    }
+    const targetKelas = kelasList.find(k => k.id === selectedBulkClassId);
+    const ok = await confirm({
+      title: 'Konfirmasi Pindah Kelas Massal',
+      description: `Apakah Anda yakin ingin memindahkan ${selectedIds.size} siswa terpilih ke kelas ${targetKelas?.nama_kelas || ''}?`,
+      confirmText: 'Pindahkan Kelas',
+      cancelText: 'Batal',
+      style: 'warning',
+    });
+    if (!ok) return;
+
+    setBulkClassUpdating(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const ids = Array.from(selectedIds);
+      for (const siswaId of ids) {
+        try {
+          await updateSiswa(siswaId, { kelas_id: selectedBulkClassId });
+          successCount++;
+        } catch (err) {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} siswa berhasil dipindahkan ke kelas ${targetKelas?.nama_kelas || ''}!`);
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount} siswa gagal dipindahkan`);
+      }
+
+      setIsBulkClassModalOpen(false);
+      setSelectedIds(new Set());
+      fetchSiswas(currentPage, searchTerm);
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal memproses pemindahan kelas');
+    } finally {
+      setBulkClassUpdating(false);
+    }
+  }, [selectedBulkClassId, selectedIds, kelasList, confirm, currentPage, searchTerm, fetchSiswas]);
+
   // Reset Password states
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -87,6 +135,11 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [bulkErrorModalOpen, setBulkErrorModalOpen] = useState(false);
   const [isRfidPairingOpen, setIsRfidPairingOpen] = useState(false);
   const [isPhotoStudioOpen, setIsPhotoStudioOpen] = useState(false);
+
+  // Bulk Class Change States
+  const [isBulkClassModalOpen, setIsBulkClassModalOpen] = useState(false);
+  const [selectedBulkClassId, setSelectedBulkClassId] = useState('');
+  const [bulkClassUpdating, setBulkClassUpdating] = useState(false);
   
   // States untuk Analitis & Validasi Data Siswa
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
@@ -1224,6 +1277,18 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                           variant="toolbarOutline"
                           size="toolbar"
                           onClick={() => {
+                            setSelectedBulkClassId('');
+                            setIsBulkClassModalOpen(true);
+                          }}
+                          className="text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30 bg-blue-50/30 rounded-xl"
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          Pindah Kelas ({selectedIds.size})
+                        </Button>
+                        <Button
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={() => {
                             setMutationDate(new Date().toISOString().split('T')[0]);
                             setMutationReason('');
                             setMutationStatus('PINDAH');
@@ -1910,6 +1975,63 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
           fetchSiswas(currentPage, searchTerm);
         }}
       />
+
+      {/* Modal Pindah Kelas Massal */}
+      <Modal
+        isOpen={isBulkClassModalOpen}
+        onClose={() => setIsBulkClassModalOpen(false)}
+        title={
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-blue-600">
+              <Users size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Pindah Kelas Massal</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pemindahan Roster Siswa Terpilih</p>
+            </div>
+          </div>
+        }
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="bg-blue-50/50 dark:bg-blue-950/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 flex items-center gap-4">
+            <div className="h-12 w-12 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center text-blue-600 shadow-sm font-black text-xl border-2 border-blue-100">
+              {selectedIds.size}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Siswa Terpilih</p>
+              <p className="text-[10px] text-slate-500 leading-relaxed uppercase tracking-widest font-black">Akan dipindahkan ke kelas yang ditentukan</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pilih Kelas Tujuan <span className="text-rose-500">*</span></Label>
+            <SearchableSelect
+              value={selectedBulkClassId}
+              onValueChange={setSelectedBulkClassId}
+              options={kelasList.map(k => ({
+                label: `${k.nama_kelas} (Tingkat ${k.tingkat})`,
+                value: k.id
+              }))}
+              placeholder="Pilih Kelas Tujuan..."
+              searchPlaceholder="Cari Kelas..."
+              triggerClassName="h-12 rounded-xl font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+
+          <ModalFooter className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="ghost" onClick={() => setIsBulkClassModalOpen(false)} className="rounded-xl font-bold uppercase tracking-widest text-[10px]">Batal</Button>
+            <Button
+              onClick={handleBulkClassUpdate}
+              disabled={bulkClassUpdating || !selectedBulkClassId}
+              className="rounded-xl px-10 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+            >
+              {bulkClassUpdating ? <Loader className="mr-2" size={16} /> : <Users className="mr-2" size={16} />}
+              Pindahkan Sekarang
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
     </div>
   );
 });
