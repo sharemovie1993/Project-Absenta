@@ -2,6 +2,24 @@ import { prisma } from '@/utils/prisma';
 import { findBestMatch } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
 
+function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
+  if (!row) return undefined;
+  for (const k of possibleKeys) {
+    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+      return row[k];
+    }
+  }
+  const rowKeys = Object.keys(row);
+  for (const pKey of possibleKeys) {
+    const normTarget = pKey.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const matchedKey = rowKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]+/g, '') === normTarget);
+    if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && String(row[matchedKey]).trim() !== '') {
+      return row[matchedKey];
+    }
+  }
+  return undefined;
+}
+
 function parseExcelDate(val: any): Date | undefined {
   if (!val) return undefined;
   if (val instanceof Date && !isNaN(val.getTime())) return val;
@@ -12,14 +30,29 @@ function parseExcelDate(val: any): Date | undefined {
   const str = String(val).trim();
   if (!str || str === '-' || str === 'KOSONG') return undefined;
 
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) return parsed;
-
   const parts = str.split(/[\/\.-]/);
-  if (parts.length === 3 && parts[2].length === 4) {
-    const d = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
-    if (!isNaN(d.getTime())) return d;
+  if (parts.length === 3) {
+    let y = 0, m = 0, d = 0;
+    if (parts[0].length === 4) {
+      // YYYY/MM/DD or YYYY-MM-DD
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      d = parseInt(parts[2], 10);
+    } else if (parts[2].length === 4) {
+      // DD/MM/YYYY or DD-MM-YYYY
+      d = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      y = parseInt(parts[2], 10);
+    }
+    if (y > 1900 && m >= 0 && m <= 11 && d >= 1 && d <= 31) {
+      const parsedDate = new Date(Date.UTC(y, m, d));
+      if (!isNaN(parsedDate.getTime())) return parsedDate;
+    }
   }
+
+  const directParsed = new Date(str);
+  if (!isNaN(directParsed.getTime())) return directParsed;
+
   return undefined;
 }
 
@@ -144,30 +177,26 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
 
       // 3. Construct input for createSiswaCommand
       const createInput: any = {
-        nis: row.nis || row.NIS,
-        nisn: row.nisn || row.NISN,
-        nama_siswa: row.nama_siswa || row.nama || row.Nama || row.Nama_Siswa,
-        jenis_kelamin: row.jenis_kelamin || row.jk || row.JK || row.Gender,
-        tempat_lahir: row.tempat_lahir || row.Tempat_Lahir,
-        tanggal_lahir: row.tanggal_lahir || row.Tanggal_Lahir,
-        alamat: row.alamat || row.Alamat,
-        no_hp: row.no_hp || row.hp || row.HP || row.Telepon,
-        nik: row.nik || row.NIK,
+        nis: getRowValue(row, 'nis', 'NIS'),
+        nisn: getRowValue(row, 'nisn', 'NISN'),
+        nama_siswa: getRowValue(row, 'nama_siswa', 'nama', 'Nama', 'Nama_Siswa', 'Nama Lengkap'),
+        jenis_kelamin: getRowValue(row, 'jenis_kelamin', 'jk', 'JK', 'Gender', 'JK (L/P)'),
+        tempat_lahir: getRowValue(row, 'tempat_lahir', 'Tempat_Lahir', 'Tempat Lahir'),
+        tanggal_lahir: parseExcelDate(getRowValue(row, 'tanggal_lahir', 'Tanggal_Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir')),
+        alamat: getRowValue(row, 'alamat', 'Alamat'),
+        no_hp: getRowValue(row, 'no_hp', 'hp', 'HP', 'Telepon', 'No. HP'),
+        nik: getRowValue(row, 'nik', 'NIK'),
         kelas_id: kelasId,
         jurusan_id: matchedJurusanId,
         tahun_pelajaran_id: tahunPelajaranId,
         semester_id: semesterId,
-        no_rfid: row.no_rfid || row.rfid || row.RFID,
-        nama_ayah: row.nama_ayah || row.Ayah,
-        nama_ibu: row.nama_ibu || row.Ibu,
-        email: row.email || row.Email,
+        no_rfid: getRowValue(row, 'no_rfid', 'rfid', 'RFID'),
+        nama_ayah: getRowValue(row, 'nama_ayah', 'Ayah', 'Nama Ayah'),
+        nama_ibu: getRowValue(row, 'nama_ibu', 'Ibu', 'Nama Ibu'),
+        email: getRowValue(row, 'email', 'Email'),
         status: statusInput,
-        tanggal_masuk: parseExcelDate(
-          row.tanggal_masuk || row.Tanggal_Masuk || row['TANGGAL MASUK (YYYY-MM-DD)'] || row['TANGGAL MASUK'] || row['Tanggal Masuk']
-        ),
-        tanggal_keluar: parseExcelDate(
-          row.tanggal_keluar || row.Tanggal_Keluar || row['TANGGAL KELUAR (YYYY-MM-DD)'] || row['TANGGAL KELUAR'] || row['Tanggal Keluar']
-        )
+        tanggal_masuk: parseExcelDate(getRowValue(row, 'tanggal_masuk', 'Tanggal_Masuk', 'Tanggal Masuk (YYYY-MM-DD)', 'Tanggal Masuk')),
+        tanggal_keluar: parseExcelDate(getRowValue(row, 'tanggal_keluar', 'Tanggal_Keluar', 'Tanggal Keluar (YYYY-MM-DD)', 'Tanggal Keluar'))
       };
 
       if (!createInput.nama_siswa) throw new Error('Kolom Nama Siswa wajib diisi');

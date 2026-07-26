@@ -244,16 +244,18 @@ export async function createSiswaCommand(
   const genderToUse = validatedInput.jenis_kelamin && String(validatedInput.jenis_kelamin).trim() ? validatedInput.jenis_kelamin : '';
 
   let tanggalMasukToUse: Date = new Date();
-  if (input.tanggal_masuk) {
-    const d = new Date(input.tanggal_masuk);
+  const rawMasuk = validatedInput.tanggal_masuk ?? input.tanggal_masuk;
+  if (rawMasuk) {
+    const d = new Date(rawMasuk);
     if (!isNaN(d.getTime())) {
       tanggalMasukToUse = d;
     }
   }
 
   let tanggalKeluarToUse: Date | null = null;
-  if (input.tanggal_keluar) {
-    const d = new Date(input.tanggal_keluar);
+  const rawKeluar = validatedInput.tanggal_keluar ?? input.tanggal_keluar;
+  if (rawKeluar) {
+    const d = new Date(rawKeluar);
     if (!isNaN(d.getTime())) {
       tanggalKeluarToUse = d;
     }
