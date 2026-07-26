@@ -251,9 +251,10 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     setLoading(true);
     try {
       // Kelas sumber: hanya yang aktif (ada siswa aktif di semester berjalan)
+      // Kelas tujuan: juga hanya yang aktif — kelas tidak aktif tidak boleh jadi tujuan pemetaan
       const [activeRes, allRes, missingRes] = await Promise.all([
         getKelasList(1, 1000, '', '', '', '', 'true'),
-        getKelasList(1, 1000),
+        getKelasList(1, 1000, '', '', '', '', 'true'),
         detectMissingNextClasses(),
       ]);
       setClasses(activeRes.data);

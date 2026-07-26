@@ -203,7 +203,7 @@ export class TransitionService {
           jurusan_id: source.jurusan_id,
           jam_masuk: source.jam_masuk,
           jam_pulang: source.jam_pulang,
-          is_active: false, // will be activated after transition
+          is_active: true, // activate immediately so it appears in target dropdown
         }
       });
       created++;
