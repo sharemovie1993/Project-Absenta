@@ -166,15 +166,15 @@ const SiswaPage: React.FC = () => {
           [
             { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
             { header: 'Status', key: 'status', width: 22, required: true, dropdown: { refKey: 'status' } },
-            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25 },
-            { header: 'Tanggal Keluar', key: 'tanggal_keluar', width: 25 },
+            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25, isDate: true },
+            { header: 'Tanggal Keluar', key: 'tanggal_keluar', width: 25, isDate: true },
             { header: 'Nama Kelas / Angkatan', key: 'nama_kelas', width: 25, dropdown: { refKey: 'kelas' } },
             { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15 },
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
             { header: 'Alamat', key: 'alamat', width: 40 },
             { header: 'No. HP', key: 'no_hp', width: 15 }
           ],
@@ -185,6 +185,7 @@ const SiswaPage: React.FC = () => {
               'Kolom EMAS (Nama Lengkap & Status) WAJIB diisi.',
               'Isi kolom Status dengan: LULUS, MUTASI, atau TIDAK_AKTIF.',
               'Sangat disarankan mengisi Tanggal Masuk & Tanggal Keluar untuk akurasi linimasa.',
+              'Format tanggal bebas: 20/07/2023, 20-07-2023, 20 Juli 2023, atau 2023-07-20.',
               'Kolom Nama Kelas & Nama Jurusan opsional untuk alumni.'
             ],
             referenceData: {
@@ -204,7 +205,7 @@ const SiswaPage: React.FC = () => {
             { header: 'NIK', key: 'nik', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
             { header: 'No. HP', key: 'no_hp', width: 15 },
             { header: 'Alamat', key: 'alamat', width: 40 }
           ],
@@ -232,8 +233,8 @@ const SiswaPage: React.FC = () => {
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
-            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25, isDate: true },
+            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25, isDate: true },
             { header: 'Alamat', key: 'alamat', width: 40 },
             { header: 'No. HP', key: 'no_hp', width: 15 }
           ],
@@ -244,7 +245,7 @@ const SiswaPage: React.FC = () => {
               'Kolom EMAS (Nama Lengkap & Nama Kelas) WAJIB diisi.',
               'Siswa yang diimpor dari file ini otomatis berstatus AKTIF.',
               'Jika ada nama kelas yang sama di jurusan berbeda (misal: X TE 3), sertakan kolom Nama Jurusan untuk penentuan kelas presisi.',
-              'Format Tanggal Lahir/Masuk adalah YYYY-MM-DD (contoh: 2024-07-15).'
+              'Format tanggal bebas: 20/07/2023, 20-07-2023, 20 Juli 2023, atau 2023-07-20.'
             ],
             referenceData: {
               kelas: kelasNames,

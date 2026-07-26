@@ -6,6 +6,7 @@ export interface AdvancedColumnConfig {
   key: string;
   width?: number;
   required?: boolean;
+  isDate?: boolean; // Force TEXT format to prevent Excel serial number conversion
   dropdown?: {
     refKey: string; // Key in referenceData object
     allowCustom?: boolean;
@@ -92,7 +93,17 @@ export const generateAdvancedTemplate = async (
 
     for (let rowIdx = startDataRow; rowIdx <= endDataRow; rowIdx++) {
       const cell = mainSheet.getCell(rowIdx, i + 1);
-      cell.numFmt = '@'; // Force cell format as TEXT ('@')
+
+      // For date columns: force TEXT format so Excel never converts pasted
+      // dates (e.g. 23/12/2026) into serial numbers (e.g. 46388).
+      // Setting numFmt='@' AND explicitly assigning an empty string value
+      // locks the cell type as text BEFORE the user pastes anything.
+      if (col.isDate) {
+        cell.numFmt = '@';
+        cell.value = { text: '', type: 'string' } as any;
+      } else {
+        cell.numFmt = '@'; // Force cell format as TEXT ('@')
+      }
 
       if (ref) {
         const colLetter = refSheet.getColumn(ref.col).letter;
