@@ -1,5 +1,5 @@
 import { prisma } from '@/utils/prisma';
-import { findBestMatch } from '@/utils/normalization';
+import { findBestMatch, parseSmartDate } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
 
 function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
@@ -17,93 +17,6 @@ function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
       return row[matchedKey];
     }
   }
-  return undefined;
-}
-
-const ID_MONTH_MAP: Record<string, number> = {
-  januari: 0, jan: 0,
-  februari: 1, feb: 1, febuari: 1,
-  maret: 2, mar: 2,
-  april: 3, apr: 3,
-  mei: 4, may: 4,
-  juni: 5, jun: 5,
-  juli: 6, jul: 6,
-  agustus: 7, agu: 7, ags: 7, agt: 7, aug: 7, august: 7,
-  september: 8, sep: 8, sept: 8,
-  oktober: 9, okt: 9, oct: 9, october: 9,
-  november: 10, nov: 10,
-  desember: 11, des: 11, dec: 11, december: 11
-};
-
-function parseExcelDate(val: any): Date | undefined {
-  if (val === null || val === undefined) return undefined;
-  if (val instanceof Date && !isNaN(val.getTime())) return val;
-
-  // 1. Handle Excel Serial Number (e.g. 45127 = 2023-07-20)
-  if (typeof val === 'number') {
-    if (val > 1000 && val < 100000) {
-      const date = new Date(Math.round((val - 25569) * 86400 * 1000));
-      if (!isNaN(date.getTime())) return date;
-    }
-    return undefined;
-  }
-
-  const str = String(val).trim();
-  if (!str || str === '-' || str === 'KOSONG' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') {
-    return undefined;
-  }
-
-  // Clean string: replace commas, tabs, extra spaces
-  const cleanedStr = str.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
-
-  // 2. Pattern: Text Month, e.g. "20 Juli 2023", "20 Jul 2023", "20-Juli-2023", "20/Jul/2023"
-  const textMonthRegex = /^(\d{1,2})[\s\/\.-]+([a-zA-Z]{3,10})[\s\/\.-]+(\d{4})$/;
-  const textMatch = cleanedStr.match(textMonthRegex);
-  if (textMatch) {
-    const day = parseInt(textMatch[1], 10);
-    const monthKey = textMatch[2].toLowerCase();
-    const year = parseInt(textMatch[3], 10);
-    const monthIndex = ID_MONTH_MAP[monthKey];
-
-    if (monthIndex !== undefined && day >= 1 && day <= 31 && year > 1900) {
-      const d = new Date(Date.UTC(year, monthIndex, day));
-      if (!isNaN(d.getTime())) return d;
-    }
-  }
-
-  // 3. Pattern: Numeric parts split by / . - or space
-  const parts = cleanedStr.split(/[\/\.-]/).map(p => p.trim());
-  if (parts.length === 3) {
-    let y = 0, m = 0, d = 0;
-
-    if (parts[0].length === 4) {
-      // Format: YYYY/MM/DD or YYYY-MM-DD or YYYY.MM.DD
-      y = parseInt(parts[0], 10);
-      m = parseInt(parts[1], 10) - 1;
-      d = parseInt(parts[2], 10);
-    } else if (parts[2].length === 4) {
-      // Format: DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY (Standard Indonesian Format)
-      d = parseInt(parts[0], 10);
-      m = parseInt(parts[1], 10) - 1;
-      y = parseInt(parts[2], 10);
-    } else if (parts[2].length === 2) {
-      // Format: DD/MM/YY (e.g. 20/07/23)
-      d = parseInt(parts[0], 10);
-      m = parseInt(parts[1], 10) - 1;
-      const shortYear = parseInt(parts[2], 10);
-      y = shortYear < 50 ? 2000 + shortYear : 1900 + shortYear;
-    }
-
-    if (y > 1900 && m >= 0 && m <= 11 && d >= 1 && d <= 31) {
-      const parsedDate = new Date(Date.UTC(y, m, d));
-      if (!isNaN(parsedDate.getTime())) return parsedDate;
-    }
-  }
-
-  // 4. Standard Date fallback (handles ISO 8601 like 2023-07-20T00:00:00Z)
-  const directParsed = new Date(str);
-  if (!isNaN(directParsed.getTime())) return directParsed;
-
   return undefined;
 }
 
@@ -233,7 +146,7 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         nama_siswa: getRowValue(row, 'nama_siswa', 'nama', 'Nama', 'Nama_Siswa', 'Nama Lengkap'),
         jenis_kelamin: getRowValue(row, 'jenis_kelamin', 'jk', 'JK', 'Gender', 'JK (L/P)'),
         tempat_lahir: getRowValue(row, 'tempat_lahir', 'Tempat_Lahir', 'Tempat Lahir'),
-        tanggal_lahir: parseExcelDate(getRowValue(row, 'tanggal_lahir', 'Tanggal_Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir')),
+        tanggal_lahir: parseSmartDate(getRowValue(row, 'tanggal_lahir', 'Tanggal_Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir')),
         alamat: getRowValue(row, 'alamat', 'Alamat'),
         no_hp: getRowValue(row, 'no_hp', 'hp', 'HP', 'Telepon', 'No. HP'),
         nik: getRowValue(row, 'nik', 'NIK'),
@@ -246,8 +159,8 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         nama_ibu: getRowValue(row, 'nama_ibu', 'Ibu', 'Nama Ibu'),
         email: getRowValue(row, 'email', 'Email'),
         status: statusInput,
-        tanggal_masuk: parseExcelDate(getRowValue(row, 'tanggal_masuk', 'Tanggal_Masuk', 'Tanggal Masuk (YYYY-MM-DD)', 'Tanggal Masuk')),
-        tanggal_keluar: parseExcelDate(getRowValue(row, 'tanggal_keluar', 'Tanggal_Keluar', 'Tanggal Keluar (YYYY-MM-DD)', 'Tanggal Keluar'))
+        tanggal_masuk: parseSmartDate(getRowValue(row, 'tanggal_masuk', 'Tanggal_Masuk', 'Tanggal Masuk (YYYY-MM-DD)', 'Tanggal Masuk')),
+        tanggal_keluar: parseSmartDate(getRowValue(row, 'tanggal_keluar', 'Tanggal_Keluar', 'Tanggal Keluar (YYYY-MM-DD)', 'Tanggal Keluar'))
       };
 
       if (!createInput.nama_siswa) throw new Error('Kolom Nama Siswa wajib diisi');
