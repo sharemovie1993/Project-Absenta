@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import { parseSmartDate } from '@/utils/normalization';
+
+const coerceDate = z.preprocess((val) => {
+  if (val === null || val === undefined || val === '') return undefined;
+  return parseSmartDate(val);
+}, z.date().optional().nullable());
 
 const coerceString = z.preprocess((val) => {
   if (val === null || val === undefined) return undefined;
@@ -37,7 +43,7 @@ export const createSiswaSchema = z.object({
   sekolah_asal: coerceString,
   no_ijazah_smp: coerceString,
   tempat_lahir: coerceString,
-  tanggal_lahir: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
+  tanggal_lahir: coerceDate,
   alamat: coerceString,
   dusun: coerceString,
   kelurahan: coerceString,
@@ -80,8 +86,8 @@ export const createSiswaSchema = z.object({
     return false;
   }),
   no_kip: coerceString,
-  tanggal_masuk: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
-  tanggal_keluar: z.union([z.date(), z.string(), z.number()]).optional().nullable(),
+  tanggal_masuk: coerceDate,
+  tanggal_keluar: coerceDate,
   alasan_keluar: coerceString,
   kelas_id: coerceString,
   jurusan_id: coerceString,
