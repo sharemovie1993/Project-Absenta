@@ -212,6 +212,42 @@ export class TransitionService {
   }
 
 
+  private async getCandidates(tenantId: string, tahunLamaId: string, semesterLamaId: string, mappedFromKelasIds?: string[]) {
+    const whereKelas = mappedFromKelasIds && mappedFromKelasIds.length > 0 ? { in: mappedFromKelasIds } : undefined;
+
+    // 1. Try to fetch from SiswaAkademik first
+    let candidates = await prisma.siswaAkademik.findMany({
+      where: {
+        tahun_pelajaran_id: tahunLamaId,
+        semester_id: semesterLamaId,
+        status: 'AKTIF',
+        ...(whereKelas ? { kelas_id: whereKelas } : {})
+      },
+      select: { id: true, siswa_id: true, kelas_id: true, siswa: { select: { nama_siswa: true } } }
+    });
+
+    // 2. Fallback to main Siswa table if SiswaAkademik records don't exist yet for this semester
+    if (candidates.length === 0) {
+      const siswaList = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          status: 'AKTIF',
+          kelas_id: whereKelas || { not: null }
+        },
+        select: { id: true, nama_siswa: true, kelas_id: true }
+      });
+
+      candidates = siswaList.map(s => ({
+        id: s.id,
+        siswa_id: s.id,
+        kelas_id: s.kelas_id!,
+        siswa: { nama_siswa: s.nama_siswa }
+      }));
+    }
+
+    return candidates;
+  }
+
   async preview(scope: DataScope, input: TransitionPreviewInput): Promise<TransitionPreviewResponse> {
     const tenantId = scope.tenantId;
     const { tahunLama, semesterAktifLama } = await this.assertGatekeepers(tenantId, input.tahunPelajaranLamaId, input.tahunPelajaranBaruId);
@@ -222,10 +258,8 @@ export class TransitionService {
       overrides.set(ov.siswaId, ov);
     }
 
-    const candidates = await prisma.siswaAkademik.findMany({
-      where: { tahun_pelajaran_id: tahunLama.id, semester_id: semesterAktifLama.id, status: 'AKTIF' },
-      select: { id: true, siswa_id: true, kelas_id: true, siswa: { select: { nama_siswa: true } } }
-    });
+    const mappedFromKelasIds = input.mappingKelas?.map(m => m.fromKelasId).filter(Boolean);
+    const candidates = await this.getCandidates(tahunLama.tenant_id, tahunLama.id, semesterAktifLama.id, mappedFromKelasIds);
 
     const warnings: string[] = [];
     const items: TransitionPreviewItem[] = [];
@@ -286,10 +320,8 @@ export class TransitionService {
       overrides.set(ov.siswaId, ov);
     }
 
-    const candidates = await prisma.siswaAkademik.findMany({
-      where: { tahun_pelajaran_id: tahunLama.id, semester_id: semesterAktifLama.id, status: 'AKTIF' },
-      select: { siswa_id: true, kelas_id: true }
-    });
+    const mappedFromKelasIds = input.mappingKelas?.map(m => m.fromKelasId).filter(Boolean);
+    const candidates = await this.getCandidates(tahunLama.tenant_id, tahunLama.id, semesterAktifLama.id, mappedFromKelasIds);
 
     const invalids: string[] = [];
     for (const c of candidates) {
@@ -319,8 +351,8 @@ export class TransitionService {
         const override = overrides.get(c.siswa_id);
         const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
         
-        // 1. Update historical status in the old year's academic record
-        await tx.siswaAkademik.update({
+        // 1. Update/create historical status in the old year's academic record
+        await tx.siswaAkademik.upsert({
           where: {
             siswa_id_tahun_pelajaran_id_semester_id: {
               siswa_id: c.siswa_id,
@@ -328,7 +360,14 @@ export class TransitionService {
               semester_id: semesterAktifLama.id
             }
           },
-          data: {
+          update: {
+            status: status as any
+          },
+          create: {
+            siswa_id: c.siswa_id,
+            tahun_pelajaran_id: tahunLama.id,
+            semester_id: semesterAktifLama.id,
+            kelas_id: c.kelas_id,
             status: status as any
           }
         });
