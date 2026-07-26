@@ -26,6 +26,16 @@ const HEADER_MAP: Record<string, string> = {
   'TEMPAT LAHIR': 'tempat_lahir',
   'TANGGAL LAHIR (YYYY-MM-DD)': 'tanggal_lahir',
   'TANGGAL LAHIR': 'tanggal_lahir',
+  'TGL LAHIR': 'tanggal_lahir',
+  'TGL. LAHIR': 'tanggal_lahir',
+  'TANGGAL MASUK (YYYY-MM-DD)': 'tanggal_masuk',
+  'TANGGAL MASUK': 'tanggal_masuk',
+  'TGL MASUK': 'tanggal_masuk',
+  'TGL. MASUK': 'tanggal_masuk',
+  'TANGGAL KELUAR (YYYY-MM-DD)': 'tanggal_keluar',
+  'TANGGAL KELUAR': 'tanggal_keluar',
+  'TGL KELUAR': 'tanggal_keluar',
+  'TGL. KELUAR': 'tanggal_keluar',
   'ALAMAT': 'alamat',
   'NO. HP': 'no_hp',
   'NO HP': 'no_hp',
@@ -98,6 +108,9 @@ const KEY_ALIASES: Record<string, string[]> = {
   'jurusan': ['pilihan_1', 'pilihan_kompetensi', 'kompetensi_keahlian', 'nama_jurusan', 'pilihan_jurusan'],
   'sekolah_asal': ['asal_sekolah'],
   'no_ijazah_smp': ['no_seri_ijazah_smp', 'no_seri_ijazah', 'no_ijazah'],
+  'tanggal_masuk': ['tgl_masuk', 'tanggal_masuk_(yyyy-mm-dd)', 'tgl_masuk_(yyyy-mm-dd)'],
+  'tanggal_keluar': ['tgl_keluar', 'tanggal_keluar_(yyyy-mm-dd)', 'tgl_keluar_(yyyy-mm-dd)'],
+  'tanggal_lahir': ['tgl_lahir', 'tanggal_lahir_(yyyy-mm-dd)', 'tgl_lahir_(yyyy-mm-dd)'],
 };
 
 /**

@@ -166,15 +166,15 @@ const SiswaPage: React.FC = () => {
           [
             { header: 'Nama Lengkap', key: 'nama_siswa', width: 30, required: true },
             { header: 'Status', key: 'status', width: 22, required: true, dropdown: { refKey: 'status' } },
-            { header: 'Tanggal Masuk (YYYY-MM-DD)', key: 'tanggal_masuk', width: 25 },
-            { header: 'Tanggal Keluar (YYYY-MM-DD)', key: 'tanggal_keluar', width: 25 },
+            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25 },
+            { header: 'Tanggal Keluar', key: 'tanggal_keluar', width: 25 },
             { header: 'Nama Kelas / Angkatan', key: 'nama_kelas', width: 25, dropdown: { refKey: 'kelas' } },
             { header: 'Nama Jurusan', key: 'nama_jurusan', width: 25, dropdown: { refKey: 'jurusan' } },
             { header: 'NIS', key: 'nis', width: 15 },
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
             { header: 'Alamat', key: 'alamat', width: 40 },
             { header: 'No. HP', key: 'no_hp', width: 15 }
           ],
@@ -184,7 +184,7 @@ const SiswaPage: React.FC = () => {
               'SKENARIO 2: TEMPLATE IMPOR SISWA LAMA / LULUSAN / ALUMNI & TRACER STUDY.',
               'Kolom EMAS (Nama Lengkap & Status) WAJIB diisi.',
               'Isi kolom Status dengan: LULUS, MUTASI, atau TIDAK_AKTIF.',
-              'Sangat disarankan mengisi Tanggal Masuk & Tanggal Keluar (Format YYYY-MM-DD) untuk akurasi linimasa.',
+              'Sangat disarankan mengisi Tanggal Masuk & Tanggal Keluar untuk akurasi linimasa.',
               'Kolom Nama Kelas & Nama Jurusan opsional untuk alumni.'
             ],
             referenceData: {
@@ -204,7 +204,7 @@ const SiswaPage: React.FC = () => {
             { header: 'NIK', key: 'nik', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
             { header: 'No. HP', key: 'no_hp', width: 15 },
             { header: 'Alamat', key: 'alamat', width: 40 }
           ],
@@ -232,8 +232,8 @@ const SiswaPage: React.FC = () => {
             { header: 'NISN', key: 'nisn', width: 15 },
             { header: 'JK (L/P)', key: 'jenis_kelamin', width: 10, required: false, dropdown: { refKey: 'jk' } },
             { header: 'Tempat Lahir', key: 'tempat_lahir', width: 20 },
-            { header: 'Tanggal Lahir (YYYY-MM-DD)', key: 'tanggal_lahir', width: 25 },
-            { header: 'Tanggal Masuk (YYYY-MM-DD)', key: 'tanggal_masuk', width: 25 },
+            { header: 'Tanggal Lahir', key: 'tanggal_lahir', width: 25 },
+            { header: 'Tanggal Masuk', key: 'tanggal_masuk', width: 25 },
             { header: 'Alamat', key: 'alamat', width: 40 },
             { header: 'No. HP', key: 'no_hp', width: 15 }
           ],
