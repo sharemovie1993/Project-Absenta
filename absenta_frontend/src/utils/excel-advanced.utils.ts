@@ -80,18 +80,23 @@ export const generateAdvancedTemplate = async (
     });
   }
 
-  // 4. Apply Data Validation (Dropdowns)
+  // 4. Apply Text Formatting & Data Validation (Dropdowns)
   const startDataRow = headerRowNumber + 1;
   const endDataRow = 3000; // Standard for large Indonesian schools (SMK/SMA)
 
   columns.forEach((col, i) => {
-    if (col.dropdown && options.referenceData?.[col.dropdown.refKey]) {
-      const ref = refMap[col.dropdown.refKey];
-      const colLetter = refSheet.getColumn(ref.col).letter;
-      const refRange = `'REFERENSI'!$${colLetter}$2:$${colLetter}$${ref.count + 1}`;
+    const mainCol = mainSheet.getColumn(i + 1);
+    mainCol.numFmt = '@'; // Force column format as TEXT in Excel
 
-      for (let rowIdx = startDataRow; rowIdx <= endDataRow; rowIdx++) {
-        const cell = mainSheet.getCell(rowIdx, i + 1);
+    const ref = col.dropdown && options.referenceData?.[col.dropdown.refKey] ? refMap[col.dropdown.refKey] : null;
+
+    for (let rowIdx = startDataRow; rowIdx <= endDataRow; rowIdx++) {
+      const cell = mainSheet.getCell(rowIdx, i + 1);
+      cell.numFmt = '@'; // Force cell format as TEXT ('@')
+
+      if (ref) {
+        const colLetter = refSheet.getColumn(ref.col).letter;
+        const refRange = `'REFERENSI'!$${colLetter}$2:$${colLetter}$${ref.count + 1}`;
         cell.dataValidation = {
           type: 'list',
           allowBlank: true,
@@ -100,14 +105,14 @@ export const generateAdvancedTemplate = async (
           errorTitle: 'Data Tidak Valid',
           error: 'Silahkan pilih data dari daftar yang tersedia.'
         };
-        
-        // Add subtle border to data cells for better UX
-        cell.border = {
-          left: { style: 'thin', color: { argb: 'FFEEEEEE' } },
-          right: { style: 'thin', color: { argb: 'FFEEEEEE' } },
-          bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } }
-        };
       }
+        
+      // Add subtle border to data cells for better UX
+      cell.border = {
+        left: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+        right: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+        bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } }
+      };
     }
   });
 
