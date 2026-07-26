@@ -370,16 +370,14 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     // Set untuk mencatat kelas tujuan yang sudah terpakai (menghindari bentrokan pemetaan ganda)
     const usedTargets = new Set<string>();
 
-    // Compute maxTingkat dynamically from the data
-    const localMaxTingkat = data.length > 0 ? Math.max(...data.map(k => k.tingkat || 0)) : 12;
-
+    // Gantikan localMaxTingkat dengan maxTingkat global (se-sekolah) agar mode 1 tingkat tidak me-LULUSkan secara salah
     data.forEach(source => {
       const targetTingkat = source.tingkat + 1;
       const targetKey = `${getGroupKey(source)}:${targetTingkat}`;
       const candidates = byProgramTingkat[targetKey] || [];
 
-      // Kelas tingkat tertinggi → LULUS (dinamis berdasarkan jenjang)
-      if (source.tingkat >= localMaxTingkat) {
+      // Kelas tingkat tertinggi → LULUS (dinamis berdasarkan jenjang sekolah, bukan hanya tingkat terpilih)
+      if (source.tingkat >= maxTingkat) {
         newMapping[source.id] = 'LULUS';
         return;
       }
@@ -505,12 +503,31 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
       !samePK.some(s => s.id === c.id)
     );
 
+    // Cari kelas tujuan yang sudah terpakai di slot kelas asal LAIN
+    const usedByOtherMap = new Map<string, string>(); // targetKelasId -> sourceKelasNama
+    Object.entries(mapping).forEach(([fromId, toId]) => {
+      if (fromId !== source.id && toId && toId !== 'LULUS') {
+        const fromKelasObj = allClasses.find(c => c.id === fromId);
+        usedByOtherMap.set(toId, fromKelasObj?.nama_kelas || 'Kelas lain');
+      }
+    });
+
+    // Filter 1: Hanya kelas aktif
+    // Filter 2: Opsi yang belum dipakai slot kelas lain (atau ditandai terpakai)
     const options: { value: string; label: string; group?: string }[] = [];
+
+    const formatOptionLabel = (c: Kelas) => {
+      const usedBy = usedByOtherMap.get(c.id);
+      if (usedBy) {
+        return `${c.nama_kelas} (⚠️ Dipakai ${usedBy})`;
+      }
+      return c.nama_kelas;
+    };
 
     if (samePK.length > 0) {
       samePK.forEach(c => options.push({
         value: c.id,
-        label: c.nama_kelas,
+        label: formatOptionLabel(c),
         group: sourceProgramKeahlianId
           ? `Program Keahlian: ${samePK[0].Jurusan?.ProgramKeahlian?.nama || 'Sama'}`
           : 'Jurusan Sama'
@@ -520,7 +537,7 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
     if (otherPK.length > 0) {
       otherPK.forEach(c => options.push({
         value: c.id,
-        label: c.nama_kelas,
+        label: formatOptionLabel(c),
         group: 'Program Keahlian Lain'
       }));
     }
