@@ -62,25 +62,37 @@ export class TahunPelajaranService {
   private async attachDistinctStudentCounts(items: any[]): Promise<any[]> {
     return Promise.all(
       items.map(async (tp) => {
-        // Compute distinct siswa_id from SiswaAkademik for this specific school year
+        // 1. Histori Siswa (distinct unique students ever enrolled in this school year)
         const distinctAkademik = await prisma.siswaAkademik.groupBy({
           by: ['siswa_id'],
           where: { tahun_pelajaran_id: tp.id },
         });
 
-        let count = distinctAkademik.length;
+        let historiCount = distinctAkademik.length;
+        if (historiCount === 0 && tp._count?.Siswa) {
+          historiCount = tp._count.Siswa;
+        }
 
-        // Fallback to Siswa direct count if SiswaAkademik has no entries
-        if (count === 0 && tp._count?.Siswa) {
-          count = tp._count.Siswa;
+        // 2. Siswa Aktif: Current active students for this active school year
+        let siswaAktifCount = 0;
+        if (tp.is_active) {
+          siswaAktifCount = await prisma.siswa.count({
+            where: {
+              tenant_id: tp.tenant_id,
+              tahun_pelajaran_id: tp.id,
+              status: 'AKTIF',
+            },
+          });
         }
 
         return {
           ...tp,
           _count: {
             ...tp._count,
-            Siswa: count,
-            SiswaAkademik: count,
+            Siswa: siswaAktifCount,
+            SiswaAktif: siswaAktifCount,
+            HistoriSiswa: historiCount,
+            SiswaAkademik: historiCount,
           },
         };
       })

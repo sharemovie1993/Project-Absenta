@@ -211,11 +211,20 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
       )
     },
     { 
-      key: '_count_siswa', 
-      label: 'Siswa',
+      key: '_count_siswa_aktif', 
+      label: 'Siswa Aktif',
       render: (_: unknown, row: any) => (
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-          {row._count?.SiswaAkademik || row._count?.Siswa || 0}
+        <span className={`text-xs font-black ${row.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>
+          {row._count?.SiswaAktif ?? (row.is_active ? (row._count?.Siswa || 0) : 0)}
+        </span>
+      )
+    },
+    { 
+      key: '_count_histori_siswa', 
+      label: 'Histori Siswa',
+      render: (_: unknown, row: any) => (
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+          {row._count?.HistoriSiswa ?? row._count?.SiswaAkademik ?? row._count?.Siswa ?? 0}
         </span>
       )
     },
