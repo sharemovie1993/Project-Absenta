@@ -173,10 +173,6 @@ export const kurikulumApi = {
     const response = await api.post('/kurikulum/perangkat/save-editor', data);
     return response.data;
   },
-  savePerangkatAjarEditor: async (data: any) => {
-    const response = await api.post('/kurikulum/perangkat/save-editor', data);
-    return response.data;
-  },
   deletePerangkatAjar: async (id: string) => {
     const response = await api.delete(`/kurikulum/perangkat/${id}`);
     return response.data;
