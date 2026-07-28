@@ -166,8 +166,8 @@ export class SesiGuard {
 
     if (isManagement) return;
 
-    const isGuru = await prisma.guru.count({ where: { user_id: userId, tenant_id: tenantId } });
-    const siswa = await prisma.siswa.findFirst({ where: { user_id: userId, tenant_id: tenantId } });
+    const isGuru = await prisma.guru.count({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] } });
+    const siswa = await prisma.siswa.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] } });
 
     if (siswa) {
         const org = request.organizationalScope;
@@ -195,7 +195,7 @@ export class SesiGuard {
             request.query.allowedKelasIds = [siswa.kelas_id];
         }
     } else if (isGuru) {
-        const guru = await prisma.guru.findFirst({ where: { user_id: userId, tenant_id: tenantId }, select: { id: true } });
+        const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, OR: [{ user_id: userId }, { id: userId }] }, select: { id: true } });
         if (guru) {
             const org = request.organizationalScope;
             const hasPrivilegedStructure = org?.tenant_wide === true || (org?.positions || []).some((p: any) => p.code === 'PETUGAS_KELAS');

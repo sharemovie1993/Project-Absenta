@@ -18,7 +18,7 @@ interface JadwalGridProps {
 }
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1); // 10 Jam Pelajaran
+const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1); // 12 Jam Pelajaran
 
 // Mock time mapping for slots
 const SLOT_TIME: Record<number, string> = {
@@ -32,6 +32,8 @@ const SLOT_TIME: Record<number, string> = {
   8: "13:15 - 14:00",
   9: "14:00 - 14:45",
   10: "14:45 - 15:30",
+  11: "15:30 - 16:15",
+  12: "16:15 - 17:00",
 };
 
 export const JadwalGrid: React.FC<JadwalGridProps> = ({ 

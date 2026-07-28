@@ -42,6 +42,7 @@ interface ModeMultiSesiViewProps {
   roleLabel?: string;
   petugasLabel?: string;
   petugasVariant?: 'success' | 'destructive' | 'outline';
+  managedKelasIds?: string[];
 }
 
 type TabType = 'gerbang' | 'manual' | 'sesi';
@@ -60,11 +61,18 @@ export default function ModeMultiSesiView({
   isPetugasGuru,
   kelasLabel,
   petugasLabel,
+  managedKelasIds,
 }: ModeMultiSesiViewProps) {
   const { tenantId } = useTenant();
   const token = useAuthStore((state) => state.token);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+
+  useEffect(() => {
+    if (!selectedKelasId && managedKelasIds && managedKelasIds.length > 0) {
+      setSelectedKelasId(managedKelasIds[0]);
+    }
+  }, [managedKelasIds, selectedKelasId]);
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [activeTab, setActiveTab ] = useState<TabType>('gerbang');
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
@@ -77,25 +85,20 @@ export default function ModeMultiSesiView({
   const isGerbangPos = positionCodes.includes('GERBANG');
   const isWaliKelasPos = positionCodes.includes('WALIKELAS');
 
-  // 1. Scan Gerbang: Allowed for Admin, Gerbang, Guru, Petugas, and users with scan capability
+  // 1. Scan Gerbang (Tab Utama): HANYA untuk Admin, Operator, atau Posisi/Akses PETUGAS GERBANG
+  // Petugas Absensi Kelas / Wali Kelas TIDAK memiliki akses ke Tab Utama (Gerbang)
   const canAccessInput =
     isAdmin ||
-    isPetugasGuru ||
-    isPetugasSiswa ||
     isGerbangPos ||
-    isWaliKelasPos ||
-    user?.role?.name === 'GURU' ||
-    user?.role?.name === 'PETUGAS' ||
     user?.role?.name === 'OPERATOR' ||
-    caps.includes('attendance.scan') ||
     caps.includes('attendance.gate.tap.entry') ||
-    caps.includes('attendance.sessions.create');
+    caps.includes('attendance.scan.gate');
   
-  // 2. Cek Manual: WALIKELAS & PETUGAS_KELAS only
-  const canAccessManual = isAdmin || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
+  // 2. Cek Manual: Petugas Kelas, Wali Kelas, Guru, Admin
+  const canAccessManual = isAdmin || isPetugasSiswa || isWaliKelasPos || isPetugasGuru || caps.includes('attendance.sessions.update.attendance');
   
-  // 3. Manajemen Sesi: GURU baseline (read-only), but hidden for GERBANG/WALIKELAS positions
-  const canAccessSesi = isAdmin || (caps.includes('attendance.sessions.view.list') && !isGerbangPos && !isWaliKelasPos);
+  // 3. Manajemen Sesi: Petugas Kelas, Guru, Admin
+  const canAccessSesi = isAdmin || isPetugasSiswa || isPetugasGuru || caps.includes('attendance.sessions.view.list');
   
   // 4. CRUD Sesi: ADMIN/PETUGAS_KELAS only
   const canCreateSession = isAdmin || caps.includes('attendance.sessions.create');
@@ -235,8 +238,8 @@ export default function ModeMultiSesiView({
 
           {/* Compact Segmented Tabs inside Hero */}
           <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-xl border border-white/10 w-fit mt-2">
-            {/* Toggle back to scanner if on other tabs */}
-            {activeTab !== 'gerbang' && (
+            {/* Toggle back to scanner if on other tabs and user has access to gate scanner */}
+            {canAccessInput && activeTab !== 'gerbang' && (
               <button
                  onClick={() => setActiveTab('gerbang')}
                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-emerald-100/60 hover:text-white transition-colors border-r border-white/10 mr-1"

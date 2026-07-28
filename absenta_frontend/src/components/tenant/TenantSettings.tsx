@@ -8,7 +8,7 @@ import { getGuruList } from '@/api/academic/guru.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
-import axiosInstance from '@/lib/axiosInstance';
+import { useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSystemConfig, saveSystemConfig } from '@/services/systemConfig';
 import { getKelasForDropdown } from '@/api/dropdown.api';
 
@@ -21,6 +21,7 @@ import { getKelasForDropdown } from '@/api/dropdown.api';
 export const TenantSettings: React.FC = () => {
   const { user } = useAuth();
   const confirm = useConfirm();
+  const queryClient = useQueryClient();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -69,6 +70,7 @@ export const TenantSettings: React.FC = () => {
   const [nipKepala, setNipKepala] = useState('');
   const [jenjang, setJenjang] = useState('');
   const [kurikulum, setKurikulum] = useState('MERDEKA');
+  const [durasiSmk, setDurasiSmk] = useState<'3_TAHUN' | '4_TAHUN'>('3_TAHUN');
   const [gurus, setGurus] = useState<any[]>([]);
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');
 
@@ -205,6 +207,7 @@ export const TenantSettings: React.FC = () => {
         setSelectedGuruId((data as any).kepala_sekolah_guru_id || '');
         setJenjang(data.jenjang || '');
         setKurikulum((data as any).kurikulum || 'MERDEKA');
+        setDurasiSmk((data as any).durasi_smk || '3_TAHUN');
         
         // Parse the dynamic lines from the database string array
         const rawLines = data.print_header_lines && data.print_header_lines.length > 0
@@ -311,6 +314,7 @@ export const TenantSettings: React.FC = () => {
         nip_kepala: nipKepala,
         jenjang: jenjang || null,
         kurikulum: kurikulum || 'MERDEKA',
+        durasi_smk: durasiSmk,
         kepala_sekolah_guru_id: selectedGuruId || null,
         shift_jam_pelajaran: shiftConfig,
       };
@@ -324,6 +328,7 @@ export const TenantSettings: React.FC = () => {
 
       if (response.success) {
         toast.success('Profil sekolah & Kop Surat berhasil disimpan!');
+        queryClient.invalidateQueries({ queryKey: ['tenant-profile-jenjang'] });
         setIsEditing(false);
         fetchTenant();
       } else {
@@ -562,6 +567,26 @@ export const TenantSettings: React.FC = () => {
                       <option value="K13" disabled>Kurikulum 2013 (K13) - Belum Didukung</option>
                     </select>
                   </div>
+                  {(jenjang === 'SMK' || jenjang === 'MAK') && (
+                    <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label htmlFor="durasi_smk" className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                        Lama Studi / Durasi SMK <span className="text-rose-500">*</span>
+                      </Label>
+                      <select
+                        id="durasi_smk"
+                        value={durasiSmk}
+                        disabled={!isEditing}
+                        onChange={(e) => setDurasiSmk(e.target.value as '3_TAHUN' | '4_TAHUN')}
+                        className="flex h-10 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300 font-bold text-slate-700 dark:text-slate-300"
+                      >
+                        <option value="3_TAHUN">3 Tahun (Tingkat X, XI, XII) — Default</option>
+                        <option value="4_TAHUN">4 Tahun (Tingkat X, XI, XII, XIII) — Program 4 Tahun</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 leading-tight italic">
+                        Pilih 3 Tahun untuk program reguler 3 tahun (kelas XII = Lulus). Pilih 4 Tahun jika menganut program 4 tahun hingga kelas XIII.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Domain & Email */}

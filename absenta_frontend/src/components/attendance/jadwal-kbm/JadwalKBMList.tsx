@@ -8,6 +8,7 @@ import {
   deleteJadwalKBM, 
   type JadwalKBM 
 } from '../../../api/attendance/jadwalKBM.api';
+import { getJadwalKegiatan, type JadwalKegiatanItem } from '../../../api/attendance/jadwalKegiatan.api';
 import { formatErrorMessage } from '../../../api/apiUtils';
 import { kelasApi } from '../../../api/academic.api';
 import { getTahunPelajaranList } from '../../../api/academic/tahunPelajaran.api';
@@ -19,6 +20,7 @@ import { mapelApi, guruApi } from '../../../api/academic.api';
 import type { Mapel, Guru, Kelas } from '../../../types/academic';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { toast } from 'react-hot-toast';
+import { cn } from '../../../lib/utils';
 
 // Pillar 5: Lazy Loading
 const JadwalKBMForm = lazy(() => import('./JadwalKBMForm').then(m => ({ default: m.JadwalKBMForm })));
@@ -35,6 +37,8 @@ interface PendingRow {
 
 export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
   const [jadwal, setJadwal] = useState<JadwalKBM[]>([]);
+  const [jadwalKegiatan, setJadwalKegiatan] = useState<JadwalKegiatanItem[]>([]);
+  const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'KBM' | 'KEGIATAN'>('ALL');
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const { user, can } = useAuth();
@@ -138,14 +142,18 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
     const fetchJadwal = async () => {
       setLoading(true);
       try {
-        const res = await getJadwalKBM({
-          kelas_id: selectedKelasId,
-          tahun_pelajaran_id: activeTahunId,
-          semester_id: activeSemesterId
-        });
+        const [res, kegiatanRes] = await Promise.all([
+          getJadwalKBM({
+            kelas_id: selectedKelasId,
+            tahun_pelajaran_id: activeTahunId,
+            semester_id: activeSemesterId
+          }),
+          getJadwalKegiatan({ aktif: true }).catch(() => ({ data: [] }))
+        ]);
         
         if (controller.signal.aborted) return;
         setJadwal(res.data || []);
+        setJadwalKegiatan(kegiatanRes.data || []);
         
         if (res.meta) {
           if (res.meta.kelas_id) setSelectedKelasId(res.meta.kelas_id);
@@ -263,8 +271,32 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
   const days = useMemo(() => ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'], []);
 
   const getJadwalByDay = useCallback((day: string) => {
-    return jadwal.filter(j => j.hari === day).sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
-  }, [jadwal]);
+    const kbmItems = (agendaFilter === 'KEGIATAN') ? [] : jadwal.filter(j => j.hari === day).map(j => ({
+      ...j,
+      is_kegiatan: false,
+      category: 'KBM'
+    }));
+
+    const kegiatanItems = (agendaFilter === 'KBM') ? [] : jadwalKegiatan
+      .filter(k => k.aktif && (k.hari ?? []).includes(day as any) && (k.target_semua_kelas || (k.target_kelas_ids ?? []).includes(selectedKelasId)))
+      .map(k => ({
+        id: `kegiatan-${k.id}`,
+        tenant_id: k.tenant_id,
+        tahun_pelajaran_id: k.tahun_pelajaran_id,
+        semester_id: '',
+        kelas_id: selectedKelasId,
+        hari: day as any,
+        slot_index: 0,
+        jam_mulai: k.waktu_mulai || '07:00',
+        jam_selesai: k.waktu_selesai || '08:00',
+        jenis_kegiatan: k.nama,
+        is_kegiatan: true,
+        category: 'KEGIATAN',
+        nama: k.nama
+      }));
+
+    return [...kbmItems, ...kegiatanItems].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+  }, [jadwal, jadwalKegiatan, agendaFilter, selectedKelasId]);
 
   return (
     <div className="space-y-6">
@@ -274,7 +306,47 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
           <p className="text-slate-500 dark:text-slate-400">Petugas: {petugasLabel || '-'}</p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Segmented */}
+            <div className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl flex items-center gap-1 border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setAgendaFilter('ALL')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  agendaFilter === 'ALL'
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Semua Agenda
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaFilter('KBM')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  agendaFilter === 'KBM'
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                📘 KBM Saja
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgendaFilter('KEGIATAN')}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                  agendaFilter === 'KEGIATAN'
+                    ? "bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                🟧 Kegiatan Saja
+              </button>
+            </div>
+
             {!kelasId && (user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('academic.schedules.view.list') || can('attendance.schedules.view.list')) && (
               <div className="w-[200px]">
                   <SearchableSelect
@@ -316,38 +388,66 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
                     Belum ada jadwal
                   </div>
                 ) : (
-                  dayJadwal.map(item => (
-                    <div key={item.id} className="group relative flex flex-col p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all duration-300">
+                  dayJadwal.map((item: any) => (
+                    <div key={item.id} className={cn(
+                      "group relative flex flex-col p-4 rounded-2xl border transition-all duration-300",
+                      item.is_kegiatan
+                        ? "border-amber-200/80 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/10 hover:shadow-md"
+                        : "border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900/30"
+                    )}>
                       <div className="flex justify-between items-center mb-3 gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px] font-black flex items-center px-2.5 py-1 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg">
-                          <Clock className="mr-1.5 h-3 w-3 flex-shrink-0 text-indigo-500" />
-                          <span>Jam {item.slot_index || 1} ({item.jam_mulai} - {item.jam_selesai})</span>
-                        </Badge>
-                        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            {(can('academic.schedules.update') || can('attendance.schedules.update')) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0 mr-1.5 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
-                                onClick={() => setEditingItem(item)}
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {(can('academic.schedules.delete') || can('attendance.schedules.delete')) && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
-                                onClick={() => handleDelete(item.id)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className={cn(
+                            "font-mono text-[10px] font-black flex items-center px-2.5 py-1 rounded-lg",
+                            item.is_kegiatan
+                              ? "bg-amber-100/60 dark:bg-amber-900/30 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                              : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                          )}>
+                            <Clock className="mr-1.5 h-3 w-3 flex-shrink-0 text-indigo-500" />
+                            <span>{item.is_kegiatan ? `${item.jam_mulai} - ${item.jam_selesai}` : `Jam ${item.slot_index || 1} (${item.jam_mulai} - ${item.jam_selesai})`}</span>
+                          </Badge>
+                          {item.is_kegiatan && (
+                            <Badge className="bg-amber-500 text-white border-none text-[9px] px-2 py-0.5 font-bold">
+                              KEGIATAN
+                            </Badge>
+                          )}
                         </div>
+                        {!item.is_kegiatan && (
+                          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              {(can('academic.schedules.update') || can('attendance.schedules.update')) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 mr-1.5 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg"
+                                  onClick={() => setEditingItem(item)}
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              {(can('academic.schedules.delete') || can('attendance.schedules.delete')) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg"
+                                  onClick={() => handleDelete(item.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                          </div>
+                        )}
                       </div>
                       
-                      {(() => {
+                      {item.is_kegiatan ? (
+                        <div className="space-y-1">
+                          <div className="font-bold text-sm text-amber-900 dark:text-amber-200">
+                            {item.nama || item.jenis_kegiatan}
+                          </div>
+                          <div className="text-[11px] text-amber-700/80 dark:text-amber-400">
+                            Kegiatan Kesiswaan / Pembiasaan Sekolah
+                          </div>
+                        </div>
+                      ) : (() => {
                         const opt = jenisOptions.find(o => o.value === item.jenis_kegiatan);
                         const t = (opt?.tipe || String(item.jenis_kegiatan || '')).toUpperCase();
                         return t.startsWith('KBM');
@@ -392,7 +492,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
                           <SearchableSelect
                             value={String(row.slot_index || 1)}
                             onValueChange={(v) => updatePendingField(day, idx, 'slot_index', String(Number(v || 1)))}
-                            options={Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: `Jam Pelajaran Ke-${i + 1}` }))}
+                            options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Jam Pelajaran Ke-${i + 1}` }))}
                             placeholder="Pilih Jam Pelajaran"
                             searchPlaceholder="Cari Jam Pelajaran..."
                           />

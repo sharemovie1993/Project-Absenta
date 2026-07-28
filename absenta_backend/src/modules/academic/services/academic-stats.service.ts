@@ -94,11 +94,17 @@ export class AcademicStatsService {
 
     // Get active Tahun Pelajaran and Semester with relation & fallbacks
     let activeTahunPelajaran = await prisma.tahunPelajaran.findFirst({
-      where: { ...whereClause, is_active: true }
+      where: { ...whereClause, is_active: true },
+      orderBy: { created_at: 'desc' }
     });
 
     let activeSemester = await prisma.semester.findFirst({
-      where: { ...whereClause, is_active: true },
+      where: {
+        ...whereClause,
+        is_active: true,
+        TahunPelajaran: { is_active: true },
+      },
+      orderBy: { created_at: 'desc' },
       include: {
         TahunPelajaran: {
           select: {
@@ -110,18 +116,36 @@ export class AcademicStatsService {
       }
     });
 
-    // Fallback 1: If activeSemester exists with parent year, but activeTahunPelajaran was null, sync activeTahunPelajaran
+    // Fallback 1: Jika belum ada semester yang match TahunPelajaran aktif, cari semester aktif pertama di tenant
+    if (!activeSemester) {
+      activeSemester = await prisma.semester.findFirst({
+        where: { ...whereClause, is_active: true },
+        orderBy: { created_at: 'desc' },
+        include: {
+          TahunPelajaran: {
+            select: {
+              id: true,
+              tahun: true,
+              is_active: true,
+            }
+          }
+        }
+      });
+    }
+
+    // Fallback 2: If activeSemester exists with parent year, but activeTahunPelajaran was null, sync activeTahunPelajaran
     if (activeSemester?.TahunPelajaran && !activeTahunPelajaran) {
       activeTahunPelajaran = activeSemester.TahunPelajaran as any;
     }
 
-    // Fallback 2: If activeTahunPelajaran exists but activeSemester was null, get first semester of that year
+    // Fallback 3: If activeTahunPelajaran exists but activeSemester was null, get first semester of that year
     if (activeTahunPelajaran && !activeSemester) {
       activeSemester = await prisma.semester.findFirst({
         where: {
           ...(whereClause.tenant_id ? { tenant_id: whereClause.tenant_id } : {}),
           tahun_pelajaran_id: activeTahunPelajaran.id
         },
+        orderBy: { created_at: 'desc' },
         include: {
           TahunPelajaran: {
             select: {
@@ -144,7 +168,8 @@ export class AcademicStatsService {
       total_tahun_pelajaran: totalTahunPelajaran,
       active_kelas_by_tingkat: activeKelasByTingkat.map(g => ({ tingkat: g.tingkat, count: g._count.id })),
       tahun_pelajaran: activeTahunPelajaran,
-      semester: activeSemester
+      semester: activeSemester,
+      active_semester: activeSemester?.nama_semester || null,
     };
   }
 

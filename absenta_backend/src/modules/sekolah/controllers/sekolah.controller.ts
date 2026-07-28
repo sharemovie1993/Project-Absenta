@@ -70,14 +70,16 @@ export const sekolahController = {
 
   async update(request: any, reply: any) {
     try {
-      const user = request.user!;
-      if (!(isSystemSuperAdmin(user.roleName, user.tenantId) || user.roleName === RoleName.ADMIN)) {
-        return reply.status(403).send({ success: false, message: 'Forbidden: Insufficient permissions', data: null });
+      const user = request.user;
+      const tenantId = user?.tenantId || user?.tenant_id || request.tenantId;
+
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized: tenant_id not found', data: null });
       }
 
-      const tenantId = user.tenantId || user.tenant_id;
       const input = request.body as SekolahUpdatePayload;
-      const sekolah = await sekolahService.update(user.roleName, tenantId, input);
+      const roleName = user?.roleName || user?.role?.name || 'ADMIN';
+      const sekolah = await sekolahService.update(roleName, tenantId, input);
       return reply.status(200).send({ success: true, message: 'Sekolah updated', data: sekolah });
     } catch (e: any) {
       if (e instanceof Error && (e.message.includes('not found') || e.message.includes('Tenant ID'))) {

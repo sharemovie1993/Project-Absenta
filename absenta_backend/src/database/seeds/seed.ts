@@ -257,11 +257,12 @@ async function main() {
 
     // --- KURIKULUM ---
     // Urutan berdasarkan flow operasional persiapan kurikulum sekolah:
-    // 1. Dashboard → 2. Struktur → 3. Kalender → 4. Jadwal → 5. Perangkat → 6. Rekap KBM → 7. Supervisi → 8. Cetak
+    // 1. Dashboard → 2. Struktur → 3. Mata Pelajaran → 4. Kalender → 5. Jadwal → 6. Perangkat → 7. Rekap KBM → 8. Supervisi → 9. Cetak
     {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
         { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.manage.academic, academic.teaching.view' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.manage.academic, academic.structures.view.list' },
+        { label: 'Mata Pelajaran', icon: 'BookOpen', path: '/academic/mapel', required_capability: 'academic.subjects.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Guru Mapel', icon: 'ListChecks', path: '/kurikulum/guru-mapel', required_capability: 'academic.teaching.manage, academic.teaching.view' },
         { label: 'Wali Kelas', icon: 'UserCheck', path: '/kurikulum/wali-kelas', required_capability: 'academic.homeroom.manage' },
         { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },

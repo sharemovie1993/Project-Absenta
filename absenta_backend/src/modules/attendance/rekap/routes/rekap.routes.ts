@@ -1,4 +1,5 @@
 
+import { RoleName } from '@/constants/enums';
 import { allowBothModes } from '../../../../middlewares/attendanceMode';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { organizationalScopeMiddleware } from '@/middlewares/organizationalScope';
@@ -8,19 +9,28 @@ import {
   getRekapBulananSiswa,
   getRekapBulananSiswaMe,
   getRekapBulananKelas,
+  getRekapBulananKelasMe,
   getRekapHarianGuru,
   getTrackingHarianSiswa,
   getStatistikHarian,
   getRekapBulananGuruMe,
+  getTrackingHarianGuruMe,
   getRekapHarianKelas,
+  getRekapBulananMapel,
   getLeaderboard,
+  getLeaderboardGuru,
 } from '../controllers/rekap.controller';
 
 export async function rekapRoutes(fastify: any) {
   fastify.get('/leaderboard', {
-    preHandler: [requireCapability('attendance.reports.view')],
+    preHandler: [requireCapability('attendance.reports.view', { exemptRoles: [RoleName.GURU, RoleName.SISWA] })],
     handler: getLeaderboard
   });
+  fastify.get('/guru/leaderboard', {
+    preHandler: [requireCapability('attendance.reports.view', { exemptRoles: [RoleName.GURU, RoleName.SISWA] })],
+    handler: getLeaderboardGuru
+  });
+
   fastify.get('/siswa/me/harian', {
     preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view')],
     schema: {
@@ -288,7 +298,10 @@ export async function rekapRoutes(fastify: any) {
                 type: 'object',
                 properties: {
                   id: { type: 'string' },
+                  siswa_id: { type: 'string' },
                   nama: { type: 'string' },
+                  nama_siswa: { type: 'string' },
+                  nis: { type: 'string', nullable: true },
                   status: { type: 'string' },
                   poin: { type: 'number' },
                 },
@@ -309,6 +322,27 @@ export async function rekapRoutes(fastify: any) {
       },
     },
   }, getRekapHarianKelas);
+
+  fastify.get('/kelas/me/bulanan', {
+    preHandler: [allowBothModes, organizationalScopeMiddleware],
+    schema: {
+      description: 'Get monthly class attendance leaderboard for logged in student',
+      tags: ['Rekap'],
+      querystring: {
+        type: 'object',
+        properties: {
+          bulan: { 
+            type: 'string', 
+            pattern: '^\\d{4}-\\d{2}$',
+            description: 'Month in YYYY-MM format',
+          },
+          tahun_pelajaran_id: { type: 'string', description: 'Optional Tahun Pelajaran filter' },
+          scope: { type: 'string', enum: ['KELAS', 'JURUSAN', 'SEKOLAH'], description: 'Optional scope filter' },
+        },
+        required: ['bulan'],
+      },
+    },
+  }, getRekapBulananKelasMe);
 
   fastify.get('/kelas/:id/bulanan', {
     preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list'])],
@@ -340,6 +374,14 @@ export async function rekapRoutes(fastify: any) {
           properties: {
             success: { type: 'boolean' },
             message: { type: 'string' },
+            wali_kelas: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                nama_guru: { type: 'string' },
+                nip: { type: 'string', nullable: true },
+              },
+            },
             data: {
               type: 'array',
               items: {
@@ -347,12 +389,14 @@ export async function rekapRoutes(fastify: any) {
                 properties: {
                   siswa_id: { type: 'string' },
                   nama_siswa: { type: 'string' },
+                  nis: { type: 'string', nullable: true },
                   HADIR: { type: 'number' },
                   SAKIT: { type: 'number' },
                   ALPA: { type: 'number' },
                   IZIN: { type: 'number' },
                   TERLAMBAT: { type: 'number' },
                   total_poin: { type: 'number' },
+                  dailyMap: { type: 'object', additionalProperties: { type: 'string' } },
                 },
               },
             },
@@ -361,6 +405,78 @@ export async function rekapRoutes(fastify: any) {
       },
     },
   }, getRekapBulananKelas);
+
+  // 3b. Rekap Bulanan Siswa Per Mata Pelajaran (Mapel)
+  fastify.get('/mapel/bulanan', {
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list'])],
+    schema: {
+      description: 'Get monthly attendance recap for a specific subject (Mapel) in a class',
+      tags: ['Rekap'],
+      querystring: {
+        type: 'object',
+        properties: {
+          kelas_id: { type: 'string', description: 'Class ID' },
+          mapel_id: { type: 'string', description: 'Subject (Mapel) ID' },
+          bulan: { type: 'string', pattern: '^\\d{4}-\\d{2}$', description: 'Month in YYYY-MM format' },
+          tahun_pelajaran_id: { type: 'string', description: 'Optional Tahun Pelajaran filter' },
+        },
+        required: ['kelas_id', 'mapel_id', 'bulan'],
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            message: { type: 'string' },
+            total_sesi: { type: 'number' },
+            mapel: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                id: { type: 'string' },
+                nama_mapel: { type: 'string' },
+                kode_mapel: { type: 'string', nullable: true },
+              },
+            },
+            guru_mapel: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                nama_guru: { type: 'string' },
+                nip: { type: 'string', nullable: true },
+              },
+            },
+            wali_kelas: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                nama_guru: { type: 'string' },
+                nip: { type: 'string', nullable: true },
+              },
+            },
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  siswa_id: { type: 'string' },
+                  nama_siswa: { type: 'string' },
+                  nis: { type: 'string', nullable: true },
+                  HADIR: { type: 'number' },
+                  SAKIT: { type: 'number' },
+                  ALPA: { type: 'number' },
+                  IZIN: { type: 'number' },
+                  TERLAMBAT: { type: 'number' },
+                  total_poin: { type: 'number' },
+                  dailyMap: { type: 'object', additionalProperties: { type: 'string' } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, getRekapBulananMapel);
 
   // 4. Rekap Harian Guru
   // GET /api/attendance/rekap/guru/harian?tanggal=YYYY-MM-DD
@@ -503,8 +619,13 @@ export async function rekapRoutes(fastify: any) {
     },
   }, getStatistikHarian);
 
+  fastify.get('/guru/me/tracking', {
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.GURU] })],
+    handler: getTrackingHarianGuruMe,
+  });
+
   fastify.get('/guru/me/bulanan', {
-    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view')],
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability('attendance.reports.view', { exemptRoles: [RoleName.GURU] })],
     schema: {
       description: 'Get monthly attendance recap for current teacher',
       tags: ['Rekap'],

@@ -24,10 +24,17 @@ export async function tenantRoutes(fastify: any) {
     handler: tenantController.createTenant.bind(tenantController),
   });
 
-  // PUT /tenants/:id - Update a tenant (SUPERADMIN can update any, ADMIN can update their own)
+  // PUT /tenants/:id - Update a tenant (SUPERADMIN, ADMIN, KESISWAAN, KURIKULUM)
   fastify.put('/:id', {
     preHandler: [
-      requireCapability(['core.tenants.update', 'core.sekolah.update.profile']),
+      requireCapability([
+        'core.tenants.update',
+        'core.sekolah.update.profile',
+        'academic.schedules.manage',
+        'academic.manage.academic',
+        'attendance.schedules.manage',
+        'attendance.gate.bypass'
+      ]),
       determineDataScope()
     ],
     handler: tenantController.updateTenant.bind(tenantController),

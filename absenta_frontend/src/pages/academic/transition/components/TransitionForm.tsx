@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Label, Alert, AlertDescription } from '../../../../components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Database, Target, Info, Clock, Layers, Globe, Filter, Check } from 'lucide-react';
+import { Database, Target, Info, Clock } from 'lucide-react';
 import type { TahunPelajaran } from '../../../../types/academic';
 
 export type ScopeMode = 'ALL' | 'SELECTED';
@@ -13,12 +13,6 @@ interface Props {
   selectedTahunBaruId: string;
   onTahunLamaChange: (val: string) => void;
   onTahunBaruChange: (val: string) => void;
-  // Scope Mode Props
-  scopeMode: ScopeMode;
-  onScopeModeChange: (mode: ScopeMode) => void;
-  availableTingkat: number[];
-  selectedTingkat: number[];
-  onTingkatToggle: (tingkat: number) => void;
 }
 
 const TransitionForm: React.FC<Props> = ({ 
@@ -28,11 +22,6 @@ const TransitionForm: React.FC<Props> = ({
   selectedTahunBaruId,
   onTahunLamaChange,
   onTahunBaruChange,
-  scopeMode,
-  onScopeModeChange,
-  availableTingkat,
-  selectedTingkat,
-  onTingkatToggle,
 }) => {
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500">
@@ -44,7 +33,7 @@ const TransitionForm: React.FC<Props> = ({
                 <Info size={20} />
              </div>
              <AlertDescription className="text-[12px] font-bold text-blue-700 dark:text-blue-400 leading-relaxed uppercase tracking-tight">
-               Pilih periode akademik asal (Sumber) dan periode tujuan (Target). Anda juga dapat menentukan apakah transisi berlaku untuk seluruh tingkat sekaligus atau tingkat tertentu saja.
+               Langkah 1: Persiapan Tahun Pelajaran. Pilih periode akademik asal (Sumber) dan periode akademik tujuan (Target) sebelum menentukan cakupan kenaikan kelas.
              </AlertDescription>
           </div>
         </Alert>
@@ -125,101 +114,6 @@ const TransitionForm: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Mode Cakupan Transisi (Semua Tingkat vs Tingkat Tertentu) */}
-      <div className="p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl space-y-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-            <Layers size={20} />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Cakupan Kenaikan Kelas</h3>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Pilih apakah memproses semua tingkat sekaligus atau tingkat tertentu</p>
-          </div>
-        </div>
-
-        {/* Radio options */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          {/* Mode ALL */}
-          <button
-            type="button"
-            onClick={() => onScopeModeChange('ALL')}
-            className={`p-4 rounded-xl border text-left flex items-start gap-3 transition-all ${
-              scopeMode === 'ALL'
-                ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20'
-                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-              scopeMode === 'ALL' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-            }`}>
-              <Globe size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Semua Tingkat (Default)</p>
-              <p className="text-[10px] text-slate-500 font-medium mt-0.5">Memproses kenaikan kelas & kelulusan untuk seluruh tingkat aktif di sekolah.</p>
-            </div>
-          </button>
-
-          {/* Mode SELECTED */}
-          <button
-            type="button"
-            onClick={() => onScopeModeChange('SELECTED')}
-            className={`p-4 rounded-xl border text-left flex items-start gap-3 transition-all ${
-              scopeMode === 'SELECTED'
-                ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20'
-                : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-              scopeMode === 'SELECTED' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-            }`}>
-              <Filter size={16} />
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">Pilih Tingkat Spesifik</p>
-              <p className="text-[10px] text-slate-500 font-medium mt-0.5">Cocok untuk sekolah 1 angkatan atau pemrosesan transisi secara bertahap.</p>
-            </div>
-          </button>
-        </div>
-
-        {/* Checkbox Tingkat (jika Mode SELECTED aktif) */}
-        {scopeMode === 'SELECTED' && (
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
-            <Label className="text-[10px] uppercase font-black text-indigo-500 tracking-widest mb-2 block">
-              Pilih Tingkat yang Akan Diproses <span className="text-rose-500">*</span>
-            </Label>
-            {availableTingkat.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">Memuat tingkat kelas yang aktif...</p>
-            ) : (
-              <div className="flex flex-wrap gap-3">
-                {availableTingkat.map(t => {
-                  const isChecked = selectedTingkat.includes(t);
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => onTingkatToggle(t)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-tight flex items-center gap-2 border transition-all ${
-                        isChecked
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20'
-                          : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className={`w-4 h-4 rounded flex items-center justify-center ${
-                        isChecked ? 'bg-white text-indigo-600' : 'border border-slate-300 dark:border-slate-600'
-                      }`}>
-                        {isChecked && <Check size={12} strokeWidth={3} />}
-                      </div>
-                      Tingkat {t}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Plus, Trash2, RefreshCw, Clock3, Coffee } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { Tabular, type TabularColumn } from '@/components/ui/Tabular';
 import {
   type ShiftConfig,
@@ -116,33 +116,41 @@ export default function JamKBMShiftPanel({
   }, [currentShift, toMins, toTimeStr, jenjang, cascadeEnabled, updateCurrentShiftInConfig]);
 
   const handleBaseConfigChange = useCallback((field: 'start_time' | 'slot_duration', val: string | number) => {
-    const nextStart = field === 'start_time' ? String(val) : parsed.start_time;
-    const nextDur = field === 'slot_duration' ? Number(val) : parsed.slot_duration;
-    const newSlots = regenerateSlots(nextStart, nextDur, parsed.breaks);
+    if (!currentShift) return;
+    const nextStart = field === 'start_time' ? String(val) : (currentShift.start_time || parsed.start_time);
+    const nextDur = field === 'slot_duration' ? Number(val) : (currentShift.slot_duration || parsed.slot_duration);
+    const count = currentShift.slots?.length || 12;
+    const newSlots = regenerateSlots(nextStart, nextDur, parsed.breaks, count);
     updateCurrentShiftInConfig(s => ({ ...s, start_time: nextStart, slot_duration: nextDur, breaks: parsed.breaks, slots: newSlots }));
-  }, [parsed, updateCurrentShiftInConfig]);
+  }, [currentShift, parsed, updateCurrentShiftInConfig]);
 
   const handleAddBreak = useCallback((afterSlotNum: number) => {
+    if (!currentShift) return;
     if (parsed.breaks.length >= 3) { toast.error('Maksimum 3 istirahat per shift.'); return; }
     const newBreak: BreakItem = { id: `break-${Date.now()}`, afterSlot: afterSlotNum, duration: 15 };
     const nextBreaks = [...parsed.breaks, newBreak];
-    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks);
+    const count = currentShift.slots?.length || 12;
+    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks, count);
     updateCurrentShiftInConfig(s => ({ ...s, start_time: parsed.start_time, slot_duration: parsed.slot_duration, breaks: nextBreaks, slots: newSlots }));
     toast.success(`Istirahat ditambahkan setelah Jam ${afterSlotNum}`);
-  }, [parsed, updateCurrentShiftInConfig]);
+  }, [currentShift, parsed, updateCurrentShiftInConfig]);
 
   const handleDeleteBreak = useCallback((breakId: string) => {
+    if (!currentShift) return;
     const nextBreaks = parsed.breaks.filter(b => b.id !== breakId);
-    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks);
+    const count = currentShift.slots?.length || 12;
+    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks, count);
     updateCurrentShiftInConfig(s => ({ ...s, start_time: parsed.start_time, slot_duration: parsed.slot_duration, breaks: nextBreaks, slots: newSlots }));
     toast.success('Istirahat dihapus.');
-  }, [parsed, updateCurrentShiftInConfig]);
+  }, [currentShift, parsed, updateCurrentShiftInConfig]);
 
   const handleBreakDurationChange = useCallback((breakId: string, newDuration: number) => {
+    if (!currentShift) return;
     const nextBreaks = parsed.breaks.map(b => b.id === breakId ? { ...b, duration: newDuration } : b);
-    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks);
+    const count = currentShift.slots?.length || 12;
+    const newSlots = regenerateSlots(parsed.start_time, parsed.slot_duration, nextBreaks, count);
     updateCurrentShiftInConfig(s => ({ ...s, start_time: parsed.start_time, slot_duration: parsed.slot_duration, breaks: nextBreaks, slots: newSlots }));
-  }, [parsed, updateCurrentShiftInConfig]);
+  }, [currentShift, parsed, updateCurrentShiftInConfig]);
 
   const handleAddShift = useCallback(() => {
     const newId = `shift_${Date.now()}`;
@@ -180,6 +188,35 @@ export default function JamKBMShiftPanel({
     updateCurrentShiftInConfig(s => ({ ...s, slots, start_time: '07:00', slot_duration: 45, breaks: parseSlots(slots).breaks }));
     toast.success(`Reset ke standar ${jenjang || 'Sekolah'} berhasil`);
   }, [jenjang, onConfirm, updateCurrentShiftInConfig]);
+
+  const handleAddSlot = useCallback(() => {
+    if (!currentShift) return;
+    const slots = currentShift.slots ?? [];
+    const lastSlot = slots[slots.length - 1];
+    const newSlotNum = slots.length + 1;
+    let startStr = '17:00';
+    let endStr = '17:45';
+    if (lastSlot) {
+      startStr = lastSlot.end;
+      const startMins = toMins(lastSlot.end);
+      endStr = toTimeStr(startMins + (parsed.slot_duration || 45));
+    }
+    const newSlot: TimeSlot = { slot: newSlotNum, start: startStr, end: endStr };
+    updateCurrentShiftInConfig(s => ({ ...s, slots: [...(s.slots ?? []), newSlot] }));
+    toast.success(`Slot Jam Pelajaran Ke-${newSlotNum} ditambahkan!`);
+  }, [currentShift, parsed.slot_duration, toMins, toTimeStr, updateCurrentShiftInConfig]);
+
+  const handleRemoveLastSlot = useCallback(() => {
+    if (!currentShift) return;
+    const slots = currentShift.slots ?? [];
+    if (slots.length <= 1) {
+      toast.error('Minimal harus ada 1 slot jam pelajaran.');
+      return;
+    }
+    const newSlots = slots.slice(0, -1);
+    updateCurrentShiftInConfig(s => ({ ...s, slots: newSlots }));
+    toast.success('Slot jam pelajaran terakhir dihapus.');
+  }, [currentShift, updateCurrentShiftInConfig]);
 
   // ── Transform timeline slots and breaks to a flat list for Tabular ──
   const tabularData = useMemo<TimelineItemRow[]>(() => {
@@ -527,10 +564,28 @@ export default function JamKBMShiftPanel({
 
       {/* ── Timeline Tabular ───────────────────────────────────────────── */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-            Daftar Urutan Jam Pelajaran & Istirahat
+            Daftar Urutan Jam Pelajaran ({currentShift.slots?.length || 0} Slot) & Istirahat
           </h3>
+          {!readOnly && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAddSlot}
+                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-bold transition-all border border-indigo-200/60 dark:border-indigo-800/40"
+              >
+                <Plus className="w-3.5 h-3.5" /> Tambah Slot JP
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveLastSlot}
+                className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-rose-50 dark:bg-slate-800 text-slate-500 hover:text-rose-600 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Hapus Slot Terakhir
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tabular container with matching rounded/borders */}

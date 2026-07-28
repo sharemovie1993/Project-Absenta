@@ -93,10 +93,11 @@ export const KelasPage: React.FC = () => {
   }, [canView, refreshTrigger]);
 
   const sortedTingkatStats = useMemo(() => {
-    return (stats?.active_kelas_by_tingkat || [])
-      .filter(item => hookTingkatList.includes(item.tingkat))
-      .slice()
-      .sort((a, b) => a.tingkat - b.tingkat);
+    const statsMap = new Map((stats?.active_kelas_by_tingkat || []).map(item => [item.tingkat, item.count]));
+    return hookTingkatList.map(t => ({
+      tingkat: t,
+      count: statsMap.get(t) || 0
+    }));
   }, [stats, hookTingkatList]);
 
   const totalActiveKelasFiltered = useMemo(() => {
@@ -131,6 +132,11 @@ export const KelasPage: React.FC = () => {
             bg: "bg-rose-50/50 dark:bg-rose-950/20",
             border: "border-rose-100 dark:border-rose-900/40 hover:border-rose-300 dark:hover:border-rose-850",
             text: "text-rose-600 dark:text-rose-400"
+          },
+          {
+            bg: "bg-emerald-50/50 dark:bg-emerald-950/20",
+            border: "border-emerald-100 dark:border-emerald-900/40 hover:border-emerald-300 dark:hover:border-emerald-850",
+            text: "text-emerald-600 dark:text-emerald-400"
           }
         ];
         const theme = themes[index % themes.length];

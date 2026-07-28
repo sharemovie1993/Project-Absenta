@@ -36,6 +36,7 @@ export interface UpdateTenantInput {
   allow_manual_hadir_gate?: boolean;
   jenjang?: string | null;
   kurikulum?: string | null;
+  durasi_smk?: string | null;
   kepala_sekolah_guru_id?: string | null;
   shift_jam_pelajaran?: any;
 }
@@ -246,6 +247,7 @@ export class TenantService {
     let sekolahKota = null;
     let sekolahJenjang = null;
     let sekolahKurikulum = null;
+    let sekolahDurasiSmk = null;
     try {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: id }
@@ -254,6 +256,7 @@ export class TenantService {
         sekolahKota = sekolah.kota;
         sekolahJenjang = sekolah.jenjang;
         sekolahKurikulum = sekolah.kurikulum;
+        sekolahDurasiSmk = sekolah.durasi_smk;
       }
 
       // Smart Fallback jika data jenjang di profil sekolah masih kosong/null
@@ -265,6 +268,10 @@ export class TenantService {
     } catch (e) {
       // safe fallback
     }
+
+    const has4TahunJurusan = await prisma.jurusan.findFirst({
+      where: { tenant_id: id, durasi_jurusan: '4_TAHUN' }
+    });
 
     const resolvedFeatures = await tenantEntitlementService.resolveTenantFeatures(id);
 
@@ -285,6 +292,8 @@ export class TenantService {
       toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit,
       hari_sekolah: tenant.hari_sekolah,
       deletion_requested_at: tenant.deletion_requested_at,
+      durasi_smk: sekolahDurasiSmk || tenant.durasi_smk || '3_TAHUN',
+      has_4_tahun_jurusan: !!has4TahunJurusan,
       
       // Inject these custom configs!
       logo_daerah_url: configMap['logo_daerah_url'] || null,
@@ -395,6 +404,7 @@ export class TenantService {
       allow_manual_hadir_gate,
       jenjang,
       kurikulum,
+      durasi_smk,
       kepala_sekolah_guru_id,
       shift_jam_pelajaran,
       ...coreInput
@@ -443,8 +453,8 @@ export class TenantService {
       await syncJadwalKBMTimes(tenantId, prisma);
     }
 
-    // Save kepala_sekolah, nip_kepala, jenjang & kurikulum in Sekolah table
-    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined || kurikulum !== undefined) {
+    // Save kepala_sekolah, nip_kepala, jenjang, kurikulum & durasi_smk in Sekolah table
+    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined || kurikulum !== undefined || durasi_smk !== undefined) {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: tenantId }
       });
@@ -455,7 +465,8 @@ export class TenantService {
             kepala_sekolah: kepala_sekolah !== undefined ? kepala_sekolah : undefined,
             nip_kepala: nip_kepala !== undefined ? nip_kepala : undefined,
             jenjang: jenjang !== undefined ? jenjang : undefined,
-            kurikulum: kurikulum !== undefined ? kurikulum : undefined
+            kurikulum: kurikulum !== undefined ? kurikulum : undefined,
+            durasi_smk: durasi_smk !== undefined ? durasi_smk : undefined
           }
         });
       } else {
@@ -466,7 +477,8 @@ export class TenantService {
             kepala_sekolah: kepala_sekolah || '',
             nip_kepala: nip_kepala || '',
             jenjang: jenjang || null,
-            kurikulum: kurikulum || 'MERDEKA'
+            kurikulum: kurikulum || 'MERDEKA',
+            durasi_smk: durasi_smk || '3_TAHUN'
           }
         });
       }

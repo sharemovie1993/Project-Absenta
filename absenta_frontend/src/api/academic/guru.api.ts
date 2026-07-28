@@ -34,6 +34,9 @@ export interface CreateGuruPayload {
   agama?: string;
   status_kepegawaian?: 'PNS' | 'HONORER' | 'KONTRAK';
   pendidikan_terakhir?: string;
+  pangkat_golongan?: string;
+  jabatan?: string;
+  tmt_guru?: string;
   max_jp?: number;
   jenis_ptk?: string;
   foto?: string;
@@ -53,6 +56,9 @@ export interface UpdateGuruPayload {
   agama?: string;
   status_kepegawaian?: string;
   pendidikan_terakhir?: string;
+  pangkat_golongan?: string;
+  jabatan?: string;
+  tmt_guru?: string;
   max_jp?: number;
   jenis_ptk?: string;
   foto?: string;

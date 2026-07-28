@@ -63,6 +63,16 @@ export async function jadwalKBMRoutes(fastify: any) {
       (req: any, reply: any) => jadwalKBMController.delete(req, reply),
     );
 
+    router.post(
+      '/clear',
+      {
+        preHandler: [
+          requireCapability(['academic.schedules.delete', 'attendance.schedules.delete']),
+        ],
+      },
+      (req: any, reply: any) => jadwalKBMController.clearAll(req, reply),
+    );
+
     router.get(
       '/import/template',
       {

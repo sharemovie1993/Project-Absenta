@@ -1,4 +1,5 @@
 import { rekapService } from '../services/rekap.service';
+import { prisma } from '../../../../utils/prisma';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
 import { RoleName } from '../../../../constants/enums';
 
@@ -315,6 +316,80 @@ export async function getRekapBulananSiswaMe(request: AuthenticatedRequest, repl
   }
 }
 
+// GET /api/attendance/rekap/kelas/me/bulanan?bulan=YYYY-MM&scope=KELAS|JURUSAN|SEKOLAH
+export async function getRekapBulananKelasMe(request: AuthenticatedRequest, reply: any) {
+  try {
+    const { bulan, tahun_pelajaran_id, scope } = request.query as { bulan?: string; tahun_pelajaran_id?: string; scope?: string };
+    const tenantId = (request as any).tenantId ?? request.tenant?.id;
+    const userId = request.user?.id;
+
+    if (!tenantId) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Tenant ID is required',
+      });
+    }
+
+    if (!userId) {
+      return reply.status(401).send({
+        success: false,
+        message: 'User authentication required',
+      });
+    }
+
+    if (!bulan) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Parameter bulan (YYYY-MM) is required',
+      });
+    }
+
+    const siswaId = await rekapService.getSiswaIdFromUser(tenantId, userId);
+    if (!siswaId) {
+      return reply.status(404).send({
+        success: false,
+        message: 'Siswa profile not found',
+      });
+    }
+
+    let data: any;
+    if (scope === 'SEKOLAH') {
+      data = await rekapService.getRekapBulananSekolah(tenantId, bulan);
+    } else if (scope === 'JURUSAN') {
+      const siswa = await prisma.siswa.findFirst({
+        where: { id: siswaId, tenant_id: tenantId },
+        select: { Kelas: { select: { jurusan_id: true } } }
+      });
+      data = await rekapService.getRekapBulananSekolah(tenantId, bulan, siswa?.Kelas?.jurusan_id || undefined);
+    } else {
+      const siswa = await prisma.siswa.findFirst({
+        where: { id: siswaId, tenant_id: tenantId },
+        select: { kelas_id: true }
+      });
+
+      if (!siswa?.kelas_id) {
+        return reply.status(404).send({
+          success: false,
+          message: 'Siswa belum terdaftar dalam kelas manapun',
+        });
+      }
+
+      data = await rekapService.getRekapBulananKelas(siswa.kelas_id, bulan, tenantId, tahun_pelajaran_id);
+    }
+
+    return reply.status(200).send({
+      success: true,
+      message: 'Klasemen bulanan siswa berhasil diambil',
+      data,
+    });
+  } catch (error: any) {
+    return reply.status(500).send({
+      success: false,
+      message: error.message || 'Internal server error',
+    });
+  }
+}
+
 // GET /api/attendance/rekap/kelas/:id/bulanan?bulan=YYYY-MM
 export async function getRekapBulananKelas(request: AuthenticatedRequest, reply: any) {
   try {
@@ -366,17 +441,20 @@ export async function getRekapBulananKelas(request: AuthenticatedRequest, reply:
           ? (data as any).students.map((s: any) => ({
               siswa_id: s.id ?? s.siswa_id ?? '',
               nama_siswa: s.nama ?? s.nama_siswa ?? '',
+              nis: s.nis ?? null,
               HADIR: Number(s.hadir ?? s.HADIR ?? 0),
               IZIN: Number(s.izin ?? s.IZIN ?? 0),
               SAKIT: Number(s.sakit ?? s.SAKIT ?? 0),
               ALPA: Number(s.alpa ?? s.ALPA ?? 0),
               TERLAMBAT: Number(s.telat ?? s.TERLAMBAT ?? 0),
               total_poin: Number(s.total_poin ?? 0),
+              dailyMap: s.dailyMap ?? {},
             }))
           : data;
 
     return reply.status(200).send({
       success: true,
+      wali_kelas: (data as any)?.wali_kelas || null,
       data: normalized
     });
 
@@ -386,6 +464,51 @@ export async function getRekapBulananKelas(request: AuthenticatedRequest, reply:
       success: false,
       message: 'Failed to get monthly recap'
     });
+  }
+}
+
+// GET /api/attendance/rekap/mapel/bulanan?kelas_id=...&mapel_id=...&bulan=YYYY-MM
+export async function getRekapBulananMapel(request: AuthenticatedRequest, reply: any) {
+  try {
+    const { kelas_id, mapel_id, bulan, tahun_pelajaran_id } = request.query as {
+      kelas_id?: string;
+      mapel_id?: string;
+      bulan?: string;
+      tahun_pelajaran_id?: string;
+    };
+    const tenantId = (request as any).tenantId ?? request.tenant?.id;
+    const userId = request.user?.id;
+
+    if (!tenantId || !userId) {
+      return reply.status(401).send({ success: false, message: 'Authentication required' });
+    }
+
+    if (!kelas_id || !mapel_id || !bulan) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Parameter kelas_id, mapel_id, dan bulan (YYYY-MM) wajib diisi',
+      });
+    }
+
+    const monthRegex = /^\d{4}-\d{2}$/;
+    if (!monthRegex.test(bulan)) {
+      return reply.status(400).send({ success: false, message: 'Format bulan harus YYYY-MM' });
+    }
+
+    const data = await rekapService.getRekapBulananMapel(kelas_id, mapel_id, bulan, tenantId, tahun_pelajaran_id);
+    await rekapService.logActivity(userId, tenantId, 'VIEW_REKAP_BULANAN_MAPEL', mapel_id);
+
+    return reply.status(200).send({
+      success: true,
+      mapel: data.mapel,
+      guru_mapel: data.guru_mapel,
+      wali_kelas: data.wali_kelas,
+      total_sesi: data.total_sesi,
+      data: data.students,
+    });
+  } catch (error: any) {
+    console.error('Error getting monthly mapel recap:', error);
+    return reply.status(500).send({ success: false, message: error.message || 'Failed to get monthly mapel recap' });
   }
 }
 
@@ -405,6 +528,27 @@ export async function getLeaderboard(request: any, reply: any) {
     return reply.status(500).send({ success: false, message: 'Failed to get leaderboard' });
   }
 }
+
+export async function getLeaderboardGuru(request: any, reply: any) {
+  try {
+    const tenantId = request.tenant?.id || request.tenantId;
+    const { limit, jenis_ptk } = request.query;
+    const data = await rekapService.getLeaderboardGuru(
+      tenantId,
+      limit ? parseInt(limit) : 50,
+      jenis_ptk || 'PENDIDIK'
+    );
+    return reply.status(200).send({
+      success: true,
+      message: 'Leaderboard guru retrieved successfully',
+      data
+    });
+  } catch (error) {
+    return reply.status(500).send({ success: false, message: 'Failed to get guru leaderboard' });
+  }
+}
+
+
 
 // GET /api/attendance/rekap/guru/harian?tanggal=YYYY-MM-DD
 export async function getRekapHarianGuru(request: AuthenticatedRequest, reply: any) {
@@ -528,6 +672,22 @@ export async function getTrackingHarianSiswa(request: AuthenticatedRequest, repl
     return reply.status(500).send({
       success: false,
       message: error.message || 'Internal server error',
+    });
+  }
+}
+
+export async function getTrackingHarianGuruMe(request: AuthenticatedRequest, reply: any) {
+  try {
+    const tenantId = request.tenant?.id || (request as any).tenantId;
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ success: false, message: 'Unauthorized' });
+    const tanggal = (request.query as any)?.tanggal || new Date().toISOString().slice(0, 10);
+    const data = await rekapService.getTrackingHarianGuru(userId, tanggal, tenantId);
+    return reply.status(200).send(data);
+  } catch (error: any) {
+    return reply.status(500).send({
+      success: false,
+      message: error.message || 'Internal server error'
     });
   }
 }

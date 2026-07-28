@@ -256,11 +256,58 @@ export async function getRekapBulananSiswaMe(
   });
 }
 
+export async function getRekapBulananKelasMe(
+  params: { bulan: string; tahun_pelajaran_id?: string; scope?: 'KELAS' | 'JURUSAN' | 'SEKOLAH' }
+): Promise<{ success: boolean; message: string; data: { students: Array<{ id: string; nama: string; nama_kelas?: string; total_poin: number; hadir: number; sakit: number; izin: number; alpa: number; persentase: number }> } }> {
+  return requestWithFallback<{ success: boolean; message: string; data: { students: Array<{ id: string; nama: string; nama_kelas?: string; total_poin: number; hadir: number; sakit: number; izin: number; alpa: number; persentase: number }> } }>('get', `/attendance/rekap/kelas/me/bulanan`, { 
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 export async function getRekapBulananKelas(
   kelas_id: string,
   params: { bulan: string; tahun_pelajaran_id?: string }
-): Promise<{ success: boolean; message: string; data: Array<{ nama_siswa: string; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number }> }> {
-  return requestWithFallback<{ success: boolean; message: string; data: Array<{ nama_siswa: string; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number }> }>('get', `/attendance/rekap/kelas/${kelas_id}/bulanan`, { 
+): Promise<{ success: boolean; message: string; wali_kelas?: { nama_guru: string; nip?: string | null } | null; data: Array<{ siswa_id: string; nama_siswa: string; nis?: string | null; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number; total_poin?: number; dailyMap?: Record<string, string> }> }> {
+  return requestWithFallback<{ success: boolean; message: string; wali_kelas?: { nama_guru: string; nip?: string | null } | null; data: Array<{ siswa_id: string; nama_siswa: string; nis?: string | null; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number; total_poin?: number; dailyMap?: Record<string, string> }> }>('get', `/attendance/rekap/kelas/${kelas_id}/bulanan`, { 
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+export async function getRekapBulananMapel(
+  params: { kelas_id: string; mapel_id: string; bulan: string; tahun_pelajaran_id?: string }
+): Promise<{
+  success: boolean;
+  message?: string;
+  total_sesi?: number;
+  mapel?: { id: string; nama_mapel: string; kode_mapel?: string | null } | null;
+  guru_mapel?: { nama_guru: string; nip?: string | null } | null;
+  wali_kelas?: { nama_guru: string; nip?: string | null } | null;
+  data: Array<{
+    siswa_id: string;
+    nama_siswa: string;
+    nis?: string | null;
+    HADIR: number;
+    IZIN: number;
+    SAKIT: number;
+    ALPA: number;
+    TERLAMBAT: number;
+    total_poin?: number;
+    dailyMap?: Record<string, string>;
+  }>;
+}> {
+  return requestWithFallback('get', '/attendance/rekap/mapel/bulanan', {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+export async function getRekapHarianKelas(
+  kelas_id: string,
+  params: { tanggal: string; tahun_pelajaran_id?: string }
+): Promise<{ success: boolean; message: string; data: Array<{ id: string; siswa_id?: string; nama: string; nama_siswa?: string; nis?: string | null; status: string; poin: number }>; meta?: { kelasId: string; tanggal: string; totalSiswa: number; totalHadir: number; totalAbsen: number } }> {
+  return requestWithFallback<{ success: boolean; message: string; data: Array<{ id: string; siswa_id?: string; nama: string; nama_siswa?: string; nis?: string | null; status: string; poin: number }>; meta?: { kelasId: string; tanggal: string; totalSiswa: number; totalHadir: number; totalAbsen: number } }>('get', `/attendance/rekap/kelas/${kelas_id}/harian`, {
     params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
@@ -482,3 +529,46 @@ export async function getRekapBulananGuruMe(
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
+
+export async function getTrackingHarianGuruMe(
+  params: { tanggal: string }
+): Promise<{ success: boolean; message: string; data: {
+    guru_id: string;
+    nama_guru: string;
+    tanggal: string;
+    status: string;
+    kegiatan: Array<{
+      waktu: string;
+      timestamp?: string;
+      jenis_kegiatan: string;
+      status: string;
+      keterangan?: string;
+    }>;
+  } }> {
+  return requestWithFallback('get', `/attendance/rekap/guru/me/tracking`, {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+export async function getLeaderboardGuru(limit: number = 50, jenisPtk: string = 'PENDIDIK'): Promise<{
+  success: boolean;
+  message: string;
+  data: Array<{
+    id: string;
+    nama: string;
+    nip?: string;
+    jenis_ptk?: string;
+    gerbang_count?: number;
+    kbm_count?: number;
+    hadir_count: number;
+    points: number;
+  }>;
+}> {
+  return requestWithFallback('get', `/attendance/rekap/guru/leaderboard`, {
+    params: { limit, jenis_ptk: jenisPtk },
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+

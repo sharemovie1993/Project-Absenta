@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck, Box } from 'lucide-react';
+import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck, Box, Sparkles } from 'lucide-react';
 import { Button, Badge, Loader } from '../ui';
 import { formatCurrency, getServiceIcon } from '@/lib/billingUtils';
 
@@ -109,6 +109,22 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
     ? (activeOrder.price_yearly || activeOrder.price_monthly * 12)
     : activeOrder.price_monthly;
 
+  // List fitur yang didapat dari selectedPlan / activeOrder
+  const featuresList = useMemo(() => {
+    const selectedPlan = resolvePlan(activeOrder.size || '', activeOrder.period);
+    const raw = selectedPlan?.features_json || activeOrder.features_json;
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (typeof raw === 'string') {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      } catch {
+        return [raw];
+      }
+    }
+    return [];
+  }, [activeOrder.size, activeOrder.period, activeOrder.features_json, resolvePlan]);
+
   return (
     <AnimatePresence>
       {showOrderPanel && (
@@ -188,6 +204,7 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                 })()}
               </div>
 
+              {/* ── 1 · PILIH EDISI ── */}
               {groupedVariants.length > 0 && (
                 <div className="p-5 border-b border-slate-100 dark:border-slate-800">
                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
@@ -235,7 +252,7 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
               )}
 
               {/* ── SIKLUS TAGIHAN ── */}
-              <div className="p-5">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800">
                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
                   2 · Siklus Tagihan
                 </div>
@@ -264,6 +281,66 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                     </span>
                   </button>
                 </div>
+              </div>
+
+              {/* ── FITUR LAYANAN & MODUL TERMASUK (Dibawah Siklus Tagihan) ── */}
+              <div className="p-5 bg-slate-50/50 dark:bg-slate-900/40 space-y-4">
+                {/* Modul Core Bawaan (Gratis) */}
+                <div>
+                  <div className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-emerald-500" />
+                    Sudah Termasuk Modul Core (Gratis)
+                  </div>
+                  <ul className="space-y-2.5">
+                    <li className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-snug">
+                      <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <Check size={10} strokeWidth={3} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-black text-slate-900 dark:text-white">Modul Academic / TU: </span>
+                        <span className="text-slate-500 dark:text-slate-400">Master Data SDM Guru/Siswa (Wizard NIS Massal), Jabatan Organisasi, Transisi Kenaikan/Kelulusan, &amp; Designer Kartu Pelajar QR</span>
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-snug">
+                      <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <Check size={10} strokeWidth={3} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-black text-slate-900 dark:text-white">Modul Kurikulum: </span>
+                        <span className="text-slate-500 dark:text-slate-400">Penjadwalan KBM (Timetable Solver &amp; Shift Jam), Struktur JP Kurikulum Merdeka, Repositori Perangkat Ajar, RPE, &amp; Supervisi Akademik Guru</span>
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-snug">
+                      <div className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                        <Check size={10} strokeWidth={3} />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-black text-slate-900 dark:text-white">Modul Kesiswaan: </span>
+                        <span className="text-slate-500 dark:text-slate-400">Kedisiplinan &amp; Poin Pelanggaran (Auto-Seeding 18+ Jenis), Poin Prestasi/Reward, Buku Piket &amp; Izin Digital, serta Jadwal Eskul/Agenda Non-KBM</span>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Fitur Spesifik Modul Tambahan */}
+                {featuresList.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800">
+                    <div className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                      <Box size={13} className="text-blue-500" />
+                      Fitur Khusus {activeOrder.name?.replace(/-/g, ' ') || 'Modul'}
+                    </div>
+                    <ul className="space-y-2">
+                      {featuresList.map((feat: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold leading-snug">
+                          <div className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                            <Check size={10} strokeWidth={3} />
+                          </div>
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 

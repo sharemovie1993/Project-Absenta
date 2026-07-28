@@ -454,12 +454,100 @@ export class StrukturOrganisasiService {
       select: { id: true },
     });
 
-    // [ATOMIC REPLACEMENT LOGIC] 
-    // Untuk jabatan pimpinan utama, pastikan TIDAK ADA orang lain yang aktif.
-    // Tapi untuk jabatan BIDANG/STAF/TU, kita izinkan multi-personil.
-    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'WALIKELAS', 'PETUGAS_KELAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(position.code);
+    const isMultiStaffRole = ['KURIKULUM', 'KESISWAAN', 'HUBIN', 'SARPRAS', 'BPBK', 'GERBANG', 'PETUGAS_ABSENSI', 'PEMBINA_ESKUL', 'TU_PERSURATAN', 'TU_KEUANGAN', 'TU_KEPEGAWAIAN', 'TU_SARPRAS'].includes(position.code);
 
-    if (!isMultiStaffRole) {
+    const kelasId = input.kelas_id ? String(input.kelas_id) : null;
+    const unitId = input.unit_id ? String(input.unit_id) : null;
+
+    // [IDEMPOTENSI & CONSTRAINT KAPROG / KABENG / TOOLMAN] 1 Jurusan = 1 Pejabat & 1 Guru = 1 Unit Kerja
+    if (['KAPROG', 'KABENG', 'TOOLMAN'].includes(position.code) && unitId) {
+      // 1. Menonaktifkan pejabat terdahulu pada unit/jurusan yang sama
+      const previousAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          unit_id: unitId,
+          user_id: { not: guru.user_id },
+          is_active: true,
+        },
+        select: { id: true, user_id: true }
+      });
+
+      if (previousAssignments.length > 0) {
+        await prisma.organizationalAssignment.updateMany({
+          where: { id: { in: previousAssignments.map(p => p.id) } },
+          data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+        });
+        await Promise.all(
+          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
+        );
+      }
+
+      // 2. Menonaktifkan penugasan pejabat ini di jurusan/unit kerja LAIN untuk posisi yang sama
+      const otherAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          user_id: guru.user_id,
+          unit_id: { not: unitId },
+          is_active: true,
+        },
+        select: { id: true }
+      });
+
+      if (otherAssignments.length > 0) {
+        await prisma.organizationalAssignment.updateMany({
+          where: { id: { in: otherAssignments.map(o => o.id) } },
+          data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+        });
+      }
+    }
+
+    // [IDEMPOTENSI & CONSTRAINT WALI KELAS] Seperti Petugas Kelas: 1 Kelas = 1 Wali Kelas & 1 Guru = 1 Kelas Wali
+    if (position.code === 'WALIKELAS' && kelasId) {
+      // 1. Menonaktifkan Wali Kelas terdahulu pada kelas yang sama
+      const previousAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          kelas_id: kelasId,
+          user_id: { not: guru.user_id },
+          is_active: true,
+        },
+        select: { id: true, user_id: true }
+      });
+
+      if (previousAssignments.length > 0) {
+        await prisma.organizationalAssignment.updateMany({
+          where: { id: { in: previousAssignments.map(p => p.id) } },
+          data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+        });
+        await Promise.all(
+          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
+        );
+      }
+
+      // 2. Menonaktifkan penugasan WALIKELAS guru ini di kelas-kelas LAIN
+      const otherAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          user_id: guru.user_id,
+          kelas_id: { not: kelasId },
+          is_active: true,
+        },
+        select: { id: true }
+      });
+
+      if (otherAssignments.length > 0) {
+        await prisma.organizationalAssignment.updateMany({
+          where: { id: { in: otherAssignments.map(o => o.id) } },
+          data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+        });
+      }
+    }
+
+    if (!isMultiStaffRole && position.code !== 'WALIKELAS') {
       await prisma.organizationalAssignment.updateMany({
         where: {
           tenant_id: tenantId,
@@ -579,6 +667,43 @@ export class StrukturOrganisasiService {
     }
 
     const kelasId = input.kelas_id ? String(input.kelas_id) : null;
+
+    // Otomatis menonaktifkan penugasan petugas terdahulu pada kelas yang sama & bersihkan cachenya
+    if (position.code === 'PETUGAS_KELAS' && kelasId) {
+      const previousAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          kelas_id: kelasId,
+          user_id: { not: siswa.user_id },
+          is_active: true,
+        },
+        select: { id: true, user_id: true }
+      });
+
+      if (previousAssignments.length > 0) {
+        await prisma.organizationalAssignment.updateMany({
+          where: { id: { in: previousAssignments.map(p => p.id) } },
+          data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+        });
+        await Promise.all(
+          previousAssignments.map(p => organizationalContextCache.invalidateUser(String(p.user_id)))
+        );
+      }
+
+      // Otomatis menonaktifkan penugasan user ini di kelas-kelas LAIN untuk posisi yang sama
+      await prisma.organizationalAssignment.updateMany({
+        where: {
+          tenant_id: tenantId,
+          position_id: input.struktur_id,
+          user_id: siswa.user_id,
+          kelas_id: { not: kelasId },
+          is_active: true,
+        },
+        data: { is_active: false, end_date: new Date(), updated_at: new Date() }
+      });
+    }
+
     const existing = await prisma.organizationalAssignment.findFirst({
       where: {
         tenant_id: tenantId,

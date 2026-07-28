@@ -28,7 +28,8 @@ export default function AttendanceOpsPage() {
     petugasGuruChecked,
     isPetugasSiswa,
     isPetugasGuru,
-    kelasLabel
+    kelasLabel,
+    managedKelasIds
   } = useGerbangModeAndRole({ user, tenantId });
 
   const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
@@ -61,32 +62,15 @@ export default function AttendanceOpsPage() {
     kelasLabel,
     roleLabel,
     petugasLabel,
-    petugasVariant
+    petugasVariant,
+    managedKelasIds
   };
-
-  const stats = [
-    {
-      title: "Mode Operasi",
-      value: absensiMode === 'SIMPLE' ? "Gerbang" : "Multi Sesi",
-      icon: <Zap size={14} />,
-      gradient: "from-amber-500 to-orange-600",
-      subtitle: "Konfigurasi Tenant"
-    },
-    {
-      title: "Peran Petugas",
-      value: roleLabel || "Umum",
-      icon: <User size={14} />,
-      gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Akses Terverifikasi"
-    }
-  ];
 
   if (isSiswaDenied || isGuruDenied) {
     return (
       <AcademicPageLayout
         title="Akses Terbatas"
         description="Ruang operasional absensi hanya untuk petugas yang ditunjuk."
-        hardeningModuleKey="attendanceopspage"
       >
         <div className="flex items-center justify-center py-12">
            <SectionCard className="max-w-xl w-full text-center p-12">
@@ -131,12 +115,11 @@ export default function AttendanceOpsPage() {
     <AcademicPageLayout
       title="Operasional Presensi"
       description="Pencatatan kehadiran siswa secara langsung dan realtime."
-      hardeningModuleKey="attendanceopspage"
       breadcrumbs={[
         { label: "Presensi", path: "/attendance" },
         { label: "Operasional", path: "/attendance/ops" }
       ]}
-      stats={stats}
+      stats={[]}
       instruction={{
         title: "Panduan Operasional",
         description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung.",

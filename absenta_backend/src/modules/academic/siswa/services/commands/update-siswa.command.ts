@@ -4,6 +4,7 @@ import { activityLogService } from '@/modules/activity/services/activity-log.ser
 import { siswaDb } from '../repositories/siswa.db';
 import type { SiswaResponse, UpdateSiswaInput } from '../siswa.types';
 import { updateSiswaSchema } from '../siswa.schema';
+import { organizationalContextCache } from '@/modules/auth/services/organizational-context-cache';
 
 export async function updateSiswaCommand(
   siswaId: string,
@@ -264,6 +265,10 @@ export async function updateSiswaCommand(
       where: { id: siswaId },
       data: dataToUpdate,
     });
+
+    if (existingSiswa.user_id) {
+      await organizationalContextCache.invalidateUser(String(existingSiswa.user_id));
+    }
 
     // Enforce User account business contract (LULUS keeps ACTIVE for Tracer Study, others frozen)
     if (existingSiswa.user_id && dataToUpdate.status) {

@@ -67,14 +67,9 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
 
   const inferredKelasId = useMemo(() => {
     if (selectedKelasId) return String(selectedKelasId);
-    if (!isPetugasSiswa) return String(selectedKelasId || '');
     if (kelasOptions.length === 1) return String(kelasOptions[0]?.value || '');
-    const inferred =
-      (notPresent || []).find((x: PendingStudent) => x?.kelas_id)?.kelas_id ??
-      (notPresent || []).find((x: PendingStudent) => x?.kelasId)?.kelasId ??
-      '';
-    return String(inferred || '');
-  }, [selectedKelasId, isPetugasSiswa, kelasOptions, notPresent]);
+    return '';
+  }, [selectedKelasId, kelasOptions]);
 
   const filteredNotPresent = useMemo(() => {
     if (!inferredKelasId) return notPresent || [];
@@ -87,14 +82,11 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   const chartMasuk = isPetugasSiswa ? (selectedKelasId ? (miniStats.masuk || 0) : 0) : (miniStats.masuk || 0);
 
   useEffect(() => {
-    if (!isPetugasSiswa) return;
     if (selectedKelasId) return;
     if (kelasOptions.length === 1) {
       setSelectedKelasId(String(kelasOptions[0]?.value || ''));
-      return;
     }
-    if (inferredKelasId) setSelectedKelasId(String(inferredKelasId));
-  }, [isPetugasSiswa, selectedKelasId, kelasOptions, inferredKelasId, setSelectedKelasId]);
+  }, [selectedKelasId, kelasOptions, setSelectedKelasId]);
 
   const handleMarkStatus = useCallback(async (siswaId: string, status: string) => {
     try {

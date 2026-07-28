@@ -411,18 +411,25 @@ export class JadwalKBMController {
       };
     });
 
-    // 6. Add orphan sessions (AdHoc)
+    // 6. Add orphan sessions (AdHoc / JadwalKegiatan)
     const adhocItems = sessions
       .filter((s: any) => !matchedSessionIds.has(s.id))
       .map((s: any) => {
         const attendance = roleName === RoleName.SISWA ? s.AbsenSiswa?.[0] : s.AbsenGuru?.[0];
         const sessionWithSummary = { ...s, _summary: summaryMap.get(s.id) };
+        const resolvedNamaKegiatan = s.jenis_kegiatan || s.Mapel?.nama_mapel || 'Kegiatan';
         return {
           id: `adhoc-${s.id}`,
           jam_mulai: s.waktu_mulai ? new Date(s.waktu_mulai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') : '??:??',
           jam_selesai: s.waktu_selesai ? new Date(s.waktu_selesai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') : '??:??',
           kelas_nama: s.Kelas?.nama_kelas || '-',
-          kegiatan: s.Mapel?.nama_mapel || s.jenis_kegiatan || 'Manual',
+          kegiatan: resolvedNamaKegiatan,
+          jenis_kegiatan: resolvedNamaKegiatan,
+          category: s.jadwal_kegiatan_id ? 'KEGIATAN' : 'KBM',
+          is_kegiatan: !!s.jadwal_kegiatan_id,
+          Mapel: s.Mapel || (s.jenis_kegiatan ? { nama_mapel: s.jenis_kegiatan } : undefined),
+          Guru: s.Guru,
+          Kelas: s.Kelas,
           session: sessionWithSummary,
           attendance_status: attendance?.status || 'BELUM_PRESENSI',
           waktu_tap: attendance?.waktu_tap || null,
@@ -939,6 +946,110 @@ export class JadwalKBMController {
     });
 
     return reply.send({ success: true, message: 'Jadwal Template deleted' });
+  }
+
+  async clearAll(request: any, reply: any) {
+    const { tenantId, user } = request;
+    const { kelas_id, guru_id } = request.body || {};
+
+    const isGlobalManager =
+      user?.roleName === 'ADMIN' ||
+      user?.roleName === 'SUPERADMIN' ||
+      (user?.id ? (
+        await authorizationService.hasUserPermission(user.id, 'academic.structure.manage') ||
+        await authorizationService.hasUserPermission(user.id, 'academic.schedules.delete') ||
+        await authorizationService.hasUserPermission(user.id, 'attendance.schedules.delete')
+      ) : false);
+
+    if (!isGlobalManager) {
+      return reply.status(403).send({ success: false, message: 'Forbidden: Hanya pengelola yang dapat mengosongkan/reset jadwal.' });
+    }
+
+    try {
+      const isSpecificFilter = (kelas_id && typeof kelas_id === 'string' && kelas_id.trim() !== '') ||
+                              (guru_id && typeof guru_id === 'string' && guru_id.trim() !== '');
+
+      const jadwalWhere: any = { tenant_id: tenantId };
+      const kegiatanWhere: any = { tenant_id: tenantId };
+      const sesiWhere: any = { tenant_id: tenantId };
+
+      if (kelas_id && typeof kelas_id === 'string' && kelas_id.trim()) {
+        jadwalWhere.kelas_id = kelas_id.trim();
+        sesiWhere.kelas_id = kelas_id.trim();
+      }
+      if (guru_id && typeof guru_id === 'string' && guru_id.trim()) {
+        jadwalWhere.guru_id = guru_id.trim();
+        sesiWhere.guru_id = guru_id.trim();
+      }
+
+      // 1. Find and delete all matching SesiAbsensi and child attendance logs
+      const targetSesi = await prisma.sesiAbsensi.findMany({
+        where: sesiWhere,
+        select: { id: true }
+      });
+      const targetSesiIds = targetSesi.map(s => s.id);
+      if (targetSesiIds.length > 0) {
+        await prisma.absenSiswa.deleteMany({ where: { sesi_id: { in: targetSesiIds } } });
+        await prisma.absenGuru.deleteMany({ where: { sesi_id: { in: targetSesiIds } } });
+        await prisma.sesiAbsensi.deleteMany({ where: { id: { in: targetSesiIds } } });
+      }
+
+      // 2. Delete JadwalKBM
+      const resJadwal = await prisma.jadwalKBM.deleteMany({
+        where: jadwalWhere
+      });
+
+      // 3. Delete JadwalKegiatan if global purge
+      let resKegiatanCount = 0;
+      if (!isSpecificFilter) {
+        const resKegiatan = await prisma.jadwalKegiatan.deleteMany({
+          where: kegiatanWhere
+        });
+        resKegiatanCount = resKegiatan.count;
+      }
+
+      const totalDeleted = resJadwal.count + targetSesiIds.length + resKegiatanCount;
+
+      // Auto-sync sessions for today in background
+      void this.syncSessionsToday(tenantId);
+
+      if (totalDeleted > 0) {
+        return reply.send({
+          success: true,
+          message: `Berhasil mengosongkan/reset ${totalDeleted} item (Jadwal KBM, Kegiatan, & Sesi Absensi).`,
+          count: totalDeleted,
+        });
+      }
+
+      // Force fallback purge across entire tenant if initial match returned 0
+      const forceJadwal = await prisma.jadwalKBM.deleteMany({
+        where: { tenant_id: tenantId }
+      });
+      const forceKegiatan = await prisma.jadwalKegiatan.deleteMany({
+        where: { tenant_id: tenantId }
+      });
+      const forceTotal = forceJadwal.count + forceKegiatan.count;
+
+      if (forceTotal > 0) {
+        return reply.send({
+          success: true,
+          message: `Berhasil mengosongkan/reset ${forceTotal} jadwal KBM sekolah.`,
+          count: forceTotal
+        });
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Jadwal KBM dan Sesi Absensi sudah dalam keadaan kosong.',
+        count: 0
+      });
+    } catch (err: any) {
+      console.error('Error in clearAll schedules:', err);
+      return reply.status(500).send({
+        success: false,
+        message: err?.message || 'Gagal mengosongkan jadwal KBM'
+      });
+    }
   }
 
   async getDetail(request: any, reply: any) {

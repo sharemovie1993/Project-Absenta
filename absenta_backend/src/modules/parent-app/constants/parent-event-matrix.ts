@@ -33,7 +33,7 @@ export const PARENT_EVENT_MATRIX: Record<ParentEventType, ParentEventConfig> = {
     messageTemplate: '{nama_siswa} telah hadir di sekolah pada {waktu}.'
   },
   [ParentEventType.STUDENT_LATE]: {
-    channels: [NotificationChannel.PWA], // PWA Only
+    channels: [NotificationChannel.WA, NotificationChannel.PWA],
     titleTemplate: 'Siswa Terlambat',
     messageTemplate: '{nama_siswa} terlambat hadir pada {waktu}.'
   },
@@ -43,12 +43,12 @@ export const PARENT_EVENT_MATRIX: Record<ParentEventType, ParentEventConfig> = {
     messageTemplate: '{nama_siswa} tidak hadir hari ini tanpa keterangan.'
   },
   [ParentEventType.STUDENT_PERMISSION]: {
-    channels: [NotificationChannel.PWA], // PWA Only
+    channels: [NotificationChannel.WA, NotificationChannel.PWA],
     titleTemplate: 'Izin/Sakit Siswa',
     messageTemplate: '{nama_siswa} tercatat {status} hari ini. Keterangan: {keterangan}'
   },
   [ParentEventType.STUDENT_LEFT_EARLY]: {
-    channels: [NotificationChannel.PWA], // PWA Only (WA optional via config)
+    channels: [NotificationChannel.WA, NotificationChannel.PWA],
     titleTemplate: 'Siswa Pulang Cepat',
     messageTemplate: '{nama_siswa} pulang lebih awal pada {waktu}.'
   },

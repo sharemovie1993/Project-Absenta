@@ -20,8 +20,10 @@ export interface Guru {
   agama?: string;
   status_kepegawaian?: 'PNS' | 'HONORER' | 'KONTRAK';
   pendidikan_terakhir?: string;
-  jenis_ptk?: string;
+  pangkat_golongan?: string;
   jabatan?: string;
+  tmt_guru?: string;
+  jenis_ptk?: string;
   wali_kelas_di?: { id: string; nama_kelas: string };
   created_at: Date;
   updated_at: Date;
@@ -232,6 +234,7 @@ export interface Jurusan {
   singkatan?: string;
   warna?: string | null;
   program_keahlian_id?: string | null;
+  durasi_jurusan?: string | null;
   created_at: Date;
   updated_at: Date;
   _count?: {

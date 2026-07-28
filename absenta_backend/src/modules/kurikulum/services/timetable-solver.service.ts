@@ -54,6 +54,8 @@ const DEFAULT_SLOTS: Record<number, { start: string; end: string }> = {
   8: { start: "13:45", end: "14:30" },
   9: { start: "14:30", end: "15:15" },
   10: { start: "15:15", end: "16:00" },
+  11: { start: "16:00", end: "16:45" },
+  12: { start: "16:45", end: "17:30" },
 };
 
 export class TimetableSolverService {
@@ -144,8 +146,8 @@ export class TimetableSolverService {
 
     guruTimeOffs.forEach(to => {
       if (to.slot_index === null || to.slot_index === undefined) {
-        // Full Day Time-Off: Lock all slots 1..10 for this teacher on this day
-        for (let s = 1; s <= 10; s++) {
+        // Full Day Time-Off: Lock all slots 1..12 for this teacher on this day
+        for (let s = 1; s <= 12; s++) {
           teacherOccupied.set(`${to.guru_id}_${to.hari}_${s}`, true);
         }
       } else {
@@ -242,7 +244,7 @@ export class TimetableSolverService {
     // 8. Solvers Placement Loop
     const generatedSlots: GeneratedSlot[] = [];
     const unplacedCards: UnplacedCard[] = [];
-    const maxSlotsPerDay = 10;
+    const maxSlotsPerDay = 12;
     let totalCardsCount = 0;
 
     // Track teacher assigned JP count per jurusan for Major Focus strategy
@@ -311,15 +313,27 @@ export class TimetableSolverService {
       for (const blockSize of blocks) {
         let blockPlaced = false;
 
-        // Try days that haven't hosted this subject yet first for good distribution across the week
-        const sortedDays = [...daysToSchedule].sort((d1, d2) => {
-          const used1 = daysUsedForSubject.has(d1) ? 1 : 0;
-          const used2 = daysUsedForSubject.has(d2) ? 1 : 0;
-          return used1 - used2;
-        });
+        interface PlacementCandidate {
+          day: Hari;
+          startSlot: number;
+          gapPenalty: number;
+          usedDay: number;
+        }
 
-        for (const day of sortedDays) {
-          if (blockPlaced) break;
+        const candidates: PlacementCandidate[] = [];
+
+        for (const day of daysToSchedule) {
+          const usedDay = daysUsedForSubject.has(day) ? 1 : 0;
+
+          // Get teacher's existing slots on this day to calculate gap penalty
+          const existingTeacherSlots: number[] = [];
+          if (assignedTeacherId) {
+            for (let s = 1; s <= maxSlotsPerDay; s++) {
+              if (teacherOccupied.get(`${assignedTeacherId}_${day}_${s}`)) {
+                existingTeacherSlots.push(s);
+              }
+            }
+          }
 
           for (let startSlot = 1; startSlot <= maxSlotsPerDay - blockSize + 1; startSlot++) {
             let canFit = true;
@@ -342,45 +356,78 @@ export class TimetableSolverService {
             }
 
             if (canFit) {
-              // Reserve all slots in this block
-              for (let b = 0; b < blockSize; b++) {
-                const slotIdx = startSlot + b;
-                const classKey = `${deck.kelas_id}_${day}_${slotIdx}`;
-                classOccupied.set(classKey, true);
+              // Calculate gap penalty: prefer adjacent slots (gap = 0) over isolated slots
+              let gapPenalty = 0;
+              if (existingTeacherSlots.length > 0) {
+                const blockEnd = startSlot + blockSize - 1;
+                const minExisting = Math.min(...existingTeacherSlots);
+                const maxExisting = Math.max(...existingTeacherSlots);
 
-                if (assignedTeacherId) {
-                  const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
-                  teacherOccupied.set(teacherKey, true);
-                  teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
-
-                  const deckClass = targetClasses.find(c => c.id === deck.kelas_id);
-                  const currentJurusanId = deckClass?.jurusan_id || 'GENERAL';
-                  const jKey = `${assignedTeacherId}_${currentJurusanId}`;
-                  teacherJurusanJp.set(jKey, (teacherJurusanJp.get(jKey) || 0) + 1);
+                if (startSlot > maxExisting) {
+                  gapPenalty = startSlot - maxExisting - 1;
+                } else if (blockEnd < minExisting) {
+                  gapPenalty = minExisting - blockEnd - 1;
                 }
-
-                const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
-
-                generatedSlots.push({
-                  kelas_id: deck.kelas_id,
-                  kelas_name: deck.kelas_name,
-                  mapel_id: deck.mapel_id,
-                  mapel_name: deck.mapel_name,
-                  mapel_kode: deck.mapel_kode,
-                  guru_id: assignedTeacherId,
-                  guru_name: assignedTeacherName,
-                  hari: day,
-                  slot_index: slotIdx,
-                  jam_mulai: slotTime.start,
-                  jam_selesai: slotTime.end
-                });
               }
 
-              daysUsedForSubject.add(day);
-              blockPlaced = true;
-              break;
+              candidates.push({
+                day,
+                startSlot,
+                gapPenalty,
+                usedDay
+              });
             }
           }
+        }
+
+        // Sort candidates: lowest usedDay first, then lowest gapPenalty, then earlier slot
+        candidates.sort((a, b) => {
+          if (a.usedDay !== b.usedDay) return a.usedDay - b.usedDay;
+          if (a.gapPenalty !== b.gapPenalty) return a.gapPenalty - b.gapPenalty;
+          return a.startSlot - b.startSlot;
+        });
+
+        if (candidates.length > 0) {
+          const best = candidates[0];
+          const day = best.day;
+          const startSlot = best.startSlot;
+
+          // Reserve all slots in this block
+          for (let b = 0; b < blockSize; b++) {
+            const slotIdx = startSlot + b;
+            const classKey = `${deck.kelas_id}_${day}_${slotIdx}`;
+            classOccupied.set(classKey, true);
+
+            if (assignedTeacherId) {
+              const teacherKey = `${assignedTeacherId}_${day}_${slotIdx}`;
+              teacherOccupied.set(teacherKey, true);
+              teacherJpCount.set(assignedTeacherId, (teacherJpCount.get(assignedTeacherId) || 0) + 1);
+
+              const deckClass = targetClasses.find(c => c.id === deck.kelas_id);
+              const currentJurusanId = deckClass?.jurusan_id || 'GENERAL';
+              const jKey = `${assignedTeacherId}_${currentJurusanId}`;
+              teacherJurusanJp.set(jKey, (teacherJurusanJp.get(jKey) || 0) + 1);
+            }
+
+            const slotTime = DEFAULT_SLOTS[slotIdx] || { start: "07:30", end: "08:15" };
+
+            generatedSlots.push({
+              kelas_id: deck.kelas_id,
+              kelas_name: deck.kelas_name,
+              mapel_id: deck.mapel_id,
+              mapel_name: deck.mapel_name,
+              mapel_kode: deck.mapel_kode,
+              guru_id: assignedTeacherId,
+              guru_name: assignedTeacherName,
+              hari: day,
+              slot_index: slotIdx,
+              jam_mulai: slotTime.start,
+              jam_selesai: slotTime.end
+            });
+          }
+
+          daysUsedForSubject.add(day);
+          blockPlaced = true;
         }
 
         // Fallback: If consecutive block didn't fit, try placing as individual 1-JP slots

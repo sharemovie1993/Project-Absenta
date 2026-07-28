@@ -29,7 +29,9 @@ import {
   Activity, 
   AlertCircle, 
   CheckCircle2, 
-  Layers 
+  Layers,
+  RefreshCw,
+  Plus
 } from 'lucide-react';
 
 import { type Student } from '../../../../components/common/SmartStudentPicker';
@@ -563,63 +565,44 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
         featureName="Operasional Presensi Realtime"
         description="Kelola pencatatan kehadiran siswa di gerbang atau kelas secara langsung dengan validasi otomatis."
       >
-        <div className="space-y-12">
-          {/* 1. SUPPORTIVE OPERATIONAL HEADER */}
-          {sessions.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <AnalyticsCard
-                title="Sesi Aktif"
-                value={stats.live}
-                icon={<Activity className="w-5 h-5 text-white" />}
-                gradient="from-indigo-500 to-indigo-600"
-              />
-              <AnalyticsCard
-                title="Perlu Jurnal"
-                value={stats.pendingJournal}
-                icon={<AlertCircle className="w-5 h-5 text-white" />}
-                gradient="from-amber-500 to-amber-600"
-              />
-              <AnalyticsCard
-                title="Total Sesi"
-                value={stats.total}
-                icon={<CheckCircle2 className="w-5 h-5 text-white" />}
-                gradient="from-emerald-500 to-emerald-600"
-              />
-            </div>
-          )}
+        <div className="space-y-6">
 
-          {/* 2. FILTER & ACTIONS */}
-          <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
-            <div className="flex-1 w-full lg:w-auto">
-              <SesiFilterPanel
-                tanggal={tanggal}
-                onChangeTanggal={setTanggal}
-                selectedKelasId={selectedKelasId}
-                onChangeKelas={setSelectedKelasId}
-                kelasOptions={kelasOptions}
-                isGuru={isPetugasSiswa}
-                kelasLabel={getKelasLabel}
-                onSetToday={() => setTanggal(toLocalDate())}
-              />
-            </div>
-            <div className="flex items-center gap-3 w-full lg:w-auto">
+          {/* 2. SIMPLIFIED TOOLBAR & ACTIONS */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/80 p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm backdrop-blur-md">
+            {/* Left: Sleek Date Navigator */}
+            <SesiFilterPanel
+              tanggal={tanggal}
+              onChangeTanggal={setTanggal}
+              selectedKelasId={selectedKelasId}
+              onChangeKelas={setSelectedKelasId}
+              kelasOptions={kelasOptions}
+              isGuru={isPetugasSiswa}
+              kelasLabel={getKelasLabel}
+              onSetToday={() => setTanggal(toLocalDate())}
+            />
+
+            {/* Right: Quick Action Buttons */}
+            <div className="flex items-center gap-2">
               {canCreateSession && tanggal === toLocalDate() && (
-                <Button 
+                <button 
+                  type="button"
                   onClick={handleGenerateFromTemplate} 
                   disabled={generatingTemplate}
-                  variant="outline"
-                  className="h-12 px-6 rounded-xl border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-black text-xs uppercase tracking-widest flex-1 lg:flex-none"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all font-bold text-xs shadow-sm disabled:opacity-50"
                 >
-                  {generatingTemplate ? 'Sinkronisasi...' : 'Tarik Sesi Jadwal'}
-                </Button>
+                  <RefreshCw size={14} className={generatingTemplate ? 'animate-spin' : ''} />
+                  <span>{generatingTemplate ? 'Sinkronisasi...' : 'Tarik Sesi Jadwal'}</span>
+                </button>
               )}
               {canCreateSession && (
-                <Button 
+                <button 
+                  type="button"
                   onClick={() => setShowCreateSessionForm(true)}
-                  className="h-12 px-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/20 flex-1 lg:flex-none"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold text-xs shadow-lg shadow-indigo-600/25 transition-all"
                 >
-                  Buat Sesi Manual
-                </Button>
+                  <Plus size={15} />
+                  <span>Buat Sesi Manual</span>
+                </button>
               )}
             </div>
           </div>
@@ -692,14 +675,35 @@ const SessionManagerModuleComponent: React.FC<SessionManagerModuleProps> = ({
                           sesi={session}
                           isExpanded={!!expanded[session.id]}
                           counts={session.summary || {}}
-                          guruStatusText={String(session.guru_status || '').trim() || 'Belum Hadir'}
+                          guruStatusText={
+                            (() => {
+                              const raw = String(
+                                session.guru_status || 
+                                (session as any)?.AbsenGuru?.[0]?.status || 
+                                (session as any)?._summary?.teacherStatus || 
+                                ''
+                              ).trim();
+                              const upper = raw.toUpperCase().replace(/\s+/g, '_');
+                              if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'Belum Hadir';
+                              if (upper.includes('TERLAMBAT')) return 'Terlambat';
+                              if (upper === 'ALPA') return 'Alpa';
+                              if (upper.includes('HADIR') || upper === 'TEPAT_WAKTU') return 'Hadir';
+                              return raw || 'Belum Hadir';
+                            })()
+                          }
                           guruStatusVariant={
                             (() => {
-                              const raw = String(session.guru_status || '').trim();
-                              const upper = raw.toUpperCase();
-                              if (!upper || upper === 'BELUM HADIR' || upper.startsWith('BELUM')) return 'warning';
+                              const raw = String(
+                                session.guru_status || 
+                                (session as any)?.AbsenGuru?.[0]?.status || 
+                                (session as any)?._summary?.teacherStatus || 
+                                ''
+                              ).trim();
+                              const upper = raw.toUpperCase().replace(/\s+/g, '_');
+                              if (!upper || upper.includes('BELUM') || upper === 'BELUM_TAP' || upper === 'BELUM_HADIR') return 'warning';
+                              if (upper.includes('TERLAMBAT')) return 'warning';
                               if (upper === 'ALPA') return 'destructive';
-                              if (upper === 'HADIR' || upper === 'HADIR / MENGAJAR' || upper.includes('HADIR')) return 'success';
+                              if (upper.includes('HADIR') || upper === 'TEPAT_WAKTU') return 'success';
                               return 'warning';
                             })()
                           }

@@ -7,13 +7,15 @@ import { getTenantById, updateTenant, type Tenant } from '@/api/tenants.api';
 import { getKelasForDropdown } from '@/api/dropdown.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useJenjang } from '@/hooks/useJenjang';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import useConfirm from '@/hooks/useConfirm';
 import {
   type ShiftConfig,
   type KelasOption,
   shiftConfigSchema,
   getPresetSlotsForJenjang,
+  parseSlots,
+  regenerateSlots,
 } from '@/components/kurikulum/jam-kbm/JamKBMTypes';
 
 // ─── Lazy-loaded heavy subcomponents (Point #6: Lazy + Suspense) ─────────────
@@ -39,6 +41,8 @@ const DEFAULT_SHIFT_CONFIG: ShiftConfig = {
         { slot: 8, start: '13:15', end: '14:00' },
         { slot: 9, start: '14:00', end: '14:45' },
         { slot: 10, start: '14:45', end: '15:30' },
+        { slot: 11, start: '15:30', end: '16:15' },
+        { slot: 12, start: '16:15', end: '17:00' },
       ],
     },
   ],
@@ -87,9 +91,34 @@ export default function JamKBMPage() {
         setTenant(data);
 
         if (data.shift_jam_pelajaran) {
-          setShiftConfig(data.shift_jam_pelajaran as ShiftConfig);
-          if (data.shift_jam_pelajaran.shifts?.length > 0) {
-            setActiveSelectedShiftId(data.shift_jam_pelajaran.shifts[0].id);
+          const loadedConfig = data.shift_jam_pelajaran as ShiftConfig;
+          const upgradedShifts = (loadedConfig.shifts || []).map((shift) => {
+            const parsedInfo = parseSlots(shift.slots || []);
+            const effectiveDuration = shift.slot_duration ?? (parsedInfo.slot_duration > 0 ? parsedInfo.slot_duration : 45);
+            const effectiveStartTime = shift.start_time || parsedInfo.start_time || '07:00';
+            const effectiveBreaks = shift.breaks || parsedInfo.breaks || [];
+
+            if (shift.slots && shift.slots.length < 12) {
+              const newSlots = regenerateSlots(effectiveStartTime, effectiveDuration, effectiveBreaks, 12);
+              return { 
+                ...shift, 
+                start_time: effectiveStartTime, 
+                slot_duration: effectiveDuration, 
+                breaks: effectiveBreaks, 
+                slots: newSlots 
+              };
+            }
+
+            return {
+              ...shift,
+              start_time: effectiveStartTime,
+              slot_duration: effectiveDuration,
+              breaks: effectiveBreaks
+            };
+          });
+          setShiftConfig({ ...loadedConfig, shifts: upgradedShifts });
+          if (upgradedShifts.length > 0) {
+            setActiveSelectedShiftId(upgradedShifts[0].id);
           }
         } else {
           const slots = getPresetSlotsForJenjang(data.jenjang ?? '');
@@ -119,7 +148,11 @@ export default function JamKBMPage() {
 
   // ── Save with Zod validation (Point #3) ──
   const handleSave = useCallback(async () => {
-    if (!tenant) return;
+    const tenantId = tenant?.id || user?.tenant_id;
+    if (!tenantId) {
+      toast.error('ID Sekolah (Tenant) tidak terdeteksi');
+      return;
+    }
 
     // Zod validation before sending to API (defense-in-depth)
     const parsed = shiftConfigSchema.safeParse(shiftConfig);
@@ -140,20 +173,21 @@ export default function JamKBMPage() {
 
     setSaving(true);
     try {
-      const response = await updateTenant(tenant.id, { shift_jam_pelajaran: parsed.data });
-      if (response.success) {
+      const response = await updateTenant(tenantId, { shift_jam_pelajaran: parsed.data });
+      if (response && response.success !== false) {
         toast.success('Konfigurasi Shift & Waktu KBM berhasil disimpan!');
         fetchTenant();
       } else {
-        toast.error(response.message || 'Gagal menyimpan konfigurasi');
+        toast.error(response?.message || 'Gagal menyimpan konfigurasi');
       }
     } catch (err: unknown) {
+      console.error('Failed to update tenant shift config', err);
       const msg = err instanceof Error ? err.message : 'Gagal menyimpan konfigurasi';
       toast.error(msg);
     } finally {
       setSaving(false);
     }
-  }, [tenant, shiftConfig, confirm, fetchTenant]);
+  }, [tenant, user?.tenant_id, shiftConfig, confirm, fetchTenant]);
 
   // ── Layout config (memoized) ──
   const breadcrumbs = useMemo(() => [

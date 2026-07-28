@@ -43,19 +43,19 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
           <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300">{title}</h3>
         </div>
       )}
-      <div className={`grid ${gridCols} gap-2`}>
+      <div className={`grid ${gridCols} gap-3`}>
         {actions.map((action, idx) => {
           const colors = colorMap[action.color || 'blue'];
           return (
             <button
               key={idx}
               onClick={action.onClick}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors group"
+              className="flex items-center gap-3 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/80 bg-slate-50/50 hover:bg-slate-100/80 dark:bg-slate-900/40 dark:hover:bg-slate-800 transition-all group hover:shadow-xs text-left cursor-pointer"
             >
-              <div className={`w-9 h-9 rounded-lg ${colors.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                <action.icon size={18} className={colors.icon} />
+              <div className={`w-10 h-10 rounded-xl ${colors.bg} flex items-center justify-center group-hover:scale-105 transition-transform shrink-0`}>
+                <action.icon size={20} className={colors.icon} />
               </div>
-              <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 text-center leading-tight">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-snug">
                 {action.label}
               </span>
             </button>

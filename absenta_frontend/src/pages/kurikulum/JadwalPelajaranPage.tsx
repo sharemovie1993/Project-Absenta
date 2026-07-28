@@ -14,7 +14,8 @@ import {
   List,
   Printer,
   Paintbrush,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { AutoJadwalWizardModal } from '../../components/kurikulum/AutoJadwalWizardModal';
 
@@ -22,12 +23,12 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { getJadwalKBM, deleteJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
+import { getJadwalKBM, deleteJadwalKBM, clearJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getTahunPelajaranList } from '../../api/academic/tahunPelajaran.api';
 import { getSemesterList } from '../../api/academic/semester.api';
 import { LogService } from '../../utils/LogService';
 import useConfirm from '../../hooks/useConfirm';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 
 // Built-in PDF and API Imports
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
@@ -139,7 +140,6 @@ export default function JadwalPelajaranPage() {
     if (viewMode !== 'grid' || !selectedTahunId || !selectedSemesterId) return;
     
     const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
-    if (!targetKelasId && !selectedGuruId && user?.role?.name !== 'GURU') return;
 
     const controller = new AbortController();
 
@@ -310,6 +310,46 @@ export default function JadwalPelajaranPage() {
     }
   }, [canManage, confirm]);
 
+  const handleClearSchedule = useCallback(async () => {
+    const targetKelasId = isSiswa ? defaultKelasId : selectedKelasId;
+    const targetGuruId = selectedGuruId;
+
+    let scopeLabel = 'SELURUH jadwal KBM sekolah';
+    if (targetKelasId) scopeLabel = 'seluruh slot jadwal KBM untuk KELAS yang dipilih';
+    else if (targetGuruId) scopeLabel = 'seluruh slot jadwal KBM untuk GURU yang dipilih';
+
+    const desc = `Apakah Anda yakin ingin mengosongkan/menghapus ${scopeLabel}? Tindakan ini tidak dapat dibatalkan.`;
+    
+    const ok = await confirm({
+      title: 'Kosongkan / Reset Jadwal KBM',
+      description: desc,
+      confirmText: 'Ya, Kosongkan Jadwal',
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      const res = await clearJadwalKBM({
+        kelas_id: targetKelasId || undefined,
+        guru_id: targetGuruId || undefined,
+        tahun_pelajaran_id: selectedTahunId || undefined,
+        semester_id: selectedSemesterId || undefined,
+      });
+
+      if (res && res.success !== false) {
+        toast.success(res.message || 'Berhasil mengosongkan jadwal KBM.');
+        setRefreshKey(k => k + 1);
+        setJadwal([]);
+      } else {
+        toast.error(res?.message || 'Gagal mengosongkan jadwal');
+      }
+    } catch (err) {
+      console.error('Failed to clear schedules', err);
+      toast.error('Gagal mengosongkan jadwal KBM');
+    }
+  }, [confirm, isSiswa, defaultKelasId, selectedKelasId, selectedGuruId, selectedTahunId, selectedSemesterId]);
+
   const canViewTpl = can('academic.schedules.view.list') || can('attendance.schedules.view.list');
   const isAllowed = absensiMode === 'MULTI_SESI' && canViewTpl;
 
@@ -332,15 +372,29 @@ export default function JadwalPelajaranPage() {
             )}
 
             {canManage && (
-                <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="rounded-xl px-4 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5"
-                    onClick={() => setAutoWizardOpen(true)}
-                >
-                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                    Generate Otomatis
-                </Button>
+                <>
+                  <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-xl px-4 border-amber-200 dark:border-amber-900/60 bg-amber-50/10 dark:bg-amber-950/10 shadow-sm hover:shadow-md transition-all text-amber-700 dark:text-amber-400 font-extrabold flex items-center gap-1.5"
+                      onClick={() => setAutoWizardOpen(true)}
+                  >
+                      <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                      Generate Otomatis
+                  </Button>
+
+                  {viewMode !== 'builder' && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl px-4 border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 shadow-sm hover:bg-rose-100/50 hover:shadow-md transition-all text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5"
+                        onClick={handleClearSchedule}
+                    >
+                        <Trash2 className="w-4 h-4 text-rose-500" />
+                        Kosongkan Jadwal
+                    </Button>
+                  )}
+                </>
             )}
         </div>
 
@@ -381,7 +435,7 @@ export default function JadwalPelajaranPage() {
         </Suspense>
       </SectionCard>
     </div>
-  ), [viewMode, canManage, handlePrint, jadwal, loadingJadwal, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa, handleEditSlot, handleDeleteSlot]);
+  ), [viewMode, canManage, handlePrint, handleClearSchedule, jadwal, loadingJadwal, selectedKelasId, defaultKelasId, selectedGuruId, selectedTahunId, selectedSemesterId, refreshKey, isSiswa, handleEditSlot, handleDeleteSlot]);
 
   if (isLoading) {
     return <div className="flex justify-center py-20"><Loader /></div>;

@@ -117,7 +117,8 @@ const KelasList = React.memo<KelasListProps>(({
   const mappedKelasList = useMemo(() => {
     let list = kelasList;
     if (tingkatList && tingkatList.length > 0) {
-      list = kelasList.filter(k => tingkatList.includes(Number(k.tingkat)));
+      const validTingkats = new Set([...tingkatList, ...kelasList.map(k => Number(k.tingkat))]);
+      list = kelasList.filter(k => validTingkats.has(Number(k.tingkat)));
     }
     return list.map(k => ({
       ...k,

@@ -1,131 +1,234 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-// Standardized using lazy( and Suspense
-import { 
-  SectionCard, 
-  Button, 
-  Input, 
-  Loader, 
-  Alert, 
-  AlertDescription,
-  Table
-} from '../../../components/ui';
+import { z } from 'zod';
+import toast from 'react-hot-toast';
+
+import { SectionCard, Loader, Alert, AlertDescription } from '../../../components/ui';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapBulananKelas } from '../../../api/attendanceGerbang.api';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/Tabs';
+import { guruApi } from '../../../api/academic.api';
+import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
+import { getTenantById, type Tenant } from '../../../api/tenants.api';
+import { getStrukturList, type StrukturOrganisasi } from '../../../api/academic/strukturOrganisasi.api';
+import { getBase64ImageFromUrl } from '../../../utils/cooperative/coopDocUtils';
 import { toLocalMonth } from '../../../utils/attendance/time';
-import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { exportDataToExcel } from '../../../utils/export.utils';
+import { generateGenericPdf } from '../../../utils/print/pdfGeneric';
 import { useAuth } from '../../../hooks/useAuth';
-import { 
-  Search, 
-  RefreshCw, 
-  Users, 
-  FileText, 
-  Filter, 
-  LayoutGrid, 
-  List, 
-  BarChart3
-} from 'lucide-react';
+import { Users } from 'lucide-react';
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
-const stats = [
-  {
-    title: "Akumulasi",
-    value: "Bulanan",
-    icon: <Users size={14} />,
-    gradient: "from-blue-500 to-indigo-600",
-    subtitle: "Seluruh Siswa Kelas"
-  }
-];
+// ─── Subkomponent yang diekstrak ──────────────────────────────────────────────
+import { RekapBulananKelasToolbar } from '../../../components/attendance/rekap/RekapBulananKelasToolbar';
+import { RekapBulananKelasPdfModal } from '../../../components/attendance/rekap/RekapBulananKelasPdfModal';
+import { useRekapBulananKelasColumns } from '../../../components/attendance/rekap/rekapBulananKelasColumns';
+import type { RekapBulananKelasRow, ViewMode } from '../../../components/attendance/rekap/types';
 
+// Lazy loading heavy UI
+const Table = lazy(() => import('../../../components/ui/Table').then(m => ({ default: m.Table })));
+
+// ─── Skema Validasi Zod ────────────────────────────────────────────────────────
+const filterSchema = z.object({
+  kelasId: z.string().min(1),
+  bulan: z.string().regex(/^\d{4}-\d{2}$/),
+  tahunPelajaranId: z.string().optional(),
+});
+
+// ─── Tipe lokal ────────────────────────────────────────────────────────────────
+interface WaliKelasInfo {
+  id?: string;
+  nama_kelas?: string;
+  kelas_id?: string;
+  kelas?: { id?: string; nama_kelas?: string };
+}
+interface CustomGuruProfile {
+  wali_kelas_di?: WaliKelasInfo;
+  WaliKelas?: WaliKelasInfo[];
+  kelas_id?: string;
+  nama_guru?: string;
+  nip?: string;
+}
+interface CustomUser {
+  guru_profile?: CustomGuruProfile;
+  kelas_id?: string;
+  role?: string;
+}
+interface SubscriptionRecord {
+  features?: string[];
+  Plan?: { features_json?: string[] };
+  plan?: { features_json?: string[] };
+}
+
+// ─── Static data (di luar komponen agar tidak re-render) ─────────────────────
 const instructionData = {
-  title: "Panduan Rekap Bulanan",
-  description: "Laporan kehadiran akumulatif seluruh siswa kelas dalam satu bulan.",
+  title: 'Panduan Rekap Bulanan',
+  description: 'Laporan kehadiran akumulatif seluruh siswa kelas dalam satu bulan.',
   items: [
-    { text: "Pilih kelas dan bulan untuk melihat rekap bulanan kelas." },
-    { text: "Data kehadiran per kategori (Hadir, Sakit, Izin, Alpa) akan ditampilkan." }
-  ]
+    { text: 'Pilih kelas dan bulan untuk melihat rekap bulanan kelas.' },
+    { text: 'Gunakan sakelar Tampilan untuk beralih antara mode Total Akumulasi dan Detail Per Hari.' },
+  ],
 };
-
 const breadcrumbs = [
   { label: 'Presensi', path: '/attendance' },
   { label: 'Rekap', path: '/attendance/rekap' },
-  { label: 'Bulanan Kelas', active: true }
+  { label: 'Bulanan Kelas', active: true },
 ];
 
-interface RekapBulananKelasRow {
-  siswa_id: string;
-  nama_siswa: string;
-  nis?: string;
-  HADIR?: number;
-  IZIN?: number;
-  SAKIT?: number;
-  ALPA?: number;
-  TERLAMBAT?: number;
-}
-
-export function RekapBulananKelasContent({ 
-  initialKelasId 
-}: { 
-  initialKelasId?: string;
-}) {
+// ─── Content Component ────────────────────────────────────────────────────────
+export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: string }) {
   const { user, subscription } = useAuthStore();
   const navigate = useNavigate();
   const { can, isLoading } = useAuth();
+
+  const customUser = (user as unknown as CustomUser) ?? null;
+  const waliKelasId =
+    customUser?.guru_profile?.wali_kelas_di?.id ||
+    customUser?.guru_profile?.WaliKelas?.[0]?.kelas_id ||
+    customUser?.guru_profile?.WaliKelas?.[0]?.kelas?.id ||
+    customUser?.kelas_id;
+
   const [tahunOptions, setTahunOptions] = useState<DropdownOption[]>([]);
   const [tahunPelajaranId, setTahunPelajaranId] = useState('');
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
-  
-  // Default to Wali Kelas class ID if no initialKelasId is supplied
-  const waliKelasId = (user?.guru_profile as any)?.wali_kelas_di?.id;
   const [kelasId, setKelasId] = useState(initialKelasId || waliKelasId || '');
   const [bulan, setBulan] = useState<string>(toLocalMonth());
+  const [viewMode, setViewMode] = useState<ViewMode>('MATRIX');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<RekapBulananKelasRow[] | null>(null);
-  const [tab, setTab] = useState('TABLE');
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfFilename, setPdfFilename] = useState<string>('Laporan_Rekap_Presensi.pdf');
+  const [isWaliKelasAutoFiltered, setIsWaliKelasAutoFiltered] = useState(false);
+  const [waliKelasName, setWaliKelasName] = useState<string>('');
+  const [waliKelasNip, setWaliKelasNip] = useState<string>('');
 
-  // Pagination states
+  // Kop Surat
+  const [sekolah, setSekolah] = useState<Sekolah | null>(null);
+  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
+  const [strukturList, setStrukturList] = useState<StrukturOrganisasi[]>([]);
+  const [logoDaerahBase64, setLogoDaerahBase64] = useState<string | null>(null);
+  const [logoSekolahBase64, setLogoSekolahBase64] = useState<string | null>(null);
+
+  // Pagination
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
   const canView = useMemo(
     () => can('attendance.reports.view') && can('academic.structures.view.list'),
-    [can],
+    [can]
   );
 
-  const subFeatures = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  const subRecord = subscription as unknown as SubscriptionRecord | null;
+  const subFeatures = subRecord?.features ?? subRecord?.Plan?.features_json ?? subRecord?.plan?.features_json ?? [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
+  // ─── Load dropdown options ──────────────────────────────────────────────────
   useEffect(() => {
-    const activeWaliKelasId = (user?.guru_profile as any)?.wali_kelas_di?.id;
-    setKelasId(initialKelasId || activeWaliKelasId || '');
-  }, [initialKelasId, user]);
-
-  useEffect(() => {
-    const loadDropdowns = async () => {
-      const tahun = await dropdownApi.getTahunPelajaranForDropdown();
-      setTahunOptions(tahun);
-      const active = await dropdownApi.getActiveTahunPelajaran();
+    let isMounted = true;
+    (async () => {
+      const [tahun, active, kelas] = await Promise.all([
+        dropdownApi.getTahunPelajaranForDropdown(),
+        dropdownApi.getActiveTahunPelajaran(),
+        dropdownApi.getKelasForDropdown(),
+      ]);
+      if (!isMounted) return;
+      setTahunOptions(tahun ?? []);
       if (active?.id) setTahunPelajaranId(active.id);
-      const kelas = await dropdownApi.getKelasForDropdown();
-      setKelasOptions(kelas);
-    };
-    loadDropdowns();
-  }, []);
+      setKelasOptions(kelas ?? []);
 
+      let activeWaliKelasId =
+        customUser?.guru_profile?.wali_kelas_di?.id ||
+        customUser?.guru_profile?.WaliKelas?.[0]?.kelas_id ||
+        customUser?.guru_profile?.WaliKelas?.[0]?.kelas?.id ||
+        customUser?.kelas_id;
+
+      if (!activeWaliKelasId && (customUser?.guru_profile || customUser?.role === 'GURU')) {
+        try {
+          const meRes = await guruApi.getMe();
+          const meData = meRes?.data as unknown as CustomGuruProfile | undefined;
+          activeWaliKelasId =
+            meData?.wali_kelas_di?.id ||
+            meData?.WaliKelas?.[0]?.kelas_id ||
+            meData?.WaliKelas?.[0]?.kelas?.id;
+          if (isMounted && meData?.nama_guru) {
+            setWaliKelasName(meData.nama_guru);
+            setWaliKelasNip(meData.nip ?? '');
+          }
+        } catch (_) {}
+      } else if (customUser?.guru_profile) {
+        // Ambil dari authStore jika sudah tersedia
+        const gp = customUser.guru_profile as CustomGuruProfile;
+        if (gp.nama_guru) { setWaliKelasName(gp.nama_guru); setWaliKelasNip(gp.nip ?? ''); }
+      }
+
+      const target = initialKelasId || activeWaliKelasId || (kelas?.[0]?.value ?? '');
+      if (target) {
+        setKelasId(target);
+        if (activeWaliKelasId && target === activeWaliKelasId) setIsWaliKelasAutoFiltered(true);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [initialKelasId, customUser]);
+
+  // ─── Load kop surat ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const sek = await sekolahApi.getProfile();
+        if (isMounted) setSekolah(sek);
+      } catch (_) {}
+
+      const tenantId = (user as unknown as { tenant_id?: string })?.tenant_id;
+      if (tenantId) {
+        try {
+          const res = await getTenantById(tenantId);
+          if (isMounted && res.success && res.data) setTenantInfo(res.data);
+        } catch (_) {}
+      }
+
+      try {
+        const res = await getStrukturList({ is_active: true });
+        if (isMounted && res.success && res.data) setStrukturList(res.data);
+      } catch (_) {}
+    })();
+    return () => { isMounted = false; };
+  }, [user]);
+
+  useEffect(() => {
+    const url = tenantInfo?.logo_daerah_url ?? (sekolah as unknown as Record<string, unknown>)?.logo_daerah_url as string | undefined;
+    if (url) getBase64ImageFromUrl(url).then(setLogoDaerahBase64).catch(() => setLogoDaerahBase64(null));
+    else setLogoDaerahBase64(null);
+  }, [tenantInfo?.logo_daerah_url, sekolah]);
+
+  useEffect(() => {
+    const url = tenantInfo?.logo_url ?? sekolah?.logo_url;
+    if (url) getBase64ImageFromUrl(url).then(setLogoSekolahBase64).catch(() => setLogoSekolahBase64(null));
+    else setLogoSekolahBase64(null);
+  }, [tenantInfo?.logo_url, sekolah?.logo_url]);
+
+  // ─── Fetch data ──────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (isLocked) return;
-    if (!kelasId || !bulan) return;
+    const validation = filterSchema.safeParse({ kelasId, bulan, tahunPelajaranId });
+    if (!validation.success) return;
     setLoading(true);
     try {
-      const res = await getRekapBulananKelas(kelasId, { bulan, tahun_pelajaran_id: tahunPelajaranId || undefined });
-      setRows((res.data as RekapBulananKelasRow[]) || []);
-      setPage(1); // Reset to page 1 on fresh load
-    } catch (err) {
-      console.error(err);
+      const { kelasId: vKelas, bulan: vBulan, tahunPelajaranId: vTahun } = validation.data;
+      const res = await getRekapBulananKelas(vKelas, { bulan: vBulan, tahun_pelajaran_id: vTahun || undefined });
+      setRows(Array.isArray(res?.data) ? (res.data as RekapBulananKelasRow[]) : []);
+      if (res?.wali_kelas?.nama_guru) {
+        setWaliKelasName(res.wali_kelas.nama_guru);
+        setWaliKelasNip(res.wali_kelas.nip || '');
+      } else {
+        setWaliKelasName('');
+        setWaliKelasNip('');
+      }
+      setPage(1);
+    } catch {
+      toast.error('Gagal memuat rekap bulanan kelas');
       setRows([]);
     } finally {
       setLoading(false);
@@ -133,174 +236,170 @@ export function RekapBulananKelasContent({
   }, [kelasId, bulan, tahunPelajaranId, isLocked]);
 
   useEffect(() => {
-    if (kelasId && bulan) {
-      fetchData();
-    }
+    if (kelasId && bulan) fetchData();
   }, [kelasId, bulan, tahunPelajaranId, fetchData]);
 
-  const columns = useMemo(() => [
-    { 
-      label: 'Nama Siswa', 
-      key: 'nama_siswa', 
-      render: (v: unknown, row: RekapBulananKelasRow) => (
-        <button
-          onClick={() => navigate(`/attendance/tracking-siswa?siswa_id=${row.siswa_id}`)}
-          className="font-bold text-blue-600 dark:text-blue-400 hover:underline hover:text-blue-700 text-left transition-all"
-          title="Klik untuk Melacak Detail Aktivitas & Sesi Pembelajaran Siswa"
-        >
-          {String(v)}
-        </button>
-      )
-    },
-    { 
-      label: 'Hadir', 
-      key: 'HADIR', 
-      render: (v: unknown) => (
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span className="font-bold text-emerald-600">{Number(v) || 0}</span>
-        </div>
-      )
-    },
-    { 
-      label: 'Izin', 
-      key: 'IZIN',
-      render: (v: unknown) => <span className="font-bold text-blue-600">{Number(v) || 0}</span>
-    },
-    { 
-      label: 'Sakit', 
-      key: 'SAKIT',
-      render: (v: unknown) => <span className="font-bold text-amber-600">{Number(v) || 0}</span>
-    },
-    { 
-      label: 'Alpa', 
-      key: 'ALPA',
-      render: (v: unknown) => <span className="font-bold text-rose-600">{Number(v) || 0}</span>
-    },
-    { 
-      label: 'Terlambat', 
-      key: 'TERLAMBAT',
-      render: (v: unknown) => <span className="font-bold text-purple-600">{Number(v) || 0}</span>
-    }
-  ], []);
+  // ─── Derived: hari dalam bulan ───────────────────────────────────────────────
+  const daysInMonth = useMemo(() => {
+    if (!bulan || !/^\d{4}-\d{2}$/.test(bulan)) return 31;
+    const [y, m] = bulan.split('-');
+    return new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+  }, [bulan]);
 
-  // Caching rows pagination
+  const dayNumbers = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
+
+  // ─── Columns (via extracted hook) ────────────────────────────────────────────
+  const columns = useRekapBulananKelasColumns(viewMode, dayNumbers);
+
+  // ─── Pagination ──────────────────────────────────────────────────────────────
   const pagedRows = useMemo(() => {
-    const dataList = rows || [];
-    return dataList.slice((page - 1) * limit, page * limit);
+    const list = Array.isArray(rows) ? rows : [];
+    return list.slice((page - 1) * limit, page * limit);
   }, [rows, page, limit]);
 
-  const handlePageChange = useCallback((p: number) => {
-    setPage(p);
-  }, []);
+  const selectedKelasLabel = useMemo(() => {
+    return (kelasOptions ?? []).find(k => k.value === kelasId)?.label ?? '';
+  }, [kelasOptions, kelasId]);
 
-  const handleLimitChange = useCallback((l: number) => {
-    setLimit(l);
-    setPage(1);
-  }, []);
+  // ─── Export Excel ────────────────────────────────────────────────────────────
+  const handleExportExcel = useCallback(() => {
+    if (!rows?.length) { toast.error('Tidak ada data untuk diekspor'); return; }
+    try {
+      const namaKelas = (kelasOptions ?? []).find(k => k.value === kelasId)?.label ?? 'Kelas';
+      const title = `REKAPITULASI LEGER PRESENSI HARIAN KELAS ${namaKelas.toUpperCase()} - BULAN ${bulan}`;
+      const filename = `Leger_Presensi_${namaKelas.replace(/[^a-zA-Z0-9]/g, '_')}_${bulan}`;
+      const excelCols = [
+        { header: 'No', accessor: (_: unknown, i?: number) => (i ?? 0) + 1, width: 6 },
+        { header: 'Nama Siswa', accessor: (r: RekapBulananKelasRow) => r.nama_siswa, width: 28 },
+        { header: 'NIS', accessor: (r: RekapBulananKelasRow) => r.nis ?? '-', width: 14 },
+        ...(dayNumbers ?? []).map(d => ({
+          header: `Tgl ${d}`,
+          accessor: (r: RekapBulananKelasRow) => r.dailyMap?.[d.toString()] ?? '-',
+          width: 6,
+        })),
+        { header: 'Hadir (H)', accessor: (r: RekapBulananKelasRow) => r.HADIR ?? 0, width: 10 },
+        { header: 'Sakit (S)', accessor: (r: RekapBulananKelasRow) => r.SAKIT ?? 0, width: 10 },
+        { header: 'Izin (I)', accessor: (r: RekapBulananKelasRow) => r.IZIN ?? 0, width: 10 },
+        { header: 'Alpa (A)', accessor: (r: RekapBulananKelasRow) => r.ALPA ?? 0, width: 10 },
+        { header: 'Terlambat (T)', accessor: (r: RekapBulananKelasRow) => r.TERLAMBAT ?? 0, width: 12 },
+        { header: 'Total Poin', accessor: (r: RekapBulananKelasRow) => r.total_poin ?? 0, width: 12 },
+      ];
+      exportDataToExcel<RekapBulananKelasRow>(rows, excelCols, filename, title);
+      toast.success(`Berhasil mengunduh ${filename}.xlsx`);
+    } catch {
+      toast.error('Gagal mengekspor ke Excel');
+    }
+  }, [rows, kelasOptions, kelasId, bulan, dayNumbers]);
+
+  // ─── Export PDF ──────────────────────────────────────────────────────────────
+  const handleExportPdf = useCallback(async () => {
+    if (!rows?.length) { toast.error('Tidak ada data untuk dicetak'); return; }
+    try {
+      toast.loading('Menyiapkan dokumen PDF...', { id: 'pdf-toast' });
+      const isMatrix = viewMode === 'MATRIX';
+      const namaKelas = (kelasOptions ?? []).find(k => k.value === kelasId)?.label ?? 'Kelas';
+      const blob = await generateGenericPdf({
+        module: 'attendance',
+        printType: isMatrix ? 'monthly_matrix' : 'monthly_recap',
+        selectedClassId: kelasId,
+        sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64,
+        includeSchoolLogo: true,
+        eventDetails: { bulanRekap: bulan },
+        filterData: {
+          viewMode,
+          waliKelasName: waliKelasName || '________________________',
+          waliKelasNip: waliKelasNip || '',
+          classes: (kelasOptions ?? []).map(k => ({ id: k.value, nama_kelas: k.label })),
+          rekapList: (rows ?? []).map(r => ({
+            id: r.siswa_id,
+            nama_siswa: r.nama_siswa,
+            nis: r.nis,
+            dailyMap: r.dailyMap ?? {},
+            HADIR: r.HADIR ?? 0, SAKIT: r.SAKIT ?? 0, IZIN: r.IZIN ?? 0, ALPA: r.ALPA ?? 0, TERLAMBAT: r.TERLAMBAT ?? 0,
+            hadir: r.HADIR ?? 0, izin: r.IZIN ?? 0, sakit: r.SAKIT ?? 0, alpa: r.ALPA ?? 0, terlambat: r.TERLAMBAT ?? 0,
+            total_poin: r.total_poin ?? 0,
+            persentase: (() => {
+              const t = (r.HADIR ?? 0) + (r.IZIN ?? 0) + (r.SAKIT ?? 0) + (r.ALPA ?? 0) + (r.TERLAMBAT ?? 0);
+              return t === 0 ? 0 : Math.round((((r.HADIR ?? 0) + (r.TERLAMBAT ?? 0)) / t) * 100);
+            })(),
+          })),
+        },
+      });
+      const modeLabel = isMatrix ? 'Leger_Harian' : 'Rekap_Bulanan';
+      const filename = `${modeLabel}_${namaKelas.replace(/[^a-zA-Z0-9]/g, '_')}_${bulan}.pdf`;
+      setPdfFilename(filename);
+      setPdfPreviewUrl(URL.createObjectURL(blob));
+      toast.success(`Preview PDF ${isMatrix ? 'Landscape' : 'Portrait'} siap`, { id: 'pdf-toast' });
+    } catch {
+      toast.error('Gagal membuat preview PDF', { id: 'pdf-toast' });
+    }
+  }, [rows, kelasOptions, kelasId, bulan, viewMode, sekolah, tenantInfo, strukturList, logoDaerahBase64, logoSekolahBase64, waliKelasName, waliKelasNip]);
 
   if (isLoading) return <div className="flex justify-center py-20"><Loader size="lg" /></div>;
   if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
+  const safeRows = Array.isArray(rows) ? rows : [];
+
   return (
-    <div className="space-y-6">
-      <SectionCard title="Filter Laporan Kelas" icon={Filter} fullWidth>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Kelas</label>
-            {!initialKelasId && (
-              <SearchableSelect 
-                value={kelasId} 
-                onValueChange={setKelasId} 
-                options={kelasOptions} 
-                placeholder="Pilih Kelas..." 
-                triggerClassName="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" 
-              />
-            )}
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bulan Laporan</label>
-            <Input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tahun Pelajaran</label>
-            <SearchableSelect value={tahunPelajaranId} onValueChange={setTahunPelajaranId} options={tahunOptions} placeholder="Pilih Tahun..." triggerClassName="h-12 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-bold" />
-          </div>
-        </div>
-        <div className="mt-8 flex justify-end">
-          <Button onClick={fetchData} disabled={loading || !kelasId || !bulan} className="h-12 px-10 rounded-xl font-black text-[11px] uppercase tracking-widest gap-2 bg-slate-900 dark:bg-blue-600 text-white shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            Generate Laporan
-          </Button>
-        </div>
-      </SectionCard>
+    <SectionCard title="Hasil Rekapitulasi Kolektif" icon={Users} fullWidth noPadding>
+      {/* TOOLBAR */}
+      <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10">
+        <RekapBulananKelasToolbar
+          kelasId={kelasId}
+          bulan={bulan}
+          tahunPelajaranId={tahunPelajaranId}
+          viewMode={viewMode}
+          kelasOptions={kelasOptions ?? []}
+          tahunOptions={tahunOptions ?? []}
+          selectedKelasLabel={selectedKelasLabel}
+          isWaliKelasAutoFiltered={isWaliKelasAutoFiltered}
+          setKelasId={setKelasId}
+          setBulan={setBulan}
+          setTahunPelajaranId={setTahunPelajaranId}
+          setViewMode={setViewMode}
+          onExportExcel={handleExportExcel}
+          onExportPdf={handleExportPdf}
+        />
+      </div>
 
-      <SectionCard title="Hasil Rekapitulasi Kolektif" icon={Users} fullWidth noPadding>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/10">
-          <Tabs value={tab} onValueChange={setTab} className="w-full md:w-auto">
-            <div className="bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm inline-flex">
-              <TabsList className="bg-transparent border-none gap-1">
-                <TabsTrigger value="TABLE" className="rounded-lg px-4 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 transition-all">
-                  <List className="w-3 h-3 mr-1.5" /> Tabel Ringkasan
-                </TabsTrigger>
-                <TabsTrigger value="PIVOT" className="rounded-lg px-4 py-1.5 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:data-[state=active]:bg-blue-600 transition-all">
-                  <LayoutGrid className="w-3 h-3 mr-1.5" /> Pivot Kehadiran
-                </TabsTrigger>
-              </TabsList>
-            </div>
-          </Tabs>
-          
-          <div className="hidden md:flex gap-2">
-             <Button variant="outline" size="sm" className="rounded-xl font-bold text-[10px] uppercase tracking-widest h-9 px-4 border-slate-200 dark:border-slate-800">
-               <FileText className="w-3.5 h-3.5 mr-2" /> Export Excel
-             </Button>
-          </div>
-        </div>
+      {/* TABEL */}
+      <div className="bg-white dark:bg-slate-900 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 p-2">
+        <Suspense fallback={<div className="p-8 text-center"><Loader size="lg" /></div>}>
+          <Table
+            columns={columns}
+            data={pagedRows}
+            loading={loading}
+            emptyMessage={kelasId ? 'Tidak ada catatan presensi bulan ini.' : 'Silakan pilih kelas dan bulan laporan.'}
+            compact
+            className="border-none"
+            pagination={{
+              currentPage: page,
+              totalPages: Math.ceil(safeRows.length / limit),
+              totalItems: safeRows.length,
+              itemsPerPage: limit,
+              onPageChange: setPage,
+              onLimitChange: (l) => { setLimit(l); setPage(1); },
+            }}
+          />
+        </Suspense>
+      </div>
 
-        <div className="bg-white dark:bg-slate-955 overflow-hidden">
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsContent value="TABLE" className="mt-0 outline-none ring-0">
-              <Table
-                columns={columns}
-                data={pagedRows}
-                loading={loading}
-                emptyMessage={kelasId ? "Tidak ada catatan presensi yang ditemukan untuk bulan ini." : "Silakan pilih filter dan klik Generate Laporan."}
-                compact={true}
-                className="border-none"
-                pagination={{
-                  currentPage: page,
-                  totalPages: Math.ceil((rows || []).length / limit),
-                  totalItems: (rows || []).length,
-                  itemsPerPage: limit,
-                  onPageChange: handlePageChange,
-                  onLimitChange: handleLimitChange,
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="PIVOT" className="mt-0 outline-none ring-0">
-               <div className="py-20 flex flex-col items-center justify-center text-center px-10">
-                  <div className="w-20 h-20 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 mb-6 border border-amber-500/20">
-                     <BarChart3 size={40} />
-                  </div>
-                  <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-2">Mode Pivot Premium</h4>
-                  <p className="text-[11px] font-bold text-slate-500 max-w-xs leading-relaxed uppercase tracking-tight">
-                    Visualisasi data harian per siswa dalam satu bulan penuh (Matrix) tersedia pada paket Berlangganan Premium.
-                  </p>
-                  <Button className="mt-8 rounded-xl font-black text-[10px] uppercase tracking-widest bg-blue-600 text-white px-8 h-10 shadow-lg shadow-blue-500/20">Upgrade Sekarang</Button>
-               </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </SectionCard>
-    </div>
+      {/* PDF PREVIEW MODAL */}
+      {pdfPreviewUrl && (
+        <RekapBulananKelasPdfModal
+          pdfPreviewUrl={pdfPreviewUrl}
+          pdfFilename={pdfFilename}
+          onClose={() => setPdfPreviewUrl(null)}
+        />
+      )}
+    </SectionCard>
   );
 }
 
+// ─── Page wrapper (standalone route) ─────────────────────────────────────────
 export default function RekapBulananKelasPage() {
   const [searchParams] = useSearchParams();
   const kelasIdParam = searchParams.get('kelas_id') || undefined;
-
-  const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
 
   return (
@@ -308,7 +407,6 @@ export default function RekapBulananKelasPage() {
       hardeningModuleKey="rekapbulanankelaspage"
       title="Rekap Bulanan Kelas"
       description="Laporan rekapitulasi kehadiran bulanan siswa per kelas."
-      stats={memoStats}
       instruction={instructionData}
       breadcrumbs={memoBreadcrumbs}
     >

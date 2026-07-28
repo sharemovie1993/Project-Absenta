@@ -118,6 +118,8 @@ export const getPresetSlotsForJenjang = (schoolJenjang: string): TimeSlot[] => {
       { slot: 8, start: '13:15', end: '14:00' },
       { slot: 9, start: '14:00', end: '14:45' },
       { slot: 10, start: '14:45', end: '15:30' },
+      { slot: 11, start: '15:30', end: '16:15' },
+      { slot: 12, start: '16:15', end: '17:00' },
     ];
   }
 };
@@ -146,10 +148,10 @@ export const parseSlots = (slots: TimeSlot[]): { start_time: string; slot_durati
   return { start_time, slot_duration, breaks };
 };
 
-export const regenerateSlots = (startTime: string, duration: number, breaksList: BreakItem[]): TimeSlot[] => {
+export const regenerateSlots = (startTime: string, duration: number, breaksList: BreakItem[], totalSlots: number = 12): TimeSlot[] => {
   const slots: TimeSlot[] = [];
   let currentMin = toMins(startTime);
-  for (let s = 1; s <= 10; s++) {
+  for (let s = 1; s <= totalSlots; s++) {
     const start = toTimeStr(currentMin);
     const end = toTimeStr(currentMin + duration);
     slots.push({ slot: s, start, end });

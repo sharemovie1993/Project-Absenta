@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useConfirm from '../../../hooks/useConfirm';
-import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight } from 'lucide-react';
+import { Search, RefreshCw, User, School, Plus, Edit, Power, CheckCircle2, Download, FileText, Network, ChevronRight, Printer } from 'lucide-react';
 import { Table, Button, Modal, Switch, Input, Badge, SectionCard } from '../../ui';
 import { getWaliKelasStrukturList, assignWaliKelasStruktur, nonaktifWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import type { WaliKelasStrukturAssignment } from '../../../types/academic';
@@ -10,6 +10,11 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
 import WaliKelasForm from './WaliKelasForm';
+import SKWaliKelasWordEditorModal, { SKWaliKelasData } from '../guru/SKWaliKelasWordEditorModal';
+import SKWaliKelasTemplateMasterModal from '../guru/SKWaliKelasTemplateMasterModal';
+import SKWaliKelasArsipModal from '../guru/SKWaliKelasArsipModal';
+import SKWaliKelasBulkGenerateModal from '../guru/SKWaliKelasBulkGenerateModal';
+import { FileCode, FolderArchive, Archive as Zip } from 'lucide-react';
 
 interface Props {
   refreshTrigger?: number;
@@ -32,12 +37,18 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
   const [assigning, setAssigning] = useState(false);
   const [presetData, setPresetData] = useState<{ guru_id?: string; kelas_id?: string } | undefined>(undefined);
 
-
   const { can, isAdmin } = useAuth();
 
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [skWaliKelasOpen, setSkWaliKelasOpen] = useState(false);
+  const [skWaliKelasData, setSkWaliKelasData] = useState<SKWaliKelasData | null>(null);
+
+  // New states for Template Master, Arsip, & Bulk Generate SK
+  const [templateMasterOpen, setTemplateMasterOpen] = useState(false);
+  const [arsipOpen, setArsipOpen] = useState(false);
+  const [bulkGenerateOpen, setBulkGenerateOpen] = useState(false);
 
   const canManage = useMemo(() => isAdmin() || can('academic.homeroom.manage'), [isAdmin, can]);
 
@@ -266,6 +277,26 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
             <Button
               size="sm"
               variant="outline"
+              className="text-slate-600 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+              onClick={() => {
+                setSkWaliKelasData({
+                  guruId: item.Guru?.id,
+                  namaGuru: item.Guru?.nama_guru || '',
+                  nipGuru: item.Guru?.nip || '',
+                  namaKelas: item.StrukturOrganisasi?.Kelas?.nama_kelas,
+                  jabatan: `WALI KELAS ${item.StrukturOrganisasi?.Kelas?.nama_kelas || ''}`,
+                  tmt: item.start_date ? new Date(item.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '',
+                });
+                setSkWaliKelasOpen(true);
+              }}
+              title="Cetak SK Wali Kelas"
+              aria-label="Cetak SK Wali Kelas"
+            >
+              <Printer className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
               className="text-slate-600 hover:text-blue-600"
               onClick={() => openAssignModal({ guru_id: item.Guru?.id, kelas_id: item.StrukturOrganisasi?.Kelas?.id })}
               disabled={assigning}
@@ -355,6 +386,43 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
                     Tambah Penugasan
                   </Button>
                )}
+
+               {canManage && (
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbar"
+                   onClick={() => setBulkGenerateOpen(true)}
+                   className="rounded-xl border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 font-extrabold"
+                   title="Generate & Ekspor PDF SK Wali Kelas secara Massal (ZIP)"
+                 >
+                   <Zip className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                   Cetak SK Massal (ZIP)
+                 </Button>
+               )}
+
+               {canManage && (
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbar"
+                   onClick={() => setTemplateMasterOpen(true)}
+                   className="rounded-xl border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50"
+                   title="Pengaturan Template Master SK Wali Kelas"
+                 >
+                   <FileCode className="w-3.5 h-3.5 mr-1.5" />
+                   Template SK
+                 </Button>
+               )}
+
+               <Button
+                 variant="toolbarOutline"
+                 size="toolbar"
+                 onClick={() => setArsipOpen(true)}
+                 className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
+                 title="Daftar Arsip SK yang Pernah Dicetak"
+               >
+                 <FolderArchive className="w-3.5 h-3.5 mr-1.5" />
+                 Arsip SK
+               </Button>
                
                <Button
                  variant="toolbarOutline"
@@ -457,6 +525,32 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
           preset={presetData}
         />
       </Modal>
+
+      {/* Modal SK Wali Kelas Word Editor */}
+      <SKWaliKelasWordEditorModal
+        isOpen={skWaliKelasOpen}
+        onClose={() => setSkWaliKelasOpen(false)}
+        skData={skWaliKelasData}
+      />
+
+      {/* Modal Template Master SK */}
+      <SKWaliKelasTemplateMasterModal
+        isOpen={templateMasterOpen}
+        onClose={() => setTemplateMasterOpen(false)}
+        onSaved={() => fetchData(currentPage, debouncedSearchTerm, includeInactive)}
+      />
+
+      {/* Modal Arsip SK */}
+      <SKWaliKelasArsipModal
+        isOpen={arsipOpen}
+        onClose={() => setArsipOpen(false)}
+      />
+
+      {/* Modal Generate SK Massal (ZIP) */}
+      <SKWaliKelasBulkGenerateModal
+        isOpen={bulkGenerateOpen}
+        onClose={() => setBulkGenerateOpen(false)}
+      />
     </div>
   );
 });

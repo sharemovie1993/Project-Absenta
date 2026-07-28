@@ -96,19 +96,15 @@ export default function ModeSimpleView({
     };
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
-  // Access Control - Expanded to allow all authorized gate/attendance operational users
+  // Access Control: Scan Gerbang (Utama) HANYA untuk Admin, Operator, atau Posisi/Akses PETUGAS GERBANG
+  // Petugas Absensi Kelas / Wali Kelas TIDAK memiliki akses ke Scanner Gerbang
   const canAccessInput =
     isAdmin ||
-    isPetugasGuru ||
-    isPetugasSiswa ||
     isGerbangPos ||
-    user?.role?.name === 'GURU' ||
-    user?.role?.name === 'PETUGAS' ||
     user?.role?.name === 'OPERATOR' ||
-    caps.includes('attendance.scan') ||
     caps.includes('attendance.gate.tap.entry') ||
-    caps.includes('attendance.sessions.create');
-  const canAccessManual = isAdmin || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
+    caps.includes('attendance.scan.gate');
+  const canAccessManual = isAdmin || isPetugasSiswa || (caps.includes('attendance.sessions.update.attendance') && !isGerbangPos);
 
   const totalArrived = miniStats?.masuk || 0;
   const totalStudents = miniStats?.total_target || 0;

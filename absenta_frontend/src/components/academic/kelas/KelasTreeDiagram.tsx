@@ -145,11 +145,12 @@ export const KelasTreeDiagram: React.FC<KelasTreeDiagramProps> = React.memo(({
       .sort((a, b) => a - b);
   }, [classesByTingkat, propTingkatList]);
 
-  // Chunk levels into rows of max 3 columns to support SD/MI/SMP/SMA layout on one screen
+  // Chunk levels into rows of max 3 or 4 columns (supports 4-year SMK in 1 row)
   const tingkatChunks = useMemo(() => {
     const chunks: number[][] = [];
-    for (let i = 0; i < tingkatList.length; i += 3) {
-      chunks.push(tingkatList.slice(i, i + 3));
+    const step = tingkatList.length === 4 ? 4 : 3;
+    for (let i = 0; i < tingkatList.length; i += step) {
+      chunks.push(tingkatList.slice(i, i + step));
     }
     return chunks;
   }, [tingkatList]);

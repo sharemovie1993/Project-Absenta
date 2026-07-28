@@ -60,10 +60,13 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teaching.view',
     'academic.teaching.manage', // Atur pembagian jam mengajar
     'academic.subjects.view.list',
+    'academic.subjects.view.detail',
     'academic.subjects.create',
     'academic.subjects.update',
     'academic.subjects.delete',
     'academic.subjects.manage', // Kelola daftar mapel
+    'academic.manage.mapel',
+    'academic.view.mapel',
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.homeroom.manage', // Penunjukan Wali Kelas
@@ -94,7 +97,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.cases.view.list',
     'bk.cases.view.detail',
     'bk.assessment.view.list',
-    'kesiswaan.schedules.view.list'
+    'kesiswaan.schedules.view.list',
+    'kesiswaan.schedules.create',
+    'kesiswaan.schedules.update',
+    'kesiswaan.schedules.delete'
   ],
   [STRUKTUR_CODES.KESISWAAN]: [
     'organization.scope.tenant_wide',
@@ -483,6 +489,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.teaching.view',
     'academic.teaching.rekap',
     'academic.schedules.view.list',
+    'kesiswaan.schedules.view.list',
+    'kesiswaan.schedules.create',
+    'kesiswaan.schedules.update',
+    'kesiswaan.schedules.delete',
     'academic.years.view.list',
     'academic.years.create',
     'academic.years.update',

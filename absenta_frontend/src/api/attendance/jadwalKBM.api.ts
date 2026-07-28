@@ -80,6 +80,19 @@ export const deleteJadwalKBM = async (id: string) => {
   return requestWithFallback<any>('delete', `/kurikulum/jadwal-kbm/${id}`);
 };
 
+export const clearJadwalKBM = async (filters?: {
+  kelas_id?: string;
+  guru_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}) => {
+  return requestWithFallback<{
+    success: boolean;
+    message?: string;
+    count?: number;
+  }>('post', '/kurikulum/jadwal-kbm/clear', { data: filters });
+};
+
 export const importJadwalFromExcel = async (
   file: File,
   tahunPelajaranId: string,

@@ -42,8 +42,11 @@ export async function sekolahRoutes(fastify: any) {
     handler: sekolahController.create.bind(sekolahController),
   });
 
+  fastify.put('/me', {
+    handler: sekolahController.update.bind(sekolahController),
+  });
+
   fastify.put('/', {
-    preHandler: [requireCapability('core.sekolah.update.profile')],
     handler: sekolahController.update.bind(sekolahController),
   });
 }

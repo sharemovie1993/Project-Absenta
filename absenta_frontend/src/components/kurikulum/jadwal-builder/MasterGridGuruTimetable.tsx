@@ -117,6 +117,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                           (j) => j.guru_id === guru.id && j.hari === day && j.slot_index === slotIdx
                         );
                         const isConflict = teacherSlots.length > 1;
+                        const item = teacherSlots[0];
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(guru.nama_guru)

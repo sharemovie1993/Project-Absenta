@@ -72,6 +72,16 @@ export default async function semesterRoutes(fastify: any) {
     }
   );
 
+  fastify.put(
+    '/:id/deactivate',
+    {
+      preHandler: [requireCapability('academic.semesters.update')]
+    },
+    async (request: any, reply: any) => {
+      return semesterController.deactivateSemester(request, reply);
+    }
+  );
+
   fastify.delete(
     '/:id',
     {

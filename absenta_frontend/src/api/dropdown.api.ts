@@ -368,6 +368,23 @@ export const dropdownApi = {
       return [];
     }
   },
+  getMapelForDropdown: async (): Promise<DropdownOption[]> => {
+    try {
+      const response = await requestWithFallback<{ success: boolean; data: any[] }>(
+        'get',
+        "/academic/mapel",
+        { params: { limit: 1000 }, headers: { 'X-Skip-403-Redirect': 'true' } }
+      );
+      const list: any[] = (response as any)?.data?.data || (response as any)?.data || [];
+      return (Array.isArray(list) ? list : []).map((m: any) => ({
+        value: m.id,
+        label: m.kode_mapel ? `${m.nama_mapel} (${m.kode_mapel})` : m.nama_mapel,
+      }));
+    } catch (error) {
+      console.error('Error fetching mapel for dropdown:', error);
+      return [];
+    }
+  },
   // Reference data functions
   getJenisKelaminOptions,
   getAgamaOptions,

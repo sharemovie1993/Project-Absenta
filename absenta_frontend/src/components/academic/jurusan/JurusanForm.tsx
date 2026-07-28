@@ -51,7 +51,8 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
       kode: '',
       singkatan: '',
       warna: 'indigo',
-      program_keahlian_id: ''
+      program_keahlian_id: '',
+      durasi_jurusan: 'DEFAULT_SEKOLAH'
     }
   });
 
@@ -69,7 +70,8 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
           kode: jurusan.kode || '',
           singkatan: jurusan.singkatan || '',
           warna: jurusan.warna || 'indigo',
-          program_keahlian_id: jurusan.program_keahlian_id || ''
+          program_keahlian_id: jurusan.program_keahlian_id || '',
+          durasi_jurusan: jurusan.durasi_jurusan || 'DEFAULT_SEKOLAH'
         });
       } catch (error) {
         console.error('Error loading jurusan data:', error);
@@ -95,7 +97,8 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
         kode: data.kode || undefined,
         singkatan: data.singkatan || undefined,
         warna: data.warna || null,
-        program_keahlian_id: data.program_keahlian_id || null
+        program_keahlian_id: data.program_keahlian_id || null,
+        durasi_jurusan: data.durasi_jurusan || 'DEFAULT_SEKOLAH'
       };
 
       let response;

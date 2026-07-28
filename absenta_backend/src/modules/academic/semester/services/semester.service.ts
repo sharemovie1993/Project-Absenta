@@ -179,6 +179,16 @@ export class SemesterService {
   }
 
   async updateSemester(semesterId: string, input: UpdateSemesterInput, requestingUserRole: RoleName, requestingUserTenantId?: string): Promise<SemesterResponse> {
+    // ⛔ is_active DILARANG diubah via updateSemester.
+    // Gunakan setActiveSemester (PUT /:id/activate) untuk mengaktifkan.
+    // Gunakan deactivateSemester (PUT /:id/deactivate) untuk menonaktifkan.
+    if (typeof input.is_active === 'boolean') {
+      throw new Error(
+        'Tidak dapat mengubah status aktif semester melalui endpoint ini. ' +
+        'Gunakan endpoint /activate atau /deactivate untuk menjaga konsistensi data.'
+      );
+    }
+
     // Check if semester exists and user has permission
     let whereClause: any = { id: semesterId };
     if (!isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)) {
@@ -239,7 +249,7 @@ export class SemesterService {
       data: {
         ...(input.nama_semester && { nama_semester: input.nama_semester }),
         ...(input.tahun_pelajaran_id && { tahun_pelajaran_id: input.tahun_pelajaran_id }),
-        ...(typeof input.is_active === 'boolean' && { is_active: input.is_active }),
+        // is_active TIDAK diproses di sini
       },
       include: {
         TahunPelajaran: {
@@ -472,6 +482,33 @@ export class SemesterService {
     });
 
     return result as SemesterResponse;
+  }
+
+  /**
+   * Nonaktifkan semester tanpa mengaktifkan semester lain.
+   * Digunakan ketika toggle dimatikan dari UI.
+   */
+  async deactivateSemester(semesterId: string, requestingUserRole: RoleName, requestingUserTenantId?: string): Promise<SemesterResponse> {
+    let whereClause: any = { id: semesterId };
+    if (!isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)) {
+      whereClause.tenant_id = requestingUserTenantId;
+    }
+
+    const existingSemester = await prisma.semester.findFirst({ where: whereClause });
+    if (!existingSemester) {
+      throw new Error('Semester not found or insufficient permissions');
+    }
+
+    const updated = await prisma.semester.update({
+      where: { id: semesterId },
+      data: { is_active: false },
+      include: {
+        TahunPelajaran: { select: { id: true, tahun: true, is_active: true } },
+        _count: { select: { SesiAbsensi: true, Siswa: true } },
+      },
+    });
+
+    return updated as SemesterResponse;
   }
 }
 

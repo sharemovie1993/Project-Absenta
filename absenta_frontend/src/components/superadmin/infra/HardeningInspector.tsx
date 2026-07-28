@@ -24,13 +24,15 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
   // Jangan render apapun di mode produksi
   if (typeof window !== 'undefined' && !import.meta.env.DEV) return null;
 
+  const devAuditHost = typeof window !== 'undefined' ? (window.location.hostname || 'localhost') : 'localhost';
+
   // ③ useCallback pada semua handler agar referensi stabil lintas render
   const handleRunLiveAudit = React.useCallback(async () => {
     if (!moduleKey) return;
     setIsAuditing(true);
     setAuditError(null);
     try {
-      const res = await fetch(`http://localhost:9999/api/audit?key=${encodeURIComponent(moduleKey)}`);
+      const res = await fetch(`http://${devAuditHost}:9999/api/audit?key=${encodeURIComponent(moduleKey)}`);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || `HTTP ${res.status}`);
@@ -43,14 +45,14 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
     } finally {
       setIsAuditing(false);
     }
-  }, [moduleKey]);
+  }, [moduleKey, devAuditHost]);
 
   const handleRunLighthouse = React.useCallback(async () => {
     setIsLhAuditing(true);
     setLhError(null);
     try {
       const currentUrl = window.location.href;
-      const res = await fetch(`http://localhost:9999/api/lighthouse?url=${encodeURIComponent(currentUrl)}`);
+      const res = await fetch(`http://${devAuditHost}:9999/api/lighthouse?url=${encodeURIComponent(currentUrl)}`);
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || `HTTP ${res.status}`);
@@ -63,7 +65,7 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({ pageName
     } finally {
       setIsLhAuditing(false);
     }
-  }, []);
+  }, [devAuditHost]);
 
   // ④ displayedStandards: mapper live audit ke checklist + tambah Pilar 5 safeEffect
   const displayedStandards = React.useMemo(() => {

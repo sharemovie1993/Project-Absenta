@@ -189,7 +189,7 @@ export class SemesterController {
 
       reply.status(200).send({
         success: true,
-        message: 'Active semester set successfully',
+        message: 'Semester berhasil diaktifkan. Semester lain di tenant ini telah dinonaktifkan.',
         data: semester,
       });
     } catch (error: any) {
@@ -197,6 +197,26 @@ export class SemesterController {
         success: false,
         message: 'Failed to set active semester',
         error: error.message,
+      });
+    }
+  }
+
+  async deactivateSemester(req: any, reply: any): Promise<void> {
+    try {
+      const user = req.user as any;
+      const { id } = req.params;
+
+      const semester = await semesterService.deactivateSemester(id, user.roleName, user.tenantId);
+
+      reply.status(200).send({
+        success: true,
+        message: 'Semester berhasil dinonaktifkan.',
+        data: semester,
+      });
+    } catch (error: any) {
+      reply.status(400).send({
+        success: false,
+        message: error.message || 'Failed to deactivate semester',
       });
     }
   }

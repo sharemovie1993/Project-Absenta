@@ -82,15 +82,16 @@ export class SesiService {
     const selesai = waktu_selesai ? parseSafeDate(waktu_selesai) : new Date(mulai.getTime() + 60 * 60 * 1000);
 
     const cfgForDay = await systemConfigService.getActive(tenantId);
-    const tzForDay = String(cfgForDay?.timezone || '').trim();
-    const offsetForDay = tzForDay === 'Asia/Makassar' ? '+08:00' : (tzForDay === 'Asia/Jayapura' ? '+09:00' : '+07:00');
-    const offsetMinutesForDay = (() => {
-      const m = /([+-])(\d{2}):(\d{2})/.exec(offsetForDay);
-      if (!m) return 0;
-      const sign = m[1] === '-' ? -1 : 1;
-      return sign * (Number(m[2]) * 60 + Number(m[3]));
-    })();
-    const dayIso = new Date(tgl.getTime() + offsetMinutesForDay * 60 * 1000).toISOString().slice(0, 10);
+    const tzForDay = String(cfgForDay?.timezone || 'Asia/Jakarta').trim();
+    const TZ_OFFSET: Record<string, number> = {
+      'Asia/Jakarta': 7,
+      'Asia/Makassar': 8,
+      'Asia/Jayapura': 9
+    };
+    const offsetHoursForDay = TZ_OFFSET[tzForDay] ?? 7;
+    const offsetSignForDay = offsetHoursForDay >= 0 ? '+' : '-';
+    const offsetForDay = `${offsetSignForDay}${String(Math.abs(offsetHoursForDay)).padStart(2, '0')}:00`;
+    const dayIso = new Intl.DateTimeFormat('sv-SE', { timeZone: tzForDay }).format(tgl);
     const startDay = new Date(`${dayIso}T00:00:00.000${offsetForDay}`);
     const endDay = new Date(`${dayIso}T23:59:59.999${offsetForDay}`);
 
@@ -271,11 +272,18 @@ export class SesiService {
     let dateFilter: { gte: Date; lte: Date } | undefined;
     if (tanggal) {
         const cfgSess = await systemConfigService.getActive(tenantId);
-        const tz = String(cfgSess?.timezone || '').trim();
-        const offset = tz === 'Asia/Makassar' ? '+08:00' : (tz === 'Asia/Jayapura' ? '+09:00' : '+07:00');
+        const tz = String(cfgSess?.timezone || 'Asia/Jakarta').trim();
+        const TZ_OFFSET: Record<string, number> = {
+          'Asia/Jakarta': 7,
+          'Asia/Makassar': 8,
+          'Asia/Jayapura': 9
+        };
+        const offsetHours = TZ_OFFSET[tz] ?? 7;
+        const offsetSign = offsetHours >= 0 ? '+' : '-';
+        const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
         const dayStr = String(tanggal);
-        const start = new Date(`${dayStr}T00:00:00.000${offset}`);
-        const end = new Date(`${dayStr}T23:59:59.999${offset}`);
+        const start = new Date(`${dayStr}T00:00:00.000${offsetStr}`);
+        const end = new Date(`${dayStr}T23:59:59.999${offsetStr}`);
         dateFilter = { gte: start, lte: end };
     }
 
@@ -294,7 +302,7 @@ export class SesiService {
       const currentUserId = query.currentUserId || org?.user_id || query.userId;
       if (currentUserId) {
         const guruRec = await prisma.guru.findFirst({
-          where: { user_id: String(currentUserId), tenant_id: tenantId },
+          where: { tenant_id: tenantId, OR: [{ user_id: String(currentUserId) }, { id: String(currentUserId) }] },
           select: { id: true }
         });
         if (guruRec) {
@@ -410,10 +418,11 @@ export class SesiService {
       // If summary is requested, use enrichWithSummary for detailed status (teacher, live, etc.)
       if (query.summary === 'true' || query.summary === true) {
         const enriched = await this.enrichWithSummary(tenantId, sessions);
-        // Also attach legacy 'summary' for compatibility
         enriched.forEach((s: any) => {
           s.summary = {
+            HADIR: s._summary.hadir,
             hadir: s._summary.hadir,
+            TOTAL: s._summary.total,
             total: s._summary.total
           };
         });
@@ -696,6 +705,29 @@ export class SesiService {
     if (!siswa_id) throw new Error('Siswa tidak teridentifikasi');
     if (!targetSesiId || !isUUID(targetSesiId)) throw new Error('Sesi tidak ditemukan atau ID tidak valid');
 
+    // ── Distributed Idempotency Lock ─────────────────────────────────────────────
+    // Apapun metode input (RFID, QR, HID keyboard) — 1 siswa + 1 sesi = 1 record.
+    // Redis SETNX mencegah burst <5s masuk ke DB.
+    const tapLockKey = `absenta:sesi_tap_lock:${tenantId}:${targetSesiId}:${siswa_id}`;
+    try {
+      const redis = getRedisConnection();
+      const lockResult = await redis.set(tapLockKey, '1', 'EX', 5, 'NX');
+      if (lockResult !== 'OK') {
+        // Burst tap — kembalikan record yang sudah ada
+        const lockedExisting = await prisma.absenSiswa.findFirst({
+          where: { tenant_id: tenantId, sesi_id: targetSesiId, siswa_id },
+        });
+        if (lockedExisting) {
+          console.log(`[SesiService] 🔒 Tap sesi ditolak Redis lock (burst): sesi=${targetSesiId} siswa=${siswa_id}`);
+          return lockedExisting;
+        }
+      }
+    } catch (redisErr) {
+      // Redis tidak tersedia — lanjut, DB constraint tetap menjaga
+      console.warn('[SesiService] Redis lock unavailable, falling back to DB upsert:', redisErr);
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const sesi = await prisma.sesiAbsensi.findFirst({
       where: { id: targetSesiId, tenant_id: tenantId },
       select: {
@@ -735,18 +767,19 @@ export class SesiService {
     }
 
     const cfgForDay = await systemConfigService.getActive(tenantId);
-    const tzForDay = String(cfgForDay?.timezone || '').trim();
-    const offsetForDay = tzForDay === 'Asia/Makassar' ? '+08:00' : (tzForDay === 'Asia/Jayapura' ? '+09:00' : '+07:00');
-    const offsetMinutesForDay = (() => {
-      const m = /([+-])(\d{2}):(\d{2})/.exec(offsetForDay);
-      if (!m) return 0;
-      const sign = m[1] === '-' ? -1 : 1;
-      return sign * (Number(m[2]) * 60 + Number(m[3]));
-    })();
-    // Resolve local date ISO string (e.g. "2026-07-24") based on tenant timezone
+    const tzForDay = String(cfgForDay?.timezone || 'Asia/Jakarta').trim();
+    const TZ_OFFSET: Record<string, number> = {
+      'Asia/Jakarta': 7,
+      'Asia/Makassar': 8,
+      'Asia/Jayapura': 9
+    };
+    const offsetHoursForDay = TZ_OFFSET[tzForDay] ?? 7;
+    const offsetSignForDay = offsetHoursForDay >= 0 ? '+' : '-';
+    const offsetForDay = `${offsetSignForDay}${String(Math.abs(offsetHoursForDay)).padStart(2, '0')}:00`;
+
+    // Resolve local date ISO string (e.g. "2026-07-28") based on tenant timezone
     const getLocalDayIso = (d: Date) => {
-      const utcMs = d.getTime() + offsetMinutesForDay * 60 * 1000;
-      return new Date(utcMs).toISOString().slice(0, 10);
+      return new Intl.DateTimeFormat('sv-SE', { timeZone: tzForDay }).format(new Date(d));
     };
 
     const todayLocalIso = getLocalDayIso(nowTap);
@@ -912,8 +945,16 @@ export class SesiService {
           }
         });
       } else {
-        updated = await prisma.absenSiswa.create({
-          data: {
+        // UPSERT — idempoten untuk semua metode input (RFID, QR, HID, manual)
+        // Jika race condition lolos Redis lock, DB constraint mencegah duplikat
+        updated = await prisma.absenSiswa.upsert({
+          where: {
+            sesi_id_siswa_akademik_id: {
+              sesi_id: sesi_id,
+              siswa_akademik_id: siswaAkademik.id,
+            }
+          },
+          create: {
             tenant_id: tenantId,
             sesi_id: sesi_id,
             siswa_id,
@@ -929,19 +970,21 @@ export class SesiService {
             tingkat_snapshot: siswa.Kelas?.tingkat ?? null,
             tahun_pelajaran_id_snapshot: activeYear?.id || null,
           },
+          update: {
+            // Jika sudah ada (race winner), update waktu tap saja
+            waktu_tap: nowTap,
+            updated_at: new Date(),
+          },
         });
       }
     } catch (error: any) {
       if (error.code === 'P2002') {
-        // Race condition detected: Record was created by another request milliseconds ago.
-        // Retry as update.
+        // Safety net terakhir — seharusnya tidak pernah sampai sini
         const retryExisting = await prisma.absenSiswa.findFirst({
           where: { tenant_id: tenantId, sesi_id: sesi_id, siswa_akademik_id: siswaAkademik.id },
           select: { id: true, status: true, waktu_tap: true, created_at: true, catatan: true, is_terlambat: true },
         });
-
         if (retryExisting) {
-          // RE-RUN VALIDATION for the race-winner record
           if (!status) {
             const protectedStatuses = ['SAKIT', 'IZIN', 'ALPA', 'DISPEN'];
             const currentStatusUpper = String(retryExisting.status || '').toUpperCase();
@@ -949,21 +992,13 @@ export class SesiService {
               throw new Error(`Scan ditolak: status siswa tercatat ${currentStatusUpper}.`);
             }
           }
-
           updated = await prisma.absenSiswa.update({
             where: { id_created_at: { id: retryExisting.id, created_at: retryExisting.created_at } },
-            data: {
-              status: finalStatusToSave,
-              waktu_tap: nowTap,
-              is_terlambat: isTerlambatToSave,
-              menit_keterlambatan: lateMinutesToSave,
-              poin_kehadiran: poinToSave,
-              catatan: catatanToSave,
-              updated_at: new Date()
-            }
+            data: { status: finalStatusToSave, waktu_tap: nowTap, is_terlambat: isTerlambatToSave,
+                    menit_keterlambatan: lateMinutesToSave, poin_kehadiran: poinToSave, catatan: catatanToSave, updated_at: new Date() }
           });
         } else {
-          throw error; // Should never happen if P2002 was true
+          throw error;
         }
       } else {
         throw error;
@@ -1501,14 +1536,26 @@ export class SesiService {
     );
 
     const realTotalSiswa = await Promise.all(uniqueKeys.map(async (key) => {
-      const count = await prisma.siswaAkademik.count({
-        where: { 
-          kelas_id: key.kelas_id,
-          tahun_pelajaran_id: key.tahun_pelajaran_id,
-          semester_id: key.semester_id,
-          status: 'AKTIF'
-        }
-      });
+      let count = 0;
+      try {
+        count = await prisma.siswaAkademik.count({
+          where: { 
+            kelas_id: key.kelas_id,
+            tahun_pelajaran_id: key.tahun_pelajaran_id,
+            semester_id: key.semester_id,
+          }
+        });
+      } catch {}
+
+      if (!count || count === 0) {
+        count = await prisma.siswa.count({
+          where: { 
+            tenant_id: tenantId,
+            kelas_id: key.kelas_id,
+            status: 'AKTIF'
+          }
+        });
+      }
       return { ...key, count };
     }));
 
@@ -1750,10 +1797,14 @@ export class SesiService {
 
       const counts = await this.summaryById(tenantId, null, sesiId);
 
+      const cfgFinish = await systemConfigService.getActive(tenantId);
+      const tzFinish = String(cfgFinish?.timezone || 'Asia/Jakarta').trim();
+      const localTanggalStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tzFinish }).format(sesiFull?.tanggal || new Date());
+
       const tenantRoomPayload = {
         sesi_id: sesiId,
         guru_id: sesiFull?.guru_id,
-        tanggal: (sesiFull?.tanggal || new Date()).toISOString().slice(0, 10),
+        tanggal: localTanggalStr,
         counts,
         tenant_id: tenantId,
       };

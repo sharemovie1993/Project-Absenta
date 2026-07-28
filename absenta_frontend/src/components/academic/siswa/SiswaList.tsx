@@ -78,54 +78,6 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkErrorDetails, setBulkErrorDetails] = useState<{ id: string; name: string; message: string }[]>([]);
 
-  // Bulk Class Change Handler
-  const handleBulkClassUpdate = useCallback(async () => {
-    if (!selectedBulkClassId) {
-      toast.error('Pilih kelas tujuan terlebih dahulu');
-      return;
-    }
-    const targetKelas = kelasList.find(k => k.id === selectedBulkClassId);
-    const ok = await confirm({
-      title: 'Konfirmasi Pindah Kelas Massal',
-      description: `Apakah Anda yakin ingin memindahkan ${selectedIds.size} siswa terpilih ke kelas ${targetKelas?.nama_kelas || ''}?`,
-      confirmText: 'Pindahkan Kelas',
-      cancelText: 'Batal',
-      style: 'warning',
-    });
-    if (!ok) return;
-
-    setBulkClassUpdating(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      const ids = Array.from(selectedIds);
-      for (const siswaId of ids) {
-        try {
-          await updateSiswa(siswaId, { kelas_id: selectedBulkClassId });
-          successCount++;
-        } catch (err) {
-          failCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`${successCount} siswa berhasil dipindahkan ke kelas ${targetKelas?.nama_kelas || ''}!`);
-      }
-      if (failCount > 0) {
-        toast.error(`${failCount} siswa gagal dipindahkan`);
-      }
-
-      setIsBulkClassModalOpen(false);
-      setSelectedIds(new Set());
-      fetchSiswas(currentPage, searchTerm);
-    } catch (err: any) {
-      toast.error(err?.message || 'Gagal memproses pemindahan kelas');
-    } finally {
-      setBulkClassUpdating(false);
-    }
-  }, [selectedBulkClassId, selectedIds, kelasList, confirm, currentPage, searchTerm, fetchSiswas]);
-
   // Reset Password states
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -388,6 +340,54 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       setLoading(false);
     }
   }, [itemsPerPage, filterKelas, filterStatus, filterGender, filterTingkat]);
+
+  // Bulk Class Change Handler
+  const handleBulkClassUpdate = useCallback(async () => {
+    if (!selectedBulkClassId) {
+      toast.error('Pilih kelas tujuan terlebih dahulu');
+      return;
+    }
+    const targetKelas = kelasList.find(k => k.id === selectedBulkClassId);
+    const ok = await confirm({
+      title: 'Konfirmasi Pindah Kelas Massal',
+      description: `Apakah Anda yakin ingin memindahkan ${selectedIds.size} siswa terpilih ke kelas ${targetKelas?.nama_kelas || ''}?`,
+      confirmText: 'Pindahkan Kelas',
+      cancelText: 'Batal',
+      style: 'warning',
+    });
+    if (!ok) return;
+
+    setBulkClassUpdating(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      const ids = Array.from(selectedIds);
+      for (const siswaId of ids) {
+        try {
+          await updateSiswa(siswaId, { kelas_id: selectedBulkClassId });
+          successCount++;
+        } catch (err) {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} siswa berhasil dipindahkan ke kelas ${targetKelas?.nama_kelas || ''}!`);
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount} siswa gagal dipindahkan`);
+      }
+
+      setIsBulkClassModalOpen(false);
+      setSelectedIds(new Set());
+      fetchSiswas(currentPage, searchTerm);
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal memproses pemindahan kelas');
+    } finally {
+      setBulkClassUpdating(false);
+    }
+  }, [selectedBulkClassId, selectedIds, kelasList, confirm, currentPage, searchTerm, fetchSiswas]);
 
   const handleDeleteAll = useCallback(async () => {
     const ok = await confirm({

@@ -59,17 +59,23 @@ export class TransitionService {
   }
 
   /**
-   * Returns the highest valid tingkat for this tenant based on sekolah jenjang.
+  /**
+   * Returns the highest valid tingkat for this tenant based on sekolah jenjang & durasi_smk.
    * Falls back to the highest existing class tingkat if jenjang is not set.
    */
   private async getMaxTingkatByJenjang(tenantId: string): Promise<number> {
     const sekolah = await prisma.sekolah.findFirst({ where: { tenant_id: tenantId } });
+    const tenant = await prisma.tenant.findFirst({ where: { id: tenantId } });
+    const durasiSmk = sekolah?.durasi_smk || tenant?.durasi_smk || '3_TAHUN';
+
     if (sekolah?.jenjang) {
       const jg = sekolah.jenjang.toUpperCase();
       if (jg === 'SD' || jg === 'MI') return 6;
       if (jg === 'SMP' || jg === 'MTS') return 9;
       if (jg === 'SMA' || jg === 'MA') return 12;
-      if (jg === 'SMK' || jg === 'MAK') return 13;
+      if (jg === 'SMK' || jg === 'MAK') {
+        return durasiSmk === '4_TAHUN' ? 13 : 12;
+      }
     }
     // Fallback: compute from highest existing class
     const highest = await prisma.kelas.findFirst({
@@ -77,6 +83,13 @@ export class TransitionService {
       orderBy: { tingkat: 'desc' }
     });
     return highest?.tingkat ?? 12;
+  }
+
+  private getEffectiveMaxTingkat(kelas: any, defaultTenantMax: number): number {
+    const jurusanDurasi = kelas.Jurusan?.durasi_jurusan;
+    if (jurusanDurasi === '4_TAHUN') return 13;
+    if (jurusanDurasi === '3_TAHUN') return 12;
+    return defaultTenantMax;
   }
 
   private async buildClassMap(tenantId: string, mapping?: ClassMapping[]) {
@@ -98,8 +111,9 @@ export class TransitionService {
     }
     for (const k of kelasAll) {
       if (map.has(k.id)) continue; // respect explicit mapping override
-      // Auto-detect graduation: if this class is at the max tingkat, map to LULUS
-      if ((k.tingkat || 0) >= maxTingkat) {
+      const effectiveMax = this.getEffectiveMaxTingkat(k, maxTingkat);
+      // Auto-detect graduation: if this class is at or above effective max tingkat, map to LULUS
+      if ((k.tingkat || 0) >= effectiveMax) {
         map.set(k.id, 'LULUS');
         continue;
       }
@@ -140,7 +154,8 @@ export class TransitionService {
     const missing: Array<{ sourceKelasId: string; sourceNama: string; sourceTingkat: number; suggestedNama: string; jurusanId: string | null }> = [];
 
     for (const k of kelasAll) {
-      if ((k.tingkat || 0) >= maxTingkat) continue; // graduation class, no next needed
+      const effectiveMax = this.getEffectiveMaxTingkat(k, maxTingkat);
+      if ((k.tingkat || 0) >= effectiveMax) continue; // graduation class, no next needed
       const nextTingkat = (k.tingkat || 0) + 1;
       const nextKey = `${k.jurusan_id || ''}:${nextTingkat}`;
       const nextExists = (byJurusanTingkat.get(nextKey) || []).length > 0;
@@ -182,7 +197,8 @@ export class TransitionService {
       const source = byId.get(item.sourceKelasId);
       if (!source) continue;
       const nextTingkat = (source.tingkat || 0) + 1;
-      if (nextTingkat > maxTingkat) continue;
+      const effectiveMax = this.getEffectiveMaxTingkat(source, maxTingkat);
+      if (nextTingkat > effectiveMax) continue;
 
       // Check not already existing
       const existing = await prisma.kelas.findFirst({

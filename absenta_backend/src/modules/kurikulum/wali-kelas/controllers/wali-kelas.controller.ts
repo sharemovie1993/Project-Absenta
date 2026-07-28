@@ -121,4 +121,66 @@ export const waliKelasController = {
       return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
     }
   },
+
+  // ── SK Wali Kelas Arsip ──────────────────────────────────────────────────
+
+  async saveSkArsip(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = request.user?.id || 'system';
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      const data = await waliKelasService.saveSkArsip(tenantId, userId, request.body);
+      return reply.status(200).send({ success: true, message: 'SK berhasil diarsipkan', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async getSkArsipList(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      const { tahun_pelajaran, guru_id, search } = request.query || {};
+      const data = await waliKelasService.getSkArsipList(tenantId, { tahun_pelajaran, guru_id, search });
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async getSkArsipById(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id } = request.params;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      const data = await waliKelasService.getSkArsipById(tenantId, id);
+      if (!data) {
+        return reply.status(404).send({ success: false, message: 'Arsip SK tidak ditemukan' });
+      }
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
+
+  async deleteSkArsip(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const { id } = request.params;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+      await waliKelasService.deleteSkArsip(tenantId, id);
+      return reply.status(200).send({ success: true, message: 'Arsip SK berhasil dihapus' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
+    }
+  },
 };
+

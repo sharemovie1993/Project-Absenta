@@ -64,8 +64,9 @@ export class WhatsappController {
   async getLocalStatus(request: any, reply: any) {
     const { tenant_id } = request.user as any;
     try {
-      const status = waGatewayService.getStatus(tenant_id);
-      return reply.send({ success: true, data: status });
+      // Gunakan getHealthStatus untuk verifikasi kualitas koneksi yang sebenarnya
+      const health = waGatewayService.getHealthStatus(tenant_id);
+      return reply.send({ success: true, data: health });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }

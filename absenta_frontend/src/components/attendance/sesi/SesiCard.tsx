@@ -172,7 +172,10 @@ export function SesiCard({
                    </div>
                    <div>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Hadir</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{(counts.HADIR || 0) + (counts.TERLAMBAT || 0)} <span className="text-gray-400 text-[10px]">/ {counts.TOTAL || 0}</span></p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                        {((counts.HADIR ?? counts.hadir ?? 0) + (counts.TERLAMBAT ?? counts.terlambat ?? 0))} 
+                        <span className="text-gray-400 text-[10px]"> / {(counts.TOTAL ?? counts.total ?? (sesi as any)?._summary?.total ?? 0)}</span>
+                      </p>
                    </div>
                 </div>
 
@@ -181,8 +184,16 @@ export function SesiCard({
                       <Fingerprint className="w-4 h-4" />
                    </div>
                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Pengajar</p>
-                      <p className={`text-sm font-bold ${isGuruHadir ? 'text-emerald-600' : 'text-amber-600'}`}>{guruText.split(' ')[0]}</p>
+                      <div className="flex items-center gap-1.5">
+                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Pengajar</p>
+                         <Badge 
+                           variant={guruStatusVariant} 
+                           className="text-[9px] px-1.5 py-0 font-bold uppercase tracking-tight"
+                         >
+                           {guruStatusText}
+                         </Badge>
+                      </div>
+                      <p className={`text-sm font-bold ${isGuruHadir ? 'text-emerald-600' : 'text-amber-600'}`}>{guruText}</p>
                    </div>
                 </div>
              </div>

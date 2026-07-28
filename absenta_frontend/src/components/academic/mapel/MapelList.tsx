@@ -89,8 +89,17 @@ const MapelList = React.memo<MapelListProps>(({
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
-    return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN';
-  }, [user]);
+    return (
+      user?.role?.name === 'SUPERADMIN' ||
+      user?.role?.name === 'ADMIN' ||
+      can('academic.subjects.create') ||
+      can('academic.subjects.update') ||
+      can('academic.subjects.delete') ||
+      can('academic.subjects.manage') ||
+      can('academic.manage.mapel') ||
+      can('academic.manage.academic')
+    );
+  }, [user, can]);
 
   const allVisibleSelected = useMemo(() => {
     if (mapels.length === 0) return false;

@@ -98,6 +98,17 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
           value={selectedPK ? `${selectedPK.nama}${selectedPK.bidang_keahlian ? ` (${selectedPK.bidang_keahlian})` : ''}` : '-'}
         />
         <DetailRow
+          icon={<InfoIcon size={16} />}
+          label="Durasi Program"
+          value={
+            watch('durasi_jurusan') === '4_TAHUN'
+              ? '4 Tahun (Tingkat X, XI, XII, XIII)'
+              : watch('durasi_jurusan') === '3_TAHUN'
+              ? '3 Tahun (Tingkat X, XI, XII)'
+              : 'Mengikuti Pengaturan Sekolah (Default)'
+          }
+        />
+        <DetailRow
           icon={
             <div 
               className="w-3.5 h-3.5 rounded-full border border-slate-200/50" 
@@ -245,6 +256,29 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
             ⚠ Belum ada Program Keahlian. Buat dulu di menu Data Program Keahlian.
           </p>
         )}
+      </div>
+
+      {/* Durasi Program Jurusan (Override Tenant) */}
+      <div className="space-y-2 md:col-span-2 group">
+        <div className="flex items-center justify-between px-1">
+          <Label htmlFor="durasi_jurusan" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+            Durasi Program Jurusan
+          </Label>
+          <div className="flex items-center gap-1.5">
+            <InfoIcon className="w-3 h-3 text-indigo-400" />
+            <p className="text-[9px] text-indigo-500 font-medium italic">Menentukan tingkat akhir (Lulus) untuk jurusan ini</p>
+          </div>
+        </div>
+        <select
+          id="durasi_jurusan"
+          {...register('durasi_jurusan')}
+          disabled={isViewMode}
+          className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all"
+        >
+          <option value="DEFAULT_SEKOLAH">Mengikuti Pengaturan Sekolah (Default)</option>
+          <option value="3_TAHUN">3 Tahun (Tingkat X, XI, XII)</option>
+          <option value="4_TAHUN">4 Tahun (Tingkat X, XI, XII, XIII)</option>
+        </select>
       </div>
 
       {/* Singkatan */}

@@ -253,7 +253,7 @@ export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialDat
                   <SearchableSelect
                     value={String(field.value || 1)}
                     onValueChange={(val) => field.onChange(Number(val))}
-                    options={Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: `Jam Pelajaran Ke-${i + 1}` }))}
+                    options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: `Jam Pelajaran Ke-${i + 1}` }))}
                     placeholder="Pilih Jam Pelajaran"
                     triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                   />

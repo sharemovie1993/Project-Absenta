@@ -5,6 +5,7 @@ import SemesterList from '../../components/academic/semester/SemesterList';
 import { useAuth } from '../../hooks/useAuth';
 import type { Semester } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
+import { getActiveSemester, getSemesterList } from '../../api/academic/semester.api';
 import { Clock, Calendar } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 
@@ -33,13 +34,32 @@ export const SemesterPage: React.FC = () => {
   const canView = can('academic.semesters.view.list');
   const canSetActive = can('academic.semesters.set_active');
 
-  // Load academic stats
+  const [activeSemesterData, setActiveSemesterData] = useState<Semester | null>(null);
+
+  // Load academic stats & active semester fallback
   useEffect(() => {
     const loadStats = async () => {
       try {
         setIsLoadingStats(true);
-        const response = await getAcademicStats();
-        setStats(response.data);
+        const [statsRes, activeRes] = await Promise.all([
+          getAcademicStats().catch(() => null),
+          getActiveSemester().catch(() => null)
+        ]);
+
+        if (statsRes?.data) {
+          setStats(statsRes.data);
+        }
+
+        // Try active semester single endpoint first
+        if (activeRes?.data) {
+          const act = Array.isArray(activeRes.data) ? activeRes.data[0] : activeRes.data;
+          if (act) setActiveSemesterData(act as any);
+        } else {
+          // Fallback to searching active item from list
+          const listRes = await getSemesterList(1, 50).catch(() => null);
+          const activeItem = listRes?.data?.find(s => s.is_active);
+          if (activeItem) setActiveSemesterData(activeItem);
+        }
       } catch (error) {
         console.error('Failed to load academic stats:', error);
       } finally {
@@ -52,8 +72,8 @@ export const SemesterPage: React.FC = () => {
   const navigate = useNavigate();
 
   const academicStats = useMemo(() => {
-    const semName = stats?.semester?.nama_semester || stats?.active_semester;
-    const yearName = stats?.tahun_pelajaran?.tahun || (stats?.semester as any)?.TahunPelajaran?.tahun || '';
+    const semName = stats?.semester?.nama_semester || stats?.active_semester || activeSemesterData?.nama_semester;
+    const yearName = stats?.tahun_pelajaran?.tahun || (stats?.semester as any)?.TahunPelajaran?.tahun || activeSemesterData?.TahunPelajaran?.tahun || '';
 
     return [
       {
@@ -70,7 +90,7 @@ export const SemesterPage: React.FC = () => {
         onClick: () => navigate('/academic/tahun-pelajaran')
       }
     ];
-  }, [stats, navigate]);
+  }, [stats, activeSemesterData, navigate]);
 
 
   const handleCreateSemester = useCallback(() => {

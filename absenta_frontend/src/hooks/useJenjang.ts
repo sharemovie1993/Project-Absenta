@@ -35,15 +35,23 @@ export function useJenjang() {
     queryKey: ['tenant-profile-jenjang', tenantId],
     queryFn: () => getTenantById(tenantId || ''),
     enabled: !!tenantId,
-    staleTime: 1000 * 60 * 30, // 30 Menit cache
+    staleTime: 1000 * 60 * 1, // 1 Menit cache
   });
 
   const tenant = tenantResponse?.data;
   const rawJenjang = tenant?.jenjang || '';
+  const durasiSmk = tenant?.durasi_smk || '3_TAHUN';
+  const has4TahunJurusan = Boolean((tenant as any)?.has_4_tahun_jurusan);
 
   const config = useMemo(() => {
-    return JENJANG_CONFIGS[rawJenjang.toUpperCase()] || DEFAULT_CONFIG;
-  }, [rawJenjang]);
+    const key = rawJenjang.toUpperCase();
+    const base = JENJANG_CONFIGS[key] || DEFAULT_CONFIG;
+    if (key === 'SMK' || key === 'MAK') {
+      const max = (durasiSmk === '4_TAHUN' || has4TahunJurusan) ? 13 : 12;
+      return { ...base, tingkatMax: max };
+    }
+    return base;
+  }, [rawJenjang, durasiSmk, has4TahunJurusan]);
 
   const tingkatList = useMemo(() => {
     const list: number[] = [];
@@ -62,6 +70,7 @@ export function useJenjang() {
 
   return {
     jenjang: rawJenjang,
+    durasiSmk,
     kurikulum,
     config,
     tingkatList,

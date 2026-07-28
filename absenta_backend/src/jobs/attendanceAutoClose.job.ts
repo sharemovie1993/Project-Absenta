@@ -40,7 +40,7 @@ export async function runAttendanceAutoCloseCycle(): Promise<void> {
   // SesiGerbang biasanya ditutup jika sudah lewat jam operasional gerbang (misal 18:00)
   const hangingGates = await prisma.sesiGerbang.findMany({
     where: {
-      status: 'OPEN'
+      status: { in: ['OPEN', 'BERLANGSUNG'] }
     }
   });
 

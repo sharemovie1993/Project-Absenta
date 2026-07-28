@@ -85,11 +85,21 @@ export async function getOrCreateSessionInfo(tenantId: string): Promise<any> {
 
 export async function getSessionsForDate(tenantId: string, date?: Date): Promise<GerbangServiceResponse<{ sessions: any[]; date: string }>> {
   try {
+    const cfg = await systemConfigService.getActive(tenantId);
+    const tz = String((cfg as any)?.timezone || 'Asia/Jakarta').trim();
+    const offsetMap: Record<string, number> = {
+      'Asia/Jakarta': 7,
+      'Asia/Makassar': 8,
+      'Asia/Jayapura': 9,
+    };
+    const offsetHours = offsetMap[tz] ?? 7;
+    const offsetSign = offsetHours >= 0 ? '+' : '-';
+    const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
+
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    const dayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(targetDate);
+    const startOfDay = new Date(`${dayStr}T00:00:00.000${offsetStr}`);
+    const endOfDay = new Date(`${dayStr}T23:59:59.999${offsetStr}`);
 
     const sessions = await gerbangDb.sesiGerbang.findMany({
       where: {
@@ -104,7 +114,7 @@ export async function getSessionsForDate(tenantId: string, date?: Date): Promise
       message: 'Sessions retrieved successfully',
       data: {
         sessions,
-        date: targetDate.toISOString().split('T')[0],
+        date: dayStr,
       },
     };
   } catch (error) {

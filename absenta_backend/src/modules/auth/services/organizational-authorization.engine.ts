@@ -87,9 +87,24 @@ export class OrganizationalAuthorizationEngine {
         }
       }
 
+      // 3. Prioritaskan kelas utama siswa jika user adalah Siswa
+      const siswa = await prisma.siswa.findFirst({
+        where: { user_id: userId },
+        select: { kelas_id: true }
+      });
+
+      const rawKelasList = Array.from(kelasIds);
+      if (siswa?.kelas_id && rawKelasList.includes(String(siswa.kelas_id))) {
+        const index = rawKelasList.indexOf(String(siswa.kelas_id));
+        if (index > 0) {
+          rawKelasList.splice(index, 1);
+          rawKelasList.unshift(String(siswa.kelas_id));
+        }
+      }
+
       return {
         positions: Array.from(positions.values()),
-        kelas_ids: Array.from(kelasIds),
+        kelas_ids: rawKelasList,
         unit_ids: Array.from(unitIds),
         tenant_wide: tenantWide,
       };

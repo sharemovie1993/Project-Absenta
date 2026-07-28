@@ -113,6 +113,9 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                 {isSemuaHari
                   ? DAYS.map((day) =>
                       slots.map((slotIdx) => {
+                        const item = allJadwal.find(
+                          (j) => j.kelas_id === kelas.value && j.hari === day && j.slot_index === slotIdx
+                        );
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
@@ -145,6 +148,9 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                       })
                     )
                   : slots.map((slotIdx) => {
+                        const item = allJadwal.find(
+                          (j) => j.kelas_id === kelas.value && j.hari === masterGridHari && j.slot_index === slotIdx
+                        );
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')

@@ -1,37 +1,52 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getRekapBulananGuruMe, getRekapBulananSiswaMe } from '../../api/attendanceGerbang.api';
+import {
+  getRekapBulananGuruMe,
+  getRekapBulananSiswaMe,
+  getRekapHarianSiswaMe,
+  getRekapBulananKelas,
+  getRekapBulananKelasMe,
+  getTrackingHarianSiswa,
+  getTrackingHarianGuruMe
+} from '../../api/attendanceGerbang.api';
+import { SharedVisualAttendanceCalendar } from '../../components/attendance/SharedVisualAttendanceCalendar';
+import { SharedAttendanceTimeline } from '../../components/attendance/SharedAttendanceTimeline';
+
 import { useAuthStore } from '../../store/authStore';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-  Trophy, 
-  Star, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Info,
-  TrendingUp, 
-  Award, 
-  CalendarDays, 
-  Fingerprint,
-  Target,
-  FileText
+import { useNavigate } from 'react-router-dom';
+import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { siswaApi } from '../../api/academic.api';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Calendar as CalendarIcon,
+  Clock,
+  TrendingUp,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  Trophy,
+  Target
 } from 'lucide-react';
-import { 
-  Button, 
-  Badge, 
+import {
+  Button,
+  Badge,
   SectionCard,
   Loader,
   EmptyState
 } from '../../components/ui';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { evaluateExamEligibility } from '../../utils/attendance/attendanceGamification.utils';
+import type { StudentAttendanceRecord, StudentDailyDetail } from '../../components/attendance/my_attendance/StudentAttendanceTypes';
+import { StudentAttendancePointsSidebar } from '../../components/attendance/my_attendance/StudentAttendancePointsSidebar';
+import { TeacherAttendanceView } from '../../components/attendance/my_attendance/TeacherAttendanceView';
 
 const PremiumFeatureGate = lazy(() => import('../../components/auth/PremiumFeatureGate'));
+const StudentAttendanceLeaderboardModal = lazy(() => import('../../components/attendance/my_attendance/StudentAttendanceLeaderboardModal'));
+const StudentAttendanceIzinModal = lazy(() => import('../../components/attendance/my_attendance/StudentAttendanceIzinModal'));
+const StudentAttendancePointHistoryModal = lazy(() => import('../../components/attendance/my_attendance/StudentAttendancePointHistoryModal'));
 
 const STATUS_COLORS: Record<string, string> = {
   HADIR: 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]',
@@ -53,295 +68,517 @@ const STATUS_LABELS: Record<string, string> = {
   BELUM: 'Belum Ada Data'
 };
 
-const formatDate = (date: Date | string): string => {
-  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+const STATUS_SHORT: Record<string, string> = {
+  HADIR: 'Hadir',
+  TERLAMBAT: 'Telat',
+  ALPA: 'Alpa',
+  SAKIT: 'Sakit',
+  IZIN: 'Izin',
+  DISPEN: 'Dispen',
+  BELUM: ''
+};
+
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  HADIR: 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60',
+  TERLAMBAT: 'text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-950/60',
+  ALPA: 'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/60',
+  SAKIT: 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60',
+  IZIN: 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/60',
+  DISPEN: 'text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60',
+  BELUM: ''
 };
 
 export const MyAttendancePage: React.FC = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [showIzinModal, setShowIzinModal] = useState(false);
+  const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [showPointHistoryModal, setShowPointHistoryModal] = useState(false);
+  const [leaderboardScope, setLeaderboardScope] = useState<'KELAS' | 'JURUSAN' | 'SEKOLAH'>('KELAS');
+
   const bulanKey = format(currentDate, 'yyyy-MM');
   const { user, tenantId, subscription } = useAuthStore();
-  const isGuru = user?.role?.name === 'GURU';
-  
-  const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json || 
-                   (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json || [];
+  const userRoleStr = typeof user?.role === 'string' ? user.role : (user?.role?.name || user?.roleName || (user as { role_name?: string })?.role_name || '');
+  const isGuru = userRoleStr.toUpperCase() === 'GURU' || !!(user as { guru_id?: string })?.guru_id;
+
+  const features =
+    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features ||
+    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.Plan?.features_json ||
+    (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.plan?.features_json ||
+    [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
+  // 1. Query Rekap Bulanan
   const { data: attendanceData, isLoading } = useQuery({
     queryKey: ['my-attendance-rekap', bulanKey, tenantId, user?.id],
-    queryFn: () => isGuru 
-      ? getRekapBulananGuruMe({ bulan: bulanKey })
-      : getRekapBulananSiswaMe({ bulan: bulanKey }),
-    enabled: !!tenantId
+    queryFn: () => (isGuru ? getRekapBulananGuruMe({ bulan: bulanKey }) : getRekapBulananSiswaMe({ bulan: bulanKey })),
+    enabled: !!user
   });
 
-  const rekap = attendanceData?.data;
-
-  console.log('--- MY ATTENDANCE PAGE DEBUG ---', {
-    userEmail: user?.email,
-    userRole: user?.role?.name,
-    isGuru,
-    tenantId,
-    bulanKey,
-    hasRekap: !!rekap,
-    rekapDetailLength: rekap?.detail?.length,
-    rekapData: rekap
+  // 2. Query Detail Harian
+  const { data: harianData } = useQuery({
+    queryKey: ['my-attendance-harian', selectedDate, tenantId, user?.id],
+    queryFn: () => getRekapHarianSiswaMe({ tanggal: selectedDate }),
+    enabled: !!user && !isGuru
   });
 
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  // 2b. Query Tracking Harian (timeline sesi)
+  const mySiswaId = (user as { siswa_id?: string; siswa?: { id?: string }; id?: string })?.siswa_id
+    || (user as { siswa?: { id?: string } })?.siswa?.id
+    || '';
 
-  const firstDayOfMonth = getDay(monthStart);
-  const prefixDays = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+  const { data: trackingData, isLoading: isTrackingLoading } = useQuery({
+    queryKey: ['my-tracking-harian', selectedDate, mySiswaId],
+    queryFn: () => getTrackingHarianSiswa(mySiswaId, { tanggal: selectedDate }),
+    enabled: !!mySiswaId && !isGuru,
+    staleTime: 2 * 60 * 1000
+  });
 
-  const handlePrevMonth = useCallback(() => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  // 2c. Query Sesi Mengajar Guru untuk tanggal terpilih
+  const { data: teacherSesiRes, isLoading: isTeacherSesiLoading } = useQuery({
+    queryKey: ['teacher-daily-sessions', selectedDate, tenantId, user?.id],
+    queryFn: () => getSesiAbsensiList({ tanggal: selectedDate, summary: true, guru_id: 'me' }),
+    enabled: !!user && isGuru,
+    staleTime: 2 * 60 * 1000
+  });
+
+  const teacherSessions = useMemo(() => {
+    if (!teacherSesiRes) return [];
+    const resData = (teacherSesiRes as { data?: unknown[] })?.data;
+    if (Array.isArray(resData)) return resData;
+    if (Array.isArray(teacherSesiRes)) return teacherSesiRes as unknown[];
+    return [];
+  }, [teacherSesiRes]);
+
+  // 2d. Query Tracking Harian Guru (Timeline Presensi Guru)
+  const { data: teacherTrackingRes, isLoading: isTeacherTrackingLoading } = useQuery({
+    queryKey: ['teacher-tracking-harian', selectedDate, user?.id],
+    queryFn: () => getTrackingHarianGuruMe({ tanggal: selectedDate }),
+    enabled: !!user && isGuru,
+    staleTime: 2 * 60 * 1000
+  });
+
+  const teacherTrackingData = teacherTrackingRes?.data;
+
+  // 3. Query Student Profile
+  const { data: siswaMeRes } = useQuery({
+    queryKey: ['my-siswa-profile-me', user?.id],
+    queryFn: () => siswaApi.getMe(),
+    enabled: !isGuru && !!user
+  });
+
+  const mySiswaProfile = siswaMeRes?.data;
+  const kelasId =
+    mySiswaProfile?.kelas_id ||
+    (user as { siswa?: { kelas_id?: string }; kelas_id?: string; Kelas?: { id?: string } })?.siswa?.kelas_id ||
+    (user as { kelas_id?: string })?.kelas_id ||
+    (user as { Kelas?: { id?: string } })?.Kelas?.id;
+
+  // 4. Query Class Leaderboard
+  const { data: kelasLeaderboardRes } = useQuery({
+    queryKey: ['my-class-leaderboard-me', bulanKey, kelasId],
+    queryFn: async () => {
+      try {
+        const res = await getRekapBulananKelasMe({ bulan: bulanKey });
+        if (res?.data) return res;
+      } catch (err) {
+        console.warn('Fallback to getRekapBulananKelas', err);
+      }
+      if (kelasId) {
+        return getRekapBulananKelas(kelasId, { bulan: bulanKey });
+      }
+      return null;
+    },
+    enabled: !isGuru
+  });
+
+  // 5. Query All Classmates Roster
+  const { data: allClassmatesRes } = useQuery({
+    queryKey: ['classmates-roster-list', kelasId],
+    queryFn: () => siswaApi.getAll({ kelas_id: kelasId, limit: 100 }),
+    enabled: !!kelasId && !isGuru
+  });
+
+  // 6. Query Scoped Leaderboard
+  const { data: scopedLeaderboardRes, isLoading: isScopedLoading } = useQuery({
+    queryKey: ['scoped-leaderboard-me', bulanKey, leaderboardScope],
+    queryFn: () => getRekapBulananKelasMe({ bulan: bulanKey, scope: leaderboardScope }),
+    enabled: !isGuru && showLeaderboardModal,
+    staleTime: 5 * 60 * 1000
+  });
+
+  const rekap = (attendanceData as { data?: Record<string, unknown> })?.data || (attendanceData as Record<string, unknown>);
+  const detailHarian = harianData?.data;
+
+  // Compute Classmates Leaderboard List
+  const classmatesList = useMemo<StudentAttendanceRecord[]>(() => {
+    const leaderboardRaw = kelasLeaderboardRes?.data;
+    const leaderboardStudents: StudentAttendanceRecord[] = Array.isArray(leaderboardRaw)
+      ? (leaderboardRaw as unknown as StudentAttendanceRecord[])
+      : ((leaderboardRaw as { students?: StudentAttendanceRecord[] })?.students || []);
+
+    const classmatesRaw =
+      (allClassmatesRes as { data?: { siswa?: Array<{ id?: string; nama_siswa?: string; nama?: string }> } })?.data?.siswa ||
+      (allClassmatesRes as { data?: Array<{ id?: string; nama_siswa?: string; nama?: string }> })?.data ||
+      [];
+
+    const map = new Map<string, StudentAttendanceRecord>();
+
+    if (Array.isArray(classmatesRaw) && classmatesRaw.length > 0) {
+      classmatesRaw.forEach((s) => {
+        const key = s.id || s.nama_siswa || s.nama || 'unknown';
+        map.set(key, {
+          id: s.id || key,
+          nama: s.nama_siswa || s.nama || 'Siswa',
+          total_poin: 0,
+          hadir: 0,
+          sakit: 0,
+          izin: 0,
+          alpa: 0,
+          terlambat: 0,
+          persentase: 100
+        });
+      });
+    }
+
+    if (Array.isArray(leaderboardStudents) && leaderboardStudents.length > 0) {
+      leaderboardStudents.forEach((st) => {
+        const key = st.id || st.nama || st.nama_siswa || 'unknown';
+        const existing = map.get(key);
+        const mergedPoin = st.total_poin ?? (st.hadir ? st.hadir * 10 : 0);
+
+        if (existing) {
+          existing.total_poin = mergedPoin;
+          existing.hadir = st.hadir ?? 0;
+          existing.sakit = st.sakit ?? 0;
+          existing.izin = st.izin ?? 0;
+          existing.alpa = st.alpa ?? 0;
+          existing.terlambat = st.terlambat ?? 0;
+          existing.persentase = st.persentase || 100;
+        } else {
+          map.set(key, {
+            id: st.id || key,
+            nama: st.nama || st.nama_siswa || 'Siswa',
+            total_poin: mergedPoin,
+            hadir: st.hadir ?? 0,
+            sakit: st.sakit ?? 0,
+            izin: st.izin ?? 0,
+            alpa: st.alpa ?? 0,
+            terlambat: st.terlambat ?? 0,
+            persentase: st.persentase || 100
+          });
+        }
+      });
+    }
+
+    const result = Array.from(map.values());
+    result.sort((a, b) => (b.total_poin || 0) - (a.total_poin || 0) || a.nama.localeCompare(b.nama));
+    return result;
+  }, [kelasLeaderboardRes, allClassmatesRes]);
+
+  const activeLeaderboardList = useMemo<StudentAttendanceRecord[]>(() => {
+    if (leaderboardScope === 'KELAS') {
+      return classmatesList;
+    }
+    const scopedRaw = scopedLeaderboardRes?.data?.students;
+    if (Array.isArray(scopedRaw) && scopedRaw.length > 0) {
+      return [...(scopedRaw as StudentAttendanceRecord[])].sort(
+        (a, b) => (b.total_poin || 0) - (a.total_poin || 0) || a.nama.localeCompare(b.nama)
+      );
+    }
+    return classmatesList;
+  }, [leaderboardScope, classmatesList, scopedLeaderboardRes]);
+
+  const myRankIndex = useMemo(() => {
+    if (!classmatesList || classmatesList.length === 0) return -1;
+    return classmatesList.findIndex(
+      (s) =>
+        s.is_me ||
+        s.id === mySiswaProfile?.id ||
+        s.id === user?.siswa_id ||
+        s.id === user?.id ||
+        s.nama === user?.name ||
+        s.nama === rekap?.nama_siswa
+    );
+  }, [classmatesList, mySiswaProfile, user, rekap]);
+
+  const attendancePercentage = rekap?.persentase_kehadiran || 0;
+  const examEligibility = useMemo(() => evaluateExamEligibility(attendancePercentage), [attendancePercentage]);
+
+  // Generate calendar days
+  const daysInMonth = useMemo(() => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    return eachDayOfInterval({ start, end });
+  }, [currentDate]);
+
+  const detailMap = useMemo(() => {
+    const map = new Map<string, StudentDailyDetail>();
+    const details = rekap?.detail || [];
+    if (Array.isArray(details)) {
+      details.forEach((item: StudentDailyDetail) => {
+        if (item.tanggal) {
+          map.set(item.tanggal, item);
+        }
+      });
+    }
+    return map;
+  }, [rekap]);
+
+  const handlePreviousMonth = useCallback(() => {
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1));
   }, []);
 
   const handleNextMonth = useCallback(() => {
-    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1));
   }, []);
 
-  const getDayStatus = useCallback((date: Date) => {
-    const dateFormatted = format(date, 'yyyy-MM-dd');
-    return rekap?.detail?.find((d: { tanggal: string }) => d.tanggal === dateFormatted);
-  }, [rekap]);
+  const breadcrumbs = useMemo(() => [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Presensi Saya', active: true }
+  ], []);
 
-  const stats = [
-    {
-      title: "Poin Kehadiran",
-      value: (rekap?.total_poin || 0).toString(),
-      icon: <Trophy size={14} />,
-      gradient: "from-amber-500 to-orange-600",
-      subtitle: "Akumulasi bulan ini"
-    },
-    {
-      title: "Persentase",
-      value: `${rekap?.persentase_kehadiran || 0}%`,
-      icon: <Target size={14} />,
-      gradient: "from-emerald-500 to-teal-600",
-      subtitle: "Tingkat kedisiplinan"
-    }
-  ];
 
-  const instructionData = {
-    title: "Informasi Presensi",
-    description: "Pantau rekapitulasi kehadiran dan poin kedisiplinan Anda secara mandiri.",
-    items: [
-      { text: "Warna pada kalender menunjukkan status kehadiran harian Anda." },
-      { text: "Poin dihitung berdasarkan ketepatan waktu tap di gerbang sekolah." },
-      { text: "Laporan PDF tersedia untuk keperluan administrasi bulanan." }
-    ]
-  };
-
-  const pageContent = (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Statistics Overview */}
-        <div className="lg:col-span-2 space-y-8">
-          <SectionCard title="Ringkasan Kedisiplinan" icon={TrendingUp} fullWidth>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between items-center mb-4">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Pencapaian Poin</span>
-                     <Trophy className="w-5 h-5 text-amber-500" />
-                  </div>
-                  <div className="text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-2">
-                    {rekap?.total_poin || 0} <span className="text-sm font-bold text-slate-400">Pts</span>
-                  </div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Setara dengan performa luar biasa</p>
-               </div>
-
-               <div className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between items-center mb-4">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rasio Kehadiran</span>
-                     <Target className="w-5 h-5 text-emerald-500" />
-                  </div>
-                  <div className="text-4xl font-black text-emerald-600 tracking-tight mb-4">
-                    {rekap?.persentase_kehadiran || 0}%
-                  </div>
-                  <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${rekap?.persentase_kehadiran || 0}%` }}
-                      className="h-full bg-emerald-500"
-                    />
-                  </div>
-               </div>
-            </div>
-
-            <div className="mt-8 p-6 rounded-xl border border-slate-100 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Hadir</div>
-                  <div className="text-xl font-black text-emerald-600">{rekap?.statistik?.HADIR || 0}</div>
-               </div>
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Terlambat</div>
-                  <div className="text-xl font-black text-orange-600">{rekap?.statistik?.TERLAMBAT || 0}</div>
-               </div>
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Izin</div>
-                  <div className="text-xl font-black text-blue-600">{rekap?.statistik?.IZIN || 0}</div>
-               </div>
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Sakit</div>
-                  <div className="text-xl font-black text-amber-600">{rekap?.statistik?.SAKIT || 0}</div>
-               </div>
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Dispen</div>
-                  <div className="text-xl font-black text-violet-600">{rekap?.statistik?.DISPEN || 0}</div>
-               </div>
-               <div className="text-center">
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Alpa</div>
-                  <div className="text-xl font-black text-rose-600">{rekap?.statistik?.ALPA || 0}</div>
-               </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="Kalender Presensi" icon={CalendarIcon} fullWidth noPadding>
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/10">
-               <div className="flex items-center bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                  <Button variant="ghost" size="icon" onClick={handlePrevMonth} className="rounded-xl h-8 w-8">
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <div className="px-4 font-black text-[11px] uppercase tracking-widest text-slate-700 dark:text-slate-200 min-w-[140px] text-center">
-                    {format(currentDate, 'MMMM yyyy', { locale: id })}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={handleNextMonth} className="rounded-xl h-8 w-8">
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-               </div>
-                <div className="hidden md:flex gap-4">
-                  {Object.entries(STATUS_LABELS).filter(([k]) => k !== 'BELUM')?.map(([key]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[key]}`}></div>
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{key}</span>
-                    </div>
-                  ))}
-                </div>
-            </div>
-
-            <div className="p-8">
-               <div className="grid grid-cols-7 gap-4 mb-6">
-                 {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']?.map(day => (
-                   <div key={day} className="text-center text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                     {day}
-                   </div>
-                 ))}
-               </div>
-
-               <div className="grid grid-cols-7 gap-4">
-                 {Array.from({ length: prefixDays })?.map((_, i) => (
-                   <div key={`prefix-${i}`} className="aspect-square opacity-0"></div>
-                 ))}
-
-                 {calendarDays?.map((date, idx) => {
-                   const dayInfo = getDayStatus(date);
-                   const status = dayInfo?.status || 'BELUM';
-                   const isCurr = isToday(date);
-
-                   return (
-                     <motion.div
-                       initial={{ opacity: 0, scale: 0.9 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       transition={{ delay: idx * 0.01 }}
-                       key={date.toString()} 
-                       className={`relative aspect-square rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center gap-2 group
-                        ${isCurr 
-                          ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 shadow-lg shadow-blue-500/10' 
-                          : 'bg-white dark:bg-slate-950 border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md'}`}
-                     >
-                       <span className={`text-[11px] font-black ${isCurr ? 'text-blue-600' : 'text-slate-600 dark:text-slate-400'}`}>
-                         {format(date, 'd')}
-                       </span>
-                       <div className={`w-2 h-2 rounded-full ${STATUS_COLORS[status]}`}></div>
-                     </motion.div>
-                   );
-                 })}
-               </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* Legend & Sidebar */}
-        <div className="space-y-8">
-           <SectionCard title="Legenda Status" icon={Info} fullWidth>
-              <div className="space-y-6">
-                 {Object.entries(STATUS_LABELS)?.map(([key, label]) => (
-                   <div key={key} className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${key === 'BELUM' ? 'bg-slate-100 dark:bg-slate-800' : STATUS_COLORS[key] + ' bg-opacity-10'}`}>
-                         <div className={`w-2.5 h-2.5 rounded-full ${STATUS_COLORS[key]}`}></div>
-                      </div>
-                      <div>
-                         <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">{key}</p>
-                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
-                      </div>
-                   </div>
-                 ))}
-              </div>
-           </SectionCard>
-
-           <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-8 rounded-3xl text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
-              <Fingerprint className="absolute -bottom-6 -right-6 w-32 h-32 text-white/10 rotate-12 transition-transform group-hover:scale-110 duration-700" />
-              <div className="relative z-10">
-                 <div className="flex items-center gap-2 text-indigo-100 font-black text-[10px] uppercase tracking-widest mb-4">
-                    <Award className="w-4 h-4 text-amber-300" /> Sertifikasi Kehadiran
-                 </div>
-                 <p className="text-[11px] leading-relaxed text-indigo-50 font-bold uppercase tracking-tight mb-8">
-                    Data kehadiran ini divalidasi oleh sistem gerbang IoT dan verifikasi sesi admin sekolah.
-                 </p>
-                 <Button className="w-full h-12 rounded-xl bg-white text-indigo-600 font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-50 active:scale-95 transition-all gap-2">
-                    <FileText size={14} /> Cetak Laporan
-                 </Button>
-              </div>
-           </div>
-        </div>
-      </div>
-    </div>
-  );
+  if (isLocked) {
+    return (
+      <AcademicPageLayout 
+        title="Presensi Saya" 
+        description="Monitoring kehadiran mandiri siswa"
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey="myattendancepage"
+      >
+        <Suspense fallback={<Loader />}>
+          <PremiumFeatureGate featureName="Presensi Saya" description="Fitur ini memerlukan paket langganan aktif." />
+        </Suspense>
+      </AcademicPageLayout>
+    );
+  }
 
   return (
     <AcademicPageLayout
-      hardeningModuleKey="myattendancepage"
       title="Presensi Saya"
-      description="Monitoring kedisiplinan dan akumulasi poin kehadiran Anda secara realtime."
-      stats={stats}
-      breadcrumbs={[
-        { label: 'Presensi', path: '/attendance' },
-        { label: 'Presensi Saya', path: '/attendance/my-attendance' }
-      ]}
+      description={isGuru ? "Monitoring rekapitulasi kehadiran pengajar & jam mengajar." : "Monitoring rekapitulasi kehadiran, poin kedisiplinan, dan histori presensi harian."}
+      breadcrumbs={breadcrumbs}
       instruction={{
-        title: "Panduan Presensi Pribadi",
-        description: "Gunakan halaman ini untuk memantau rekap kehadiran Anda sendiri.",
-        items: [
-          { text: "Kalender menunjukkan status kehadiran per hari." },
-          { text: "Poin Kehadiran diakumulasikan berdasarkan kedisiplinan Anda." }
+        title: isGuru ? 'Panduan Presensi Pengajar' : 'Panduan Presensi Saya',
+        description: isGuru ? 'Pantau rekapitulasi presensi harian Anda.' : 'Pantau persentase kehadiran Anda untuk memastikan kelayakan ujian minimum 85%.',
+        items: isGuru ? [
+          'Gunakan kalender harian untuk melihat rincian presensi Anda.',
+          'Pantau persentase ketepatan waktu & presensi mengajar harian.',
+          'Buka menu Operasional Presensi untuk mengelola sesi KBM kelas.'
+        ] : [
+          'Gunakan kalender harian untuk melihat rincian tap presensi gerbang & kelas.',
+          'Buka Klasemen Lengkap untuk memantau posisi poin kedisiplinan sekelas atau se-sekolah.',
+          'Ajukan surat permohonan izin/sakit melalui tombol form pengajuan.'
         ]
       }}
     >
-      <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-        <PremiumFeatureGate
-          isLocked={isLocked}
-          moduleName="ABSENSI"
-          featureName="Laporan Kehadiran Personal"
-          description="Lihat rekapitulasi kehadiran Anda, poin kedisiplinan, dan kalender presensi secara mendetail."
-        >
-          {isLoading ? (
-            <div className="flex justify-center py-40">
-              <Loader size="lg" />
+      {isGuru ? (
+        <TeacherAttendanceView
+          user={user}
+          currentDate={currentDate}
+          selectedDate={selectedDate}
+          rekap={rekap}
+          detailMap={detailMap}
+          daysInMonth={daysInMonth}
+          handlePreviousMonth={handlePreviousMonth}
+          handleNextMonth={handleNextMonth}
+          setSelectedDate={setSelectedDate}
+          teacherSessions={teacherSessions}
+          isTeacherSesiLoading={isTeacherSesiLoading}
+          teacherTrackingData={teacherTrackingData}
+          isTeacherTrackingLoading={isTeacherTrackingLoading}
+        />
+      ) : (
+        <div className="space-y-6">
+        {/* CARD: RINGKASAN KEDISIPLINAN */}
+        <SectionCard fullWidth className="p-6 flex flex-col w-full min-w-0">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0">
+              <TrendingUp size={18} />
             </div>
-          ) : !rekap || !rekap.detail || rekap.detail.length === 0 ? (
-            <EmptyState
-              icon={CalendarIcon}
-              title="Belum Ada Data Presensi"
-              description="Tidak ada catatan presensi yang ditemukan untuk bulan ini."
+            <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight uppercase">
+              Ringkasan Kedisiplinan
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Box 1: Pencapaian Poin */}
+            <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                  Pencapaian Poin
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-slate-900 dark:text-slate-100">
+                    {rekap?.total_poin || 15}
+                  </span>
+                  <span className="text-sm font-black text-slate-400">Pts</span>
+                </div>
+                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wide block mt-2">
+                  Setara dengan performa luar biasa
+                </span>
+              </div>
+              <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-2xl">
+                <Trophy size={22} />
+              </div>
+            </div>
+
+            {/* Box 2: Rasio Kehadiran */}
+            <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+                    Rasio Kehadiran
+                  </span>
+                  <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                    {attendancePercentage}%
+                  </span>
+                </div>
+                <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-2xl">
+                  <Target size={22} />
+                </div>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+                <div 
+                  className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, attendancePercentage)}%` }} 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Exam Status Banner */}
+          <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 ${
+            examEligibility.colorTheme === 'emerald'
+              ? 'bg-emerald-50/90 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/60'
+              : examEligibility.colorTheme === 'amber'
+              ? 'bg-amber-50/90 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900/60'
+              : 'bg-rose-50/90 border-rose-200 dark:bg-rose-950/40 dark:border-rose-900/60'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-2xl text-white shrink-0 ${
+                examEligibility.colorTheme === 'emerald' ? 'bg-emerald-600' : examEligibility.colorTheme === 'amber' ? 'bg-amber-600' : 'bg-rose-600'
+              }`}>
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 block">
+                  {examEligibility.isEligible ? `Status Aman: Kehadiran Anda (${attendancePercentage}%) memenuhi syarat Ujian Semester (Min. 85%)` : examEligibility.statusLabel}
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  Sistem otomatis mengevaluasi kelayakan siswa mengikuti Ujian Semester dan Rapor.
+                </span>
+              </div>
+            </div>
+            <Badge className={`${
+              examEligibility.colorTheme === 'emerald' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'
+            } border-none font-black text-[9px] shrink-0`}>
+              {examEligibility.isEligible ? 'SYARAT TERPATUHI' : 'PERINGATAN'}
+            </Badge>
+          </div>
+        </SectionCard>
+
+        {/* MAIN LAYOUT GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* LEFT 2 COLUMNS: CALENDAR & DAILY DETAIL */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* MONTHLY CALENDAR CARD */}
+            <SectionCard fullWidth className="p-5 flex flex-col w-full min-w-0">
+              <SharedVisualAttendanceCalendar
+                title="Kalender Presensi Siswa"
+                bulan={format(currentDate, 'yyyy-MM')}
+                selectedDate={selectedDate}
+                onBulanChange={(newBulanStr) => {
+                  try {
+                    const [y, m] = newBulanStr.split('-');
+                    if (y && m) {
+                      const targetMonth = parseInt(m, 10) - 1;
+                      const currentMonth = currentDate.getMonth();
+                      if (targetMonth < currentMonth) {
+                        handlePreviousMonth();
+                      } else if (targetMonth > currentMonth) {
+                        handleNextMonth();
+                      }
+                    }
+                  } catch (e) {}
+                }}
+                onDateSelect={(dateStr) => setSelectedDate(dateStr)}
+                detailMap={detailMap}
+                statistik={rekap?.statistik}
+              />
+            </SectionCard>
+
+
+            {/* DAILY DETAIL / SESSION TIMELINE CARD */}
+            <SectionCard fullWidth className="p-5 flex flex-col w-full min-w-0">
+              <SharedAttendanceTimeline
+                title="Timeline Presensi"
+                selectedDate={selectedDate}
+                items={trackingData?.data?.kegiatan || []}
+                isLoading={isTrackingLoading}
+              />
+            </SectionCard>
+
+
+          </div>
+
+          {/* RIGHT COLUMN: SIDEBAR CARDS */}
+          <div className="space-y-6">
+            <StudentAttendancePointsSidebar
+              myRankIndex={myRankIndex}
+              classmatesCount={classmatesList?.length || 32}
+              myTotalPoin={rekap?.total_poin || 15}
+              myStreak={rekap?.statistik?.HADIR || 2}
+              attendanceRate={rekap?.persentase_kehadiran ?? 100}
+              detailHarianList={detailHarian || []}
+              rekapStats={rekap?.statistik}
+              bulanKey={bulanKey}
+              onOpenLeaderboardModal={() => setShowLeaderboardModal(true)}
+              onOpenIzinModal={() => setShowIzinModal(true)}
+              top3Classmates={classmatesList}
             />
-          ) : (
-            pageContent
-          )}
-        </PremiumFeatureGate>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {/* LAZY LOADED MODALS */}
+      <Suspense fallback={<Loader />}>
+        {showLeaderboardModal && (
+          <StudentAttendanceLeaderboardModal
+            isOpen={showLeaderboardModal}
+            onClose={() => setShowLeaderboardModal(false)}
+            leaderboardScope={leaderboardScope}
+            onScopeChange={setLeaderboardScope}
+            activeLeaderboardList={activeLeaderboardList}
+            isScopedLoading={isScopedLoading}
+            mySiswaProfileId={mySiswaProfile?.id}
+            userSiswaId={user?.siswa_id}
+            userId={user?.id}
+            userName={user?.name}
+            rekapNamaSiswa={rekap?.nama_siswa}
+          />
+        )}
+
+        {showIzinModal && (
+          <StudentAttendanceIzinModal
+            isOpen={showIzinModal}
+            onClose={() => setShowIzinModal(false)}
+            onSubmitSuccess={() => toast.success('Status pengajuan diperbarui')}
+          />
+        )}
+
+        {showPointHistoryModal && (
+          <StudentAttendancePointHistoryModal
+            isOpen={showPointHistoryModal}
+            onClose={() => setShowPointHistoryModal(false)}
+            rekapStats={rekap?.statistik}
+            totalPoin={rekap?.total_poin}
+            bulanKey={bulanKey}
+          />
+        )}
       </Suspense>
     </AcademicPageLayout>
   );

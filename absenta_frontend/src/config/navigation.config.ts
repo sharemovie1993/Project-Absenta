@@ -166,6 +166,25 @@ export interface RoleWorkspaceConfig {
 
 export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   {
+    id: 'STUDENT_WORKSPACE',
+    label: 'Siswa',
+    badge: 'Siswa',
+    icon: GraduationCap,
+    color: 'text-indigo-600',
+    bg: 'bg-indigo-50',
+    solidBg: 'bg-indigo-600',
+    desc: 'Aktivitas Belajar & Presensi',
+    requiredRoleName: 'SISWA',
+    defaultPath: '/dashboard',
+    crossModulePaths: [
+      '/attendance/my-attendance',
+      '/kurikulum/jadwal',
+      '/bpbk/konseling',
+      '/rapor/nilai',
+      '/profile'
+    ]
+  },
+  {
     id: 'TEACHER_WORKSPACE',
     label: 'Guru',
     badge: 'Mengajar',

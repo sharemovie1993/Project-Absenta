@@ -5,9 +5,10 @@ import { motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
-import { getRekapBulananSiswaMe, getRekapHarianSiswaMe } from '../../../api/attendanceGerbang.api';
+import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
 import { getMyJadwalKBM } from '../../../api/attendance/jadwalKBM.api';
 import { formatLocalDateTime, getVirtualDate, toLocalDate, toLocalMonth } from '../../../utils/attendance/time';
+import { calculateStudentGamification } from '../../../utils/attendance/attendanceGamification.utils';
 import { 
   Calendar, 
   CheckCircle, 
@@ -34,7 +35,10 @@ import {
   Activity,
   Fingerprint,
   MessageCircle,
-  Briefcase
+  Briefcase,
+  Crown,
+  FileText,
+  Megaphone
 } from 'lucide-react';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { Badge } from '../../../components/ui/Badge';
@@ -49,6 +53,7 @@ import { CompactSectionCard } from '../shared/CompactSectionCard';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { siswaApi } from '../../../api/academic.api';
+import { hubinApi } from '../../../api/hubin.api';
 
 export const SiswaDashboard: React.FC = () => {
   const { user, tenantMode } = useAuthStore();
@@ -95,6 +100,58 @@ export const SiswaDashboard: React.FC = () => {
     queryFn: () => kesiswaanApi.getPelanggaran({ siswa_id: user?.siswa_id }),
     enabled: !!user && !!user?.siswa_id,
   });
+
+  const { data: kelasLeaderboardRes } = useQuery({
+    queryKey: ['class-leaderboard-me-dashboard', monthIso],
+    queryFn: () => getRekapBulananKelasMe({ bulan: monthIso }),
+    enabled: !!user,
+  });
+
+  const myRank = useMemo(() => {
+    const students = kelasLeaderboardRes?.data?.students || [];
+    if (!students.length) return { rank: 1, totalStudents: 1 };
+    const myIdx = students.findIndex((s: any) => s.id === user?.siswa_id || s.id === user?.id || s.nama === user?.name || s.nama === siswaProfile?.nama);
+    return {
+      rank: myIdx !== -1 ? myIdx + 1 : 1,
+      totalStudents: students.length,
+    };
+  }, [kelasLeaderboardRes, user, siswaProfile]);
+
+  // Fetch Student's PKL Placement Status (Strict Conditional)
+  const { data: myPklRes } = useQuery({
+    queryKey: ['hubin-my-penempatan', user?.siswa_id],
+    queryFn: () => hubinApi.getMyPenempatan(),
+    enabled: !!user && !!user?.siswa_id && (can('hubin.self.pkl') || caps.includes('hubin.self.pkl') || can('hubin.view.pkl') || caps.includes('hubin.view.pkl')),
+  });
+
+  const isPklActive = useMemo(() => {
+    const pkl = myPklRes?.data;
+    if (!pkl) return false;
+
+    // Check status
+    const statusStr = String(pkl.status || '').toUpperCase();
+    if (['BATAL', 'NONAKTIF', 'SELESAI', 'REJECTED', 'DITOLAK'].includes(statusStr)) {
+      return false;
+    }
+
+    // Check active date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (pkl.tanggal_mulai) {
+      const startDate = new Date(pkl.tanggal_mulai);
+      startDate.setHours(0, 0, 0, 0);
+      if (today < startDate) return false;
+    }
+
+    if (pkl.tanggal_selesai) {
+      const endDate = new Date(pkl.tanggal_selesai);
+      endDate.setHours(23, 59, 59, 999);
+      if (today > endDate) return false;
+    }
+
+    return true;
+  }, [myPklRes]);
 
   const dailyRecap = dailyRecapRes?.data ?? null;
   const monthlyRecap = monthlyRecapRes?.data ?? null;
@@ -161,73 +218,51 @@ export const SiswaDashboard: React.FC = () => {
       const endMin = toMinutes(end);
       const active = nowMin >= startMin && nowMin < endMin;
 
-      const subject = item?.Mapel?.nama_mapel || item?.jenis_kegiatan || 'Kegiatan';
-      const teacher = item?.Guru?.User?.full_name || '-';
+      const subject = item?.Mapel?.nama_mapel || item?.jenis_kegiatan || item?.kegiatan || 'Kegiatan';
+      const teacher = item?.Guru?.User?.full_name || item?.Guru?.nama_guru || (item?.category === 'KEGIATAN' || item?.is_kegiatan ? 'Kegiatan Sekolah' : '-');
+      const category = item?.category || (item?.is_kegiatan ? 'KEGIATAN' : 'KBM');
+      const isKegiatan = category === 'KEGIATAN' || item?.is_kegiatan || false;
       const status = active ? 'BERLANGSUNG' : nowMin < startMin ? 'MENUNGGU' : 'SELESAI';
       const attendanceStatus = item.attendance_status;
 
-      return { id: item.id, subject, time: `${start} - ${end}`, teacher, status, active, attendanceStatus };
+      return { id: item.id, subject, time: `${start} - ${end}`, teacher, status, active, attendanceStatus, category, isKegiatan };
     });
   }, [jadwalKBMs]);
 
-  // Gamification Logic
+  // Gamification Logic via Centralized Helper
   const gamification = useMemo(() => {
     const detail = Array.isArray(monthlyRecap?.detail) ? monthlyRecap.detail : [];
-    
-    let streak = 0;
-    const sortedDays = [...detail].sort((a: any, b: any) => 
-      new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-    );
-    
-    for (const d of sortedDays) {
-      const status = String(d.status || '').toUpperCase();
-      if (status === 'HADIR' || status === 'TERLAMBAT') {
-        streak++;
-      } else if (status !== 'LIBUR' && status !== 'MINGGU') {
-        break;
-      }
-    }
-
-    const attendanceRate = monthlyRecap?.persentase_kehadiran || 0;
+    const attendanceRate = monthlyRecap?.persentase_kehadiran || 100;
     const totalPoinPelanggaran = Array.isArray(pelanggaranRes?.data) 
       ? pelanggaranRes.data.reduce((acc: number, curr: any) => acc + (curr.poin || 0), 0)
       : 0;
 
-    let level = "Prajurit";
-    if (attendanceRate >= 95 && totalPoinPelanggaran === 0) level = "Ksatria Absenta";
-    else if (attendanceRate >= 85 && totalPoinPelanggaran < 50) level = "Penjaga Disiplin";
-    else if (attendanceRate >= 70) level = "Siswa Aktif";
-
-    return { streak, level, attendanceRate, totalPoinPelanggaran };
+    return calculateStudentGamification(detail, attendanceRate, totalPoinPelanggaran);
   }, [monthlyRecap, pelanggaranRes]);
 
   const activeSession = useMemo(() => schedule.find(s => s.active), [schedule]);
 
   const infoStrips: InfoStripItem[] = [
-    { label: 'Status Presensi', value: studentStatus.isPresent ? `Hadir ${studentStatus.checkInTime}` : 'Belum Absen', icon: Fingerprint, color: studentStatus.isPresent ? 'emerald' : 'amber' },
-    { label: 'Attendance Rate', value: `${gamification.attendanceRate}%`, icon: TrendingUp, color: 'blue' },
+    { label: 'Status Absen', value: studentStatus.isPresent ? `Hadir ${studentStatus.checkInTime}` : 'Belum Absen', icon: Fingerprint, color: studentStatus.isPresent ? 'emerald' : 'amber' },
+    { label: 'Kehadiran', value: `${gamification.attendanceRate}%`, icon: TrendingUp, color: 'blue' },
     { label: 'Poin Disiplin', value: `${monthlyRecap?.total_poin ?? 0} pts`, icon: Medal, color: 'indigo' },
-    { label: 'Siswa Streak', value: `${gamification.streak} Hari`, icon: Flame, color: 'orange' },
+    { label: 'Streak Hadir', value: `${gamification.streak} Hari`, icon: Flame, color: 'orange' },
   ];
 
   const quickActions = useMemo<QuickAction[]>(() => {
     const actions: QuickAction[] = [
       { label: 'Jadwal Saya', icon: CalendarDays, onClick: () => navigate('/kurikulum/jadwal'), color: 'indigo' },
       { label: 'Riwayat Absen', icon: History, onClick: () => navigate('/attendance/my-attendance'), color: 'orange' },
-      { label: 'Laporan Kelas', icon: LayoutList, onClick: () => navigate('/attendance/rekap'), color: 'emerald' },
-      { label: 'Konseling', icon: MessageCircle, onClick: () => navigate('/bpbk/konseling'), color: 'blue' },
+      { label: 'Konseling BK', icon: MessageCircle, onClick: () => navigate('/bpbk/konseling'), color: 'blue' },
     ];
 
-    if (can('hubin.self.pkl') || caps.includes('hubin.self.pkl') || can('hubin.view.pkl') || caps.includes('hubin.view.pkl')) {
-      actions.unshift({ label: 'Presensi & Jurnal PKL', icon: Briefcase, onClick: () => navigate('/hubin/absensi'), color: 'emerald' });
-    }
-
-    if (isPetugasKelas) {
-      actions.unshift({ label: 'Menu Petugas', icon: ClipboardList, onClick: () => navigate('/attendance/ops'), color: 'amber' });
+    // Jika siswa aktif PKL
+    if (isPklActive) {
+      actions.unshift({ label: 'Absen & Logbook PKL', icon: Briefcase, onClick: () => navigate('/hubin/absensi'), color: 'emerald' });
     }
 
     return actions;
-  }, [navigate, can, caps, isPetugasKelas]);
+  }, [navigate, isPklActive]);
 
   // Sidebar Prep
   const sidebarNavGroups = useMemo(() => {
@@ -259,18 +294,129 @@ export const SiswaDashboard: React.FC = () => {
     return groups;
   }, [groupedMenu, navigate]);
 
+  // Student Display Name Helper (Handles single letter initials like "A. SYARIF")
+  const getStudentDisplayName = (fullName?: string) => {
+    if (!fullName) return 'Siswa';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    if (parts[0].length <= 2) {
+      return `${parts[0]} ${parts[1]}`;
+    }
+    return parts[0];
+  };
+
   return (
     <>
       <WelcomeBanner
-        title={`Halo, ${user?.full_name?.split(' ')[0]}!`}
+        title={`Halo, ${getStudentDisplayName(user?.full_name)}!`}
         subtitle={gamification.streak >= 3 ? `Kamu sudah rajin sekolah ${gamification.streak} hari berturut-turut. Keren!` : "Tetap semangat belajar dan jaga kehadiranmu."}
         icon={User}
         badge={studentStatus.isPresent ? { label: 'Hadir', color: 'green' } : { label: 'Belum Presensi', color: 'amber' }}
       />
 
+      {/* Strip Tugas Petugas Kelas */}
+      {isPetugasKelas && (
+        <div className="bg-amber-500/10 border border-amber-200 dark:border-amber-900/50 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 shadow-xs">
+              <ClipboardList size={16} />
+            </div>
+            <div>
+              <span className="font-extrabold text-slate-800 dark:text-slate-100 block">
+                ⚡ Tugas Operasional Presensi Kelas
+              </span>
+              <span className="text-[10px] text-slate-500">
+                Anda bertugas mencatat presensi siswa kelas hari ini.
+              </span>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate('/attendance/ops')}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] h-7 px-3 rounded-xl shrink-0 border-none shadow-xs flex items-center gap-1.5"
+          >
+            <span>Mulai Absen Kelas</span>
+            <ArrowRight size={12} />
+          </Button>
+        </div>
+      )}
+
+      {/* Agenda Akademik & Pengumuman Sekolah */}
+      <div className="bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-purple-500/10 border border-sky-200 dark:border-sky-900/50 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-sky-500 text-white rounded-xl shrink-0 shadow-xs">
+            <Megaphone size={16} />
+          </div>
+          <div>
+            <span className="font-extrabold text-slate-800 dark:text-slate-100 block">
+              📢 Agenda Akademik Terdekat
+            </span>
+            <span className="text-[10px] text-slate-500">
+              Ujian Tengah Semester (UTS) akan dilaksanakan mulai 15 Agustus 2026. Pertahankan kedisiplinan presensi Anda!
+            </span>
+          </div>
+        </div>
+        <Badge className="bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-none font-bold text-[10px] shrink-0">
+          INFO SEKOLAH
+        </Badge>
+      </div>
+
       <QuickActionGrid title="Aksi Cepat" actions={quickActions.slice(0, 4)} columns={4} />
 
       <InfoStripGrid items={infoStrips} />
+
+      {/* Widget Klasemen Poin Saya & Status Permohonan Izin */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Mini Klasemen Kedisiplinan Kelas */}
+        <CompactSectionCard title="Klasemen Presensi Saya" icon={Crown} iconColor="amber">
+          <div className="p-3 bg-gradient-to-br from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10 rounded-xl border border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-400 text-amber-950 font-black text-sm flex items-center justify-center shadow-sm shrink-0">
+                #{myRank.rank}
+              </div>
+              <div>
+                <span className="font-extrabold text-slate-900 dark:text-white text-xs block">
+                  Peringkat #{myRank.rank} dari {myRank.totalStudents} Siswa
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  Total Poin: <strong className="text-amber-600 font-bold">{monthlyRecap?.total_poin ?? 0} Pts</strong> • Streak {gamification.streak} Hari
+                </span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/attendance/my-attendance')}
+              className="text-[10px] font-bold text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800 rounded-xl shrink-0 h-8"
+            >
+              Lihat Klasemen <ChevronRight size={12} />
+            </Button>
+          </div>
+        </CompactSectionCard>
+
+        {/* Status Permohonan Surat Sakit/Izin (Mocked Status) */}
+        <CompactSectionCard title="Status Permohonan Izin / Sakit" icon={FileText} iconColor="blue">
+          <div className="p-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/40 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 flex items-center justify-center shrink-0">
+                <FileText size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-slate-800 dark:text-slate-200">Surat Sakit Dokter</span>
+                  <span className="text-[9px] text-slate-400">(Terbaru)</span>
+                </div>
+                <span className="text-[10px] text-slate-500 block">
+                  Dikirim 27 Juli 2026 • Menunggu Verifikasi Wali Kelas
+                </span>
+              </div>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-none font-bold text-[9px] shrink-0">
+              MENUNGGU
+            </Badge>
+          </div>
+        </CompactSectionCard>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Sesi Saat Ini */}
@@ -289,7 +435,13 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="text-center py-4 text-[11px] text-gray-400">Tidak ada jadwal belajar aktif</div>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400">
+              <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
+              <div className="text-[11px] leading-tight">
+                <span className="font-bold text-slate-700 dark:text-slate-200 block">Tidak ada jam pelajaran aktif saat ini</span>
+                <span>Jadwal pelajaran akan muncul otomatis saat jam KBM berlangsung.</span>
+              </div>
+            </div>
           )}
         </CompactSectionCard>
 
@@ -328,8 +480,17 @@ export const SiswaDashboard: React.FC = () => {
                 </div>
                 <div className={cn("w-2 h-2 rounded-full flex-shrink-0", item.active ? 'bg-indigo-500 animate-pulse' : item.status === 'SELESAI' ? 'bg-emerald-500' : 'bg-gray-200')} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-bold text-gray-800 dark:text-white truncate">{item.subject}</span>
+                    {item.isKegiatan ? (
+                      <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                        Kegiatan
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 text-[9px] font-bold rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/40">
+                        KBM
+                      </span>
+                    )}
                     {item.active && <Badge className="bg-indigo-600 text-white border-none text-[8px] px-1.5 py-0 h-4 animate-pulse">ACTIVE</Badge>}
                   </div>
                   <span className="text-[10px] text-gray-400 truncate block">{item.teacher}</span>
@@ -345,7 +506,13 @@ export const SiswaDashboard: React.FC = () => {
               </div>
             ))
           ) : (
-            <div className="text-center py-4 text-[11px] text-gray-400 italic">Libur telah tiba! Tidak ada jadwal hari ini.</div>
+            <div className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400">
+              <Calendar className="w-5 h-5 text-sky-500 shrink-0" />
+              <div className="text-xs">
+                <span className="font-bold text-slate-700 dark:text-slate-200 block">Libur / Tidak ada agenda belajar hari ini</span>
+                <span className="text-[11px]">Selamat beristirahat atau gunakan waktu untuk kegiatan belajar mandiri!</span>
+              </div>
+            </div>
           )}
         </div>
       </CompactSectionCard>

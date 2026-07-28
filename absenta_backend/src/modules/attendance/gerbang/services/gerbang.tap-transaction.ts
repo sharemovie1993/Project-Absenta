@@ -2,11 +2,11 @@ import { AbsenStatus, JenisTap } from '@/constants/enums';
 import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { emitDomainEvent } from '@/infra/event-bus';
-import { calculateAttendanceStatus, resolveAttendanceConfig } from '@/utils/attendance-rules';
-import { parse } from 'date-fns';
+import { resolveAttendanceConfig } from '@/utils/attendance-rules';
 import { isMultiSesiMode } from '../types/gerbang.types';
 import { gerbangDb } from './repositories/gerbang.db';
 import { getModeFeatures } from './gerbang.tap-helpers';
+import { getRedisConnection } from '@/queue/redis';
 
 export async function processTapTransaction(params: {
   input: any;
@@ -21,6 +21,39 @@ export async function processTapTransaction(params: {
 }): Promise<{ record: any; isDuplicate: boolean }> {
   const { input, siswa, guru, isGuru = false, userId, tenantId, tenantMode, sessionInfo, tapTime } = params;
 
+  // ── Distributed Idempotency Lock ──────────────────────────────────────────
+  // Mencegah race condition dari SEMUA metode input (RFID, QR, HID Keyboard).
+  // Jika 2 tap masuk dalam 5 detik untuk kombinasi yang sama → hanya 1 yang diproses.
+  const targetId = isGuru
+    ? (guru?.id ?? input.siswa_id)
+    : (siswa?.id ?? input.siswa_id);
+  const lockKey = `absenta:tap_lock:${tenantId}:${sessionInfo.id}:${targetId}:${input.arah}`;
+  let lockAcquired = false;
+  try {
+    const redis = getRedisConnection();
+    // SETNX + TTL 5 detik — hanya 1 request yang menang dalam window ini
+    const result = await redis.set(lockKey, '1', 'EX', 5, 'NX');
+    lockAcquired = result === 'OK';
+    if (!lockAcquired) {
+      // Request duplikat dalam 5 detik — kembalikan record yang sudah ada
+      const existingRecord = isGuru
+        ? await gerbangDb.absenGerbangGuru.findFirst({
+            where: { sesi_gerbang_id: sessionInfo.id, guru_id: targetId, arah: input.arah },
+            include: { SesiGerbang: { select: { tanggal: true, waktu_mulai: true, waktu_selesai: true } } }
+          })
+        : await gerbangDb.absenGerbangSiswa.findFirst({
+            where: { sesi_gerbang_id: sessionInfo.id, siswa_id: targetId, arah: input.arah },
+            include: { SesiGerbang: { select: { tanggal: true, waktu_mulai: true, waktu_selesai: true } } }
+          });
+      console.log(`[GerbangService] 🔒 Tap ditolak oleh Redis lock (burst <5s): ${lockKey}`);
+      return { record: existingRecord, isDuplicate: true };
+    }
+  } catch (redisErr) {
+    // Redis tidak tersedia — lanjut tanpa lock (DB constraint masih menjaga)
+    console.warn('[GerbangService] Redis lock unavailable, falling back to DB constraint:', redisErr);
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const sysConfig = await systemConfigService.getActive(tenantId);
   const tz = String((sysConfig as any)?.timezone || 'Asia/Jakarta').trim();
   const offsetMap: Record<string, number> = {
@@ -29,6 +62,10 @@ export async function processTapTransaction(params: {
     'Asia/Jayapura': 9,
   };
   const offsetHours = offsetMap[tz] ?? 7;
+  const offsetSign = offsetHours >= 0 ? '+' : '-';
+  const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
+
+  const dateStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(tapTime);
 
   const tapTxResult = await gerbangDb.$transaction(async (tx) => {
     const activeYear = await (tx as any).tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
@@ -44,10 +81,7 @@ export async function processTapTransaction(params: {
         : null;
     }
 
-    const localTapTime = new Date(tapTime.getTime() + offsetHours * 60 * 60 * 1000);
-
-    const today = new Date(localTapTime);
-    today.setUTCHours(0, 0, 0, 0);
+    const today = new Date(`${dateStr}T00:00:00.000${offsetStr}`);
 
     const tenantConfig = await (tx as any).tenant.findUnique({
       where: { id: tenantId },
@@ -67,25 +101,40 @@ export async function processTapTransaction(params: {
       specialEvent,
     );
 
-    const scheduleStart = parse(ruleConfig.jamMasuk, 'HH:mm', localTapTime);
+    const jamMasukClean = (ruleConfig.jamMasuk || '07:00').trim();
+    const scheduleStart = new Date(`${dateStr}T${jamMasukClean.length === 5 ? jamMasukClean : '07:00'}:00.000${offsetStr}`);
 
-    const statusResult = calculateAttendanceStatus(
-      input.arah === JenisTap.GERBANG_DATANG ? localTapTime : null,
-      input.arah === JenisTap.GERBANG_PULANG ? localTapTime : null,
-      ruleConfig,
-    );
+    let isLate = false;
+    let lateMinutes = 0;
 
-    const isLate = statusResult.status === 'TERLAMBAT';
-    const lateMinutes = statusResult.menitTerlambat;
-    const finalStatus = statusResult.status === 'TERLAMBAT' ? AbsenStatus.HADIR : AbsenStatus.HADIR;
+    if (input.arah === JenisTap.GERBANG_DATANG) {
+      const diffMs = tapTime.getTime() - scheduleStart.getTime();
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin > (ruleConfig.toleransiMenit ?? 15)) {
+        if (!ruleConfig.abaikanTerlambat) {
+          isLate = true;
+          lateMinutes = diffMin;
+        }
+      }
+    }
+
+    const finalStatus = AbsenStatus.HADIR;
 
     let absenRecord: any = null;
     let isDuplicate = false;
     try {
       if (isGuru) {
         const targetGuruId = guru ? guru.id : input.siswa_id;
-        absenRecord = await (tx as any).absenGerbangGuru.create({
-          data: {
+        // UPSERT — idempoten untuk semua metode input (RFID, QR, HID)
+        absenRecord = await (tx as any).absenGerbangGuru.upsert({
+          where: {
+            sesi_gerbang_id_guru_id_arah: {
+              sesi_gerbang_id: sessionInfo.id,
+              guru_id: targetGuruId,
+              arah: input.arah,
+            }
+          },
+          create: {
             tenant_id: tenantId,
             sesi_gerbang_id: sessionInfo.id,
             guru_id: targetGuruId,
@@ -98,11 +147,24 @@ export async function processTapTransaction(params: {
             created_at: new Date(),
             tahun_pelajaran_id_snapshot: (activeYear as any)?.id || null,
           },
+          update: {
+            // Tap ulang (QR/RFID/HID) hanya update waktu — status tetap
+            waktu_tap: tapTime,
+            updated_at: new Date(),
+          },
         });
       } else {
         const targetSiswaId = siswa ? siswa.id : input.siswa_id;
-        absenRecord = await (tx as any).absenGerbangSiswa.create({
-          data: {
+        // UPSERT — idempoten untuk semua metode input (RFID, QR, HID)
+        absenRecord = await (tx as any).absenGerbangSiswa.upsert({
+          where: {
+            sesi_gerbang_id_siswa_id_arah: {
+              sesi_gerbang_id: sessionInfo.id,
+              siswa_id: targetSiswaId,
+              arah: input.arah,
+            }
+          },
+          create: {
             tenant_id: tenantId,
             sesi_gerbang_id: sessionInfo.id,
             siswa_id: targetSiswaId,
@@ -118,43 +180,22 @@ export async function processTapTransaction(params: {
             tingkat_snapshot: tingkatData?.tingkat ?? null,
             tahun_pelajaran_id_snapshot: (activeYear as any)?.id || null,
           },
+          update: {
+            // Tap ulang (QR/RFID/HID) hanya update waktu — status tetap
+            waktu_tap: tapTime,
+            updated_at: new Date(),
+          },
         });
+        // Cek apakah ini update (duplikat) atau create baru
+        // Prisma upsert tidak memberi tahu, kita deteksi dari created_at vs now
+        const createdMs = new Date(absenRecord.created_at).getTime();
+        const nowMs = tapTime.getTime();
+        if (Math.abs(nowMs - createdMs) > 2000) {
+          isDuplicate = true; // Record ini dibuat >2 detik yang lalu → ini tap ulang
+        }
       }
     } catch (error: any) {
-      if (error?.code === 'P2002') {
-        isDuplicate = true;
-        if (isGuru) {
-          const targetGuruId = guru ? guru.id : input.siswa_id;
-          absenRecord = await (tx as any).absenGerbangGuru.findFirst({
-            where: {
-              sesi_gerbang_id: sessionInfo.id,
-              guru_id: targetGuruId,
-              arah: input.arah,
-            },
-            include: {
-              SesiGerbang: {
-                select: { tanggal: true, waktu_mulai: true, waktu_selesai: true },
-              },
-            },
-          });
-        } else {
-          const targetSiswaId = siswa ? siswa.id : input.siswa_id;
-          absenRecord = await (tx as any).absenGerbangSiswa.findFirst({
-            where: {
-              sesi_gerbang_id: sessionInfo.id,
-              siswa_id: targetSiswaId,
-              arah: input.arah,
-            },
-            include: {
-              SesiGerbang: {
-                select: { tanggal: true, waktu_mulai: true, waktu_selesai: true },
-              },
-            },
-          });
-        }
-      } else {
-        throw error;
-      }
+      throw error;
     }
 
     return {

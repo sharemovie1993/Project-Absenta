@@ -516,8 +516,26 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
           }
         });
       }
+      // 8. Student Workspace
+      else if (currentWs.id === 'STUDENT_WORKSPACE' || String(user?.role?.name || '').toUpperCase() === 'SISWA') {
+        const allowedStudentPaths = new Set([
+          '/dashboard',
+          '/attendance/my-attendance',
+          '/kurikulum/jadwal',
+          '/bpbk/konseling',
+          '/rapor/nilai',
+          '/profile',
+          '/hubin/absensi'
+        ]);
+        allLeafItems.forEach(item => {
+          const p = (item.path || '').toLowerCase();
+          if (allowedStudentPaths.has(p)) {
+            primaryItems.push(item);
+          }
+        });
+      }
 
-      if (primaryItems.length === 0 && !currentWs.id.startsWith('TU_')) {
+      if (primaryItems.length === 0 && !currentWs.id.startsWith('TU_') && currentWs.id !== 'STUDENT_WORKSPACE' && String(user?.role?.name || '').toUpperCase() !== 'SISWA') {
         primaryItems = allLeafItems;
       }
 

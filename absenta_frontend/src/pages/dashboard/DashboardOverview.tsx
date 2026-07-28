@@ -308,8 +308,8 @@ export default function DashboardOverview() {
     }
 
 
-    // 2. PETUGAS KELAS
-    if (hasCap('dashboard.view.petugas')) {
+    // 2. PETUGAS KELAS (Only for non-SISWA roles, SISWA uses Unified SiswaDashboard)
+    if (hasCap('dashboard.view.petugas') && roleName !== 'SISWA') {
       if (!views.find(v => v.id === 'petugas')) {
         views.push({ id: 'petugas', label: 'Petugas Kelas', component: <PetugasDashboard /> });
       }
@@ -774,8 +774,8 @@ export default function DashboardOverview() {
 
   return (
     <div className="flex-1 space-y-6">
-      {/* Peta Tugas Harian Terintegrasi Universal */}
-      <MyJobdeskWidget />
+      {/* Peta Tugas Harian Terintegrasi Universal (Hanya Staf & Pegawai) */}
+      {roleName !== 'SISWA' && <MyJobdeskWidget />}
 
       {/* Onboarding Modal */}
       {/* <SimpleOnboardingModal 

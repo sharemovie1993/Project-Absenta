@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Button, Loader, SectionCard } from '../../../components/ui';
-import { Check, Settings, Map, Eye, ShieldAlert, Clock, Target, RefreshCw, ArrowRight } from 'lucide-react';
+import { Check, Settings, Map, Eye, ShieldAlert, Clock, Target, RefreshCw, ArrowRight, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { previewTransition, executeTransition, type TransitionPreviewInput, type TransitionPreviewResponse, type ClassMapping, type OverrideItem } from '../../../api/academic/transition.api';
@@ -16,6 +16,7 @@ import type { ScopeMode } from './components/TransitionForm';
 
 // Lazy loading subkomponent berat (Pillar 11 – Optimasi Pemuatan)
 const TransitionForm = lazy(() => import('./components/TransitionForm'));
+const TransitionScope = lazy(() => import('./components/TransitionScope'));
 const TransitionMapping = lazy(() => import('./components/TransitionMapping'));
 const TransitionPreview = lazy(() => import('./components/TransitionPreview'));
 const TransitionConfirm = lazy(() => import('./components/TransitionConfirm'));
@@ -151,16 +152,25 @@ const AcademicTransitionPage: React.FC = () => {
     });
   }, []);
 
-  // Step 1 -> 2
+  // Step 1 -> Step 2
   const handleFormNext = useCallback(() => {
+    if (!selectedTahunLamaId || !selectedTahunBaruId) {
+      toast.error('Harap pilih Tahun Pelajaran Lama dan Tahun Pelajaran Baru');
+      return;
+    }
+    setStep(2);
+  }, [selectedTahunLamaId, selectedTahunBaruId]);
+
+  // Step 2 -> Step 3
+  const handleScopeNext = useCallback(() => {
     if (scopeMode === 'SELECTED' && selectedTingkat.length === 0) {
       toast.error('Harap pilih minimal 1 tingkat yang akan diproses');
       return;
     }
-    setStep(2);
+    setStep(3);
   }, [scopeMode, selectedTingkat]);
 
-  // Step 2 -> 3 (Preview)
+  // Step 3 -> Step 4 (Preview)
   const handleMappingNext = useCallback(async (mapping: ClassMapping[]) => {
     setMappingKelas(mapping);
     setLoadingPreview(true);
@@ -175,7 +185,7 @@ const AcademicTransitionPage: React.FC = () => {
       const res = await previewTransition(payload);
       setFormPayload(payload);
       setPreview(res.data);
-      setStep(3);
+      setStep(4);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
       const msg = err.response?.data?.message || err.message || 'Gagal memuat preview';
@@ -185,7 +195,7 @@ const AcademicTransitionPage: React.FC = () => {
     }
   }, [selectedTahunLamaId, selectedTahunBaruId]);
 
-  // Step 3 -> 4 (Confirm)
+  // Step 4 -> Step 5 (Confirm)
   const handlePreviewNext = useCallback((overrides: OverrideItem[]) => {
     if (formPayload) {
       setFormPayload({
@@ -193,16 +203,16 @@ const AcademicTransitionPage: React.FC = () => {
         overrides
       });
     }
-    setStep(4);
+    setStep(5);
   }, [formPayload]);
 
-  // Step 4 (Execute)
+  // Step 5 -> Step 6 (Execute & Selesai)
   const handleExecute = useCallback(async () => {
     if (!formPayload) return;
     setLoadingExecute(true);
     try {
       await executeTransition(formPayload);
-      setStep(5);
+      setStep(6);
       toast.success('Transisi akademik berhasil dilakukan');
       // Simpan ID timer ke ref agar dapat di-cleanup saat komponen unmount
       redirectTimerRef.current = setTimeout(() => {
@@ -272,9 +282,10 @@ const AcademicTransitionPage: React.FC = () => {
         ),
         items: [
           { text: "Langkah 1: Pastikan Tahun Pelajaran baru sudah dibuat di menu Setup." },
-          { text: "Langkah 2: Hubungkan setiap kelas lama ke kelas tujuan yang sesuai." },
-          { text: "Langkah 3: Anda dapat membatalkan kenaikan siswa tertentu di tahap Peninjauan." },
-          { text: "Langkah 4: Proses ini tidak dapat dibatalkan (Irreversible) setelah dieksekusi." }
+          { text: "Langkah 2: Tentukan cakupan tingkat yang akan diproses." },
+          { text: "Langkah 3: Hubungkan setiap kelas lama ke kelas tujuan yang sesuai." },
+          { text: "Langkah 4: Anda dapat membatalkan kenaikan siswa tertentu di tahap Peninjauan." },
+          { text: "Langkah 5: Proses ini tidak dapat dibatalkan (Irreversible) setelah dieksekusi." }
         ]
       }}
       hardeningModuleKey="academictransitionpage"
@@ -283,7 +294,7 @@ const AcademicTransitionPage: React.FC = () => {
           {/* Aksi Wizard: Reset & Mulai Ulang di Toolbar Atas */}
           <div className="flex justify-between items-center w-full max-w-7xl mx-auto">
             <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Langkah Wizard Transisi
+              Langkah Wizard Transisi (5 Langkah)
             </h4>
             <div className="flex items-center gap-2">
               <Button
@@ -320,14 +331,15 @@ const AcademicTransitionPage: React.FC = () => {
                   {/* Active Progress Line */}
                   <div 
                     className="absolute top-6 left-0 h-[2px] bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-1000 ease-in-out -z-10 rounded-full" 
-                    style={{ width: `${((step - 1) / 3) * 100}%` }} 
+                    style={{ width: `${Math.min(100, Math.max(0, ((step - 1) / 4) * 100))}%` }} 
                   />
                   
                   {([
                     { s: 1, label: 'Persiapan', icon: Settings, desc: 'Tahun Sumber & Target' },
-                    { s: 2, label: 'Pemetaan', icon: Map, desc: 'Rute Kenaikan Kelas' },
-                    { s: 3, label: 'Peninjauan', icon: Eye, desc: 'Validasi Status Siswa' },
-                    { s: 4, label: 'Konfirmasi', icon: ShieldAlert, desc: 'Eksekusi Final' },
+                    { s: 2, label: 'Cakupan', icon: Layers, desc: 'Cakupan Tingkat Kelas' },
+                    { s: 3, label: 'Pemetaan', icon: Map, desc: 'Rute Kenaikan Kelas' },
+                    { s: 4, label: 'Peninjauan', icon: Eye, desc: 'Validasi Status Siswa' },
+                    { s: 5, label: 'Konfirmasi', icon: ShieldAlert, desc: 'Eksekusi Final' },
                   ] as const)?.map((item) => {
                     const isActive = step === item.s;
                     const isCompleted = step > item.s;
@@ -374,11 +386,6 @@ const AcademicTransitionPage: React.FC = () => {
                         selectedTahunBaruId={selectedTahunBaruId}
                         onTahunLamaChange={setSelectedTahunLamaId}
                         onTahunBaruChange={setSelectedTahunBaruId}
-                        scopeMode={scopeMode}
-                        onScopeModeChange={setScopeMode}
-                        availableTingkat={availableTingkat}
-                        selectedTingkat={selectedTingkat}
-                        onTingkatToggle={handleTingkatToggle}
                       />
                       <TransitionPrerequisites 
                         tahunAktif={selectedTahunLamaObj}
@@ -389,10 +396,10 @@ const AcademicTransitionPage: React.FC = () => {
                       <div className="flex justify-center pt-4 animate-in fade-in zoom-in duration-700">
                         <Button
                           onClick={handleFormNext}
-                          disabled={!selectedTahunLamaId || !selectedTahunBaruId || loadingPreview}
+                          disabled={!selectedTahunLamaId || !selectedTahunBaruId}
                           className="h-14 gap-3 font-black px-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
                         >
-                          {loadingPreview ? 'Menyiapkan...' : 'Lanjut ke Pemetaan Kelas'}
+                          Lanjut ke Cakupan Kenaikan Kelas
                           <ArrowRight className="w-5 h-5" />
                         </Button>
                       </div>
@@ -400,30 +407,42 @@ const AcademicTransitionPage: React.FC = () => {
                   )}
 
                   {step === 2 && (
+                    <TransitionScope
+                      scopeMode={scopeMode}
+                      onScopeModeChange={setScopeMode}
+                      availableTingkat={availableTingkat}
+                      selectedTingkat={selectedTingkat}
+                      onTingkatToggle={handleTingkatToggle}
+                      onNext={handleScopeNext}
+                      onBack={() => setStep(1)}
+                    />
+                  )}
+
+                  {step === 3 && (
                     <TransitionMapping 
                       onNext={handleMappingNext}
-                      onBack={() => setStep(1)}
+                      onBack={() => setStep(2)}
                       initialMapping={mappingKelas}
                       managedClassId={managedClassId}
                       filterTingkat={scopeMode === 'SELECTED' ? selectedTingkat : undefined}
                     />
                   )}
 
-                  {step === 3 && preview && (
+                  {step === 4 && preview && (
                     <TransitionPreview
                       data={preview}
                       onNext={handlePreviewNext}
                     />
                   )}
 
-                  {step === 4 && (
+                  {step === 5 && (
                     <TransitionConfirm
                       onExecute={handleExecute}
                       loading={loadingExecute}
                     />
                   )}
 
-                  {step === 5 && (
+                  {step === 6 && (
                     <SectionCard>
                       <div className="py-12 text-center space-y-4">
                         <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center text-green-600 dark:text-green-400 mx-auto shadow-lg shadow-green-500/10">

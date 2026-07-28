@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '@/utils/prisma';
+import { organizationalContextCache } from '@/modules/auth/services/organizational-context-cache';
 
 
 
@@ -214,6 +215,10 @@ export class WaliKelasService {
       throw new Error('Guru is already assigned as wali kelas to another kelas');
     }
 
+    if (guru.user_id) {
+      await organizationalContextCache.invalidateUser(String(guru.user_id));
+    }
+
     const assignment = await prisma.$transaction(async (tx) => {
       await tx.organizationalAssignment.updateMany({
         where: { tenant_id: tenantId, position_id: position.id, kelas_id: input.kelas_id, is_active: true },
@@ -315,7 +320,7 @@ export class WaliKelasService {
 
     const existing = await prisma.organizationalAssignment.findFirst({
       where: { id, tenant_id: tenantId, position_id: position.id },
-      select: { id: true },
+      select: { id: true, user_id: true },
     });
     if (!existing) {
       throw new Error('Assignment not found');
@@ -325,6 +330,10 @@ export class WaliKelasService {
       where: { id },
       data: { is_active: false, end_date: new Date(), updated_at: new Date() },
     });
+
+    if (existing.user_id) {
+      await organizationalContextCache.invalidateUser(String(existing.user_id));
+    }
   }
 
   async getBySiswa(
@@ -366,6 +375,74 @@ export class WaliKelasService {
        Kelas: wk.Kelas
     };
   }
+
+  // ── SK Wali Kelas Arsip ──────────────────────────────────────────────────
+
+  async saveSkArsip(tenantId: string, userId: string, data: {
+    guru_id: string;
+    nama_guru: string;
+    nama_kelas: string;
+    tahun_pelajaran: string;
+    nomor_sk?: string;
+    tanggal_sk?: string;
+    halaman_html: any;
+  }) {
+    return await prisma.sKWaliKelasArsip.create({
+      data: {
+        tenant_id: tenantId,
+        guru_id: data.guru_id,
+        nama_guru: data.nama_guru,
+        nama_kelas: data.nama_kelas,
+        tahun_pelajaran: data.tahun_pelajaran,
+        nomor_sk: data.nomor_sk || null,
+        tanggal_sk: data.tanggal_sk || null,
+        halaman_html: data.halaman_html,
+        dicetak_oleh: userId,
+      },
+    });
+  }
+
+  async getSkArsipList(tenantId: string, filters?: { tahun_pelajaran?: string; guru_id?: string; search?: string }) {
+    const where: any = { tenant_id: tenantId };
+    if (filters?.tahun_pelajaran) where.tahun_pelajaran = filters.tahun_pelajaran;
+    if (filters?.guru_id) where.guru_id = filters.guru_id;
+    if (filters?.search) {
+      where.OR = [
+        { nama_guru: { contains: filters.search, mode: 'insensitive' } },
+        { nama_kelas: { contains: filters.search, mode: 'insensitive' } },
+        { nomor_sk: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+    return await prisma.sKWaliKelasArsip.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        tenant_id: true,
+        guru_id: true,
+        nama_guru: true,
+        nama_kelas: true,
+        tahun_pelajaran: true,
+        nomor_sk: true,
+        tanggal_sk: true,
+        dicetak_oleh: true,
+        created_at: true,
+      },
+    });
+  }
+
+  async getSkArsipById(tenantId: string, id: string) {
+    return await prisma.sKWaliKelasArsip.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+  }
+
+  async deleteSkArsip(tenantId: string, id: string) {
+    return await prisma.sKWaliKelasArsip.deleteMany({
+      where: { id, tenant_id: tenantId },
+    });
+  }
 }
 
 export const waliKelasService = new WaliKelasService();
+

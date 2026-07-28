@@ -18,6 +18,7 @@ model Tenant {
   jam_pulang_default            String @default("14:00") // Format HH:mm
   toleransi_keterlambatan_menit Int    @default(15) // Durasi toleransi dalam menit
   hari_sekolah                  Hari[] @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
+  durasi_smk                    String? @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
 
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?
@@ -112,6 +113,7 @@ model Tenant {
   SarprasCategory    SarprasCategory[]
   SarprasLocation    SarprasLocation[]
   SarprasAsset       SarprasAsset[]
+  SKWaliKelasArsip   SKWaliKelasArsip[]
   SarprasLoan        SarprasLoan[]
   SarprasAssetRepair SarprasAssetRepair[]
 
@@ -699,6 +701,7 @@ model Jurusan {
   singkatan             String?
   warna                 String?
   program_keahlian_id   String? // FK ke ProgramKeahlian (Konsentrasi Keahlian)
+  durasi_jurusan        String? @default("DEFAULT_SEKOLAH") // DEFAULT_SEKOLAH | 3_TAHUN | 4_TAHUN
   created_at            DateTime                   @default(now())
   updated_at            DateTime                   @updatedAt
   Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -783,6 +786,9 @@ model Guru {
   agama                 String?
   status_kepegawaian    String?
   pendidikan_terakhir   String?
+  pangkat_golongan      String?
+  jabatan               String?
+  tmt_guru              String?
   jenis_ptk             String?                    @default("PENDIDIK") // PENDIDIK atau TENAGA_KEPENDIDIKAN
   max_jp                Int?                       @default(24)
   foto                  String?
@@ -1132,7 +1138,7 @@ model AbsenSiswa {
   Siswa                       Siswa?        @relation(fields: [siswa_id], references: [id])
 
   @@id([id, created_at])
-  @@unique([sesi_id, siswa_akademik_id, created_at])
+  @@unique([sesi_id, siswa_akademik_id])
   @@index([tenant_id])
   @@index([tenant_id, sesi_id, siswa_akademik_id])
   @@index([siswa_akademik_id])
@@ -1148,6 +1154,7 @@ model Sekolah {
   nss            String?
   kode_sekolah   String?
   jenjang        String?
+  durasi_smk     String?       @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
   kurikulum      String?       @default("MERDEKA")
   akreditasi     String?
   alamat         String?
@@ -1164,12 +1171,13 @@ model Sekolah {
   logo_url       String?
   tahun_berdiri  Int?
   timezone       String?
-  latitude       Float?
-  longitude      Float?
-  created_at     DateTime      @default(now())
-  updated_at     DateTime      @updatedAt
-  Tenant         Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SesiGerbang    SesiGerbang[]
+  latitude               Float?
+  longitude              Float?
+  sk_wali_kelas_template Json?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+  Tenant                 Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SesiGerbang            SesiGerbang[]
 
   @@unique([tenant_id, npsn])
   @@index([tenant_id])
@@ -1250,7 +1258,7 @@ model AbsenGerbangSiswa {
   Tenant                      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@id([id, created_at])
-  @@unique([sesi_gerbang_id, siswa_id, arah, created_at])
+  @@unique([sesi_gerbang_id, siswa_id, arah])
   @@index([tenant_id])
   @@index([tenant_id, sesi_gerbang_id, siswa_id, arah])
   @@index([tenant_id, siswa_id, arah])
@@ -1283,7 +1291,7 @@ model AbsenGerbangGuru {
   Tenant                      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@id([id, created_at])
-  @@unique([sesi_gerbang_id, guru_id, arah, created_at])
+  @@unique([sesi_gerbang_id, guru_id, arah])
   @@index([tenant_id])
   @@index([tenant_id, sesi_gerbang_id, guru_id, arah])
   @@index([tenant_id, guru_id, arah])
@@ -4086,4 +4094,23 @@ model GuruDocument {
 
   @@index([guru_id])
   @@index([tenant_id])
+}
+
+model SKWaliKelasArsip {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  guru_id         String
+  nama_guru       String
+  nama_kelas      String
+  tahun_pelajaran String
+  nomor_sk        String?
+  tanggal_sk      String?
+  halaman_html    Json
+  dicetak_oleh    String
+  created_at      DateTime @default(now())
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([guru_id])
 }

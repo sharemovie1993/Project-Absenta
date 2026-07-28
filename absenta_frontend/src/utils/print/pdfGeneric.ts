@@ -245,7 +245,9 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     checklistData
   } = options;
 
-  const isLandscape = module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType);
+  const isLandscape = (module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType)) ||
+                      printType === 'monthly_matrix' ||
+                      filterData?.viewMode === 'MATRIX';
 
   const doc = new jsPDF({
     orientation: isLandscape ? 'l' : 'p',
@@ -419,7 +421,10 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
         violations: classViolations,
         achievements: classAchievements,
         assets: classAssets,
-        penempatanList: classPenempatanList
+        penempatanList: classPenempatanList,
+        // ── Injeksi data tanda tangan dari pdfGeneric ──
+        _principalName: principalName,
+        _principalNip: principalNip
       }
     };
 
@@ -449,6 +454,13 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       currentY = renderSarprasPdf(doc, classOptions, headerEndY, pageWidth, pageHeight);
     } else if (module === 'hubin') {
       currentY = renderHubinPdf(doc, classOptions, headerEndY, pageWidth, pageHeight);
+    }
+
+    // ── monthly_recap & monthly_matrix: tanda tangan sudah dirender di pdfAttendance.ts ──
+    // Skip blok tanda tangan generic agar tidak double render
+    if (['monthly_recap', 'monthly_matrix'].includes(printType)) {
+      if (classIndex < totalClasses - 1) doc.addPage();
+      continue;
     }
 
     // Shared Bottom Signature

@@ -26,6 +26,7 @@ export interface CreateJurusanPayload {
   singkatan?: string;
   warna?: string | null;
   program_keahlian_id?: string | null;
+  durasi_jurusan?: string | null;
 }
 
 export interface UpdateJurusanPayload {
@@ -34,6 +35,7 @@ export interface UpdateJurusanPayload {
   singkatan?: string;
   warna?: string | null;
   program_keahlian_id?: string | null;
+  durasi_jurusan?: string | null;
 }
 
 // Get Jurusan List - GET /api/academic/jurusan

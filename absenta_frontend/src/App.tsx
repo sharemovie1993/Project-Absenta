@@ -1325,7 +1325,12 @@ function App() {
                     } />
                     <Route path="/attendance/rekap/kelas-bulanan" element={
                       <ProtectedRoute requiredCapability="attendance.reports.view">
-                        <RekapBulananKelasPage />
+                        <RekapPage initialTab="BULANAN_KELAS" />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/attendance/rekap/mapel-bulanan" element={
+                      <ProtectedRoute requiredCapability="attendance.reports.view">
+                        <RekapPage initialTab="BULANAN_MAPEL" />
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/rekap/siswa-harian" element={

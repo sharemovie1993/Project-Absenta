@@ -3,6 +3,22 @@ import axios from 'axios';
 
 const prisma = new PrismaClient();
 
+/**
+ * Normalisasi nomor HP ke format internasional Indonesia (628xxx).
+ * Mendukung format input: "08xxx", "628xxx", "+628xxx", "8xxx".
+ * Dibutuhkan agar pesan WA terkirim ke format JID yang benar.
+ */
+function normalizeToWaNumber(phone: string): string {
+  if (!phone) return phone;
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('0')) {
+    digits = '62' + digits.substring(1);
+  } else if (!digits.startsWith('62')) {
+    digits = '62' + digits;
+  }
+  return digits;
+}
+
 export class WhatsappService {
   async getConfig(tenantId: string) {
     return prisma.whatsappConfig.findUnique({
@@ -31,9 +47,11 @@ export class WhatsappService {
   }
 
   async sendMessage(config: any, to: string, message: string) {
+    const normalizedTo = normalizeToWaNumber(to);
+
     if (config.provider_name === 'LOCAL') {
       const { waGatewayService } = await import('../../../services/wa-gateway.service');
-      return waGatewayService.sendMessage(config.tenant_id, to, message);
+      return waGatewayService.sendMessage(config.tenant_id, normalizedTo, message);
     }
 
     if (!config.api_url || !config.api_token) {
@@ -44,7 +62,7 @@ export class WhatsappService {
       // Logic for different providers (Fonnte is default)
       if (config.provider_name === 'FONNTE') {
         const response = await axios.post(config.api_url, {
-          target: to,
+          target: normalizedTo,
           message: message,
           delay: '2',
           countryCode: '62', // Default Indonesia
@@ -58,7 +76,7 @@ export class WhatsappService {
       
       // Generic Custom Provider (Standard POST)
       const response = await axios.post(config.api_url, {
-        to: to,
+        to: normalizedTo,
         message: message
       }, {
         headers: {

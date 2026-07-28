@@ -21,6 +21,7 @@ import {
   getJadwalKBM, 
   createJadwalKBM, 
   deleteJadwalKBM,
+  clearJadwalKBM,
   type JadwalKBM 
 } from '../../api/attendance/jadwalKBM.api';
 import { getMapelColor } from '../../utils/mapelColorHelper';
@@ -40,7 +41,7 @@ import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimeta
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1);
+const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 // Standard slot times
 const SLOT_TIME: Record<number, { start: string; end: string }> = {
@@ -54,6 +55,8 @@ const SLOT_TIME: Record<number, { start: string; end: string }> = {
   8: { start: "13:15", end: "14:00" },
   9: { start: "14:00", end: "14:45" },
   10: { start: "14:45", end: "15:30" },
+  11: { start: "15:30", end: "16:15" },
+  12: { start: "16:15", end: "17:00" },
 };
 
 export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
@@ -747,6 +750,56 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
     }
   };
 
+  const handleClearSchedule = async () => {
+    let targetKelas = viewMode === 'KELAS' ? selectedKelasId : undefined;
+    let targetGuru = viewMode === 'GURU' ? selectedGuruId : undefined;
+    
+    let scopeText = 'SELURUH jadwal KBM sekolah';
+    if (viewMode === 'KELAS' && targetKelas) {
+      const k = kelasList.find(c => c.value === targetKelas);
+      scopeText = `seluruh jadwal KBM untuk KELAS ${k?.label || ''}`;
+    } else if (viewMode === 'GURU' && targetGuru) {
+      const g = guruList.find(guru => guru.id === targetGuru);
+      scopeText = `seluruh jadwal KBM untuk GURU ${g?.nama_guru || ''}`;
+    } else if (viewMode === 'MASTER_KELAS') {
+      scopeText = 'SELURUH jadwal KBM sekolah (Master Grid Kelas)';
+    } else if (viewMode === 'MASTER_GURU') {
+      scopeText = 'SELURUH jadwal KBM sekolah (Master Grid Guru)';
+    }
+
+    const proceed = await requestConfirm(
+      'Kosongkan / Reset Jadwal KBM',
+      <div className="space-y-3 text-slate-600 dark:text-slate-400 text-left">
+        <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          Apakah Anda yakin ingin mengosongkan/menghapus <strong className="text-rose-600 dark:text-rose-400">{scopeText}</strong>?
+        </p>
+        <p className="text-xs text-rose-500 font-medium">Tindakan ini akan menghapus slot jadwal beserta sesi absensi terkait dan tidak dapat dibatalkan.</p>
+      </div>
+    );
+    if (!proceed) return;
+
+    try {
+      const res = await clearJadwalKBM({
+        kelas_id: targetKelas || undefined,
+        guru_id: targetGuru || undefined,
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+
+      if (res && res.success !== false) {
+        toast.success(res.message || 'Jadwal berhasil dikosongkan.');
+        setAllJadwal([]);
+        fetchSchedules();
+        if (onRefresh) onRefresh();
+      } else {
+        toast.error(res?.message || 'Gagal mengosongkan jadwal');
+      }
+    } catch (err) {
+      console.error('Failed to clear schedules', err);
+      toast.error('Gagal mengosongkan jadwal KBM');
+    }
+  };
+
   const selectedPaintTeacherName = useMemo(() => {
     return guruList.find(g => g.id === paintGuruId)?.nama_guru || '';
   }, [guruList, paintGuruId]);
@@ -1029,6 +1082,7 @@ export const JadwalBuilder: React.FC<JadwalBuilderProps> = ({
           loadingData={loadingData}
           onRefreshSchedules={fetchSchedules}
           onOpenBebanModal={() => setBebanModalOpen(true)}
+          onClearSchedule={handleClearSchedule}
           isFocusMode={isFocusMode}
           onToggleFocusMode={() => setIsFocusMode(prev => !prev)}
           showLeftPanel={showLeftPanel}

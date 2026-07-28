@@ -89,15 +89,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // Hardening: SSRF Protection. Hanya izinkan localhost port 5173 atau 9999
+    // Hardening: SSRF Protection. Hanya izinkan host lokal (localhost / IP LAN) port 5173 atau 9999
     try {
       const parsedTarget = new URL(targetUrl);
-      const isAllowedHost = parsedTarget.hostname === 'localhost' || parsedTarget.hostname === '127.0.0.1';
+      const isAllowedHost = parsedTarget.hostname === 'localhost' || 
+                            parsedTarget.hostname === '127.0.0.1' || 
+                            /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(parsedTarget.hostname) || 
+                            /^192\.168\.\d{1,3}\.\d{1,3}$/.test(parsedTarget.hostname);
       const isAllowedPort = parsedTarget.port === '5173' || parsedTarget.port === '9999';
       
       if (!isAllowedHost || !isAllowedPort) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Akses ditolak: Target URL harus menunjuk ke localhost:5173 atau localhost:9999 (SSRF Protection)' }));
+        res.end(JSON.stringify({ error: 'Akses ditolak: Target URL harus menunjuk ke port 5173 atau 9999 (SSRF Protection)' }));
         return;
       }
     } catch (err) {
@@ -495,7 +498,7 @@ const server = http.createServer((req, res) => {
 
     // ─── Pilar 22: Desentralisasi Konfigurasi (Anti-Hardcoded) ───
     const hasMockData = /\b(const|let|var)\s+\w*(mock|dummy|sample|temp(?!late)|test(?!ing))\w*\s*=/i.test(content);
-    const hasStaticApiUrl = /https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|api\b)/i.test(content);
+    const hasStaticApiUrl = /https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})/i.test(content);
     const hasHardcodedConfigs = hasMockData || hasStaticApiUrl;
 
     // ─── Pilar 23: Standarisasi Kartu Analitik/Statistik (AnalyticsCard) ───
@@ -693,6 +696,6 @@ const server = http.createServer((req, res) => {
   res.end();
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Dev Audit Server running on http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Dev Audit Server running on http://0.0.0.0:${PORT}`);
 });

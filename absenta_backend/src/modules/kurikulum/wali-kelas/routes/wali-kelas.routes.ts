@@ -34,4 +34,22 @@ export async function waliKelasRoutes(fastify: any) {
     ],
     handler: waliKelasController.bySiswa
   });
+
+  // ── SK Wali Kelas Arsip ──
+  fastify.post('/sk-arsip', {
+    handler: waliKelasController.saveSkArsip
+  });
+
+  fastify.get('/sk-arsip', {
+    handler: waliKelasController.getSkArsipList
+  });
+
+  fastify.get('/sk-arsip/:id', {
+    handler: waliKelasController.getSkArsipById
+  });
+
+  fastify.delete('/sk-arsip/:id', {
+    preHandler: [requireCapability('academic.homeroom.manage')],
+    handler: waliKelasController.deleteSkArsip
+  });
 }

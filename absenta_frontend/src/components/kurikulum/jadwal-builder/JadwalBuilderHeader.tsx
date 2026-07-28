@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, SearchableSelect } from '../../ui';
-import { Calendar, Users, RefreshCw, Maximize2, Minimize2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Calendar, Users, RefreshCw, Maximize2, Minimize2, PanelLeftClose, PanelLeft, Trash2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { ViewMode, ToolMode, ColorByMode } from './types';
 import { DropdownOption } from '../../../api/dropdown.api';
@@ -23,6 +23,8 @@ interface Props {
   hariSekolah: string[];
   loadingData: boolean;
   onRefreshSchedules: () => void;
+  onOpenBebanModal?: () => void;
+  onClearSchedule?: () => void;
   isFocusMode?: boolean;
   onToggleFocusMode?: () => void;
   showLeftPanel?: boolean;
@@ -48,6 +50,7 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
   loadingData,
   onRefreshSchedules,
   onOpenBebanModal,
+  onClearSchedule,
   isFocusMode = false,
   onToggleFocusMode,
   showLeftPanel = true,
@@ -64,6 +67,18 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        {onClearSchedule && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearSchedule}
+            className="border-rose-200 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/20 hover:bg-rose-100/50 text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1.5 px-3 py-2 text-xs"
+            title="Kosongkan / Reset Jadwal KBM berdasarkan konteks aktif"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+            <span>Kosongkan Jadwal</span>
+          </Button>
+        )}
         {/* View Switcher with all 4 aSC TimeTables view modes */}
         <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center gap-1 flex-wrap">
           <button
@@ -111,35 +126,6 @@ export const JadwalBuilderHeader: React.FC<Props> = ({
             title="Tabel Raksasa 2D: Semua Kelas vs Jam Pelajaran"
           >
             📊 Master Grid Kelas
-          </button>
-        </div>
-
-        {/* Color Coding Switcher (aSC TimeTables style) */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-          <span className="text-[10px] font-black text-slate-400 uppercase px-1">Warna:</span>
-          <button
-            onClick={() => setColorByMode('MAPEL')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1",
-              colorByMode === 'MAPEL'
-                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-            title="Pewarnaan berdasarkan Jenis Mata Pelajaran"
-          >
-            🎨 Mapel
-          </button>
-          <button
-            onClick={() => setColorByMode('GURU')}
-            className={cn(
-              "px-2.5 py-1 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1",
-              colorByMode === 'GURU'
-                ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-            )}
-            title="Pewarnaan berdasarkan Guru Pengampu (aSC TimeTables Style)"
-          >
-            👤 Guru
           </button>
         </div>
 

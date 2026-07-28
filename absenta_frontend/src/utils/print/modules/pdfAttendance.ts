@@ -27,114 +27,262 @@ export const renderAttendancePdf = (
 
   let currentY = headerEndY;
 
-  if (printType === 'monthly_recap' || printType === 'semester_recap') {
-    const totalStudents = studentsList.length > 0 ? studentsList.length : 5;
-    
-    const documentTitle = printType === 'semester_recap'
-      ? 'REKAP KEHADIRAN SEMESTER KELAS (LEGER ABSENSI)'
-      : 'REKAP KEHADIRAN & ABSENSI BULANAN';
-    
-    const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
-    let periodLabel = '';
-    if (printType === 'semester_recap') {
+  if (printType === 'monthly_recap' || printType === 'semester_recap' || printType === 'monthly_matrix') {
+    const isMatrixMode = filterData?.viewMode === 'MATRIX' || printType === 'monthly_matrix';
+
+    if (isMatrixMode) {
+      const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
+      let daysInMonth = 31;
       try {
         const [yearStr, monthStr] = selectedMonth.split('-');
-        const month = parseInt(monthStr);
-        const isSemester1 = month >= 7;
-        periodLabel = isSemester1 ? `SEMESTER GANJIL ${yearStr}/${parseInt(yearStr)+1}` : `SEMESTER GENAP ${parseInt(yearStr)-1}/${yearStr}`;
-      } catch (e) {
-        periodLabel = selectedMonth;
-      }
-    } else {
+        daysInMonth = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10), 0).getDate();
+      } catch (e) {}
+
+      let periodLabel = selectedMonth;
       try {
         const dt = new Date(`${selectedMonth}-02`);
         periodLabel = dt.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-      } catch (e) {
-        periodLabel = selectedMonth;
-      }
-    }
+      } catch (e) {}
 
-    const tableStartY = drawClassHeaderInfo(
-      doc,
-      documentTitle,
-      selectedClassObj,
-      headerEndY,
-      pageWidth,
-      options.checklistData,
-      `Periode: ${periodLabel}`,
-      selectedMonth
-    );
+      const docTitle = filterData?.mapelName
+        ? `LEGER REKAPITULASI PRESENSI MAPEL ${filterData.mapelName.toUpperCase()}`
+        : 'LEGER REKAPITULASI PRESENSI HARIAN BULANAN';
 
-    let fontSize = 7.5;
-    let cellPadding = 1.5;
+      const tableStartY = drawClassHeaderInfo(
+        doc,
+        docTitle,
+        selectedClassObj,
+        headerEndY,
+        pageWidth,
+        options.checklistData,
+        `Periode: ${periodLabel}`,
+        selectedMonth
+      );
 
-    if (totalStudents > 36) {
-      fontSize = 5.8;
-      cellPadding = 0.45;
-    } else if (totalStudents > 25) {
-      fontSize = 6.5;
-      cellPadding = 0.8;
-    }
+      const dayHeaders = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+      const head = [['NO', 'NIS', 'NAMA SISWA', ...dayHeaders, 'H', 'S', 'I', 'A', 'T', 'POIN']];
 
-    const getStudentRow = (s: any, displayIdx: number) => {
-      const name = s.nama || s.nama_siswa || '-';
-      const studentObj = filterData?.students?.find((std: any) => std.id === s.id || std.nama_siswa === name);
-      const nis = s.nis || studentObj?.nis || '-';
-      const hadir = s.hadir !== undefined ? s.hadir : (s.HADIR !== undefined ? s.HADIR : 0);
-      const sakit = s.sakit !== undefined ? s.sakit : (s.SAKIT !== undefined ? s.SAKIT : 0);
-      const izin = s.izin !== undefined ? s.izin : (s.IZIN !== undefined ? s.IZIN : 0);
-      const alpa = s.alpa !== undefined ? s.alpa : (s.ALPA !== undefined ? s.ALPA : 0);
-      const persentase = s.persentase !== undefined ? s.persentase : (s.PERSENTASE !== undefined ? s.PERSENTASE : 100);
+      const body = studentsList.map((s: any, idx: number) => {
+        const name = s.nama || s.nama_siswa || '-';
+        const nis = s.nis || '-';
+        const dailyMap = s.dailyMap || {};
+        const days = dayHeaders.map(d => dailyMap[d] || '-');
+        const hadir = s.hadir !== undefined ? s.hadir : (s.HADIR !== undefined ? s.HADIR : 0);
+        const sakit = s.sakit !== undefined ? s.sakit : (s.SAKIT !== undefined ? s.SAKIT : 0);
+        const izin = s.izin !== undefined ? s.izin : (s.IZIN !== undefined ? s.IZIN : 0);
+        const alpa = s.alpa !== undefined ? s.alpa : (s.ALPA !== undefined ? s.ALPA : 0);
+        const telat = s.terlambat !== undefined ? s.terlambat : (s.TERLAMBAT !== undefined ? s.TERLAMBAT : 0);
+        const poin = s.total_poin !== undefined ? s.total_poin : (s.poin !== undefined ? s.poin : 0);
 
-      return [
-        displayIdx.toString(),
-        nis,
-        name.toUpperCase(),
-        `${hadir} Hari`,
-        `${sakit} Hari`,
-        `${izin} Hari`,
-        `${alpa} Hari`,
-        `${persentase}%`
-      ];
-    };
+        return [
+          (idx + 1).toString(),
+          nis,
+          name.toUpperCase(),
+          ...days,
+          hadir.toString(),
+          sakit.toString(),
+          izin.toString(),
+          alpa.toString(),
+          telat.toString(),
+          poin.toString()
+        ];
+      });
 
-    let body = [];
-    if (studentsList.length > 0) {
-      body = studentsList.map((s: any, idx: number) => getStudentRow(s, idx + 1));
+      autoTable(doc, {
+        startY: tableStartY,
+        margin: { left: 8, right: 8 },
+        head,
+        body,
+        theme: 'grid',
+        styles: { fontSize: 5.5, font: 'Helvetica', cellPadding: 0.6, halign: 'center', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.1, lineColor: [203, 213, 225], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        bodyStyles: { lineWidth: 0.1, lineColor: [226, 232, 240] },
+        columnStyles: {
+          0: { cellWidth: 7, halign: 'center' },
+          1: { cellWidth: 15, halign: 'center' },
+          2: { cellWidth: 42, halign: 'left' }
+        }
+      });
+      currentY = (doc as any).lastAutoTable?.finalY ?? tableStartY;
     } else {
-      body = [
-        ['1', '1023881', 'AHMAD SULAIMAN', '20 Hari', '0 Hari', '1 Hari', '0 Hari', '95%'],
-        ['2', '1023882', 'BUDI SETIAWAN', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
-        ['3', '1023883', 'CITRA LESTARI', '19 Hari', '1 Hari', '1 Hari', '0 Hari', '90%'],
-        ['4', '1023884', 'DEWI ANGRAENI', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
-        ['5', '1023885', 'EKO PRASETYO', '18 Hari', '0 Hari', '1 Hari', '2 Hari', '85%']
-      ];
+      const totalStudents = studentsList.length > 0 ? studentsList.length : 5;
+      
+      const documentTitle = printType === 'semester_recap'
+        ? 'REKAP KEHADIRAN SEMESTER KELAS (LEGER ABSENSI)'
+        : 'REKAP KEHADIRAN & ABSENSI BULANAN';
+      
+      const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
+      let periodLabel = '';
+      if (printType === 'semester_recap') {
+        try {
+          const [yearStr, monthStr] = selectedMonth.split('-');
+          const month = parseInt(monthStr);
+          const isSemester1 = month >= 7;
+          periodLabel = isSemester1 ? `SEMESTER GANJIL ${yearStr}/${parseInt(yearStr)+1}` : `SEMESTER GENAP ${parseInt(yearStr)-1}/${yearStr}`;
+        } catch (e) {
+          periodLabel = selectedMonth;
+        }
+      } else {
+        try {
+          const dt = new Date(`${selectedMonth}-02`);
+          periodLabel = dt.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        } catch (e) {
+          periodLabel = selectedMonth;
+        }
+      }
+
+      const tableStartY = drawClassHeaderInfo(
+        doc,
+        documentTitle,
+        selectedClassObj,
+        headerEndY,
+        pageWidth,
+        options.checklistData,
+        `Periode: ${periodLabel}`,
+        selectedMonth
+      );
+
+      let fontSize = 7.5;
+      let cellPadding = 1.5;
+
+      if (totalStudents > 36) {
+        fontSize = 5.8;
+        cellPadding = 0.45;
+      } else if (totalStudents > 25) {
+        fontSize = 6.5;
+        cellPadding = 0.8;
+      }
+
+      const getStudentRow = (s: any, displayIdx: number) => {
+        const name = s.nama || s.nama_siswa || '-';
+        const studentObj = filterData?.students?.find((std: any) => std.id === s.id || std.nama_siswa === name);
+        const nis = s.nis || studentObj?.nis || '-';
+        const hadir = s.hadir !== undefined ? s.hadir : (s.HADIR !== undefined ? s.HADIR : 0);
+        const sakit = s.sakit !== undefined ? s.sakit : (s.SAKIT !== undefined ? s.SAKIT : 0);
+        const izin = s.izin !== undefined ? s.izin : (s.IZIN !== undefined ? s.IZIN : 0);
+        const alpa = s.alpa !== undefined ? s.alpa : (s.ALPA !== undefined ? s.ALPA : 0);
+        const persentase = s.persentase !== undefined ? s.persentase : (s.PERSENTASE !== undefined ? s.PERSENTASE : 100);
+
+        return [
+          displayIdx.toString(),
+          nis,
+          name.toUpperCase(),
+          `${hadir} Hari`,
+          `${sakit} Hari`,
+          `${izin} Hari`,
+          `${alpa} Hari`,
+          `${persentase}%`
+        ];
+      };
+
+      let body = [];
+      if (studentsList.length > 0) {
+        body = studentsList.map((s: any, idx: number) => getStudentRow(s, idx + 1));
+      } else {
+        body = [
+          ['1', '1023881', 'AHMAD SULAIMAN', '20 Hari', '0 Hari', '1 Hari', '0 Hari', '95%'],
+          ['2', '1023882', 'BUDI SETIAWAN', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
+          ['3', '1023883', 'CITRA LESTARI', '19 Hari', '1 Hari', '1 Hari', '0 Hari', '90%'],
+          ['4', '1023884', 'DEWI ANGRAENI', '21 Hari', '0 Hari', '0 Hari', '0 Hari', '100%'],
+          ['5', '1023885', 'EKO PRASETYO', '18 Hari', '0 Hari', '1 Hari', '2 Hari', '85%']
+        ];
+      }
+
+      const head = [['NO', 'NIS', 'NAMA SISWA', 'HADIR', 'SAKIT', 'IZIN', 'ALFA', 'PERSENTASE']];
+
+      autoTable(doc, {
+        startY: tableStartY,
+        margin: { left: 15, right: 15 },
+        head,
+        body,
+        theme: 'grid',
+        styles: { fontSize, font: 'Helvetica', cellPadding, halign: 'center', textColor: [15, 23, 42] },
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [203, 213, 225], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        bodyStyles: { lineWidth: 0.15, lineColor: [226, 232, 240] },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },  // NO
+          1: { cellWidth: 20, halign: 'center' },  // NIS
+          2: { cellWidth: 'auto', halign: 'left' }, // NAMA SISWA
+          3: { cellWidth: 18, halign: 'center' },  // HADIR
+          4: { cellWidth: 18, halign: 'center' },  // SAKIT
+          5: { cellWidth: 18, halign: 'center' },  // IZIN
+          6: { cellWidth: 18, halign: 'center' },  // ALFA
+          7: { cellWidth: 22, halign: 'center' }   // PERSENTASE
+        }
+      });
+      currentY = (doc as any).lastAutoTable?.finalY ?? tableStartY;
     }
 
-    const head = [['NO', 'NIS', 'NAMA SISWA', 'HADIR', 'SAKIT', 'IZIN', 'ALFA', 'PERSENTASE']];
+    // ─── Blok Tanda Tangan 2 Kolom: Guru Mapel / Wali Kelas (kiri) + Kepala Sekolah (kanan) ───
+    const isMapelPdf = Boolean(filterData?.mapelName || filterData?.guruMapelName);
+    const leftTitle = isMapelPdf ? 'Guru Mata Pelajaran,' : 'Wali Kelas,';
+    const leftName: string = isMapelPdf
+      ? (filterData?.guruMapelName || '________________________')
+      : (filterData?.waliKelasName || '________________________');
+    const leftNip: string  = isMapelPdf
+      ? (filterData?.guruMapelNip || '')
+      : (filterData?.waliKelasNip || '');
 
-    autoTable(doc, {
-      startY: tableStartY,
-      margin: { left: 15, right: 15 },
-      head,
-      body,
-      theme: 'grid',
-      styles: { fontSize, font: 'Helvetica', cellPadding, halign: 'center', textColor: [15, 23, 42] },
-      headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], lineWidth: 0.15, lineColor: [203, 213, 225], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      bodyStyles: { lineWidth: 0.15, lineColor: [226, 232, 240] },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },  // NO
-        1: { cellWidth: 20, halign: 'center' },  // NIS
-        2: { cellWidth: 'auto', halign: 'left' }, // NAMA SISWA
-        3: { cellWidth: 18, halign: 'center' },  // HADIR
-        4: { cellWidth: 18, halign: 'center' },  // SAKIT
-        5: { cellWidth: 18, halign: 'center' },  // IZIN
-        6: { cellWidth: 18, halign: 'center' },  // ALFA
-        7: { cellWidth: 22, halign: 'center' }   // PERSENTASE
-      }
-    });
-    currentY = (doc as any).lastAutoTable?.finalY ?? tableStartY;
+    // principalName/Nip diinjeksi oleh pdfGeneric.ts dari strukturList/sekolah/tenantInfo
+    const principalName: string = filterData?._principalName
+      || options.checklistData?.kepala_sekolah
+      || '________________________';
+    const principalNip: string  = filterData?._principalNip
+      || options.checklistData?.nip_kepala
+      || '';
+
+    const kota = (() => {
+      try {
+        const alamat = (options.sekolah as any)?.alamat || '';
+        return alamat.split(',')[0]?.trim() || 'Purwakarta';
+      } catch { return 'Purwakarta'; }
+    })();
+    const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const sigSpaceNeeded = 46;
+    if (currentY + sigSpaceNeeded > pageHeight - 8) {
+      doc.addPage();
+      currentY = 15;
+    }
+
+    const sigY = currentY + 6;
+    const leftCenterX  = 15 + 30;   // 45mm dari kiri
+    const rightCenterX = pageWidth - 15 - 30; // 30mm dari kanan
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+
+    // Baris tanggal — rata kanan
+    doc.text(`${kota}, ${tanggal}`, rightCenterX + 30, sigY, { align: 'right' });
+
+    // Baris judul kolom (sama Y)
+    doc.text(leftTitle, leftCenterX, sigY + 6, { align: 'center' });
+    doc.text('Mengetahui,', rightCenterX, sigY + 6, { align: 'center' });
+    doc.text('Kepala Sekolah,', rightCenterX, sigY + 11, { align: 'center' });
+
+    // Nama — setelah ruang tanda tangan 20mm
+    const nameY = sigY + 31;
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(leftName.toUpperCase(), leftCenterX, nameY, { align: 'center' });
+    doc.text(principalName.toUpperCase(), rightCenterX, nameY, { align: 'center' });
+
+    // NIP
+    const nipY = nameY + 4;
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7);
+    if (leftNip) {
+      const nipText = leftNip.startsWith('NIP') ? leftNip : `NIP. ${leftNip}`;
+      doc.text(nipText, leftCenterX, nipY, { align: 'center' });
+    }
+    if (principalNip) {
+      const nipText = principalNip.startsWith('NIP') ? principalNip : `NIP. ${principalNip}`;
+      doc.text(nipText, rightCenterX, nipY, { align: 'center' });
+    }
+
+    currentY = nipY + 8;
 
   } else if (printType === 'blank_attendance') {
     const listSiswa = filterData?.students || [];

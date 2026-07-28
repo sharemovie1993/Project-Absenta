@@ -142,7 +142,6 @@ export async function generateSessionsForTenantDirect(
           slots.sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
 
           let current = { ...slots[0] };
-          mergedSchedules.push(current);
 
           for (let i = 1; i < slots.length; i++) {
             const next = slots[i];
@@ -155,10 +154,11 @@ export async function generateSessionsForTenantDirect(
             if (gap <= 35) {
               current.jam_selesai = next.jam_selesai;
             } else {
-              current = { ...next };
               mergedSchedules.push(current);
+              current = { ...next };
             }
           }
+          mergedSchedules.push(current);
         }
 
         for (const schedule of mergedSchedules) {
@@ -214,6 +214,11 @@ export async function generateSessionsForTenantDirect(
               });
             }
             createdCount++;
+          } else if (existing.waktu_selesai?.getTime() !== startSelesai.getTime()) {
+            await prisma.sesiAbsensi.update({
+              where: { id: existing.id },
+              data: { waktu_selesai: startSelesai }
+            });
           }
         }
       }

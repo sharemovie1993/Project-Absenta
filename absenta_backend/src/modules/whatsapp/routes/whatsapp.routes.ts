@@ -1,10 +1,16 @@
 import { WhatsappController } from '../controllers/whatsapp.controller';
+import { waWebhookController } from '../controllers/wa-webhook.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
 
 const whatsappController = new WhatsappController();
 
 export async function whatsappRoutes(fastify: any) {
+  // POST /whatsapp/webhook - Public Webhook Inbound WA Chatbot
+  fastify.post('/webhook', {
+    handler: waWebhookController.handleInboundWebhook.bind(waWebhookController),
+  });
+
   // GET /whatsapp/config - Get current config
   fastify.get('/config', {
     preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],

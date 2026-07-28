@@ -17,6 +17,7 @@ export const createJurusanSchema = z.object({
     .or(z.literal('')),
   program_keahlian_id: z.string().optional().nullable(),
   warna: z.string().optional().nullable(),
+  durasi_jurusan: z.string().optional().nullable(),
 });
 
 export const updateJurusanSchema = createJurusanSchema;

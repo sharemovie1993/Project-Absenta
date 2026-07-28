@@ -27,6 +27,7 @@ export type SekolahPayload = {
   timezone?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  sk_wali_kelas_template?: any;
 };
 
 export type SekolahUpdatePayload = Partial<SekolahPayload>;
@@ -219,6 +220,7 @@ export class SekolahService {
         ...(payload.timezone !== undefined && { timezone: payload.timezone }),
         ...(payload.latitude !== undefined && { latitude: payload.latitude as any }),
         ...(payload.longitude !== undefined && { longitude: payload.longitude as any }),
+        ...(payload.sk_wali_kelas_template !== undefined && { sk_wali_kelas_template: payload.sk_wali_kelas_template }),
       },
     });
     return sekolah;

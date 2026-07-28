@@ -411,7 +411,7 @@ export const renderKurikulumRosterPdf = (
       'SABTU': 'SABTU',
     };
 
-    const SLOTS = Array.from({ length: 10 }, (_, i) => i + 1);
+    const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
     const SLOT_TIME_FALLBACK: Record<number, string> = {
       1: "07:00-07:45",
@@ -424,6 +424,8 @@ export const renderKurikulumRosterPdf = (
       8: "13:15-14:00",
       9: "14:00-14:45",
       10: "14:45-15:30",
+      11: "15:30-16:15",
+      12: "16:15-17:00",
     };
 
     const head = [
