@@ -689,7 +689,7 @@ export class GuruService {
           nip: nip,
           email: email,
           no_rfid: row.no_rfid ? String(row.no_rfid).trim() : undefined,
-          no_hp: row.no_hp ? String(row.no_hp).trim() : undefined,
+          no_hp: row.no_hp ? normalizePhone(row.no_hp) : undefined,
           alamat: row.alamat ? String(row.alamat).trim() : undefined,
           tempat_lahir: row.tempat_lahir ? String(row.tempat_lahir).trim() : undefined,
           jenis_kelamin: row.jenis_kelamin ? String(row.jenis_kelamin).trim() : undefined,
