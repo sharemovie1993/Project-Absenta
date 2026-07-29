@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { parentAuthService } from '@/modules/parent-app/services/parent-auth.service';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
+import { normalizePhone } from '@/utils/normalization';
 import { siswaDb } from '../repositories/siswa.db';
 import type { SiswaResponse, UpdateSiswaInput } from '../siswa.types';
 import { updateSiswaSchema } from '../siswa.schema';
@@ -56,6 +57,10 @@ export async function updateSiswaCommand(
       dataToUpdate[key] = (restOfInput as any)[key];
     }
   });
+
+  if (dataToUpdate.no_hp) {
+    dataToUpdate.no_hp = normalizePhone(dataToUpdate.no_hp);
+  }
 
   if (validatedInput.user_id && validatedInput.user_id !== existingSiswa.user_id) {
     const user = await siswaDb.user.findFirst({
@@ -368,6 +373,9 @@ export async function updateSiswaCommand(
     for (const ot of validatedInput.orang_tua) {
       let parentId = (ot as any).id;
       const { id, ...otData } = ot as any;
+      if (otData.no_hp) {
+        otData.no_hp = normalizePhone(otData.no_hp);
+      }
 
       if (parentId) {
         const existing = await siswaDb.orangTua.findUnique({ where: { id: parentId } });

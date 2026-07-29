@@ -1,5 +1,6 @@
 import { userService } from '@/modules/user/services/user.service';
 import { parentAuthService } from '@/modules/parent-app/services/parent-auth.service';
+import { normalizePhone } from '@/utils/normalization';
 import { siswaDb } from '../repositories/siswa.db';
 import type { CreateSiswaInput, SiswaResponse } from '../siswa.types';
 import { updateSiswaCommand } from './update-siswa.command';
@@ -235,11 +236,8 @@ export async function createSiswaCommand(
   const nik = validatedInput.nik ? String(validatedInput.nik).trim() : null;
   const rfid = validatedInput.no_rfid ? String(validatedInput.no_rfid).trim() : null;
 
-  // Phone Number Auto-Fix: Ensure it's a string and starts with '0'
-  let phone = validatedInput.no_hp ? String(validatedInput.no_hp).trim() : null;
-  if (phone && /^\d+$/.test(phone) && !phone.startsWith('0')) {
-    phone = '0' + phone;
-  }
+  // Phone Number Auto-Fix: Normalize human format to E.164
+  let phone = validatedInput.no_hp ? normalizePhone(validatedInput.no_hp) : null;
 
   const genderToUse = validatedInput.jenis_kelamin && String(validatedInput.jenis_kelamin).trim() ? validatedInput.jenis_kelamin : '';
 
@@ -349,6 +347,9 @@ export async function createSiswaCommand(
     for (const ot of input.orang_tua as any[]) {
       const { id, ...otData } = ot;
       let parentId = id;
+      if (otData.no_hp) {
+        otData.no_hp = normalizePhone(otData.no_hp);
+      }
 
       if (!parentId && otData.no_hp) {
         const existingParent = await siswaDb.orangTua.findFirst({

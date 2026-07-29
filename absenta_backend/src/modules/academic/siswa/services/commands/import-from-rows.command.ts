@@ -1,5 +1,5 @@
 import { prisma } from '@/utils/prisma';
-import { findBestMatch, parseSmartDate } from '@/utils/normalization';
+import { findBestMatch, parseSmartDate, normalizePhone } from '@/utils/normalization';
 import { createSiswaCommand } from './create-siswa.command';
 
 function getRowValue(row: Record<string, any>, ...possibleKeys: string[]): any {
@@ -148,7 +148,7 @@ export async function importFromRowsCommand(rows: any[], tenantId: string, optio
         tempat_lahir: getRowValue(row, 'tempat_lahir', 'Tempat_Lahir', 'Tempat Lahir'),
         tanggal_lahir: parseSmartDate(getRowValue(row, 'tanggal_lahir', 'Tanggal_Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir')),
         alamat: getRowValue(row, 'alamat', 'Alamat'),
-        no_hp: getRowValue(row, 'no_hp', 'hp', 'HP', 'Telepon', 'No. HP'),
+        no_hp: normalizePhone(getRowValue(row, 'no_hp', 'hp', 'HP', 'Telepon', 'No. HP')),
         nik: getRowValue(row, 'nik', 'NIK'),
         kelas_id: kelasId,
         jurusan_id: matchedJurusanId,
