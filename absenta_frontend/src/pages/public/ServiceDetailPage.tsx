@@ -97,7 +97,7 @@ function ServiceDetailContent() {
     const products: Record<string, GroupedProduct> = {};
 
     plans.forEach((p: any) => {
-        const baseName = p.name
+        const baseName = (p.name || '')
             .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
             .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
             .replace(/-/g, '')
@@ -106,8 +106,11 @@ function ServiceDetailContent() {
             
         const moduleName = p.module?.name || 'Layanan';
         const mode = p.absensi_mode || 'STANDARD';
-        const size = p.size_label || 'Standard';
-        const groupKey = `${baseName}-${mode}`;
+        const size = p.size_label || p.size || 'Standard';
+        const serviceCode = String(p.serviceCode || p.service_code || p.moduleId || p.module_id || '').toUpperCase();
+        
+        // Group key matching UnifiedCatalog
+        const groupKey = serviceCode || `${baseName}-${mode}`;
         
         if (!products[groupKey]) {
             products[groupKey] = {
@@ -116,8 +119,8 @@ function ServiceDetailContent() {
                 mode,
                 module: p.module?.name || moduleName,
                 icon: p.module?.icon || 'Package',
-                service_code: p.service_code || '',
-                module_id: p.module_id || '',
+                service_code: serviceCode,
+                module_id: p.module_id || p.moduleId || '',
                 variants: [],
                 sizes: [],
                 periods: []
@@ -132,14 +135,34 @@ function ServiceDetailContent() {
         products[groupKey].variants.push({
             ...p,
             size_label: size,
-            billing_period: p.billing_period
+            billing_period: p.billing_period || p.billingPeriod
         });
     });
 
     return products;
   }, [plansQuery.data]);
 
-  const product = useMemo(() => (slug && groupedProducts[slug]) || null, [slug, groupedProducts]);
+  const product = useMemo(() => {
+    if (!slug) return null;
+    const slugUpper = slug.toUpperCase().trim();
+    
+    // 1. Direct match by group key
+    if (groupedProducts[slug]) return groupedProducts[slug];
+    if (groupedProducts[slugUpper]) return groupedProducts[slugUpper];
+    
+    // 2. Robust lookup by service_code, module_id, or baseName
+    const list = Object.values(groupedProducts);
+    const matched = list.find(g => 
+      g.id.toUpperCase() === slugUpper ||
+      g.service_code.toUpperCase() === slugUpper ||
+      g.module_id.toUpperCase() === slugUpper ||
+      g.baseName.toUpperCase().includes(slugUpper) ||
+      slugUpper.includes(g.service_code.toUpperCase()) ||
+      g.variants.some((v: any) => v.id?.toUpperCase() === slugUpper)
+    );
+    
+    return matched || list[0] || null;
+  }, [slug, groupedProducts]);
 
   // 3. Identification of Active Plan(s) for this module
   const activePlanIds = useMemo(() => {
