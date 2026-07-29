@@ -52,6 +52,7 @@ const ApprovalsPage = lazy(() => import('./pages/billing/ApprovalsPage'));
 const CheckoutPage = lazy(() => import('./pages/billing/CheckoutPage'));
 const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage'));
 const RABCalculatorPage = lazy(() => import('./pages/billing/RABCalculatorPage').then(m => ({ default: m.RABCalculatorPage })));
+const SIPLaHAuditVerifyPage = lazy(() => import('./pages/public/SIPLaHAuditVerifyPage'));
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
 const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/MonitoringKbmPage'));
 // Removed GerbangPage import
@@ -1423,6 +1424,9 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/rab-calculator" element={<Navigate to="/billing/rab-calculator" replace />} />
+                <Route path="/verify-siplah" element={<SIPLaHAuditVerifyPage />} />
+                <Route path="/verify-siplah/:hash" element={<SIPLaHAuditVerifyPage />} />
+                <Route path="/audit/siplah" element={<Navigate to="/verify-siplah" replace />} />
 
                 {/* Catch-all route -> 404 */}
                 <Route path="*" element={<Navigate to="/404" replace />} />
