@@ -208,7 +208,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           p.type === 'HARDWARE_PERIPHERAL' || p.type === 'PHYSICAL_SERVICE';
 
         // Ekstrak nama dasar produk (tanpa ukuran dan periode)
-        const baseName = isHardware
+        let cleanBaseName = isHardware
             ? p.name
             : p.name
                 .replace(/\((.*?)\)/g, '')
@@ -221,21 +221,40 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
         const moduleName = p.module?.name || 'Layanan';
         const planMode = p.absensi_mode || 'STANDARD';
 
-        // Grouping key: Hardware devices use p.id so each item is a standalone card
-        const groupKey = isHardware
-            ? p.id
-            : (p.module_id ? `${p.module_id}-${planMode}` : `${baseName}-${planMode}`);
+        // Grouping key: Hardware devices grouped by product family
+        let groupKey = p.module_id ? `${p.module_id}-${planMode}` : `${cleanBaseName}-${planMode}`;
+        
+        if (isHardware) {
+          const idUp = (p.id || '').toUpperCase();
+          const nameUp = (p.name || '').toUpperCase();
+          
+          if (idUp.includes('DELL') || nameUp.includes('DELL')) {
+            groupKey = 'HW_GROUP_DELL_SERVER';
+            cleanBaseName = 'Server Dell PowerEdge Build-Up';
+          } else if (idUp.includes('NODE') || nameUp.includes('MINI PC') || nameUp.includes('WORKSTATION')) {
+            groupKey = 'HW_GROUP_MINI_PC';
+            cleanBaseName = 'Absenta Mini PC & Workstation Server';
+          } else if (idUp.includes('AP_') || idUp.includes('SWITCH') || nameUp.includes('WI-FI') || nameUp.includes('SWITCH')) {
+            groupKey = 'HW_GROUP_NETWORK';
+            cleanBaseName = 'Perangkat Jaringan Network & Wi-Fi 6';
+          } else if (idUp.includes('FP_') || idUp.includes('RFID') || nameUp.includes('HIKVISION') || nameUp.includes('ZKTECO') || nameUp.includes('FINGERPRINT') || nameUp.includes('SOLUTION')) {
+            groupKey = 'HW_GROUP_TERMINAL';
+            cleanBaseName = 'Terminal Presensi Absensi (Fingerprint & Wajah)';
+          } else {
+            groupKey = p.id;
+          }
+        }
 
         if (!products[groupKey]) {
             products[groupKey] = {
                 id: groupKey,
-                baseName: baseName || p.name,
-                module: moduleName,
+                baseName: cleanBaseName || p.name,
+                module: isHardware ? cleanBaseName : moduleName,
                 module_id: p.module_id,
-                icon: p.module?.icon || 'Package',
+                icon: isHardware ? (groupKey.includes('DELL') || groupKey.includes('MINI') ? 'Server' : groupKey.includes('NETWORK') ? 'Wifi' : 'Scan') : (p.module?.icon || 'Package'),
                 service_code: p.service_code,
                 mode: planMode,
-                variants: [],         // Semua plan (MONTH + YEAR) disimpan untuk lookup
+                variants: [],         // Semua plan (MONTH + YEAR + ENTERPRISE) disimpan untuk lookup
                 uniqueSizes: new Set<string>(), // Hanya size_label unik (tanpa duplikat periode)
             };
         }
