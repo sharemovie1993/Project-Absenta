@@ -36,18 +36,28 @@ export class WaChatbotResolverService {
    */
   private normalizePhoneVariations(phone: string): string[] {
     if (!phone) return [];
-    const raw = phone.replace(/\D/g, '');
+    const rawInput = phone.trim();
+    const rawDigits = phone.replace(/\D/g, '');
 
-    let digits62 = raw;
-    if (raw.startsWith('0')) {
-      digits62 = '62' + raw.substring(1);
-    } else if (raw.startsWith('62')) {
-      digits62 = raw;
+    let digits62 = rawDigits;
+    if (rawDigits.startsWith('0')) {
+      digits62 = '62' + rawDigits.substring(1);
+    } else if (rawDigits.startsWith('62')) {
+      digits62 = rawDigits;
     } else {
-      return Array.from(new Set([raw, '+' + raw]));
+      return Array.from(new Set([rawInput, rawDigits, '+' + rawDigits]));
     }
 
-    return Array.from(new Set([digits62, '0' + digits62.substring(2), '+' + digits62]));
+    const local08 = '0' + digits62.substring(2);
+    const plus62 = '+' + digits62;
+
+    return Array.from(new Set([
+      rawInput,
+      rawDigits,
+      digits62,
+      local08,
+      plus62
+    ]));
   }
 
   /** Cek apakah nomor terlihat seperti WA LID (bukan nomor HP Indonesia) */
