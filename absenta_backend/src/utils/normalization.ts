@@ -200,3 +200,42 @@ export function parseSmartDateISO(val: any): string | undefined {
   if (!d) return undefined;
   return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Smart Universal Phone Number Normalizer
+ * Cleans human-formatted phone numbers (with +, spaces, hyphens, dots, parentheses)
+ * and normalizes them into E.164 international format for WhatsApp API.
+ * 
+ * Examples:
+ * - "+62 896-2441-3887"   -> "6289624413887"
+ * - "0896-2441-3887"       -> "6289624413887"
+ * - "+62 (896) 2441.3887"  -> "6289624413887"
+ * - "6289624413887@c.us"    -> "6289624413887"
+ */
+export function normalizePhone(val: any): string {
+  if (val === null || val === undefined) return '';
+  
+  let raw = String(val).trim();
+  if (!raw) return '';
+
+  // Remove WhatsApp suffix if present (@c.us, @s.whatsapp.net)
+  raw = raw.split('@')[0];
+
+  // Remove all non-digit characters (plus, minus, spaces, dots, parentheses)
+  let digits = raw.replace(/\D/g, '');
+
+  if (!digits) return '';
+
+  // Handle Indonesian local format (08xxx -> 628xxx)
+  if (digits.startsWith('0')) {
+    digits = '62' + digits.slice(1);
+  }
+
+  return digits;
+}
+
+export function formatWAJid(val: any): string {
+  const phone = normalizePhone(val);
+  if (!phone) return '';
+  return `${phone}@s.whatsapp.net`;
+}
