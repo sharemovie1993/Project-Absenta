@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { applyDataScope } from '@/utils/applyDataScope';
+import { normalizePhone } from '@/utils/normalization';
 import { userService } from '../../../user/services/user.service';
 import { DataScope } from '../../../../types/fastify';
 import { uploadGuruDocumentCommand } from './commands/upload-guru-document.command';
@@ -411,7 +412,7 @@ export class GuruService {
         nip: nipToUse,
         nama_guru: input.nama_guru,
         no_rfid: input.no_rfid || null,
-        no_hp: input.no_hp ?? null,
+        no_hp: input.no_hp ? normalizePhone(input.no_hp) : null,
         alamat: input.alamat ?? null,
         tempat_lahir: input.tempat_lahir ?? null,
         tanggal_lahir: input.tanggal_lahir ? new Date(input.tanggal_lahir) : null,
@@ -501,7 +502,16 @@ export class GuruService {
     if (input.nip !== undefined) updateData.nip = input.nip;
     if (input.nama_guru !== undefined) updateData.nama_guru = input.nama_guru;
     if (input.no_rfid !== undefined) updateData.no_rfid = input.no_rfid;
-    if (input.no_hp !== undefined) updateData.no_hp = input.no_hp;
+    if (input.no_hp !== undefined) {
+      const cleanPhone = input.no_hp ? normalizePhone(input.no_hp) : null;
+      updateData.no_hp = cleanPhone;
+      if (existingGuru.user_id && cleanPhone) {
+        await prisma.user.update({
+          where: { id: existingGuru.user_id },
+          data: { no_hp: cleanPhone }
+        });
+      }
+    }
     if (input.alamat !== undefined) updateData.alamat = input.alamat;
     if (input.tempat_lahir !== undefined) updateData.tempat_lahir = input.tempat_lahir;
     if (input.tanggal_lahir !== undefined) updateData.tanggal_lahir = input.tanggal_lahir ? new Date(input.tanggal_lahir) : null;
