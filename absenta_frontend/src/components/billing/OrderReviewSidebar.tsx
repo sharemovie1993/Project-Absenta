@@ -271,6 +271,69 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                   })()}
                 </div>
 
+                {/* 2. PILIH EDISI PERANGKAT / HARDWARE VARIANT (Standar Barebone vs Enterprise Solution) */}
+                {isHardware && (
+                  <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+                      1 · Pilih Tipe Paket / Edisi Perangkat
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {(() => {
+                        const variants = activeOrder.group?.variants || [];
+                        if (variants.length <= 1) {
+                          return (
+                            <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">
+                              {activeOrder.name}
+                            </div>
+                          );
+                        }
+
+                        return variants.map((v: any) => {
+                          const isSelected = activeOrder.plan_id === v.id || activeOrder.name === v.name;
+                          const isEnt = (v.name || '').includes('Enterprise Solution') || (v.id || '').includes('_ENT');
+                          const price = v.price_onetime || v.price_monthly || 0;
+
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveOrder(prev => ({
+                                  ...prev,
+                                  plan_id: v.id,
+                                  name: v.name,
+                                  price: price,
+                                  price_onetime: price
+                                }));
+                              }}
+                              className={`p-3.5 rounded-xl text-left border-2 transition-all flex flex-col justify-between gap-2.5 ${
+                                isSelected
+                                  ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-600 text-blue-900 dark:text-white shadow-md'
+                                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between gap-1 mb-1.5">
+                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                                    isEnt ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                                  }`}>
+                                    {isEnt ? '⭐ Enterprise Solution' : '📦 Standar Barebone'}
+                                  </span>
+                                  {isSelected && <Check size={14} className="text-blue-600 dark:text-blue-400 font-bold" />}
+                                </div>
+                                <div className="text-xs font-black leading-snug line-clamp-2">{v.name}</div>
+                              </div>
+                              <div className="text-sm font-black font-mono text-blue-600 dark:text-blue-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                                Rp {price.toLocaleString('id-ID')}
+                              </div>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 {/* 2. PILIH EDISI (Hanya untuk SaaS jika ada varian edisi) */}
                 {groupedVariants.length > 1 && !isHardware && (
                   <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
