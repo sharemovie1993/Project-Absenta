@@ -107,7 +107,9 @@ export const getServiceThumbnail = (code: string | undefined | null, moduleName?
   const isInventory = c.includes('INVENTORY') || c.includes('SARPRAS') || c.includes('ASSET') || n.includes('INVENTORY') || n.includes('SARPRAS') || n.includes('ASET');
   const isHubin = c.includes('HUBIN') || c.includes('PKL') || n.includes('HUBIN') || n.includes('PKL') || n.includes('INDUSTRI');
   const isWhatsapp = c.includes('WHATSAPP') || n.includes('WHATSAPP') || n.includes('WA ');
+  const isServer = c.includes('SERVER') || c.includes('DELL') || n.includes('SERVER') || n.includes('DELL');
   
+  if (isServer) return '/assets/modules/server.png';
   if (isAbsensi) {
      if (m === 'MULTI_SESI' || m.includes('MULTI')) return '/assets/modules/absensi-multi-sesi.png';
      return '/assets/modules/absensi-simple.png';

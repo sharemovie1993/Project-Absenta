@@ -22,6 +22,8 @@ export interface PlanResponse {
   id: string;
   name: string;
   price_monthly: number;
+  price_onetime?: number;
+  weight_grams?: number;
   module_id?: string | null;
   module?: any;
   max_user: number | null;
@@ -86,47 +88,73 @@ export class PlanService {
   async getAllPlans(includeInactive: boolean = false): Promise<PlanResponse[]> {
     try {
       const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
-      const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+
+      // Satu request ke product_id=cakola — mencakup software + hardware
+      const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
+
+      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         const localModules = await prisma.module.findMany();
-        return response.data.data.map((plan: any) => {
+
+        const MODULE_META: Record<string, { name: string; icon: string }> = {
+          SERVER_HARDWARE:   { name: 'Server Node',       icon: 'Server'      },
+          NETWORK_HARDWARE:  { name: 'Network Wi-Fi 6',   icon: 'Wifi'        },
+          ABSENSI_HARDWARE:  { name: 'Biometrik & RFID',  icon: 'Fingerprint' },
+          PHYSICAL_SERVICE:  { name: 'Kartu & Cetak',     icon: 'CreditCard'  },
+        };
+
+        return res.data.data.map((plan: any) => {
           let features = plan.features_json;
           if (typeof features === 'string') {
-            try {
-              features = JSON.parse(features);
-            } catch (e) {
-              features = [];
-            }
+            try { features = JSON.parse(features); } catch { features = []; }
           }
-          const localMod = localModules.find(m => m.id === plan.module_id || (plan.module_id === 'PAKET_LENGKAP' && m.id.startsWith('PAKET_LENGKAP')));
+
           const planName = plan.name || plan.title || '';
+          const localMod = localModules.find(m =>
+            m.id === plan.module_id ||
+            (plan.module_id === 'PAKET_LENGKAP' && m.id.startsWith('PAKET_LENGKAP'))
+          );
+
+          const meta = MODULE_META[plan.module_id];
+          const modObj = localMod ?? (meta
+            ? { id: plan.module_id, name: meta.name, icon: meta.icon }
+            : (plan.module_id ? { id: plan.module_id, name: plan.module_id } : null)
+          );
+
+          const priceOnetime = plan.price_onetime ||
+            Number(String(plan.price || 0).replace(/[^0-9]/g, '')) || 0;
+
           return {
-            id: plan.id,
-            name: planName,
-            price_monthly: plan.price_monthly || 0,
-            module_id: plan.module_id || null,
-            module: localMod || (plan.module_id ? { id: plan.module_id, name: plan.module_id } : null),
-            max_user: plan.device_limit || null,
-            features_json: features || [],
-            description: plan.description ?? null,
-            price_yearly: plan.price_yearly ?? null,
-            trial_days: 0,
-            absensi_mode: plan.module_id === 'ABSENSI' ? (planName.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+            id:            plan.id,
+            name:          planName,
+            price_monthly: plan.price_monthly  || 0,
+            price_onetime: priceOnetime,
+            weight_grams:  plan.weight_grams   || 0,
+            image_url:     plan.image_url      || null,
+            module_id:     plan.module_id      || null,
+            module:        modObj,
+            max_user:      plan.device_limit   || null,
+            features_json: features            || [],
+            description:   plan.description    ?? null,
+            price_yearly:  plan.price_yearly   ?? null,
+            trial_days:    0,
+            absensi_mode:  plan.module_id === 'ABSENSI'
+              ? (planName.includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE')
+              : undefined,
             billing_period: plan.billing_period || 'MONTH',
-            currency: 'IDR',
-            is_active: true,
-            size_label: this.getPlanSizeLabel(plan),
-            tier: this.getPlanSizeLabel(plan),
-            service_code: plan.service_code || this.resolveServiceCode(planName, features),
-            metadata: null,
-            created_at: new Date(plan.created_at || Date.now()),
-            updated_at: new Date(plan.updated_at || Date.now()),
-            _count: { subscriptions: 0 }
+            currency:       'IDR',
+            is_active:      true,
+            size_label:     this.getPlanSizeLabel(plan),
+            tier:           this.getPlanSizeLabel(plan),
+            service_code:   plan.service_code || this.resolveServiceCode(planName, features),
+            metadata:       null,
+            created_at:     new Date(plan.created_at || Date.now()),
+            updated_at:     new Date(plan.updated_at || Date.now()),
+            _count:         { subscriptions: 0 }
           };
         });
       }
     } catch (err) {
-      console.error('[PLAN SERVICE] Failed to fetch plans from Licensing Server, falling back to local database', err);
+      console.error('[PLAN SERVICE] Gagal mengambil plan dari Licensing Server, fallback ke database lokal:', err);
     }
 
     const whereClause: any = {};

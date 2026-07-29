@@ -705,7 +705,7 @@ export default function ServiceCenterPage() {
               </div>
             )}
 
-            {currentTab === 'catalog' && (
+{currentTab === 'catalog' && (
               <div className="space-y-10 pb-20">
                 <UnifiedCatalog 
                   mode="private"
@@ -715,47 +715,89 @@ export default function ServiceCenterPage() {
                     const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
                     const variants = group.variants || [];
 
-                    // Pilih default: varian MONTH dengan ukuran yang sesuai dengan activeAcademicTier (jika ada)
+                    const extractSize = (v: any): string => {
+                      if (v?.size_label) return v.size_label;
+                      const name = String(v?.name || v?.title || '');
+                      const id = String(v?.id || '');
+
+                      if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
+                      if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
+                      if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
+                      if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
+                      if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
+                      if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
+
+                      const limit = v?.device_limit || v?.max_user || 0;
+                      if (limit > 0) {
+                        if (limit <= 300) return 'Micro';
+                        if (limit <= 600) return 'Small';
+                        if (limit <= 1200) return 'Large';
+                        if (limit <= 2500) return 'Enterprise';
+                        return 'Ultra';
+                      }
+
+                      return 'Standard';
+                    };
+
+                    const HARDWARE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
+                    const isHardware = Boolean(
+                      HARDWARE_IDS.includes(group.module_id || '') ||
+                      HARDWARE_IDS.includes(group.service_code || '') ||
+                      (variants[0]?.type === 'HARDWARE_PERIPHERAL' || variants[0]?.type === 'PHYSICAL_SERVICE') ||
+                      (group.id && (
+                        group.id.startsWith('HW_') || 
+                        group.id.startsWith('SVC_') || 
+                        group.id.includes('SERVER') || 
+                        group.id.includes('DELL')
+                      ))
+                    );
+
+                    // Pilih default: varian MONTH dengan ukuran yang sesuai dengan activeAcademicTier
                     const monthlyVariants = variants.filter((v) =>
                       v.billing_period === 'MONTH' || !v.billing_period
                     );
                     
                     let defaultVariant = monthlyVariants.find(
-                      (v) => (v.size_label || '').toLowerCase() === activeAcademicTier.toLowerCase()
+                      (v) => extractSize(v).toLowerCase() === activeAcademicTier.toLowerCase()
                     );
                     if (!defaultVariant) {
                       defaultVariant = variants.find(
-                        (v) => (v.size_label || '').toLowerCase() === activeAcademicTier.toLowerCase()
+                        (v) => extractSize(v).toLowerCase() === activeAcademicTier.toLowerCase()
                       );
                     }
                     if (!defaultVariant) {
                       const sortedMonthly = [...monthlyVariants].sort((a, b) => {
-                        const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === (a.size_label || '').toLowerCase());
-                        const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === (b.size_label || '').toLowerCase());
+                        const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === extractSize(a).toLowerCase());
+                        const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === extractSize(b).toLowerCase());
                         return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
                       });
                       defaultVariant = sortedMonthly[0] || variants[0];
                     }
+
+                    const priceOnetime = defaultVariant.price_onetime ||
+                      Number(String(defaultVariant.price || 0).replace(/[^0-9]/g, '')) || 0;
+
+                    const sizeName = extractSize(defaultVariant);
 
                     setActiveOrder({
                       id: defaultVariant.id,
                       service_code: group.service_code,
                       moduleIcon: group.icon,
                       moduleName: group.module,
-                      name: group.baseName,
-                      size: defaultVariant.size_label || 'Standard',
-                      period: 'MONTH',  // Selalu mulai dari Bulanan
+                      name: defaultVariant.name || group.baseName,
+                      size: sizeName,
+                      period: isHardware ? 'ONETIME' : 'MONTH',
                       features_json: defaultVariant.features_json || [],
                       price_monthly: defaultVariant.price_monthly || 0,
                       price_yearly: defaultVariant.price_yearly || 0,
-                      group: group // Simpan seluruh group untuk lookup di sidebar
+                      price_onetime: isHardware ? priceOnetime : 0,
+                      group: group
                     });
                     setShowOrderPanel(true);
                   }}
                 />
               </div>
             )}
-
 
             {currentTab === 'billing' && (
               <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>

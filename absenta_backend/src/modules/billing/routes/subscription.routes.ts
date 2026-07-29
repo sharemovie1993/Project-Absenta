@@ -77,6 +77,11 @@ export async function subscriptionRoutes(fastify: any) {
     handler: subscriptionController.orderPlan.bind(subscriptionController),
   });
 
+  fastify.post('/checkout-multi', {
+    preHandler: [requireCapability(['billing.my.subscription.create', 'billing.my.subscription.upgrade'])],
+    handler: subscriptionController.orderPlanMulti.bind(subscriptionController),
+  });
+
   fastify.post('/update-academic-tier', {
     preHandler: [requireCapability(['billing.my.subscription.upgrade'])],
     handler: subscriptionController.updateAcademicTier.bind(subscriptionController),

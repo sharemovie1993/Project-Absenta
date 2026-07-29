@@ -51,6 +51,7 @@ const BillingReportsPage = lazy(() => import('./pages/billing/BillingReportsPage
 const ApprovalsPage = lazy(() => import('./pages/billing/ApprovalsPage'));
 const CheckoutPage = lazy(() => import('./pages/billing/CheckoutPage'));
 const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage'));
+const RABCalculatorPage = lazy(() => import('./pages/billing/RABCalculatorPage').then(m => ({ default: m.RABCalculatorPage })));
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
 const MonitoringKbmPage = lazy(() => import('./pages/attendance/monitoring/MonitoringKbmPage'));
 // Removed GerbangPage import
@@ -1409,6 +1410,20 @@ function App() {
                   </Route>
                 </Route>
 
+                {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout) ── */}
+                <Route path="/billing/rab-calculator" element={
+                  <ProtectedRoute>
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <RABCalculatorPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/rab-calculator" element={<Navigate to="/billing/rab-calculator" replace />} />
+
                 {/* Catch-all route -> 404 */}
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>
@@ -1470,7 +1485,34 @@ export default App;
 function UnauthedGate() {
   const location = useLocation();
   const path = String(location.pathname || '');
-  const isSaas = import.meta.env.VITE_DEPLOY_MODE !== 'ON_PREMISE';
-  const to = (path.startsWith('/documents') || !isSaas) ? '/login' : '/home';
-  return <Navigate to={to} replace />;
+  const hostname = (typeof window !== 'undefined' ? window.location.hostname : '').toLowerCase();
+  
+  // Deteksi domain utama marketing vs domain portal SaaS app
+  const isMarketingDomain = hostname === 'absenta.id' || 
+                            hostname === 'www.absenta.id' || 
+                            hostname === 'localhost' || 
+                            hostname === '127.0.0.1';
+
+  const isAppPortalDomain = hostname === 'app.absenta.id' || 
+                            hostname === 'portal.absenta.id';
+
+  // Jalur khusus dokumen tetap ke portal login jika belum terautentikasi
+  if (path.startsWith('/documents')) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Jika di domain marketing (absenta.id / www.absenta.id), arahkan rute publik ke Landing Page (/home)
+  if (isMarketingDomain && (path === '/' || path === '')) {
+    return <Navigate to="/home" replace />;
+  }
+
+  // Jika di portal app.absenta.id dan mengakses rute registrasi/RAB, biarkan tetap di rute tersebut
+  if (isAppPortalDomain) {
+    if (path === '/' || path === '') {
+      return <Navigate to="/register-tenant" replace />;
+    }
+  }
+
+  // Untuk subdomain tenant sekolah (seperti smkn1cibinong.absenta.id) atau On-Premise, arahkan ke Portal Login Sekolah (/login)
+  return <Navigate to="/login" replace />;
 }

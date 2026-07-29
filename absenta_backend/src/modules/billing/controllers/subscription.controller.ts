@@ -1082,6 +1082,58 @@ export const subscriptionController = {
     }
   },
 
+  async orderPlanMulti(request: any, reply: any) {
+    try {
+      const user = request.user;
+      if (!user) throw toHttpError(401, 'Unauthorized');
+
+      const { items, payment_method, shipping_address } = request.body as {
+        items: Array<{ plan_id: string; qty: number }>;
+        payment_method?: string;
+        shipping_address?: any;
+      };
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        throw toHttpError(400, 'Keranjang belanja tidak boleh kosong.');
+      }
+
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const axios = require('axios');
+
+      const tenant = await prisma.tenant.findUnique({ where: { id: user.tenant_id } });
+      const schoolName = tenant ? tenant.name : 'Sekolah Absenta Client';
+
+      console.log(`[ORDER MULTI PROXY] Forwarding ${items.length} items to CLS server...`);
+      const response = await axios.post(`${LICENSE_SERVER_URL}/api/public/checkout-multi`, {
+        school_name: schoolName,
+        tenant_id: user.tenant_id,
+        items,
+        payment_method: payment_method || 'QRIS',
+        shipping_address,
+        phone_number: user.phone || '087779937341'
+      }, { timeout: 15000 });
+
+      if (!response.data || !response.data.success || !response.data.data) {
+        throw toHttpError(500, response.data?.message || 'Gagal membuat invoice multi-item di Server Lisensi.');
+      }
+
+      reply.status(200);
+      return response.data;
+    } catch (error: any) {
+      console.error('[ORDER MULTI PROXY ERROR]', error);
+      let statusCode = Number(error?.statusCode) || 500;
+      let msg = error instanceof Error ? error.message : 'Failed to process multi-item checkout centrally';
+      if (error?.response) {
+        statusCode = error.response.status || statusCode;
+        if (error.response.data && error.response.data.message) {
+          msg = error.response.data.message;
+        }
+      }
+      reply.status(statusCode);
+      return { success: false, message: msg };
+    }
+  },
+
   async cancelPendingUpgrade(request: any, reply: any) {
     try {
       const user = request.user!;
