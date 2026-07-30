@@ -13,9 +13,11 @@
 import path from 'path';
 import fs from 'fs';
 import { EventEmitter } from 'events';
+import { randomUUID } from 'crypto';
 import { prisma } from '../utils/prisma';
 import { waChatbotResolverService, persistLidMapping } from '../modules/whatsapp/services/wa-chatbot-resolver.service';
 import { getRedisConnection } from '../queue/redis';
+import { createRedisConnection } from '../infra/redis/redisClient';
 
 // ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
 const WA_GROUPS_CACHE_TTL_SECONDS = 300; // 5 menit
@@ -371,7 +373,9 @@ async function syncStatusToDB(tenantId: string, status: string, number: string |
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export const waGatewayService = {
+// ─── Local WA Gateway Implementation ─────────────────────────────────────────
+
+const waGatewayServiceLocal = {
   /**
    * Inisialisasi WA untuk satu tenant (dipanggil saat admin klik "Hubungkan WA")
    */
@@ -408,7 +412,6 @@ export const waGatewayService = {
     } catch (err: any) {
       if (err.message === 'TIMEOUT_SEND') {
         console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout (5 detik). Koneksi mati (zombie). Memulai reconnect otomatis...`);
-        // Putuskan koneksi socket saat ini secara paksa untuk memicu reconnect
         try {
           entry.sock.ev.removeAllListeners('connection.update');
           entry.sock.ev.removeAllListeners('creds.update');
@@ -418,15 +421,12 @@ export const waGatewayService = {
         entry.status = 'connecting';
         await syncStatusToDB(tenantId, 'connecting', null);
         
-        // Mulai ulang koneksi setelah jeda 2 detik
         setTimeout(() => connectTenant(tenantId), 2000);
         throw new Error('Koneksi WhatsApp tidak merespons (zombie socket). Sistem sedang menyambung ulang otomatis.');
       }
       throw err;
     }
   },
-
-
 
   /**
    * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
@@ -453,7 +453,7 @@ export const waGatewayService = {
 
     try {
       await Promise.race([sendPromise, timeoutPromise]);
-      console.log(`[WA-Pool:${tenantId}] Pesan piket terkirim ke JID ${finalJid}`);
+      console.log(`[WA-Pool:${tenantId}] Pesan terkirim ke JID ${finalJid}`);
       return true;
     } catch (err: any) {
       if (err.message === 'TIMEOUT_SEND') {
@@ -464,17 +464,9 @@ export const waGatewayService = {
     }
   },
 
-
-  /**
-   * Kirim pesan WA secara soft melalui antrian (Queue Dispatcher).
-   * - Tidak throw jika belum connected — pesan masuk antrian, dikirim saat WA ready.
-   * - Rate-limited 1 pesan / 3 detik per tenant untuk mencegah ban WA.
-   * - Gunakan ini untuk semua notifikasi opsional (absensi, BK, billing, dll).
-   */
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     if (!nomor) return;
     try {
-      // Lazy import untuk menghindari circular dependency
       const { waQueueService } = await import('./wa-queue.service');
       await waQueueService.enqueueSoft({ tenantId, nomor, pesan, source: source ?? 'soft-send' });
     } catch (e: any) {
@@ -482,9 +474,6 @@ export const waGatewayService = {
     }
   },
 
-  /**
-   * Cek apakah tenant punya hak kirim WA (punya subscription WHATSAPP_SERVICE aktif)
-   */
   async hasWaSubscription(tenantId: string): Promise<boolean> {
     try {
       const sub = await (prisma as any).subscription.findFirst({
@@ -506,8 +495,6 @@ export const waGatewayService = {
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
-    // Hanya master instance yang boleh membuka socket baru.
-    // Non-master instance cukup membaca pool (yang kosong) — jangan trigger connectTenant.
     if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
@@ -523,25 +510,12 @@ export const waGatewayService = {
     };
   },
 
-  /**
-   * Health check yang benar-benar memverifikasi kualitas koneksi WA.
-   * Mengembalikan status:
-   *  - `connected`   : socket open, tidak ada masalah
-   *  - `degraded`    : socket open TAPI banyak kegagalan dekripsi Signal ("ghost connection")
-   *  - `ghost`       : socket tercatat 'connected' tapi sock object sudah null/tidak responsif
-   *  - `connecting`  : sedang proses koneksi / scan QR
-   *  - `disconnected`: tidak ada koneksi
-   */
   getHealthStatus(tenantId: string) {
     let entry = pool.get(tenantId);
     const authDir = getTenantAuthDir(tenantId);
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
-    // PERBAIKAN: Hanya master instance (Instance 0 pada PM2 cluster) yang boleh
-    // membuka socket WA baru. Instance lain cukup membaca pool memori masing-masing.
-    // Sebelumnya semua instance memanggil connectTenant() → menyebabkan log spam
-    // & berpotensi memicu koneksi duplikat yang men-trigger kode 428 (stream replaced).
     if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
@@ -561,7 +535,6 @@ export const waGatewayService = {
       };
     }
 
-    // If creds.json exists on disk, state MUST be connected (never transient connecting)
     const effectiveStatus = (entry?.status === 'connected' || hasCreds) ? 'connected' : (entry?.status ?? 'connecting');
 
     if (effectiveStatus === 'connecting' && !hasCreds) {
@@ -577,10 +550,8 @@ export const waGatewayService = {
       };
     }
 
-    // Status = 'connected' — verifikasi lebih lanjut
     const now = Date.now();
 
-    // Ghost: socket tercatat connected tapi object sock sudah null
     if (!entry.sock) {
       return {
         health: 'ghost' as const,
@@ -594,7 +565,6 @@ export const waGatewayService = {
       };
     }
 
-    // Degraded: banyak kegagalan dekripsi dalam 5 menit terakhir
     const recentDecryptFail =
       entry.lastDecryptFailAt &&
       now - entry.lastDecryptFailAt.getTime() < 5 * 60 * 1000 &&
@@ -650,20 +620,10 @@ export const waGatewayService = {
     pool.delete(tenantId);
   },
 
-  /**
-   * Mendeteksi dan mengambil seluruh daftar Grup WhatsApp yang diikuti oleh nomor WA yang tertaut.
-   *
-   * PERBAIKAN:
-   * 1. Hasil di-cache di Redis selama 5 menit untuk menghindari panggilan berulang
-   *    ke server WA yang dapat memicu stream error (kode 428 / disconnect).
-   * 2. Diberi timeout 15 detik agar tidak menggantung koneksi socket selamanya.
-   * 3. forceRefresh=true untuk memaksa refresh cache (misal: user klik "Muat Ulang Grup").
-   */
   async getParticipatingGroups(tenantId: string, forceRefresh = false) {
     const redis = getRedisConnection();
     const cacheKey = getGroupsCacheKey(tenantId);
 
-    // ── 1. Cek cache Redis terlebih dahulu (jika tidak force refresh) ──────────
     if (!forceRefresh && redis) {
       try {
         const cached = await redis.get(cacheKey);
@@ -672,17 +632,15 @@ export const waGatewayService = {
           return JSON.parse(cached);
         }
       } catch (cacheErr: any) {
-        console.warn(`[WA-Pool:${tenantId}] Redis cache read error (akan fetch live):`, cacheErr.message);
+        console.warn(`[WA-Pool:${tenantId}] Redis cache read error:`, cacheErr.message);
       }
     }
 
-    // ── 2. Validasi koneksi sebelum fetch ke WA server ────────────────────────
     const entry = pool.get(tenantId);
     if (!entry || entry.status !== 'connected' || !entry.sock) {
       throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
     }
 
-    // ── 3. Fetch dengan timeout 15 detik agar tidak hang ─────────────────────
     try {
       console.log(`[WA-Pool:${tenantId}] Groups: Fetching live dari WA server...`);
       const fetchPromise = entry.sock.groupFetchAllParticipating();
@@ -702,7 +660,6 @@ export const waGatewayService = {
         isCommunity: !!g.isCommunity,
       }));
 
-      // ── 4. Simpan hasil ke Redis cache ─────────────────────────────────────
       if (redis) {
         try {
           await redis.set(cacheKey, JSON.stringify(groupList), 'EX', WA_GROUPS_CACHE_TTL_SECONDS);
@@ -723,10 +680,6 @@ export const waGatewayService = {
     }
   },
 
-  /**
-   * Hapus cache grup WA untuk satu tenant di Redis.
-   * Dipanggil jika user bergabung/keluar dari grup.
-   */
   async invalidateGroupsCache(tenantId: string): Promise<void> {
     const redis = getRedisConnection();
     if (!redis) return;
@@ -742,9 +695,6 @@ export const waGatewayService = {
     pool.get(tenantId)?.emitter.on(event, listener);
   },
 
-  /**
-   * Restore active connections dari DB saat server restart
-   */
   async restoreConnections(): Promise<void> {
     try {
       const connections = await prisma.waTenantConnection.findMany({
@@ -759,7 +709,186 @@ export const waGatewayService = {
     } catch (e: any) {
       console.error('[WA-Pool] Gagal restore connections:', e.message);
     }
-  },};
+  },
+};
+
+// ─── PM2 Cluster RPC Delegator ───────────────────────────────────────────────
+let rpcPubClient: any = null;
+let isRpcInitialized = false;
+
+function initClusterRpc() {
+  if (isRpcInitialized) return;
+  isRpcInitialized = true;
+
+  try {
+    const redis = getRedisConnection();
+    if (!redis) return;
+
+    rpcPubClient = typeof redis.duplicate === 'function' ? redis.duplicate() : getRedisConnection();
+
+    if (isMasterInstance()) {
+      const reqSub = typeof redis.duplicate === 'function' ? redis.duplicate() : createRedisConnection();
+      reqSub.subscribe('wa:cluster:rpc:req');
+      reqSub.on('message', async (channel: string, message: string) => {
+        if (channel !== 'wa:cluster:rpc:req') return;
+        try {
+          const { reqId, method, tenantId, args } = JSON.parse(message);
+          let result: any = null;
+          let error: string | null = null;
+          try {
+            result = await executeLocalMethod(method, tenantId, args);
+          } catch (e: any) {
+            error = e.message || 'Error WA Local';
+          }
+          await rpcPubClient.publish(`wa:cluster:rpc:res:${reqId}`, JSON.stringify({ reqId, result, error }));
+        } catch (e: any) {
+          console.error('[WA-RPC:Master] Gagal memproses request RPC:', e.message);
+        }
+      });
+      console.log('[WA-RPC] Master Instance 0 siap menerima RPC dari PM2 cluster instances.');
+    }
+  } catch (e: any) {
+    console.warn('[WA-RPC] Gagal inisialisasi Redis RPC:', e.message);
+  }
+}
+
+async function executeLocalMethod(method: string, tenantId: string, args: any[] = []): Promise<any> {
+  switch (method) {
+    case 'initTenant':
+      return waGatewayServiceLocal.initTenant(tenantId);
+    case 'disconnectTenant':
+      return waGatewayServiceLocal.disconnectTenant(tenantId);
+    case 'sendMessage':
+      return waGatewayServiceLocal.sendMessage(tenantId, args[0], args[1]);
+    case 'sendMessageToJid':
+      return waGatewayServiceLocal.sendMessageToJid(tenantId, args[0], args[1]);
+    case 'getParticipatingGroups':
+      return waGatewayServiceLocal.getParticipatingGroups(tenantId, args[0]);
+    case 'getStatus':
+      return waGatewayServiceLocal.getStatus(tenantId);
+    case 'getHealthStatus':
+      return waGatewayServiceLocal.getHealthStatus(tenantId);
+    case 'getQRBase64':
+      return waGatewayServiceLocal.getQRBase64(tenantId);
+    case 'invalidateGroupsCache':
+      return waGatewayServiceLocal.invalidateGroupsCache(tenantId);
+    default:
+      throw new Error(`Method RPC WA tidak dikenal: ${method}`);
+  }
+}
+
+async function callMasterViaRpc(method: string, tenantId: string, args: any[] = []): Promise<any> {
+  if (isMasterInstance()) {
+    return executeLocalMethod(method, tenantId, args);
+  }
+
+  const redis = getRedisConnection();
+  if (!redis) {
+    return executeLocalMethod(method, tenantId, args);
+  }
+
+  initClusterRpc();
+
+  const reqId = randomUUID();
+  const resChannel = `wa:cluster:rpc:res:${reqId}`;
+
+  return new Promise(async (resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Koneksi WA ke Master Instance 0 timeout. Silakan coba lagi.'));
+    }, 15000);
+
+    try {
+      const sub = typeof redis.duplicate === 'function' ? redis.duplicate() : createRedisConnection();
+      await sub.subscribe(resChannel);
+      
+      sub.on('message', async (chan: string, msgStr: string) => {
+        if (chan === resChannel) {
+          clearTimeout(timer);
+          try {
+            await sub.unsubscribe(resChannel);
+            await sub.quit();
+          } catch (_) {}
+
+          try {
+            const { result, error } = JSON.parse(msgStr);
+            if (error) reject(new Error(error));
+            else resolve(result);
+          } catch (e: any) {
+            reject(e);
+          }
+        }
+      });
+
+      const payload = JSON.stringify({ reqId, method, tenantId, args });
+      await rpcPubClient.publish('wa:cluster:rpc:req', payload);
+    } catch (err: any) {
+      clearTimeout(timer);
+      reject(err);
+    }
+  });
+}
+
+// ─── Public Delegated API ──────────────────────────────────────────────────────
+
+export const waGatewayService = {
+  async initTenant(tenantId: string): Promise<void> {
+    return callMasterViaRpc('initTenant', tenantId);
+  },
+  async sendMessage(tenantId: string, nomor: string, pesan: string): Promise<boolean> {
+    return callMasterViaRpc('sendMessage', tenantId, [nomor, pesan]);
+  },
+  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
+    return callMasterViaRpc('sendMessageToJid', tenantId, [jidTarget, pesan]);
+  },
+  async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
+    return waGatewayServiceLocal.sendMessageSoft(tenantId, nomor, pesan, source);
+  },
+  async hasWaSubscription(tenantId: string): Promise<boolean> {
+    return waGatewayServiceLocal.hasWaSubscription(tenantId);
+  },
+  async getStatus(tenantId: string) {
+    return callMasterViaRpc('getStatus', tenantId);
+  },
+  async getHealthStatus(tenantId: string) {
+    return callMasterViaRpc('getHealthStatus', tenantId);
+  },
+  async getQRBase64(tenantId: string): Promise<string | null> {
+    return callMasterViaRpc('getQRBase64', tenantId);
+  },
+  clearTenantAuth(tenantId: string) {
+    return waGatewayServiceLocal.clearTenantAuth(tenantId);
+  },
+  async disconnectTenant(tenantId: string): Promise<void> {
+    return callMasterViaRpc('disconnectTenant', tenantId);
+  },
+  async getParticipatingGroups(tenantId: string, forceRefresh = false) {
+    if (!forceRefresh) {
+      const redis = getRedisConnection();
+      if (redis) {
+        try {
+          const cached = await redis.get(getGroupsCacheKey(tenantId));
+          if (cached) {
+            console.log(`[WA-Pool:${tenantId}] Groups: Serving from Redis cache (local process check).`);
+            return JSON.parse(cached);
+          }
+        } catch (_) {}
+      }
+    }
+    return callMasterViaRpc('getParticipatingGroups', tenantId, [forceRefresh]);
+  },
+  async invalidateGroupsCache(tenantId: string): Promise<void> {
+    return callMasterViaRpc('invalidateGroupsCache', tenantId);
+  },
+  on(tenantId: string, event: string, listener: (...args: any[]) => void) {
+    return waGatewayServiceLocal.on(tenantId, event, listener);
+  },
+  async restoreConnections(): Promise<void> {
+    initClusterRpc();
+    if (isMasterInstance()) {
+      return waGatewayServiceLocal.restoreConnections();
+    }
+  },
+};
 
 function clearTenantAuth(tenantId: string) {
   const authDir = getTenantAuthDir(tenantId);
