@@ -200,4 +200,72 @@ export class JadwalPiketController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async getNotifConfig(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.user?.tenant_id;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+
+      const config = await this.service.getPiketNotifConfig(tenantId);
+      
+      // Ambil juga daftar Grup WA yang terdeteksi di tenant ini
+      let groups: any[] = [];
+      try {
+        const { waGatewayService } = await import('../../../../services/wa-gateway.service');
+        groups = await waGatewayService.getParticipatingGroups(tenantId);
+      } catch (_) {
+        groups = [];
+      }
+
+      return reply.send({
+        success: true,
+        data: {
+          config,
+          groups
+        }
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async saveNotifConfig(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.user?.tenant_id;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+
+      const updated = await this.service.savePiketNotifConfig(tenantId, request.body || {});
+      return reply.send({
+        success: true,
+        message: 'Pengaturan notifikasi piket guru berhasil disimpan',
+        data: updated
+      });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  }
+
+  async testNotif(request: any, reply: any) {
+    try {
+      const tenantId = request.tenantId || request.user?.tenant_id;
+      if (!tenantId) {
+        return reply.status(401).send({ success: false, message: 'Unauthorized' });
+      }
+
+      const { isNightReminder, overrideTargetGroupId } = request.body || {};
+      const result = await this.service.sendPiketReminderToGroup(tenantId, Boolean(isNightReminder), overrideTargetGroupId);
+
+      return reply.send({
+        success: true,
+        message: result.message
+      });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  }
 }
+

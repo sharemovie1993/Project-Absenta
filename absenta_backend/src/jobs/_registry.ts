@@ -41,3 +41,8 @@ import './customDomainVerify.job';
 
 // ── Sarpras ───────────────────────────────────────────────────────────────────
 import './sarprasOverdueReminder.job';
+
+// ── Piket Guru Reminders ──────────────────────────────────────────────────────
+import './piketNightReminder.job';
+import './piketMorningReminder.job';
+

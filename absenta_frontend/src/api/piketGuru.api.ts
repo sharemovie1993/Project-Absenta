@@ -120,5 +120,51 @@ export const piketGuruApi = {
   delete: async (id: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.delete(`/kurikulum/jadwal-piket/${id}`);
     return response.data;
+  },
+
+  getNotifConfig: async (): Promise<{
+    success: boolean;
+    data: {
+      config: {
+        enabled: boolean;
+        targetGroupId: string;
+        targetGroupName: string;
+        nightEnabled: boolean;
+        nightTime: string;
+        morningEnabled: boolean;
+        morningTime: string;
+      };
+      groups: Array<{
+        id: string;
+        subject: string;
+        participantsCount: number;
+        announce: boolean;
+      }>;
+    };
+  }> => {
+    const response = await api.get('/kurikulum/jadwal-piket/notif-config');
+    return response.data;
+  },
+
+  saveNotifConfig: async (data: {
+    enabled?: boolean;
+    targetGroupId?: string;
+    targetGroupName?: string;
+    nightEnabled?: boolean;
+    nightTime?: string;
+    morningEnabled?: boolean;
+    morningTime?: string;
+  }): Promise<{ success: boolean; message: string; data: any }> => {
+    const response = await api.post('/kurikulum/jadwal-piket/notif-config', data);
+    return response.data;
+  },
+
+  testNotif: async (data: {
+    isNightReminder?: boolean;
+    overrideTargetGroupId?: string;
+  }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/kurikulum/jadwal-piket/test-notif', data);
+    return response.data;
   }
 };
+

@@ -35,6 +35,24 @@ export async function jadwalPiketRoutes(fastify: any) {
     handler: controller.bulkCreate.bind(controller)
   });
 
+  // GET /api/kurikulum/jadwal-piket/notif-config
+  fastify.get('/notif-config', {
+    preHandler: [determineDataScope()],
+    handler: controller.getNotifConfig.bind(controller)
+  });
+
+  // POST /api/kurikulum/jadwal-piket/notif-config
+  fastify.post('/notif-config', {
+    preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()],
+    handler: controller.saveNotifConfig.bind(controller)
+  });
+
+  // POST /api/kurikulum/jadwal-piket/test-notif
+  fastify.post('/test-notif', {
+    preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()],
+    handler: controller.testNotif.bind(controller)
+  });
+
   // PUT /api/kurikulum/jadwal-piket/:id
   fastify.put('/:id', {
     preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()],
@@ -47,3 +65,4 @@ export async function jadwalPiketRoutes(fastify: any) {
     handler: controller.delete.bind(controller)
   });
 }
+

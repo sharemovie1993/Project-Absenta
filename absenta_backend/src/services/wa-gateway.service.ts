@@ -415,9 +415,44 @@ export const waGatewayService = {
         setTimeout(() => connectTenant(tenantId), 2000);
         throw new Error('Koneksi WhatsApp tidak merespons (zombie socket). Sistem sedang menyambung ulang otomatis.');
       }
+  },
+
+  /**
+   * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
+   */
+  async sendMessageToJid(tenantId: string, jidTarget: string, pesan: string): Promise<boolean> {
+    const entry = pool.get(tenantId);
+    if (!entry || entry.status !== 'connected' || !entry.sock) {
+      throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
+    }
+
+    let finalJid = jidTarget.trim();
+    if (!finalJid.includes('@')) {
+      let formattedNumber = finalJid.replace(/[^0-9]/g, '');
+      if (formattedNumber.startsWith('0')) {
+        formattedNumber = '62' + formattedNumber.substring(1);
+      }
+      finalJid = formattedNumber + '@s.whatsapp.net';
+    }
+
+    const sendPromise = entry.sock.sendMessage(finalJid, { text: pesan });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT_SEND')), 8000)
+    );
+
+    try {
+      await Promise.race([sendPromise, timeoutPromise]);
+      console.log(`[WA-Pool:${tenantId}] Pesan piket terkirim ke JID ${finalJid}`);
+      return true;
+    } catch (err: any) {
+      if (err.message === 'TIMEOUT_SEND') {
+        console.warn(`[WA-Pool:${tenantId}] Pengiriman WA timeout ke JID ${finalJid}`);
+        throw new Error('Pengiriman pesan ke Grup WA timeout (8 detik). Pastikan koneksi WA aktif.');
+      }
       throw err;
     }
   },
+
 
   /**
    * Kirim pesan WA secara soft melalui antrian (Queue Dispatcher).

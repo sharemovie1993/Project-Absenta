@@ -283,4 +283,159 @@ export class JadwalPiketService {
 
     return loadMap;
   }
+
+  /**
+   * 7. Ambil Konfigurasi Notifikasi WA Group Piket
+   */
+  async getPiketNotifConfig(tenantId: string) {
+    const configRow = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'PIKET_WA_NOTIF_CONFIG' }
+    });
+
+    const defaultConfig = {
+      enabled: false,
+      targetGroupId: '',
+      targetGroupName: '',
+      nightEnabled: true,
+      nightTime: '23:00',
+      morningEnabled: true,
+      morningTime: '05:00',
+    };
+
+    if (!configRow || !configRow.value) {
+      return defaultConfig;
+    }
+
+    try {
+      const parsed = JSON.parse(configRow.value);
+      return { ...defaultConfig, ...parsed };
+    } catch {
+      return defaultConfig;
+    }
+  }
+
+  /**
+   * 8. Simpan Konfigurasi Notifikasi WA Group Piket
+   */
+  async savePiketNotifConfig(tenantId: string, payload: any) {
+    const existing = await this.getPiketNotifConfig(tenantId);
+    const updated = { ...existing, ...payload };
+
+    await prisma.config.upsert({
+      where: {
+        tenant_id_key: {
+          tenant_id: tenantId,
+          key: 'PIKET_WA_NOTIF_CONFIG'
+        }
+      },
+      update: {
+        value: JSON.stringify(updated)
+      },
+      create: {
+        tenant_id: tenantId,
+        key: 'PIKET_WA_NOTIF_CONFIG',
+        value: JSON.stringify(updated)
+      }
+    });
+
+    return updated;
+  }
+
+  /**
+   * 9. Format Pesan WhatsApp Jadwal Piket Guru
+   */
+  async formatPiketScheduleMessage(tenantId: string, dateTarget: Date, isNightReminder: boolean): Promise<string> {
+    const hariTarget = this.getHariEnum(dateTarget);
+
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+    const activeSem = await prisma.semester.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
+
+    const whereClause: Record<string, unknown> = {
+      tenant_id: tenantId,
+      hari: hariTarget
+    };
+    if (activeTp) whereClause.tahun_pelajaran_id = activeTp.id;
+    if (activeSem) whereClause.semester_id = activeSem.id;
+
+    const list = await prisma.jadwalPiketGuru.findMany({
+      where: whereClause,
+      include: {
+        Guru: {
+          select: {
+            nama_guru: true,
+            nip: true,
+            no_hp: true
+          }
+        }
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    const tglStr = dateTarget.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const titlePrefix = isNightReminder
+      ? '🛡️ *PENGINGAT JADWAL PIKET GURU (BESOK HARI)*'
+      : '🛡️ *PENGINGAT JADWAL PIKET GURU (HARI INI)*';
+
+    let msg = `${titlePrefix}\n📅 *${tglStr}*\n\n`;
+
+    if (list.length === 0) {
+      msg += `ℹ️ Tidak ada jadwal penugasan piket guru untuk hari ${isNightReminder ? 'besok' : 'ini'}. Libur atau belum diset di sistem Absenta.\n`;
+    } else {
+      msg += `Bapak/Ibu Guru yang bertugas piket:\n\n`;
+      list.forEach((item, index) => {
+        const jam = item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} – ${item.jam_selesai}` : '06:30 – 15:30';
+        msg += `${index + 1}. ⏱️ *${jam}*\n`;
+        msg += `   └ 👨‍🏫 *${item.Guru?.nama_guru || '-'}*\n`;
+        msg += `   └ 📌 Pos: *${item.pos_piket || 'Piket Umum'}*\n`;
+        if (item.catatan) {
+          msg += `   └ 📝 Catatan: "${item.catatan}"\n`;
+        }
+        msg += `\n`;
+      });
+      msg += `💡 Mohon Bapak/Ibu Petugas Piket dapat hadir tepat waktu dan menjalankan tugas dengan baik. Terima kasih! 😊\n`;
+    }
+
+    return msg;
+  }
+
+  /**
+   * 10. Kirim Pengingat Piket ke WA Group
+   */
+  async sendPiketReminderToGroup(tenantId: string, isNightReminder: boolean, overrideTargetGroupId?: string): Promise<{ success: boolean; message: string }> {
+    const config = await this.getPiketNotifConfig(tenantId);
+    const targetGroupId = overrideTargetGroupId || config.targetGroupId;
+
+    if (!targetGroupId) {
+      throw new Error('Group WA tujuan belum ditentukan. Silakan atur Group Tujuan di Pengaturan Notifikasi Piket.');
+    }
+
+    // Tentukan tanggal target:
+    // Jika Night Reminder (23:00), tanggal target adalah Besok Hari (Date + 1)
+    // Jika Morning Reminder (05:00) atau Test, tanggal target adalah Hari Ini
+    const dateTarget = new Date();
+    if (isNightReminder) {
+      dateTarget.setDate(dateTarget.getDate() + 1);
+    }
+
+    const messageText = await this.formatPiketScheduleMessage(tenantId, dateTarget, isNightReminder);
+
+    const { waGatewayService } = await import('../../../../services/wa-gateway.service');
+    await waGatewayService.sendMessageToJid(tenantId, targetGroupId, messageText);
+
+    return {
+      success: true,
+      message: `Pengingat piket guru berhasil dikirimkan ke Group WA (${targetGroupId})`
+    };
+  }
 }
+

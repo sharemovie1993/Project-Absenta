@@ -22,7 +22,8 @@ import {
   FileText,
   Wrench,
   Eye,
-  Lock
+  Lock,
+  Bell
 } from 'lucide-react';
 import { piketGuruApi, JadwalPiketGuru, Hari } from '../../api/piketGuru.api';
 import { guruApi, tahunPelajaranApi, semesterApi, jurusanApi } from '../../api/academic.api';
@@ -30,6 +31,8 @@ import { getMyTenant } from '../../api/tenants.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
+import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
+
 
 const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
   1: { start: '06:30', end: '07:45' },
@@ -88,7 +91,9 @@ export default function JadwalPiketGuruPage() {
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPiketGuru | null>(null);
+
 
   // Form State Single Assign
   const [formGuruId, setFormGuruId] = useState('');
@@ -556,6 +561,13 @@ export default function JadwalPiketGuruPage() {
               {isKurikulumAdmin ? (
                 <>
                   <button
+                    onClick={() => setIsNotifModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition shadow-2xs"
+                  >
+                    <Bell size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <span>Pengaturan WA Group</span>
+                  </button>
+                  <button
                     onClick={() => {
                       setBulkHari(activeHari);
                       setBulkGuruIds([]);
@@ -567,6 +579,7 @@ export default function JadwalPiketGuruPage() {
                     <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
                     <span>+ Penugasan Massal</span>
                   </button>
+
                   <button
                     onClick={() => handleOpenAdd()}
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
@@ -1310,6 +1323,13 @@ export default function JadwalPiketGuruPage() {
           setItemToDelete(null);
         }}
       />
+
+      {/* NOTIF WA GROUP CONFIG MODAL */}
+      <PiketNotifModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+      />
     </AcademicPageLayout>
   );
 }
+
