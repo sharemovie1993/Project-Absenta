@@ -404,28 +404,35 @@ export class JadwalPiketService {
       const groupedByJam: Record<string, Record<string, typeof list>> = {};
 
       list.forEach(item => {
-        const jamKey = (item.jam_mulai && item.jam_selesai)
-          ? `${item.jam_mulai} – ${item.jam_selesai} WIB`
-          : '06:30 – 15:30 WIB';
+        const slotMulai = item.slot_mulai || 1;
+        const slotSelesai = item.slot_selesai || 10;
+        const jamMulai = item.jam_mulai || '06:30';
+        const jamSelesai = item.jam_selesai || '15:30';
+
+        const slotLabel = slotMulai === slotSelesai
+          ? `Jam Ke ${slotMulai}`
+          : `Jam Ke ${slotMulai} - ${slotSelesai}`;
+
+        const waktuHeader = `WAKTU : ${slotLabel} (${jamMulai} s/d ${jamSelesai})`;
         
         const posKey = (item.pos_piket || 'Piket Umum').trim();
 
-        if (!groupedByJam[jamKey]) {
-          groupedByJam[jamKey] = {};
+        if (!groupedByJam[waktuHeader]) {
+          groupedByJam[waktuHeader] = {};
         }
-        if (!groupedByJam[jamKey][posKey]) {
-          groupedByJam[jamKey][posKey] = [];
+        if (!groupedByJam[waktuHeader][posKey]) {
+          groupedByJam[waktuHeader][posKey] = [];
         }
 
-        groupedByJam[jamKey][posKey].push(item);
+        groupedByJam[waktuHeader][posKey].push(item);
       });
 
       const jamEntries = Object.entries(groupedByJam);
-      jamEntries.forEach(([jamStr, posGroupMap], jamIdx) => {
+      jamEntries.forEach(([waktuHeader, posGroupMap], jamIdx) => {
         if (jamIdx > 0) {
           msg += `\n`;
         }
-        msg += `⏰ *WAKTU: ${jamStr}*\n\n`;
+        msg += `⏰ *${waktuHeader}*\n\n`;
 
         Object.entries(posGroupMap).forEach(([posName, items]) => {
           const posKapital = posName.toUpperCase();
@@ -438,6 +445,7 @@ export class JadwalPiketService {
           msg += `\n`;
         });
       });
+
 
       msg += `─────────────────────────\n`;
       msg += `💡 Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
