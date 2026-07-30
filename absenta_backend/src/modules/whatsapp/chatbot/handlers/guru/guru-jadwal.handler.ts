@@ -14,6 +14,63 @@ function getHariWIB(): string {
   return map[jakartaDay] ?? 'SENIN';
 }
 
+interface TimelineItem {
+  type: 'KBM' | 'PIKET';
+  slotMulai: number;
+  jamMulai: string;
+  jamSelesai: string;
+  jamLabel: string;
+  title: string;
+  subTitle?: string;
+  catatan?: string;
+}
+
+function buildDayTimeline(jadwalList: any[], piketList: any[]): TimelineItem[] {
+  const items: TimelineItem[] = [];
+
+  if (jadwalList && jadwalList.length > 0) {
+    const aggregated = aggregateJadwal(jadwalList);
+    aggregated.forEach((j: any) => {
+      const jamLabel = j.startSlot === j.endSlot
+        ? `Jam ke-${j.startSlot}`
+        : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
+      items.push({
+        type: 'KBM',
+        slotMulai: j.startSlot || 1,
+        jamMulai: j.jam_mulai || '',
+        jamSelesai: j.jam_selesai || '',
+        jamLabel,
+        title: j.Mapel?.nama_mapel || 'Mata Pelajaran',
+        subTitle: j.Kelas?.nama_kelas || 'Kelas',
+      });
+    });
+  }
+
+  if (piketList && piketList.length > 0) {
+    piketList.forEach((p: any) => {
+      const jamLabel = p.slot_mulai && p.slot_selesai
+        ? `Jam ke-${p.slot_mulai} s/d ${p.slot_selesai}`
+        : 'Full Day';
+      items.push({
+        type: 'PIKET',
+        slotMulai: p.slot_mulai ?? 1,
+        jamMulai: p.jam_mulai || '07:00',
+        jamSelesai: p.jam_selesai || '15:30',
+        jamLabel,
+        title: p.pos_piket || 'Piket Utama',
+        catatan: p.catatan,
+      });
+    });
+  }
+
+  items.sort((a, b) => {
+    if (a.slotMulai !== b.slotMulai) return a.slotMulai - b.slotMulai;
+    return a.jamMulai.localeCompare(b.jamMulai);
+  });
+
+  return items;
+}
+
 export class GuruJadwalHandler {
   static async handleJadwalHariIni(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
@@ -53,12 +110,14 @@ export class GuruJadwalHandler {
       }).catch(() => []),
     ]);
 
-    if (jadwalList.length === 0 && piketList.length === 0) {
+    const timelineItems = buildDayTimeline(jadwalList, piketList);
+
+    if (timelineItems.length === 0) {
       const semInfo = semesterAktif
         ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
         : 'semester tidak terdeteksi';
       return (
-        `📋 *Jadwal Mengajar & Piket Hari Ini (${currentDay})*\n` +
+        `📋 *Timeline Jadwal Hari Ini (${currentDay})*\n` +
         `📚 Semester: ${semInfo}\n\n` +
         `Bapak/Ibu *${guru.nama_guru}*, tidak ada jadwal mengajar KBM maupun penugasan piket hari ini. 😊\n\n` +
         `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`
@@ -68,36 +127,26 @@ export class GuruJadwalHandler {
     const semInfo = semesterAktif
       ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
       : '-';
-    let msg = `📋 *Jadwal Mengajar & Piket Hari Ini (${currentDay})*\n`;
+    let msg = `📋 *Timeline Jadwal Mengajar & Piket (${currentDay})*\n`;
     msg += `Guru: *${guru.nama_guru}* | Semester: ${semInfo}\n\n`;
+    msg += `⏱️ *TIMELINE AGENDA HARI INI:*\n\n`;
 
-    if (jadwalList.length > 0) {
-      const aggregated = aggregateJadwal(jadwalList);
-      msg += `📚 *Jadwal KBM Mengajar:*\n`;
-      aggregated.forEach((j: any, i: number) => {
-        const jamLabel = j.startSlot === j.endSlot
-          ? `Jam ke-${j.startSlot}`
-          : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
-        msg += `${i + 1}. *${j.jam_mulai} – ${j.jam_selesai}* (${jamLabel})\n`;
-        msg += `   📖 ${j.Mapel?.nama_mapel || '-'}\n`;
-        msg += `   🏫 ${j.Kelas?.nama_kelas || '-'}\n\n`;
-      });
-    } else {
-      msg += `☕ *Jadwal KBM:* Tidak ada jadwal mengajar KBM hari ini.\n\n`;
-    }
+    timelineItems.forEach((item, index) => {
+      const timeHeader = item.jamMulai && item.jamSelesai
+        ? `${item.jamMulai} – ${item.jamSelesai} (${item.jamLabel})`
+        : item.jamLabel;
 
-    if (piketList.length > 0) {
-      msg += `🛡️ *Penugasan Guru Piket:*\n`;
-      piketList.forEach((p: any, i: number) => {
-        const slotText = p.slot_mulai && p.slot_selesai
-          ? `Jam ke-${p.slot_mulai} s/d ${p.slot_selesai}`
-          : 'Full Day';
-        const jamText = p.jam_mulai && p.jam_selesai ? ` (${p.jam_mulai} - ${p.jam_selesai})` : '';
-        msg += `${i + 1}. 📍 *${p.pos_piket || 'Piket Utama'}* — ${slotText}${jamText}\n`;
-        if (p.catatan) msg += `   📝 Catatan: "${p.catatan}"\n`;
-      });
-      msg += `\n`;
-    }
+      msg += `*${index + 1}. ${timeHeader}*\n`;
+      if (item.type === 'KBM') {
+        msg += `   └ 📖 *KBM*: ${item.title} (🏫 ${item.subTitle || '-'})\n\n`;
+      } else {
+        msg += `   └ 🛡️ *PENUGASAN PIKET*: ${item.title}\n`;
+        if (item.catatan) {
+          msg += `      📝 Catatan: "${item.catatan}"\n`;
+        }
+        msg += `\n`;
+      }
+    });
 
     msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
     return msg;
@@ -142,7 +191,7 @@ export class GuruJadwalHandler {
 
     if (semuaJadwal.length === 0 && semuaPiket.length === 0) {
       return (
-        `📅 *Jadwal Mengajar & Piket Minggu Ini*\n` +
+        `📅 *Timeline Jadwal Minggu Ini*\n` +
         `📚 Semester: ${semInfo}\n\n` +
         `Belum ada jadwal KBM atau penugasan piket yang tercatat untuk Bapak/Ibu *${guru.nama_guru}*.\n\n` +
         `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`
@@ -159,30 +208,29 @@ export class GuruJadwalHandler {
     semuaJadwal.forEach((j: any) => { if (groupedKbm[j.hari]) groupedKbm[j.hari].push(j); });
     semuaPiket.forEach((p: any) => { if (groupedPiket[p.hari]) groupedPiket[p.hari].push(p); });
 
-    let msg = `📅 *Jadwal Mengajar & Piket Minggu Ini*\n`;
+    let msg = `📅 *Timeline Jadwal Mengajar & Piket Minggu Ini*\n`;
     msg += `Guru: *${guru.nama_guru}* | ${semInfo}\n`;
 
     hariUrut.forEach(hari => {
       const listKbm = groupedKbm[hari];
       const listPiket = groupedPiket[hari];
-      if (listKbm.length === 0 && listPiket.length === 0) return;
+      const timeline = buildDayTimeline(listKbm, listPiket);
 
-      msg += `\n*📌 ${hari}*\n`;
+      if (timeline.length === 0) return;
 
-      if (listKbm.length > 0) {
-        const aggregatedDay = aggregateJadwal(listKbm);
-        aggregatedDay.forEach((j: any, i: number) => {
-          const jamLabel = j.startSlot === j.endSlot ? `Jam ${j.startSlot}` : `Jam ${j.startSlot}-${j.endSlot}`;
-          msg += `  ${i + 1}. 📖 ${j.jam_mulai}–${j.jam_selesai} (${jamLabel}) | ${j.Mapel?.nama_mapel || '-'} (${j.Kelas?.nama_kelas || '-'})\n`;
-        });
-      }
+      msg += `\n📌 *${hari}*\n`;
 
-      if (listPiket.length > 0) {
-        listPiket.forEach((p: any) => {
-          const slotText = p.slot_mulai && p.slot_selesai ? `Jam ${p.slot_mulai}-${p.slot_selesai}` : 'Full Day';
-          msg += `  🛡️ *Piket:* ${p.pos_piket || 'Piket Utama'} (${slotText})\n`;
-        });
-      }
+      timeline.forEach((item, index) => {
+        const isLast = index === timeline.length - 1;
+        const branchChar = isLast ? '└' : '├';
+        const timePart = item.jamMulai && item.jamSelesai ? `${item.jamMulai}–${item.jamSelesai}` : item.jamLabel;
+
+        if (item.type === 'KBM') {
+          msg += ` ${branchChar} ⏱️ ${timePart} │ 📖 *KBM*: ${item.title} (${item.subTitle || '-'})\n`;
+        } else {
+          msg += ` ${branchChar} ⏱️ ${timePart} │ 🛡️ *PIKET*: ${item.title}\n`;
+        }
+      });
     });
 
     msg += `\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
