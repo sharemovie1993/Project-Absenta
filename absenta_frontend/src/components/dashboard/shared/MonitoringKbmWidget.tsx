@@ -19,6 +19,66 @@ import { KbmSessionTable } from './kbm/KbmSessionTable';
 import { KbmSessionCard } from './kbm/KbmSessionCard';
 import { KbmDetailModal } from './kbm/KbmDetailModal';
 
+const SAMPLE_DEMO_SESSIONS = [
+  {
+    id: 'demo-1',
+    waktu_mulai: new Date().toISOString(),
+    waktu_selesai: new Date(Date.now() + 3600000).toISOString(),
+    isLive: true,
+    isFinished: false,
+    isUpcoming: false,
+    Kelas: { nama_kelas: 'XII RPL 1', jurusan_id: 'jur-1' },
+    Mapel: { nama_mapel: 'Pemrograman Web & Perangkat Bergerak' },
+    Guru: { nama_guru: 'Asep Suryadi, S.Kom' },
+    _summary: {
+      isLive: true,
+      isFinished: false,
+      teacherStatus: 'ON_TIME',
+      hadir: 34,
+      total: 36,
+    },
+    ProgresMateri: { judul_materi: 'Integrasi REST API Fastify & React UI' },
+  },
+  {
+    id: 'demo-2',
+    waktu_mulai: new Date().toISOString(),
+    waktu_selesai: new Date(Date.now() + 3600000).toISOString(),
+    isLive: true,
+    isFinished: false,
+    isUpcoming: false,
+    Kelas: { nama_kelas: 'XI TKJ 2', jurusan_id: 'jur-2' },
+    Mapel: { nama_mapel: 'Administrasi Infrastruktur Jaringan' },
+    Guru: { nama_guru: 'Dedi Kurniawan, S.T' },
+    _summary: {
+      isLive: true,
+      isFinished: false,
+      teacherStatus: 'ON_TIME',
+      hadir: 31,
+      total: 32,
+    },
+    ProgresMateri: { judul_materi: 'Konfigurasi Routing MikroTik & VLAN' },
+  },
+  {
+    id: 'demo-3',
+    waktu_mulai: new Date(Date.now() - 7200000).toISOString(),
+    waktu_selesai: new Date(Date.now() - 3600000).toISOString(),
+    isLive: false,
+    isFinished: true,
+    isUpcoming: false,
+    Kelas: { nama_kelas: 'X AKL 1', jurusan_id: 'jur-3' },
+    Mapel: { nama_mapel: 'Akuntansi Keuangan Lembaga' },
+    Guru: { nama_guru: 'Siti Rahmawati, S.Pd' },
+    _summary: {
+      isLive: false,
+      isFinished: true,
+      teacherStatus: 'ON_TIME',
+      hadir: 35,
+      total: 35,
+    },
+    ProgresMateri: { judul_materi: 'Penyusunan Laporan Laba Rugi Periode' },
+  },
+];
+
 export const MonitoringKbmWidget: React.FC = () => {
   const { tenantMode } = useAuthStore();
   const [targetDate, setTargetDate] = useState(toLocalDate());
@@ -68,11 +128,29 @@ export const MonitoringKbmWidget: React.FC = () => {
     retry: false,
   });
 
-  const isLoading = monitoringLoading || sesiLoading;
-  const stats = useMemo(() => monitoringRes?.data?.sessionStats || {
-    total: 0, live: 0, withJournal: 0, finished: 0,
-    teacherOnTime: 0, teacherLate: 0, teacherNotArrived: 0, teacherAlpa: 0
-  }, [monitoringRes]);
+  const isSubscriptionRequired = useMemo(() => {
+    const err1 = (monitoringError as any)?.response?.data || (monitoringError as any)?.data;
+    const err2 = (sesiError as any)?.response?.data || (sesiError as any)?.data;
+    const reason = String(err1?.reason || err2?.reason || '');
+    const code = String(err1?.code || err2?.code || '');
+    const status = (monitoringError as any)?.response?.status || (sesiError as any)?.response?.status;
+    return reason.includes('SUBSCRIPTION_REQUIRED') || code.includes('SUBSCRIPTION') || status === 402;
+  }, [monitoringError, sesiError]);
+
+  const isLoading = (monitoringLoading || sesiLoading) && !isSubscriptionRequired;
+  const stats = useMemo(() => {
+    if (monitoringRes?.data?.sessionStats) return monitoringRes.data.sessionStats;
+    if (isSubscriptionRequired) {
+      return {
+        total: 12, live: 4, withJournal: 10, finished: 8,
+        teacherOnTime: 11, teacherLate: 1, teacherNotArrived: 0, teacherAlpa: 0
+      };
+    }
+    return {
+      total: 0, live: 0, withJournal: 0, finished: 0,
+      teacherOnTime: 0, teacherLate: 0, teacherNotArrived: 0, teacherAlpa: 0
+    };
+  }, [monitoringRes, isSubscriptionRequired]);
 
   useEffect(() => {
     dropdownApi.getKelasForDropdown().then(setKelasOptions).catch(console.error);
@@ -92,7 +170,9 @@ export const MonitoringKbmWidget: React.FC = () => {
 
   const enrichedSessions = useMemo(() => {
     const items = sesiData?.data || [];
-    if (!Array.isArray(items)) return [];
+    if (!Array.isArray(items) || items.length === 0) {
+      return isSubscriptionRequired ? SAMPLE_DEMO_SESSIONS : [];
+    }
     
     return items.map((s: any) => {
       const isLive = s._summary?.isLive ?? false;
@@ -101,7 +181,7 @@ export const MonitoringKbmWidget: React.FC = () => {
       
       return { ...s, isLive, isFinished, isUpcoming };
     });
-  }, [sesiData, currentTime]);
+  }, [sesiData, currentTime, isSubscriptionRequired]);
 
   const processedSessions = useMemo(() => {
     return enrichedSessions.filter((s: any) => {
@@ -168,32 +248,33 @@ export const MonitoringKbmWidget: React.FC = () => {
     setSearchTerm('');
   }, []);
 
-  const isSubscriptionRequired = useMemo(() => {
-    const err1 = (monitoringError as any)?.response?.data || (monitoringError as any)?.data;
-    const err2 = (sesiError as any)?.response?.data || (sesiError as any)?.data;
-    const reason = String(err1?.reason || err2?.reason || '');
-    const code = String(err1?.code || err2?.code || '');
-    const status = (monitoringError as any)?.response?.status || (sesiError as any)?.response?.status;
-    return reason.includes('SUBSCRIPTION_REQUIRED') || code.includes('SUBSCRIPTION') || status === 402;
-  }, [monitoringError, sesiError]);
-
   return (
     <div className="space-y-6 relative rounded-2xl overflow-hidden min-h-[300px]">
-      {/* Glassmorphic Overlay Banner when Subscription Required */}
+      {/* 🔮 Transparent Glass Watermark Overlay when Subscription Required */}
       {isSubscriptionRequired && (
-        <div className="absolute inset-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-900/85 flex flex-col items-center justify-center p-6 text-center space-y-4 transition-all">
-          <div className="w-16 h-16 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center border border-amber-200 dark:border-amber-800 shadow-md">
-            <Lock className="w-8 h-8" />
+        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden rounded-2xl flex flex-col items-center justify-center p-6 text-center">
+          {/* Subtle Transparent Glass Backdrop (100% crystal clear!) */}
+          <div className="absolute inset-0 bg-slate-900/10 dark:bg-slate-900/25 backdrop-blur-[1px]" />
+
+          {/* Diagonal Watermark Text */}
+          <div className="absolute inset-0 flex items-center justify-center rotate-[-12deg] select-none opacity-[0.07] dark:opacity-[0.12]">
+            <span className="text-7xl font-black uppercase tracking-widest text-indigo-950 dark:text-white whitespace-nowrap">
+              ABSENTA PRO • LIVE MONITORING KBM
+            </span>
           </div>
-          <div className="space-y-2 max-w-lg">
-            <h3 className="text-lg font-black text-slate-900 dark:text-white">Modul Absensi Sesi Memerlukan Paket Langganan Aktif</h3>
+
+          {/* Floating Glass Center Badge */}
+          <div className="relative z-10 bg-white/85 dark:bg-slate-900/90 backdrop-blur-md border border-amber-300 dark:border-amber-700/80 px-8 py-5 rounded-3xl shadow-2xl space-y-2 max-w-md pointer-events-auto">
+            <div className="w-12 h-12 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Preview Fitur Live Monitoring KBM
+            </h4>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-              Fitur Live Monitoring KBM &amp; Absensi Sesi memerlukan lisensi paket <strong>ABSENSI</strong> yang aktif. Silakan hubungi Administrator Sekolah atau aktifkan paket langganan Anda untuk membuka akses penuh.
+              Tampilan UI di atas adalah modul asli <strong>Monitoring KBM &amp; Absensi Sesi</strong>. Hubungi administrator untuk mengaktifkan lisensi modul ini.
             </p>
           </div>
-          <Button variant="primary" className="rounded-xl font-bold text-xs px-6 py-2.5 shadow-lg shadow-indigo-500/20">
-            Hubungi Administrator / Aktifkan Lisensi
-          </Button>
         </div>
       )}
 
