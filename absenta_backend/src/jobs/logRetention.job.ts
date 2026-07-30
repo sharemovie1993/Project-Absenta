@@ -25,4 +25,13 @@ export default defineCronJob({
 export async function runLogRetentionCycle() {
   const { jobEngine } = await import('../infra/jobEngine');
   await jobEngine.triggerJob('logRetention');
+
+  // Hapus WaChatLog yang lebih tua dari 3 bulan
+  try {
+    const { WaChatLogService } = await import('../modules/whatsapp/services/wa-chat-log.service');
+    const deleted = await WaChatLogService.cleanupOldLogs();
+    appLogger.info({ job: 'logRetention', deleted_wa_chat_logs: deleted }, 'WaChatLog cleanup done');
+  } catch (err: any) {
+    appLogger.warn({ job: 'logRetention', err: err.message }, 'WaChatLog cleanup failed');
+  }
 }

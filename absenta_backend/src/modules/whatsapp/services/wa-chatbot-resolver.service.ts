@@ -4,6 +4,7 @@ import { prisma } from '@/utils/prisma';
 import { formatMultiRoleMenu } from './wa-chatbot-commands';
 import { ChatbotRouter } from '../chatbot/core/chatbot-router';
 import { ChatbotContext } from '../chatbot/core/chatbot-context';
+import { WaChatLogService } from './wa-chat-log.service';
 
 /**
  * Peta persistent LID → nomor HP asli (persisted to disk wa_auth/lid_mappings.json).
@@ -294,6 +295,19 @@ export class WaChatbotResolverService {
 
     // ── Step 7: Construct Context & Dispatch via ChatbotRouter ──────────────
     const tenantId = guru?.tenant_id ?? siswa?.tenant_id ?? ortu?.tenant_id ?? null;
+    const namaUser = guru?.nama_guru ?? siswa?.nama_siswa ?? ortu?.nama ?? null;
+
+    // ── Log pesan masuk (IN) ─────────────────────────────────────────────────
+    if (effectiveCommand) {
+      void WaChatLogService.logIn({
+        tenantId,
+        jid: fullJid,
+        phone: resolvedPhone,
+        nama: namaUser,
+        role: activeRole,
+        message: effectiveCommand,
+      });
+    }
 
     const ctx: ChatbotContext = {
       rawJid,
@@ -311,7 +325,19 @@ export class WaChatbotResolverService {
       tenantId,
     };
 
-    return ChatbotRouter.route(ctx);
+    const reply = await ChatbotRouter.route(ctx);
+
+    // ── Log pesan keluar (OUT) ───────────────────────────────────────────────
+    void WaChatLogService.logOut({
+      tenantId,
+      jid: fullJid,
+      phone: resolvedPhone,
+      nama: namaUser,
+      role: activeRole,
+      message: reply,
+    });
+
+    return reply;
   }
 }
 

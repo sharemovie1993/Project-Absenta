@@ -141,6 +141,7 @@ model Tenant {
   SupportTicket            SupportTicket[]
   WhatsappConfig           WhatsappConfig?
   GuruDocument             GuruDocument[]
+  WaChatLog                WaChatLog[]
 }
 
 enum BackupStatus {
@@ -4143,4 +4144,26 @@ model SKWaliKelasArsip {
 
   @@index([tenant_id])
   @@index([guru_id])
+}
+
+// ── WhatsApp Chatbot Chat Log ─────────────────────────────────────────────────
+// Menyimpan riwayat percakapan chatbot per user.
+// Data otomatis dihapus setelah 3 bulan via logRetention job.
+model WaChatLog {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  jid        String
+  phone      String
+  nama       String?
+  role       String?
+  direction  String
+  message    String   @db.Text
+  created_at DateTime @default(now())
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, phone])
+  @@index([tenant_id, created_at(sort: Desc)])
+  @@index([created_at])
 }

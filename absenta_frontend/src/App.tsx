@@ -84,6 +84,7 @@ const NotificationsPage = lazy(() => import('./pages/notifications/Notifications
 const SubscriptionList = lazy(() => import('./pages/notifications/SubscriptionList'));
 const TrialEmailSequencePage = lazy(() => import('./pages/notifications/TrialEmailSequencePage'));
 const WhatsAppHealthPage = lazy(() => import('./pages/notifications/WhatsAppHealthPage'));
+const WhatsAppChatLogPage = lazy(() => import('./pages/notifications/WhatsAppChatLogPage'));
 const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
 const CetakBerkasPage = lazy(() => import('./pages/academic/CetakBerkasPage').then(m => ({ default: m.CetakBerkasPage })));
@@ -1235,6 +1236,11 @@ function App() {
                     <Route path="/notifications/whatsapp-health" element={
                       <ProtectedRoute requiredCapability="notify.check.status">
                         <WhatsAppHealthPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/notifications/wa-chat-logs" element={
+                      <ProtectedRoute requiredCapability="whatsapp.manage.config">
+                        <WhatsAppChatLogPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/notifications/preferences" element={

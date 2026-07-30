@@ -1,5 +1,6 @@
 import { WhatsappController } from '../controllers/whatsapp.controller';
 import { waWebhookController } from '../controllers/wa-webhook.controller';
+import { waChatLogController } from '../controllers/wa-chat-log.controller';
 import { determineDataScope } from '../../../middlewares/dataScope';
 import { requireCapability } from '../../../middlewares/requireCapability';
 
@@ -10,6 +11,19 @@ export async function whatsappRoutes(fastify: any) {
   fastify.post('/webhook', {
     handler: waWebhookController.handleInboundWebhook.bind(waWebhookController),
   });
+
+  // GET /whatsapp/chat-logs - Daftar kontak unik chatbot
+  fastify.get('/chat-logs', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: waChatLogController.listContacts.bind(waChatLogController),
+  });
+
+  // GET /whatsapp/chat-logs/:phone - Riwayat percakapan per nomor HP
+  fastify.get('/chat-logs/:phone', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: waChatLogController.getChatDetail.bind(waChatLogController),
+  });
+
 
   // GET /whatsapp/config - Get current config
   fastify.get('/config', {

@@ -50,3 +50,55 @@ export const getLocalWhatsappQR = async () => {
   const response = await axiosInstance.get('/whatsapp/qr');
   return response.data;
 };
+
+// ── WA Chat Log ────────────────────────────────────────────────────────────────
+
+export interface WaChatContact {
+  phone: string;
+  nama: string | null;
+  role: string | null;
+  last_message: string;
+  last_direction: 'IN' | 'OUT';
+  last_at: string;
+  total_in: number;
+  total_out: number;
+}
+
+export interface WaChatMessage {
+  id: string;
+  direction: 'IN' | 'OUT';
+  message: string;
+  nama: string | null;
+  role: string | null;
+  created_at: string;
+}
+
+export const getWaChatLogContacts = async (params?: {
+  search?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const response = await axiosInstance.get('/whatsapp/chat-logs', { params });
+  return response.data as {
+    success: boolean;
+    data: WaChatContact[];
+    total: number;
+    page: number;
+    limit: number;
+  };
+};
+
+export const getWaChatLogDetail = async (
+  phone: string,
+  params?: { page?: number; limit?: number }
+) => {
+  const encodedPhone = encodeURIComponent(phone);
+  const response = await axiosInstance.get(`/whatsapp/chat-logs/${encodedPhone}`, { params });
+  return response.data as {
+    success: boolean;
+    data: WaChatMessage[];
+    total: number;
+    page: number;
+    limit: number;
+  };
+};
