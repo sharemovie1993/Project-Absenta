@@ -1,15 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import { prisma } from '@/utils/prisma';
-import {
-  formatMultiRoleMenu,
-  formatGuestMessage,
-  handleGuruCommand,
-  handleSiswaCommand,
-  handleOrtuCommand,
-} from './wa-chatbot-commands';
+import { formatMultiRoleMenu } from './wa-chatbot-commands';
 import { ChatbotRouter } from '../chatbot/core/chatbot-router';
-import { ChatbotContext, RoleItem } from '../chatbot/core/chatbot-context';
+import { ChatbotContext } from '../chatbot/core/chatbot-context';
 
 /**
  * Peta persistent LID → nomor HP asli (persisted to disk wa_auth/lid_mappings.json).

@@ -12,7 +12,7 @@ import { formatGuruMenu } from '../../services/wa-chatbot-commands';
 
 export class ChatbotRouter {
   static async route(ctx: ChatbotContext): Promise<string> {
-    const { cleanJid, commandUpper, messageText, guru, siswa, ortu, activeCount, activeRole, roles } = ctx;
+    const { cleanJid, messageText, guru, siswa, ortu, activeCount, activeRole, roles } = ctx;
 
     // 1. Cek Sesi Dialog FSM yang Sedang Aktif
     const pendingSession = chatbotSessionManager.get(cleanJid);

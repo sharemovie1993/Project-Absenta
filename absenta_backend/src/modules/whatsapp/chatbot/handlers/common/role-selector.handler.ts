@@ -1,4 +1,4 @@
-import { ChatbotContext, RoleItem } from '../../core/chatbot-context';
+import { RoleItem } from '../../core/chatbot-context';
 import { formatGuestMessage, formatMultiRoleMenu } from '../../../services/wa-chatbot-commands';
 
 export class RoleSelectorHandler {
