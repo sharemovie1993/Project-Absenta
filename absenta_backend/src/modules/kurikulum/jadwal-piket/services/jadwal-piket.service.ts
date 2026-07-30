@@ -423,31 +423,30 @@ export class JadwalPiketService {
       const jamEntries = Object.entries(groupedByJam);
       jamEntries.forEach(([jamStr, posGroupMap], jamIdx) => {
         if (jamIdx > 0) {
-          msg += `─────────────────────────\n`;
+          msg += `\n`;
         }
-        msg += `⏰ *WAKTU: ${jamStr}*\n`;
-        msg += `─────────────────────────\n`;
+        msg += `⏰ *WAKTU: ${jamStr}*\n\n`;
 
         Object.entries(posGroupMap).forEach(([posName, items]) => {
-          msg += `📌 *Jenis / Pos Piket: ${posName}*\n`;
+          const posKapital = posName.toUpperCase();
+          msg += `📌 *${posKapital}*\n`;
           items.forEach(item => {
-            msg += `  • 👨‍🏫 *${item.Guru?.nama_guru || '-'}*\n`;
-            if (item.catatan) {
-              msg += `    └ 📝 "${item.catatan}"\n`;
-            }
+            const namaGuru = item.Guru?.nama_guru || '-';
+            const catatanStr = item.catatan ? ` (${item.catatan})` : '';
+            msg += `• 👨‍🏫 *${namaGuru}*${catatanStr}\n`;
           });
           msg += `\n`;
         });
       });
 
-      msg += `═════════════════════════\n`;
-      msg += `💡 *Catatan:* Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
+      msg += `─────────────────────────\n`;
+      msg += `💡 Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
       msg += `🤖 _Pesan pengingat otomatis ini dikirimkan oleh *Sistem Absenta*._\n`;
     }
 
-
     return msg;
   }
+
 
 
   /**
