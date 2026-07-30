@@ -111,11 +111,34 @@ export default function JadwalPiketGuruPage() {
   // View Mode State (Grid vs Table)
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
 
+  // Quick Inline Edit Catatan state
+  const [editingCatatanId, setEditingCatatanId] = useState<string | null>(null);
+  const [editingCatatanText, setEditingCatatanText] = useState<string>('');
+  const [savingInline, setSavingInline] = useState<boolean>(false);
+
+  const handleSaveInlineCatatan = async (id: string) => {
+    setSavingInline(true);
+    try {
+      const res = await piketGuruApi.update(id, { catatan: editingCatatanText });
+      if (res.success) {
+        toast.success('Catatan piket berhasil diperbarui');
+        setSchedules(prev => prev.map(s => s.id === id ? { ...s, catatan: editingCatatanText } : s));
+        setEditingCatatanId(null);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Gagal memperbarui catatan piket');
+    } finally {
+      setSavingInline(false);
+    }
+  };
+
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPiketGuru | null>(null);
+
 
 
 
@@ -822,10 +845,58 @@ export default function JadwalPiketGuruPage() {
                           Jam Ke-{item.slot_mulai || 1} s/d {item.slot_selesai || 10} ({item.jam_mulai || '06:30'} - {item.jam_selesai || '15:30'})
                         </span>
                       </div>
-                      {item.catatan && (
-                        <div className="flex items-start gap-2 text-[11px] text-slate-500 italic">
-                          <FileText size={13} className="text-slate-400 shrink-0 mt-0.5" />
-                          <span>"{item.catatan}"</span>
+                      {editingCatatanId === item.id ? (
+                        <div className="flex items-center gap-1 pt-1">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editingCatatanText}
+                            onChange={e => setEditingCatatanText(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleSaveInlineCatatan(item.id);
+                              if (e.key === 'Escape') setEditingCatatanId(null);
+                            }}
+                            className="w-full text-xs px-2 py-1 rounded border border-indigo-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Ketik catatan..."
+                          />
+                          <button
+                            type="button"
+                            disabled={savingInline}
+                            onClick={() => handleSaveInlineCatatan(item.id)}
+                            className="p-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition shrink-0"
+                            title="Simpan"
+                          >
+                            <CheckCircle size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCatatanId(null)}
+                            className="p-1 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300 transition shrink-0 text-xs font-bold"
+                            title="Batal"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => {
+                            if (isKurikulumAdmin) {
+                              setEditingCatatanId(item.id);
+                              setEditingCatatanText(item.catatan || '');
+                            }
+                          }}
+                          className={`flex items-start justify-between gap-2 text-[11px] p-1 rounded-md transition ${
+                            isKurikulumAdmin ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/40 group' : ''
+                          }`}
+                          title={isKurikulumAdmin ? 'Klik untuk Quick Edit Catatan' : undefined}
+                        >
+                          <div className="flex items-start gap-1.5 italic text-slate-500">
+                            <FileText size={13} className="text-slate-400 shrink-0 mt-0.5" />
+                            <span>{item.catatan ? `"${item.catatan}"` : 'Tambah catatan...'}</span>
+                          </div>
+                          {isKurikulumAdmin && (
+                            <Edit size={12} className="text-slate-400 opacity-0 group-hover:opacity-100 transition shrink-0 mt-0.5" />
+                          )}
                         </div>
                       )}
                     </div>
@@ -922,9 +993,64 @@ export default function JadwalPiketGuruPage() {
                           📌 {(item.pos_piket || 'Piket Umum').toUpperCase()}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 italic text-slate-500 dark:text-slate-400 max-w-xs">
-                        {item.catatan ? `"${item.catatan}"` : '-'}
+                      <td className="py-3.5 px-4 max-w-xs">
+                        {editingCatatanId === item.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={editingCatatanText}
+                              onChange={e => setEditingCatatanText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveInlineCatatan(item.id);
+                                if (e.key === 'Escape') setEditingCatatanId(null);
+                              }}
+                              className="w-full text-xs px-2.5 py-1 rounded-lg border border-indigo-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-medium"
+                              placeholder="Ketik catatan..."
+                            />
+                            <button
+                              type="button"
+                              disabled={savingInline}
+                              onClick={() => handleSaveInlineCatatan(item.id)}
+                              className="p-1 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition shrink-0"
+                              title="Simpan (Enter)"
+                            >
+                              <CheckCircle size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCatatanId(null)}
+                              className="p-1 rounded-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-600 dark:text-slate-300 transition shrink-0 text-xs font-bold"
+                              title="Batal (Esc)"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => {
+                              if (isKurikulumAdmin) {
+                                setEditingCatatanId(item.id);
+                                setEditingCatatanText(item.catatan || '');
+                              }
+                            }}
+                            className={`group flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg transition-all ${
+                              isKurikulumAdmin
+                                ? 'cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:border hover:border-indigo-200 dark:hover:border-indigo-800'
+                                : ''
+                            }`}
+                            title={isKurikulumAdmin ? 'Klik untuk Quick Edit Catatan' : undefined}
+                          >
+                            <span className={item.catatan ? 'italic text-slate-700 dark:text-slate-200' : 'text-slate-400 italic'}>
+                              {item.catatan ? `"${item.catatan}"` : '-'}
+                            </span>
+                            {isKurikulumAdmin && (
+                              <Edit size={12} className="text-slate-400 opacity-0 group-hover:opacity-100 transition shrink-0" />
+                            )}
+                          </div>
+                        )}
                       </td>
+
                       {isKurikulumAdmin && (
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex items-center justify-center gap-1">
