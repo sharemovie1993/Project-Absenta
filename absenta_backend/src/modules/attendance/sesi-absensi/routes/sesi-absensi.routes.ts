@@ -24,7 +24,7 @@ export async function sesiAbsensiRoutes(fastify: any) {
   fastify.get('/', {
     preHandler: [
         requireMultiSesiMode, 
-        requireCapability('attendance.sessions.view.list', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }), 
+        requireCapability('attendance.sessions.view.list', { exemptRoles: [RoleName.SISWA, RoleName.GURU, RoleName.ADMIN] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateList
