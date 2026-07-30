@@ -415,7 +415,11 @@ export const waGatewayService = {
         setTimeout(() => connectTenant(tenantId), 2000);
         throw new Error('Koneksi WhatsApp tidak merespons (zombie socket). Sistem sedang menyambung ulang otomatis.');
       }
+      throw err;
+    }
   },
+
+
 
   /**
    * Kirim pesan WA langsung ke JID tertentu (bisa Nomor Individual atau WhatsApp Group JID e.g. 120363xxx@g.us).
