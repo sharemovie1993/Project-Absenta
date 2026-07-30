@@ -22,8 +22,22 @@ export class WaWebhookController {
         });
       }
 
+      // Skip Channel WA (@newsletter), Group (@g.us), Broadcast (@broadcast)
+      const senderLower = senderPhone.toLowerCase();
+      const isGroup = body.is_group === true || body.isGroup === true || senderLower.includes('@g.us');
+      const isChannel = body.is_channel === true || body.isChannel === true || senderLower.includes('@newsletter') || senderLower.includes('newsletter') || senderLower.includes('channel');
+      const isBroadcast = body.is_broadcast === true || senderLower.includes('@broadcast');
+
+      if (isGroup || isChannel || isBroadcast) {
+        console.log(`[WA-Webhook] Ignored non-DM message from Channel/Group/Broadcast: ${senderPhone}`);
+        return reply.send({ success: true, ignored: true });
+      }
+
       // Process message using Resolver Service
       const replyText = await waChatbotResolverService.processIncomingMessage(senderPhone, messageText);
+      if (!replyText) {
+        return reply.send({ success: true, ignored: true });
+      }
 
       // Send reply back via WhatsAppService if requested/configured
       if (body.auto_reply !== false) {

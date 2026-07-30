@@ -209,9 +209,22 @@ export class WaChatbotResolverService {
    */
   async processIncomingMessage(rawJid: string, messageText: string): Promise<string> {
     const rawInput = String(messageText || '').trim();
+    const fullJid = rawJid.trim();
+
+    // ── Step 0: Ignore Channel/Newsletter, Group, & Broadcast Messages ────────
+    const jidLower = fullJid.toLowerCase();
+    if (
+      jidLower.includes('@newsletter') ||
+      jidLower.includes('@g.us') ||
+      jidLower.includes('@broadcast') ||
+      jidLower.includes('newsletter') ||
+      jidLower.includes('channel')
+    ) {
+      console.log(`[Chatbot] Ignored non-DM message from Channel/Group/Broadcast JID: ${fullJid}`);
+      return '';
+    }
 
     // ── Step 1: Normalize JID (handle LID variations like 12345:0@lid vs 12345@lid)
-    const fullJid = rawJid.trim();
     const cleanJid = fullJid.split('@')[0].split(':')[0];
 
     let resolvedPhone = lidToPhoneGlobalMap.get(cleanJid) ?? lidToPhoneGlobalMap.get(fullJid) ?? fullJid;

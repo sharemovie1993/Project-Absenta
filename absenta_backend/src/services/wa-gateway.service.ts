@@ -280,11 +280,17 @@ async function connectTenant(tenantId: string): Promise<void> {
         // Skip pesan dari diri sendiri
         if (msg.key.fromMe) continue;
 
-        const fromJid = msg.key.remoteJid || '';
+        const fromJid = (msg.key.remoteJid || '').toLowerCase();
 
-        // Skip grup WA & status broadcast
-        if (fromJid.endsWith('@g.us')) continue;
-        if (fromJid === 'status@broadcast') continue;
+        // Skip Channel WA (@newsletter), Grup WA (@g.us), Broadcast (@broadcast)
+        if (
+          fromJid.endsWith('@g.us') ||
+          fromJid.endsWith('@newsletter') ||
+          fromJid.endsWith('@broadcast') ||
+          fromJid.includes('newsletter') ||
+          fromJid.includes('channel') ||
+          fromJid === 'status@broadcast'
+        ) continue;
 
         // Pesan gagal dekripsi (closed session) — Baileys tidak bisa baca isinya
         if (!msg.message) {
