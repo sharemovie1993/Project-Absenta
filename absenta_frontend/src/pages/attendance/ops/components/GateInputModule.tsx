@@ -101,6 +101,33 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const lastSubmittedTokenRef = useRef<string>('');
   const lastSubmittedTimeRef = useRef<number>(0);
   
+  const [tapHistory, setTapHistory] = useState<{ id: string; type: 'success' | 'error'; message: string; time: string }[]>([]);
+
+  // Helper to focus input field on direction change
+  const focusScanInput = useCallback(() => {
+    setTimeout(() => {
+      const inputEl = document.getElementById('hid-input-field') as HTMLInputElement | null;
+      if (inputEl) {
+        inputEl.focus();
+      }
+    }, 50);
+  }, []);
+
+  // Auto-focus input on direction change
+  useEffect(() => {
+    focusScanInput();
+  }, [inputDirection, inputTab, focusScanInput]);
+
+  const addTapFeedback = useCallback((type: 'success' | 'error', message: string, time: string) => {
+    const newItem = {
+      id: `${Date.now()}-${Math.random()}`,
+      type,
+      message,
+      time
+    };
+    setTapHistory(prev => [newItem, ...prev.slice(0, 4)]);
+  }, []);
+
   const handleScanToken = useCallback(async (tokenRaw: string, directStudentData: Student | null = null) => {
     const t = tokenRaw.trim();
     if (t.length < 2) return;
@@ -126,12 +153,12 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         targetId = directStudentData.id;
         targetName = directStudentData.nama_siswa || directStudentData.nama_guru || '';
       } else {
-        // 1. Try finding Siswa strictly by NISN
+        // 1. Try finding Siswa strictly by NISN, NIS, RFID, or ID
         try {
           const resSiswa = await siswaApi.getAll({
             search: t,
             limit: 1,
-            search_fields: ['nisn'],
+            search_fields: ['nisn', 'nis', 'no_rfid', 'id'],
             elevated_context: 'true',
             context: 'elevated'
           } as any);
@@ -142,13 +169,13 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           }
         } catch (e) {}
 
-        // 2. If Siswa not found, try finding Guru strictly by NIP
+        // 2. If Siswa not found, try finding Guru strictly by NIP or NIK or ID
         if (!targetName) {
           try {
             const resGuru = await guruApi.getAll({
               search: t,
               limit: 1,
-              search_fields: ['nip'],
+              search_fields: ['nip', 'nik', 'no_rfid', 'id'],
               elevated_context: 'true',
               context: 'elevated'
             } as any);
@@ -161,6 +188,8 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         }
       }
 
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       // If bypass mode is active
       if (isBypassMode) {
         const res = await bypassLate({ siswa_id: targetId, note: 'Bypass Mode' });
@@ -168,18 +197,23 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           const sInfo = (res as any).data;
           const nama = sInfo?.nama_siswa || targetName || 'Siswa';
           const kelas = sInfo?.kelas && sInfo.kelas !== '-' ? ` - ${sInfo.kelas}` : '';
-          toast.success(`BYPASS BERHASIL: ${nama}${kelas}`);
+          const msg = `BYPASS BERHASIL: ${nama}${kelas}`;
+          
+          toast.success(msg, { position: 'bottom-center' });
+          addTapFeedback('success', msg, timeStr);
           await playBeep('success');
           await refreshStats();
           onTapSuccess?.();
         } else {
-          toast.error((res as any).message || 'Gagal memproses bypass');
+          const errMsg = (res as any).message || 'Gagal memproses bypass';
+          toast.error(errMsg, { position: 'bottom-center' });
+          addTapFeedback('error', errMsg, timeStr);
         }
         return;
       }
 
       // Submit tap directly to backend (backend resolves by NISN, NIS, RFID, NIP, or ID)
-      const tapRes = await submitTap({ siswa_id: targetId, arah: inputDirection, device_id: '', rfid: '' });
+      const tapRes = await submitTap({ siswa_id: targetId, arah: inputDirection, device_id: '', rfid: t });
       if (tapRes.success) {
         const sInfo = (tapRes as any).data?.siswa_info;
         const gInfo = (tapRes as any).data?.guru_info;
@@ -194,20 +228,26 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           successMsg = (tapRes as any).message || `PRESENSI BERHASIL: ${targetName || 'Siswa'}`;
         }
 
-        toast.success(successMsg);
+        toast.success(successMsg, { position: 'bottom-center' });
+        addTapFeedback('success', successMsg, timeStr);
         await playBeep('success');
         await refreshStats();
         onTapSuccess?.();
       } else {
-        toast.error((tapRes as any).message || 'Gagal mencatat tap');
+        const errMsg = (tapRes as any).message || 'Gagal mencatat tap';
+        toast.error(errMsg, { position: 'bottom-center' });
+        addTapFeedback('error', errMsg, timeStr);
       }
     } catch (e: any) {
-      toast.error(e.response?.data?.message || e.message || 'Gagal mencatat tap');
+      const errMsg = e.response?.data?.message || e.message || 'Gagal mencatat tap';
+      toast.error(errMsg, { position: 'bottom-center' });
+      addTapFeedback('error', errMsg, new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     } finally {
       setHidToken('');
       isProcessingRef.current = false;
+      focusScanInput();
     }
-  }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, playBeep]);
+  }, [inputDirection, isBypassMode, refreshStats, onTapSuccess, playBeep, addTapFeedback, focusScanInput]);
 
   // Auto-submit RFID / barcode scanner input when 8+ digits are typed
   useEffect(() => {
@@ -283,13 +323,13 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
         </div>
       )}
 
-      <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden ${isBypassMode ? 'ring-4 ring-amber-400/20 border-amber-400' : ''}`}>
+      <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden ${isBypassMode ? 'ring-4 ring-amber-400/20 border-amber-400' : ''}`}>
         <div className="flex border-b border-slate-100 dark:border-slate-800">
           {['HID', 'QR', 'FACE'].map(t => (
-            <button key={t} onClick={() => setInputTab(t as any)} className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all ${inputTab === t ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-50'}`}>{t}</button>
+            <button key={t} onClick={() => setInputTab(t as any)} className={`flex-1 py-3 text-xs font-black uppercase tracking-widest transition-all ${inputTab === t ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-50'}`}>{t}</button>
           ))}
         </div>
-        <div className="p-8">
+        <div className="p-4 sm:p-6">
           <Suspense fallback={<PageLoader />}>
             {inputTab === 'HID' && <GerbangKeyRfidInput hidToken={hidToken} onHidTokenChange={setHidToken} autoSubmitGateHID={handleScanToken} isBypassMode={isBypassMode} showDropdown={showDropdown} setShowDropdown={setShowDropdown} searchCandidates={searchCandidates} onSelectStudent={(t, s) => handleScanToken(t, s)} onSubmit={handleScanToken} />}
             {inputTab === 'QR' && <GerbangQrInput scannerStatus={scannerStatus} onSwitchCamera={cycleCamera} />}
@@ -297,6 +337,55 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           </Suspense>
         </div>
       </div>
+
+      {/* Live Result History Stream (Slide Down Animation - Latest Scan on TOP) */}
+      {tapHistory.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400 px-1">
+            <span>Riwayat Tap Terakhir (Terbaru di Atas)</span>
+            <button 
+              type="button" 
+              onClick={() => setTapHistory([])}
+              className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+            >
+              Bersihkan
+            </button>
+          </div>
+          <div className="space-y-2">
+            {tapHistory.map((item, idx) => (
+              <div 
+                key={item.id}
+                className={`p-3.5 rounded-xl border flex items-center justify-between shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-3 ${
+                  idx === 0 ? 'ring-2 ring-indigo-500/20 scale-[1.01]' : 'opacity-85'
+                } ${
+                  item.type === 'success' 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200' 
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm shrink-0 ${
+                    item.type === 'success' ? 'bg-emerald-500 text-white shadow-xs' : 'bg-rose-500 text-white shadow-xs'
+                  }`}>
+                    {item.type === 'success' ? '✓' : '✕'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-xs sm:text-sm uppercase tracking-tight truncate">{item.message}</span>
+                      {idx === 0 && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-600 text-white uppercase shrink-0">
+                          Terbaru
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] opacity-75 font-medium mt-0.5">Waktu Tap: {item.time} WIB</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 

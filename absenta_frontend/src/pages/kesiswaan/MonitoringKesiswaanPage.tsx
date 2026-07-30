@@ -1,45 +1,36 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
-  AlertTriangle, 
   Users, 
   TrendingUp, 
   Clock,
-  ChevronRight,
-  ChevronLeft,
   ShieldAlert,
   Search,
-  MessageSquare,
-  Star,
   Activity,
-  ArrowRight,
-  Award,
-  RefreshCw,
-  CalendarDays
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  CheckCircle2
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { kesiswaanApi, type Pelanggaran } from '../../api/kesiswaan.api';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTvStore } from '../../store/tvStore';
 import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import { PiketAgendaPanel, RombelDisiplinPanel } from './components/MonitoringKesiswaanComponents';
+import { MemoizedAnalyticsCard } from '../../components/ui/AnalyticsCard';
+import type { CareStudentItem, LeaderboardItem } from '../../components/kesiswaan/monitoring/CareSpotlightSection';
+import type { MonthlyTrendItem } from '../../components/kesiswaan/monitoring/MonthlyTrendChart';
 
-interface MonthlyTrendItem {
-  nama_bulan: string;
-  total_kasus: number;
-  total_poin: number;
-}
-
-interface LeaderboardItem {
-  nama_siswa: string;
-  nama_kelas: string;
-  total_poin: number;
-}
+// Lazy load heavy subcomponents (Pilar 21)
+const CareSpotlightSection = lazy(() => import('../../components/kesiswaan/monitoring/CareSpotlightSection').then(m => ({ default: m.CareSpotlightSection })));
+const MonthlyTrendChart = lazy(() => import('../../components/kesiswaan/monitoring/MonthlyTrendChart').then(m => ({ default: m.MonthlyTrendChart })));
+const CatatPelanggaranModal = lazy(() => import('../../components/kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
+const TindakMasalPelanggaranModal = lazy(() => import('../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
 const REFETCH = 60_000;
 const fmt = (d: Date) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -50,6 +41,8 @@ const MonitoringKesiswaanPage: React.FC = () => {
   const [currentScene, setCurrentScene] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [spotlightTab, setSpotlightTab] = useState<'violations' | 'achievements'>('violations');
+  const [catatModalOpen, setCatatModalOpen] = useState(false);
+  const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isTvMode) return;
@@ -83,16 +76,28 @@ const MonitoringKesiswaanPage: React.FC = () => {
   });
 
   const stats = useMemo(() => {
-    if (!violations?.data?.list) return { today: 0, severe: 0, totalPoints: 0, trending: 0 };
+    if (!violations?.data?.list) return { today: 0, severe: 0, totalPoints: 0, needDiscipline: 0 };
     const list = violations.data.list;
-    const today = list.filter((v: Pelanggaran) => new Date(v.tanggal).toDateString() === new Date().toDateString()).length;
-    const severe = list.filter((v: Pelanggaran) => v.poin >= 50).length;
+    const now = new Date();
+    const localTodayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    const today = list.filter((v: Pelanggaran) => {
+      const dateRaw = v.created_at || v.tanggal;
+      if (!dateRaw) return false;
+      const dateObj = new Date(dateRaw);
+      if (isNaN(dateObj.getTime())) return false;
+      const vLocalStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+      return vLocalStr === localTodayStr;
+    }).length;
+
+    const severe = list.filter((v: Pelanggaran) => v.poin >= 25).length;
+    const needDiscipline = list.filter((v: Pelanggaran) => v.status === 'BARU' || v.status === 'PERLU_PEMBINAAN' || v.status === 'PROSES').length;
     const totalPoints = list.reduce((acc: number, curr: Pelanggaran) => acc + curr.poin, 0);
     
-    return { today, severe, totalPoints, trending: list.length };
+    return { today, severe, totalPoints, needDiscipline };
   }, [violations]);
 
-  const careStudents = useMemo(() => {
+  const careStudents = useMemo((): CareStudentItem[] => {
     if (!violations?.data?.list) return [];
     const studentPoints: Record<string, { id: string; name: string; class: string; points: number }> = {};
     
@@ -114,7 +119,7 @@ const MonitoringKesiswaanPage: React.FC = () => {
       .slice(0, 5);
   }, [violations]);
 
-  const recentViolations = useMemo(() => {
+  const recentViolations = useMemo((): Pelanggaran[] => {
     return violations?.data?.list.slice(0, 5) || [];
   }, [violations]);
 
@@ -125,6 +130,10 @@ const MonitoringKesiswaanPage: React.FC = () => {
   const monthlyTrend = useMemo((): MonthlyTrendItem[] => {
     return (analytics?.data?.trend_bulanan as MonthlyTrendItem[]) || [];
   }, [analytics]);
+
+  const leaderboardData = useMemo((): LeaderboardItem[] => {
+    return (leaderboard?.data as LeaderboardItem[]) || [];
+  }, [leaderboard]);
 
   const maxCases = useMemo(() => {
     if (monthlyTrend.length === 0) return 1;
@@ -138,33 +147,45 @@ const MonitoringKesiswaanPage: React.FC = () => {
       subtitle: "Catatan baru masuk hari ini",
       icon: <Clock size={14} />,
       gradient: "from-indigo-500 to-indigo-600",
-      variant: "card" as const,
+      variant: "compact-premium" as const,
     },
     {
-      title: "Kasus Berat (≥ 50 Poin)",
-      value: stats.severe,
-      subtitle: "Butuh pembinaan segera",
+      title: "Butuh Pembinaan",
+      value: stats.needDiscipline,
+      subtitle: "Menunggu tindakan / tap kartu",
       icon: <ShieldAlert size={14} />,
       gradient: "from-rose-500 to-pink-600",
-      variant: "card" as const,
+      variant: "compact-premium" as const,
     },
     {
-      title: "Total Laporan",
-      value: stats.trending,
-      subtitle: "Semua catatan terverifikasi",
+      title: "Kasus Berat (≥ 25 Poin)",
+      value: stats.severe,
+      subtitle: "Memerlukan penanganan khusus",
       icon: <Users size={14} />,
-      gradient: "from-emerald-500 to-teal-600",
-      variant: "card" as const,
+      gradient: "from-amber-500 to-orange-600",
+      variant: "compact-premium" as const,
     },
     {
       title: "Akumulasi Poin",
       value: stats.totalPoints,
       subtitle: "Total poin seluruh kelas",
       icon: <TrendingUp size={14} />,
-      gradient: "from-amber-500 to-orange-600",
-      variant: "card" as const,
+      gradient: "from-emerald-500 to-teal-600",
+      variant: "compact-premium" as const,
     }
-  ], [stats]);  if (isTvMode) {
+  ], [stats]);
+
+  const monitoringInstruction = useMemo(() => ({
+    title: "Panduan Monitoring Kesiswaan & Disiplin",
+    description: "Halaman ini digunakan untuk memantau data kedisiplinan dan pembinaan siswa secara real-time.",
+    items: [
+      { text: "Statistik di bagian atas menampilkan ringkasan data pelanggaran siswa." },
+      { text: "Gunakan 'Care Spotlight' untuk melihat siswa yang memerlukan perhatian atau pembinaan intensif segera." },
+      { text: "Catatan pelanggaran terkini menampilkan aktivitas real-time." }
+    ]
+  }), []);
+
+  if (isTvMode) {
     const scenes = [
       { title: "Ringkasan Harian, Piket & Agenda", desc: "Statistik harian, piket aktif, dan agenda terdekat" },
       { title: "Aktivitas Pelanggaran Real-time", desc: "Catatan pelanggaran masuk terbaru" },
@@ -188,16 +209,14 @@ const MonitoringKesiswaanPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6">
-            {/* Scene dots indicator */}
             <div className="flex items-center gap-2">
               {scenes?.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentScene(i)}
-                  className={cn(
-                    "w-2.5 h-2.5 rounded-full transition-all duration-300",
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                     currentScene === i ? "bg-indigo-500 scale-125" : "bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600"
-                  )}
+                  }`}
                   aria-label={`Go to scene ${i + 1}`}
                 />
               ))}
@@ -214,7 +233,6 @@ const MonitoringKesiswaanPage: React.FC = () => {
 
         {/* TV Mode Body */}
         <div className="flex-1 min-h-0 relative">
-          {/* Left/Right click navigation areas for TV Mode */}
           <button 
             onClick={() => setCurrentScene(prev => (prev - 1 + 4) % 4)}
             className="fixed left-0 top-[80px] bottom-0 w-[8%] z-40 flex items-center justify-start pl-4 transition-all duration-300 opacity-0 hover:opacity-100 hover:bg-slate-500/5 dark:hover:bg-slate-300/5 cursor-pointer text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 group"
@@ -241,23 +259,20 @@ const MonitoringKesiswaanPage: React.FC = () => {
             >
               {currentScene === 0 && (
                 <div className="space-y-6 h-full flex flex-col justify-between">
-                  {/* Grid 4 Stats Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
                     {academicStats?.map((s, idx) => (
-                      <Card key={idx} className="p-5 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 text-slate-800 dark:text-white shadow-lg flex items-center justify-between min-h-[96px]">
-                        <div>
-                          <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{s.title}</p>
-                          <p className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">{s.value}</p>
-                          <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-1 uppercase tracking-tight">{s.subtitle}</p>
-                        </div>
-                        <div className={cn("p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-indigo-500 dark:text-indigo-400", s.gradient?.includes("rose") ? "text-rose-600 dark:text-rose-400" : s.gradient?.includes("emerald") ? "text-emerald-600 dark:text-emerald-400" : s.gradient?.includes("amber") ? "text-amber-600 dark:text-amber-400" : "")}>
-                          {s.icon}
-                        </div>
-                      </Card>
+                      <MemoizedAnalyticsCard
+                        key={idx}
+                        title={s.title}
+                        value={s.value}
+                        subtitle={s.subtitle}
+                        icon={s.icon}
+                        gradient={s.gradient}
+                        variant="compact-premium"
+                        mobileCompact={true}
+                      />
                     ))}
                   </div>
-
-                  {/* Piket & Agenda Panel */}
                   <div className="flex-1 min-h-0 pt-2">
                     <PiketAgendaPanel />
                   </div>
@@ -277,188 +292,49 @@ const MonitoringKesiswaanPage: React.FC = () => {
                   </div>
 
                   <div className="flex-1 min-h-0 overflow-y-auto space-y-3.5 pr-2">
-                    {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-16 w-full bg-slate-100 dark:bg-slate-800/40 rounded-xl" />) :
-                     recentViolations.length > 0 ? recentViolations?.map((v: Pelanggaran) => (
-                        <div key={v.id} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-between shadow-sm">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className={cn(
-                              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
-                              v.poin >= 50 ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/35' : 'bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/35'
-                            )}>
-                              <AlertTriangle size={18} />
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight truncate">{v.Siswa?.nama_siswa}</h4>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">{v.jenis_pelanggaran} <span className="mx-1.5 opacity-20">•</span> <span className="font-bold text-slate-400 dark:text-slate-500">{v.Siswa?.Kelas?.nama_kelas}</span></p>
-                            </div>
+                    {isLoading ? [1,2,3,4]?.map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />) : 
+                    recentViolations.length > 0 ? recentViolations?.map((v) => (
+                      <div key={v.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${v.poin >= 50 ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/30' : 'bg-amber-100 text-amber-600 dark:bg-amber-950/30'}`}>
+                            <ShieldAlert size={18} />
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className={cn("text-base font-black leading-none mb-1", v.poin >= 50 ? 'text-rose-500' : 'text-amber-500')}>+{v.poin}</p>
-                            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{new Date(v.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                          <div className="min-w-0">
+                            <h4 className="font-black text-slate-800 dark:text-white text-sm uppercase truncate">{v.Siswa?.nama_siswa}</h4>
+                            <p className="text-xs text-slate-500 font-medium truncate">{v.jenis_pelanggaran} • {v.Siswa?.Kelas?.nama_kelas}</p>
                           </div>
                         </div>
-                     )) : (
-                        <div className="py-20 text-center bg-slate-50 dark:bg-slate-800/10 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                          <Star size={36} className="mx-auto text-slate-300 dark:text-slate-700 mb-3" />
-                          <p className="text-slate-400 dark:text-slate-500 font-bold uppercase text-[9px] tracking-widest">Semua Siswa Terjaga Dengan Baik</p>
-                        </div>
-                     )}
+                        <span className="font-black text-rose-600">+{v.poin}</span>
+                      </div>
+                    )) : null}
                   </div>
                 </div>
               )}
 
               {currentScene === 2 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
-                  {/* Care Spotlight */}
-                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center gap-3 mb-6 shrink-0 border-b border-slate-100 dark:border-slate-800/60 pb-3">
-                        <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/35 flex items-center justify-center">
-                          <MessageSquare size={14} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Care Spotlight</p>
-                          <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Top Poin Pelanggaran</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3.5">
-                        {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800/40 rounded-xl" />) :
-                        careStudents?.map((s: { id: string; name: string; class: string; points: number }, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-2 rounded-xl border border-slate-100 dark:border-slate-800/30">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-xs font-black text-slate-500 dark:text-slate-400 shrink-0">
-                                {idx + 1}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-black truncate uppercase tracking-tight text-slate-800 dark:text-white">{s.name}</p>
-                                <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{s.class}</p>
-                              </div>
-                            </div>
-                            <span className="text-base font-black text-rose-500 shrink-0">+{s.points}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl mt-4">
-                      <p className="text-[9px] text-slate-500 dark:text-slate-400 italic font-semibold leading-relaxed">
-                        * Panggilan wali perlu diprioritaskan bagi siswa dengan akumulasi poin di atas 75.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Leaderboard Prestasi */}
-                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center gap-3 mb-6 shrink-0 border-b border-slate-100 dark:border-slate-800/60 pb-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/35 flex items-center justify-center">
-                          <Award size={14} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Leaderboard Prestasi</p>
-                          <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Top Poin Penghargaan</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3.5">
-                        {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800/40 rounded-xl" />) :
-                        leaderboard?.data && leaderboard.data.length > 0 ? (
-                          leaderboard?.data?.map((s: LeaderboardItem, idx: number) => (
-                            <div key={idx} className="flex items-center justify-between p-2 rounded-xl border border-slate-100 dark:border-slate-800/30">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-xs font-black text-slate-500 dark:text-slate-400 shrink-0">
-                                  {idx + 1}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-black truncate uppercase tracking-tight text-slate-800 dark:text-white">{s.nama_siswa}</p>
-                                  <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{s.nama_kelas}</p>
-                                </div>
-                              </div>
-                              <span className="text-base font-black text-emerald-400 shrink-0">+{s.total_poin}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="py-10 text-center bg-slate-50 dark:bg-slate-800/10 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase">Belum ada catatan prestasi.</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl mt-4">
-                      <p className="text-[9px] text-slate-500 dark:text-slate-400 italic font-semibold leading-relaxed">
-                        * Apresiasi sertifikat penghargaan berkala sangat disarankan bagi siswa di peringkat 5 teratas.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
+                  <CareSpotlightSection
+                    spotlightTab={spotlightTab}
+                    setSpotlightTab={setSpotlightTab}
+                    careStudents={careStudents}
+                    leaderboardData={leaderboardData}
+                    isLoading={isLoading}
+                    isLoadingLeaderboard={isLoadingLeaderboard}
+                    onNavigateToPelanggaran={handleNavigateToPelanggaran}
+                  />
+                </Suspense>
               )}
 
               {currentScene === 3 && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full min-h-0">
-                  {/* Rombel Disiplin Panel */}
-                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 overflow-y-auto shadow-sm">
-                    <RombelDisiplinPanel violations={violations} />
-                  </div>
-
-                  {/* Tren Bulanan */}
-                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 flex flex-col justify-between shadow-sm">
-                    <div>
-                      <div className="flex items-center justify-between mb-6 shrink-0">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/35 flex items-center justify-center">
-                            <TrendingUp size={14} />
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Tren Laporan Bulanan</h3>
-                            <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Analisis kasus tingkat tahunan</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {isLoadingAnalytics ? (
-                        <div className="flex justify-between items-end h-48 pt-6">
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]?.map(i => (
-                            <Skeleton key={i} className="w-[6%] h-full bg-slate-100 dark:bg-slate-800/40 rounded-t-lg" />
-                          ))}
-                        </div>
-                      ) : monthlyTrend.length === 0 ? (
-                        <div className="py-20 text-center text-slate-400 dark:text-slate-500 text-xs italic">Data tren bulanan belum tersedia.</div>
-                      ) : (
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-end h-48 pt-6 border-b border-slate-200 dark:border-slate-800 px-2">
-                            {monthlyTrend?.map((m: MonthlyTrendItem, idx: number) => {
-                              const heightPct = (m.total_kasus / maxCases) * 100;
-                              return (
-                                <div key={idx} className="w-[6%] flex flex-col items-center group relative h-full justify-end">
-                                  <div className="absolute bottom-full mb-2 bg-slate-900 dark:bg-slate-950 text-white text-[9px] font-bold py-1 px-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-md z-25">
-                                    {m.total_kasus} Kasus
-                                  </div>
-                                  <div 
-                                    style={{ height: `${Math.max(5, heightPct)}%` }} 
-                                    className={cn(
-                                      "w-full rounded-t-lg transition-all duration-500 cursor-pointer",
-                                      m.total_kasus > 0 
-                                        ? "bg-gradient-to-t from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md shadow-indigo-500/10" 
-                                        : "bg-slate-100 dark:bg-slate-800"
-                                    )}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex justify-between text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-2">
-                            {monthlyTrend?.map((m: MonthlyTrendItem, idx: number) => (
-                              <span key={idx} className="w-[6%] text-center truncate">
-                                {String(m.nama_bulan || '').substring(0, 3)}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                <div className="space-y-6">
+                  <RombelDisiplinPanel violations={violations} analytics={analytics} />
+                  <Suspense fallback={<Skeleton className="h-48 w-full rounded-2xl" />}>
+                    <MonthlyTrendChart
+                      monthlyTrend={monthlyTrend}
+                      maxCases={maxCases}
+                      isLoadingAnalytics={isLoadingAnalytics}
+                    />
+                  </Suspense>
                 </div>
               )}
             </motion.div>
@@ -469,298 +345,103 @@ const MonitoringKesiswaanPage: React.FC = () => {
   }
 
   return (
-    <AcademicPageLayout
-      title="Monitoring Kesiswaan"
-      description="Pantau statistik kedisiplinan, laporan pelanggaran, dan siswa yang memerlukan pembinaan segera."
+    <OperationalPageLayout
+      title="MONITORING DISIPLIN KESISWAAN"
+      shortTitle="MONITORING DISIPLIN"
+      subtitle="Live Display & Analitik Real-Time"
+      backPath="/dashboard"
+      backLabel="Kembali ke Dashboard"
       stats={academicStats}
-      isLoadingStats={isLoading}
-      breadcrumbs={[
-        { label: 'Dashboard', path: '/dashboard' },
-        { label: 'Kesiswaan', path: '/kesiswaan' },
-        { label: 'Monitoring', path: '/kesiswaan/monitoring' }
-      ]}
-      instruction={{
-        title: "Panduan Monitoring Kesiswaan",
-        description: "Halaman ini digunakan untuk memantau data kedisiplinan dan pembinaan siswa secara real-time.",
-        items: [
-          { text: "Statistik di bagian atas menampilkan ringkasan data pelanggaran siswa." },
-          { text: "Gunakan 'Care Spotlight' untuk melihat siswa yang memerlukan perhatian atau pembinaan intensif segera." },
-          { text: "Catatan pelanggaran terkini menampilkan aktivitas real-time." }
-        ]
-      }}
-      hardeningModuleKey="kesiswaan_monitoring"
-      toolbar={
-        <div className="flex gap-3">
+      actions={
+        <div className="flex gap-2 items-center">
           <TvModeToggle />
           <Button 
-            onClick={handleNavigateToPelanggaran}
+            onClick={() => setTindakMasalModalOpen(true)}
             variant="outline"
-            className="rounded-xl h-12 px-6 font-black text-xs uppercase tracking-widest border-gray-100 shadow-sm"
+            className="rounded-lg h-8 px-3 font-bold text-xs border-emerald-600/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hidden sm:inline-flex items-center gap-1.5 cursor-pointer"
           >
-            <Search size={16} className="mr-2" /> Telusuri Data
+            <CheckCircle2 size={14} /> ⚡ Tindak Masal
           </Button>
           <Button 
-            variant="primary"
-            className="rounded-xl h-12 px-8 font-black text-xs uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white shadow-xl shadow-indigo-600/20 border-none"
-            onClick={handleNavigateToPelanggaran}
+            onClick={() => setCatatModalOpen(true)}
+            variant="default"
+            className="rounded-lg h-8 px-3 font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white hidden sm:inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
-            Input Catatan Baru
+            <Plus size={14} /> ⚡ Catat Pelanggaran
           </Button>
         </div>
       }
+      instruction={monitoringInstruction}
+      hardeningModuleKey="kesiswaan_monitoring"
     >
-      {/* ── BAGIAN I: Ringkasan & Informasi Harian ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch mt-6">
-        {/* Guru Piket & Agenda Kesiswaan */}
-        <div className="lg:col-span-5 flex">
-          <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm w-full">
-            <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none mb-6">Papan Informasi Piket & Agenda</h3>
-            <PiketAgendaPanel />
-          </Card>
-        </div>
-
-        {/* Catatan Pelanggaran Terkini */}
-        <div className="lg:col-span-7 flex">
-          <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm flex flex-col justify-between w-full min-h-[400px]">
-            <div>
-              <div className="flex items-center justify-between mb-6 px-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
-                    <Activity size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none">Catatan Pelanggaran Terkini</h3>
-                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Aktivitas perilaku siswa real-time</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-3.5">
-                {isLoading ? [1,2,3]?.map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />) : 
-                 recentViolations.length > 0 ? recentViolations?.map((v: Pelanggaran) => (
-                    <div key={v.id} className="p-4 rounded-xl border border-gray-100/50 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/50 hover:bg-indigo-50/10 dark:hover:bg-indigo-950/10 transition-all duration-300 group flex items-center justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center shadow-inner shrink-0",
-                          v.poin >= 50 ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400' : 'bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
-                        )}>
-                          <AlertTriangle size={18} />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-black text-gray-900 dark:text-white text-sm uppercase tracking-tight truncate max-w-[170px]">{v.Siswa?.nama_siswa}</h4>
-                          <p className="text-xs text-gray-500 font-medium truncate max-w-[200px]">{v.jenis_pelanggaran} <span className="mx-1.5 opacity-20">•</span> <span className="font-bold text-gray-400">{v.Siswa?.Kelas?.nama_kelas}</span></p>
-                        </div>
-                      </div>
-                      <div className="text-right flex items-center gap-4 shrink-0">
-                        <div>
-                          <p className={cn("text-base font-black leading-none mb-1", v.poin >= 50 ? 'text-rose-600' : 'text-amber-600')}>+{v.poin}</p>
-                          <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{new Date(v.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
-                        </div>
-                      </div>
-                    </div>
-                 )) : (
-                    <div className="py-20 text-center bg-slate-50/30 dark:bg-slate-900/10 rounded-xl border-2 border-dashed border-gray-100 dark:border-slate-800">
-                      <Star size={36} className="mx-auto text-gray-200 mb-3" />
-                      <p className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">Semua Siswa Terjaga Dengan Baik</p>
-                    </div>
-                 )}
-              </div>
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Divider Sekat I */}
-      <div className="relative my-8">
-        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-slate-50 dark:bg-slate-900 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-200/60 dark:border-slate-800 rounded-full py-1">
-            Bagian I: Ringkasan & Informasi Harian
-          </span>
-        </div>
-      </div>
-
-      {/* ── BAGIAN II: Perilaku & Prestasi Siswa ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-        {/* Care Spotlight */}
-        <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm flex flex-col justify-between w-full">
-          <div>
-            <div className="flex items-center gap-3 mb-6 shrink-0 border-b border-slate-100 dark:border-slate-800/60 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                <MessageSquare size={14} />
-              </div>
+      <div className="space-y-6 pb-12 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mt-2">
+          <div className="lg:col-span-5 flex">
+            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm w-full">
+              <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight mb-4">Papan Informasi Piket & Agenda</h3>
+              <PiketAgendaPanel />
+            </Card>
+          </div>
+          <div className="lg:col-span-7 flex">
+            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm flex flex-col justify-between w-full min-h-[360px]">
               <div>
-                <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase leading-none">Care Spotlight</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">Top Poin Pelanggaran</p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5">
-              {isLoading ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-xl" />) : 
-              careStudents?.map((s: { id: string; name: string; class: string; points: number }, idx: number) => (
-                <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 p-2 -mx-2 rounded-xl transition-all">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-xs font-black border border-gray-100 dark:border-slate-800 group-hover:border-rose-500 transition-colors shrink-0">
-                      {idx + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-black truncate max-w-[170px] uppercase tracking-tight text-gray-800 dark:text-gray-200">{s.name}</p>
-                      <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{s.class}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-base font-black text-rose-500">+{s.points}</span>
-                    <ChevronRight size={12} className="text-gray-300 dark:text-gray-600 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl">
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed font-semibold italic">
-              * Prioritaskan panggilan orang tua/wali untuk siswa dengan akumulasi poin di atas 75. Fokus pada pembinaan intensif.
-            </p>
-          </div>
-        </Card>
-
-        {/* Leaderboard Prestasi */}
-        <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm flex flex-col justify-between w-full">
-          <div>
-            <div className="flex items-center gap-3 mb-6 shrink-0 border-b border-slate-100 dark:border-slate-800/60 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                <Award size={14} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase leading-none">Leaderboard Prestasi</p>
-                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight mt-0.5">Top Poin Penghargaan</p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5">
-              {isLoadingLeaderboard ? [1,2,3,4,5]?.map(i => <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-xl" />) : 
-              leaderboard?.data && leaderboard.data.length > 0 ? (
-                leaderboard?.data?.map((s: LeaderboardItem, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 p-2 -mx-2 rounded-xl transition-all">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-xs font-black border border-gray-100 dark:border-slate-800 group-hover:border-emerald-500 transition-colors shrink-0">
-                        {idx + 1}
+                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight mb-4">Catatan Pelanggaran Terkini</h3>
+                <div className="space-y-3">
+                  {isLoading ? [1,2,3]?.map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />) :
+                  recentViolations?.map((v) => (
+                    <div key={v.id} className="p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+                      <div className="min-w-0 flex-1 pr-3">
+                        <h4 className="font-black text-gray-900 dark:text-white text-xs uppercase truncate">{v.Siswa?.nama_siswa}</h4>
+                        <p className="text-[11px] text-gray-500 font-medium truncate">{v.jenis_pelanggaran} • {v.Siswa?.Kelas?.nama_kelas}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black truncate max-w-[170px] uppercase tracking-tight text-gray-800 dark:text-gray-200">{s.nama_siswa}</p>
-                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{s.nama_kelas}</p>
-                      </div>
+                      <span className="font-black text-rose-600 text-xs shrink-0">+{v.poin} Poin</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-base font-black text-emerald-600">+{s.total_poin}</span>
-                      <ChevronRight size={12} className="text-gray-300 dark:text-gray-600 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="py-10 text-center bg-slate-50/10 dark:bg-slate-900/10 rounded-xl border border-dashed border-gray-100 dark:border-slate-800">
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">Belum ada catatan prestasi.</p>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            </Card>
           </div>
+        </div>
 
-          <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-xl">
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed font-semibold italic">
-              * Berikan apresiasi atau sertifikat penghargaan secara berkala bagi siswa yang berada di peringkat 5 teratas.
-            </p>
-          </div>
-        </Card>
+        <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+          <CareSpotlightSection
+            spotlightTab={spotlightTab}
+            setSpotlightTab={setSpotlightTab}
+            careStudents={careStudents}
+            leaderboardData={leaderboardData}
+            isLoading={isLoading}
+            isLoadingLeaderboard={isLoadingLeaderboard}
+            onNavigateToPelanggaran={handleNavigateToPelanggaran}
+          />
+        </Suspense>
+
+        <RombelDisiplinPanel violations={violations} analytics={analytics} />
+
+        <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
+          <MonthlyTrendChart
+            monthlyTrend={monthlyTrend}
+            maxCases={maxCases}
+            isLoadingAnalytics={isLoadingAnalytics}
+          />
+        </Suspense>
+
+        {/* Modal Pencatatan Kilat Pelanggaran (Quick Entry) */}
+        <Suspense fallback={null}>
+          <CatatPelanggaranModal
+            isOpen={catatModalOpen}
+            onClose={() => setCatatModalOpen(false)}
+          />
+        </Suspense>
+
+        {/* Modal Penindakan Masal (Bulk Discipline Action) */}
+        <Suspense fallback={null}>
+          <TindakMasalPelanggaranModal
+            isOpen={tindakMasalModalOpen}
+            onClose={() => setTindakMasalModalOpen(false)}
+          />
+        </Suspense>
       </div>
-
-      {/* Divider Sekat II */}
-      <div className="relative my-8">
-        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-slate-50 dark:bg-slate-900 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-200/60 dark:border-slate-800 rounded-full py-1">
-            Bagian II: Perilaku & Prestasi Siswa
-          </span>
-        </div>
-      </div>
-
-      {/* ── BAGIAN III: Kepatuhan Rombel ────────────────────────────────────────────── */}
-      <div className="mt-6">
-        <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm w-full">
-          <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none mb-6">Analisis Kepatuhan Rombel</h3>
-          <RombelDisiplinPanel violations={violations} />
-        </Card>
-      </div>
-
-      {/* Divider Sekat III */}
-      <div className="relative my-8">
-        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-          <div className="w-full border-t border-dashed border-slate-200 dark:border-slate-800" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-slate-50 dark:bg-slate-900 px-4 text-[9px] font-black text-slate-400 uppercase tracking-widest border border-slate-200/60 dark:border-slate-800 rounded-full py-1">
-            Bagian III: Kepatuhan Rombel
-          </span>
-        </div>
-      </div>
-
-      {/* ── BAGIAN IV: Analisis Tren Bulanan ─────────────────────────────────────────── */}
-      <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm mt-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight leading-none">Tren Laporan Pelanggaran Bulanan</h3>
-            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Grafik analisis kedisiplinan tahunan</p>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Tahun: {new Date().getFullYear()}</span>
-          </div>
-        </div>
-
-        {isLoadingAnalytics ? (
-          <div className="flex justify-between items-end h-48 pt-6">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]?.map(i => (
-              <Skeleton key={i} className="w-[6%] h-full rounded-t-lg" />
-            ))}
-          </div>
-        ) : monthlyTrend.length === 0 ? (
-          <div className="py-20 text-center text-slate-400 text-xs italic">Data tren bulanan belum tersedia.</div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex justify-between items-end h-48 pt-6 border-b border-gray-100 dark:border-slate-800 px-2">
-              {monthlyTrend?.map((m: MonthlyTrendItem, idx: number) => {
-                const heightPct = (m.total_kasus / maxCases) * 100;
-                return (
-                  <div key={idx} className="w-[6%] flex flex-col items-center group relative h-full justify-end">
-                    <div className="absolute bottom-full mb-2 bg-slate-900 text-white text-[9px] font-bold py-1 px-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-md z-20">
-                      {m.total_kasus} Kasus ({m.total_poin} Poin)
-                    </div>
-                    <div 
-                      style={{ height: `${Math.max(5, heightPct)}%` }} 
-                      className={cn(
-                        "w-full rounded-t-lg transition-all duration-500 cursor-pointer",
-                        m.total_kasus > 0 
-                          ? "bg-gradient-to-t from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 shadow-md shadow-indigo-500/10" 
-                          : "bg-slate-100 dark:bg-slate-800"
-                      )}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-             <div className="flex justify-between text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">
-              {monthlyTrend?.map((m: MonthlyTrendItem, idx: number) => (
-                <span key={idx} className="w-[6%] text-center truncate">
-                  {String(m.nama_bulan || '').substring(0, 3)}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
-    </AcademicPageLayout>
+    </OperationalPageLayout>
   );
 };
 

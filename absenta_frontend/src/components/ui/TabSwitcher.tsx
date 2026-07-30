@@ -23,7 +23,7 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
 }) => {
   return (
     <div 
-      className={cn("flex gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-2xl w-fit", className)} 
+      className={cn("flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar flex-nowrap shrink-0", className)} 
       role="tablist"
     >
       {options.map((opt) => {
@@ -38,9 +38,9 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
             role="tab"
             onClick={() => onChange(opt.id)}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none",
+              "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none whitespace-nowrap shrink-0",
               isActive
-                ? cn("bg-white dark:bg-slate-700 text-indigo-650 dark:text-indigo-400 shadow-sm", opt.colorClass)
+                ? cn("bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm", opt.colorClass)
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >

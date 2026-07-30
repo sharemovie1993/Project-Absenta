@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
@@ -11,15 +12,25 @@ import {
   History,
   ShieldCheck,
   FileText,
-  CheckCircle
+  CheckCircle,
+  Lock,
+  UserCheck,
+  Calendar,
+  AlertTriangle,
+  ArrowLeft,
+  Maximize,
+  Minimize,
+  LayoutGrid
 } from 'lucide-react';
 import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
 import { useAuthStore } from '../../store/authStore';
+import { useAuth } from '../../hooks/useAuth';
 import { tenantApi } from '../../api/tenants.api';
 import { fetchActiveSystemConfig, type SystemConfig } from '../../services/systemConfig';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
-import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import type { Tenant } from '../../api/tenants.api';
 
 // Import modular components
@@ -50,7 +61,47 @@ export const PRINT_PRESETS: PrintPreset[] = [
 
 export default function PiketPage() {
   const { user } = useAuthStore();
+  const { isAdmin, can } = useAuth();
+  const currentGuruId = user?.guru_profile?.id;
+  const userRole = (user?.role?.name || '').toUpperCase();
 
+  // Management roles who ALWAYS have access to Meja Piket
+  const isManagement = useMemo(() => {
+    if (isAdmin()) return true;
+    if (can('kesiswaan:piket:manage') || can('kesiswaan:piket:view') || can('kesiswaan:piket:create')) return true;
+    return ['ADMIN', 'SUPERADMIN', 'KURIKULUM', 'KESISWAAN', 'KEPALA_SEKOLAH', 'KEPSEK', 'TU', 'OPERATOR'].includes(userRole);
+  }, [user, isAdmin, can, userRole]);
+
+  // Guru Piket Hari Ini State
+  const [guruPiketHariIni, setGuruPiketHariIni] = useState<JadwalPiketGuru[]>([]);
+  const [loadingGuruPiket, setLoadingGuruPiket] = useState(true);
+
+  // Is logged-in teacher assigned to Piket TODAY?
+  const isAssignedPiketToday = useMemo(() => {
+    if (!currentGuruId || !guruPiketHariIni.length) return false;
+    return guruPiketHariIni.some((g: JadwalPiketGuru) => String(g.guru_id) === String(currentGuruId));
+  }, [currentGuruId, guruPiketHariIni]);
+
+  // Final permission check to operate Meja Piket
+  const canOperatePiket = isManagement || isAssignedPiketToday;
+
+  // Load Guru Piket Hari Ini
+  useEffect(() => {
+    const loadGuruPiket = async () => {
+      setLoadingGuruPiket(true);
+      try {
+        const res = await piketGuruApi.getHariIni();
+        if (res.success && res.data) {
+          setGuruPiketHariIni(res.data.guru_piket || []);
+        }
+      } catch (err) {
+        console.error('Failed to load guru piket hari ini:', err);
+      } finally {
+        setLoadingGuruPiket(false);
+      }
+    };
+    loadGuruPiket();
+  }, []);
 
   // Shared States
   const [activeTab, setActiveTab] = useState('scan');
@@ -186,7 +237,7 @@ export default function PiketPage() {
   }, [dailyPermits]);
 
   const tabOptions = useMemo(() => [
-    { id: 'scan', label: 'Operasional Piket', icon: Scan, colorClass: 'text-indigo-650 dark:text-indigo-400' },
+    { id: 'scan', label: 'Operasional Piket', icon: Scan, colorClass: 'text-indigo-600 dark:text-indigo-400' },
     {
       id: 'monitoring',
       label: (
@@ -202,7 +253,7 @@ export default function PiketPage() {
       icon: Clock,
       colorClass: 'text-rose-600 dark:text-rose-400'
     },
-    { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-605 dark:text-blue-400' },
+    { id: 'history', label: 'Riwayat Hari Ini', icon: History, colorClass: 'text-blue-600 dark:text-blue-400' },
     { id: 'security', label: 'Pos Keamanan', icon: ShieldCheck, colorClass: 'text-slate-700 dark:text-slate-300' },
     { id: 'rekap', label: 'Rekap Harian', icon: FileText, colorClass: 'text-violet-600 dark:text-violet-400' }
   ], [activeOutStudents]);
@@ -263,40 +314,91 @@ export default function PiketPage() {
     ];
   }, [dailyPermits]);
 
+  const piketInstruction = useMemo(() => ({
+    title: "Panduan Penggunaan Meja Piket & Kedisiplinan",
+    description: "Gunakan menu navigasi (tab) untuk mengakses fitur operasional piket, pemantauan, dan riwayat.",
+    items: [
+      { text: "Operasional Piket: Untuk melakukan proses scan RFID/QR dan mencetak izin siswa keluar." },
+      { text: "Monitoring Siswa: Untuk memantau daftar siswa yang sedang berada di luar sekolah." },
+      { text: "Pos Keamanan: Dipergunakan oleh pos satpam untuk validasi izin ketika siswa akan keluar/masuk." },
+      { text: "Rekap Harian: Untuk melihat rekapitulasi izin keluar pada hari ini atau rentang tanggal tertentu." }
+    ]
+  }), []);
+
   return (
-      <AcademicPageLayout
-        title="Sistem Piket & Kedisiplinan"
-        description="Kelola izin keluar-masuk siswa dan pemantauan keamanan gerbang secara real-time."
-        breadcrumbs={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Kesiswaan', path: '/kesiswaan' },
-          { label: 'Piket Gerbang' }
-        ]}
-        stats={piketStats}
-        isLoadingStats={loadingPermits}
-        hardeningModuleKey="kesiswaan_piket"
-        instruction={{
-          title: "Panduan Penggunaan Piket",
-          description: "Gunakan menu navigasi (tab) untuk mengakses fitur operasional piket, pemantauan, dan riwayat.",
-          items: [
-            { text: "Operasional Piket: Untuk melakukan proses scan dan mencetak izin siswa keluar." },
-            { text: "Monitoring Siswa: Untuk memantau daftar siswa yang sedang berada di luar sekolah." },
-            { text: "Pos Keamanan: Dipergunakan oleh pos satpam untuk validasi izin ketika siswa akan keluar/masuk." },
-            { text: "Rekap Harian: Untuk melihat rekapitulasi izin keluar pada hari ini atau rentang tanggal tertentu." }
-          ]
-        }}
-      >
-      <div className="space-y-6 pb-20 relative">
-        {/* 2. TABS INTERFACE (HIDDEN ON PRINT) */}
-        <div className="print:hidden">
-          <Card className="p-4 sm:p-6 shadow-sm overflow-hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab} color="indigo" variant="soft">
-              <TabSwitcher
-                options={tabOptions}
-                activeTab={activeTab}
-                onChange={setActiveTab}
-                className="w-full justify-start overflow-x-auto scrollbar-none"
-              />
+    <OperationalPageLayout
+      title="MEJA PIKET"
+      shortTitle="MEJA PIKET"
+      subtitle="Kesiswaan & Kedisiplinan"
+      backPath="/dashboard"
+      backLabel="Kembali ke Dashboard"
+      stats={piketStats}
+      hardeningModuleKey="kesiswaan_piket"
+      instruction={piketInstruction}
+    >
+      <div className="space-y-6 pb-12 relative">
+        {!canOperatePiket ? (
+          /* RESTRICTED ACCESS SCREEN FOR REGULAR TEACHERS NOT ON DUTY TODAY */
+          <Card className="p-8 text-center max-w-2xl mx-auto shadow-md border border-slate-200 dark:border-slate-800">
+            <div className="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-4 border border-rose-200 dark:border-rose-800">
+              <Lock size={32} />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-1">
+              Akses Meja Piket Dibatasi
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-6 leading-relaxed">
+              Halaman Meja Piket & Operasional Kesiswaan khusus digunakan oleh <strong>Guru Bertugas Piket Hari Ini</strong> dan <strong>Tim Manajemen Sekolah</strong> (Kurikulum, Kesiswaan, Kepsek & Admin).
+            </p>
+
+            {/* Info Box Guru Bertugas Hari Ini */}
+            <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 text-left border border-slate-200 dark:border-slate-700/60 mb-6 space-y-3 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                <span className="font-bold text-slate-600 dark:text-slate-300">📅 Hari Ini:</span>
+                <span className="font-black text-indigo-600 dark:text-indigo-400 uppercase">
+                  {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-slate-600 dark:text-slate-300 block mb-1.5">
+                  👥 Guru Bertugas Piket Resmi Hari Ini:
+                </span>
+                {(guruPiketHariIni || []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {guruPiketHariIni?.map((g: JadwalPiketGuru) => (
+                      <span key={g.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60">
+                        <UserCheck size={13} /> {g.Guru?.nama_guru || 'Guru Piket'} ({g.pos_piket || 'Piket Umum'})
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic text-xs">Belum ada alokasi guru piket yang diset untuk hari ini.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
+              <Link
+                to="/kurikulum/jadwal-piket"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
+              >
+                <Calendar size={14} />
+                <span>Lihat Jadwal Piket Guru Saya</span>
+              </Link>
+            </div>
+          </Card>
+        ) : (
+          /* FULL MEJA PIKET INTERFACE FOR AUTHORIZED DUTY TEACHERS & MANAGEMENT */
+          <>
+            {/* 2. TABS INTERFACE (HIDDEN ON PRINT) */}
+            <div className="print:hidden">
+              <Card className="p-4 sm:p-6 shadow-sm overflow-hidden">
+                <Tabs value={activeTab} onValueChange={setActiveTab} color="indigo" variant="soft">
+                  <TabSwitcher
+                    options={tabOptions}
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                    className="w-full justify-start overflow-x-auto scrollbar-none"
+                  />
 
             {/* TAB 1: OPERASIONAL SCANNER */}
             <TabsContent value="scan" className="mt-8 space-y-8">
@@ -504,8 +606,10 @@ export default function PiketPage() {
           }
         }
       `}</style>
+          </>
+        )}
       </div>
 
-    </AcademicPageLayout>
+    </OperationalPageLayout>
   );
 }

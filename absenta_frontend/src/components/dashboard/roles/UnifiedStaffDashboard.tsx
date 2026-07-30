@@ -18,6 +18,7 @@ import {
   Package,
   GraduationCap,
   UserCog,
+  CheckCircle2
 } from 'lucide-react';
 
 // Components
@@ -25,6 +26,9 @@ import { type QuickAction } from '../shared/QuickActionGrid';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
 import { Modal, Badge, Button } from '../../ui';
+
+const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
+const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
 // Widgets
 import { StaffScheduleWidget } from '../widgets/StaffScheduleWidget';
@@ -144,7 +148,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isKabeng    = useMemo(() => hasRole('KABENG', 'KEPALA BENGKEL'),                                                [jabatanList, jabatan]); // eslint-disable-line
   const isBpbk      = useMemo(() => hasRole('BPBK', 'BK ', 'BIMBINGAN KONSELING', 'KONSELING'),                        [jabatanList, jabatan]); // eslint-disable-line
   const isBkk       = useMemo(() => hasRole('BKK', 'BURSA KERJA'),                                                     [jabatanList, jabatan]); // eslint-disable-line
-  const isGerbang   = useMemo(() => hasRole('GERBANG', 'OPERATOR GERBANG', 'GATE'),                                    [jabatanList, jabatan]); // eslint-disable-line
+  const isGerbang   = useMemo(() => 
+    caps.includes('dashboard.view.gerbang') || 
+    caps.includes('attendance.scan') || 
+    caps.includes('attendance.gate.tap.entry') || 
+    user?.role?.name === 'GERBANG' || 
+    user?.role?.name === 'PETUGAS_GERBANG' ||
+    hasRole('GERBANG', 'OPERATOR GERBANG', 'GATE', 'PETUGAS GERBANG', 'SATBAM', 'SECURITY', 'PIKET GERBANG'), 
+  [caps, user, jabatanList, jabatan]); // eslint-disable-line
   const isTU        = useMemo(() => user?.role?.name === 'TU' || user?.role?.name === 'TATA_USAHA' || hasRole('TU', 'TATA USAHA'), [user, jabatanList, jabatan]); // eslint-disable-line
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
@@ -248,6 +259,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const [journalModalOpen, setJournalModalOpen] = useState(false);
   const [processingSesiId, setProcessingSesiId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'personal' | 'walikelas' | 'wakasis'>('personal');
+  const [catatModalOpen, setCatatModalOpen] = useState(false);
+  const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);
 
   // ── 6. Mutations ─────────────────────────────────────────────────────────────
   const createSessionMutation = useMutation({
@@ -376,6 +389,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
         { label: 'Kehadiran Saya', icon: User, onClick: () => navigate('/attendance/my-attendance'), color: 'emerald' },
       ];
 
+      // Gerbang / Satpam / Operasional
+      if (isGerbang || caps.includes('attendance.scan') || hasRole('GERBANG')) {
+        actions.push({ label: 'Scan Gerbang', icon: Activity, onClick: () => navigate('/attendance/ops'), color: 'indigo' });
+      }
+
       // TU Persuratan / Koordinator TU
       if (caps.includes('correspondence.inbox.view') || hasRole('TU_PERSURATAN', 'TU_KEPALA')) {
         actions.push({ label: 'Surat Masuk', icon: Mail, onClick: () => navigate('/correspondence/inbox'), color: 'blue' });
@@ -400,6 +418,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
         actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange' });
       }
 
+      // Pejabat / Staf Gerbang juga berhak Tindak Masal & Catat Pelanggaran
+      actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald' });
+      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber' });
+
       return actions;
     }
 
@@ -411,8 +433,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'),         color: 'rose'   });
     if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple' });
     
-    // Posisikan Catat Pelanggaran paling belakang
-    actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => navigate('/kesiswaan/pelanggaran'), color: 'amber' });
+    // Posisikan Catat & Tindak Pelanggaran di Aksi Cepat
+    actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald' });
+    actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber' });
     
     return actions;
   }, [isWaliKelas, isKurikulum, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);
@@ -881,6 +904,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
           initialData={sessionForJournal}
         />
       )}
+
+      {/* Modal Pencatatan Kilat Pelanggaran (Quick Entry Modal Guru) */}
+      <React.Suspense fallback={null}>
+        <CatatPelanggaranModal
+          isOpen={catatModalOpen}
+          onClose={() => setCatatModalOpen(false)}
+        />
+      </React.Suspense>
+
+      {/* Modal Penindakan Masal (Bulk Discipline Action Guru) */}
+      <React.Suspense fallback={null}>
+        <TindakMasalPelanggaranModal
+          isOpen={tindakMasalModalOpen}
+          onClose={() => setTindakMasalModalOpen(false)}
+        />
+      </React.Suspense>
     </>
   );
 };

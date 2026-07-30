@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Badge } from '../ui';
-import { Clock, Plus, BookOpen, User, Edit2, Trash2 } from 'lucide-react';
+import { Clock, Plus, BookOpen, User, Edit2, Trash2, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getMyTenant } from '../../api/tenants.api';
@@ -251,25 +251,36 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                             exit={{ opacity: 0, scale: 0.95 }}
                             className={cn(
                               "w-full h-full rounded-xl p-3 border shadow-sm flex flex-col justify-between group/item transition-all duration-200 hover:shadow-md",
-                              item.jenis_kegiatan === 'KBM' 
-                                ? "bg-blue-50/55 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
-                                : "bg-amber-50/55 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
+                              item.is_piket
+                                ? "bg-gradient-to-br from-purple-900 to-indigo-900 text-white border-purple-500/40 shadow-md"
+                                : item.jenis_kegiatan === 'KBM' 
+                                  ? "bg-blue-50/55 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30"
+                                  : "bg-amber-50/55 dark:bg-amber-900/10 border-amber-100 dark:border-amber-900/30"
                             )}
                           >
                             <div className="w-full">
                               <div className="flex justify-between items-start mb-1 gap-1">
-                                <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
-                                  {item.Kelas?.nama_kelas || item.jenis_kegiatan}
-                                </Badge>
+                                {item.is_piket ? (
+                                  <Badge className="text-[9px] h-4 px-1.5 bg-amber-400 text-slate-900 font-black uppercase tracking-wider flex items-center gap-1 border-none">
+                                    <ShieldCheck size={10} /> PIKET
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold uppercase truncate max-w-[80px]">
+                                    {item.Kelas?.nama_kelas || item.jenis_kegiatan}
+                                  </Badge>
+                                )}
                                 
                                 {colSpan > 1 && (
-                                  <Badge className="text-[8px] h-4 px-1 bg-indigo-500/10 text-indigo-650 border-indigo-200/30 font-extrabold uppercase">
+                                  <Badge className={cn(
+                                    "text-[8px] h-4 px-1 font-extrabold uppercase",
+                                    item.is_piket ? "bg-purple-700/60 text-purple-100 border border-purple-400/30" : "bg-indigo-500/10 text-indigo-650 border-indigo-200/30"
+                                  )}>
                                     {colSpan} JP
                                   </Badge>
                                 )}
 
                                 <div className="flex space-x-1 opacity-0 group-hover/item:opacity-100 transition-opacity ml-auto">
-                                  {!readOnly && (
+                                  {!readOnly && !item.is_piket && (
                                     <>
                                       <button onClick={(e) => { e.stopPropagation(); if (onEditSlot) onEditSlot(item); }} className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-gray-400 hover:text-blue-500">
                                         <Edit2 className="w-3 h-3" />
@@ -282,23 +293,39 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
                                 </div>
                               </div>
 
-                              {item.Mapel && (
-                                <div className="text-xs font-bold text-gray-900 dark:text-white leading-snug mb-0.5 break-words">
-                                  {item.Mapel.nama_mapel}
-                                </div>
-                              )}
-                              
-                              <div className="flex flex-col gap-0.5 mt-1">
-                                <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">
-                                  {resolveSlotTime(item.kelas_id || '', slot).start} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
-                                </div>
-                                {item.Guru && (
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">
-                                    <User className="w-2.5 h-2.5 mr-1 text-green-500 shrink-0" />
-                                    <span className="truncate">{item.Guru.User?.full_name?.split(' ')[0]}</span>
+                              {item.is_piket ? (
+                                <div className="mt-1">
+                                  <div className="text-xs font-black text-white leading-snug mb-0.5">
+                                    TUGAS PIKET GURU
                                   </div>
-                                )}
-                              </div>
+                                  <div className="text-[10px] text-purple-200 font-bold">
+                                    {item.pos_piket || 'Piket Umum'}
+                                  </div>
+                                  <div className="text-[9px] text-purple-300 font-mono mt-1">
+                                    {item.jam_mulai} - {item.jam_selesai}
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {item.Mapel && (
+                                    <div className="text-xs font-bold text-gray-900 dark:text-white leading-snug mb-0.5 break-words">
+                                      {item.Mapel.nama_mapel}
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex flex-col gap-0.5 mt-1">
+                                    <div className="text-[9px] font-bold text-indigo-650 dark:text-indigo-400 font-mono leading-none">
+                                      {resolveSlotTime(item.kelas_id || '', slot).start} - {resolveSlotTime(item.kelas_id || '', slot + colSpan - 1).end}
+                                    </div>
+                                    {item.Guru && (
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                                        <User className="w-2.5 h-2.5 mr-1 text-green-500 shrink-0" />
+                                        <span className="truncate">{item.Guru.User?.full_name?.split(' ')[0]}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </motion.div>
                         ) : (

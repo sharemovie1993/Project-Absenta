@@ -44,7 +44,7 @@ Berikut adalah seluruh pilar yang saat ini terdaftar dan dideteksi oleh kedua en
 
 | No | Nama Pilar | Key JSON Response | Deskripsi Singkat |
 |---|---|---|---|
-| 1 | Standardisasi Layout Utama | usesLayout | Wajib menggunakan AcademicPageLayout atau InfraErrorBoundary |
+| 1 | Standardisasi Layout Utama | usesLayout | Wajib menggunakan AcademicPageLayout (Manajemen dengan Sidebar) atau OperationalPageLayout (POS Mode TANPA Sidebar & terdaftar di FULL-PAGE ROUTES App.tsx) |
 | 2 | Keamanan Data & Defensive Programming | safeMapping | Peta data wajib menggunakan optional chaining (?.map) |
 | 3 | Optimasi DOM Churn (Memoization) | usesMemo | Wajib useMemo + useCallback pada halaman yang memuat list |
 | 4 | Keamanan Tipe TypeScript (No Any) | 
@@ -74,6 +74,8 @@ oAnyType | Dilarang menggunakan : any atau s any |
 | 26 | Validasi Skema Zod untuk Form | zodValidationGuard | Form wajib dilindungi z.object(...) / zodResolver / .safeParse() |
 | 27 | Standarisasi Tab Switcher | standardTabSwitcher | Navigasi tab wajib menggunakan komponen <TabSwitcher> |
 | 28 | Konsistensi Aliran Tata Letak | layoutFlowConsistency | Filter & stats card wajib tampil di atas tabel data master |
+| 29 | Kesiapan Whitelabel & Dynamic Branding | whitelabelBrandingGuard | Dilarang hardcode nama platform statis 'Absenta.id'; wajib variabel dinamis tenantName/systemConfig |
+| 30 | Adaptabilitas Responsif Multi-Perangkat | responsiveLayoutAdaptationGuard | Wajib teradaptasi di 3 tingkatan layar (Desktop, Tablet, Mobile), zero-clipping, Touch-Scroll TabSwitcher, & AnalyticsCard Mobile-Mini (52px) |
 
 ---
 

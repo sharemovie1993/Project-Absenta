@@ -375,7 +375,21 @@ const server = http.createServer((req, res) => {
     }
 
     // ─── Analisis Kode Secara Real-time (Aligned with audit-pages.cjs) ───
-    const usesLayout = isComponentFile || rawContent.includes('AcademicPageLayout') || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
+    const usesAcademicLayout = /<AcademicPageLayout\b/.test(rawContent);
+    const usesOperationalLayout = /<OperationalPageLayout\b/.test(rawContent);
+    
+    let isSidebarFreeInApp = true;
+    if (usesOperationalLayout && !isComponentFile) {
+      const appTsxPath = path.resolve(projectRootDir, 'src/App.tsx');
+      if (fs.existsSync(appTsxPath)) {
+        const appContent = fs.readFileSync(appTsxPath, 'utf8');
+        const fullPageRoutesSection = appContent.split('FULL-PAGE ROUTES')[1] || '';
+        const compName = path.basename(resolvedPath, path.extname(resolvedPath));
+        isSidebarFreeInApp = fullPageRoutesSection.includes(compName);
+      }
+    }
+
+    const usesLayout = isComponentFile || usesAcademicLayout || (usesOperationalLayout && isSidebarFreeInApp) || rawContent.includes('PageLayout') || rawContent.includes('InfraErrorBoundary');
 
     // ─── Pilar 2: Keamanan Data & Defensive Programming ───
     const contentForMapCheck = content
@@ -442,7 +456,7 @@ const server = http.createServer((req, res) => {
 
     // ─── Pilar 12: Sistem Panduan Pengguna (Responsive Guide) ───
     const hasInstruction = /instruction\s*=\s*\{/.test(content) && content.includes('items:');
-    const missingInstruction = !isComponentFile && usesLayout && !hasInstruction;
+    const missingInstruction = !isComponentFile && usesAcademicLayout && !hasInstruction;
 
     // ─── Pilar 13: Standarisasi Pagination Tabel ───
     const hasPaginationProp = /pagination\s*=\s*\{/.test(content) || (content.includes('currentPage=') && content.includes('onPageChange='));
@@ -480,7 +494,7 @@ const server = http.createServer((req, res) => {
 
     // ─── Pilar 19: Standarisasi Navigasi Breadcrumb ───
     const hasBreadcrumbs = content.includes('breadcrumbs={') || content.includes('breadcrumbs:');
-    const missingBreadcrumbs = !isComponentFile && usesLayout && !hasBreadcrumbs;
+    const missingBreadcrumbs = !isComponentFile && usesAcademicLayout && !hasBreadcrumbs;
 
     // ─── Pilar 20: Shared UI Components ───
     const usesUiComponents = content.includes('components/ui') || content.includes('ui/Card') || content.includes('ui/Button');
@@ -541,6 +555,16 @@ const server = http.createServer((req, res) => {
     const hasInconsistentFilters = firstTableIndex !== Infinity && indexOfFilter !== -1 && firstTableIndex < indexOfFilter;
     const hasInconsistentStats = firstTableIndex !== Infinity && indexOfStats !== -1 && firstTableIndex < indexOfStats;
     const missingLayoutFlowConsistency = !isComponentFile && (hasInconsistentFilters || hasInconsistentStats);
+
+    // ─── Pilar 29: Kesiapan Whitelabel & Dynamic Branding (White-label Readiness Guard) ───
+    const hasHardcodedStaticAppBranding = /(?:>|\b)(?:Absenta\.id|Absenta.ID)(?:<|\b)/i.test(content) && !content.includes('tenantName') && !content.includes('systemConfig');
+    const usesDynamicBranding = content.includes('tenantName') || content.includes('SystemConfig') || content.includes('tenantApi') || content.includes('OperationalPageLayout') || content.includes('AcademicPageLayout');
+    const missingWhitelabelBranding = hasHardcodedStaticAppBranding && !usesDynamicBranding;
+
+    // ─── Pilar 30: Adaptabilitas Responsif Multi-Perangkat (Responsive Multi-Device Adaptation Guard) ───
+    const hasUnresponsiveGrid = /(?<!(?:sm|md|lg|xl|2xl):)grid-cols-(?:[3-9]|12)\b/.test(content);
+    const hasUnresponsiveTopbarText = /Kembali ke Dashboard/.test(content) && !content.includes('hidden sm:inline') && !content.includes('OperationalPageLayout') && !content.includes('AcademicPageLayout');
+    const missingResponsiveAdaptation = !isComponentFile && (hasUnresponsiveGrid || hasUnresponsiveTopbarText);
 
     const issues = [];
     if (!isComponentFile && !usesLayout) {
@@ -642,6 +666,12 @@ const server = http.createServer((req, res) => {
     if (hasHardcodedConfigs) {
       issues.push('❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.');
     }
+    if (missingWhitelabelBranding) {
+      issues.push("⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || \"Portal Sekolah\"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <OperationalPageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.");
+    }
+    if (missingResponsiveAdaptation) {
+      issues.push("❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant=\"compact-premium\"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).");
+    }
 
     // Buat laporan perintah refaktor instan (Copy-Pasteable Prompt)
     let prompt = `Tolong lakukan refaktor hardening penuh pada halaman ${relativePath} berdasarkan temuan audit arsitektur terbaru:\n\n`;
@@ -657,6 +687,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       usesLayout,
+      usesOperationalLayout,
+      usesAcademicLayout,
       safeMapping: !hasUnsafeMap,
       usesMemo: !missingMemoization,
       noAnyType: !hasAnyType,
@@ -684,6 +716,8 @@ const server = http.createServer((req, res) => {
       zodValidationGuard: !missingZodValidation,
       standardTabSwitcher: !missingTabSwitcher,
       layoutFlowConsistency: !missingLayoutFlowConsistency,
+      whitelabelBrandingGuard: isComponentFile ? true : !missingWhitelabelBranding,
+      responsiveLayoutAdaptationGuard: isComponentFile ? true : !missingResponsiveAdaptation,
       usesUiComponents,
       issues,
       refactorPrompt: prompt,

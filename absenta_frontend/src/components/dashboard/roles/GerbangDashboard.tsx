@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { useAuthStore } from '../../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +14,8 @@ import {
   Scan,
   ShieldCheck,
   LogIn,
-  ChevronRight,
+  CheckCircle2,
+  AlertTriangle,
   Fingerprint
 } from 'lucide-react';
 import { getGerbangDashboardStats } from '../../../api/dashboard.api';
@@ -23,14 +24,19 @@ import { QuickActionGrid, type QuickAction } from '../shared/QuickActionGrid';
 import { InfoStripGrid, type InfoStripItem } from '../shared/InfoStripGrid';
 import { CompactSectionCard } from '../shared/CompactSectionCard';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
-import iconForName from '../../../lib/iconForName';
 import { Button } from '../../ui/Button';
+
+const CatatPelanggaranModal = lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
+const TindakMasalPelanggaranModal = lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
 export const GerbangDashboard: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const { menu: groupedMenu } = useSmartMenu();
   
+  const [catatModalOpen, setCatatModalOpen] = useState(false);
+  const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);
+
   const { data: stats, isLoading, refetch } = useQuery({
     queryKey: ['gerbang-stats'],
     queryFn: getGerbangDashboardStats,
@@ -38,9 +44,11 @@ export const GerbangDashboard: React.FC = () => {
   });
 
   const quickActions: QuickAction[] = [
-    { label: 'Scanner', icon: Scan, onClick: () => navigate('/attendance/ops'), color: 'blue' },
-    { label: 'Monitor Tap', icon: Activity, onClick: () => navigate('/attendance/tracking-siswa'), color: 'emerald' },
-    { label: 'Log Harian', icon: ClipboardList, onClick: () => navigate('/attendance/rekap/siswa-harian'), color: 'indigo' },
+    { label: 'Scanner Gerbang', icon: Scan, onClick: () => navigate('/attendance/ops'), color: 'blue' },
+    { label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald' },
+    { label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber' },
+    { label: 'Monitor Tap', icon: Activity, onClick: () => navigate('/attendance/tracking-siswa'), color: 'indigo' },
+    { label: 'Log Harian', icon: ClipboardList, onClick: () => navigate('/attendance/rekap/siswa-harian'), color: 'purple' },
     { label: 'Data Wajah', icon: Users, onClick: () => navigate('/attendance/rekam-wajah'), color: 'rose' },
   ];
 
@@ -60,7 +68,7 @@ export const GerbangDashboard: React.FC = () => {
         badge={{ label: 'Security & Attendance', color: 'indigo' }}
       />
 
-      <QuickActionGrid title="Kontrol Gerbang" actions={quickActions} columns={4} />
+      <QuickActionGrid title="Kontrol & Aksi Gerbang" actions={quickActions} columns={3} />
 
       <InfoStripGrid items={infoStrips} />
 
@@ -85,7 +93,7 @@ export const GerbangDashboard: React.FC = () => {
                <p className="text-[10px] text-gray-500 font-medium mb-2">Perlu override kehadiran manual?</p>
                <Button 
                 variant="outline" 
-                className="h-8 rounded-lg border-rose-100 text-rose-600 hover:bg-rose-50 text-[10px] font-black uppercase tracking-widest"
+                className="h-8 rounded-lg border-rose-100 text-rose-600 hover:bg-rose-50 text-[10px] font-black uppercase tracking-widest cursor-pointer"
                 onClick={() => navigate('/attendance/settings')}
                >
                   Bypass Manual
@@ -119,6 +127,22 @@ export const GerbangDashboard: React.FC = () => {
             </div>
          </CompactSectionCard>
       </div>
+
+      {/* Modal Catat Pelanggaran Kilat */}
+      <Suspense fallback={null}>
+        <CatatPelanggaranModal
+          isOpen={catatModalOpen}
+          onClose={() => setCatatModalOpen(false)}
+        />
+      </Suspense>
+
+      {/* Modal Tindak Masal Pelanggaran */}
+      <Suspense fallback={null}>
+        <TindakMasalPelanggaranModal
+          isOpen={tindakMasalModalOpen}
+          onClose={() => setTindakMasalModalOpen(false)}
+        />
+      </Suspense>
     </>
   );
 };

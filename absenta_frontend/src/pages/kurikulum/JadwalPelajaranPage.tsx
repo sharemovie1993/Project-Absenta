@@ -39,6 +39,7 @@ import { getBase64ImageFromUrl } from '../../utils/cooperative/coopDocUtils';
 import { jenisKegiatanMasterApi } from '../../api/academic/jenisKegiatanMaster.api';
 import { getKelasList } from '../../api/academic/kelas.api';
 import { getGuruList } from '../../api/academic/guru.api';
+import { piketGuruApi } from '../../api/piketGuru.api';
 
 // ── Pillar 5: Lazy Loading ──────────────────────────────────────────────────
 const JadwalTplList = lazy(() => import('../../components/attendance/jadwal-kbm/JadwalKBMList').then(m => ({ default: m.JadwalKBMList })));
@@ -146,14 +147,49 @@ export default function JadwalPelajaranPage() {
     const fetchData = async () => {
       setLoadingJadwal(true);
       try {
-        const res = await getJadwalKBM({
-          kelas_id: targetKelasId || undefined,
-          guru_id: selectedGuruId || undefined,
-          tahun_pelajaran_id: selectedTahunId,
-          semester_id: selectedSemesterId
-        });
+        const [res, piketRes] = await Promise.all([
+          getJadwalKBM({
+            kelas_id: targetKelasId || undefined,
+            guru_id: selectedGuruId || undefined,
+            tahun_pelajaran_id: selectedTahunId,
+            semester_id: selectedSemesterId
+          }),
+          selectedGuruId
+            ? piketGuruApi.getList({
+                guru_id: selectedGuruId,
+                tahun_pelajaran_id: selectedTahunId,
+                semester_id: selectedSemesterId
+              }).catch(() => ({ success: false, data: [] }))
+            : Promise.resolve({ success: false, data: [] })
+        ]);
+
         if (!controller.signal.aborted) {
-          setJadwal(res.data || []);
+          const kbmItems = res.data || [];
+          const piketItems: any[] = [];
+
+          if (piketRes?.success && Array.isArray(piketRes.data)) {
+            piketRes.data.forEach((p: any) => {
+              const startSlot = p.slot_mulai || 1;
+              const endSlot = p.slot_selesai || 10;
+              for (let slot = startSlot; slot <= endSlot; slot++) {
+                piketItems.push({
+                  id: `piket-${p.id}-${slot}`,
+                  hari: p.hari,
+                  slot_index: slot,
+                  jam_mulai: p.jam_mulai || '06:30',
+                  jam_selesai: p.jam_selesai || '15:30',
+                  is_piket: true,
+                  pos_piket: p.pos_piket || 'Piket Umum',
+                  jenis_kegiatan: 'DUTY_PIKET',
+                  Mapel: { nama_mapel: 'TUGAS PIKET GURU', kode_mapel: 'PIKET' },
+                  Kelas: { id: `piket-${p.id}`, nama_kelas: p.pos_piket || 'Piket Umum' },
+                  Guru: p.Guru
+                });
+              }
+            });
+          }
+
+          setJadwal([...kbmItems, ...piketItems]);
         }
       } catch (err) {
         if (!controller.signal.aborted) {

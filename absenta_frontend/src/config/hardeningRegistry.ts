@@ -627,6 +627,40 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  attendance_ops: {
+    moduleName: 'attendance_ops',
+    displayName: 'Operasional Presensi Gerbang (POS & RFID Scanner)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / AttendanceErrorBoundary)',
+        description: 'Mencegah kerusakan visual halaman total (white screen of death) melalui pembungkusan React Error Boundary mandiri untuk scanner dan POS.',
+        status: 'VERIFIED',
+        details: 'AttendanceErrorBoundary & OperationalPageLayout terintegrasi.'
+      },
+      {
+        id: 'realtime_socket_resilience',
+        name: 'Ketahanan Socket Real-time & Re-connection',
+        description: 'Menjaga konektivitas WebSocket room tenant dan auto-reconnect saat perpindahan tab atau mikro-disrupsi jaringan.',
+        status: 'VERIFIED',
+        details: 'WebSocket tenant room join & event listeners terpasang.'
+      },
+      {
+        id: 'code_splitting',
+        name: 'Pemisahan Kode Dinamis Scanner (Lazy Loading ZXing)',
+        description: 'Memecah JS bundle scanner QR/Barcode berat (ZXing 400KB+) secara dinamis menggunakan React.lazy & Suspense.',
+        status: 'VERIFIED',
+        details: 'GateInputModule dynamically lazy-loaded.'
+      },
+      {
+        id: 'scanner_deduplication',
+        name: 'Pencegahan Tap Ganda / Burst Scanner',
+        description: 'Mekanisme deduplikasi ref time-window 1.5 detik untuk mencegah double beeping dan duplicate toast notifications dari HID scanner.',
+        status: 'VERIFIED',
+        details: 'processingTapRef deduplication lock active.'
+      }
+    ]
+  },
   attendance_monitoring_kbm: {
     moduleName: 'attendance_monitoring_kbm',
     displayName: 'Monitoring KBM (Kehadiran)',
@@ -1115,15 +1149,15 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
   // Inject static code analysis findings dynamically
   const auditData = (auditReport as any)[moduleKey];
   if (auditData) {
-    // 1. Audit Kriteria: Standardisasi Layout Utama (AcademicPageLayout)
+    // 1. Audit Kriteria: Standardisasi Layout Utama (Layout Standard Guard)
     config.standards.push({
       id: 'architectural_layout_standard',
-      name: 'Standardisasi Layout Utama (AcademicPageLayout)',
-      description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout yang terstandar.',
+      name: 'Standardisasi Layout Utama (Academic & Operational Layout Guard)',
+      description: 'Memverifikasi apakah halaman menggunakan pembungkus AcademicPageLayout (Manajemen dengan Sidebar) atau OperationalPageLayout (Operasional POS Mode TANPA Sidebar) yang terstandar.',
       status: auditData.usesLayout ? 'VERIFIED' : 'FAILED',
       details: auditData.usesLayout 
-        ? `Tervalidasi: Halaman dibungkus dengan AcademicPageLayout (${auditData.filename}).` 
-        : `Gagal: File ${auditData.filename} tidak menggunakan AcademicPageLayout.`
+        ? `Tervalidasi: Halaman dibungkus dengan ${auditData.usesOperationalLayout ? 'OperationalPageLayout (POS Mode TANPA Sidebar)' : 'AcademicPageLayout (Dengan Sidebar)'} (${auditData.filename}).` 
+        : `Gagal: File ${auditData.filename} tidak menggunakan Layout terstandar.`
     });
 
     // 2. Audit Kriteria: Shared UI Components
@@ -1438,6 +1472,32 @@ export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => 
         details: auditData.layoutFlowConsistency
           ? 'Tervalidasi: Aliran tata letak halaman konsisten dengan filter dan statistik berada di atas tabel data.'
           : 'Peringatan: Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.'
+      });
+    }
+
+    // 29. Audit Kriteria: Kesiapan Whitelabel & Dynamic Branding (White-label Readiness Guard)
+    if (auditData.whitelabelBrandingGuard !== undefined && auditData.whitelabelBrandingGuard !== null) {
+      config.standards.push({
+        id: 'architectural_whitelabel_branding',
+        name: 'Kesiapan Whitelabel & Dynamic Branding (White-label Readiness Guard)',
+        description: 'Memverifikasi bahwa antarmuka bebas dari teks branding platform statis yang ter-hardcode dan siap untuk kustomisasi Whitelabel Dinas / Tenant.',
+        status: auditData.whitelabelBrandingGuard ? 'VERIFIED' : 'WARNING',
+        details: auditData.whitelabelBrandingGuard
+          ? 'Tervalidasi: Antarmuka terbebas dari hardcode branding platform dan terintegrasi dengan profil dynamic tenant/systemConfig.'
+          : 'Peringatan: Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Whitelabel Dinas). Petunjuk Perbaikan: (1) DILARANG KERAS menulis teks "Absenta.id" atau "Absenta" secara permanen di tag JSX. (2) Gunakan variabel dinamis {tenantName || systemConfig?.app_name || "Portal Sekolah"}. (3) Bungkus halaman dengan <AcademicPageLayout> atau <OperationalPageLayout>.'
+      });
+    }
+
+    // 30. Audit Kriteria: Adaptabilitas Responsif Multi-Perangkat (Responsive Multi-Device Adaptation Guard)
+    if (auditData.responsiveLayoutAdaptationGuard !== undefined && auditData.responsiveLayoutAdaptationGuard !== null) {
+      config.standards.push({
+        id: 'architectural_responsive_layout_adaptation',
+        name: 'Adaptabilitas Responsif Multi-Perangkat (Responsive Multi-Device Adaptation Guard)',
+        description: 'Memverifikasi bahwa antarmuka teradaptasi dengan sempurna di 3 tingkatan layar (Desktop, Tablet 768px, Mobile 360px), bebas dari tumbukan elemen topbar (dengan menyembunyikan badge status redundan di HP), kliping teks, menggunakan varian Mobile-Mini/Compact Premium pada Kartu Statistik HP, dan dilengkapi Touch-Scroll pada TabSwitcher.',
+        status: auditData.responsiveLayoutAdaptationGuard ? 'VERIFIED' : 'FAILED',
+        details: auditData.responsiveLayoutAdaptationGuard
+          ? 'Tervalidasi: Antarmuka teradaptasi dengan sempurna di seluruh perangkat (Desktop, Tablet 768px, Mobile 360px) dengan Topbar Minimalis dan varian statistik Mobile-Mini tanpa tumbukan atau kliping.'
+          : 'Gagal: Terdeteksi isu responsivitas antarmuka. Petunjuk Perbaikan: (1) Sembunyikan badge status redundan di HP (hidden sm:block) agar judul dapat 100% ruang lebar. (2) Gunakan touch-scroll overflow-x-auto pada TabSwitcher. (3) Berikan varian Mobile-Mini/Compact Premium (mobileCompact={true}) pada kartu statistik HP. (4) Pastikan min-w-0 pada form & input.'
       });
     }
   }

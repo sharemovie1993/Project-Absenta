@@ -289,11 +289,11 @@ export const SmartStudentPicker = React.forwardRef<HTMLInputElement, SmartStuden
           value={inputValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder={placeholder}
+          placeholder={placeholder || "Scan RFID / QR / Cari..."}
           autoFocus={autoFocus}
           disabled={disabled}
           autoComplete="off"
-          className="pl-11 pr-20 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm group-hover:border-slate-300 dark:group-hover:border-slate-700"
+          className="pl-9 sm:pl-11 pr-9 sm:pr-20 h-11 sm:h-12 text-xs sm:text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm group-hover:border-slate-300 dark:group-hover:border-slate-700 text-ellipsis overflow-hidden"
           onFocus={() => results.length > 0 && setShowDropdown(true)}
         />
 

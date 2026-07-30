@@ -8,6 +8,8 @@ export const createJadwalPiketSchema = z.object({
   guru_id: z.string().min(1, 'Guru wajib dipilih'),
   hari: HariEnum,
   pos_piket: z.string().optional().default('Piket Umum'),
+  slot_mulai: z.number().optional(),
+  slot_selesai: z.number().optional(),
   jam_mulai: z.string().optional(),
   jam_selesai: z.string().optional(),
   catatan: z.string().optional(),
@@ -19,6 +21,8 @@ export const bulkCreateJadwalPiketSchema = z.object({
   hari: HariEnum,
   guru_ids: z.array(z.string()).min(1, 'Minimal pilih satu guru'),
   pos_piket: z.string().optional().default('Piket Umum'),
+  slot_mulai: z.number().optional(),
+  slot_selesai: z.number().optional(),
   jam_mulai: z.string().optional(),
   jam_selesai: z.string().optional(),
 });

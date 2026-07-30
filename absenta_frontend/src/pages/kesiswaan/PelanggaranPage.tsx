@@ -208,7 +208,13 @@ export default function PelanggaranPage() {
   const statusConfig: Record<string, StatusConfig> = useMemo(() => ({
     'BARU': {
       variant: 'error',
-      label: 'Menunggu',
+      label: 'Menunggu Pembinaan',
+      icon: <AlertCircle className="w-3 h-3 mr-1" />,
+      colorClass: 'text-rose-600 bg-rose-50 border-rose-100'
+    },
+    'PERLU_PEMBINAAN': {
+      variant: 'error',
+      label: 'Menunggu Pembinaan',
       icon: <AlertCircle className="w-3 h-3 mr-1" />,
       colorClass: 'text-rose-600 bg-rose-50 border-rose-100'
     },
@@ -220,7 +226,13 @@ export default function PelanggaranPage() {
     },
     'SELESAI': {
       variant: 'success',
-      label: 'Selesai',
+      label: 'Selesai Pembinaan',
+      icon: <CheckCircle2 className="w-3 h-3 mr-1" />,
+      colorClass: 'text-emerald-600 bg-emerald-50 border-emerald-100'
+    },
+    'SELESAI_PEMBINAAN': {
+      variant: 'success',
+      label: 'Selesai Pembinaan',
       icon: <CheckCircle2 className="w-3 h-3 mr-1" />,
       colorClass: 'text-emerald-600 bg-emerald-50 border-emerald-100'
     }
@@ -554,9 +566,9 @@ export default function PelanggaranPage() {
                   value={formData.status}
                   onValueChange={(val) => setFormData(prev => ({...prev, status: val}))}
                   options={[
-                    { label: 'MENUNGGU', value: 'BARU' },
-                    { label: 'PENDAMPINGAN', value: 'PROSES' },
-                    { label: 'SELESAI', value: 'SELESAI' }
+                    { label: 'MENUNGGU PEMBINAAN', value: 'BARU' },
+                    { label: 'PENDAMPINGAN / PROSES', value: 'PROSES' },
+                    { label: 'SELESAI PEMBINAAN', value: 'SELESAI' }
                   ]}
                   placeholder="Pilih tahapan..."
                 />

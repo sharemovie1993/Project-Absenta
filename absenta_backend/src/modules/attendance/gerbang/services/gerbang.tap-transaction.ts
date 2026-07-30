@@ -193,6 +193,26 @@ export async function processTapTransaction(params: {
         if (Math.abs(nowMs - createdMs) > 2000) {
           isDuplicate = true; // Record ini dibuat >2 detik yang lalu → ini tap ulang
         }
+
+        // Auto-linking: Trigger creation of PelanggaranSiswa record in database transaction when late
+        if (isLate && !isDuplicate) {
+          try {
+            await (tx as any).pelanggaranSiswa.create({
+              data: {
+                tenant_id: tenantId,
+                siswa_id: targetSiswaId,
+                kelas_id: kelasId || null,
+                tanggal: today,
+                jenis_pelanggaran: 'Terlambat Masuk Sekolah (Gerbang)',
+                poin: 5,
+                status: 'BARU',
+                keterangan: `Terlambat ${lateMinutes} menit (Tap Gerbang Otomatis). Memerlukan pembinaan lapangan.`
+              }
+            });
+          } catch (pErr) {
+            console.warn('[GERBANG_TAP] Auto-creation of PelanggaranSiswa record skipped/failed:', pErr);
+          }
+        }
       }
     } catch (error: any) {
       throw error;

@@ -156,7 +156,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
     setIsSaving(true);
     try {
       if (mode === 'SISWA') {
-        const res = await updateSiswa(targetPerson.id, { rfid_tag: cleanRfid });
+        const res = await updateSiswa(targetPerson.id, { no_rfid: cleanRfid, rfid_tag: cleanRfid } as any);
         if (res.success) {
           const personName = (targetPerson as Siswa).nama_siswa;
           const identifier = (targetPerson as Siswa).nisn || (targetPerson as Siswa).nis || '-';
@@ -175,7 +175,7 @@ export const ExpressRfidPairingModal: React.FC<ExpressRfidPairingModalProps> = (
           playBeep('error');
         }
       } else {
-        const res = await updateGuru(targetPerson.id, { no_rfid: cleanRfid });
+        const res = await updateGuru(targetPerson.id, { no_rfid: cleanRfid, rfid_tag: cleanRfid } as any);
         if (res.success) {
           const personName = (targetPerson as Guru).nama_guru;
           const identifier = (targetPerson as Guru).nip || '-';

@@ -126,6 +126,8 @@ export class JadwalPiketService {
     guru_id: string;
     hari: Hari;
     pos_piket?: string;
+    slot_mulai?: number;
+    slot_selesai?: number;
     jam_mulai?: string;
     jam_selesai?: string;
     catatan?: string;
@@ -153,6 +155,8 @@ export class JadwalPiketService {
         guru_id: data.guru_id,
         hari: data.hari,
         pos_piket: data.pos_piket || 'Piket Umum',
+        slot_mulai: data.slot_mulai ?? 1,
+        slot_selesai: data.slot_selesai ?? 10,
         jam_mulai: data.jam_mulai,
         jam_selesai: data.jam_selesai,
         catatan: data.catatan
@@ -172,6 +176,8 @@ export class JadwalPiketService {
     hari: Hari;
     guru_ids: string[];
     pos_piket?: string;
+    slot_mulai?: number;
+    slot_selesai?: number;
     jam_mulai?: string;
     jam_selesai?: string;
   }) {
@@ -196,6 +202,8 @@ export class JadwalPiketService {
             guru_id: guruId,
             hari: data.hari,
             pos_piket: data.pos_piket || 'Piket Umum',
+            slot_mulai: data.slot_mulai ?? 1,
+            slot_selesai: data.slot_selesai ?? 10,
             jam_mulai: data.jam_mulai,
             jam_selesai: data.jam_selesai
           }
@@ -212,6 +220,8 @@ export class JadwalPiketService {
   async updateJadwalPiket(tenantId: string, id: string, data: {
     hari?: Hari;
     pos_piket?: string;
+    slot_mulai?: number;
+    slot_selesai?: number;
     jam_mulai?: string;
     jam_selesai?: string;
     catatan?: string;
@@ -252,17 +262,21 @@ export class JadwalPiketService {
       }
     });
 
-    const loadMap: Record<string, { total_jp: number; detail: Array<{ kelas: string; mapel: string; jam: string }> }> = {};
+    const loadMap: Record<string, { total_jp: number; busy_slots: number[]; detail: Array<{ kelas: string; mapel: string; slot_index?: number; jam: string }> }> = {};
 
     for (const kbm of kbmList) {
       if (!kbm.guru_id) continue;
       if (!loadMap[kbm.guru_id]) {
-        loadMap[kbm.guru_id] = { total_jp: 0, detail: [] };
+        loadMap[kbm.guru_id] = { total_jp: 0, busy_slots: [], detail: [] };
       }
       loadMap[kbm.guru_id].total_jp += 1;
+      if (typeof kbm.slot_index === 'number' && !loadMap[kbm.guru_id].busy_slots.includes(kbm.slot_index)) {
+        loadMap[kbm.guru_id].busy_slots.push(kbm.slot_index);
+      }
       loadMap[kbm.guru_id].detail.push({
         kelas: kbm.Kelas?.nama_kelas || 'Kelas',
         mapel: kbm.Mapel?.nama_mapel || 'Mapel',
+        slot_index: kbm.slot_index,
         jam: `${kbm.jam_mulai} - ${kbm.jam_selesai}`
       });
     }

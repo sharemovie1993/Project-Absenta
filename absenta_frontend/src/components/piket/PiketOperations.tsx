@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { SimpleFormField } from '../ui/SimpleFormField';
-import { Scan, Clock, Printer } from 'lucide-react';
+import { Scan, Clock, Printer, ShieldCheck } from 'lucide-react';
 import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
 import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
@@ -137,10 +137,10 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
       {/* Scan input side */}
-      <div className="lg:col-span-5 space-y-6">
-        <Card className="p-6 border-none shadow-xl bg-white dark:bg-slate-900 relative rounded-xl border-t-4 border-indigo-600 overflow-visible">
+      <div className="lg:col-span-5 space-y-4 sm:space-y-6">
+        <Card className="p-4 sm:p-6 border-none shadow-xl bg-white dark:bg-slate-900 relative rounded-xl border-t-4 border-indigo-600 overflow-visible">
           <h3 className="text-md font-black uppercase tracking-wider text-gray-800 dark:text-gray-100 flex items-center gap-2 mb-6">
             <Scan className="text-indigo-600" size={18} /> Pencarian & Pemindaian Siswa
           </h3>
@@ -150,7 +150,7 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
               <SmartStudentPicker
                 ref={scannerInputRef}
                 scope="global"
-                placeholder="Scan RFID / QR Kamera, atau cari Nama/NIS..."
+                placeholder="Scan RFID / QR / Cari Nama & NIS..."
                 onSelect={(siswa: Student) => {
                   setSelectedStudent(siswa);
                   toast.success(`Siswa ditemukan: ${siswa.nama_siswa}`);

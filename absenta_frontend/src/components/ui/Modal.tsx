@@ -58,6 +58,7 @@ interface ModalProps {
   description?: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl' | 'full';
   className?: string;
   contentClassName?: string;
   placement?: 'center' | 'bottom' | 'top';
@@ -85,13 +86,16 @@ export function Modal({
   title, 
   description,
   children, 
-  size = 'md',
+  size,
+  maxWidth,
   className,
   contentClassName,
   placement = 'center',
   zIndex = 50,
   disableClose = false
 }: ModalProps) {
+  const activeSizeKey = maxWidth || size || 'md';
+  const activeSizeClass = sizeClasses[activeSizeKey] || sizeClasses.md;
   const isMouseDownOnWrapper = React.useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -154,7 +158,7 @@ export function Modal({
             aria-describedby={description ? "modal-description" : undefined}
             className={cn(
               'relative z-10 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[92vh]',
-              sizeClasses[size],
+              activeSizeClass,
               className
             )}
             initial={{ scale: 0.95, opacity: 0, y: placement === 'bottom' ? 20 : placement === 'top' ? -20 : 20 }}

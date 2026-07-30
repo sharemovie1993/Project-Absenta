@@ -1,5 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useMemo, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { PendingSiswaModule } from './PendingSiswaModule';
 import { useGerbangAttendanceData } from '../../../../hooks/attendance/useGerbangAttendanceData';
 import { useTenant } from '../../../../hooks/useTenant';
@@ -8,7 +7,7 @@ import { dropdownApi, type DropdownOption } from '../../../../api/dropdown.api';
 import { useSocket } from '../../../../hooks/useSocket';
 import { Card } from '../../../../components/ui/Card';
 import { LogIn, LogOut, Loader, UserCheck, MapPin } from 'lucide-react';
-import { DashboardHero } from '../../../../components/dashboard/shared/DashboardHero';
+import { TabSwitcher } from '../../../../components/ui/TabSwitcher';
 
 // Lazy load GateInputModule to avoid loading ZXing library (400KB+) when not needed
 const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
@@ -96,8 +95,6 @@ export default function ModeSimpleView({
     };
   }, [isConnected, tenantId, subscribe, unsubscribe, emit, refreshStats, fetchNotPresent]);
 
-  // Access Control: Scan Gerbang (Utama) HANYA untuk Admin, Operator, atau Posisi/Akses PETUGAS GERBANG
-  // Petugas Absensi Kelas / Wali Kelas TIDAK memiliki akses ke Scanner Gerbang
   const canAccessInput =
     isAdmin ||
     isGerbangPos ||
@@ -114,88 +111,25 @@ export default function ModeSimpleView({
   const isKelasEmpty = !kelasLabel || kelasLabel === '-' || kelasLabel === 'N/A';
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20 overflow-visible">
-      {/* Vitality Hero */}
-      <DashboardHero 
-        title="Operasional Absensi"
-        subtitle={`Selamat bertugas, ${user?.full_name || user?.name || 'Petugas'}. Sistem pencatatan kehadiran siap digunakan.`}
-        badge={{
-          label: `${!isKelasEmpty ? kelasLabel : 'Gerbang Utama'} | ${isConnected ? "Sistem Terhubung" : "Terputus"}`,
-          icon: MapPin,
-          color: isConnected ? "emerald" : "rose"
-        }}
-        gradient="from-emerald-600 to-teal-700"
-        stats={[
-           { label: 'HADIR', value: totalArrived },
-           { label: 'BELUM', value: belumCount }
-        ]}
-      >
-        <div className="mt-4 space-y-4 max-w-xl">
-          {/* Progress Section */}
-          <div className="space-y-2">
-            <div className="flex justify-between items-end">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100 opacity-80">Rasio Kedatangan</span>
-              <span className="text-xs font-black text-white">{progressPercent}%</span>
-            </div>
-            <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden border border-white/5 backdrop-blur-sm">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
-                className="h-full bg-gradient-to-r from-emerald-400 to-green-300 shadow-[0_0_10px_rgba(52,211,153,0.5)]"
-              />
-            </div>
-          </div>
-
-          {/* Last Scan Feedback */}
-          <AnimatePresence mode="wait" initial={false}>
-            {lastScannedName && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 10 }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 text-xs shadow-inner"
-              >
-                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <UserCheck size={12} className="text-white" />
-                </div>
-                <span className="font-bold text-white tracking-tight">Terakhir: {lastScannedName}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </DashboardHero>
-
+    <div className="space-y-6 max-w-5xl mx-auto pb-20 overflow-visible">
       {canAccessInput && (
-        <Card className="overflow-hidden shadow-lg border-0 bg-white dark:bg-gray-800 transition-all duration-300">
-          <div className="p-8 space-y-8">
-            {/* 2. Direction Switch */}
-            <div className="flex justify-center">
-              <div className="inline-flex bg-gray-100 dark:bg-gray-900 p-1.5 rounded-xl shadow-inner w-full md:w-auto border border-gray-100 dark:border-gray-800">
-                <button
-                  onClick={() => setDirection('GERBANG_DATANG')}
-                  className={`flex-1 md:flex-none px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
-                    direction === 'GERBANG_DATANG'
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20 transform scale-105'
-                      : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                  type="button"
-                >
-                  <LogIn className="w-4 h-4" />
-                  Absen Masuk
-                </button>
-                <button
-                  onClick={() => setDirection('GERBANG_PULANG')}
-                  className={`flex-1 md:flex-none px-10 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
-                    direction === 'GERBANG_PULANG'
-                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20 transform scale-105'
-                      : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                  type="button"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Absen Keluar
-                </button>
+        <Card className="overflow-hidden shadow-sm border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300">
+          <div className="p-6 space-y-6">
+            {/* Tab Switcher without redundant title */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 sm:hidden">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isConnected ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50'}`}>
+                  {isConnected ? 'Online' : 'Terputus'}
+                </span>
               </div>
+              <TabSwitcher
+                options={[
+                  { id: 'GERBANG_DATANG', label: 'Absen Masuk', icon: LogIn, colorClass: 'text-emerald-600 dark:text-emerald-400' },
+                  { id: 'GERBANG_PULANG', label: 'Absen Keluar', icon: LogOut, colorClass: 'text-rose-600 dark:text-rose-400' }
+                ]}
+                activeTab={direction}
+                onChange={(val) => setDirection(val as 'GERBANG_DATANG' | 'GERBANG_PULANG')}
+              />
             </div>
 
             {/* 3. Input Module */}

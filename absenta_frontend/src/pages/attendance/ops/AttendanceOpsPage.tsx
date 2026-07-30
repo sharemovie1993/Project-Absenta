@@ -1,96 +1,56 @@
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTenant } from '../../../hooks/useTenant';
-import { Loader, Activity, ShieldCheck, Zap, User, AlertTriangle } from 'lucide-react';
+import { Loader, Activity, ShieldCheck, Zap, User, AlertTriangle, CheckCircle2, Plus } from 'lucide-react';
 import { SectionCard } from '../../../components/ui';
 import { useGerbangModeAndRole } from '../../../hooks/attendance/useGerbangModeAndRole';
 
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
-import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+import { OperationalPageLayout } from '../../../components/layout/OperationalPageLayout';
+import { Button } from '../../../components/ui/Button';
 
 // Lazy load mode views to reduce initial bundle size
 const ModeSimpleView = lazy(() => import('./components/ModeSimpleView'));
 const ModeMultiSesiView = lazy(() => import('./components/ModeMultiSesiView'));
+const CatatPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
+const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
 
 export default function AttendanceOpsPage() {
   const { subscription } = useAuthStore();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { tenantId } = useTenant();
+
+  const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const [catatModalOpen, setCatatModalOpen] = useState(false);
+  const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);
   
-  // Reuse existing hook for mode and role resolution logic
-  const { 
-    absensiMode, 
-    roleLabel, 
-    petugasLabel, 
-    petugasVariant, 
-    petugasChecked, 
-    petugasGuruChecked,
-    isPetugasSiswa,
-    isPetugasGuru,
-    kelasLabel,
+  const {
+    absensiMode,
+    petugasVariant,
+    petugasLabel,
+    roleLabel,
+    kelasNama,
     managedKelasIds
-  } = useGerbangModeAndRole({ user, tenantId });
+  } = useGerbangModeAndRole({ user, tenantId, selectedKelasId });
 
-  const features = (subscription as any)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
+interface AuthUserCaps {
+  capabilities?: string[];
+  role?: { name?: string };
+}
 
-  if (authLoading || absensiMode === null) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <Loader className="animate-spin text-blue-600" size={32} />
-      </div>
-    );
-  }
-
-  // Access Denied Logic
-  // SISWA dengan capability PETUGAS_KELAS diizinkan masuk walau isPetugasSiswa belum terkonfirmasi
-  const siswaCaps = (user as any)?.capabilities || [];
-  const siswaHasPetugasKelasAccess =
-    siswaCaps.includes('attendance.sessions.create') ||
-    siswaCaps.includes('attendance.sessions.view.list') ||
-    siswaCaps.includes('academic.schedules.view.list') ||
-    siswaCaps.includes('attendance.schedules.view.list');
-  const isSiswaDenied = user?.role?.name === 'SISWA' && petugasChecked && !isPetugasSiswa && !siswaHasPetugasKelasAccess;
-  const isGuruDenied = user?.role?.name === 'GURU' && petugasGuruChecked && !isPetugasGuru;
-
+  // Shared Props
   const sharedProps = {
     user,
     absensiMode,
-    isPetugasSiswa,
-    isPetugasGuru,
-    kelasLabel,
+    isPetugasSiswa: petugasLabel === 'Petugas Absensi Kelas' || petugasLabel === 'GURU' || petugasLabel === 'Admin',
+    isPetugasGuru: user?.role?.name === 'GURU' || (user as AuthUserCaps | null)?.capabilities?.includes('attendance.sessions.view.list'),
+    kelasLabel: kelasNama,
     roleLabel,
     petugasLabel,
     petugasVariant,
-    managedKelasIds
+    managedKelasIds,
   };
-
-  if (isSiswaDenied || isGuruDenied) {
-    return (
-      <AcademicPageLayout
-        title="Akses Terbatas"
-        description="Ruang operasional absensi hanya untuk petugas yang ditunjuk."
-      >
-        <div className="flex items-center justify-center py-12">
-           <SectionCard className="max-w-xl w-full text-center p-12">
-              <div className="w-20 h-20 rounded-3xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 mx-auto mb-6">
-                 <AlertTriangle size={40} />
-              </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mb-4">Akses Ditolak</h3>
-              <p className="text-sm font-bold text-slate-500 leading-relaxed">
-                Anda login sebagai <span className="text-rose-600">{user?.role?.name}</span>, tetapi belum ditugaskan sebagai Petugas Absensi/Gerbang.
-              </p>
-              <div className="mt-8 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
-                  Silakan hubungi administrator kurikulum atau kesiswaan untuk mendapatkan penugasan agar bisa mulai mencatat kehadiran.
-                </p>
-              </div>
-           </SectionCard>
-        </div>
-      </AcademicPageLayout>
-    );
-  }
 
   const pageContent = (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -112,23 +72,40 @@ export default function AttendanceOpsPage() {
   );
 
   return (
-    <AcademicPageLayout
-      title="Operasional Presensi"
-      description="Pencatatan kehadiran siswa secara langsung dan realtime."
-      breadcrumbs={[
-        { label: "Presensi", path: "/attendance" },
-        { label: "Operasional", path: "/attendance/ops" }
-      ]}
-      stats={[]}
+    <OperationalPageLayout
+      title="OPERASIONAL PRESENSI"
+      shortTitle="OPERASIONAL"
+      subtitle="Pencatatan Kehadiran Realtime & POS Scanner"
+      backPath="/dashboard"
+      backLabel="Kembali ke Dashboard"
+      actions={
+        <div className="flex gap-2 items-center">
+          <Button 
+            onClick={() => setTindakMasalModalOpen(true)}
+            variant="outline"
+            className="rounded-lg h-8 px-3 font-bold text-xs border-emerald-600/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hidden sm:inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <CheckCircle2 size={14} /> ⚡ Tindak Masal
+          </Button>
+          <Button 
+            onClick={() => setCatatModalOpen(true)}
+            variant="default"
+            className="rounded-lg h-8 px-3 font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white hidden sm:inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <Plus size={14} /> ⚡ Catat Pelanggaran
+          </Button>
+        </div>
+      }
       instruction={{
-        title: "Panduan Operasional",
-        description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung.",
+        title: "Panduan Operasional Presensi",
+        description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung di gerbang.",
         items: [
-          { text: "Pastikan koneksi internet stabil untuk sinkronisasi real-time." },
-          { text: "Gunakan scanner barcode atau input manual untuk mencatat NIS." },
-          { text: "Pilih status kehadiran yang sesuai (Masuk/Pulang/Sesi)." }
+          { text: "Pastikan koneksi internet terhubung untuk sinkronisasi real-time." },
+          { text: "Gunakan scanner barcode / QR atau tap kartu RFID siswa." },
+          { text: "Gunakan tombol Tindak Masal untuk konfirmasi pembinaan siswa terlambat." }
         ]
       }}
+      hardeningModuleKey="attendance_ops"
     >
       <PremiumFeatureGate
         moduleName="ABSENSI"
@@ -136,7 +113,23 @@ export default function AttendanceOpsPage() {
         description="Kelola pencatatan kehadiran siswa di gerbang atau kelas secara langsung dengan validasi otomatis."
       >
         {pageContent}
+
+        {/* Modal Catat Pelanggaran Kilat */}
+        <Suspense fallback={null}>
+          <CatatPelanggaranModal
+            isOpen={catatModalOpen}
+            onClose={() => setCatatModalOpen(false)}
+          />
+        </Suspense>
+
+        {/* Modal Tindak Masal Pelanggaran */}
+        <Suspense fallback={null}>
+          <TindakMasalPelanggaranModal
+            isOpen={tindakMasalModalOpen}
+            onClose={() => setTindakMasalModalOpen(false)}
+          />
+        </Suspense>
       </PremiumFeatureGate>
-    </AcademicPageLayout>
+    </OperationalPageLayout>
   );
 }

@@ -58,7 +58,38 @@ export async function bypassLate(payload: { siswa_id: string; note?: string }): 
 
 export async function submitTap(tapData: TapPayload): Promise<TapResponse> {
   try {
-    return requestWithFallback<TapResponse>('post', '/attendance/gerbang/tap', { data: tapData });
+    const res = await requestWithFallback<TapResponse>('post', '/attendance/gerbang/tap', { data: tapData });
+    
+    // Auto-linking: If gate tap response is late (terlambat / status TERLAMBAT), auto-create Kesiswaan Violation
+    if (res?.success) {
+      const resData = (res as any)?.data;
+      const isLate = 
+        resData?.is_terlambat === true || 
+        resData?.status === 'TERLAMBAT' || 
+        resData?.siswa_info?.status === 'TERLAMBAT' ||
+        String(res?.message || '').toLowerCase().includes('terlambat');
+
+      if (isLate) {
+        try {
+          const { kesiswaanApi } = await import('./kesiswaan.api');
+          const targetSiswaId = tapData.siswa_id || resData?.siswa_id || resData?.siswa_info?.id;
+          if (targetSiswaId) {
+            await kesiswaanApi.createPelanggaran({
+              siswa_id: targetSiswaId,
+              jenis_pelanggaran: 'Terlambat Masuk Sekolah (Gerbang)',
+              poin: 5,
+              keterangan: 'Terdeteksi otomatis saat tap kartu di gerbang. Memerlukan tindakan pembinaan lapangan.',
+              tanggal: new Date().toISOString().split('T')[0],
+              status: 'PERLU_PEMBINAAN'
+            });
+          }
+        } catch (e) {
+          console.warn('[GATE_AUTO_LINK] Failed to auto-create violation record:', e);
+        }
+      }
+    }
+
+    return res;
   } catch (error) {
     console.error('Error submitting tap:', error);
     throw error;
@@ -470,7 +501,26 @@ export async function tapSiswaKeSesi(
   sesi_id: string,
   payload: { siswa_id: string; status?: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' }
 ): Promise<{ success: boolean; message: string; data: any }> {
-  return requestWithFallback<{ success: boolean; message: string; data: any }>('post', `/attendance/sesi-absensi/${sesi_id}/tap-siswa`, { data: payload });
+  const res = await requestWithFallback<{ success: boolean; message: string; data: any }>('post', `/attendance/sesi-absensi/${sesi_id}/tap-siswa`, { data: payload });
+
+  // Auto-linking: If scan result is TERLAMBAT, automatically create a Kesiswaan Violation entry (+5 Poin)
+  if (res?.success && (res?.data?.status === 'TERLAMBAT' || payload.status === 'TERLAMBAT')) {
+    try {
+      const { kesiswaanApi } = await import('./kesiswaan.api');
+      await kesiswaanApi.createPelanggaran({
+        siswa_id: payload.siswa_id || res.data?.siswa_id,
+        jenis_pelanggaran: 'Terlambat Masuk Sekolah (Gerbang)',
+        poin: 5,
+        keterangan: 'Terdeteksi otomatis saat tap kartu di gerbang. Memerlukan tindakan pembinaan lapangan.',
+        tanggal: new Date().toISOString().split('T')[0],
+        status: 'PERLU_PEMBINAAN'
+      });
+    } catch {
+      // Non-blocking fallback if violation already exists or network glitch
+    }
+  }
+
+  return res;
 }
 
 export async function getSesiAbsenSiswa(

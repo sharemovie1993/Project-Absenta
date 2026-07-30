@@ -57,7 +57,10 @@ export const useStaffTimeline = (guruId?: string) => {
         isGuruHadir,
         teacherStatus,
         myAbsenRecord: absenRecord,
-        isAdHoc: !!item.is_adhoc
+        isAdHoc: !!item.is_adhoc,
+        isPiket: !!item.is_piket,
+        posPiket: item.pos_piket,
+        catatan: item.catatan
       };
     });
   }, [timelineRes]);

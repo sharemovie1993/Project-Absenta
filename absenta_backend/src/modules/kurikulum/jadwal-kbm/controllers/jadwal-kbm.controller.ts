@@ -439,7 +439,44 @@ export class JadwalKBMController {
         };
       });
 
-    const sortedItems = [...scheduledItems, ...adhocItems].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
+    // 7. Add Piket assignments for Guru
+    let piketItems: any[] = [];
+    if (roleName === RoleName.GURU && ctx.guru?.id) {
+      try {
+        const piketList = await (jadwalKBMDb as any).jadwalPiketGuru.findMany({
+          where: {
+            tenant_id: ctx.tenantId,
+            tahun_pelajaran_id: ctx.tahunPelajaranId,
+            semester_id: ctx.semesterId,
+            guru_id: ctx.guru.id,
+            hari: targetHari
+          }
+        });
+
+        piketItems = piketList.map((p: any) => ({
+          id: `piket-${p.id}`,
+          hari: p.hari,
+          jam_mulai: p.jam_mulai || '06:30',
+          jam_selesai: p.jam_selesai || '15:30',
+          jenis_kegiatan: 'DUTY_PIKET',
+          is_piket: true,
+          pos_piket: p.pos_piket || 'Piket Umum',
+          catatan: p.catatan,
+          Mapel: { nama_mapel: 'TUGAS PIKET GURU', kode_mapel: 'PIKET' },
+          Kelas: { nama_kelas: p.pos_piket || 'Piket Umum' },
+          Guru: { id: ctx.guru.id, nama_guru: ctx.guru.nama_guru },
+          session: null,
+          attendance_status: null,
+          waktu_tap: null,
+          is_live: false,
+          is_finished: false
+        }));
+      } catch (piketErr) {
+        console.error('Error fetching piket schedule for my schedule:', piketErr);
+      }
+    }
+
+    const sortedItems = [...scheduledItems, ...adhocItems, ...piketItems].sort((a, b) => a.jam_mulai.localeCompare(b.jam_mulai));
 
     // Group and merge consecutive items for same class, teacher, subject, and activity
     const finalResult: typeof sortedItems = [];

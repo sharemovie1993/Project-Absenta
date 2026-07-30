@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -18,11 +19,32 @@ import {
   Search,
   Filter,
   CheckCircle,
-  FileText
+  FileText,
+  Wrench,
+  Eye,
+  Lock
 } from 'lucide-react';
 import { piketGuruApi, JadwalPiketGuru, Hari } from '../../api/piketGuru.api';
-import { guruApi, tahunPelajaranApi, semesterApi } from '../../api/academic.api';
-import type { Guru } from '../../types/academic';
+import { guruApi, tahunPelajaranApi, semesterApi, jurusanApi } from '../../api/academic.api';
+import type { Guru, Jurusan } from '../../types/academic';
+import { getMyTenant } from '../../api/tenants.api';
+import { useJenjang } from '../../hooks/useJenjang';
+import { useAuth } from '../../hooks/useAuth';
+
+const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
+  1: { start: '06:30', end: '07:45' },
+  2: { start: '07:45', end: '08:30' },
+  3: { start: '08:30', end: '09:15' },
+  4: { start: '09:35', end: '10:20' },
+  5: { start: '10:20', end: '11:05' },
+  6: { start: '11:05', end: '11:50' },
+  7: { start: '12:30', end: '13:15' },
+  8: { start: '13:15', end: '14:00' },
+  9: { start: '14:00', end: '14:45' },
+  10: { start: '14:45', end: '15:30' },
+  11: { start: '15:30', end: '16:15' },
+  12: { start: '16:15', end: '17:00' },
+};
 
 const HARI_LIST: { id: Hari; label: string; short: string }[] = [
   { id: 'SENIN', label: 'Senin', short: 'Sen' },
@@ -35,7 +57,21 @@ const HARI_LIST: { id: Hari; label: string; short: string }[] = [
 ];
 
 export default function JadwalPiketGuruPage() {
+  const { user, isAdmin, can } = useAuth();
+  const currentGuruId = user?.guru_profile?.id;
+
+  const isKurikulumAdmin = useMemo(() => {
+    if (isAdmin()) return true;
+    if (can('kurikulum:jadwal-piket:manage') || can('kurikulum:jadwal-piket:create')) return true;
+    const roleName = (user?.role?.name || '').toUpperCase();
+    return roleName === 'ADMIN' || roleName === 'KURIKULUM' || roleName === 'SUPERADMIN';
+  }, [user, isAdmin, can]);
+
+  const { jenjang } = useJenjang();
+  const isSmk = useMemo(() => ['SMK', 'MAK'].includes((jenjang || '').toUpperCase()), [jenjang]);
+
   const [activeHari, setActiveHari] = useState<Hari>('SENIN');
+  const [piketFilterMode, setPiketFilterMode] = useState<'ALL' | 'MY_PIKET'>('ALL');
   const [schedules, setSchedules] = useState<JadwalPiketGuru[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,6 +94,8 @@ export default function JadwalPiketGuruPage() {
   const [formGuruId, setFormGuruId] = useState('');
   const [formHari, setFormHari] = useState<Hari>('SENIN');
   const [formPos, setFormPos] = useState('Piket Umum');
+  const [formSlotMulai, setFormSlotMulai] = useState(1);
+  const [formSlotSelesai, setFormSlotSelesai] = useState(10);
   const [formJamMulai, setFormJamMulai] = useState('06:30');
   const [formJamSelesai, setFormJamSelesai] = useState('15:30');
   const [formCatatan, setFormCatatan] = useState('');
@@ -67,6 +105,8 @@ export default function JadwalPiketGuruPage() {
   const [bulkGuruIds, setBulkGuruIds] = useState<string[]>([]);
   const [bulkHari, setBulkHari] = useState<Hari>('SENIN');
   const [bulkPos, setBulkPos] = useState('Piket Umum');
+  const [bulkSlotMulai, setBulkSlotMulai] = useState(1);
+  const [bulkSlotSelesai, setBulkSlotSelesai] = useState(10);
   const [bulkJamMulai, setBulkJamMulai] = useState('06:30');
   const [bulkJamSelesai, setBulkJamSelesai] = useState('15:30');
 
@@ -75,14 +115,53 @@ export default function JadwalPiketGuruPage() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Fetch Master Data (TP, Semester, Guru)
+  const [jurusanList, setJurusanList] = useState<Jurusan[]>([]);
+
+  // Master Tenant Shift Slot Config
+  const [tenantSlots, setTenantSlots] = useState<Record<number, { start: string; end: string }>>(DEFAULT_SLOT_TIMES);
+
+  const getSlotStartTime = useCallback((slot: number) => {
+    if (tenantSlots[slot]?.start) return tenantSlots[slot].start;
+    if (DEFAULT_SLOT_TIMES[slot]?.start) return DEFAULT_SLOT_TIMES[slot].start;
+    return '06:30';
+  }, [tenantSlots]);
+
+  const getSlotEndTime = useCallback((slot: number) => {
+    if (tenantSlots[slot]?.end) return tenantSlots[slot].end;
+    if (DEFAULT_SLOT_TIMES[slot]?.end) return DEFAULT_SLOT_TIMES[slot].end;
+    return '15:30';
+  }, [tenantSlots]);
+
+  const handleFormSlotMulaiChange = (slot: number) => {
+    setFormSlotMulai(slot);
+    setFormJamMulai(getSlotStartTime(slot));
+  };
+
+  const handleFormSlotSelesaiChange = (slot: number) => {
+    setFormSlotSelesai(slot);
+    setFormJamSelesai(getSlotEndTime(slot));
+  };
+
+  const handleBulkSlotMulaiChange = (slot: number) => {
+    setBulkSlotMulai(slot);
+    setBulkJamMulai(getSlotStartTime(slot));
+  };
+
+  const handleBulkSlotSelesaiChange = (slot: number) => {
+    setBulkSlotSelesai(slot);
+    setBulkJamSelesai(getSlotEndTime(slot));
+  };
+
+  // Fetch Master Data (TP, Semester, Guru, Tenant, Jurusan)
   useEffect(() => {
     const fetchMaster = async () => {
       try {
-        const [tpRes, semRes, guruRes] = await Promise.all([
+        const [tpRes, semRes, guruRes, tenantRes, jurusanRes] = await Promise.all([
           tahunPelajaranApi.getAll(),
           semesterApi.getAll(),
-          guruApi.getAll()
+          guruApi.getAll(),
+          getMyTenant().catch(() => null),
+          jurusanApi.getAll().catch(() => ({ success: false, data: [] }))
         ]);
 
         if (tpRes.success) {
@@ -101,6 +180,21 @@ export default function JadwalPiketGuruPage() {
 
         if (guruRes.success) {
           setGuruList(guruRes.data || []);
+        }
+
+        if (jurusanRes?.success) {
+          setJurusanList(jurusanRes.data || []);
+        }
+
+        if (tenantRes?.data?.shift_jam_pelajaran?.shifts?.[0]?.slots) {
+          const rawSlots = tenantRes.data.shift_jam_pelajaran.shifts[0].slots;
+          const mapped: Record<number, { start: string; end: string }> = {};
+          rawSlots.forEach((s: any) => {
+            if (s.slot) {
+              mapped[s.slot] = { start: s.start || s.jam_mulai, end: s.end || s.jam_selesai };
+            }
+          });
+          setTenantSlots(prev => ({ ...prev, ...mapped }));
         }
       } catch (err) {
         console.error('Failed to load master data:', err);
@@ -177,9 +271,18 @@ export default function JadwalPiketGuruPage() {
     return map;
   }, [schedules]);
 
+  // Personal Duty on Active Hari (for Guru Consumer)
+  const myDutyOnActiveHari = useMemo(() => {
+    if (!currentGuruId) return null;
+    return (schedulesByHari[activeHari] || []).find(s => s.guru_id === currentGuruId);
+  }, [schedulesByHari, activeHari, currentGuruId]);
+
   // Filtered List for active tab
   const activeHariSchedules = useMemo(() => {
-    const list = schedulesByHari[activeHari] || [];
+    let list = schedulesByHari[activeHari] || [];
+    if (!isKurikulumAdmin && piketFilterMode === 'MY_PIKET' && currentGuruId) {
+      list = list.filter(item => item.guru_id === currentGuruId);
+    }
     if (!searchTerm.trim()) return list;
     const term = searchTerm.toLowerCase();
     return list.filter(
@@ -188,7 +291,7 @@ export default function JadwalPiketGuruPage() {
         item.Guru?.nip?.toLowerCase().includes(term) ||
         item.pos_piket?.toLowerCase().includes(term)
     );
-  }, [schedulesByHari, activeHari, searchTerm]);
+  }, [schedulesByHari, activeHari, searchTerm, isKurikulumAdmin, piketFilterMode, currentGuruId]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -243,6 +346,8 @@ export default function JadwalPiketGuruPage() {
     setFormGuruId('');
     setFormHari(hari || activeHari);
     setFormPos('Piket Umum');
+    setFormSlotMulai(1);
+    setFormSlotSelesai(10);
     setFormJamMulai('06:30');
     setFormJamSelesai('15:30');
     setFormCatatan('');
@@ -254,6 +359,8 @@ export default function JadwalPiketGuruPage() {
     setFormGuruId(item.guru_id);
     setFormHari(item.hari);
     setFormPos(item.pos_piket || 'Piket Umum');
+    setFormSlotMulai(item.slot_mulai || 1);
+    setFormSlotSelesai(item.slot_selesai || 10);
     setFormJamMulai(item.jam_mulai || '06:30');
     setFormJamSelesai(item.jam_selesai || '15:30');
     setFormCatatan(item.catatan || '');
@@ -273,6 +380,8 @@ export default function JadwalPiketGuruPage() {
         const res = await piketGuruApi.update(editingItem.id, {
           hari: formHari,
           pos_piket: formPos,
+          slot_mulai: Number(formSlotMulai),
+          slot_selesai: Number(formSlotSelesai),
           jam_mulai: formJamMulai,
           jam_selesai: formJamSelesai,
           catatan: formCatatan
@@ -289,6 +398,8 @@ export default function JadwalPiketGuruPage() {
           guru_id: formGuruId,
           hari: formHari,
           pos_piket: formPos,
+          slot_mulai: Number(formSlotMulai),
+          slot_selesai: Number(formSlotSelesai),
           jam_mulai: formJamMulai,
           jam_selesai: formJamSelesai,
           catatan: formCatatan
@@ -322,6 +433,8 @@ export default function JadwalPiketGuruPage() {
         hari: bulkHari,
         guru_ids: bulkGuruIds,
         pos_piket: bulkPos,
+        slot_mulai: Number(bulkSlotMulai),
+        slot_selesai: Number(bulkSlotSelesai),
         jam_mulai: bulkJamMulai,
         jam_selesai: bulkJamSelesai
       });
@@ -361,8 +474,8 @@ export default function JadwalPiketGuruPage() {
 
   return (
     <AcademicPageLayout
-      title="Penjadwalan Piket Guru"
-      description="Kelola alokasi penugasan guru piket harian per semester dan pos tugas sekolah."
+      title={isKurikulumAdmin ? "Penjadwalan & Pengelolaan Piket Guru" : "Jadwal Piket Guru & Penugasan Saya"}
+      description={isKurikulumAdmin ? "Kelola alokasi penugasan guru piket harian per semester dan pos tugas sekolah." : "Lihat jadwal penugasan piket Anda dan daftar guru piket harian sekolah."}
       breadcrumbs={[
         { label: 'Dashboard', path: '/dashboard' },
         { label: 'Kurikulum', path: '/kurikulum' },
@@ -371,13 +484,17 @@ export default function JadwalPiketGuruPage() {
       stats={stats}
       isLoadingStats={loading}
       instruction={{
-        title: 'Panduan Penjadwalan Piket Guru',
-        description: 'Tentukan penugasan guru piket harian untuk menjaga kedisiplinan dan keamanan lingkungan sekolah.',
-        items: [
+        title: isKurikulumAdmin ? 'Panduan Pengelolaan Piket Guru (Kurikulum)' : 'Panduan Penugasan Piket Guru',
+        description: isKurikulumAdmin ? 'Tentukan penugasan guru piket harian untuk menjaga kedisiplinan dan keamanan lingkungan sekolah.' : 'Informasi penugasan piket harian guru.',
+        items: isKurikulumAdmin ? [
           { text: 'Pilih Tahun Pelajaran & Semester aktif sebagai konteks penugasan.' },
           { text: 'Klik tab Hari (Senin–Sabtu) untuk melihat daftar guru yang bertugas.' },
           { text: 'Gunakan tombol "+ Tambah Penugasan" untuk menambah guru piket perorangan atau "+ Penugasan Massal" untuk beberapa guru sekaligus.' },
           { text: 'Data piket yang dibuat di sini secara otomatis akan terdeteksi di Modul Kesiswaan Piket saat pencatatan izin siswa.' }
+        ] : [
+          { text: 'Gunakan filter "Piket Saya" untuk melihat penugasan piket milik Anda sendiri.' },
+          { text: 'Klik tab Hari untuk melihat rekan guru lain yang bertugas pada hari tersebut.' },
+          { text: 'Jika Anda bertugas hari ini, gunakan tombol "Buka Meja Piket" untuk memproses presensi/izin siswa.' }
         ]
       }}
     >
@@ -415,25 +532,47 @@ export default function JadwalPiketGuruPage() {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => {
-                  setBulkHari(activeHari);
-                  setBulkGuruIds([]);
-                  setBulkPos('Piket Umum');
-                  setIsBulkModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-              >
-                <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
-                <span>+ Penugasan Massal</span>
-              </button>
-              <button
-                onClick={() => handleOpenAdd()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
-              >
-                <Plus size={15} />
-                <span>+ Tambah Guru Piket</span>
-              </button>
+              {isKurikulumAdmin ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setBulkHari(activeHari);
+                      setBulkGuruIds([]);
+                      setBulkPos('Piket Umum');
+                      setIsBulkModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                  >
+                    <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <span>+ Penugasan Massal</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenAdd()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition"
+                  >
+                    <Plus size={15} />
+                    <span>+ Tambah Guru Piket</span>
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPiketFilterMode(p => p === 'ALL' ? 'MY_PIKET' : 'ALL')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition border ${
+                      piketFilterMode === 'MY_PIKET'
+                        ? 'bg-amber-500 text-slate-900 border-amber-400 shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <UserCheck size={14} />
+                    <span>{piketFilterMode === 'MY_PIKET' ? '👤 Piket Saya (Aktif)' : '👥 Tampilkan Piket Saya'}</span>
+                  </button>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                    <Eye size={12} /> Mode Lihat
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -486,6 +625,37 @@ export default function JadwalPiketGuruPage() {
             </div>
           </div>
 
+          {/* PERSONAL DUTY BANNER FOR GURU CONSUMER */}
+          {myDutyOnActiveHari && (
+            <div className="mb-5 p-4 rounded-xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-purple-500/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-400 text-slate-900 rounded-xl font-black shrink-0 shadow-xs">
+                  <ShieldCheck size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-md border border-amber-400/30">
+                      Tugas Piket Anda
+                    </span>
+                    <span className="text-xs text-purple-200 font-semibold">
+                      Hari {HARI_LIST.find(h => h.id === activeHari)?.label}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-white mt-1">
+                    {myDutyOnActiveHari.pos_piket || 'Piket Umum'} (Slot Jam Ke-{myDutyOnActiveHari.slot_mulai || 1} s/d {myDutyOnActiveHari.slot_selesai || 10} • {myDutyOnActiveHari.jam_mulai} - {myDutyOnActiveHari.jam_selesai} WIB)
+                  </div>
+                </div>
+              </div>
+              <Link
+                to="/kesiswaan/piket"
+                className="px-4 py-2 text-xs font-black bg-amber-400 hover:bg-amber-300 text-slate-900 rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5"
+              >
+                <span>Buka Meja Piket</span>
+                <span>→</span>
+              </Link>
+            </div>
+          )}
+
           {/* SCHEDULE CARDS GRID */}
           {loading ? (
             <div className="py-16 text-center text-slate-400">
@@ -499,22 +669,30 @@ export default function JadwalPiketGuruPage() {
                 Belum Ada Guru Piket untuk Hari {HARI_LIST.find(h => h.id === activeHari)?.label}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1 mb-4">
-                Tambahkan alokasi penugasan piket untuk hari ini agar operasional piket berjalan lancar.
+                {isKurikulumAdmin
+                  ? 'Tambahkan alokasi penugasan piket untuk hari ini agar operasional piket berjalan lancar.'
+                  : 'Tidak ada penugasan guru piket yang ditemukan untuk hari ini.'}
               </p>
-              <button
-                onClick={() => handleOpenAdd(activeHari)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
-              >
-                <Plus size={14} />
-                <span>Tugaskan Guru Piket</span>
-              </button>
+              {isKurikulumAdmin && (
+                <button
+                  onClick={() => handleOpenAdd(activeHari)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition shadow-sm"
+                >
+                  <Plus size={14} />
+                  <span>Tugaskan Guru Piket</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeHariSchedules.map(item => (
                 <div
                   key={item.id}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-600 transition shadow-xs flex flex-col justify-between"
+                  className={`p-4 rounded-xl border transition shadow-xs flex flex-col justify-between ${
+                    currentGuruId && item.guru_id === currentGuruId
+                      ? 'border-indigo-500 dark:border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/20 ring-1 ring-indigo-400/40'
+                      : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-600'
+                  }`}
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
@@ -527,9 +705,14 @@ export default function JadwalPiketGuruPage() {
                           )}
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
-                            {item.Guru?.nama_guru || 'Guru'}
-                          </h4>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
+                              {item.Guru?.nama_guru || 'Guru'}
+                            </h4>
+                            {currentGuruId && item.guru_id === currentGuruId && (
+                              <span className="px-1.5 py-0.2 text-[9px] font-black bg-indigo-600 text-white rounded-full">Anda</span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">
                             NIP: {item.Guru?.nip || '-'}
                           </p>
@@ -543,9 +726,9 @@ export default function JadwalPiketGuruPage() {
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                       <div className="flex items-center gap-2 text-[11px]">
                         <Clock size={13} className="text-slate-400 shrink-0" />
-                        <span>Jam Operasional: </span>
+                        <span>Slot Piket: </span>
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {item.jam_mulai || '06:30'} - {item.jam_selesai || '15:30'} WIB
+                          Jam Ke-{item.slot_mulai || 1} s/d {item.slot_selesai || 10} ({item.jam_mulai || '06:30'} - {item.jam_selesai || '15:30'})
                         </span>
                       </div>
                       {item.catatan && (
@@ -561,25 +744,31 @@ export default function JadwalPiketGuruPage() {
                     <span className="text-[10px] text-slate-400">
                       Hari: <strong className="text-slate-600 dark:text-slate-300">{item.hari}</strong>
                     </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEdit(item)}
-                        className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg transition"
-                        title="Edit Penugasan"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setItemToDelete(item.id);
-                          setDeleteConfirmOpen(true);
-                        }}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 rounded-lg transition"
-                        title="Hapus Penugasan"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    {isKurikulumAdmin ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEdit(item)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg transition"
+                          title="Edit Penugasan"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setItemToDelete(item.id);
+                            setDeleteConfirmOpen(true);
+                          }}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 rounded-lg transition"
+                          title="Hapus Penugasan"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle size={12} /> Terjadwal
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -665,18 +854,101 @@ export default function JadwalPiketGuruPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Piket Gerbang / Gedung A"
+                    placeholder="Contoh: Piket Umum / Piket Jurusan RPL"
                     value={formPos}
                     onChange={e => setFormPos(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-medium"
                   />
+
+                  {/* Preset Chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormPos('Piket Umum')}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200/60"
+                    >
+                      🏫 Piket Umum
+                    </button>
+                    {isSmk && (
+                      <button
+                        type="button"
+                        onClick={() => setFormPos('Piket Jurusan')}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-200/60"
+                      >
+                        🛠️ Piket Jurusan
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jam Mulai
+                    Dari Jam Ke-
+                  </label>
+                  <select
+                    value={formSlotMulai}
+                    onChange={e => handleFormSlotMulaiChange(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-semibold text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(slot => {
+                      const busySlots = (formGuruId ? teachingLoadMap[formGuruId]?.busy_slots : []) || [];
+                      const isBusy = busySlots.includes(slot);
+                      const detail = formGuruId ? teachingLoadMap[formGuruId]?.detail?.find(d => d.slot_index === slot) : null;
+                      const slotTime = tenantSlots[slot] || DEFAULT_SLOT_TIMES[slot];
+                      const timeText = slotTime ? ` (${slotTime.start} - ${slotTime.end})` : '';
+                      return (
+                        <option key={slot} value={slot}>
+                          {isBusy ? `🔴 Jam Ke-${slot}${timeText} - ⚠️ Mengajar ${detail?.kelas || ''}` : `Jam Ke-${slot}${timeText}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Sampai Jam Ke-
+                  </label>
+                  <select
+                    value={formSlotSelesai}
+                    onChange={e => handleFormSlotSelesaiChange(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-semibold text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(slot => {
+                      const busySlots = (formGuruId ? teachingLoadMap[formGuruId]?.busy_slots : []) || [];
+                      const isBusy = busySlots.includes(slot);
+                      const detail = formGuruId ? teachingLoadMap[formGuruId]?.detail?.find(d => d.slot_index === slot) : null;
+                      const slotTime = tenantSlots[slot] || DEFAULT_SLOT_TIMES[slot];
+                      const timeText = slotTime ? ` (${slotTime.start} - ${slotTime.end})` : '';
+                      return (
+                        <option key={slot} value={slot}>
+                          {isBusy ? `🔴 Jam Ke-${slot}${timeText} - ⚠️ Mengajar ${detail?.kelas || ''}` : `Jam Ke-${slot}${timeText}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {/* Conflict Alert for Selected Range */}
+              {(() => {
+                const busySlots = (formGuruId ? teachingLoadMap[formGuruId]?.busy_slots : []) || [];
+                const minS = Math.min(formSlotMulai, formSlotSelesai);
+                const maxS = Math.max(formSlotMulai, formSlotSelesai);
+                const overlaps = busySlots.filter(s => s >= minS && s <= maxS);
+                if (overlaps.length === 0) return null;
+                return (
+                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-[11px] text-rose-700 dark:text-rose-300 font-medium">
+                    ⚠️ <strong>Peringatan Beririsan Jam Mengajar:</strong> Slot Jam Ke-{minS} s/d {maxS} beririsan dengan {overlaps.length} JP mengajar guru (Jam Ke-{overlaps.join(', ')}).
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Jam Mulai (WIB)
                   </label>
                   <input
                     type="text"
@@ -688,7 +960,7 @@ export default function JadwalPiketGuruPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jam Selesai
+                    Jam Selesai (WIB)
                   </label>
                   <input
                     type="text"
@@ -773,11 +1045,31 @@ export default function JadwalPiketGuruPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Piket Umum"
+                    placeholder="Contoh: Piket Umum / Piket Jurusan RPL"
                     value={bulkPos}
                     onChange={e => setBulkPos(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-medium"
                   />
+
+                  {/* Preset Chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setBulkPos('Piket Umum')}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200/60"
+                    >
+                      🏫 Piket Umum
+                    </button>
+                    {isSmk && (
+                      <button
+                        type="button"
+                        onClick={() => setBulkPos('Piket Jurusan')}
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-200/60"
+                      >
+                        🛠️ Piket Jurusan
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -819,7 +1111,50 @@ export default function JadwalPiketGuruPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jam Mulai
+                    Dari Jam Ke-
+                  </label>
+                  <select
+                    value={bulkSlotMulai}
+                    onChange={e => handleBulkSlotMulaiChange(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-semibold text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(slot => {
+                      const slotTime = tenantSlots[slot] || DEFAULT_SLOT_TIMES[slot];
+                      const timeText = slotTime ? ` (${slotTime.start} - ${slotTime.end})` : '';
+                      return (
+                        <option key={slot} value={slot}>
+                          Jam Ke-{slot}{timeText}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Sampai Jam Ke-
+                  </label>
+                  <select
+                    value={bulkSlotSelesai}
+                    onChange={e => handleBulkSlotSelesaiChange(Number(e.target.value))}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-semibold text-xs"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(slot => {
+                      const slotTime = tenantSlots[slot] || DEFAULT_SLOT_TIMES[slot];
+                      const timeText = slotTime ? ` (${slotTime.start} - ${slotTime.end})` : '';
+                      return (
+                        <option key={slot} value={slot}>
+                          Jam Ke-{slot}{timeText}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Jam Mulai (WIB)
                   </label>
                   <input
                     type="text"
@@ -831,7 +1166,7 @@ export default function JadwalPiketGuruPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Jam Selesai
+                    Jam Selesai (WIB)
                   </label>
                   <input
                     type="text"

@@ -316,13 +316,11 @@ export default function DashboardOverview() {
     }
 
     // 3. STAFF DASHBOARD (Unified) or KEPALA SEKOLAH DASHBOARD (Executive)
-    // Any role that is fundamentally a Staff/Teacher gets the Unified view
-    // EXCEPT if they are assigned as Gerbang (Security), hide it as per request
-    const isStaff = ['GURU', 'KEPALA_SEKOLAH', 'KURIKULUM', 'WAKAKUR', 'KESISWAAN', 'WAKASIS', 'PETUGAS_KELAS', 'TU', 'HUBIN', 'SARPRAS', 'KAPROG'].includes(roleName || '');
-    const hasStaffCaps = hasCap('dashboard.view.guru') || hasCap('dashboard.view.walikelas') || hasCap('dashboard.view.kepsek');
-    const isGerbang = (user as any)?.position_codes?.includes('GERBANG');
+    // Any role that is fundamentally a Staff/Teacher/Gerbang gets the Unified view
+    const isStaff = ['GURU', 'KEPALA_SEKOLAH', 'KURIKULUM', 'WAKAKUR', 'KESISWAAN', 'WAKASIS', 'PETUGAS_KELAS', 'TU', 'HUBIN', 'SARPRAS', 'KAPROG', 'GERBANG', 'PETUGAS_GERBANG'].includes(roleName || '');
+    const hasStaffCaps = hasCap('dashboard.view.guru') || hasCap('dashboard.view.walikelas') || hasCap('dashboard.view.kepsek') || hasCap('dashboard.view.gerbang') || hasCap('attendance.scan');
     
-    if ((isStaff || hasStaffCaps) && !isGerbang) {
+    if (isStaff || hasStaffCaps) {
       const isKepsekRole = roleName === 'KEPALA_SEKOLAH' || 
                            hasCap('dashboard.view.kepsek') || 
                            ((user?.guru_profile as any)?.jabatan || '').toUpperCase().includes('KEPALA');

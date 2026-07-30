@@ -1,0 +1,320 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Maximize, Minimize, ShieldCheck, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { Badge } from '../ui/Badge';
+import { MemoizedAnalyticsCard } from '../ui/AnalyticsCard';
+import { ThemeToggle } from '../ui/ThemeToggle';
+import { useAuth } from '../../hooks/useAuth';
+import { getMyTenant } from '../../api/tenants.api';
+import { useInstruction, type InstructionData } from '../../contexts/InstructionContext';
+
+// Hardening & Infrastructure Audit imports
+import { InfraErrorBoundary } from '../superadmin/infra/InfraErrorBoundary';
+import { HardeningInspector } from '../superadmin/infra/InfraSharedComponents';
+import { getHardeningConfig } from '../../config/hardeningRegistry';
+import auditReport from '../../config/hardeningAuditReport.json';
+
+export interface OperationalStatItem {
+  title: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+  gradient?: string;
+  subtitle?: string;
+}
+
+export interface OperationalPageLayoutProps {
+  title: string;
+  shortTitle?: string;
+  subtitle?: string;
+  backPath?: string;
+  backLabel?: string;
+  statusBadge?: React.ReactNode;
+  stats?: OperationalStatItem[];
+  actions?: React.ReactNode;
+  instruction?: InstructionData;
+  hardeningModuleKey?: string;
+  children: React.ReactNode;
+}
+
+export const OperationalPageLayout: React.FC<OperationalPageLayoutProps> = ({
+  title,
+  shortTitle,
+  subtitle,
+  backPath = '/dashboard',
+  backLabel = 'Kembali ke Dashboard',
+  statusBadge,
+  stats = [],
+  actions,
+  instruction,
+  hardeningModuleKey,
+  children,
+}) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { setInstructionData } = useInstruction();
+  const [tenantName, setTenantName] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const userRole = (user?.role?.name || '').toUpperCase();
+
+  // Automatic Hardening Key Resolution (same engine as AcademicPageLayout)
+  const resolvedKey = useMemo(() => {
+    if (hardeningModuleKey) return hardeningModuleKey;
+    if (typeof window === 'undefined') return null;
+    
+    const pathname = window.location.pathname;
+    const cleanPath = pathname.toLowerCase().replace(/\/$/, "");
+    const segments = cleanPath.split('/').filter(Boolean);
+    const lastSegment = segments[segments.length - 1] || '';
+    const lastSegmentNoHyphen = lastSegment.replace(/-/g, '');
+    
+    if (cleanPath.endsWith('/piket')) return 'kesiswaan_piket';
+    if (cleanPath.includes('/rab-calculator')) return 'billing_rab_calculator';
+    if (cleanPath.includes('/verify-siplah')) return 'verify_siplah';
+    
+    const keys = Object.keys(auditReport);
+    let bestMatchKey = null;
+    let maxMatchScore = 0;
+    
+    for (const key of keys) {
+      const entry = (auditReport as Record<string, { relativePath?: string; filename: string }>)[key];
+      if (entry && entry.relativePath) {
+        const pathParts = entry.relativePath
+          .toLowerCase()
+          .replace(/\\/g, '/')
+          .replace(/\.tsx?$/, '')
+          .replace(/page$/, '')
+          .split('/')
+          .filter((p: string) => p !== 'src' && p !== 'pages' && p !== 'index');
+          
+        let matchScore = 0;
+        for (const part of pathParts) {
+          if (segments.some(seg => seg.includes(part) || part.includes(seg))) {
+            matchScore += 1;
+          }
+        }
+        
+        const filenameClean = entry.filename.toLowerCase().replace(/page\.tsx$/, '').replace(/\.tsx$/, '');
+        if (lastSegmentNoHyphen === filenameClean || lastSegmentNoHyphen.includes(filenameClean) || filenameClean.includes(lastSegmentNoHyphen)) {
+          matchScore += 2;
+        }
+        
+        if (matchScore > maxMatchScore) {
+          maxMatchScore = matchScore;
+          bestMatchKey = key;
+        }
+      }
+    }
+    
+    return maxMatchScore >= 1 ? bestMatchKey : null;
+  }, [hardeningModuleKey]);
+
+  // Fetch hardening config
+  const hardeningConfig = useMemo(() => {
+    return resolvedKey ? getHardeningConfig(resolvedKey) : null;
+  }, [resolvedKey]);
+
+  // Instruction Context binding
+  useEffect(() => {
+    if (instruction) {
+      setInstructionData(instruction);
+    }
+    return () => setInstructionData(null);
+  }, [instruction, setInstructionData]);
+
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const res = await getMyTenant();
+        if (res?.success && res.data) {
+          setTenantName(res.data.nama_sekolah || '');
+        }
+      } catch (e) {
+        // Fallback silent
+      }
+    };
+    loadTenant();
+  }, []);
+
+  const [liveTime, setLiveTime] = useState<string>('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      setLiveTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB');
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const [showMobileStats, setShowMobileStats] = useState<boolean>(true);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col antialiased">
+      {/* ── STANDARDIZED OPERATIONAL TOPBAR ── */}
+      <header className="bg-slate-900 text-white border-b border-slate-800 px-3 sm:px-6 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md shrink-0 select-none gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => navigate(backPath)}
+            className="inline-flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-lg text-xs font-bold bg-white/10 hover:bg-white/20 text-white transition border border-white/10 shrink-0 cursor-pointer"
+            title={backLabel}
+          >
+            <ArrowLeft size={16} />
+            <span className="hidden sm:inline">{backLabel}</span>
+          </button>
+
+          <div className="h-4 w-px bg-slate-700/80 mx-0.5 hidden sm:block shrink-0" />
+
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+            <div className="p-1.5 bg-indigo-600 rounded-lg font-black text-white shrink-0 shadow-xs hidden xs:flex">
+              <ShieldCheck size={16} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xs sm:text-sm font-black text-white leading-none tracking-tight truncate">
+                <span className="sm:hidden">{shortTitle || title}</span>
+                <span className="hidden sm:inline">{title}</span>
+              </h1>
+              <p className="text-[10px] text-indigo-300 font-medium mt-0.5 truncate hidden sm:block">
+                {tenantName || 'Absenta.id'} {subtitle ? `• ${subtitle}` : '• Mode Layar Operasional'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* LIVE WIB DIGITAL CLOCK */}
+          {liveTime && (
+            <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/90 text-emerald-400 text-xs font-mono font-bold border border-slate-700/80 shrink-0">
+              <Clock size={13} className="text-emerald-400 animate-pulse" />
+              <span>{liveTime}</span>
+            </div>
+          )}
+
+          {/* HARDENING / AUDIT INSPECTOR TOOL INTEGRATION */}
+          {hardeningConfig && resolvedKey && (
+            <div className="hidden md:block">
+              <HardeningInspector 
+                pageName={hardeningConfig.displayName}
+                standards={hardeningConfig.standards}
+                moduleKey={resolvedKey}
+              />
+            </div>
+          )}
+
+          {statusBadge && <div className="hidden sm:block">{statusBadge}</div>}
+
+          {actions}
+
+          <div className="bg-slate-800 text-slate-200 rounded-lg border border-slate-700 px-1 py-0.5 flex items-center shrink-0">
+            <ThemeToggle />
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 transition border border-slate-700 cursor-pointer"
+            title={isFullscreen ? 'Keluar Layar Penuh' : 'Mode Layar Penuh'}
+          >
+            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+            <span className="hidden md:inline">{isFullscreen ? 'Keluar Fullscreen' : 'Layar Penuh'}</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 pl-1 sm:pl-2 border-l border-slate-800 shrink-0">
+            <div className="w-7 h-7 rounded-full bg-indigo-600/30 text-indigo-300 font-bold flex items-center justify-center text-xs border border-indigo-500/40 shrink-0">
+              {user?.nama?.charAt(0) || user?.full_name?.charAt(0) || 'G'}
+            </div>
+            <div className="hidden lg:block text-left text-xs">
+              <div className="font-bold text-white leading-none truncate max-w-[120px]">
+                {user?.nama || user?.full_name || 'User'}
+              </div>
+              <div className="text-[9px] text-slate-400 mt-0.5">{userRole}</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Hardening Inspector fallback */}
+      {hardeningConfig && resolvedKey && (
+        <div className="md:hidden bg-slate-900 border-b border-slate-800 px-4 py-1.5 flex justify-center">
+          <HardeningInspector 
+            pageName={hardeningConfig.displayName}
+            standards={hardeningConfig.standards}
+            moduleKey={resolvedKey}
+          />
+        </div>
+      )}
+
+      {/* ── COMPACT OPERATIONAL STATS BAR (WITH MOBILE COLLAPSIBLE TOGGLE) ── */}
+      {stats.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800/80 px-3 sm:px-6 py-2 sm:py-3 shrink-0">
+          <div className="max-w-7xl mx-auto">
+            {/* Mobile Collapsible Toggle Header */}
+            <div className="flex sm:hidden items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 mb-2 text-xs">
+              <span className="font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 text-[11px] truncate">
+                📊 Ringkasan Statistik
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMobileStats(!showMobileStats)}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-[10px] shrink-0"
+              >
+                <span>{showMobileStats ? 'Tutup' : 'Buka'}</span>
+                {showMobileStats ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+            </div>
+
+            {/* Stat Cards Grid */}
+            <div className={cn(
+              "grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 transition-all duration-300",
+              !showMobileStats && "hidden sm:grid"
+            )}>
+              {stats.map((st, idx) => (
+                <MemoizedAnalyticsCard
+                  key={idx}
+                  title={st.title}
+                  value={st.value}
+                  icon={st.icon}
+                  gradient={st.gradient || 'from-indigo-500 to-blue-600'}
+                  subtitle={st.subtitle}
+                  variant="premium"
+                  mobileCompact={true}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MAIN OPERATIONAL WORKSPACE CANVAS (PROTECTED BY INFRA ERROR BOUNDARY) ── */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+        <InfraErrorBoundary 
+          fallbackTitle={`Gagal memuat modul operasional ${title}`}
+          queryKeyToInvalidate={resolvedKey ? [resolvedKey] : undefined}
+        >
+          {children}
+        </InfraErrorBoundary>
+      </main>
+    </div>
+  );
+};
+
+export default OperationalPageLayout;

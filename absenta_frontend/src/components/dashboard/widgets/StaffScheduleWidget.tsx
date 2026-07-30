@@ -10,7 +10,8 @@ import {
   ChevronRight,
   BookOpen,
   Users,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
@@ -30,6 +31,9 @@ interface TimelineItem {
   teacherStatus: string;
   myAbsenRecord: any;
   isAdHoc: boolean;
+  isPiket?: boolean;
+  posPiket?: string;
+  catatan?: string;
 }
 
 interface StaffScheduleWidgetProps {
@@ -180,19 +184,57 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
         ) : (
           timelineItems
             .filter(item => !item.isLive) // Sembunyikan sesi yang sedang berlangsung agar tidak redundan dengan Spotlight
-            .map((item, idx) => (
-              <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              onClick={() => !isProcessing(item.id) && onAction?.(item)}
-              className={cn(
-                "group relative bg-white dark:bg-slate-800 rounded-xl p-3 border border-gray-100 dark:border-slate-700/50 shadow-sm transition-all hover:shadow-md cursor-pointer",
-                item.isLive && "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900",
-                item.isFinished && "opacity-75 grayscale-[0.5]"
-              )}
-            >
+            .map((item, idx) => {
+              if (item.isPiket) {
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group relative bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-3.5 border border-purple-500/30 text-white shadow-sm flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-col items-center justify-center min-w-[50px] border-r border-white/10 pr-3">
+                        <span className="text-[10px] font-bold text-purple-200">{item.jam_mulai}</span>
+                        <div className="w-0.5 h-3 bg-white/20 my-0.5" />
+                        <span className="text-[9px] font-medium text-purple-300">{item.jam_selesai}</span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <ShieldCheck size={10} /> TUGAS PIKET GURU
+                          </span>
+                          <span className="text-[10px] text-purple-200 font-bold">{item.posPiket || item.kelas_nama}</span>
+                        </div>
+                        <p className="text-[11px] font-semibold text-white mt-1">
+                          Petugas Piket & Verifikasi Izin Keluar Siswa
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="/kesiswaan/piket"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition shrink-0 ml-2"
+                    >
+                      Meja Piket <ChevronRight size={12} />
+                    </a>
+                  </motion.div>
+                );
+              }
+
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  onClick={() => !isProcessing(item.id) && onAction?.(item)}
+                  className={cn(
+                    "group relative bg-white dark:bg-slate-800 rounded-xl p-3 border border-gray-100 dark:border-slate-700/50 shadow-sm transition-all hover:shadow-md cursor-pointer",
+                    item.isLive && "ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900",
+                    item.isFinished && "opacity-75 grayscale-[0.5]"
+                  )}
+                >
               <div className="flex items-center gap-3">
                 {/* Time Segment */}
                 <div className="flex flex-col items-center justify-center min-w-[50px] border-r border-gray-50 dark:border-slate-700/50 pr-3">
@@ -253,7 +295,8 @@ export const StaffScheduleWidget: React.FC<StaffScheduleWidgetProps> = ({
                 </div>
               </div>
             </motion.div>
-          ))
+          );
+        })
         )}
       </div>
     </div>

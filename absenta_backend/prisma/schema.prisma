@@ -2126,6 +2126,8 @@ model JadwalPiketGuru {
   guru_id            String
   hari               Hari
   pos_piket          String?        @default("Piket Umum")
+  slot_mulai         Int?           @default(1)
+  slot_selesai       Int?           @default(10)
   jam_mulai          String?
   jam_selesai        String?
   catatan            String?

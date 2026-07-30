@@ -10,6 +10,8 @@ export interface JadwalPiketGuru {
   guru_id: string;
   hari: Hari;
   pos_piket?: string | null;
+  slot_mulai?: number | null;
+  slot_selesai?: number | null;
   jam_mulai?: string | null;
   jam_selesai?: string | null;
   catatan?: string | null;
@@ -62,7 +64,7 @@ export const piketGuruApi = {
     hari?: Hari;
   }): Promise<{
     success: boolean;
-    data: Record<string, { total_jp: number; detail: Array<{ kelas: string; mapel: string; jam: string }> }>;
+    data: Record<string, { total_jp: number; busy_slots?: number[]; detail: Array<{ kelas: string; mapel: string; slot_index?: number; jam: string }> }>;
   }> => {
     const response = await api.get('/kurikulum/jadwal-piket/teaching-load', { params });
     return response.data;
@@ -74,6 +76,8 @@ export const piketGuruApi = {
     guru_id: string;
     hari: Hari;
     pos_piket?: string;
+    slot_mulai?: number;
+    slot_selesai?: number;
     jam_mulai?: string;
     jam_selesai?: string;
     catatan?: string;
@@ -88,6 +92,8 @@ export const piketGuruApi = {
     hari: Hari;
     guru_ids: string[];
     pos_piket?: string;
+    slot_mulai?: number;
+    slot_selesai?: number;
     jam_mulai?: string;
     jam_selesai?: string;
   }): Promise<{ success: boolean; message: string; data: JadwalPiketGuru[] }> => {
@@ -100,6 +106,8 @@ export const piketGuruApi = {
     data: {
       hari?: Hari;
       pos_piket?: string;
+      slot_mulai?: number;
+      slot_selesai?: number;
       jam_mulai?: string;
       jam_selesai?: string;
       catatan?: string;
