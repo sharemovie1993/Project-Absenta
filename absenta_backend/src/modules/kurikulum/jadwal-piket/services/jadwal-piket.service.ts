@@ -389,17 +389,13 @@ export class JadwalPiketService {
       year: 'numeric'
     });
 
-    const titlePrefix = isNightReminder
-      ? '🛡️ *PENGINGAT JADWAL PIKET GURU (BESOK HARI)*'
-      : '🛡️ *PENGINGAT JADWAL PIKET GURU (HARI INI)*';
+    const hariStatus = isNightReminder ? `BESOK HARI (${tglStr})` : `HARI INI (${tglStr})`;
 
-    let msg = `${titlePrefix}\n📅 *${tglStr}*\n─────────────────────────\n\n`;
+    let msg = `🛡️ *SISTEM PENGINGAT JADWAL PIKET GURU*\n📅 *${hariStatus}*\n\n`;
 
     if (list.length === 0) {
-      msg += `ℹ️ Tidak ada jadwal penugasan piket guru untuk hari ${isNightReminder ? 'besok' : 'ini'}. Libur atau belum diset di sistem Absenta.\n`;
+      msg += `ℹ️ Tidak ada jadwal penugasan piket guru untuk ${isNightReminder ? 'besok hari' : 'hari ini'}. Libur atau belum diset di sistem Absenta.\n`;
     } else {
-      msg += `Bapak/Ibu Guru yang bertugas piket:\n\n`;
-
       // Grouping by Jam -> Pos Piket
       const groupedByJam: Record<string, Record<string, typeof list>> = {};
 
@@ -466,15 +462,13 @@ export class JadwalPiketService {
         });
       });
 
-
-
-      msg += `─────────────────────────\n`;
       msg += `💡 Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
       msg += `🤖 _Pesan pengingat otomatis ini dikirimkan oleh *Sistem Absenta*._\n`;
     }
 
     return msg;
   }
+
 
 
 
