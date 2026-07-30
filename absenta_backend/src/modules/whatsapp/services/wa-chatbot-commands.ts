@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { pendingGuruEditSession } from './wa-chatbot-resolver.service';
 import { GuruJadwalHandler } from '../chatbot/handlers/guru/guru-jadwal.handler';
+import { GuruWalikelasHandler } from '../chatbot/handlers/guru/guru-walikelas.handler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIMEZONE HELPER — selalu gunakan WIB (Asia/Jakarta, UTC+7)
@@ -432,71 +433,9 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
     return GuruJadwalHandler.handleJadwalHariIni({ guru, commandUpper: choice } as any);
   }
 
-  // [2] Daftar Semua Wali Kelas Aktif di Sekolah
+  // [2] Daftar Semua Wali Kelas Aktif di Sekolah (Via Shared Domain Service)
   if (choice === '2') {
-    // Query semua penugasan WALI_KELAS aktif untuk seluruh kelas di tenant
-    let waliAssignments: any[] = [];
-    try {
-      waliAssignments = await prisma.organizationalAssignment.findMany({
-        where: {
-          tenant_id: guru.tenant_id,
-          is_active: true,
-          kelas_id:  { not: null },
-          Position:  { code: 'WALIKELAS' },
-        },
-        include: {
-          Kelas: { select: { nama_kelas: true, tingkat: true } },
-          User:  { include: { Guru: { select: { nama_guru: true, no_hp: true } } } },
-        },
-        take: 50,
-      });
-    } catch {
-      // Jika model OrganizationalAssignment belum ada data posisi WALI_KELAS,
-      // coba juga dengan nama posisi mengandung "Wali"
-      try {
-        waliAssignments = await prisma.organizationalAssignment.findMany({
-          where: {
-            tenant_id: guru.tenant_id,
-            is_active: true,
-            kelas_id:  { not: null },
-            Position:  { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
-          },
-          include: {
-            Kelas: { select: { nama_kelas: true, tingkat: true } },
-            User:  { include: { Guru: { select: { nama_guru: true, no_hp: true } } } },
-          },
-          take: 50,
-        });
-      } catch {
-        waliAssignments = [];
-      }
-    }
-
-    if (waliAssignments.length === 0) {
-      return (
-        `🏫 *Daftar Wali Kelas Sekolah*\n\n` +
-        `Belum ada penugasan Wali Kelas yang tercatat di sistem.\n` +
-        `Hubungi admin untuk mengatur penugasan Wali Kelas.\n\n` +
-        `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`
-      );
-    }
-
-    // Sort manual berdasarkan nama kelas (tingkat lalu nama)
-    waliAssignments.sort((a: any, b: any) => {
-      const ka = `${a.Kelas?.tingkat || 0}-${a.Kelas?.nama_kelas || ''}`;
-      const kb = `${b.Kelas?.tingkat || 0}-${b.Kelas?.nama_kelas || ''}`;
-      return ka.localeCompare(kb);
-    });
-
-    let msg = `🏫 *Daftar Wali Kelas Aktif*\n`;
-    msg += `Total: ${waliAssignments.length} kelas\n\n`;
-    waliAssignments.forEach((w: any, i: number) => {
-      const kelasNama = w.Kelas?.nama_kelas || '-';
-      const guruNama  = w.User?.Guru?.nama_guru || w.User?.name || 'Belum ditentukan';
-      msg += `${i + 1}. *${kelasNama}* — ${guruNama}\n`;
-    });
-    msg += `\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
-    return msg;
+    return GuruWalikelasHandler.handleDaftarWaliKelas({ guru, commandUpper: choice } as any);
   }
 
   // [3] Info Supervisi Akademik Saya

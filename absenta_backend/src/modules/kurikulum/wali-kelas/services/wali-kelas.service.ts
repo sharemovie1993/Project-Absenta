@@ -38,7 +38,84 @@ export interface PaginatedWaliKelasStrukturAssignmentResponse {
   };
 }
 
+export interface WaliKelasItem {
+  id: string;
+  kelasNama: string;
+  tingkat: number;
+  guruNama: string;
+  noHp?: string | null;
+}
+
+export interface DaftarWaliKelasResult {
+  tenantId: string;
+  items: WaliKelasItem[];
+  totalCount: number;
+}
+
 export class WaliKelasService {
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil daftar penugasan Wali Kelas aktif di sekolah/tenant.
+   * Dipakai bersama oleh Web API Controller & WA Chatbot Handler.
+   */
+  async getDaftarWaliKelasActive(tenantId: string): Promise<DaftarWaliKelasResult> {
+    let waliAssignments: any[] = [];
+    try {
+      waliAssignments = await prisma.organizationalAssignment.findMany({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+          kelas_id: { not: null },
+          Position: { code: 'WALIKELAS' },
+        },
+        include: {
+          Kelas: { select: { nama_kelas: true, tingkat: true } },
+          User: { include: { Guru: { select: { nama_guru: true, no_hp: true } } } },
+        },
+        take: 100,
+      });
+    } catch {
+      try {
+        waliAssignments = await prisma.organizationalAssignment.findMany({
+          where: {
+            tenant_id: tenantId,
+            is_active: true,
+            kelas_id: { not: null },
+            Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+          },
+          include: {
+            Kelas: { select: { nama_kelas: true, tingkat: true } },
+            User: { include: { Guru: { select: { nama_guru: true, no_hp: true } } } },
+          },
+          take: 100,
+        });
+      } catch {
+        waliAssignments = [];
+      }
+    }
+
+    // Sort berdasarkan nama kelas (tingkat lalu nama)
+    waliAssignments.sort((a: any, b: any) => {
+      const ka = `${a.Kelas?.tingkat || 0}-${a.Kelas?.nama_kelas || ''}`;
+      const kb = `${b.Kelas?.tingkat || 0}-${b.Kelas?.nama_kelas || ''}`;
+      return ka.localeCompare(kb);
+    });
+
+    const items: WaliKelasItem[] = waliAssignments.map((w: any) => ({
+      id: w.id,
+      kelasNama: w.Kelas?.nama_kelas || '-',
+      tingkat: w.Kelas?.tingkat || 0,
+      guruNama: w.User?.Guru?.nama_guru || w.User?.name || 'Belum ditentukan',
+      noHp: w.User?.Guru?.no_hp || null,
+    }));
+
+    return {
+      tenantId,
+      items,
+      totalCount: items.length,
+    };
+  }
+
   async resolveGuruIdForStrukturAssignments(tenantId: string, org: any, user: any, guruId?: string) {
     let resolvedGuruId = guruId;
     const roleName = user?.roleName || user?.Role?.name;
