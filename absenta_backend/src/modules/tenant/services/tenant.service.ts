@@ -13,12 +13,14 @@ const prisma = new PrismaClient();
 
 export interface CreateTenantInput {
   name: string;
+  absensi_mode?: 'SIMPLE' | 'MULTI_SESI';
 }
 
 export interface UpdateTenantInput {
   name?: string;
   absensi_mode?: 'SIMPLE' | 'MULTI_SESI';
   subdomain?: string;
+  domain?: string;
   custom_domain?: string;
   logo_url?: string;
   status?: string;
@@ -330,6 +332,7 @@ export class TenantService {
     const tenant = await prisma.tenant.create({
       data: {
         name: input.name,
+        absensi_mode: input.absensi_mode || 'MULTI_SESI',
       },
     });
 
@@ -391,8 +394,9 @@ export class TenantService {
       }
     }
 
-    // Extract print settings fields
+    // Extract print settings and legacy fields
     const {
+      domain,
       print_header_lines,
       logo_daerah_url,
       address,
@@ -409,6 +413,10 @@ export class TenantService {
       shift_jam_pelajaran,
       ...coreInput
     } = input;
+
+    if (domain && !coreInput.subdomain) {
+      (coreInput as any).subdomain = domain;
+    }
 
     // Helper to upsert settings into general Config table
     const upsertConfig = async (key: string, value: string) => {

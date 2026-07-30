@@ -1,7 +1,3 @@
-export { PaymentModal } from './PaymentModal';
-export { ReceiptModal } from './ReceiptModal';
-export { HeldCartsModal } from './HeldCartsModal';
-export { QuickRegisterModal } from './QuickRegisterModal';
 export { StrukBadge } from './StrukBadge';
 export { ProductList } from './ProductList';
 export { CartPanel } from './CartPanel';

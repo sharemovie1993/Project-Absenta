@@ -30,7 +30,7 @@ import {
   confirmManualPayment
 } from '../../api/payments.api';
 import { getAllBillings } from '../../api/billing.api';
-import { getAllInvoices, getInvoiceStats } from '../../api/invoice.api';
+import { getAllInvoices, getInvoiceStats, getInvoiceByBillingId } from '../../api/invoice.api';
 import { useAuth } from '../../hooks/useAuth';
 import useConfirm from '../../hooks/useConfirm';
 import { isSystemSuperAdmin } from '../../utils/rbac';
@@ -336,7 +336,7 @@ const PaymentsPage: React.FC = () => {
       const billingId = selectedPayment?.billing_id;
       if (!billingId) return;
 
-      const existing = await import('../../api/invoice.api').then(m => m.getInvoiceByBillingId(billingId));
+      const existing = await getInvoiceByBillingId(billingId);
       const invoiceId = existing?.success ? existing.data?.id : undefined;
       if (!invoiceId) return;
 

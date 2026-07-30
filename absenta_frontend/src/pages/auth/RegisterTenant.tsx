@@ -333,7 +333,8 @@ const RegisterTenant = () => {
         ...formData,
         tenant_domain: formData.tenant_domain.toLowerCase().replace(/[^a-z0-9-]/g, ''),
         plan_id: planIdFromQuery || undefined,
-        billing_cycle_months: cycleFromQuery || 1
+        billing_cycle_months: cycleFromQuery || 1,
+        absensi_mode: 'MULTI_SESI',
       });
       toast.success('Registrasi berhasil! Silakan cek email Anda.');
       setIsSuccess(true);

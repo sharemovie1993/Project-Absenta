@@ -1,9 +1,6 @@
 export * from './types';
 export { SavingStatsBanner } from './SavingStatsBanner';
 export { SavingTransactionModal } from './SavingTransactionModal';
-export { SavingExportModal } from './SavingExportModal';
-export { QuickTxConfirmModal } from './QuickTxConfirmModal';
-export { QuickTransactionPanel } from './QuickTransactionPanel';
 export { SavingInsightsPanel } from './SavingInsightsPanel';
 export { SavingsTable } from './SavingsTable';
 export { SavingsHistoryPanel } from './SavingsHistoryPanel';

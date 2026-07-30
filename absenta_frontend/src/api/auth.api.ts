@@ -129,6 +129,7 @@ export interface RegisterTenantInput {
   sim_students?: number;
   sim_desc?: string;
   academic_tier?: string;
+  absensi_mode?: 'SIMPLE' | 'MULTI_SESI';
 }
 
 export interface RegisterTenantResponse {

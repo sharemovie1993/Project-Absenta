@@ -269,7 +269,7 @@ export class AuthService {
   }
 
   async registerTenant(input: RegisterTenantInput) {
-    const { tenant_name, tenant_domain, npsn, admin_full_name, admin_email, admin_password, admin_phone, plan_id, alamat, billing_cycle_months, custom_price, sim_model, sim_students, sim_desc, academic_tier } = input;
+    const { tenant_name, tenant_domain, npsn, admin_full_name, admin_email, admin_password, admin_phone, plan_id, alamat, billing_cycle_months, custom_price, sim_model, sim_students, sim_desc, academic_tier, absensi_mode } = input;
     let aggregatedBillingId: string | null = null;
 
     const normalizedNpsn = String(npsn ?? '').trim().replace(/\D/g, '');
@@ -456,6 +456,7 @@ export class AuthService {
             name: tenant_name,
             subdomain: subdomainSlug,
             status: 'ACTIVE',
+            absensi_mode: (absensi_mode as any) || 'MULTI_SESI',
           },
         });
 

@@ -11,7 +11,7 @@ datasource db {
 model Tenant {
   id           String      @id @default(uuid())
   name         String
-  absensi_mode AbsensiMode @default(SIMPLE)
+  absensi_mode AbsensiMode @default(MULTI_SESI)
 
   // Konfigurasi Absensi Default (Global)
   jam_masuk_default             String @default("07:00") // Format HH:mm

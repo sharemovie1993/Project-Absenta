@@ -12,7 +12,7 @@ import { AbsensiMode } from '@prisma/client';
  */
 export async function getEffectiveAbsensiMode(tenantId: string): Promise<AbsensiMode> {
   if (!tenantId || tenantId === 'system') {
-    return AbsensiMode.SIMPLE;
+    return AbsensiMode.MULTI_SESI;
   }
 
   try {
@@ -54,9 +54,9 @@ export async function getEffectiveAbsensiMode(tenantId: string): Promise<Absensi
       where: { id: tenantId },
       select: { absensi_mode: true }
     });
-    return tenant?.absensi_mode || AbsensiMode.SIMPLE;
+    return tenant?.absensi_mode || AbsensiMode.MULTI_SESI;
   } catch (err) {
     console.error('Error fetching tenant static attendance mode:', err);
-    return AbsensiMode.SIMPLE;
+    return AbsensiMode.MULTI_SESI;
   }
 }
