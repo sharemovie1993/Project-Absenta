@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../../api/attendanceGerbang.api';
 import { toLocalDate } from '../../../utils/attendance/time';
 import { Button } from '../../ui';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Lock, ShieldAlert } from 'lucide-react';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -52,18 +52,20 @@ export const MonitoringKbmWidget: React.FC = () => {
   }, []);
 
   // 2. Fetch Global Monitoring Stats (Backend Source of Truth)
-  const { data: monitoringRes, isLoading: monitoringLoading } = useQuery({
+  const { data: monitoringRes, isLoading: monitoringLoading, error: monitoringError } = useQuery({
     queryKey: ['dashboard', 'kurikulum', 'monitoring-global', targetDate],
     queryFn: () => kurikulumApi.getKbmGlobalMonitoring(targetDate),
     refetchInterval: isToday ? 30000 : false,
+    retry: false,
   });
 
   // 3. Fetch Session List
-  const { data: sesiData, isLoading: sesiLoading, refetch: refetchSessions } = useQuery({
+  const { data: sesiData, isLoading: sesiLoading, error: sesiError, refetch: refetchSessions } = useQuery({
     queryKey: ['monitoring-sesi-absensi', targetDate],
     queryFn: () => getSesiAbsensiList({ tanggal: targetDate, summary: true } as any),
     enabled: tenantMode !== 'SIMPLE',
     refetchInterval: isToday && tenantMode !== 'SIMPLE' ? 30000 : false, 
+    retry: false,
   });
 
   const isLoading = monitoringLoading || sesiLoading;
@@ -166,8 +168,35 @@ export const MonitoringKbmWidget: React.FC = () => {
     setSearchTerm('');
   }, []);
 
+  const isSubscriptionRequired = useMemo(() => {
+    const err1 = (monitoringError as any)?.response?.data || (monitoringError as any)?.data;
+    const err2 = (sesiError as any)?.response?.data || (sesiError as any)?.data;
+    const reason = String(err1?.reason || err2?.reason || '');
+    const code = String(err1?.code || err2?.code || '');
+    const status = (monitoringError as any)?.response?.status || (sesiError as any)?.response?.status;
+    return reason.includes('SUBSCRIPTION_REQUIRED') || code.includes('SUBSCRIPTION') || status === 402;
+  }, [monitoringError, sesiError]);
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 relative rounded-2xl overflow-hidden min-h-[300px]">
+      {/* Glassmorphic Overlay Banner when Subscription Required */}
+      {isSubscriptionRequired && (
+        <div className="absolute inset-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-900/85 flex flex-col items-center justify-center p-6 text-center space-y-4 transition-all">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center border border-amber-200 dark:border-amber-800 shadow-md">
+            <Lock className="w-8 h-8" />
+          </div>
+          <div className="space-y-2 max-w-lg">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">Modul Absensi Sesi Memerlukan Paket Langganan Aktif</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              Fitur Live Monitoring KBM &amp; Absensi Sesi memerlukan lisensi paket <strong>ABSENSI</strong> yang aktif. Silakan hubungi Administrator Sekolah atau aktifkan paket langganan Anda untuk membuka akses penuh.
+            </p>
+          </div>
+          <Button variant="primary" className="rounded-xl font-bold text-xs px-6 py-2.5 shadow-lg shadow-indigo-500/20">
+            Hubungi Administrator / Aktifkan Lisensi
+          </Button>
+        </div>
+      )}
+
       {/* 1. Analytic Overview Cards */}
       <KbmStatCards
         stats={stats}
