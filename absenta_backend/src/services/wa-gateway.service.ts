@@ -105,9 +105,6 @@ async function connectTenant(tenantId: string): Promise<void> {
     entry.sock = null;
   }
 
-  entry.status = 'connecting';
-  entry.qrBase64 = null;
-
   // Dynamic import Baileys (ESM)
   const {
     default: makeWASocket,
@@ -122,6 +119,15 @@ async function connectTenant(tenantId: string): Promise<void> {
 
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015970961] as any }));
+
+  // Hardened state: if creds.json has authenticated user ID, set status to 'connected' immediately
+  if (state.creds?.me?.id) {
+    entry.status = 'connected';
+    entry.connectedNumber = state.creds.me.id.split(':')[0] || null;
+  } else {
+    entry.status = 'connecting';
+  }
+  entry.qrBase64 = null;
 
   const sock = makeWASocket({
     version,
@@ -423,16 +429,19 @@ export const waGatewayService = {
     let entry = pool.get(tenantId);
     const authDir = getTenantAuthDir(tenantId);
     const credsFile = path.join(authDir, 'creds.json');
+    const hasCreds = fs.existsSync(credsFile);
 
     // Auto-restore session from disk if creds.json exists but memory pool entry is missing
-    if (!entry && fs.existsSync(credsFile)) {
+    if (!entry && hasCreds) {
       console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
 
+    const currentStatus = entry?.status ?? (hasCreds ? 'connected' : 'disconnected');
+
     return {
-      status: entry?.status ?? (fs.existsSync(credsFile) ? 'connecting' : 'disconnected'),
+      status: currentStatus,
       number: entry?.connectedNumber ?? null,
       has_qr: !!(entry?.qrBase64),
     };
