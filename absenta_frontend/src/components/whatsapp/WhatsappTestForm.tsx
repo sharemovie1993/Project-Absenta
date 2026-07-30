@@ -95,7 +95,7 @@ export const WhatsappTestForm: React.FC<WhatsappTestFormProps> = ({
                 id="test_number"
                 value={testNumber}
                 onChange={(e) => onTestNumberChange(e.target.value)}
-                placeholder="62812xxxxxx"
+                placeholder="Nomor WA Tujuan"
                 className="h-12 rounded-xl border-slate-200"
                 aria-invalid={!!errors.phone}
               />

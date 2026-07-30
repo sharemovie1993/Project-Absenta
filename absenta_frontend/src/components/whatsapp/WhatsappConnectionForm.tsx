@@ -173,7 +173,7 @@ const ExternalCredentialFields: React.FC<{
           id="provider_name"
           value={config.provider_name}
           onChange={(e) => onChange({ provider_name: e.target.value.toUpperCase() })}
-          placeholder="Contoh: FONNTE, WOWA, CUSTOM"
+          placeholder="Nama Provider Gateway"
           className="h-12 rounded-xl border-slate-200 focus:ring-green-500"
           aria-invalid={!!errors.provider_name}
         />
@@ -184,7 +184,7 @@ const ExternalCredentialFields: React.FC<{
           id="sender_number"
           value={config.sender_number ?? ''}
           onChange={(e) => onChange({ sender_number: e.target.value })}
-          placeholder="628123456789"
+          placeholder="Nomor Pengirim"
           className="h-12 rounded-xl border-slate-200"
           aria-invalid={!!errors.sender_number}
         />
@@ -196,7 +196,7 @@ const ExternalCredentialFields: React.FC<{
         id="api_url"
         value={config.api_url ?? ''}
         onChange={(e) => onChange({ api_url: e.target.value })}
-        placeholder="https://api.provider.com/send"
+        placeholder="API URL Gateway"
         className="h-12 rounded-xl border-slate-200"
         aria-invalid={!!errors.api_url}
       />
