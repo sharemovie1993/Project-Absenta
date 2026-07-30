@@ -7,6 +7,7 @@ import { uploadGuruDocumentCommand } from './commands/upload-guru-document.comma
 import { deleteGuruDocumentCommand } from './commands/delete-guru-document.command';
 import { getGuruDocumentsQuery } from './queries/get-guru-documents.query';
 import { MultipartFile } from '@fastify/multipart';
+import { removeLidMappingByPhone } from '../../../whatsapp/services/wa-chatbot-resolver.service';
 
 export interface CreateGuruInput {
   user_id?: string | null;
@@ -504,8 +505,14 @@ export class GuruService {
     if (input.no_rfid !== undefined) updateData.no_rfid = input.no_rfid;
     if (input.no_hp !== undefined) {
       const cleanPhone = input.no_hp ? normalizePhone(input.no_hp) : null;
+      if (existingGuru.no_hp) {
+        removeLidMappingByPhone(existingGuru.no_hp);
+      }
+      if (cleanPhone) {
+        removeLidMappingByPhone(cleanPhone);
+      }
       updateData.no_hp = cleanPhone;
-      if (existingGuru.user_id && cleanPhone) {
+      if (existingGuru.user_id) {
         await prisma.user.update({
           where: { id: existingGuru.user_id },
           data: { no_hp: cleanPhone }

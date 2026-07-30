@@ -35,6 +35,39 @@ export function persistLidMapping(key: string, value: string) {
   }
 }
 
+export function removeLidMappingByPhone(phone: string) {
+  try {
+    const rawDigits = phone.replace(/\D/g, '');
+    if (!rawDigits) return;
+
+    for (const [key, value] of lidToPhoneGlobalMap.entries()) {
+      if (value.includes(rawDigits) || rawDigits.includes(value)) {
+        lidToPhoneGlobalMap.delete(key);
+      }
+    }
+
+    if (fs.existsSync(LID_FILE_PATH)) {
+      let obj: Record<string, string> = {};
+      try {
+        obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
+      } catch (_) {}
+      
+      let modified = false;
+      for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === 'string' && (v.includes(rawDigits) || rawDigits.includes(v))) {
+          delete obj[k];
+          modified = true;
+        }
+      }
+      if (modified) {
+        fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Chatbot] Failed to remove LID mapping:', err.message);
+  }
+}
+
 // Load persisted LID mappings on module start
 (function loadLidMappingsFromDisk() {
   try {
@@ -229,6 +262,41 @@ export class WaChatbotResolverService {
 
     let resolvedPhone = lidToPhoneGlobalMap.get(cleanJid) ?? lidToPhoneGlobalMap.get(fullJid) ?? fullJid;
     let isSelfIdJustCompleted = false;
+
+    // ── Step 1.5: Command RESET / VERIFIKASI / UBAH NOMOR ───────────────────
+    const checkUpper = rawInput.toUpperCase();
+    if (
+      checkUpper === 'RESET' ||
+      checkUpper === 'VERIFIKASI' ||
+      checkUpper === 'UBAH NOMOR' ||
+      checkUpper === 'RELOG' ||
+      checkUpper === 'RESET NOMOR'
+    ) {
+      lidToPhoneGlobalMap.delete(cleanJid);
+      lidToPhoneGlobalMap.delete(fullJid);
+      activeRoleSession.delete(cleanJid);
+      activeRoleSession.delete(fullJid);
+      pendingGuruEditSession.delete(cleanJid);
+      pendingGuruEditSession.delete(fullJid);
+      pendingIdentification.set(cleanJid, true);
+      pendingIdentification.set(fullJid, true);
+
+      try {
+        if (fs.existsSync(LID_FILE_PATH)) {
+          const obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
+          delete obj[cleanJid];
+          delete obj[fullJid];
+          fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+        }
+      } catch (_) {}
+
+      return (
+        `🔄 *Verifikasi Ulang Identitas WA*\n\n` +
+        `Tautan nomor WhatsApp Anda dengan akun sekolah telah di-reset.\n\n` +
+        `Silakan ketik **nomor HP baru** Anda yang terdaftar di sistem sekolah:\n` +
+        `_(contoh: 0812xxxxxxxx)_`
+      );
+    }
 
     // ── Step 2: Self-Identification Flow ────────────────────────────────────
     if (pendingIdentification.get(cleanJid) || pendingIdentification.get(fullJid)) {
