@@ -599,6 +599,34 @@ export const waGatewayService = {
     pool.delete(tenantId);
   },
 
+  /**
+   * Mendeteksi dan mengambil seluruh daftar Grup WhatsApp yang diikuti oleh nomor WA yang tertaut.
+   */
+  async getParticipatingGroups(tenantId: string) {
+    const entry = pool.get(tenantId);
+    if (!entry || entry.status !== 'connected' || !entry.sock) {
+      throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
+    }
+
+    try {
+      const groups = await entry.sock.groupFetchAllParticipating();
+      const groupList = Object.values(groups).map((g: any) => ({
+        id: g.id,
+        subject: g.subject || 'Tanpa Nama',
+        creation: g.creation ? new Date(g.creation * 1000) : null,
+        owner: g.owner || g.subjectOwner || null,
+        participantsCount: g.participants?.length || 0,
+        announce: !!g.announce,
+        isCommunity: !!g.isCommunity,
+      }));
+
+      return groupList;
+    } catch (err: any) {
+      console.error(`[WA-Pool:${tenantId}] Failed to fetch participating groups:`, err.message);
+      throw err;
+    }
+  },
+
   on(tenantId: string, event: string, listener: (...args: any[]) => void) {
     pool.get(tenantId)?.emitter.on(event, listener);
   },
