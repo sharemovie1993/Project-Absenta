@@ -8,11 +8,17 @@ import { GuruWalikelasHandler } from '../handlers/guru/guru-walikelas.handler';
 import { SiswaHandler } from '../handlers/siswa/siswa.handler';
 import { OrtuHandler } from '../handlers/ortu/ortu.handler';
 import { RoleSelectorHandler } from '../handlers/common/role-selector.handler';
+import { QuickLoginHandler } from '../handlers/common/quick-login.handler';
 import { formatGuruMenu } from '../../services/wa-chatbot-commands';
 
 export class ChatbotRouter {
   static async route(ctx: ChatbotContext): Promise<string> {
-    const { cleanJid, messageText, guru, siswa, ortu, activeCount, activeRole, roles } = ctx;
+    const { cleanJid, messageText, guru, siswa, ortu, activeCount, activeRole, roles, commandUpper } = ctx;
+
+    // 0. Quick Login (Pintasan 7) Universal
+    if (commandUpper === '7' || commandUpper === 'LOGIN' || commandUpper === 'QUICK LOGIN') {
+      return QuickLoginHandler.handleQuickLogin(ctx);
+    }
 
     // 1. Cek Sesi Dialog FSM yang Sedang Aktif
     const pendingSession = chatbotSessionManager.get(cleanJid);
@@ -70,6 +76,7 @@ export class ChatbotRouter {
     if (choice === '4') return GuruPresensiHandler.handlePresensi(ctx);
     if (choice === '5') return GuruProfileHandler.handleViewProfile(ctx);
     if (choice === '6') return GuruJadwalHandler.handleJadwalMingguan(ctx);
+    if (choice === '7') return QuickLoginHandler.handleQuickLogin(ctx);
 
     if (choice.startsWith('51')) return GuruProfileHandler.handleEditNip(ctx);
     if (choice.startsWith('52')) return GuruProfileHandler.handleEditEmail(ctx);

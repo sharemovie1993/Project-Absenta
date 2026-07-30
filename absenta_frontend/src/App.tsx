@@ -246,27 +246,36 @@ function App() {
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
 
-  // Intercept support_token query param for Assist Login from Licensing Server
+  // Intercept quick_login_token & support_token query param for Quick Login from WhatsApp / Licensing Server
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const quickToken = urlParams.get('quick_login_token') || urlParams.get('quick_token');
     const supportToken = urlParams.get('support_token');
-    if (supportToken) {
-      // 1. Back up existing session if any
-      const currentStorage = localStorage.getItem('auth-storage');
-      if (currentStorage && !localStorage.getItem('support_auth_state')) {
-        localStorage.setItem('support_auth_state', currentStorage);
+    const activeToken = quickToken || supportToken;
+
+    if (activeToken) {
+      if (supportToken) {
+        // Back up existing session for Support Impersonation Mode
+        const currentStorage = localStorage.getItem('auth-storage');
+        if (currentStorage && !localStorage.getItem('support_auth_state')) {
+          localStorage.setItem('support_auth_state', currentStorage);
+        }
       }
       
-      // 2. Set the support token as our active session token
-      localStorage.setItem('access_token', supportToken);
+      // Set token into local storage
+      localStorage.setItem('access_token', activeToken);
       
-      // 3. Clear query parameters from URL without reloading
+      // Clear query parameters from URL cleanly
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
       
-      // 4. Force load the user profile
+      // Force load user profile into Zustand auth state
       loadUser().then(() => {
-        toast.success('Bypass login berhasil! Masuk ke Mode Asisten.');
+        if (quickToken) {
+          toast.success('Quick Login WhatsApp berhasil! Selamat datang di Absenta.');
+        } else {
+          toast.success('Bypass login berhasil! Masuk ke Mode Asisten.');
+        }
       }).catch(console.error);
     }
   }, [loadUser]);
@@ -553,11 +562,6 @@ function App() {
                     } />
 
                     {/* Kesiswaan Routes */}
-                    <Route path="/kesiswaan/piket" element={
-                      <ProtectedRoute requiredCapability="kesiswaan.piket.view">
-                        <PiketPage />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/kesiswaan/pelanggaran" element={
                       <ProtectedRoute requiredCapability="affairs.violations.view.list">
                         <PelanggaranPage />
@@ -759,11 +763,6 @@ function App() {
                     } />
 
                     {/* Kurikulum Module */}
-                    <Route path="/kesiswaan/monitoring" element={
-                      <ProtectedRoute requiredCapability="dashboard.view.kesiswaan">
-                        <MonitoringKesiswaanPage />
-                      </ProtectedRoute>
-                    } />
 
                     {/* Kurikulum Routes */}
                     <Route path="/kurikulum/dashboard" element={
@@ -1268,13 +1267,6 @@ function App() {
                     
                     {/* Restricted to Active Petugas & Admin */}
                     <Route element={<PetugasRoute />}>
-                      <Route path="/attendance/ops" element={
-                        <ProtectedRoute requiredCapability="attendance.sessions.view.list">
-                          <AttendanceErrorBoundary>
-                            <AttendanceOpsPage />
-                          </AttendanceErrorBoundary>
-                        </ProtectedRoute>
-                      } />
                       <Route path="/attendance/monitoring" element={
                         <ProtectedRoute requiredCapability="attendance.sessions.view.list">
                           <AttendanceErrorBoundary>
@@ -1417,7 +1409,42 @@ function App() {
                   </Route>
                 </Route>
 
-                {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout) ── */}
+                {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout - JALUR B) ── */}
+                <Route path="/attendance/ops" element={
+                  <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <AttendanceErrorBoundary>
+                        <AttendanceOpsPage />
+                      </AttendanceErrorBoundary>
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/kesiswaan/piket" element={
+                  <ProtectedRoute requiredCapability={['kesiswaan.piket.view', 'kesiswaan.schedules.view.list']}>
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <PiketPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
+                <Route path="/kesiswaan/monitoring" element={
+                  <ProtectedRoute requiredCapability="dashboard.view.kesiswaan">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                        <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <MonitoringKesiswaanPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
                 <Route path="/billing/rab-calculator" element={
                   <ProtectedRoute>
                     <Suspense fallback={

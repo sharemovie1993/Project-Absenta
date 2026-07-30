@@ -185,6 +185,7 @@ export function formatGuruMenu(nama: string): string {
     `[4] ⏰ Info & Rekap Presensi Guru\n` +
     `[5] 👤 Data Profil Pribadi Saya\n` +
     `[6] 📅 Jadwal Mengajar & Piket Minggu Ini\n` +
+    `[7] 🔑 Quick Login ke Aplikasi Web\n` +
     `[0] 🔄 Tampilkan Kembali Menu Ini`
   );
 }
