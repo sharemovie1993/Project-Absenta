@@ -321,25 +321,28 @@ export class JadwalPiketService {
     const existing = await this.getPiketNotifConfig(tenantId);
     const updated = { ...existing, ...payload };
 
-    await prisma.config.upsert({
-      where: {
-        tenant_id_key: {
-          tenant_id: tenantId,
-          key: 'PIKET_WA_NOTIF_CONFIG'
-        }
-      },
-      update: {
-        value: JSON.stringify(updated)
-      },
-      create: {
-        tenant_id: tenantId,
-        key: 'PIKET_WA_NOTIF_CONFIG',
-        value: JSON.stringify(updated)
-      }
+    const existingRow = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'PIKET_WA_NOTIF_CONFIG' }
     });
+
+    if (existingRow) {
+      await prisma.config.update({
+        where: { id: existingRow.id },
+        data: { value: JSON.stringify(updated) }
+      });
+    } else {
+      await prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key: 'PIKET_WA_NOTIF_CONFIG',
+          value: JSON.stringify(updated)
+        }
+      });
+    }
 
     return updated;
   }
+
 
   /**
    * 9. Format Pesan WhatsApp Jadwal Piket Guru
