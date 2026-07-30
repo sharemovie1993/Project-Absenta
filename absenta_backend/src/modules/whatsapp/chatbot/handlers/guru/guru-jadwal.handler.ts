@@ -149,8 +149,8 @@ export class GuruJadwalHandler {
       );
     }
 
-    const groupedKbm: Record<string, typeof semuaJadwal> = {};
-    const groupedPiket: Record<string, typeof semuaPiket> = {};
+    const groupedKbm: Record<string, any[]> = {};
+    const groupedPiket: Record<string, any[]> = {};
     hariUrut.forEach(h => {
       groupedKbm[h] = [];
       groupedPiket[h] = [];
