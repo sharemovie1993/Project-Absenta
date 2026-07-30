@@ -66,4 +66,11 @@ export async function whatsappRoutes(fastify: any) {
     preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
     handler: whatsappController.getLocalQR.bind(whatsappController),
   });
+
+  // GET /whatsapp/groups - Get list of WA groups participated by linked number
+  fastify.get('/groups', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.getGroups.bind(whatsappController),
+  });
 }
+

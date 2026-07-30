@@ -102,3 +102,25 @@ export const getWaChatLogDetail = async (
     limit: number;
   };
 };
+
+// ── WA Participating Groups ───────────────────────────────────────────────────
+
+export interface WaGroupInfo {
+  id: string;
+  subject: string;
+  creation: string | null;
+  owner: string | null;
+  participantsCount: number;
+  announce: boolean;
+  isCommunity: boolean;
+}
+
+export const getWaParticipatingGroups = async () => {
+  const response = await axiosInstance.get('/whatsapp/groups');
+  return response.data as {
+    success: boolean;
+    data: WaGroupInfo[];
+    message?: string;
+  };
+};
+

@@ -81,4 +81,15 @@ export class WhatsappController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async getGroups(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      const groups = await waGatewayService.getParticipatingGroups(tenant_id);
+      return reply.send({ success: true, data: groups });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message || 'Gagal mengambil daftar grup WA' });
+    }
+  }
 }
+

@@ -19,7 +19,7 @@ import {
 } from '@/components/ui';
 import {
   Save, Send, ShieldCheck, FileText, Info,
-  CheckCircle2, History, ArrowRight,
+  CheckCircle2, History, ArrowRight, Users,
 } from 'lucide-react';
 import {
   getWhatsappConfig,
@@ -52,6 +52,8 @@ const PremiumFeatureGate = lazy(() => import('@/components/auth/PremiumFeatureGa
 const WhatsappConnectionForm = lazy(() => import('@/components/whatsapp/WhatsappConnectionForm'));
 const WhatsappTemplateForm = lazy(() => import('@/components/whatsapp/WhatsappTemplateForm'));
 const WhatsappTrialForm = lazy(() => import('@/components/whatsapp/WhatsappTrialForm'));
+const WhatsappGroupsTab = lazy(() => import('@/components/whatsapp/WhatsappGroupsTab'));
+
 
 const WhatsappSettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -339,6 +341,12 @@ const WhatsappSettingsPage: React.FC = () => {
                   >
                     <Send className="h-4 w-4 mr-2" /> Uji Coba
                   </TabsTrigger>
+                  <TabsTrigger
+                    value="groups"
+                    className="flex-1 rounded-xl data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm transition-all py-2.5 font-bold text-xs uppercase tracking-wider"
+                  >
+                    <Users className="h-4 w-4 mr-2" /> Daftar Grup WA
+                  </TabsTrigger>
                 </MenuTabs>
 
                 <TabsContent value="connection" className="animate-in slide-in-from-bottom-2 duration-300">
@@ -380,7 +388,14 @@ const WhatsappSettingsPage: React.FC = () => {
                     />
                   </Suspense>
                 </TabsContent>
+
+                <TabsContent value="groups" className="animate-in slide-in-from-bottom-2 duration-300">
+                  <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
+                    <WhatsappGroupsTab localStatus={localStatus} />
+                  </Suspense>
+                </TabsContent>
               </Tabs>
+
 
               {/* Action Save Button */}
               <div className="flex justify-end pt-8">
