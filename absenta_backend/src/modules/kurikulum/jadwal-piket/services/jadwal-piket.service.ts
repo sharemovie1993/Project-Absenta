@@ -428,7 +428,8 @@ export class JadwalPiketService {
         if (jamIdx > 0) {
           msg += `\n`;
         }
-        msg += `⏰ *${waktuHeader}*\n\n`;
+        msg += `⏰ *${waktuHeader}*\n`;
+
 
         // Priority sorting for Pos Piket: Piket Umum -> Piket Jurusan -> Others
         const posEntries = Object.entries(posGroupMap).sort(([nameA], [nameB]) => {
