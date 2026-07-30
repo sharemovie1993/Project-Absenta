@@ -24,7 +24,7 @@ import {
 import {
   getWhatsappConfig,
   saveWhatsappConfig,
-  testWhatsappConnection,
+  testWhatsappConnection as executeWaTrialSend,
   connectLocalWhatsapp,
   disconnectLocalWhatsapp,
   getLocalWhatsappStatus,
@@ -51,7 +51,7 @@ import {
 const PremiumFeatureGate = lazy(() => import('@/components/auth/PremiumFeatureGate'));
 const WhatsappConnectionForm = lazy(() => import('@/components/whatsapp/WhatsappConnectionForm'));
 const WhatsappTemplateForm = lazy(() => import('@/components/whatsapp/WhatsappTemplateForm'));
-const WhatsappTestForm = lazy(() => import('@/components/whatsapp/WhatsappTestForm'));
+const WhatsappTrialForm = lazy(() => import('@/components/whatsapp/WhatsappTrialForm'));
 
 const WhatsappSettingsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -60,9 +60,9 @@ const WhatsappSettingsPage: React.FC = () => {
   const [config, setConfig] = useState<WhatsappConfig>(EMPTY_WA_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testNumber, setTestNumber] = useState('');
-  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [isTrialSending, setIsTrialSending] = useState(false);
+  const [trialPhone, setTrialPhone] = useState('');
+  const [trialResult, setTrialResult] = useState<TestResult | null>(null);
   const [validationErrors, setValidationErrors] = useState<WaValidationErrors>({});
 
   const [localStatus, setLocalStatus] = useState<LocalStatus>(null);
@@ -191,11 +191,11 @@ const WhatsappSettingsPage: React.FC = () => {
     }
   }, [config]);
 
-  // ── Test connection with Zod Validation Guard ─────────────────────────────
-  const handleTest = useCallback(async () => {
+  // ── Trial connection with Zod Validation Guard ────────────────────────────
+  const handleTrialSend = useCallback(async () => {
     setValidationErrors({});
 
-    const parsed = TestConnectionSchema.safeParse({ phone: testNumber });
+    const parsed = TestConnectionSchema.safeParse({ phone: trialPhone });
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message ?? 'Nomor WA tidak valid';
       setValidationErrors({ phone: msg });
@@ -204,12 +204,12 @@ const WhatsappSettingsPage: React.FC = () => {
     }
 
     try {
-      setTesting(true);
-      setTestResult(null);
-      const response = (await testWhatsappConnection(parsed.data.phone)) as WaApiResponse;
+      setIsTrialSending(true);
+      setTrialResult(null);
+      const response = (await executeWaTrialSend(parsed.data.phone)) as WaApiResponse;
       if (response.success) {
         toast.success('Pesan tes berhasil dikirim!');
-        setTestResult({
+        setTrialResult({
           success: true,
           message: 'Pesan uji coba berhasil dikirim ke nomor tujuan. Silakan cek aplikasi WhatsApp Anda.',
         });
@@ -217,11 +217,11 @@ const WhatsappSettingsPage: React.FC = () => {
     } catch (err: unknown) {
       const msg = extractWaError(err, 'Gagal mengirim pesan tes. Pastikan API Key dan URL sudah benar.');
       toast.error(msg);
-      setTestResult({ success: false, message: msg });
+      setTrialResult({ success: false, message: msg });
     } finally {
-      setTesting(false);
+      setIsTrialSending(false);
     }
-  }, [testNumber]);
+  }, [trialPhone]);
 
   // ── UI Memos ──────────────────────────────────────────────────────────────
   const breadcrumbs = useMemo(
@@ -368,14 +368,14 @@ const WhatsappSettingsPage: React.FC = () => {
 
                 <TabsContent value="test" className="animate-in slide-in-from-bottom-2 duration-300">
                   <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>
-                    <WhatsappTestForm
+                    <WhatsappTrialForm
                       config={config}
                       dbProviderName={dbProviderName}
-                      testNumber={testNumber}
-                      onTestNumberChange={setTestNumber}
-                      onTest={handleTest}
-                      testing={testing}
-                      testResult={testResult}
+                      testNumber={trialPhone}
+                      onTestNumberChange={setTrialPhone}
+                      onTest={handleTrialSend}
+                      testing={isTrialSending}
+                      testResult={trialResult}
                       errors={validationErrors}
                     />
                   </Suspense>
@@ -388,8 +388,9 @@ const WhatsappSettingsPage: React.FC = () => {
                   id="btn-save-wa-config"
                   onClick={handleSave}
                   disabled={saving}
-                  size="lg"
-                  className="h-14 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xl shadow-indigo-600/20 font-black text-sm uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                  size="toolbar"
+                  variant="toolbarPrimary"
+                  className="h-14 px-8 font-black text-sm uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
                 >
                   {saving ? (
                     <Loader className="mr-2 h-5 w-5 animate-spin" />

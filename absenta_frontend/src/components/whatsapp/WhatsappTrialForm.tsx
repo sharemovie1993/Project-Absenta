@@ -1,5 +1,5 @@
 /**
- * WhatsappTestForm.tsx
+ * WhatsappTrialForm.tsx
  * Tab "Uji Coba" — Form pengetesan pengiriman WhatsApp.
  * Subkomponen dari WhatsappSettingsPage.
  */
@@ -12,7 +12,7 @@ import { Send, Info, CheckCircle2, XCircle } from 'lucide-react';
 import type { WhatsappConfig } from '@/api/whatsapp.api';
 import { DEFAULT_PROVIDER_NAME, type TestResult, type WaValidationErrors } from './whatsappSettings.types';
 
-export interface WhatsappTestFormProps {
+export interface WhatsappTrialFormProps {
   config: WhatsappConfig;
   dbProviderName: string | null;
   testNumber: string;
@@ -23,7 +23,7 @@ export interface WhatsappTestFormProps {
   errors: WaValidationErrors;
 }
 
-export const WhatsappTestForm: React.FC<WhatsappTestFormProps> = ({
+export const WhatsappTrialForm: React.FC<WhatsappTrialFormProps> = ({
   config,
   dbProviderName,
   testNumber,
@@ -143,4 +143,4 @@ export const WhatsappTestForm: React.FC<WhatsappTestFormProps> = ({
   );
 };
 
-export default WhatsappTestForm;
+export default WhatsappTrialForm;
