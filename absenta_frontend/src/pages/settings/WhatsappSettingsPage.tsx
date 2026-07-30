@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label, Switch, Loader, Alert, AlertTitle, AlertDescription, Tabs, TabsList, TabsTrigger, TabsContent, Badge } from '@/components/ui';
-import { MessageSquare, Save, Send, ShieldCheck, FileText, Info, CheckCircle2, XCircle, QrCode, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { MessageSquare, Save, Send, ShieldCheck, FileText, Info, CheckCircle2, XCircle, QrCode, Wifi, WifiOff, RefreshCw, History, ArrowRight, Users } from 'lucide-react';
 import { getWhatsappConfig, saveWhatsappConfig, testWhatsappConnection, connectLocalWhatsapp, disconnectLocalWhatsapp, getLocalWhatsappStatus, getLocalWhatsappQR, type WhatsappConfig } from '@/api/whatsapp.api';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
@@ -9,6 +10,7 @@ import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 const PremiumFeatureGate = lazy(() => import('@/components/auth/PremiumFeatureGate'));
 
 const WhatsappSettingsPage: React.FC = () => {
+  const navigate = useNavigate();
   const MenuTabs = TabsList;
   const [config, setConfig] = useState<WhatsappConfig>({
     provider_name: 'FONNTE',
@@ -206,6 +208,27 @@ const WhatsappSettingsPage: React.FC = () => {
             Absenta tidak menyediakan nomor WA pengirim. Anda bebas menggunakan provider gateway manapun. Pastikan Anda memiliki API Key yang aktif.
           </AlertDescription>
         </Alert>
+
+        {/* ── Quick Access: Riwayat Chat ── */}
+        <div
+          className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-teal-500/5 cursor-pointer hover:from-emerald-500/15 hover:to-teal-500/10 transition-all group shadow-sm"
+          onClick={() => navigate('/notifications/wa-chat-logs')}
+          id="wa-chatlog-shortcut"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <History className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-white">Riwayat Percakapan Chatbot WA</p>
+              <p className="text-xs text-slate-400 mt-0.5">Monitor semua percakapan user dengan chatbot WhatsApp secara real-time</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-emerald-400 group-hover:gap-3 transition-all">
+            <span className="text-xs font-semibold hidden sm:block">Lihat</span>
+            <ArrowRight className="w-4 h-4" />
+          </div>
+        </div>
 
         <Tabs defaultValue="connection" className="w-full">
           <MenuTabs className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800 mb-8">
