@@ -167,17 +167,24 @@ export class WaChatbotResolverService {
     const rawInput = String(messageText || '').trim();
     const upperInput = rawInput.toUpperCase();
 
-    // ── Step 1: Resolve LID → nomor HP ──────────────────────────────────────
-    let resolvedPhone = lidToPhoneGlobalMap.get(rawJid) ?? rawJid;
+    // ── Step 1: Normalize JID (handle LID variations like 12345:0@lid vs 12345@lid)
+    const fullJid = rawJid.trim();
+    const cleanJid = fullJid.split('@')[0].split(':')[0];
+
+    let resolvedPhone = lidToPhoneGlobalMap.get(cleanJid) ?? lidToPhoneGlobalMap.get(fullJid) ?? fullJid;
+    let isSelfIdJustCompleted = false;
 
     // ── Step 2: Self-Identification Flow ────────────────────────────────────
-    if (pendingIdentification.get(rawJid)) {
+    if (pendingIdentification.get(cleanJid) || pendingIdentification.get(fullJid)) {
       const inputDigits = rawInput.replace(/\D/g, '');
       if (inputDigits.length >= 10 && (inputDigits.startsWith('0') || inputDigits.startsWith('62'))) {
-        lidToPhoneGlobalMap.set(rawJid, inputDigits);
-        pendingIdentification.delete(rawJid);
+        lidToPhoneGlobalMap.set(cleanJid, inputDigits);
+        lidToPhoneGlobalMap.set(fullJid, inputDigits);
+        pendingIdentification.delete(cleanJid);
+        pendingIdentification.delete(fullJid);
         resolvedPhone = inputDigits;
-        console.log(`[Chatbot] LID resolved via self-ID: ${rawJid} → ${resolvedPhone}`);
+        isSelfIdJustCompleted = true;
+        console.log(`[Chatbot] LID resolved via self-ID: ${fullJid} (${cleanJid}) → ${resolvedPhone}`);
       } else {
         return (
           `⚠️ Format nomor tidak valid.\n\n` +
@@ -192,7 +199,8 @@ export class WaChatbotResolverService {
 
     // ── Step 4: Jika LID belum resolve dan tidak ditemukan → minta self-ID ──
     if (this.isLikelyLid(resolvedPhone) && !guru && !siswa && !ortu) {
-      pendingIdentification.set(rawJid, true);
+      pendingIdentification.set(cleanJid, true);
+      pendingIdentification.set(fullJid, true);
       return (
         `👋 Halo! Selamat datang di *Sistem Absenta*.\n\n` +
         `Untuk melanjutkan, sistem perlu memverifikasi identitas Anda.\n\n` +
@@ -210,31 +218,35 @@ export class WaChatbotResolverService {
       return formatGuestMessage(resolvedPhone);
     }
 
+    // Jika self-identification baru saja selesai, gunakan command kosong agar langsung menampilkan menu tanpa "Perintah tidak dikenali"
+    const effectiveCommand = isSelfIdJustCompleted ? '' : rawInput;
+    const effectiveUpper = effectiveCommand.toUpperCase();
+
     // Hanya satu role → langsung routing, tidak perlu menu pilihan
     if (activeCount === 1) {
       // Reset sesi role jika ada
-      activeRoleSession.delete(rawJid);
-      if (guru)  return handleGuruCommand(rawInput, guru);
-      if (siswa) return handleSiswaCommand(rawInput, siswa);
-      if (ortu)  return handleOrtuCommand(rawInput, ortu);
+      activeRoleSession.delete(cleanJid);
+      activeRoleSession.delete(fullJid);
+      if (guru)  return handleGuruCommand(effectiveCommand, guru);
+      if (siswa) return handleSiswaCommand(effectiveCommand, siswa);
+      if (ortu)  return handleOrtuCommand(effectiveCommand, ortu);
     }
 
     // ── Step 6: Multi-Role — perlu pilih peran ──────────────────────────────
-    // Cek apakah user sudah punya sesi peran aktif
-    const currentSession = activeRoleSession.get(rawJid);
+    const currentSession = activeRoleSession.get(cleanJid) ?? activeRoleSession.get(fullJid);
 
     // User mengetik perintah reset menu: "0" atau "MENU"
-    if (upperInput === '0' || upperInput === 'MENU') {
-      activeRoleSession.delete(rawJid);
+    if (effectiveUpper === '0' || effectiveUpper === 'MENU' || isSelfIdJustCompleted) {
+      activeRoleSession.delete(cleanJid);
+      activeRoleSession.delete(fullJid);
     }
 
     // User memilih peran dari menu
-    if (!currentSession || upperInput === '0' || upperInput === 'MENU') {
-      // Cek apakah input adalah pilihan peran yang valid
-      const chosenRole = roles.find(r => r.key === upperInput);
-      if (chosenRole) {
-        activeRoleSession.set(rawJid, chosenRole.key);
-        // Langsung routing ke handler peran yang dipilih
+    if (!currentSession || effectiveUpper === '0' || effectiveUpper === 'MENU' || isSelfIdJustCompleted) {
+      const chosenRole = roles.find(r => r.key === effectiveUpper);
+      if (chosenRole && !isSelfIdJustCompleted) {
+        activeRoleSession.set(cleanJid, chosenRole.key);
+        activeRoleSession.set(fullJid, chosenRole.key);
         if (chosenRole.key === 'G' && guru)  return handleGuruCommand('', guru);
         if (chosenRole.key === 'S' && siswa) return handleSiswaCommand('', siswa);
         if (chosenRole.key === 'O' && ortu)  return handleOrtuCommand('', ortu);
@@ -246,13 +258,13 @@ export class WaChatbotResolverService {
     }
 
     // User sudah memilih peran sebelumnya → routing ke handler peran aktif
-    // "0" = kembali ke menu utama (sudah di-handle di atas)
-    if (currentSession === 'G' && guru)  return handleGuruCommand(rawInput, guru);
-    if (currentSession === 'S' && siswa) return handleSiswaCommand(rawInput, siswa);
-    if (currentSession === 'O' && ortu)  return handleOrtuCommand(rawInput, ortu);
+    if (currentSession === 'G' && guru)  return handleGuruCommand(effectiveCommand, guru);
+    if (currentSession === 'S' && siswa) return handleSiswaCommand(effectiveCommand, siswa);
+    if (currentSession === 'O' && ortu)  return handleOrtuCommand(effectiveCommand, ortu);
 
     // Fallback: tampilkan menu lagi
-    activeRoleSession.delete(rawJid);
+    activeRoleSession.delete(cleanJid);
+    activeRoleSession.delete(fullJid);
     const nama = guru?.nama_guru ?? siswa?.nama_siswa ?? ortu?.nama ?? 'Pengguna';
     return formatMultiRoleMenu(nama, roles);
   }
