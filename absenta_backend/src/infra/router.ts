@@ -499,6 +499,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { waliKelasRoutes } = await import('../modules/kurikulum/wali-kelas/routes/wali-kelas.routes');
       await fastify.register(waliKelasRoutes, { prefix: '/kurikulum/wali-kelas' });
 
+      // Jadwal Piket Guru (Kurikulum)
+      const { jadwalPiketRoutes } = await import('../modules/kurikulum/jadwal-piket/routes/jadwal-piket.routes');
+      await fastify.register(jadwalPiketRoutes, { prefix: '/kurikulum/jadwal-piket' });
+
       // Modul Rapor & Penilaian (Decoupled dari Kurikulum)
       const { default: nilaiRoutes } = await import('../modules/rapor/routes/nilai.routes');
       await fastify.register(nilaiRoutes, { prefix: '/rapor/nilai' });

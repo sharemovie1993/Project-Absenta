@@ -257,7 +257,7 @@ async function main() {
 
     // --- KURIKULUM ---
     // Urutan berdasarkan flow operasional persiapan kurikulum sekolah:
-    // 1. Dashboard → 2. Struktur → 3. Mata Pelajaran → 4. Kalender → 5. Jadwal → 6. Perangkat → 7. Rekap KBM → 8. Supervisi → 9. Cetak
+    // 1. Dashboard → 2. Struktur → 3. Mata Pelajaran → 4. Guru Mapel → 5. Wali Kelas → 6. Kalender → 7. Jam KBM → 8. Jadwal Pelajaran → 9. Jadwal Piket Guru → 10. Perangkat → 11. Rekap KBM → 12. Supervisi → 13. Cetak
     {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
         { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.manage.academic, academic.teaching.view' },
@@ -268,6 +268,7 @@ async function main() {
         { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },
         { label: 'Pengaturan Jam KBM', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },
         { label: 'Jadwal Pelajaran', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
+        { label: 'Jadwal Piket Guru', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, kesiswaan.piket.view' },
         { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Rekap KBM', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
         { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },

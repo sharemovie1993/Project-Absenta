@@ -245,7 +245,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/sarpras/loans',
       '/bpbk/cases',
       '/bpbk/asesmen',
-      '/kesiswaan/jadwal-kegiatan'
+      '/kesiswaan/jadwal-kegiatan',
+      '/kurikulum/jadwal-piket'
     ]
   },
   {
@@ -423,6 +424,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/kalender',
       '/kurikulum/jam-kbm',
       '/kurikulum/jadwal',
+      '/kurikulum/jadwal-piket',
       '/kurikulum/rekap-kbm'
     ]
   },

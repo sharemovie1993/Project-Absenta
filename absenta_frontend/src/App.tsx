@@ -204,6 +204,7 @@ const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
 const JadwalPelajaranPage = lazy(() => import('./pages/kurikulum/JadwalPelajaranPage'));
+const JadwalPiketGuruPage = lazy(() => import('./pages/kurikulum/JadwalPiketGuruPage'));
 const KalenderAkademikPage = lazy(() => import('./pages/kurikulum/KalenderAkademikPage'));
 const JamKBMPage = lazy(() => import('./pages/kurikulum/JamKBMPage'));
 const RekapKBMPage = lazy(() => import('./pages/kurikulum/RekapKBMPage'));
@@ -788,6 +789,11 @@ function App() {
                     <Route path="/kurikulum/jadwal" element={
                       <ProtectedRoute requiredCapability="academic.schedules.view.list">
                         <JadwalPelajaranPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kurikulum/jadwal-piket" element={
+                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
+                        <JadwalPiketGuruPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/kurikulum/jam-kbm" element={

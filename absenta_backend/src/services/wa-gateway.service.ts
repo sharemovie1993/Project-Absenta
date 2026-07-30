@@ -14,7 +14,7 @@ import path from 'path';
 import fs from 'fs';
 import { EventEmitter } from 'events';
 import { prisma } from '../utils/prisma';
-import { waChatbotResolverService } from '../modules/whatsapp/services/wa-chatbot-resolver.service';
+import { waChatbotResolverService, persistLidMapping } from '../modules/whatsapp/services/wa-chatbot-resolver.service';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -222,18 +222,18 @@ async function connectTenant(tenantId: string): Promise<void> {
   // dan field `lid` yang menyimpan nomor HP aslinya.
   sock.ev.on('contacts.upsert', (contacts: any[]) => {
     for (const contact of contacts) {
-      // contact.id  = LID (e.g. "263041027432454")
-      // contact.lid = nomor HP asli (e.g. "628777993741") jika tersedia
       if (contact.id && contact.lid) {
-        const lid    = contact.id.split('@')[0];
-        const phone  = contact.lid.split('@')[0];
+        const lid   = contact.id.split('@')[0];
+        const phone = contact.lid.split('@')[0];
         entry.lidToPhone.set(lid, phone);
+        persistLidMapping(lid, phone);
+        persistLidMapping(contact.id, phone);
       }
-      // Juga index sebaliknya: phone → phone (identitas langsung)
       if (contact.id && /^\d+$/.test(contact.id.split('@')[0])) {
         const raw = contact.id.split('@')[0];
         if (raw.startsWith('62') || raw.startsWith('0')) {
           entry.lidToPhone.set(raw, raw);
+          persistLidMapping(raw, raw);
         }
       }
     }
@@ -245,6 +245,8 @@ async function connectTenant(tenantId: string): Promise<void> {
         const lid   = upd.id.split('@')[0];
         const phone = upd.lid.split('@')[0];
         entry.lidToPhone.set(lid, phone);
+        persistLidMapping(lid, phone);
+        persistLidMapping(upd.id, phone);
       }
     }
   });

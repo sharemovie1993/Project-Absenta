@@ -9,6 +9,7 @@ import { SimpleFormField } from '../ui/SimpleFormField';
 import { Scan, Clock, Printer } from 'lucide-react';
 import { piketApi } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
+import { piketGuruApi, type JadwalPiketGuru } from '../../api/piketGuru.api';
 import QRCode from 'qrcode';
 
 interface PiketOperationsProps {
@@ -38,6 +39,26 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
   const [alasan, setAlasan] = useState('Sakit / Tidak Enak Badan');
   const [tipeIzin, setTipeIzin] = useState('IZIN_KELUAR');
   const [savingPermit, setSavingPermit] = useState(false);
+
+  // Guru Piket On Duty state
+  const [guruPiketOnDuty, setGuruPiketOnDuty] = useState<JadwalPiketGuru[]>([]);
+  const [loadingGuruPiket, setLoadingGuruPiket] = useState(true);
+
+  React.useEffect(() => {
+    const loadGuruPiket = async () => {
+      try {
+        const res = await piketGuruApi.getHariIni();
+        if (res.success && res.data) {
+          setGuruPiketOnDuty(res.data.guru_piket || []);
+        }
+      } catch (err) {
+        console.error('Failed to load guru piket on duty:', err);
+      } finally {
+        setLoadingGuruPiket(false);
+      }
+    };
+    loadGuruPiket();
+  }, []);
 
   const quickReasons = [
     'Sakit / Tidak Enak Badan',
@@ -178,6 +199,49 @@ export const PiketOperations: React.FC<PiketOperationsProps> = React.memo(({
               </span>
             </Card>
           </div>
+        </Card>
+
+        {/* Guru Piket On Duty Widget */}
+        <Card className="p-5 border-none shadow-md bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-xl relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3 border-b border-white/10 pb-2.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-2">
+              <ShieldCheck size={16} className="text-emerald-400" /> Guru Piket Bertugas Hari Ini
+            </h4>
+            <a
+              href="/kurikulum/jadwal-piket"
+              className="text-[10px] text-indigo-200 hover:text-white underline font-semibold transition"
+            >
+              Kelola Jadwal
+            </a>
+          </div>
+
+          {loadingGuruPiket ? (
+            <p className="text-xs text-white/50 animate-pulse py-1">Memuat data guru piket...</p>
+          ) : guruPiketOnDuty.length === 0 ? (
+            <div className="text-xs text-white/60 space-y-1 py-1">
+              <p>Belum ada jadwal piket guru yang ditetapkan untuk hari ini.</p>
+              <a href="/kurikulum/jadwal-piket" className="text-[11px] text-indigo-300 font-bold hover:underline inline-block mt-1">
+                + Set Jadwal Piket di Kurikulum
+              </a>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {guruPiketOnDuty.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 bg-white/10 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-white/10 text-xs"
+                >
+                  <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 font-bold flex items-center justify-center text-[10px]">
+                    {item.Guru?.nama_guru?.charAt(0) || 'G'}
+                  </div>
+                  <div>
+                    <span className="font-bold text-white block text-[11px]">{item.Guru?.nama_guru}</span>
+                    <span className="text-[9px] text-indigo-200 block">{item.pos_piket || 'Piket Umum'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 

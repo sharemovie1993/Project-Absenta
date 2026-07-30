@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { prisma } from '@/utils/prisma';
 import {
   formatMultiRoleMenu,
@@ -8,12 +10,52 @@ import {
 } from './wa-chatbot-commands';
 
 /**
- * Peta persistent LID → nomor HP asli (in-memory, direset saat restart).
+ * Peta persistent LID → nomor HP asli (persisted to disk wa_auth/lid_mappings.json).
  * Diisi dari dua sumber:
  *  1. contacts.upsert event di wa-gateway.service.ts (otomatis)
  *  2. Self-identification flow (user ketik nomor HP saat LID tidak dikenal)
  */
 export const lidToPhoneGlobalMap = new Map<string, string>();
+
+const LID_FILE_PATH = path.join(process.cwd(), 'wa_auth', 'lid_mappings.json');
+
+export function persistLidMapping(key: string, value: string) {
+  try {
+    lidToPhoneGlobalMap.set(key, value);
+    const authDir = path.join(process.cwd(), 'wa_auth');
+    if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true });
+
+    let obj: Record<string, string> = {};
+    if (fs.existsSync(LID_FILE_PATH)) {
+      try {
+        obj = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
+      } catch (_) {}
+    }
+    obj[key] = value;
+    fs.writeFileSync(LID_FILE_PATH, JSON.stringify(obj, null, 2), 'utf-8');
+  } catch (err: any) {
+    console.warn('[Chatbot] Failed to persist LID mapping:', err.message);
+  }
+}
+
+// Load persisted LID mappings on module start
+(function loadLidMappingsFromDisk() {
+  try {
+    if (fs.existsSync(LID_FILE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(LID_FILE_PATH, 'utf-8'));
+      let count = 0;
+      for (const [k, v] of Object.entries(data)) {
+        if (typeof v === 'string') {
+          lidToPhoneGlobalMap.set(k, v);
+          count++;
+        }
+      }
+      console.log(`[Chatbot] Restored ${count} LID mappings from disk.`);
+    }
+  } catch (err: any) {
+    console.warn('[Chatbot] Failed to load LID mappings from disk:', err.message);
+  }
+})();
 
 /**
  * State per-JID untuk user yang sedang memilih peran.
@@ -177,13 +219,13 @@ export class WaChatbotResolverService {
     if (pendingIdentification.get(cleanJid) || pendingIdentification.get(fullJid)) {
       const inputDigits = rawInput.replace(/\D/g, '');
       if (inputDigits.length >= 10 && (inputDigits.startsWith('0') || inputDigits.startsWith('62'))) {
-        lidToPhoneGlobalMap.set(cleanJid, inputDigits);
-        lidToPhoneGlobalMap.set(fullJid, inputDigits);
+        persistLidMapping(cleanJid, inputDigits);
+        persistLidMapping(fullJid, inputDigits);
         pendingIdentification.delete(cleanJid);
         pendingIdentification.delete(fullJid);
         resolvedPhone = inputDigits;
         isSelfIdJustCompleted = true;
-        console.log(`[Chatbot] LID resolved via self-ID: ${fullJid} (${cleanJid}) → ${resolvedPhone}`);
+        console.log(`[Chatbot] LID resolved via self-ID (persisted to disk): ${fullJid} (${cleanJid}) → ${resolvedPhone}`);
       } else {
         return (
           `⚠️ Format nomor tidak valid.\n\n` +
