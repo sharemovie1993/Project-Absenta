@@ -1,7 +1,99 @@
-import { prisma } from '../../../utils/prisma';
-import { Prisma } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
+
+export interface SupervisiItemResult {
+  id: string;
+  tanggal: Date;
+  tglStr: string;
+  status: string;
+  statusUpper: string;
+  statusBadge: string;
+  supervisorNama: string;
+  mapel?: string | null;
+  kelas?: string | null;
+  jam_ke?: number | null;
+  nilai?: number | null;
+  predikat: string;
+  target_pembelajaran?: string | null;
+  catatan?: string | null;
+  is_self_evaluated?: boolean;
+  nilai_self?: number | null;
+  catatan_self?: string | null;
+}
+
+export interface SupervisiListResult {
+  guruId: string;
+  items: SupervisiItemResult[];
+  totalCount: number;
+}
 
 export class SupervisiService {
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil riwayat/jadwal supervisi akademik guru tertentu.
+   * Dipakai bersama oleh Web API Controller & WA Chatbot Handler.
+   */
+  static async getSupervisiByGuru(guruId: string, limit: number = 5): Promise<SupervisiListResult> {
+    const rawList = await prisma.supervisiGuru.findMany({
+      where: { guru_id: guruId },
+      orderBy: { tanggal: 'desc' },
+      include: { Supervisor: { select: { nama_guru: true } } },
+      take: limit,
+    });
+
+    const items: SupervisiItemResult[] = rawList.map((s: any) => {
+      const tglStr = new Date(s.tanggal).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+      const statusUpper = String(s.status || '').toUpperCase();
+      let statusBadge = `⚪ *${statusUpper}*`;
+      if (statusUpper === 'COMPLETED' || statusUpper === 'SELESAI') {
+        statusBadge = '🟢 *SELESAI*';
+      } else if (statusUpper === 'SCHEDULED' || statusUpper === 'TERJADWAL') {
+        statusBadge = '🟡 *TERJADWAL*';
+      } else if (statusUpper === 'DRAFT' || statusUpper === 'PROSES') {
+        statusBadge = '🔵 *PROSES*';
+      }
+
+      let predikat = '';
+      if (typeof s.nilai === 'number') {
+        if (s.nilai >= 90) predikat = '(Sangat Baik 🌟)';
+        else if (s.nilai >= 80) predikat = '(Baik 👍)';
+        else if (s.nilai >= 70) predikat = '(Cukup 👌)';
+        else predikat = '(Perlu Perbaikan ⚠️)';
+      }
+
+      return {
+        id: s.id,
+        tanggal: s.tanggal,
+        tglStr,
+        status: s.status,
+        statusUpper,
+        statusBadge,
+        supervisorNama: s.Supervisor?.nama_guru || 'Tim Penilai',
+        mapel: s.mapel || null,
+        kelas: s.kelas || null,
+        jam_ke: s.jam_ke || null,
+        nilai: s.nilai ?? null,
+        predikat,
+        target_pembelajaran: s.target_pembelajaran || null,
+        catatan: s.catatan || null,
+        is_self_evaluated: s.is_self_evaluated ?? false,
+        nilai_self: s.nilai_self ?? null,
+        catatan_self: s.catatan_self || null,
+      };
+    });
+
+    return {
+      guruId,
+      items,
+      totalCount: items.length,
+    };
+  }
+
   static async create(tenantId: string, data: {
     guru_id: string;
     tanggal: Date;

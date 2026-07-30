@@ -1,19 +1,19 @@
-import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
+import { SupervisiService } from '@/modules/kurikulum/services/supervisi.service';
 
 export class GuruSupervisiHandler {
+  /**
+   * MENU 3: Info Supervisi Akademik Saya
+   * Menggunakan Shared Domain Service (SupervisiService.getSupervisiByGuru)
+   */
   static async handleSupervisi(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
     if (!guru) return '⚠️ Data Guru tidak ditemukan.';
 
-    const supervisiList = await prisma.supervisiGuru.findMany({
-      where: { guru_id: guru.id },
-      orderBy: { tanggal: 'desc' },
-      include: { Supervisor: { select: { nama_guru: true } } },
-      take: 5,
-    });
+    // 🚀 Call Shared Domain Service Layer
+    const { items, totalCount } = await SupervisiService.getSupervisiByGuru(guru.id, 5);
 
-    if (supervisiList.length === 0) {
+    if (totalCount === 0) {
       return (
         `📊 *Info Supervisi Akademik*\n\n` +
         `Belum ada riwayat atau jadwal supervisi akademik yang terdaftar untuk Bapak/Ibu *${guru.nama_guru}*.\n\n` +
@@ -23,37 +23,12 @@ export class GuruSupervisiHandler {
 
     let msg = `📊 *Info Supervisi Akademik Saya*\n`;
     msg += `Guru: *${guru.nama_guru}*\n`;
-    msg += `Total: ${supervisiList.length} supervisi terbaru\n\n`;
+    msg += `Total: ${totalCount} supervisi terbaru\n\n`;
 
-    supervisiList.forEach((s: any, i: number) => {
-      const tglStr = new Date(s.tanggal).toLocaleDateString('id-ID', {
-        weekday: 'long',
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      const statusUpper = String(s.status || '').toUpperCase();
-      let statusBadge = `⚪ *${statusUpper}*`;
-      if (statusUpper === 'COMPLETED' || statusUpper === 'SELESAI') {
-        statusBadge = '🟢 *SELESAI*';
-      } else if (statusUpper === 'SCHEDULED' || statusUpper === 'TERJADWAL') {
-        statusBadge = '🟡 *TERJADWAL*';
-      } else if (statusUpper === 'DRAFT' || statusUpper === 'PROSES') {
-        statusBadge = '🔵 *PROSES*';
-      }
-
-      let predikat = '';
-      if (typeof s.nilai === 'number') {
-        if (s.nilai >= 90) predikat = '(Sangat Baik 🌟)';
-        else if (s.nilai >= 80) predikat = '(Baik 👍)';
-        else if (s.nilai >= 70) predikat = '(Cukup 👌)';
-        else predikat = '(Perlu Perbaikan ⚠️)';
-      }
-
-      msg += `${i + 1}. 📅 *${tglStr}*\n`;
-      msg += `   • Status        : ${statusBadge}\n`;
-      msg += `   • Supervisor    : ${s.Supervisor?.nama_guru || 'Tim Penilai'}\n`;
+    items.forEach((s, i) => {
+      msg += `${i + 1}. 📅 *${s.tglStr}*\n`;
+      msg += `   • Status        : ${s.statusBadge}\n`;
+      msg += `   • Supervisor    : ${s.supervisorNama}\n`;
 
       if (s.mapel || s.kelas || s.jam_ke) {
         const detailParts: string[] = [];
@@ -64,7 +39,7 @@ export class GuruSupervisiHandler {
       }
 
       if (typeof s.nilai === 'number') {
-        msg += `   • Nilai Hasil   : 💯 *${s.nilai}/100* ${predikat}\n`;
+        msg += `   • Nilai Hasil   : 💯 *${s.nilai}/100* ${s.predikat}\n`;
       }
 
       if (s.target_pembelajaran) {
