@@ -165,7 +165,6 @@ export class WaChatbotResolverService {
    */
   async processIncomingMessage(rawJid: string, messageText: string): Promise<string> {
     const rawInput = String(messageText || '').trim();
-    const upperInput = rawInput.toUpperCase();
 
     // ── Step 1: Normalize JID (handle LID variations like 12345:0@lid vs 12345@lid)
     const fullJid = rawJid.trim();
