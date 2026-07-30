@@ -434,7 +434,27 @@ export class JadwalPiketService {
         }
         msg += `⏰ *${waktuHeader}*\n\n`;
 
-        Object.entries(posGroupMap).forEach(([posName, items]) => {
+        // Priority sorting for Pos Piket: Piket Umum -> Piket Jurusan -> Others
+        const posEntries = Object.entries(posGroupMap).sort(([nameA], [nameB]) => {
+          const aUpper = nameA.toUpperCase();
+          const bUpper = nameB.toUpperCase();
+
+          const getRank = (name: string) => {
+            if (name.includes('PIKET UMUM')) return 1;
+            if (name.includes('UMUM')) return 1;
+            if (name.includes('PIKET JURUSAN')) return 2;
+            if (name.includes('JURUSAN')) return 2;
+            return 3;
+          };
+
+          const rankA = getRank(aUpper);
+          const rankB = getRank(bUpper);
+
+          if (rankA !== rankB) return rankA - rankB;
+          return aUpper.localeCompare(bUpper);
+        });
+
+        posEntries.forEach(([posName, items]) => {
           const posKapital = posName.toUpperCase();
           msg += `📌 *${posKapital}*\n`;
           items.forEach(item => {
@@ -445,6 +465,7 @@ export class JadwalPiketService {
           msg += `\n`;
         });
       });
+
 
 
       msg += `─────────────────────────\n`;
