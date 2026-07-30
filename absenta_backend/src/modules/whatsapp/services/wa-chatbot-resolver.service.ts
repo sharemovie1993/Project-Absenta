@@ -94,13 +94,16 @@ export class WaChatbotResolverService {
         ? targetDigits.slice(1)
         : targetDigits;
 
-    if (cleanDigits.length >= 7) {
+    if (cleanDigits.length >= 6) {
+      // Use the last 5 digits for SQL filtering to reliably match formatted numbers with spaces/hyphens
+      const searchSuffix = cleanDigits.slice(-5);
+
       if (!guru) {
         const candidates = await prisma.guru.findMany({
           where: {
             OR: [
-              { no_hp: { contains: cleanDigits } },
-              { User: { no_hp: { contains: cleanDigits } } }
+              { no_hp: { contains: searchSuffix } },
+              { User: { no_hp: { contains: searchSuffix } } }
             ]
           },
           include: { User: true }
@@ -116,8 +119,8 @@ export class WaChatbotResolverService {
         const candidates = await prisma.siswa.findMany({
           where: {
             OR: [
-              { no_hp: { contains: cleanDigits } },
-              { User: { no_hp: { contains: cleanDigits } } }
+              { no_hp: { contains: searchSuffix } },
+              { User: { no_hp: { contains: searchSuffix } } }
             ]
           },
           include: { Kelas: true, Jurusan: true, User: true }
@@ -131,7 +134,7 @@ export class WaChatbotResolverService {
 
       if (!ortu) {
         const candidates = await prisma.orangTua.findMany({
-          where: { no_hp: { contains: cleanDigits } },
+          where: { no_hp: { contains: searchSuffix } },
         });
         ortu = candidates.find(o => {
           const p1 = (o.no_hp || '').replace(/\D/g, '');
