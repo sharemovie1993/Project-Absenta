@@ -1,6 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
-import { aggregateJadwal, formatSiswaMenu } from '../../../services/wa-chatbot-commands';
+import { aggregateJadwal, formatShortMapelName, formatSiswaMenu } from '../../../services/wa-chatbot-commands';
 
 function getHariWIB(): string {
   const jakartaDay = new Date().toLocaleDateString('en-US', {
@@ -136,7 +136,7 @@ export class SiswaHandler {
           ? `Jam ke-${j.startSlot}`
           : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
         msg += `${i + 1}. *${j.jam_mulai} – ${j.jam_selesai}* (${jamLabel})\n`;
-        msg += `   📖 ${j.Mapel?.nama_mapel || '-'}\n`;
+        msg += `   📖 ${formatShortMapelName(j.Mapel)}\n`;
         msg += `   👨‍🏫 ${j.Guru?.nama_guru || '-'}\n\n`;
       });
       msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;

@@ -1,6 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
-import { aggregateJadwal } from '../../../services/wa-chatbot-commands';
+import { aggregateJadwal, formatShortMapelName } from '../../../services/wa-chatbot-commands';
 
 function getHariWIB(): string {
   const jakartaDay = new Date().toLocaleDateString('en-US', {
@@ -40,7 +40,7 @@ function buildDayTimeline(jadwalList: any[], piketList: any[]): TimelineItem[] {
         jamMulai: j.jam_mulai || '',
         jamSelesai: j.jam_selesai || '',
         jamLabel,
-        title: j.Mapel?.nama_mapel || 'Mata Pelajaran',
+        title: formatShortMapelName(j.Mapel),
         subTitle: j.Kelas?.nama_kelas || 'Kelas',
       });
     });

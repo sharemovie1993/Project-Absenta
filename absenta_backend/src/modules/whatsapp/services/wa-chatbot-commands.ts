@@ -28,6 +28,90 @@ function getTanggalWIB(): Date {
 }
 
 /**
+ * Singkat nama mata pelajaran agar tampilan WhatsApp Chatbot compact & bersih.
+ * Menggunakan kode_mapel, kamus akronim mapel nasional, atau generator akronim otomatis.
+ */
+export function formatShortMapelName(mapelInput?: any): string {
+  if (!mapelInput) return '-';
+
+  let fullName = '';
+  let kode = '';
+
+  if (typeof mapelInput === 'string') {
+    fullName = mapelInput.trim();
+  } else {
+    fullName = (mapelInput.nama_mapel || '').trim();
+    kode = (mapelInput.kode_mapel || '').trim();
+  }
+
+  // Jika kode_mapel sudah ada dan pendek (2-10 karakter), utamakan kode_mapel
+  if (kode && kode.length <= 10 && kode.length >= 2) {
+    return kode.toUpperCase();
+  }
+
+  if (!fullName) return kode || '-';
+
+  const nameUpper = fullName.toUpperCase();
+
+  const mapelDict: Record<string, string> = {
+    'PEMROGRAMAN BERORIENTASI OBJEK': 'PBO',
+    'PEMROGRAMAN WEB DAN PERANGKAT BERGERAK': 'PWEB',
+    'PEMROGRAMAN WEB': 'PWEB',
+    'BASIS DATA': 'Basdat',
+    'PENDIDIKAN AGAMA ISLAM DAN BUDI PEKERTI': 'PAI',
+    'PENDIDIKAN AGAMA ISLAM': 'PAI',
+    'PENDIDIKAN AGAMA KRISTEN': 'PAK',
+    'PENDIDIKAN AGAMA KATOLIK': 'PA Katolik',
+    'PENDIDIKAN PANCASILA DAN KEWARGANEGARAAN': 'PPKn',
+    'PENDIDIKAN PANCASILA': 'Pancasila',
+    'BAHASA INDONESIA': 'B. Indo',
+    'BAHASA INGGRIS': 'B. Inggris',
+    'BAHASA SUNDA': 'B. Sunda',
+    'BAHASA JEPANG': 'B. Jepang',
+    'MATEMATIKA': 'MTK',
+    'MATEMATIKA TINGKAT LANJUT': 'MTK Lanjut',
+    'PENDIDIKAN JASMANI OLAHRAGA DAN KESEHATAN': 'PJOK',
+    'PENDIDIKAN JASMANI, OLAHRAGA, DAN KESEHATAN': 'PJOK',
+    'PROJEK PENGUATAN PROFIL PELAJAR PANCASILA': 'P5',
+    'PROJEK KREATIF DAN KEWIRAUSAHAAN': 'PKK',
+    'DASAR-DASAR PENGEMBANGAN PERANGKAT LUNAK DAN GIM': 'Dasar PPLG',
+    'DASAR-DASAR TEKNIK KOMPUTER DAN JARINGAN': 'Dasar TJKT',
+    'BIMBINGAN DAN KONSELING': 'BK',
+    'BIMBINGAN KONSELING': 'BK',
+    'INFORMATIKA': 'Informatika',
+    'SEJARAH INDONESIA': 'Sejarah',
+    'SEJARAH': 'Sejarah',
+    'SENI BUDAYA': 'Seni Budaya',
+    'FISIKA': 'Fisika',
+    'KIMIA': 'Kimia',
+    'BIOLOGI': 'Biologi',
+  };
+
+  if (mapelDict[nameUpper]) {
+    return mapelDict[nameUpper];
+  }
+
+  for (const [key, shortVal] of Object.entries(mapelDict)) {
+    if (nameUpper.includes(key)) {
+      return shortVal;
+    }
+  }
+
+  if (fullName.length > 20) {
+    const words = fullName.split(/\s+/).filter(w => !['dan', 'atau', 'pada', 'yang', 'untuk', '&'].includes(w.toLowerCase()));
+    if (words.length >= 3) {
+      const acronym = words.map(w => w[0].toUpperCase()).join('');
+      if (acronym.length >= 2 && acronym.length <= 6) {
+        return acronym;
+      }
+    }
+    return fullName.substring(0, 18) + '...';
+  }
+
+  return fullName;
+}
+
+/**
  * Menggabungkan (aggregate) slot jadwal KBM berturutan
  * dengan mapel, kelas, guru, dan jenis kegiatan yang sama.
  * Contoh: Jam 1 (07:35-08:10), Jam 2 (08:10-08:45), Jam 3 (08:45-09:20) PAI
