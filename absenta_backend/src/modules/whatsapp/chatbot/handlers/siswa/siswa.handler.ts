@@ -86,14 +86,8 @@ export class SiswaHandler {
         return `📅 *Jadwal Pelajaran*\n\nData kelas belum diset. Hubungi TU sekolah.\n\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
       }
 
-      const { semInfo, items } = await jadwalKBMService.getJadwalHariIniByGuru(
-        '', // not guru specific
-        siswa.tenant_id,
-        currentDay
-      ).catch(() => ({ semInfo: '', items: [] }));
-
-      // Or call direct KBM schedule
       const { items: dayItems } = await jadwalKBMService.getJadwalHariIniByGuru(siswa.id, siswa.tenant_id, currentDay);
+
 
       let msg = `📅 *Jadwal Pelajaran Hari Ini (${currentDay})*\nKelas: *${siswa.Kelas?.nama_kelas || '-'}*\n\n`;
       if (dayItems.length === 0) {

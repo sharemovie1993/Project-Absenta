@@ -16,7 +16,7 @@ import { OrtuHandler } from '../chatbot/handlers/ortu/ortu.handler';
 // Server mungkin berjalan di UTC; tanpa ini "SENIN" bisa muncul padahal
 // di Indonesia sudah "SELASA" (UTC 23:xx = WIB 06:xx hari berikutnya).
 // ─────────────────────────────────────────────────────────────────────────────
-function getHariWIB(): string {
+export function getHariWIB(): string {
   // Ambil hari dalam timezone Asia/Jakarta
   const jakartaDay = new Date().toLocaleDateString('en-US', {
     timeZone: 'Asia/Jakarta',
@@ -29,13 +29,14 @@ function getHariWIB(): string {
   return map[jakartaDay] ?? 'SENIN';
 }
 
-function getTanggalWIB(): Date {
+export function getTanggalWIB(): Date {
   // Buat Date yang merepresentasikan waktu WIB sekarang
   const now = new Date();
   // Offset WIB = UTC+7 = 7 * 60 * 60 * 1000
   const wibMs = now.getTime() + (7 * 60 * 60 * 1000);
   return new Date(wibMs);
 }
+
 
 /**
  * Resolves active semester for WhatsApp Chatbot with resilient multi-tier fallback:
