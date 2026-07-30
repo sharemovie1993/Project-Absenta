@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
-import { aggregateJadwal, formatShortMapelName, getWhatsappActiveSemester, formatSemesterInfo } from '../../../services/wa-chatbot-commands';
+import { formatShortMapelName, getWhatsappActiveSemester, formatSemesterInfo } from '../../../services/wa-chatbot-commands';
+import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
 
 function getHariWIB(): string {
   const jakartaDay = new Date().toLocaleDateString('en-US', {
@@ -29,104 +30,31 @@ function buildDayTimeline(jadwalList: any[], piketList: any[]): TimelineItem[] {
   const items: TimelineItem[] = [];
 
   if (jadwalList && jadwalList.length > 0) {
-    const aggregated = aggregateJadwal(jadwalList);
-    aggregated.forEach((j: any) => {
-      const jamLabel = j.startSlot === j.endSlot
-        ? `Jam ke-${j.startSlot}`
-        : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
-      items.push({
-        type: 'KBM',
-        slotMulai: j.startSlot || 1,
-        jamMulai: j.jam_mulai || '',
-        jamSelesai: j.jam_selesai || '',
-        jamLabel,
-        title: formatShortMapelName(j.Mapel),
-        subTitle: j.Kelas?.nama_kelas || 'Kelas',
-      });
-    });
+    const aggregated = []; // Handled inside service
   }
-
-  if (piketList && piketList.length > 0) {
-    piketList.forEach((p: any) => {
-      const jamLabel = p.slot_mulai && p.slot_selesai
-        ? `Jam ke-${p.slot_mulai} s/d ${p.slot_selesai}`
-        : 'Full Day';
-      items.push({
-        type: 'PIKET',
-        slotMulai: p.slot_mulai ?? 1,
-        jamMulai: p.jam_mulai || '07:00',
-        jamSelesai: p.jam_selesai || '15:30',
-        jamLabel,
-        title: p.pos_piket || 'Piket Utama',
-        catatan: p.catatan,
-      });
-    });
-  }
-
-  items.sort((a, b) => {
-    if (a.slotMulai !== b.slotMulai) return a.slotMulai - b.slotMulai;
-    return a.jamMulai.localeCompare(b.jamMulai);
-  });
 
   return items;
 }
 
 export class GuruJadwalHandler {
+  /**
+   * MENU 1: Jadwal Mengajar & Piket Hari Ini
+   * Menggunakan Shared Domain Service (JadwalKBMService.getJadwalHariIniByGuru)
+   */
   static async handleJadwalHariIni(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
     if (!guru) return '⚠️ Data Guru tidak ditemukan.';
 
     const currentDay = getHariWIB();
 
-    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
-    const semInfo = formatSemesterInfo(semesterAktif);
+    // 🚀 Call Shared Domain Service Layer
+    const { semInfo, items } = await jadwalKBMService.getJadwalHariIniByGuru(
+      guru.id,
+      guru.tenant_id,
+      currentDay,
+    );
 
-    const semFilter = semesterAktif ? { semester_id: semesterAktif.id } : {};
-
-    let [jadwalList, piketList] = await Promise.all([
-      prisma.jadwalKBM.findMany({
-        where: {
-          guru_id: guru.id,
-          hari: currentDay as any,
-          ...semFilter,
-        },
-        include: { Kelas: true, Mapel: true },
-        orderBy: { slot_index: 'asc' },
-      }),
-      prisma.jadwalPiketGuru.findMany({
-        where: {
-          guru_id: guru.id,
-          hari: currentDay as any,
-          ...semFilter,
-        },
-        orderBy: [{ slot_mulai: 'asc' }, { created_at: 'asc' }],
-      }).catch(() => []),
-    ]);
-
-    // Fallback: Jika tidak ditemukan jadwal pada semesterAktif, coba query tanpa filter semester_id
-    if (jadwalList.length === 0 && piketList.length === 0 && semesterAktif) {
-      [jadwalList, piketList] = await Promise.all([
-        prisma.jadwalKBM.findMany({
-          where: {
-            guru_id: guru.id,
-            hari: currentDay as any,
-          },
-          include: { Kelas: true, Mapel: true },
-          orderBy: { slot_index: 'asc' },
-        }),
-        prisma.jadwalPiketGuru.findMany({
-          where: {
-            guru_id: guru.id,
-            hari: currentDay as any,
-          },
-          orderBy: [{ slot_mulai: 'asc' }, { created_at: 'asc' }],
-        }).catch(() => []),
-      ]);
-    }
-
-    const timelineItems = buildDayTimeline(jadwalList, piketList);
-
-    if (timelineItems.length === 0) {
+    if (items.length === 0) {
       return (
         `📋 *Timeline Jadwal Hari Ini (${currentDay})*\n` +
         `📚 Semester: ${semInfo}\n\n` +
@@ -139,7 +67,7 @@ export class GuruJadwalHandler {
     msg += `Guru: *${guru.nama_guru}* | Semester: ${semInfo}\n\n`;
     msg += `⏱️ *TIMELINE AGENDA HARI INI:*\n\n`;
 
-    timelineItems.forEach((item, index) => {
+    items.forEach((item, index) => {
       const timeHeader = item.jamMulai && item.jamSelesai
         ? `${item.jamMulai} – ${item.jamSelesai} (${item.jamLabel})`
         : item.jamLabel;
@@ -159,6 +87,7 @@ export class GuruJadwalHandler {
     msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
     return msg;
   }
+
 
   static async handleJadwalMingguan(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;

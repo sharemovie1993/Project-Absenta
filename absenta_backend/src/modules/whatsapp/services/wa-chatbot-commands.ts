@@ -1,5 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { pendingGuruEditSession } from './wa-chatbot-resolver.service';
+import { GuruJadwalHandler } from '../chatbot/handlers/guru/guru-jadwal.handler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIMEZONE HELPER — selalu gunakan WIB (Asia/Jakarta, UTC+7)
@@ -426,61 +427,9 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
     }
   }
 
-  // [1] Jadwal Mengajar Hari Ini
+  // [1] Jadwal Mengajar & Piket Hari Ini (Via Shared Domain Service)
   if (choice === '1') {
-    const currentDay = getHariWIB(); // WIB timezone
-
-    // Cari semester aktif (multi-tier fallback)
-    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
-    const semInfo = formatSemesterInfo(semesterAktif);
-
-    // Query jadwal — filter semester aktif jika ada
-    let jadwalList = await prisma.jadwalKBM.findMany({
-      where: {
-        guru_id: guru.id,
-        hari: currentDay as any,
-        ...(semesterAktif ? { semester_id: semesterAktif.id } : {}),
-      },
-      include: { Kelas: true, Mapel: true },
-      orderBy: { slot_index: 'asc' },
-    });
-
-    // Fallback: jika tidak ada jadwal terfilter semester_id, coba query tanpa filter semester_id
-    if (jadwalList.length === 0 && semesterAktif) {
-      jadwalList = await prisma.jadwalKBM.findMany({
-        where: {
-          guru_id: guru.id,
-          hari: currentDay as any,
-        },
-        include: { Kelas: true, Mapel: true },
-        orderBy: { slot_index: 'asc' },
-      });
-    }
-
-    if (jadwalList.length === 0) {
-      return (
-        `📋 *Jadwal Mengajar Hari Ini (${currentDay})*\n` +
-        `📚 Semester: ${semInfo}\n\n` +
-        `Bapak/Ibu *${guru.nama_guru}*, tidak ada jadwal mengajar KBM hari ini. 😊\n\n` +
-        `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`
-      );
-    }
-
-    const aggregated = aggregateJadwal(jadwalList);
-
-    let msg = `📋 *Jadwal Mengajar Hari Ini (${currentDay})*\n`;
-    msg += `Guru: *${guru.nama_guru}* | Semester: ${semInfo}\n\n`;
-
-    aggregated.forEach((j: any, i: number) => {
-      const jamLabel = j.startSlot === j.endSlot
-        ? `Jam ke-${j.startSlot}`
-        : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
-      msg += `${i + 1}. *${j.jam_mulai} – ${j.jam_selesai}* (${jamLabel})\n`;
-      msg += `   📖 ${j.Mapel?.nama_mapel || '-'}\n`;
-      msg += `   🏫 ${j.Kelas?.nama_kelas || '-'}\n\n`;
-    });
-    msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
-    return msg;
+    return GuruJadwalHandler.handleJadwalHariIni({ guru, commandUpper: choice } as any);
   }
 
   // [2] Daftar Semua Wali Kelas Aktif di Sekolah

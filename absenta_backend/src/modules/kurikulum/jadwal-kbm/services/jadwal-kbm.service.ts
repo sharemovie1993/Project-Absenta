@@ -1,8 +1,133 @@
 import { prisma } from '@/utils/prisma';
 import { findBestMatch } from '../../../../utils/normalization';
 import { Hari } from '@prisma/client';
+import { getWhatsappActiveSemester, formatSemesterInfo, formatShortMapelName, aggregateJadwal } from '../../../whatsapp/services/wa-chatbot-commands';
+
+export interface GuruScheduleTimelineItem {
+  type: 'KBM' | 'PIKET';
+  slotMulai: number;
+  jamMulai: string;
+  jamSelesai: string;
+  jamLabel: string;
+  title: string;
+  subTitle?: string;
+  catatan?: string;
+}
+
+export interface GuruDayScheduleResult {
+  semesterAktif: any;
+  semInfo: string;
+  items: GuruScheduleTimelineItem[];
+  totalCount: number;
+}
 
 export class JadwalKBMService {
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil timeline jadwal KBM & Piket Guru untuk 1 hari tertentu.
+   * Dipakai bersama oleh Web API Controller & WA Chatbot Handler.
+   */
+  async getJadwalHariIniByGuru(
+    guruId: string,
+    tenantId: string,
+    hari: string,
+  ): Promise<GuruDayScheduleResult> {
+    const semesterAktif = await getWhatsappActiveSemester(tenantId);
+    const semInfo = formatSemesterInfo(semesterAktif);
+
+    const semFilter = semesterAktif ? { semester_id: semesterAktif.id } : {};
+
+    let [jadwalList, piketList] = await Promise.all([
+      prisma.jadwalKBM.findMany({
+        where: {
+          guru_id: guruId,
+          hari: hari as Hari,
+          ...semFilter,
+        },
+        include: { Kelas: true, Mapel: true },
+        orderBy: { slot_index: 'asc' },
+      }),
+      prisma.jadwalPiketGuru.findMany({
+        where: {
+          guru_id: guruId,
+          hari: hari as Hari,
+          ...semFilter,
+        },
+        orderBy: [{ slot_mulai: 'asc' }, { created_at: 'asc' }],
+      }).catch(() => []),
+    ]);
+
+    // Fallback: Jika tidak ada data dengan filter semester_id, coba query tanpa filter semester_id
+    if (jadwalList.length === 0 && piketList.length === 0 && semesterAktif) {
+      [jadwalList, piketList] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            guru_id: guruId,
+            hari: hari as Hari,
+          },
+          include: { Kelas: true, Mapel: true },
+          orderBy: { slot_index: 'asc' },
+        }),
+        prisma.jadwalPiketGuru.findMany({
+          where: {
+            guru_id: guruId,
+            hari: hari as Hari,
+          },
+          orderBy: [{ slot_mulai: 'asc' }, { created_at: 'asc' }],
+        }).catch(() => []),
+      ]);
+    }
+
+    const items: GuruScheduleTimelineItem[] = [];
+
+    if (jadwalList && jadwalList.length > 0) {
+      const aggregated = aggregateJadwal(jadwalList);
+      aggregated.forEach((j: any) => {
+        const jamLabel = j.startSlot === j.endSlot
+          ? `Jam ke-${j.startSlot}`
+          : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
+        items.push({
+          type: 'KBM',
+          slotMulai: j.startSlot || 1,
+          jamMulai: j.jam_mulai || '',
+          jamSelesai: j.jam_selesai || '',
+          jamLabel,
+          title: formatShortMapelName(j.Mapel),
+          subTitle: j.Kelas?.nama_kelas || 'Kelas',
+        });
+      });
+    }
+
+    if (piketList && piketList.length > 0) {
+      piketList.forEach((p: any) => {
+        const jamLabel = p.slot_mulai && p.slot_selesai
+          ? `Jam ke-${p.slot_mulai} s/d ${p.slot_selesai}`
+          : 'Full Day';
+        items.push({
+          type: 'PIKET',
+          slotMulai: p.slot_mulai ?? 1,
+          jamMulai: p.jam_mulai || '07:00',
+          jamSelesai: p.jam_selesai || '15:30',
+          jamLabel,
+          title: p.pos_piket || 'Piket Utama',
+          catatan: p.catatan,
+        });
+      });
+    }
+
+    items.sort((a, b) => {
+      if (a.slotMulai !== b.slotMulai) return a.slotMulai - b.slotMulai;
+      return a.jamMulai.localeCompare(b.jamMulai);
+    });
+
+    return {
+      semesterAktif,
+      semInfo,
+      items,
+      totalCount: items.length,
+    };
+  }
+
   async importFromExcel(
     data: any[], 
     tenantId: string, 
