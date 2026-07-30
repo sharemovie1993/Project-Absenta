@@ -452,64 +452,9 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
   }
 
   // [0] atau apapun → tampilkan menu
-  // [6] Jadwal Mengajar Minggu Ini (semua hari)
+  // [6] Jadwal Mengajar & Piket Minggu Ini (Via Shared Domain Service)
   if (choice === '6') {
-    const hariUrut = ['SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU'];
-
-    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
-    const semInfo = formatSemesterInfo(semesterAktif);
-
-    let semuaJadwal = await prisma.jadwalKBM.findMany({
-      where: {
-        guru_id: guru.id,
-        hari: { in: hariUrut as any[] },
-        ...(semesterAktif ? { semester_id: semesterAktif.id } : {}),
-      },
-      include: { Kelas: true, Mapel: true },
-      orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
-    });
-
-    if (semuaJadwal.length === 0 && semesterAktif) {
-      semuaJadwal = await prisma.jadwalKBM.findMany({
-        where: {
-          guru_id: guru.id,
-          hari: { in: hariUrut as any[] },
-        },
-        include: { Kelas: true, Mapel: true },
-        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
-      });
-    }
-
-    if (semuaJadwal.length === 0) {
-      return (
-        `📅 *Jadwal Mengajar Minggu Ini*\n` +
-        `📚 Semester: ${semInfo}\n\n` +
-        `Belum ada jadwal KBM yang tercatat untuk Bapak/Ibu *${guru.nama_guru}*.\n\n` +
-        `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`
-      );
-    }
-
-    // Group per hari & aggregate masing-masing hari
-    const grouped: Record<string, typeof semuaJadwal> = {};
-    hariUrut.forEach(h => { grouped[h] = []; });
-    semuaJadwal.forEach((j: any) => { if (grouped[j.hari]) grouped[j.hari].push(j); });
-
-    let msg = `📅 *Jadwal Mengajar Minggu Ini*\n`;
-    msg += `Guru: *${guru.nama_guru}* | ${semInfo}\n`;
-
-    hariUrut.forEach(hari => {
-      const list = grouped[hari];
-      if (list.length === 0) return;
-      const aggregatedDay = aggregateJadwal(list);
-      msg += `\n*📌 ${hari}*\n`;
-      aggregatedDay.forEach((j: any, i: number) => {
-        const jamLabel = j.startSlot === j.endSlot ? `Jam ${j.startSlot}` : `Jam ${j.startSlot}-${j.endSlot}`;
-        msg += `  ${i + 1}. ${j.jam_mulai}–${j.jam_selesai} (${jamLabel}) | ${j.Mapel?.nama_mapel || '-'} (${j.Kelas?.nama_kelas || '-'})\n`;
-      });
-    });
-
-    msg += `\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
-    return msg;
+    return GuruJadwalHandler.handleJadwalMingguan({ guru, commandUpper: choice } as any);
   }
 
   // [5] Profil Pribadi Guru (Via Shared Domain Service)

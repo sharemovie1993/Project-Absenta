@@ -21,6 +21,13 @@ export interface GuruDayScheduleResult {
   totalCount: number;
 }
 
+export interface GuruWeeklyScheduleResult {
+  semesterAktif: any;
+  semInfo: string;
+  groupedByDay: Record<string, GuruScheduleTimelineItem[]>;
+  totalCount: number;
+}
+
 export class JadwalKBMService {
   /**
    * SHARED DOMAIN SERVICE METHOD:
@@ -125,6 +132,132 @@ export class JadwalKBMService {
       semInfo,
       items,
       totalCount: items.length,
+    };
+  }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil timeline jadwal KBM & Piket Guru untuk 1 minggu penuh (Senin-Sabtu).
+   * Dipakai bersama oleh Web API Controller & WA Chatbot Handler.
+   */
+  async getJadwalMingguanByGuru(
+    guruId: string,
+    tenantId: string,
+  ): Promise<GuruWeeklyScheduleResult> {
+    const hariUrut = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+    const semesterAktif = await getWhatsappActiveSemester(tenantId);
+    const semInfo = formatSemesterInfo(semesterAktif);
+
+    const semFilter = semesterAktif ? { semester_id: semesterAktif.id } : {};
+
+    let [semuaJadwal, semuaPiket] = await Promise.all([
+      prisma.jadwalKBM.findMany({
+        where: {
+          guru_id: guruId,
+          hari: { in: hariUrut as any[] },
+          ...semFilter,
+        },
+        include: { Kelas: true, Mapel: true },
+        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+      }),
+      prisma.jadwalPiketGuru.findMany({
+        where: {
+          guru_id: guruId,
+          hari: { in: hariUrut as any[] },
+          ...semFilter,
+        },
+        orderBy: [{ hari: 'asc' }, { slot_mulai: 'asc' }],
+      }).catch(() => []),
+    ]);
+
+    if (semuaJadwal.length === 0 && semuaPiket.length === 0 && semesterAktif) {
+      [semuaJadwal, semuaPiket] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            guru_id: guruId,
+            hari: { in: hariUrut as any[] },
+          },
+          include: { Kelas: true, Mapel: true },
+          orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+        }),
+        prisma.jadwalPiketGuru.findMany({
+          where: {
+            guru_id: guruId,
+            hari: { in: hariUrut as any[] },
+          },
+          orderBy: [{ hari: 'asc' }, { slot_mulai: 'asc' }],
+        }).catch(() => []),
+      ]);
+    }
+
+    const groupedKbm: Record<string, any[]> = {};
+    const groupedPiket: Record<string, any[]> = {};
+    hariUrut.forEach(h => {
+      groupedKbm[h] = [];
+      groupedPiket[h] = [];
+    });
+
+    semuaJadwal.forEach((j: any) => { if (groupedKbm[j.hari]) groupedKbm[j.hari].push(j); });
+    semuaPiket.forEach((p: any) => { if (groupedPiket[p.hari]) groupedPiket[p.hari].push(p); });
+
+    const groupedByDay: Record<string, GuruScheduleTimelineItem[]> = {};
+    let totalCount = 0;
+
+    hariUrut.forEach(hari => {
+      const listKbm = groupedKbm[hari];
+      const listPiket = groupedPiket[hari];
+
+      const dayItems: GuruScheduleTimelineItem[] = [];
+
+      if (listKbm && listKbm.length > 0) {
+        const aggregated = aggregateJadwal(listKbm);
+        aggregated.forEach((j: any) => {
+          const jamLabel = j.startSlot === j.endSlot
+            ? `Jam ke-${j.startSlot}`
+            : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
+          dayItems.push({
+            type: 'KBM',
+            slotMulai: j.startSlot || 1,
+            jamMulai: j.jam_mulai || '',
+            jamSelesai: j.jam_selesai || '',
+            jamLabel,
+            title: formatShortMapelName(j.Mapel),
+            subTitle: j.Kelas?.nama_kelas || 'Kelas',
+          });
+        });
+      }
+
+      if (listPiket && listPiket.length > 0) {
+        listPiket.forEach((p: any) => {
+          const jamLabel = p.slot_mulai && p.slot_selesai
+            ? `Jam ke-${p.slot_mulai} s/d ${p.slot_selesai}`
+            : 'Full Day';
+          dayItems.push({
+            type: 'PIKET',
+            slotMulai: p.slot_mulai ?? 1,
+            jamMulai: p.jam_mulai || '07:00',
+            jamSelesai: p.jam_selesai || '15:30',
+            jamLabel,
+            title: p.pos_piket || 'Piket Utama',
+            catatan: p.catatan,
+          });
+        });
+      }
+
+      dayItems.sort((a, b) => {
+        if (a.slotMulai !== b.slotMulai) return a.slotMulai - b.slotMulai;
+        return a.jamMulai.localeCompare(b.jamMulai);
+      });
+
+      groupedByDay[hari] = dayItems;
+      totalCount += dayItems.length;
+    });
+
+    return {
+      semesterAktif,
+      semInfo,
+      groupedByDay,
+      totalCount,
     };
   }
 
