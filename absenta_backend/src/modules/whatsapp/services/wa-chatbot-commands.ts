@@ -28,6 +28,77 @@ function getTanggalWIB(): Date {
 }
 
 /**
+ * Resolves active semester for WhatsApp Chatbot with resilient multi-tier fallback:
+ * Tier 1: Semester.is_active = true AND TahunPelajaran.is_active = true
+ * Tier 2: Semester.is_active = true (regardless of TahunPelajaran status)
+ * Tier 3: TahunPelajaran.is_active = true (regardless of Semester status)
+ * Tier 4: Latest Semester record in tenant (absolute fallback)
+ */
+export async function getWhatsappActiveSemester(tenantId?: string) {
+  if (!tenantId) return null;
+
+  try {
+    // Tier 1: Both Semester and TahunPelajaran are explicitly marked active
+    let semester = await prisma.semester.findFirst({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        TahunPelajaran: { is_active: true },
+      },
+      orderBy: { created_at: 'desc' },
+      select: { id: true, nama_semester: true, TahunPelajaran: { select: { id: true, tahun: true, is_active: true } } },
+    });
+
+    // Tier 2: Active Semester record in tenant
+    if (!semester) {
+      semester = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+          is_active: true,
+        },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, nama_semester: true, TahunPelajaran: { select: { id: true, tahun: true, is_active: true } } },
+      });
+    }
+
+    // Tier 3: Semester belonging to active TahunPelajaran
+    if (!semester) {
+      semester = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+          TahunPelajaran: { is_active: true },
+        },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, nama_semester: true, TahunPelajaran: { select: { id: true, tahun: true, is_active: true } } },
+      });
+    }
+
+    // Tier 4: Latest Semester record created in tenant
+    if (!semester) {
+      semester = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+        },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, nama_semester: true, TahunPelajaran: { select: { id: true, tahun: true, is_active: true } } },
+      });
+    }
+
+    return semester;
+  } catch (error) {
+    console.error('[getWhatsappActiveSemester] Error resolving active semester:', error);
+    return null;
+  }
+}
+
+export function formatSemesterInfo(semester: any): string {
+  if (!semester) return 'semester tidak terdeteksi';
+  const nama = semester.nama_semester || 'Semester Aktif';
+  const tahun = semester.TahunPelajaran?.tahun;
+  return tahun ? `${nama} (${tahun})` : nama;
+}
+
+/**
  * Singkat nama mata pelajaran agar tampilan WhatsApp Chatbot compact & bersih.
  * Menggunakan kode_mapel, kamus akronim mapel nasional, atau generator akronim otomatis.
  */
@@ -359,19 +430,12 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
   if (choice === '1') {
     const currentDay = getHariWIB(); // WIB timezone
 
-    // Cari semester aktif terlebih dahulu
-    const semesterAktif = await prisma.semester.findFirst({
-      where: {
-        tenant_id: guru.tenant_id,
-        is_active: true,
-        TahunPelajaran: { is_active: true },
-      },
-      orderBy: { created_at: 'desc' }, // ambil semester aktif paling baru
-      select: { id: true, nama_semester: true, TahunPelajaran: { select: { tahun: true } } },
-    });
+    // Cari semester aktif (multi-tier fallback)
+    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
+    const semInfo = formatSemesterInfo(semesterAktif);
 
-    // Query jadwal — filter semester aktif jika ada, fallback tanpa filter semester
-    const jadwalList = await prisma.jadwalKBM.findMany({
+    // Query jadwal — filter semester aktif jika ada
+    let jadwalList = await prisma.jadwalKBM.findMany({
       where: {
         guru_id: guru.id,
         hari: currentDay as any,
@@ -381,10 +445,19 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
       orderBy: { slot_index: 'asc' },
     });
 
+    // Fallback: jika tidak ada jadwal terfilter semester_id, coba query tanpa filter semester_id
+    if (jadwalList.length === 0 && semesterAktif) {
+      jadwalList = await prisma.jadwalKBM.findMany({
+        where: {
+          guru_id: guru.id,
+          hari: currentDay as any,
+        },
+        include: { Kelas: true, Mapel: true },
+        orderBy: { slot_index: 'asc' },
+      });
+    }
+
     if (jadwalList.length === 0) {
-      const semInfo = semesterAktif
-        ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-        : 'semester tidak terdeteksi';
       return (
         `📋 *Jadwal Mengajar Hari Ini (${currentDay})*\n` +
         `📚 Semester: ${semInfo}\n\n` +
@@ -395,9 +468,6 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
 
     const aggregated = aggregateJadwal(jadwalList);
 
-    const semInfo = semesterAktif
-      ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-      : '-';
     let msg = `📋 *Jadwal Mengajar Hari Ini (${currentDay})*\n`;
     msg += `Guru: *${guru.nama_guru}* | Semester: ${semInfo}\n\n`;
 
@@ -696,12 +766,10 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
   if (choice === '6') {
     const hariUrut = ['SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU'];
 
-    const semesterAktif = await prisma.semester.findFirst({
-      where: { tenant_id: guru.tenant_id, is_active: true, TahunPelajaran: { is_active: true } },
-      select: { id: true, nama_semester: true, TahunPelajaran: { select: { tahun: true } } },
-    });
+    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
+    const semInfo = formatSemesterInfo(semesterAktif);
 
-    const semuaJadwal = await prisma.jadwalKBM.findMany({
+    let semuaJadwal = await prisma.jadwalKBM.findMany({
       where: {
         guru_id: guru.id,
         hari: { in: hariUrut as any[] },
@@ -711,9 +779,16 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
       orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
     });
 
-    const semInfo = semesterAktif
-      ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-      : '-';
+    if (semuaJadwal.length === 0 && semesterAktif) {
+      semuaJadwal = await prisma.jadwalKBM.findMany({
+        where: {
+          guru_id: guru.id,
+          hari: { in: hariUrut as any[] },
+        },
+        include: { Kelas: true, Mapel: true },
+        orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+      });
+    }
 
     if (semuaJadwal.length === 0) {
       return (

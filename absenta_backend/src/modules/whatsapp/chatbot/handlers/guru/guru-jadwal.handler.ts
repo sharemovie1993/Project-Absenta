@@ -1,6 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
-import { aggregateJadwal, formatShortMapelName } from '../../../services/wa-chatbot-commands';
+import { aggregateJadwal, formatShortMapelName, getWhatsappActiveSemester, formatSemesterInfo } from '../../../services/wa-chatbot-commands';
 
 function getHariWIB(): string {
   const jakartaDay = new Date().toLocaleDateString('en-US', {
@@ -78,19 +78,12 @@ export class GuruJadwalHandler {
 
     const currentDay = getHariWIB();
 
-    const semesterAktif = await prisma.semester.findFirst({
-      where: {
-        tenant_id: guru.tenant_id,
-        is_active: true,
-        TahunPelajaran: { is_active: true },
-      },
-      orderBy: { created_at: 'desc' },
-      select: { id: true, nama_semester: true, TahunPelajaran: { select: { tahun: true } } },
-    });
+    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
+    const semInfo = formatSemesterInfo(semesterAktif);
 
     const semFilter = semesterAktif ? { semester_id: semesterAktif.id } : {};
 
-    const [jadwalList, piketList] = await Promise.all([
+    let [jadwalList, piketList] = await Promise.all([
       prisma.jadwalKBM.findMany({
         where: {
           guru_id: guru.id,
@@ -110,12 +103,30 @@ export class GuruJadwalHandler {
       }).catch(() => []),
     ]);
 
+    // Fallback: Jika tidak ditemukan jadwal pada semesterAktif, coba query tanpa filter semester_id
+    if (jadwalList.length === 0 && piketList.length === 0 && semesterAktif) {
+      [jadwalList, piketList] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            guru_id: guru.id,
+            hari: currentDay as any,
+          },
+          include: { Kelas: true, Mapel: true },
+          orderBy: { slot_index: 'asc' },
+        }),
+        prisma.jadwalPiketGuru.findMany({
+          where: {
+            guru_id: guru.id,
+            hari: currentDay as any,
+          },
+          orderBy: [{ slot_mulai: 'asc' }, { created_at: 'asc' }],
+        }).catch(() => []),
+      ]);
+    }
+
     const timelineItems = buildDayTimeline(jadwalList, piketList);
 
     if (timelineItems.length === 0) {
-      const semInfo = semesterAktif
-        ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-        : 'semester tidak terdeteksi';
       return (
         `📋 *Timeline Jadwal Hari Ini (${currentDay})*\n` +
         `📚 Semester: ${semInfo}\n\n` +
@@ -124,9 +135,6 @@ export class GuruJadwalHandler {
       );
     }
 
-    const semInfo = semesterAktif
-      ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-      : '-';
     let msg = `📋 *Timeline Jadwal Mengajar & Piket (${currentDay})*\n`;
     msg += `Guru: *${guru.nama_guru}* | Semester: ${semInfo}\n\n`;
     msg += `⏱️ *TIMELINE AGENDA HARI INI:*\n\n`;
@@ -158,14 +166,12 @@ export class GuruJadwalHandler {
 
     const hariUrut = ['SENIN','SELASA','RABU','KAMIS','JUMAT','SABTU'];
 
-    const semesterAktif = await prisma.semester.findFirst({
-      where: { tenant_id: guru.tenant_id, is_active: true, TahunPelajaran: { is_active: true } },
-      select: { id: true, nama_semester: true, TahunPelajaran: { select: { tahun: true } } },
-    });
+    const semesterAktif = await getWhatsappActiveSemester(guru.tenant_id);
+    const semInfo = formatSemesterInfo(semesterAktif);
 
     const semFilter = semesterAktif ? { semester_id: semesterAktif.id } : {};
 
-    const [semuaJadwal, semuaPiket] = await Promise.all([
+    let [semuaJadwal, semuaPiket] = await Promise.all([
       prisma.jadwalKBM.findMany({
         where: {
           guru_id: guru.id,
@@ -185,9 +191,25 @@ export class GuruJadwalHandler {
       }).catch(() => []),
     ]);
 
-    const semInfo = semesterAktif
-      ? `${semesterAktif.nama_semester} (${semesterAktif.TahunPelajaran?.tahun})`
-      : '-';
+    if (semuaJadwal.length === 0 && semuaPiket.length === 0 && semesterAktif) {
+      [semuaJadwal, semuaPiket] = await Promise.all([
+        prisma.jadwalKBM.findMany({
+          where: {
+            guru_id: guru.id,
+            hari: { in: hariUrut as any[] },
+          },
+          include: { Kelas: true, Mapel: true },
+          orderBy: [{ hari: 'asc' }, { slot_index: 'asc' }],
+        }),
+        prisma.jadwalPiketGuru.findMany({
+          where: {
+            guru_id: guru.id,
+            hari: { in: hariUrut as any[] },
+          },
+          orderBy: [{ hari: 'asc' }, { slot_mulai: 'asc' }],
+        }).catch(() => []),
+      ]);
+    }
 
     if (semuaJadwal.length === 0 && semuaPiket.length === 0) {
       return (
