@@ -71,6 +71,8 @@ export class JadwalPiketController {
         guru_id: parsed.guru_id,
         hari: parsed.hari as Hari,
         pos_piket: parsed.pos_piket,
+        slot_mulai: parsed.slot_mulai,
+        slot_selesai: parsed.slot_selesai,
         jam_mulai: parsed.jam_mulai,
         jam_selesai: parsed.jam_selesai,
         catatan: parsed.catatan
@@ -107,6 +109,8 @@ export class JadwalPiketController {
         hari: parsed.hari as Hari,
         guru_ids: parsed.guru_ids,
         pos_piket: parsed.pos_piket,
+        slot_mulai: parsed.slot_mulai,
+        slot_selesai: parsed.slot_selesai,
         jam_mulai: parsed.jam_mulai,
         jam_selesai: parsed.jam_selesai
       });
@@ -140,10 +144,13 @@ export class JadwalPiketController {
       const data = await this.service.updateJadwalPiket(tenantId, id, {
         hari: parsed.hari as Hari | undefined,
         pos_piket: parsed.pos_piket,
+        slot_mulai: parsed.slot_mulai,
+        slot_selesai: parsed.slot_selesai,
         jam_mulai: parsed.jam_mulai,
         jam_selesai: parsed.jam_selesai,
         catatan: parsed.catatan
       });
+
 
       return reply.send({
         success: true,
