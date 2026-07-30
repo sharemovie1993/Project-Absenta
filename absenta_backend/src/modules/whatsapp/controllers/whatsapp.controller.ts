@@ -84,11 +84,23 @@ export class WhatsappController {
 
   async getGroups(request: any, reply: any) {
     const { tenant_id } = request.user as any;
+    // ?refresh=true → paksa bypass cache dan fetch ulang dari WA server
+    const forceRefresh = (request.query as any)?.refresh === 'true';
     try {
-      const groups = await waGatewayService.getParticipatingGroups(tenant_id);
-      return reply.send({ success: true, data: groups });
+      const groups = await waGatewayService.getParticipatingGroups(tenant_id, forceRefresh);
+      return reply.send({ success: true, data: groups, cached: !forceRefresh });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message || 'Gagal mengambil daftar grup WA' });
+    }
+  }
+
+  async invalidateGroupsCache(request: any, reply: any) {
+    const { tenant_id } = request.user as any;
+    try {
+      await waGatewayService.invalidateGroupsCache(tenant_id);
+      return reply.send({ success: true, message: 'Cache daftar grup WA berhasil dihapus' });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
     }
   }
 }

@@ -68,9 +68,16 @@ export async function whatsappRoutes(fastify: any) {
   });
 
   // GET /whatsapp/groups - Get list of WA groups participated by linked number
+  // Query: ?refresh=true → paksa bypass Redis cache dan fetch ulang dari WA server
   fastify.get('/groups', {
     preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
     handler: whatsappController.getGroups.bind(whatsappController),
+  });
+
+  // DELETE /whatsapp/groups/cache - Hapus cache daftar grup WA dari Redis
+  fastify.delete('/groups/cache', {
+    preHandler: [requireCapability('whatsapp.manage.config'), determineDataScope()],
+    handler: whatsappController.invalidateGroupsCache.bind(whatsappController),
   });
 }
 

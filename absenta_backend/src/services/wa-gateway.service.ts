@@ -15,6 +15,13 @@ import fs from 'fs';
 import { EventEmitter } from 'events';
 import { prisma } from '../utils/prisma';
 import { waChatbotResolverService, persistLidMapping } from '../modules/whatsapp/services/wa-chatbot-resolver.service';
+import { getRedisConnection } from '../queue/redis';
+
+// ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
+const WA_GROUPS_CACHE_TTL_SECONDS = 300; // 5 menit
+function getGroupsCacheKey(tenantId: string): string {
+  return `wa:groups:${tenantId}`;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -499,8 +506,9 @@ export const waGatewayService = {
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
-    // Auto-restore session from disk if creds.json exists but memory pool entry is missing
-    if (!entry && hasCreds) {
+    // Hanya master instance yang boleh membuka socket baru.
+    // Non-master instance cukup membaca pool (yang kosong) — jangan trigger connectTenant.
+    if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
@@ -530,7 +538,11 @@ export const waGatewayService = {
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
-    if (!entry && hasCreds) {
+    // PERBAIKAN: Hanya master instance (Instance 0 pada PM2 cluster) yang boleh
+    // membuka socket WA baru. Instance lain cukup membaca pool memori masing-masing.
+    // Sebelumnya semua instance memanggil connectTenant() → menyebabkan log spam
+    // & berpotensi memicu koneksi duplikat yang men-trigger kode 428 (stream replaced).
+    if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
@@ -640,16 +652,47 @@ export const waGatewayService = {
 
   /**
    * Mendeteksi dan mengambil seluruh daftar Grup WhatsApp yang diikuti oleh nomor WA yang tertaut.
+   *
+   * PERBAIKAN:
+   * 1. Hasil di-cache di Redis selama 5 menit untuk menghindari panggilan berulang
+   *    ke server WA yang dapat memicu stream error (kode 428 / disconnect).
+   * 2. Diberi timeout 15 detik agar tidak menggantung koneksi socket selamanya.
+   * 3. forceRefresh=true untuk memaksa refresh cache (misal: user klik "Muat Ulang Grup").
    */
-  async getParticipatingGroups(tenantId: string) {
+  async getParticipatingGroups(tenantId: string, forceRefresh = false) {
+    const redis = getRedisConnection();
+    const cacheKey = getGroupsCacheKey(tenantId);
+
+    // ── 1. Cek cache Redis terlebih dahulu (jika tidak force refresh) ──────────
+    if (!forceRefresh && redis) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          console.log(`[WA-Pool:${tenantId}] Groups: Serving from Redis cache.`);
+          return JSON.parse(cached);
+        }
+      } catch (cacheErr: any) {
+        console.warn(`[WA-Pool:${tenantId}] Redis cache read error (akan fetch live):`, cacheErr.message);
+      }
+    }
+
+    // ── 2. Validasi koneksi sebelum fetch ke WA server ────────────────────────
     const entry = pool.get(tenantId);
     if (!entry || entry.status !== 'connected' || !entry.sock) {
       throw new Error(`WA Gateway tenant ${tenantId} belum terhubung.`);
     }
 
+    // ── 3. Fetch dengan timeout 15 detik agar tidak hang ─────────────────────
     try {
-      const groups = await entry.sock.groupFetchAllParticipating();
-      const groupList = Object.values(groups).map((g: any) => ({
+      console.log(`[WA-Pool:${tenantId}] Groups: Fetching live dari WA server...`);
+      const fetchPromise = entry.sock.groupFetchAllParticipating();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT_GROUP_FETCH')), 15_000)
+      );
+
+      const groups = await Promise.race([fetchPromise, timeoutPromise]);
+
+      const groupList = Object.values(groups as Record<string, any>).map((g: any) => ({
         id: g.id,
         subject: g.subject || 'Tanpa Nama',
         creation: g.creation ? new Date(g.creation * 1000) : null,
@@ -659,10 +702,39 @@ export const waGatewayService = {
         isCommunity: !!g.isCommunity,
       }));
 
+      // ── 4. Simpan hasil ke Redis cache ─────────────────────────────────────
+      if (redis) {
+        try {
+          await redis.set(cacheKey, JSON.stringify(groupList), 'EX', WA_GROUPS_CACHE_TTL_SECONDS);
+          console.log(`[WA-Pool:${tenantId}] Groups: ${groupList.length} grup di-cache ke Redis (TTL ${WA_GROUPS_CACHE_TTL_SECONDS}s).`);
+        } catch (cacheErr: any) {
+          console.warn(`[WA-Pool:${tenantId}] Redis cache write error:`, cacheErr.message);
+        }
+      }
+
       return groupList;
     } catch (err: any) {
+      if (err.message === 'TIMEOUT_GROUP_FETCH') {
+        console.error(`[WA-Pool:${tenantId}] groupFetchAllParticipating timeout (15s). Koneksi mungkin zombie.`);
+        throw new Error('Pengambilan daftar grup WA timeout (15 detik). Pastikan koneksi WA stabil.');
+      }
       console.error(`[WA-Pool:${tenantId}] Failed to fetch participating groups:`, err.message);
       throw err;
+    }
+  },
+
+  /**
+   * Hapus cache grup WA untuk satu tenant di Redis.
+   * Dipanggil jika user bergabung/keluar dari grup.
+   */
+  async invalidateGroupsCache(tenantId: string): Promise<void> {
+    const redis = getRedisConnection();
+    if (!redis) return;
+    try {
+      await redis.del(getGroupsCacheKey(tenantId));
+      console.log(`[WA-Pool:${tenantId}] Groups: Cache Redis dihapus.`);
+    } catch (e: any) {
+      console.warn(`[WA-Pool:${tenantId}] Gagal hapus cache groups:`, e.message);
     }
   },
 
