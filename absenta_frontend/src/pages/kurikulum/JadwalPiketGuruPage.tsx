@@ -26,8 +26,8 @@ import {
 } from 'lucide-react';
 import { piketGuruApi, JadwalPiketGuru, Hari } from '../../api/piketGuru.api';
 import { guruApi, tahunPelajaranApi, semesterApi, jurusanApi } from '../../api/academic.api';
-import type { Guru, Jurusan } from '../../types/academic';
 import { getMyTenant } from '../../api/tenants.api';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -103,6 +103,7 @@ export default function JadwalPiketGuruPage() {
 
   // Form State Bulk Assign
   const [bulkGuruIds, setBulkGuruIds] = useState<string[]>([]);
+  const [bulkSearchTerm, setBulkSearchTerm] = useState('');
   const [bulkHari, setBulkHari] = useState<Hari>('SENIN');
   const [bulkPos, setBulkPos] = useState('Piket Umum');
   const [bulkSlotMulai, setBulkSlotMulai] = useState(1);
@@ -159,7 +160,7 @@ export default function JadwalPiketGuruPage() {
         const [tpRes, semRes, guruRes, tenantRes, jurusanRes] = await Promise.all([
           tahunPelajaranApi.getAll(),
           semesterApi.getAll(),
-          guruApi.getAll(),
+          guruApi.getAll({ limit: 1000 }),
           getMyTenant().catch(() => null),
           jurusanApi.getAll().catch(() => ({ success: false, data: [] }))
         ]);
@@ -225,6 +226,26 @@ export default function JadwalPiketGuruPage() {
   useEffect(() => {
     fetchTeachingLoad();
   }, [fetchTeachingLoad]);
+
+  const guruSelectOptions = useMemo(() => {
+    return guruList.map(g => {
+      const load = teachingLoadMap[g.id]?.total_jp || 0;
+      const loadLabel = load === 0 ? '🟢 0 JP (Kosong)' : load >= 5 ? `🔴 ${load} JP (Padat)` : `🟡 ${load} JP`;
+      return {
+        value: g.id,
+        label: `${g.nama_guru}${g.nip ? ` (NIP: ${g.nip})` : ''} - [${loadLabel}]`
+      };
+    });
+  }, [guruList, teachingLoadMap]);
+
+  const filteredBulkGuruList = useMemo(() => {
+    if (!bulkSearchTerm.trim()) return guruList;
+    const q = bulkSearchTerm.toLowerCase();
+    return guruList.filter(g =>
+      (g.nama_guru || '').toLowerCase().includes(q) ||
+      (g.nip || '').toLowerCase().includes(q)
+    );
+  }, [guruList, bulkSearchTerm]);
 
   // Fetch Schedules when filters change
   const fetchSchedules = useCallback(async () => {
@@ -799,23 +820,14 @@ export default function JadwalPiketGuruPage() {
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Pilih Guru <span className="text-rose-500">*</span>
                 </label>
-                <select
-                  required
-                  disabled={!!editingItem}
+                <SearchableSelect
                   value={formGuruId}
-                  onChange={e => setFormGuruId(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 py-2 px-3 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">-- Pilih Guru --</option>
-                  {guruList.map(g => {
-                    const load = teachingLoadMap[g.id]?.total_jp || 0;
-                    return (
-                      <option key={g.id} value={g.id}>
-                        {g.nama_guru} {g.nip ? `(NIP: ${g.nip})` : ''} - [{load === 0 ? '🟢 0 JP (Kosong)' : load >= 5 ? `🔴 ${load} JP (Padat)` : `🟡 ${load} JP`}]
-                      </option>
-                    );
-                  })}
-                </select>
+                  onValueChange={(val) => setFormGuruId(val)}
+                  options={guruSelectOptions}
+                  placeholder="-- Cari & Pilih Guru --"
+                  searchPlaceholder="Ketik Nama / NIP Guru..."
+                  disabled={!!editingItem}
+                />
 
                 {formGuruId && (
                   <div className="mt-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-[11px]">
@@ -1077,34 +1089,118 @@ export default function JadwalPiketGuruPage() {
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Pilih Guru Bertugas (Bisa Beberapa Guru) <span className="text-rose-500">*</span>
                 </label>
-                <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 space-y-1.5 bg-slate-50 dark:bg-slate-900/50">
-                  {guruList.map(g => {
-                    const isChecked = bulkGuruIds.includes(g.id);
-                    return (
-                      <label
-                        key={g.id}
-                        className="flex items-center gap-2.5 p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-800 cursor-pointer transition text-xs"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setBulkGuruIds(prev => [...prev, g.id]);
-                            } else {
-                              setBulkGuruIds(prev => prev.filter(id => id !== g.id));
-                            }
-                          }}
-                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="font-medium text-slate-800 dark:text-slate-200">{g.nama_guru}</span>
-                        {g.nip && <span className="text-[10px] text-slate-400">(NIP: {g.nip})</span>}
-                      </label>
-                    );
-                  })}
+
+                {/* Quick Add Via SearchableSelect */}
+                <div className="mb-2">
+                  <SearchableSelect
+                    value=""
+                    onValueChange={(val) => {
+                      if (val && !bulkGuruIds.includes(val)) {
+                        setBulkGuruIds(prev => [...prev, val]);
+                      }
+                    }}
+                    options={guruSelectOptions.filter(opt => !bulkGuruIds.includes(opt.value))}
+                    placeholder="➕ Cari & Tambah Guru Spesifik..."
+                    searchPlaceholder="Ketik Nama / NIP Guru..."
+                  />
+                </div>
+
+                {/* Filter & Select All / Deselect All Bar */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Cari / filter nama & NIP guru..."
+                      value={bulkSearchTerm}
+                      onChange={(e) => setBulkSearchTerm(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const idsToAdd = filteredBulkGuruList.map(g => g.id);
+                      setBulkGuruIds(prev => Array.from(new Set([...prev, ...idsToAdd])));
+                    }}
+                    className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 hover:bg-indigo-100 shrink-0 cursor-pointer"
+                  >
+                    Pilih Semua ({filteredBulkGuruList.length})
+                  </button>
+                  {bulkGuruIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBulkGuruIds([])}
+                      className="px-2.5 py-1.5 text-[10px] font-bold rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/60 hover:bg-rose-100 shrink-0 cursor-pointer"
+                    >
+                      Hapus Pilihan
+                    </button>
+                  )}
+                </div>
+
+                {/* Selected Teachers Chips */}
+                {bulkGuruIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2 max-h-24 overflow-y-auto p-2 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-lg border border-indigo-100 dark:border-indigo-900/30">
+                    {bulkGuruIds.map(id => {
+                      const g = guruList.find(item => item.id === id);
+                      if (!g) return null;
+                      return (
+                        <span key={id} className="inline-flex items-center gap-1 text-[10px] font-bold bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                          {g.nama_guru}
+                          <button
+                            type="button"
+                            onClick={() => setBulkGuruIds(prev => prev.filter(x => x !== id))}
+                            className="text-slate-400 hover:text-rose-500 ml-1 cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Scrollable Teacher Checkboxes */}
+                <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 space-y-1.5 bg-slate-50 dark:bg-slate-900/50">
+                  {filteredBulkGuruList.length === 0 ? (
+                    <div className="text-center py-4 text-xs text-slate-400 font-medium">Tidak ada guru yang cocok dengan pencarian</div>
+                  ) : (
+                    filteredBulkGuruList.map(g => {
+                      const isChecked = bulkGuruIds.includes(g.id);
+                      const load = teachingLoadMap[g.id]?.total_jp || 0;
+                      return (
+                        <label
+                          key={g.id}
+                          className={`flex items-center justify-between p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-800 cursor-pointer transition text-xs ${
+                            isChecked ? 'bg-indigo-50/80 dark:bg-indigo-950/40 font-semibold' : ''
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setBulkGuruIds(prev => [...prev, g.id]);
+                                } else {
+                                  setBulkGuruIds(prev => prev.filter(id => id !== g.id));
+                                }
+                              }}
+                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{g.nama_guru}</span>
+                            {g.nip && <span className="text-[10px] text-slate-400 shrink-0">(NIP: {g.nip})</span>}
+                          </div>
+                          <span className="text-[10px] font-bold shrink-0 ml-2">
+                            {load === 0 ? <span className="text-emerald-600">🟢 0 JP</span> : <span className="text-amber-600">🟡 {load} JP</span>}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Terpilih: <strong>{bulkGuruIds.length}</strong> guru
+                  Terpilih: <strong>{bulkGuruIds.length}</strong> dari {guruList.length} guru
                 </p>
               </div>
 

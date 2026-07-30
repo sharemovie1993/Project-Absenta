@@ -42,12 +42,12 @@ export function SearchableSelect({
   onSearch,
   searchDelay = 300,
 }: SearchableSelectProps & { triggerClassName?: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
-
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Debounce search query for external search
   const debouncedSearch = useDebounce(searchQuery, searchDelay);
@@ -88,24 +88,35 @@ export function SearchableSelect({
     );
   }, [options, searchQuery, onSearch, isOpen, selectedOption]);
 
-  // Click outside to close
+  // Click outside & Escape key to auto-close dropdown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        // Exclude elements that are inside the portal dropdown
-        const target = event.target as HTMLElement;
-        if (target.closest('[style*="position: fixed"]') || target.closest('.animate-in')) {
-          return;
-        }
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (!target) return;
+
+      const isInsideTrigger = containerRef.current?.contains(target);
+      const isInsideDropdown = dropdownRef.current?.contains(target);
+
+      if (!isInsideTrigger && !isInsideDropdown) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
 
@@ -210,6 +221,7 @@ export function SearchableSelect({
 
       {isOpen && ReactDOM.createPortal(
         <div
+          ref={dropdownRef}
           style={dropdownStyle}
           className="rounded-md border border-gray-200 bg-white text-gray-900 shadow-2xl outline-none animate-in fade-in-0 zoom-in-95 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 max-h-[300px] overflow-y-auto"
         >

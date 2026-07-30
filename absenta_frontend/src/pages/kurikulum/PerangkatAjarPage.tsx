@@ -191,7 +191,7 @@ export default function PerangkatAjarPage() {
 
   const { data: teachers } = useQuery({
     queryKey: ['guru-list'],
-    queryFn: () => guruApi.getAll()
+    queryFn: () => guruApi.getAll({ limit: 1000 })
   });
 
   const activeYear = useMemo(() => {
