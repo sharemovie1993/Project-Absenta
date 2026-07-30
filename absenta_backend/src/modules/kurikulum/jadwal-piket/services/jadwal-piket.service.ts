@@ -345,7 +345,7 @@ export class JadwalPiketService {
 
 
   /**
-   * 9. Format Pesan WhatsApp Jadwal Piket Guru
+   * 9. Format Pesan WhatsApp Jadwal Piket Guru (Dikelompokkan berdasarkan Jam & Pos Piket dengan Divider)
    */
   async formatPiketScheduleMessage(tenantId: string, dateTarget: Date, isNightReminder: boolean): Promise<string> {
     const hariTarget = this.getHariEnum(dateTarget);
@@ -375,7 +375,11 @@ export class JadwalPiketService {
           }
         }
       },
-      orderBy: { created_at: 'asc' }
+      orderBy: [
+        { jam_mulai: 'asc' },
+        { pos_piket: 'asc' },
+        { created_at: 'asc' }
+      ]
     });
 
     const tglStr = dateTarget.toLocaleDateString('id-ID', {
@@ -389,27 +393,60 @@ export class JadwalPiketService {
       ? '🛡️ *PENGINGAT JADWAL PIKET GURU (BESOK HARI)*'
       : '🛡️ *PENGINGAT JADWAL PIKET GURU (HARI INI)*';
 
-    let msg = `${titlePrefix}\n📅 *${tglStr}*\n\n`;
+    let msg = `${titlePrefix}\n📅 *${tglStr}*\n─────────────────────────\n\n`;
 
     if (list.length === 0) {
       msg += `ℹ️ Tidak ada jadwal penugasan piket guru untuk hari ${isNightReminder ? 'besok' : 'ini'}. Libur atau belum diset di sistem Absenta.\n`;
     } else {
       msg += `Bapak/Ibu Guru yang bertugas piket:\n\n`;
-      list.forEach((item, index) => {
-        const jam = item.jam_mulai && item.jam_selesai ? `${item.jam_mulai} – ${item.jam_selesai}` : '06:30 – 15:30';
-        msg += `${index + 1}. ⏱️ *${jam}*\n`;
-        msg += `   └ 👨‍🏫 *${item.Guru?.nama_guru || '-'}*\n`;
-        msg += `   └ 📌 Pos: *${item.pos_piket || 'Piket Umum'}*\n`;
-        if (item.catatan) {
-          msg += `   └ 📝 Catatan: "${item.catatan}"\n`;
+
+      // Grouping by Jam -> Pos Piket
+      const groupedByJam: Record<string, Record<string, typeof list>> = {};
+
+      list.forEach(item => {
+        const jamKey = (item.jam_mulai && item.jam_selesai)
+          ? `${item.jam_mulai} – ${item.jam_selesai} WIB`
+          : '06:30 – 15:30 WIB';
+        
+        const posKey = (item.pos_piket || 'Piket Umum').trim();
+
+        if (!groupedByJam[jamKey]) {
+          groupedByJam[jamKey] = {};
         }
-        msg += `\n`;
+        if (!groupedByJam[jamKey][posKey]) {
+          groupedByJam[jamKey][posKey] = [];
+        }
+
+        groupedByJam[jamKey][posKey].push(item);
       });
-      msg += `💡 Mohon Bapak/Ibu Petugas Piket dapat hadir tepat waktu dan menjalankan tugas dengan baik. Terima kasih! 😊\n`;
+
+      const jamEntries = Object.entries(groupedByJam);
+      jamEntries.forEach(([jamStr, posGroupMap], jamIdx) => {
+        if (jamIdx > 0) {
+          msg += `─────────────────────────\n`;
+        }
+        msg += `⏰ *WAKTU: ${jamStr}*\n`;
+        msg += `─────────────────────────\n`;
+
+        Object.entries(posGroupMap).forEach(([posName, items]) => {
+          msg += `📌 *Jenis / Pos Piket: ${posName}*\n`;
+          items.forEach(item => {
+            msg += `  • 👨‍🏫 *${item.Guru?.nama_guru || '-'}*\n`;
+            if (item.catatan) {
+              msg += `    └ 📝 "${item.catatan}"\n`;
+            }
+          });
+          msg += `\n`;
+        });
+      });
+
+      msg += `═════════════════════════\n`;
+      msg += `💡 *Catatan:* Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n`;
     }
 
     return msg;
   }
+
 
   /**
    * 10. Kirim Pengingat Piket ke WA Group
