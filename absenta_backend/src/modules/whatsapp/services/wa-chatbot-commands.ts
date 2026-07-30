@@ -4,6 +4,7 @@ import { GuruJadwalHandler } from '../chatbot/handlers/guru/guru-jadwal.handler'
 import { GuruWalikelasHandler } from '../chatbot/handlers/guru/guru-walikelas.handler';
 import { GuruSupervisiHandler } from '../chatbot/handlers/guru/guru-supervisi.handler';
 import { GuruPresensiHandler } from '../chatbot/handlers/guru/guru-presensi.handler';
+import { GuruProfileHandler } from '../chatbot/handlers/guru/guru-profile.handler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIMEZONE HELPER — selalu gunakan WIB (Asia/Jakarta, UTC+7)
@@ -511,112 +512,19 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
     return msg;
   }
 
-  // [5] Profil Pribadi Guru
+  // [5] Profil Pribadi Guru (Via Shared Domain Service)
   if (choice === '5') {
-    let msg = `👤 *Data Profil Pribadi Guru*\n\n`;
-    msg += `• Nama              : *${guru.nama_guru}*\n`;
-    msg += `• NIP               : ${guru.nip || '-'}\n`;
-    msg += `• Email             : ${guru.User?.email || '-'}\n`;
-    msg += `• Jabatan           : ${guru.jabatan || '-'}\n`;
-    msg += `• Jenis PTK         : ${guru.jenis_ptk || '-'}\n`;
-    msg += `• Status Kepegawaian: ${guru.status_kepegawaian || '-'}\n`;
-    msg += `• Pendidikan        : ${guru.pendidikan_terakhir || '-'}\n`;
-    msg += `• Pangkat/Golongan  : ${guru.pangkat_golongan || '-'}\n`;
-    msg += `• Kartu RFID        : ${guru.no_rfid ? '✅ Terhubung' : '❌ Belum Ada'}\n\n`;
-    msg += `⚙️ *Opsi Edit Profil:*\n`;
-    msg += `[51] ✏️ Edit NIP\n`;
-    msg += `[52] 📧 Edit Email\n\n`;
-    msg += `💡 Ketik *51* untuk Edit NIP atau *52* untuk Edit Email.\n`;
-    msg += `💡 Ketik *[0]* untuk Daftar Menu Utama.`;
-    return msg;
+    return GuruProfileHandler.handleViewProfile({ guru, commandUpper: choice } as any);
   }
 
-  // [51] Edit NIP Guru (Interactive Question Flow)
-  const nipMatch = choice.match(/^51(?:\s+(.+))?$/i);
-  if (nipMatch) {
-    const inlineNip = (nipMatch[1] || '').trim();
-    if (inlineNip) {
-      try {
-        await prisma.guru.update({
-          where: { id: guru.id },
-          data: { nip: inlineNip },
-        });
-        if (jid) {
-          pendingGuruEditSession.delete(jid);
-          pendingGuruEditSession.delete(jid.split('@')[0]);
-        }
-        return (
-          `✅ *NIP Guru Berhasil Diperbarui!*\n\n` +
-          `• Nama     : *${guru.nama_guru}*\n` +
-          `• NIP Baru : *${inlineNip}*\n\n` +
-          `💡 Ketik *5* untuk lihat Profil Pribadi atau *[0]* untuk Menu Utama.`
-        );
-      } catch (err: any) {
-        return `⚠️ Gagal memperbarui NIP: ${err.message || 'Terjadi kesalahan sistem.'}`;
-      }
-    }
-
-    if (jid) {
-      pendingGuruEditSession.set(jid, 'EDIT_NIP');
-      pendingGuruEditSession.set(jid.split('@')[0], 'EDIT_NIP');
-    }
-    return (
-      `✏️ *Edit NIP Guru*\n\n` +
-      `NIP Anda saat ini: *${guru.nip || '-'}*\n\n` +
-      `Silakan ketik nomor *NIP Baru* Anda sekarang:\n` +
-      `_(atau ketik *BATAL* untuk membatalkan)_`
-    );
+  // [51] Edit NIP Guru
+  if (choice.startsWith('51')) {
+    return GuruProfileHandler.handleEditNip({ guru, commandUpper: choice, messageText: choice, cleanJid: jid || '' } as any);
   }
 
-  // [52] Edit Email Guru (Interactive Question Flow)
-  const emailMatch = choice.match(/^52(?:\s+(.+))?$/i);
-  if (emailMatch) {
-    const inlineEmail = (emailMatch[1] || '').trim().toLowerCase();
-    if (inlineEmail) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(inlineEmail)) {
-        return `⚠️ Format email (*${inlineEmail}*) tidak valid. Silakan contoh: *guru@sekolah.sch.id*`;
-      }
-      if (!guru.user_id) {
-        return `⚠️ Akun pengguna untuk Guru ini tidak ditemukan di sistem.`;
-      }
-      try {
-        const existingUser = await prisma.user.findFirst({
-          where: { email: inlineEmail, id: { not: guru.user_id } },
-        });
-        if (existingUser) {
-          return `⚠️ Email *${inlineEmail}* sudah terdaftar untuk pengguna lain di sistem.`;
-        }
-        await prisma.user.update({
-          where: { id: guru.user_id },
-          data: { email: inlineEmail },
-        });
-        if (jid) {
-          pendingGuruEditSession.delete(jid);
-          pendingGuruEditSession.delete(jid.split('@')[0]);
-        }
-        return (
-          `✅ *Email Guru Berhasil Diperbarui!*\n\n` +
-          `• Nama       : *${guru.nama_guru}*\n` +
-          `• Email Baru : *${inlineEmail}*\n\n` +
-          `💡 Ketik *5* untuk lihat Profil Pribadi atau *[0]* untuk Menu Utama.`
-        );
-      } catch (err: any) {
-        return `⚠️ Gagal memperbarui Email: ${err.message || 'Terjadi kesalahan sistem.'}`;
-      }
-    }
-
-    if (jid) {
-      pendingGuruEditSession.set(jid, 'EDIT_EMAIL');
-      pendingGuruEditSession.set(jid.split('@')[0], 'EDIT_EMAIL');
-    }
-    return (
-      `📧 *Edit Email Guru*\n\n` +
-      `Email Anda saat ini: *${guru.User?.email || '-'}*\n\n` +
-      `Silakan ketik alamat *Email Baru* Anda sekarang:\n` +
-      `_(contoh: guru@sekolah.sch.id)_\n` +
-      `_(atau ketik *BATAL* untuk membatalkan)_`
-    );
+  // [52] Edit Email Guru
+  if (choice.startsWith('52')) {
+    return GuruProfileHandler.handleEditEmail({ guru, commandUpper: choice, messageText: choice, cleanJid: jid || '' } as any);
   }
 
   if (choice !== '' && choice !== '0') {

@@ -1,8 +1,11 @@
-import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
 import { chatbotSessionManager } from '../../core/session-state-manager';
+import { guruService } from '@/modules/academic/guru/services/guru.service';
 
 export class GuruProfileHandler {
+  /**
+   * MENU 5: View Data Profil Guru
+   */
   static async handleViewProfile(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
     if (!guru) return '⚠️ Data profil Guru tidak ditemukan.';
@@ -54,15 +57,13 @@ export class GuruProfileHandler {
       return `⚠️ Nomor NIP tidak boleh kosong.\nSilakan masukkan nomor NIP baru Anda (atau ketik *BATAL*):`;
     }
     try {
-      await prisma.guru.update({
-        where: { id: guru.id },
-        data: { nip: newNip },
-      });
+      // 🚀 Call Shared Domain Service Layer
+      await guruService.updateGuruNip(guru.id, newNip);
       chatbotSessionManager.delete(cleanJid);
       return (
         `✅ *NIP Guru Berhasil Diperbarui!*\n\n` +
         `• Nama     : *${guru.nama_guru}*\n` +
-        `• NIP Baru : *${newNip}*\n\n` +
+        `• NIP Baru : *${newNip.trim()}*\n\n` +
         `💡 Ketik *5* untuk lihat Profil Pribadi atau *[0]* untuk Menu Utama.`
       );
     } catch (err: any) {
@@ -96,46 +97,19 @@ export class GuruProfileHandler {
   }
 
   static async processUpdateEmail(guru: any, newEmail: string, cleanJid: string): Promise<string> {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      return (
-        `⚠️ *Format Email Tidak Valid*\n\n` +
-        `Format email (*${newEmail}*) tidak valid.\n` +
-        `Silakan ketik ulang alamat email yang benar (contoh: *guru@sekolah.sch.id*) atau ketik *BATAL*:`
-      );
-    }
-
     if (!guru.user_id) {
       chatbotSessionManager.delete(cleanJid);
       return `⚠️ Akun pengguna untuk Guru ini tidak ditemukan di sistem. Hubungi Admin Sekolah.`;
     }
 
     try {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          email: newEmail,
-          id: { not: guru.user_id },
-        },
-      });
-
-      if (existingUser) {
-        return (
-          `⚠️ *Email Sudah Terdaftar*\n\n` +
-          `Email *${newEmail}* sudah digunakan oleh pengguna lain di sistem.\n` +
-          `Silakan masukkan alamat email yang lain (atau ketik *BATAL*):`
-        );
-      }
-
-      await prisma.user.update({
-        where: { id: guru.user_id },
-        data: { email: newEmail },
-      });
-
+      // 🚀 Call Shared Domain Service Layer (Includes validation & duplicate check)
+      const updatedUser = await guruService.updateGuruEmail(guru.user_id, newEmail);
       chatbotSessionManager.delete(cleanJid);
       return (
         `✅ *Email Guru Berhasil Diperbarui!*\n\n` +
         `• Nama       : *${guru.nama_guru}*\n` +
-        `• Email Baru : *${newEmail}*\n\n` +
+        `• Email Baru : *${updatedUser.email}*\n\n` +
         `💡 Ketik *5* untuk lihat Profil Pribadi atau *[0]* untuk Menu Utama.`
       );
     } catch (err: any) {

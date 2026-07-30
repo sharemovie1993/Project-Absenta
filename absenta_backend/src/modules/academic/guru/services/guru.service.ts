@@ -800,6 +800,48 @@ export class GuruService {
   }) {
     return getGuruDocumentsQuery(params);
   }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Memperbarui NIP Guru.
+   */
+  async updateGuruNip(guruId: string, newNip: string) {
+    if (!newNip || !newNip.trim()) {
+      throw new Error('Nomor NIP tidak boleh kosong.');
+    }
+    return prisma.guru.update({
+      where: { id: guruId },
+      data: { nip: newNip.trim() },
+    });
+  }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Memperbarui Email Pengguna Guru (dengan pengecekan duplikasi).
+   */
+  async updateGuruEmail(userId: string, newEmail: string) {
+    const cleanEmail = String(newEmail || '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      throw new Error(`Format email (${newEmail}) tidak valid.`);
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: cleanEmail,
+        id: { not: userId },
+      },
+    });
+
+    if (existingUser) {
+      throw new Error(`Email ${cleanEmail} sudah digunakan oleh pengguna lain.`);
+    }
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: { email: cleanEmail },
+    });
+  }
 }
 
 export const guruService = new GuruService();
