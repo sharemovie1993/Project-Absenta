@@ -3,11 +3,33 @@ import { Hari } from '@prisma/client';
 
 export class JadwalPiketService {
   /**
-   * Helper untuk mendapatkan nama Hari Enum dari Javascript Date
+   * Helper untuk mendapatkan nama Hari Enum dari Javascript Date berbasis Timezone Tenant
    */
-  private getHariEnum(date: Date = new Date()): Hari {
-    const days: Hari[] = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
-    return days[date.getDay()];
+  private getHariEnum(date: Date = new Date(), timezone: string = 'Asia/Jakarta'): Hari {
+    const dayName = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'short' }).format(date);
+    const dayMap: Record<string, Hari> = {
+      Sun: 'MINGGU',
+      Mon: 'SENIN',
+      Tue: 'SELASA',
+      Wed: 'RABU',
+      Thu: 'KAMIS',
+      Fri: 'JUMAT',
+      Sat: 'SABTU'
+    };
+    return dayMap[dayName] || 'SENIN';
+  }
+
+  /**
+   * Helper untuk mengambil timezone tenant (default: Asia/Jakarta)
+   */
+  async getTenantTimezone(tenantId: string): Promise<string> {
+    try {
+      const config = await prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'TIMEZONE' }
+      });
+      if (config?.value) return config.value;
+    } catch (_) {}
+    return 'Asia/Jakarta';
   }
 
   /**
@@ -348,7 +370,8 @@ export class JadwalPiketService {
    * 9. Format Pesan WhatsApp Jadwal Piket Guru (Dikelompokkan berdasarkan Jam & Pos Piket dengan Divider)
    */
   async formatPiketScheduleMessage(tenantId: string, dateTarget: Date, isNightReminder: boolean): Promise<string> {
-    const hariTarget = this.getHariEnum(dateTarget);
+    const timezone = await this.getTenantTimezone(tenantId);
+    const hariTarget = this.getHariEnum(dateTarget, timezone);
 
     const activeTp = await prisma.tahunPelajaran.findFirst({
       where: { tenant_id: tenantId, is_active: true }
@@ -383,6 +406,7 @@ export class JadwalPiketService {
     });
 
     const tglStr = dateTarget.toLocaleDateString('id-ID', {
+      timeZone: timezone,
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -484,10 +508,13 @@ export class JadwalPiketService {
       throw new Error('Group WA tujuan belum ditentukan. Silakan atur Group Tujuan di Pengaturan Notifikasi Piket.');
     }
 
-    // Tentukan tanggal target:
-    // Jika Night Reminder (23:00), tanggal target adalah Besok Hari (Date + 1)
-    // Jika Morning Reminder (05:00) atau Test, tanggal target adalah Hari Ini
-    const dateTarget = new Date();
+    const timezone = await this.getTenantTimezone(tenantId);
+
+    // Tentukan tanggal target sesuai timezone tenant:
+    // Format YYYY-MM-DD lokal tenant
+    const nowStr = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const dateTarget = new Date(`${nowStr}T12:00:00Z`);
+
     if (isNightReminder) {
       dateTarget.setDate(dateTarget.getDate() + 1);
     }
