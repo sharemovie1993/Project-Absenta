@@ -69,6 +69,11 @@ const activeRoleSession = new Map<string, 'G' | 'S' | 'O' | null>();
  */
 const pendingIdentification = new Map<string, boolean>();
 
+/**
+ * State untuk pending edit field guru per-JID ('EDIT_NIP' | 'EDIT_EMAIL')
+ */
+export const pendingGuruEditSession = new Map<string, 'EDIT_NIP' | 'EDIT_EMAIL'>();
+
 export class WaChatbotResolverService {
   /**
    * Normalisasi nomor HP ke berbagai format string pencarian DB.
@@ -268,7 +273,7 @@ export class WaChatbotResolverService {
       // Reset sesi role jika ada
       activeRoleSession.delete(cleanJid);
       activeRoleSession.delete(fullJid);
-      if (guru)  return handleGuruCommand(effectiveCommand, guru);
+      if (guru)  return handleGuruCommand(effectiveCommand, guru, cleanJid);
       if (siswa) return handleSiswaCommand(effectiveCommand, siswa);
       if (ortu)  return handleOrtuCommand(effectiveCommand, ortu);
     }
@@ -276,19 +281,21 @@ export class WaChatbotResolverService {
     // ── Step 6: Multi-Role — perlu pilih peran ──────────────────────────────
     const currentSession = activeRoleSession.get(cleanJid) ?? activeRoleSession.get(fullJid);
 
-    // User mengetik perintah reset menu: "0" atau "MENU"
-    if (effectiveUpper === '0' || effectiveUpper === 'MENU' || isSelfIdJustCompleted) {
+    // User mengetik perintah reset menu: "0", "MENU", "BATAL"
+    if (effectiveUpper === '0' || effectiveUpper === 'MENU' || effectiveUpper === 'BATAL' || isSelfIdJustCompleted) {
       activeRoleSession.delete(cleanJid);
       activeRoleSession.delete(fullJid);
+      pendingGuruEditSession.delete(cleanJid);
+      pendingGuruEditSession.delete(fullJid);
     }
 
     // User memilih peran dari menu
-    if (!currentSession || effectiveUpper === '0' || effectiveUpper === 'MENU' || isSelfIdJustCompleted) {
+    if (!currentSession || effectiveUpper === '0' || effectiveUpper === 'MENU' || effectiveUpper === 'BATAL' || isSelfIdJustCompleted) {
       const chosenRole = roles.find(r => r.key === effectiveUpper);
       if (chosenRole && !isSelfIdJustCompleted) {
         activeRoleSession.set(cleanJid, chosenRole.key);
         activeRoleSession.set(fullJid, chosenRole.key);
-        if (chosenRole.key === 'G' && guru)  return handleGuruCommand('', guru);
+        if (chosenRole.key === 'G' && guru)  return handleGuruCommand('', guru, cleanJid);
         if (chosenRole.key === 'S' && siswa) return handleSiswaCommand('', siswa);
         if (chosenRole.key === 'O' && ortu)  return handleOrtuCommand('', ortu);
       }
@@ -299,13 +306,15 @@ export class WaChatbotResolverService {
     }
 
     // User sudah memilih peran sebelumnya → routing ke handler peran aktif
-    if (currentSession === 'G' && guru)  return handleGuruCommand(effectiveCommand, guru);
+    if (currentSession === 'G' && guru)  return handleGuruCommand(effectiveCommand, guru, cleanJid);
     if (currentSession === 'S' && siswa) return handleSiswaCommand(effectiveCommand, siswa);
     if (currentSession === 'O' && ortu)  return handleOrtuCommand(effectiveCommand, ortu);
 
     // Fallback: tampilkan menu lagi
     activeRoleSession.delete(cleanJid);
     activeRoleSession.delete(fullJid);
+    pendingGuruEditSession.delete(cleanJid);
+    pendingGuruEditSession.delete(fullJid);
     const nama = guru?.nama_guru ?? siswa?.nama_siswa ?? ortu?.nama ?? 'Pengguna';
     return formatMultiRoleMenu(nama, roles);
   }
