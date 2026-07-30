@@ -441,8 +441,10 @@ export class JadwalPiketService {
       });
 
       msg += `═════════════════════════\n`;
-      msg += `💡 *Catatan:* Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n`;
+      msg += `💡 *Catatan:* Mohon Bapak/Ibu Petugas Piket hadir tepat waktu dan menjalankan tugas dengan penuh tanggung jawab. Terima kasih! 😊\n\n`;
+      msg += `🤖 _Pesan pengingat otomatis ini dikirimkan oleh *Sistem Absenta*._\n`;
     }
+
 
     return msg;
   }
