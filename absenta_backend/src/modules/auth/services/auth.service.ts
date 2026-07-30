@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { prisma } from '@/utils/prisma';
-import { getSmartApiBaseUrl } from '@/utils/url-helper';
+import { getSmartApiBaseUrl, getSmartParentAppUrl, getSmartFrontendBaseUrl } from '@/utils/url-helper';
 import { randomUUID } from 'crypto';
 import { DEFAULT_STRUKTUR_ORGANISASI } from '@/config/organization-structure';
 import { SekolahService } from '@/modules/sekolah/services/sekolah.service';
@@ -12,9 +13,73 @@ import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
 import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
 
-// Removed hardcoded DEFAULT_STRUKTUR_ORGANISASI in favor of shared config
+export interface QuickLoginResult {
+  success: boolean;
+  message?: string;
+  loginUrl?: string;
+  name: string;
+  email?: string;
+}
 
 export class AuthService {
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Menghasilkan Quick Login Token (JWT) & URL Akses Langsung tanpa password.
+   * Dipakai bersama oleh Web/App Controller & WA Chatbot Handler.
+   */
+  async generateQuickLoginUrl(userId: string | undefined, name: string): Promise<QuickLoginResult> {
+    if (!userId) {
+      return {
+        success: false,
+        name,
+        message: 'Data profil WhatsApp Anda belum terhubung dengan akun pengguna aplikasi web.',
+      };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        Role: { select: { id: true, name: true } },
+        Tenant: { select: { id: true, subdomain: true, custom_domain: true } },
+      },
+    });
+
+    if (!user || user.status !== 'ACTIVE') {
+      return {
+        success: false,
+        name,
+        email: user?.email,
+        message: `Akun pengguna web (${user?.email || 'User'}) dalam status non-aktif.`,
+      };
+    }
+
+    const secret = process.env.JWT_SECRET || 'absenta-secret-key';
+    const payload = {
+      id: user.id,
+      email: user.email,
+      tenantId: user.tenant_id,
+      roleId: user.Role?.id || '',
+      roleName: user.Role?.name || 'USER',
+      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // Berlaku 24 jam
+    };
+
+    const token = jwt.sign(payload, secret);
+
+    let baseUrl = getSmartParentAppUrl(user.Tenant, user.tenant_id);
+    if (!baseUrl || baseUrl.includes('localhost:5173')) {
+      baseUrl = getSmartFrontendBaseUrl();
+    }
+    baseUrl = baseUrl.replace(/\/+$/, '');
+
+    const loginUrl = `${baseUrl}/login?quick_login_token=${token}`;
+
+    return {
+      success: true,
+      name,
+      email: user.email,
+      loginUrl,
+    };
+  }
   async register(input: RegisterInput): Promise<UserResponse> {
     const { email, password, full_name, role, tenant_id } = input;
 

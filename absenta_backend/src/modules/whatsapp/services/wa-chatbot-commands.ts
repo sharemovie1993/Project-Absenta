@@ -5,6 +5,7 @@ import { GuruWalikelasHandler } from '../chatbot/handlers/guru/guru-walikelas.ha
 import { GuruSupervisiHandler } from '../chatbot/handlers/guru/guru-supervisi.handler';
 import { GuruPresensiHandler } from '../chatbot/handlers/guru/guru-presensi.handler';
 import { GuruProfileHandler } from '../chatbot/handlers/guru/guru-profile.handler';
+import { QuickLoginHandler } from '../chatbot/handlers/common/quick-login.handler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIMEZONE HELPER — selalu gunakan WIB (Asia/Jakarta, UTC+7)
@@ -455,6 +456,11 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
   // [6] Jadwal Mengajar & Piket Minggu Ini (Via Shared Domain Service)
   if (choice === '6') {
     return GuruJadwalHandler.handleJadwalMingguan({ guru, commandUpper: choice } as any);
+  }
+
+  // [7] Quick Login Aplikasi Web (Via Shared Domain Service)
+  if (choice === '7') {
+    return QuickLoginHandler.handleQuickLogin({ guru, commandUpper: choice } as any);
   }
 
   // [5] Profil Pribadi Guru (Via Shared Domain Service)
