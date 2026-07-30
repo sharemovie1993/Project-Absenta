@@ -1,141 +1,146 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { Input, Badge, Loader } from '@/components/ui';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { OperationalPageLayout } from '@/components/layout/OperationalPageLayout';
 import {
-  MessageSquare,
   Search,
   User,
-  Users,
-  ArrowLeft,
   RefreshCw,
   Bot,
   BookOpen,
   GraduationCap,
   HeartHandshake,
   ChevronUp,
+  MessageSquare,
+  Check,
+  CheckCheck,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   getWaChatLogContacts,
   getWaChatLogDetail,
-  WaChatContact,
-  WaChatMessage,
+  type WaChatContact,
+  type WaChatMessage,
 } from '@/api/whatsapp.api';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-function formatRole(role: string | null): { label: string; color: string; icon: React.ReactNode } {
+function formatRole(role: string | null) {
   switch (role) {
-    case 'G':
-      return { label: 'Guru', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30', icon: <BookOpen className="w-3 h-3" /> };
-    case 'S':
-      return { label: 'Siswa', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', icon: <GraduationCap className="w-3 h-3" /> };
-    case 'O':
-      return { label: 'Ortu', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30', icon: <HeartHandshake className="w-3 h-3" /> };
-    default:
-      return { label: 'Tamu', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30', icon: <User className="w-3 h-3" /> };
+    case 'G': return { label: 'Guru',       color: 'bg-blue-500/20 text-blue-400',    icon: <BookOpen    className="w-2.5 h-2.5" /> };
+    case 'S': return { label: 'Siswa',      color: 'bg-emerald-500/20 text-emerald-400', icon: <GraduationCap className="w-2.5 h-2.5" /> };
+    case 'O': return { label: 'Ortu',       color: 'bg-amber-500/20 text-amber-400',  icon: <HeartHandshake className="w-2.5 h-2.5" /> };
+    default:  return { label: 'Tamu',       color: 'bg-slate-500/20 text-slate-400',  icon: <User         className="w-2.5 h-2.5" /> };
   }
 }
 
-function formatTime(iso: string): string {
+function formatContactTime(iso: string): string {
   try {
-    const date = parseISO(iso);
-    if (isToday(date)) return format(date, 'HH:mm');
-    if (isYesterday(date)) return 'Kemarin';
-    return format(date, 'd MMM', { locale: idLocale });
-  } catch {
-    return '';
-  }
+    const d = parseISO(iso);
+    if (isToday(d))     return format(d, 'HH:mm');
+    if (isYesterday(d)) return 'Kemarin';
+    return format(d, 'd/M/yy');
+  } catch { return ''; }
 }
 
-function formatTimeFull(iso: string): string {
-  try {
-    return format(parseISO(iso), 'HH:mm, d MMM yyyy', { locale: idLocale });
-  } catch {
-    return '';
-  }
+function formatMsgTime(iso: string): string {
+  try { return format(parseISO(iso), 'HH:mm'); } catch { return ''; }
 }
 
 function formatDateGroup(iso: string): string {
   try {
-    const date = parseISO(iso);
-    if (isToday(date)) return 'Hari Ini';
-    if (isYesterday(date)) return 'Kemarin';
-    return format(date, 'EEEE, d MMMM yyyy', { locale: idLocale });
-  } catch {
-    return '';
-  }
+    const d = parseISO(iso);
+    if (isToday(d))     return 'Hari Ini';
+    if (isYesterday(d)) return 'Kemarin';
+    return format(d, 'EEEE, d MMMM yyyy', { locale: idLocale });
+  } catch { return ''; }
 }
 
-function getInitial(nama: string | null, phone: string): string {
-  if (nama) return nama.charAt(0).toUpperCase();
-  return phone.charAt(phone.length - 1);
-}
-
-function truncateMsg(msg: string, max = 45): string {
-  return msg.length > max ? msg.slice(0, max) + '…' : msg;
-}
-
-// ── Avatar ───────────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'from-blue-600 to-blue-400',
-  'from-emerald-600 to-emerald-400',
-  'from-violet-600 to-violet-400',
-  'from-orange-600 to-orange-400',
-  'from-rose-600 to-rose-400',
-  'from-cyan-600 to-cyan-400',
+const AVATAR_GRADIENTS = [
+  'from-violet-600 to-indigo-500',
+  'from-emerald-600 to-teal-500',
+  'from-rose-600 to-pink-500',
+  'from-amber-600 to-orange-500',
+  'from-cyan-600 to-sky-500',
+  'from-fuchsia-600 to-purple-500',
 ];
 
-function avatarColor(phone: string): string {
-  let hash = 0;
-  for (let i = 0; i < phone.length; i++) hash = phone.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+function phoneToGradient(phone: string): string {
+  let h = 0;
+  for (let i = 0; i < phone.length; i++) h = phone.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_GRADIENTS[Math.abs(h) % AVATAR_GRADIENTS.length];
 }
 
-// ── Contact List Item ─────────────────────────────────────────────────────────
+function getInitial(nama: string | null, phone: string) {
+  return (nama ? nama[0] : phone.slice(-1)).toUpperCase();
+}
 
-interface ContactItemProps {
+// ─────────────────────────────────────────────────────────────────────────────
+// AVATAR
+// ─────────────────────────────────────────────────────────────────────────────
+const Avatar: React.FC<{ phone: string; nama: string | null; size?: 'sm' | 'md' | 'lg' }> = ({
+  phone, nama, size = 'md'
+}) => {
+  const cls = size === 'sm' ? 'w-9 h-9 text-sm' : size === 'lg' ? 'w-14 h-14 text-xl' : 'w-11 h-11 text-base';
+  return (
+    <div className={`${cls} rounded-full bg-gradient-to-br ${phoneToGradient(phone)} flex items-center justify-center font-bold text-white shrink-0 shadow-md select-none`}>
+      {getInitial(nama, phone)}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTACT LIST ITEM  (WhatsApp Web style)
+// ─────────────────────────────────────────────────────────────────────────────
+const ContactItem: React.FC<{
   contact: WaChatContact;
   isActive: boolean;
   onClick: () => void;
-}
-
-const ContactItem: React.FC<ContactItemProps> = ({ contact, isActive, onClick }) => {
+}> = ({ contact, isActive, onClick }) => {
   const roleInfo = formatRole(contact.role);
-  const color = avatarColor(contact.phone);
-  const initial = getInitial(contact.nama, contact.phone);
+  const lastMsgPreview = contact.last_message.length > 38
+    ? contact.last_message.slice(0, 38) + '…'
+    : contact.last_message;
 
   return (
     <button
-      id={`wa-contact-${contact.phone}`}
+      id={`wa-contact-${contact.phone.replace(/\W/g, '')}`}
       onClick={onClick}
-      className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-all duration-150 border-b border-white/5 hover:bg-white/5 ${
-        isActive ? 'bg-emerald-500/10 border-l-2 border-l-emerald-500' : ''
-      }`}
+      className={`
+        w-full text-left px-3 py-3 flex items-center gap-3 transition-colors duration-100
+        border-b border-[#2a2f32]/60 hover:bg-[#2a2f32] cursor-pointer
+        ${isActive ? 'bg-[#2a2f32]' : ''}
+      `}
     >
-      {/* Avatar */}
-      <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${color} flex items-center justify-center shrink-0 font-bold text-white text-base shadow-md`}>
-        {initial}
-      </div>
+      <Avatar phone={contact.phone} nama={contact.nama} />
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className="font-semibold text-sm text-white truncate">
+        {/* Row 1: Nama + Waktu */}
+        <div className="flex items-center justify-between gap-1 mb-0.5">
+          <span className="font-medium text-[15px] text-[#e9edef] truncate leading-snug">
             {contact.nama ?? contact.phone}
           </span>
-          <span className="text-[11px] text-slate-400 shrink-0">{formatTime(contact.last_at)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${roleInfo.color}`}>
-            {roleInfo.icon} {roleInfo.label}
+          <span className="text-[11px] text-[#8696a0] shrink-0 leading-none">
+            {formatContactTime(contact.last_at)}
           </span>
-          <span className="text-[12px] text-slate-400 truncate">
-            {contact.last_direction === 'IN' ? '' : '🤖 '}
-            {truncateMsg(contact.last_message)}
+        </div>
+
+        {/* Row 2: Preview pesan + Role badge */}
+        <div className="flex items-center gap-1.5">
+          {/* Direction tick */}
+          {contact.last_direction === 'OUT'
+            ? <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+            : <Check className="w-3.5 h-3.5 text-[#8696a0] shrink-0" />
+          }
+          <span className="text-[13px] text-[#8696a0] truncate flex-1 leading-snug">
+            {lastMsgPreview}
+          </span>
+          <span className={`shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide ${roleInfo.color}`}>
+            {roleInfo.icon}
+            {roleInfo.label}
           </span>
         </div>
       </div>
@@ -143,365 +148,410 @@ const ContactItem: React.FC<ContactItemProps> = ({ contact, isActive, onClick })
   );
 };
 
-// ── Chat Bubble ───────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// CHAT BUBBLE  (WhatsApp Web style)
+// ─────────────────────────────────────────────────────────────────────────────
 const ChatBubble: React.FC<{ msg: WaChatMessage }> = ({ msg }) => {
   const isOut = msg.direction === 'OUT';
 
   return (
-    <div className={`flex ${isOut ? 'justify-end' : 'justify-start'} mb-1`}>
-      {!isOut && (
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center shrink-0 mr-2 mt-1">
-          <User className="w-3.5 h-3.5 text-slate-200" />
-        </div>
-      )}
-      <div className={`max-w-[72%] group`}>
-        <div
-          className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap shadow-md ${
-            isOut
-              ? 'bg-gradient-to-br from-emerald-600 to-emerald-500 text-white rounded-br-sm'
-              : 'bg-slate-700/80 text-slate-100 rounded-bl-sm border border-white/10'
-          }`}
-        >
+    <div className={`flex ${isOut ? 'justify-end' : 'justify-start'} mb-1 px-4`}>
+      <div className={`
+        relative max-w-[65%] md:max-w-[55%] rounded-lg px-3 pt-2 pb-1 shadow-md
+        ${isOut
+          ? 'bg-[#005c4b] rounded-tr-none'
+          : 'bg-[#202c33] rounded-tl-none'
+        }
+      `}>
+        {/* Tail */}
+        {isOut
+          ? <span className="absolute -right-[7px] top-0 w-0 h-0 border-t-[8px] border-t-[#005c4b] border-l-[8px] border-l-transparent" />
+          : <span className="absolute -left-[7px] top-0 w-0 h-0 border-t-[8px] border-t-[#202c33] border-r-[8px] border-r-transparent" />
+        }
+
+        {/* Bot label on OUT messages */}
+        {isOut && (
+          <div className="flex items-center gap-1 mb-1">
+            <Bot className="w-3 h-3 text-[#53bdeb]" />
+            <span className="text-[10px] text-[#53bdeb] font-semibold">Chatbot Absenta</span>
+          </div>
+        )}
+
+        {/* Message text — preserve whatsapp formatting: *bold*, newlines */}
+        <p className="text-[14.2px] text-[#e9edef] leading-[1.5] whitespace-pre-wrap break-words">
           {msg.message}
-        </div>
-        <div className={`text-[10px] text-slate-500 mt-0.5 px-1 ${isOut ? 'text-right' : 'text-left'}`}>
-          {formatTimeFull(msg.created_at)}
+        </p>
+
+        {/* Timestamp row */}
+        <div className={`flex items-center gap-1 mt-0.5 justify-end`}>
+          <span className="text-[11px] text-[#8696a0] leading-none">
+            {formatMsgTime(msg.created_at)}
+          </span>
+          {isOut
+            ? <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+            : <Check className="w-3.5 h-3.5 text-[#8696a0]" />
+          }
         </div>
       </div>
-      {isOut && (
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-700 to-emerald-500 flex items-center justify-center shrink-0 ml-2 mt-1">
-          <Bot className="w-3.5 h-3.5 text-white" />
-        </div>
-      )}
     </div>
   );
 };
 
-// ── Date Divider ──────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
+// DATE DIVIDER
+// ─────────────────────────────────────────────────────────────────────────────
 const DateDivider: React.FC<{ label: string }> = ({ label }) => (
-  <div className="flex items-center gap-3 my-4 px-2">
-    <div className="flex-1 h-px bg-white/10" />
-    <span className="text-[11px] text-slate-400 bg-slate-800/80 px-3 py-1 rounded-full border border-white/10">
+  <div className="flex justify-center my-3 px-4">
+    <span className="bg-[#182229] text-[#8696a0] text-[12px] px-3 py-1 rounded-full shadow-sm border border-[#2a2f32]/60">
       {label}
     </span>
-    <div className="flex-1 h-px bg-white/10" />
   </div>
 );
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const EmptyChat: React.FC = () => (
+  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[#8696a0] select-none"
+    style={{ background: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.02\'%3E%3Cpolygon points=\'20 10 10 0 0 10 10 20\'/%3E%3C/g%3E%3C/svg%3E")' }}
+  >
+    <div className="w-20 h-20 rounded-full bg-[#005c4b]/20 border border-[#005c4b]/30 flex items-center justify-center">
+      <MessageSquare className="w-9 h-9 text-[#005c4b]/60" />
+    </div>
+    <div className="text-center">
+      <p className="text-[#e9edef] font-semibold text-lg mb-1">Riwayat Chat Chatbot WA</p>
+      <p className="text-[13px] text-[#8696a0]">Pilih percakapan untuk melihat riwayat chat</p>
+      <p className="text-[11px] text-[#8696a0]/60 mt-1">Log disimpan maksimal 3 bulan</p>
+    </div>
+  </div>
+);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
 const WhatsAppChatLogPage: React.FC = () => {
-  const [contacts, setContacts] = useState<WaChatContact[]>([]);
+  const [contacts, setContacts]           = useState<WaChatContact[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
-  const [contactPage, setContactPage] = useState(1);
-  const [contactsLoading, setContactsLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [contactPage, setContactPage]     = useState(1);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [search, setSearch]               = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  const [selectedContact, setSelectedContact] = useState<WaChatContact | null>(null);
-  const [messages, setMessages] = useState<WaChatMessage[]>([]);
-  const [totalMessages, setTotalMessages] = useState(0);
-  const [msgPage, setMsgPage] = useState(1);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [selected, setSelected]           = useState<WaChatContact | null>(null);
+  const [messages, setMessages]           = useState<WaChatMessage[]>([]);
+  const [totalMsgs, setTotalMsgs]         = useState(0);
+  const [msgPage, setMsgPage]             = useState(1);
+  const [loadingMsgs, setLoadingMsgs]     = useState(false);
+  const [loadingMore, setLoadingMore]     = useState(false);
+
+  // mobile panel control
+  const [mobilePanel, setMobilePanel]     = useState<'contacts' | 'chat'>('contacts');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Debounce search
+  // ── Debounce search ─────────────────────────────────────────────────────
   useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(search);
-      setContactPage(1);
-    }, 400);
+    const t = setTimeout(() => { setDebouncedSearch(search); setContactPage(1); }, 350);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Fetch contacts
+  // ── Fetch contacts ──────────────────────────────────────────────────────
   const fetchContacts = useCallback(async (page = 1, append = false) => {
-    setContactsLoading(true);
+    setLoadingContacts(true);
     try {
       const res = await getWaChatLogContacts({ search: debouncedSearch, page, limit: 30 });
       if (res.success) {
         setContacts(prev => append ? [...prev, ...res.data] : res.data);
         setTotalContacts(res.total);
       }
-    } catch {
-      toast.error('Gagal memuat daftar kontak');
-    } finally {
-      setContactsLoading(false);
-    }
+    } catch { toast.error('Gagal memuat daftar kontak'); }
+    finally { setLoadingContacts(false); }
   }, [debouncedSearch]);
 
   useEffect(() => { fetchContacts(1, false); }, [fetchContacts]);
 
-  // Fetch messages for selected contact
+  // ── Fetch messages ──────────────────────────────────────────────────────
   const fetchMessages = useCallback(async (phone: string, page = 1, prepend = false) => {
-    if (page === 1) setMessagesLoading(true);
+    if (page === 1) setLoadingMsgs(true);
     else setLoadingMore(true);
     try {
       const res = await getWaChatLogDetail(phone, { page, limit: 50 });
       if (res.success) {
         setMessages(prev => prepend ? [...res.data, ...prev] : res.data);
-        setTotalMessages(res.total);
+        setTotalMsgs(res.total);
       }
-    } catch {
-      toast.error('Gagal memuat riwayat percakapan');
-    } finally {
-      setMessagesLoading(false);
-      setLoadingMore(false);
-    }
+    } catch { toast.error('Gagal memuat percakapan'); }
+    finally { setLoadingMsgs(false); setLoadingMore(false); }
   }, []);
 
-  const handleSelectContact = (contact: WaChatContact) => {
-    setSelectedContact(contact);
+  const handleSelectContact = (c: WaChatContact) => {
+    setSelected(c);
     setMessages([]);
     setMsgPage(1);
-    setTotalMessages(0);
-    fetchMessages(contact.phone, 1, false);
+    setTotalMsgs(0);
+    fetchMessages(c.phone, 1, false);
+    setMobilePanel('chat');
   };
 
-  // Auto-scroll to bottom on first load
+  // auto-scroll on first load
   useEffect(() => {
-    if (!messagesLoading && messages.length > 0 && msgPage === 1) {
-      setTimeout(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+    if (!loadingMsgs && messages.length > 0 && msgPage === 1) {
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
     }
-  }, [messagesLoading, messages, msgPage]);
+  }, [loadingMsgs, messages, msgPage]);
 
-  // Load more messages (scroll up)
-  const handleLoadMoreMessages = () => {
-    if (!selectedContact || loadingMore) return;
-    const nextPage = msgPage + 1;
-    setMsgPage(nextPage);
-    fetchMessages(selectedContact.phone, nextPage, true);
-  };
-
-  // Load more contacts
-  const handleLoadMoreContacts = () => {
-    if (contactsLoading || contacts.length >= totalContacts) return;
-    const next = contactPage + 1;
-    setContactPage(next);
-    fetchContacts(next, true);
-  };
-
-  // Group messages by date for dividers
-  const groupedMessages = React.useMemo(() => {
+  // ── Group messages by date ──────────────────────────────────────────────
+  const grouped = useMemo(() => {
     const groups: { date: string; msgs: WaChatMessage[] }[] = [];
-    for (const msg of messages) {
-      const label = formatDateGroup(msg.created_at);
-      const last = groups[groups.length - 1];
-      if (!last || last.date !== label) groups.push({ date: label, msgs: [msg] });
-      else last.msgs.push(msg);
+    for (const m of messages) {
+      const label = formatDateGroup(m.created_at);
+      const last  = groups[groups.length - 1];
+      if (!last || last.date !== label) groups.push({ date: label, msgs: [m] });
+      else last.msgs.push(m);
     }
     return groups;
   }, [messages]);
 
-  const roleInfo = selectedContact ? formatRole(selectedContact.role) : null;
-  const hasMoreMessages = messages.length < totalMessages;
+  const hasMore = messages.length < totalMsgs;
+  const roleInfo = selected ? formatRole(selected.role) : null;
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
   return (
-    <AcademicPageLayout
+    <OperationalPageLayout
       title="Riwayat Chat Chatbot WA"
-      subtitle="Monitor percakapan pengguna dengan chatbot WhatsApp"
-      icon={<MessageSquare className="w-5 h-5" />}
+      shortTitle="WA Chat Log"
+      subtitle="Monitor percakapan chatbot per user"
+      backPath="/settings/whatsapp"
+      backLabel="Kembali ke WhatsApp Settings"
     >
-      <div className="flex h-[calc(100vh-200px)] min-h-[500px] bg-slate-900/50 rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+      {/*
+        WhatsApp Web-style shell:
+        Full height, dark #111b21 background, split left/right
+      */}
+      <div
+        className="flex overflow-hidden rounded-xl border border-[#2a2f32] shadow-2xl"
+        style={{ height: 'calc(100vh - 130px)', background: '#111b21' }}
+      >
 
-        {/* ── Sidebar Kontak ── */}
-        <div className={`flex flex-col border-r border-white/10 bg-slate-900/70 ${selectedContact ? 'hidden md:flex w-80' : 'flex w-full md:w-80'}`}>
-          {/* Header sidebar */}
-          <div className="px-4 py-4 border-b border-white/10 bg-slate-800/60">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-white text-sm">Percakapan</span>
-                {totalContacts > 0 && (
-                  <span className="bg-emerald-500/20 text-emerald-400 text-[11px] px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    {totalContacts}
-                  </span>
-                )}
+        {/* ────────────────────────────────────────────────
+            LEFT PANEL: Contact list
+        ──────────────────────────────────────────────── */}
+        <aside
+          className={`
+            flex flex-col border-r border-[#2a2f32]
+            w-full md:w-[350px] lg:w-[380px] shrink-0
+            ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}
+          `}
+          style={{ background: '#111b21' }}
+        >
+          {/* Sidebar Header */}
+          <div className="px-4 py-3 flex items-center justify-between border-b border-[#2a2f32]"
+            style={{ background: '#202c33' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+                <MessageSquare className="w-5 h-5 text-white" />
               </div>
-              <button
-                id="wa-chatlog-refresh"
-                onClick={() => fetchContacts(1, false)}
-                disabled={contactsLoading}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className={`w-4 h-4 ${contactsLoading ? 'animate-spin' : ''}`} />
-              </button>
+              <div>
+                <p className="text-[#e9edef] font-semibold text-[15px] leading-none">Chatbot WA</p>
+                <p className="text-[#8696a0] text-[12px] mt-0.5">
+                  {totalContacts > 0 ? `${totalContacts} percakapan` : 'Memuat...'}
+                </p>
+              </div>
             </div>
-            {/* Search */}
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <button
+              id="wa-chatlog-refresh"
+              onClick={() => fetchContacts(1, false)}
+              disabled={loadingContacts}
+              className="p-2 rounded-full hover:bg-white/10 text-[#aebac1] transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingContacts ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {/* Search bar */}
+          <div className="px-3 py-2" style={{ background: '#111b21' }}>
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 absolute left-3 text-[#8696a0]" />
               <input
                 id="wa-chatlog-search"
                 type="text"
                 placeholder="Cari nama atau nomor..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-700/60 border border-white/10 rounded-xl text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg text-[14px] text-[#e9edef] placeholder-[#8696a0] outline-none border-none"
+                style={{ background: '#2a2f32' }}
               />
             </div>
           </div>
 
           {/* Contact list */}
-          <div className="flex-1 overflow-y-auto">
-            {contactsLoading && contacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
-                <Loader className="w-6 h-6 animate-spin" />
-                <span className="text-sm">Memuat kontak...</span>
+          <div className="flex-1 overflow-y-auto wa-scrollbar">
+            {loadingContacts && contacts.length === 0 ? (
+              <div className="flex items-center justify-center h-32 gap-2 text-[#8696a0]">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Memuat...</span>
               </div>
             ) : contacts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400 px-6 text-center">
-                <MessageSquare className="w-10 h-10 opacity-30" />
+              <div className="flex flex-col items-center justify-center h-48 gap-3 text-[#8696a0] px-6 text-center">
+                <MessageSquare className="w-10 h-10 opacity-20" />
                 <p className="text-sm">Belum ada percakapan</p>
-                <p className="text-xs opacity-60">Log percakapan chatbot WA akan muncul di sini</p>
+                <p className="text-xs opacity-60">Log chatbot WA akan muncul di sini</p>
               </div>
             ) : (
               <>
-                {contacts.map(contact => (
+                {contacts.map(c => (
                   <ContactItem
-                    key={contact.phone}
-                    contact={contact}
-                    isActive={selectedContact?.phone === contact.phone}
-                    onClick={() => handleSelectContact(contact)}
+                    key={c.phone}
+                    contact={c}
+                    isActive={selected?.phone === c.phone}
+                    onClick={() => handleSelectContact(c)}
                   />
                 ))}
                 {contacts.length < totalContacts && (
                   <button
-                    onClick={handleLoadMoreContacts}
-                    disabled={contactsLoading}
-                    className="w-full py-3 text-xs text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                    onClick={() => { const n = contactPage + 1; setContactPage(n); fetchContacts(n, true); }}
+                    disabled={loadingContacts}
+                    className="w-full py-3 text-[12px] text-[#8696a0] hover:text-[#53bdeb] hover:bg-[#2a2f32] transition-colors"
                   >
-                    {contactsLoading ? 'Memuat...' : `Muat lebih banyak (${totalContacts - contacts.length} lagi)`}
+                    {loadingContacts ? 'Memuat...' : `Tampilkan lebih banyak (${totalContacts - contacts.length} lagi)`}
                   </button>
                 )}
               </>
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* ── Panel Chat ── */}
-        <div className={`flex-1 flex flex-col ${!selectedContact ? 'hidden md:flex' : 'flex'}`}>
-          {!selectedContact ? (
-            /* Empty state */
-            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
-              <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <MessageSquare className="w-9 h-9 text-emerald-400/60" />
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-slate-300 mb-1">Pilih percakapan</p>
-                <p className="text-sm text-slate-500">Pilih kontak di sebelah kiri untuk melihat riwayat chat</p>
-              </div>
-            </div>
+        {/* ────────────────────────────────────────────────
+            RIGHT PANEL: Chat view
+        ──────────────────────────────────────────────── */}
+        <main
+          className={`
+            flex-1 flex flex-col min-w-0
+            ${mobilePanel === 'contacts' ? 'hidden md:flex' : 'flex'}
+          `}
+          style={{
+            background: '#0b141a',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        >
+          {!selected ? (
+            <EmptyChat />
           ) : (
             <>
               {/* Chat header */}
-              <div className="px-4 py-3.5 border-b border-white/10 bg-slate-800/60 flex items-center gap-3">
+              <div
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-[#2a2f32] shrink-0"
+                style={{ background: '#202c33' }}
+              >
+                {/* Mobile back button */}
                 <button
-                  className="md:hidden p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                  onClick={() => setSelectedContact(null)}
+                  className="md:hidden p-1.5 hover:bg-white/10 rounded-full text-[#aebac1] transition-colors"
+                  onClick={() => { setMobilePanel('contacts'); setSelected(null); }}
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
 
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarColor(selectedContact.phone)} flex items-center justify-center font-bold text-white shrink-0`}>
-                  {getInitial(selectedContact.nama, selectedContact.phone)}
-                </div>
+                <Avatar phone={selected.phone} nama={selected.nama} />
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-white text-sm truncate">
-                      {selectedContact.nama ?? selectedContact.phone}
-                    </span>
+                  <p className="font-semibold text-[15px] text-[#e9edef] leading-none truncate">
+                    {selected.nama ?? selected.phone}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
                     {roleInfo && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${roleInfo.color}`}>
+                      <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${roleInfo.color}`}>
                         {roleInfo.icon} {roleInfo.label}
                       </span>
                     )}
-                  </div>
-                  <div className="text-xs text-slate-400">
-                    {selectedContact.phone} · {selectedContact.total_in} pesan masuk, {selectedContact.total_out} balasan bot
+                    <span className="text-[12px] text-[#8696a0]">
+                      {selected.phone} · {selected.total_in}↑ {selected.total_out}↓
+                    </span>
                   </div>
                 </div>
 
                 <button
                   id="wa-chatlog-detail-refresh"
-                  onClick={() => fetchMessages(selectedContact.phone, 1, false)}
-                  disabled={messagesLoading}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-                  title="Refresh"
+                  onClick={() => { setMessages([]); setMsgPage(1); fetchMessages(selected.phone, 1, false); }}
+                  disabled={loadingMsgs}
+                  className="p-2 rounded-full hover:bg-white/10 text-[#aebac1] transition-colors"
+                  title="Refresh chat"
                 >
-                  <RefreshCw className={`w-4 h-4 ${messagesLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${loadingMsgs ? 'animate-spin' : ''}`} />
                 </button>
               </div>
 
-              {/* Messages */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-0.5 bg-slate-900/40" style={{ backgroundImage: "radial-gradient(circle at 20% 80%, rgba(16,185,129,0.03) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(59,130,246,0.03) 0%, transparent 50%)" }}>
-                {messagesLoading ? (
-                  <div className="flex items-center justify-center h-full gap-2 text-slate-400">
-                    <Loader className="w-5 h-5 animate-spin" />
-                    <span className="text-sm">Memuat percakapan...</span>
+              {/* Messages scroll area */}
+              <div className="flex-1 overflow-y-auto py-2 wa-scrollbar">
+                {loadingMsgs ? (
+                  <div className="flex items-center justify-center h-full gap-2 text-[#8696a0]">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span className="text-[13px]">Memuat percakapan...</span>
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
-                    <MessageSquare className="w-8 h-8 opacity-30" />
-                    <p className="text-sm">Belum ada pesan</p>
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-[#8696a0]">
+                    <MessageSquare className="w-7 h-7 opacity-20" />
+                    <p className="text-[13px]">Belum ada pesan</p>
                   </div>
                 ) : (
                   <>
-                    {/* Load more button (top) */}
-                    {hasMoreMessages && (
-                      <div className="flex justify-center mb-2">
+                    {/* Load older messages */}
+                    {hasMore && (
+                      <div className="flex justify-center py-2">
                         <button
                           id="wa-chatlog-load-more"
-                          onClick={handleLoadMoreMessages}
+                          onClick={() => { const n = msgPage + 1; setMsgPage(n); fetchMessages(selected.phone, n, true); }}
                           disabled={loadingMore}
-                          className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-700/60 hover:bg-slate-700 border border-white/10 rounded-full text-xs text-slate-300 hover:text-white transition-all"
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[12px] text-[#8696a0] hover:text-[#e9edef] transition-colors border border-[#2a2f32] hover:bg-[#2a2f32]"
                         >
-                          {loadingMore ? (
-                            <Loader className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <ChevronUp className="w-3 h-3" />
-                          )}
-                          {loadingMore ? 'Memuat...' : `Muat pesan lama (${totalMessages - messages.length} lagi)`}
+                          {loadingMore
+                            ? <RefreshCw className="w-3 h-3 animate-spin" />
+                            : <ChevronUp className="w-3 h-3" />
+                          }
+                          {loadingMore ? 'Memuat...' : `Pesan lebih lama (${totalMsgs - messages.length})`}
                         </button>
                       </div>
                     )}
 
-                    {groupedMessages.map(group => (
-                      <div key={group.date}>
+                    {grouped.map(group => (
+                      <React.Fragment key={group.date}>
                         <DateDivider label={group.date} />
-                        {group.msgs.map(msg => (
-                          <ChatBubble key={msg.id} msg={msg} />
-                        ))}
-                      </div>
+                        {group.msgs.map(msg => <ChatBubble key={msg.id} msg={msg} />)}
+                      </React.Fragment>
                     ))}
-                    <div ref={chatEndRef} />
+                    <div ref={chatEndRef} className="h-2" />
                   </>
                 )}
               </div>
 
-              {/* Info footer */}
-              <div className="px-4 py-2 border-t border-white/10 bg-slate-800/40 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500 flex items-center gap-1">
-                  <Bot className="w-3 h-3 text-emerald-400" />
-                  Chatbot Absenta — hanya baca, log disimpan maks. 3 bulan
-                </span>
-                <span className="text-[11px] text-slate-500">
-                  Total: {totalMessages} pesan
-                </span>
+              {/* Read-only footer bar */}
+              <div
+                className="flex items-center gap-3 px-4 py-3 border-t border-[#2a2f32] shrink-0"
+                style={{ background: '#202c33' }}
+              >
+                <div className="flex-1 px-4 py-2 rounded-full text-[13px] text-[#8696a0] select-none"
+                  style={{ background: '#2a2f32' }}>
+                  <span className="flex items-center gap-1.5">
+                    <Bot className="w-3.5 h-3.5 text-[#53bdeb]" />
+                    Hanya baca — ini adalah log percakapan chatbot
+                  </span>
+                </div>
               </div>
             </>
           )}
-        </div>
+        </main>
       </div>
-    </AcademicPageLayout>
+
+      {/* Custom scrollbar style */}
+      <style>{`
+        .wa-scrollbar::-webkit-scrollbar { width: 6px; }
+        .wa-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .wa-scrollbar::-webkit-scrollbar-thumb { background: #374045; border-radius: 3px; }
+        .wa-scrollbar::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+      `}</style>
+    </OperationalPageLayout>
   );
 };
 

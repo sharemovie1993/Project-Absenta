@@ -1238,11 +1238,6 @@ function App() {
                         <WhatsAppHealthPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/notifications/wa-chat-logs" element={
-                      <ProtectedRoute requiredCapability="whatsapp.manage.config">
-                        <WhatsAppChatLogPage />
-                      </ProtectedRoute>
-                    } />
                     <Route path="/notifications/preferences" element={
                       <ProtectedRoute requiredCapability="notify.view.preferences">
                         <NotificationsPage />
@@ -1416,6 +1411,18 @@ function App() {
                 </Route>
 
                 {/* ── FULL-PAGE ROUTES (No Sidebar / No MainLayout - JALUR B) ── */}
+                {/* WhatsApp Chat Log — Jalur B: OperationalPageLayout, 100% layar */}
+                <Route path="/notifications/wa-chat-logs" element={
+                  <ProtectedRoute requiredCapability="whatsapp.manage.config">
+                    <Suspense fallback={
+                      <div className="flex items-center justify-center min-h-screen" style={{ background: '#111b21' }}>
+                        <div className="w-10 h-10 border-4 border-emerald-600/20 border-t-emerald-500 rounded-full animate-spin" />
+                      </div>
+                    }>
+                      <WhatsAppChatLogPage />
+                    </Suspense>
+                  </ProtectedRoute>
+                } />
                 <Route path="/attendance/ops" element={
                   <ProtectedRoute requiredCapability="attendance.sessions.view.list">
                     <Suspense fallback={
