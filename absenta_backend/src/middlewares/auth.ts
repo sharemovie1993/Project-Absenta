@@ -1,7 +1,6 @@
 import { UserPayload } from '../types/fastify';
 import { isSystemSuperAdmin } from '../utils/rbac';
 import { appendLog } from '../utils/logger';
-import { getJwtSecret } from '../modules/auth/controllers/auth.controller';
 
 // List of endpoints that don't require authentication
 const PUBLIC_ENDPOINTS = [
@@ -119,16 +118,6 @@ export async function authMiddleware(
       code: 'UNAUTHORIZED',
       message: 'Missing or invalid authorization header'
     });
-  }
-  
-  const secret = getJwtSecret();
-  const isFallbackSecret = !process.env.JWT_SECRET || secret.includes('your-super-secret');
-  if (isFallbackSecret) {
-    request.log.error({
-      event: 'FATAL_AUTH_DEBUG',
-      env_exists: !!process.env.JWT_SECRET,
-      secret_length: secret?.length
-    }, '[FATAL_AUTH_DEBUG] JWT_SECRET is using fallback or is missing!');
   }
 
   try {
