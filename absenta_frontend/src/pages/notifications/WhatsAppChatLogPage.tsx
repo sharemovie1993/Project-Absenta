@@ -14,10 +14,12 @@ import {
   Megaphone,
   Copy,
   Check,
+  CheckCheck,
   ShieldCheck,
   Info,
   ArrowLeft,
 } from 'lucide-react';
+
 import {
   getWaChatLogContacts,
   getWaChatLogDetail,
