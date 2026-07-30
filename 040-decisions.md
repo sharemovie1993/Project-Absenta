@@ -139,6 +139,10 @@
   3. Mengimplementasikan 4 tabel model baru di database (`Kkmp`, `JenisNilaiMaster`, `NilaiSiswa`, dan `RaporSiswa`) ke dalam file `schema.prisma` dan menyelaraskannya secara instan ke database PostgreSQL menggunakan `prisma db push`.
 - **Rasional**: Meningkatkan keamanan data kurikulum dari modifikasi tanpa izin, menyempurnakan otomatisasi validasi beban mengajar guru (mencegah kelelahan mengajar guru dan jadwal tumpang tindih), serta meletakkan fondasi model data yang andal untuk modul penilaian akademik dan e-Rapor yang akan dibangun ke depan.
 
+2026-07: WhatsApp Chatbot Modular Architecture & Finite State Machine (FSM) Engine
+- **Keputusan**: Mengubah struktur modul WhatsApp Chatbot dari pola *monolithic handler* (`wa-chatbot-commands.ts`) menjadi arsitektur modular berbasis **Command Registry, Dynamic Context, dan Finite State Machine (FSM)** di folder `src/modules/whatsapp/chatbot/`. Menyiapkan handler terpisah per domain (`handlers/guru/`, `handlers/siswa/`, `handlers/ortu/`, `handlers/common/`) serta menyusun dokumen arsitektur teknis `chatbot-architecture.md`.
+- **Rasional**: Menyiapkan fondasi sistem chatbot agar mampu mengakomodasi puluhan fitur/layanan sekolah baru di masa depan secara rapi, memisahkan logika sesi dialog interaktif (*form multi-step*) agar bebas dari efek samping (*regression free*), serta memberikan kejelasan standar pengembangan (*3-step guide*) bagi pengembang platform.
+
 2026-07: Advanced Assessment Modules & KBM Direct Relation (UKK, SKL, Leger, & Sesi KBM Link)
 - **Keputusan**:
   1. Menambahkan model database `SertifikatUkk`, `KelulusanSiswa`, `P5Projek`, dan `P5NilaiSiswa` ke `schema.prisma` dan menyinkronkannya ke PostgreSQL via `npx prisma db push`.
