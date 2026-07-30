@@ -71,7 +71,7 @@ export class WaChatbotResolverService {
     const variations = this.normalizePhoneVariations(phone);
     if (variations.length === 0) return { guru: null, siswa: null, ortu: null };
 
-    const [guru, siswa, ortu] = await Promise.all([
+    let [guru, siswa, ortu] = await Promise.all([
       prisma.guru.findFirst({
         where: { OR: [{ no_hp: { in: variations } }, { User: { no_hp: { in: variations } } }] },
         include: { User: true },
@@ -84,6 +84,61 @@ export class WaChatbotResolverService {
         where: { no_hp: { in: variations } },
       }),
     ]);
+
+    // Fallback: Smart digit-matching if direct variations match returned nothing
+    // Handles human-entered DB entries with spaces or hyphens like "+62 877-7993-7341"
+    const targetDigits = phone.replace(/\D/g, '');
+    const cleanDigits = targetDigits.startsWith('62')
+      ? targetDigits.slice(2)
+      : targetDigits.startsWith('0')
+        ? targetDigits.slice(1)
+        : targetDigits;
+
+    if (cleanDigits.length >= 7) {
+      if (!guru) {
+        const candidates = await prisma.guru.findMany({
+          where: {
+            OR: [
+              { no_hp: { contains: cleanDigits } },
+              { User: { no_hp: { contains: cleanDigits } } }
+            ]
+          },
+          include: { User: true }
+        });
+        guru = candidates.find(g => {
+          const p1 = (g.no_hp || '').replace(/\D/g, '');
+          const p2 = (g.User?.no_hp || '').replace(/\D/g, '');
+          return p1.endsWith(cleanDigits) || p2.endsWith(cleanDigits);
+        }) || null;
+      }
+
+      if (!siswa) {
+        const candidates = await prisma.siswa.findMany({
+          where: {
+            OR: [
+              { no_hp: { contains: cleanDigits } },
+              { User: { no_hp: { contains: cleanDigits } } }
+            ]
+          },
+          include: { Kelas: true, Jurusan: true, User: true }
+        });
+        siswa = candidates.find(s => {
+          const p1 = (s.no_hp || '').replace(/\D/g, '');
+          const p2 = (s.User?.no_hp || '').replace(/\D/g, '');
+          return p1.endsWith(cleanDigits) || p2.endsWith(cleanDigits);
+        }) || null;
+      }
+
+      if (!ortu) {
+        const candidates = await prisma.orangTua.findMany({
+          where: { no_hp: { contains: cleanDigits } },
+        });
+        ortu = candidates.find(o => {
+          const p1 = (o.no_hp || '').replace(/\D/g, '');
+          return p1.endsWith(cleanDigits);
+        }) || null;
+      }
+    }
 
     return { guru, siswa, ortu };
   }
