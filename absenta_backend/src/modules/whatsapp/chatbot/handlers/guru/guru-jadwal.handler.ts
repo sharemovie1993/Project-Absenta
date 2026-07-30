@@ -12,6 +12,8 @@ function getHariWIB(): string {
     Wednesday: 'RABU', Thursday: 'KAMIS', Friday: 'JUMAT', Saturday: 'SABTU',
   };
   return map[jakartaDay] ?? 'SENIN';
+}
+
 export class GuruJadwalHandler {
   static async handleJadwalHariIni(ctx: ChatbotContext): Promise<string> {
     const guru = ctx.guru;
