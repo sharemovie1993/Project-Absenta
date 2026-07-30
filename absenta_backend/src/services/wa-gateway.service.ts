@@ -61,9 +61,30 @@ function ensureDir(dir: string) {
 
 // ─── Connect (per-tenant) ────────────────────────────────────────────────────
 
+function isMasterInstance(): boolean {
+  const instanceId = process.env.NODE_APP_INSTANCE;
+  const serviceRole = String(process.env.SERVICE_ROLE || process.env.WORKER_ROLE || '').trim().toLowerCase();
+
+  // If explicit SERVICE_ROLE=worker is specified, this process handles WA
+  if (serviceRole === 'worker' || serviceRole === 'wa-worker' || serviceRole === 'wa_worker') return true;
+
+  // In PM2 Cluster mode, only instance 0 handles active WA socket connection to prevent Error 440
+  if (instanceId !== undefined && instanceId !== '' && instanceId !== '0') {
+    return false;
+  }
+
+  return true;
+}
+
 async function connectTenant(tenantId: string): Promise<void> {
   const authDir = getTenantAuthDir(tenantId);
   ensureDir(authDir);
+
+  // In PM2 Cluster Mode, prevent non-primary instances from opening duplicate sockets (prevents Error 440)
+  if (!isMasterInstance()) {
+    console.log(`[WA-Pool:${tenantId}] [PM2 Instance ${process.env.NODE_APP_INSTANCE}] WA Socket connection delegated to Instance 0.`);
+    return;
+  }
 
   // Pastikan slot ada di pool
   if (!pool.has(tenantId)) {
