@@ -95,12 +95,12 @@ export function formatGuruMenu(nama: string): string {
     `👨‍🏫 *Halo Bapak/Ibu ${nama}!*\n` +
     `Selamat datang di Layanan WA Bot *Absenta*.\n\n` +
     `Ketik *ANGKA* opsi yang diinginkan:\n\n` +
-    `[1] 📋 Jadwal Mengajar Saya Hari Ini\n` +
+    `[1] 📋 Jadwal Mengajar & Piket Hari Ini\n` +
     `[2] 🏫 Daftar Wali Kelas Sekolah\n` +
     `[3] 📊 Info Supervisi Akademik Saya\n` +
     `[4] ⏰ Info & Rekap Presensi Guru\n` +
     `[5] 👤 Data Profil Pribadi Saya\n` +
-    `[6] 📅 Jadwal Mengajar Minggu Ini\n` +
+    `[6] 📅 Jadwal Mengajar & Piket Minggu Ini\n` +
     `[0] 🔄 Tampilkan Kembali Menu Ini`
   );
 }
