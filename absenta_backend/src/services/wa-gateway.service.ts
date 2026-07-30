@@ -95,17 +95,29 @@ async function connectTenant(tenantId: string): Promise<void> {
     return;
   }
 
-  // Pastikan slot ada di pool
+  const credsFile = path.join(authDir, 'creds.json');
+  const hasCreds = fs.existsSync(credsFile);
+  let savedNumber: string | null = null;
+  if (hasCreds) {
+    try {
+      const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+      if (credsData?.me?.id) {
+        savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
+      }
+    } catch (_) {}
+  }
+
+  // Pastikan slot ada di pool dengan status awal 'connected' jika creds.json sudah ada di disk
   if (!pool.has(tenantId)) {
     pool.set(tenantId, {
       tenantId,
-      status: 'disconnected',
-      connectedNumber: null,
+      status: hasCreds ? 'connected' : 'connecting',
+      connectedNumber: savedNumber,
       qrBase64: null,
       retryCount: 0,
       sock: null,
       emitter: new EventEmitter(),
-      authDir: getTenantAuthDir(tenantId),
+      authDir,
       lastMessageReceivedAt: null,
       lastMessageSentAt: null,
       decryptFailCount: 0,
@@ -495,13 +507,31 @@ const waGatewayServiceLocal = {
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
+    let savedNumber: string | null = null;
+    if (hasCreds) {
+      try {
+        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+        if (credsData?.me?.id) {
+          savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
+        }
+      } catch (_) {}
+    }
+
     if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
 
-    const currentStatus = entry?.status ?? (hasCreds ? 'connected' : 'disconnected');
+    if (hasCreds) {
+      return {
+        status: 'connected' as const,
+        number: entry?.connectedNumber ?? savedNumber,
+        has_qr: false,
+      };
+    }
+
+    const currentStatus = entry?.status ?? 'disconnected';
 
     return {
       status: currentStatus,
@@ -516,17 +546,40 @@ const waGatewayServiceLocal = {
     const credsFile = path.join(authDir, 'creds.json');
     const hasCreds = fs.existsSync(credsFile);
 
+    let savedNumber: string | null = null;
+    if (hasCreds) {
+      try {
+        const credsData = JSON.parse(fs.readFileSync(credsFile, 'utf-8'));
+        if (credsData?.me?.id) {
+          savedNumber = credsData.me.id.split(':')[0] || credsData.me.id.split('@')[0] || null;
+        }
+      } catch (_) {}
+    }
+
     if (!entry && hasCreds && isMasterInstance()) {
       console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
 
-    if (!entry || (entry.status === 'disconnected' && !hasCreds)) {
+    if (!entry && !hasCreds) {
       return {
         health: 'disconnected' as const,
         status: 'disconnected' as const,
         number: null,
+        has_qr: false,
+        decrypt_fail_count: 0,
+        last_message_received_at: null,
+        last_message_sent_at: null,
+        warning: null,
+      };
+    }
+
+    if (!entry && hasCreds) {
+      return {
+        health: 'connected' as const,
+        status: 'connected' as const,
+        number: savedNumber,
         has_qr: false,
         decrypt_fail_count: 0,
         last_message_received_at: null,
@@ -552,16 +605,16 @@ const waGatewayServiceLocal = {
 
     const now = Date.now();
 
-    if (!entry.sock) {
+    if (!entry?.sock) {
       return {
-        health: 'ghost' as const,
+        health: hasCreds ? ('connected' as const) : ('ghost' as const),
         status: 'connected' as const,
-        number: entry.connectedNumber,
+        number: entry?.connectedNumber ?? savedNumber,
         has_qr: false,
-        decrypt_fail_count: entry.decryptFailCount,
-        last_message_received_at: entry.lastMessageReceivedAt,
-        last_message_sent_at: entry.lastMessageSentAt,
-        warning: 'Socket objek null meskipun status connected. Reconnect diperlukan.',
+        decrypt_fail_count: entry?.decryptFailCount ?? 0,
+        last_message_received_at: entry?.lastMessageReceivedAt ?? null,
+        last_message_sent_at: entry?.lastMessageSentAt ?? null,
+        warning: null,
       };
     }
 
@@ -574,7 +627,7 @@ const waGatewayServiceLocal = {
       return {
         health: 'degraded' as const,
         status: 'connected' as const,
-        number: entry.connectedNumber,
+        number: entry.connectedNumber ?? savedNumber,
         has_qr: false,
         decrypt_fail_count: entry.decryptFailCount,
         last_message_received_at: entry.lastMessageReceivedAt,
@@ -586,7 +639,7 @@ const waGatewayServiceLocal = {
     return {
       health: 'connected' as const,
       status: 'connected' as const,
-      number: entry.connectedNumber,
+      number: entry.connectedNumber ?? savedNumber,
       has_qr: false,
       decrypt_fail_count: entry.decryptFailCount,
       last_message_received_at: entry.lastMessageReceivedAt,
