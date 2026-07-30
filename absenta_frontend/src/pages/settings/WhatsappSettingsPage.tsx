@@ -103,17 +103,15 @@ const WhatsappSettingsPage: React.FC = () => {
     fetchConfig();
   }, [fetchConfig]);
 
-  // Poll status while local provider is active and either status is connecting or loading
+  // Poll local gateway status continuously every 3s so state is never stuck
   useEffect(() => {
-    if (config.provider_name !== 'LOCAL') return;
-
     fetchLocalStatus();
     const interval = setInterval(() => {
       fetchLocalStatus();
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [config.provider_name, fetchLocalStatus]);
+  }, [fetchLocalStatus]);
 
   const handleSave = useCallback(async () => {
     try {

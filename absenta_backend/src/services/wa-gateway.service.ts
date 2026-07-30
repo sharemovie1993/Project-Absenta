@@ -420,9 +420,19 @@ export const waGatewayService = {
   },
 
   getStatus(tenantId: string) {
-    const entry = pool.get(tenantId);
+    let entry = pool.get(tenantId);
+    const authDir = getTenantAuthDir(tenantId);
+    const credsFile = path.join(authDir, 'creds.json');
+
+    // Auto-restore session from disk if creds.json exists but memory pool entry is missing
+    if (!entry && fs.existsSync(credsFile)) {
+      console.log(`[WA-Pool:${tenantId}] Restoring session from disk creds.json...`);
+      connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
+      entry = pool.get(tenantId);
+    }
+
     return {
-      status: entry?.status ?? 'disconnected',
+      status: entry?.status ?? (fs.existsSync(credsFile) ? 'connecting' : 'disconnected'),
       number: entry?.connectedNumber ?? null,
       has_qr: !!(entry?.qrBase64),
     };
@@ -438,7 +448,15 @@ export const waGatewayService = {
    *  - `disconnected`: tidak ada koneksi
    */
   getHealthStatus(tenantId: string) {
-    const entry = pool.get(tenantId);
+    let entry = pool.get(tenantId);
+    const authDir = getTenantAuthDir(tenantId);
+    const credsFile = path.join(authDir, 'creds.json');
+
+    if (!entry && fs.existsSync(credsFile)) {
+      console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
+      connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
+      entry = pool.get(tenantId);
+    }
 
     if (!entry || entry.status === 'disconnected') {
       return {
