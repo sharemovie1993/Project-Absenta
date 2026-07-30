@@ -35,25 +35,26 @@ const WhatsappSettingsPage: React.FC = () => {
     try {
       const response = await getLocalWhatsappStatus();
       if (response.success && response.data) {
-        setLocalStatus(response.data.status);
-        setConnectedNumber(response.data.number);
-        
-        // If connecting, also fetch QR code
-        if (response.data.status === 'connecting') {
+        const status = response.data.status;
+        if (status === 'connected') {
+          setLocalStatus('connected');
+          setConnectedNumber(response.data.number || connectedNumber);
+          setQrCode(null);
+        } else if (status === 'connecting') {
+          // Lock state: Once connected, never drop back to connecting spinner
+          setLocalStatus(prev => prev === 'connected' ? 'connected' : 'connecting');
           const qrRes = await getLocalWhatsappQR();
           if (qrRes.success && qrRes.qr) {
             setQrCode(qrRes.qr);
-          } else {
-            setQrCode(null);
           }
-        } else {
-          setQrCode(null);
+        } else if (status === 'disconnected') {
+          setLocalStatus(prev => prev === 'connected' ? 'connected' : 'disconnected');
         }
       }
     } catch (error) {
       console.error('Error fetching local WA status:', error);
     }
-  }, []);
+  }, [connectedNumber]);
 
   const handleConnectLocal = useCallback(async () => {
     try {

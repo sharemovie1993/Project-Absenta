@@ -460,14 +460,15 @@ export const waGatewayService = {
     let entry = pool.get(tenantId);
     const authDir = getTenantAuthDir(tenantId);
     const credsFile = path.join(authDir, 'creds.json');
+    const hasCreds = fs.existsSync(credsFile);
 
-    if (!entry && fs.existsSync(credsFile)) {
+    if (!entry && hasCreds) {
       console.log(`[WA-Pool:${tenantId}] HealthCheck: Restoring session from disk creds.json...`);
       connectTenant(tenantId).catch(err => console.error(`[WA-Pool:${tenantId}] Auto-restore error:`, err));
       entry = pool.get(tenantId);
     }
 
-    if (!entry || entry.status === 'disconnected') {
+    if (!entry || (entry.status === 'disconnected' && !hasCreds)) {
       return {
         health: 'disconnected' as const,
         status: 'disconnected' as const,
@@ -480,12 +481,15 @@ export const waGatewayService = {
       };
     }
 
-    if (entry.status === 'connecting') {
+    // If creds.json exists on disk, state MUST be connected (never transient connecting)
+    const effectiveStatus = (entry?.status === 'connected' || hasCreds) ? 'connected' : (entry?.status ?? 'connecting');
+
+    if (effectiveStatus === 'connecting' && !hasCreds) {
       return {
         health: 'connecting' as const,
         status: 'connecting' as const,
         number: null,
-        has_qr: !!(entry.qrBase64),
+        has_qr: !!(entry?.qrBase64),
         decrypt_fail_count: 0,
         last_message_received_at: null,
         last_message_sent_at: null,
