@@ -1,11 +1,13 @@
 /**
  * whatsappSettings.types.ts
- * Shared types, Zod schemas, constants, dan helper untuk modul WhatsApp Settings.
- * Ikuti asas DRY — satu definisi, dipakai di semua subkomponen.
+ * Shared types, Zod schemas, dan helper untuk modul WhatsApp Settings.
  */
 
 import { z } from 'zod';
 import type { WhatsappConfig } from '@/api/whatsapp.api';
+import { INITIAL_WA_CONFIG, DEFAULT_PROVIDER_NAME } from '@/constants/whatsappSettings.constants';
+
+export { INITIAL_WA_CONFIG as EMPTY_WA_CONFIG, DEFAULT_PROVIDER_NAME };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ZOD SCHEMAS
@@ -98,29 +100,6 @@ export interface WaQrResponse {
 
 /** Tipe error map dari Zod yang digunakan lintas form. */
 export type WaValidationErrors = Partial<Record<keyof WhatsappConfigFormData | 'phone', string>>;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Default state kosong.
- * api_url sengaja dikosongkan — URL gateway diambil dari DB via API,
- * bukan dari hardcode di sisi frontend.
- */
-export const EMPTY_WA_CONFIG: WhatsappConfig = {
-  provider_name: 'FONNTE',
-  api_url: '',
-  api_token: '',
-  sender_number: '',
-  is_active: true,
-  template_absen_masuk:
-    'Halo Orang Tua/Wali dari {{nama_siswa}}, ananda telah tiba di sekolah pada pukul {{waktu}}. Terima kasih.',
-  template_absen_pulang:
-    'Halo Orang Tua/Wali dari {{nama_siswa}}, ananda telah meninggalkan sekolah pada pukul {{waktu}}. Terima kasih.',
-  template_izin:
-    'Informasi: {{nama_siswa}} telah dikonfirmasi {{tipe}} pada pukul {{waktu}}.',
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS

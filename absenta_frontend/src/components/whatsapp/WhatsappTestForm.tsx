@@ -10,7 +10,7 @@ import {
 } from '@/components/ui';
 import { Send, Info, CheckCircle2, XCircle } from 'lucide-react';
 import type { WhatsappConfig } from '@/api/whatsapp.api';
-import type { TestResult, WaValidationErrors } from './whatsappSettings.types';
+import { DEFAULT_PROVIDER_NAME, type TestResult, type WaValidationErrors } from './whatsappSettings.types';
 
 export interface WhatsappTestFormProps {
   config: WhatsappConfig;
@@ -58,7 +58,7 @@ export const WhatsappTestForm: React.FC<WhatsappTestFormProps> = ({
               <p className="font-bold text-sm text-slate-800 dark:text-slate-200 mt-0.5">
                 {isLocalDb
                   ? 'Local Gateway (Scan QR)'
-                  : `External API (BYOG - ${dbProviderName ?? 'FONNTE'})`}
+                  : `External API (BYOG - ${dbProviderName ?? DEFAULT_PROVIDER_NAME})`}
               </p>
             </div>
             {isLocalDb ? (

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui';
 import { QrCode, Send, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import type { WhatsappConfig } from '@/api/whatsapp.api';
-import type { LocalStatus, WaValidationErrors } from './whatsappSettings.types';
+import { DEFAULT_PROVIDER_NAME, type LocalStatus, type WaValidationErrors } from './whatsappSettings.types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -277,7 +277,7 @@ export const WhatsappConnectionForm: React.FC<WhatsappConnectionFormProps> = ({
             <button
               type="button"
               id="gateway-type-external"
-              onClick={() => onConfigChange({ provider_name: 'FONNTE' })}
+              onClick={() => onConfigChange({ provider_name: DEFAULT_PROVIDER_NAME })}
               className={`flex-1 py-4 px-6 rounded-2xl border text-left transition-all ${
                 !isLocal
                   ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 dark:border-indigo-800'
