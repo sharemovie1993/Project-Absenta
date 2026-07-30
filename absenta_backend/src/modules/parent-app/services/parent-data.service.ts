@@ -645,6 +645,52 @@ export class ParentDataService {
       },
     });
   }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil data kontak Wali Kelas seluruh ananda dari seorang Orang Tua.
+   */
+  async getOrtuWaliKelasAnanda(orangTuaId: string) {
+    const anakLinks = await prisma.orangTuaSiswa.findMany({
+      where: { orang_tua_id: orangTuaId },
+      include: { Siswa: { include: { Kelas: true } } },
+    });
+
+    const result = [];
+    for (let i = 0; i < anakLinks.length; i++) {
+      const s = anakLinks[i].Siswa;
+      let wali: any = null;
+
+      if (s.kelas_id) {
+        try {
+          wali = await prisma.organizationalAssignment.findFirst({
+            where: {
+              kelas_id: s.kelas_id,
+              is_active: true,
+              Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+            },
+            include: {
+              User: { include: { Guru: { select: { nama_guru: true, no_hp: true } } } },
+            },
+          });
+        } catch {
+          wali = null;
+        }
+      }
+
+      const waliNama = wali?.User?.Guru?.nama_guru || wali?.User?.name || 'Belum ditentukan';
+      const waliHp = wali?.User?.Guru?.no_hp || wali?.User?.no_hp || '-';
+
+      result.push({
+        siswa: s,
+        waliKelasNama: waliNama,
+        waliKelasHp: waliHp,
+      });
+    }
+
+    return result;
+  }
 }
+
 
 export const parentDataService = new ParentDataService();

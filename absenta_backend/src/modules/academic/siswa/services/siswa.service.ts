@@ -1,4 +1,4 @@
-// Removed DataScope import to fix TS2353
+import { prisma } from '@/utils/prisma';
 import type { CreateSiswaInput, PaginatedSiswaResponse, PaginationParams, SiswaResponse, UpdateSiswaInput } from './siswa.types';
 import { bulkUpdateStatusCommand } from './commands/bulk-update-status.command';
 import { createSiswaCommand } from './commands/create-siswa.command';
@@ -225,4 +225,99 @@ export class SiswaService {
   ) {
     return mapPpdbStudentsCommand(input, { tenantId, org });
   }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil status presensi gerbang hari ini untuk siswa.
+   */
+  async getPresensiHariIniBySiswaId(siswaId: string): Promise<{
+    gerbang: any;
+    status: string;
+    jamTap: string;
+    tglStr: string;
+  }> {
+    const now = new Date();
+    const wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+    const today = new Date(wibMs);
+    today.setUTCHours(0, 0, 0, 0);
+
+    const gerbang = await prisma.absenGerbangSiswa.findFirst({
+      where: { siswa_id: siswaId, created_at: { gte: today } },
+      orderBy: { created_at: 'desc' },
+    });
+
+    const status = gerbang ? gerbang.status : 'BELUM SCAN';
+    const jamTap = gerbang?.waktu_tap
+      ? new Date(gerbang.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+      : '-';
+    const tglStr = new Date().toLocaleDateString('id-ID', { dateStyle: 'full' });
+
+    return { gerbang, status, jamTap, tglStr };
+  }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil total poin pelanggaran & prestasi siswa.
+   */
+  async getPoinBySiswaId(siswaId: string): Promise<{
+    totalPelanggaranPoin: number;
+    totalPelanggaranCount: number;
+    totalPrestasiPoin: number;
+    totalPrestasiCount: number;
+    pelanggaranTerbaru: any[];
+  }> {
+    const [pelanggaran, prestasiResult, pelanggaranTerbaru] = await Promise.all([
+      prisma.pelanggaranSiswa.aggregate({
+        where: { siswa_id: siswaId },
+        _sum: { poin: true },
+        _count: { id: true },
+      }),
+      prisma.prestasiSiswa.aggregate({
+        where: { siswa_id: siswaId },
+        _sum: { poin: true },
+        _count: { id: true },
+      }).catch(() => ({ _sum: { poin: 0 }, _count: { id: 0 } })),
+      prisma.pelanggaranSiswa.findMany({
+        where: { siswa_id: siswaId },
+        orderBy: { created_at: 'desc' },
+        take: 3,
+        select: { jenis_pelanggaran: true, poin: true, tanggal: true },
+      }),
+    ]);
+
+    return {
+      totalPelanggaranPoin: pelanggaran._sum.poin || 0,
+      totalPelanggaranCount: pelanggaran._count.id || 0,
+      totalPrestasiPoin: prestasiResult._sum?.poin || 0,
+      totalPrestasiCount: prestasiResult._count?.id || 0,
+      pelanggaranTerbaru,
+    };
+  }
+
+  /**
+   * SHARED DOMAIN SERVICE METHOD:
+   * Mengambil rekap kehadiran siswa bulan ini.
+   */
+  async getRekapKehadiranBulanIniBySiswaId(siswaId: string): Promise<{
+    bulanStr: string;
+    hadir: number;
+    terlambat: number;
+    izinSakit: number;
+    alpa: number;
+  }> {
+    const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const bulanStr = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    const [hadir, terlambat, izinSakit, alpa] = await Promise.all([
+      prisma.absenGerbangSiswa.count({ where: { siswa_id: siswaId, created_at: { gte: firstDay }, status: 'HADIR' } }),
+      prisma.absenGerbangSiswa.count({ where: { siswa_id: siswaId, created_at: { gte: firstDay }, is_terlambat: true } }),
+      prisma.absenGerbangSiswa.count({ where: { siswa_id: siswaId, created_at: { gte: firstDay }, status: { in: ['IZIN', 'SAKIT', 'DISPEN'] } } }),
+      prisma.absenGerbangSiswa.count({ where: { siswa_id: siswaId, created_at: { gte: firstDay }, status: 'ALPA' } }),
+    ]);
+
+    return { bulanStr, hadir, terlambat, izinSakit, alpa };
+  }
 }
+
+export const siswaService = new SiswaService();
+

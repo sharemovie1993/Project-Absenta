@@ -1,6 +1,7 @@
-import { prisma } from '@/utils/prisma';
 import { ChatbotContext } from '../../core/chatbot-context';
-import { aggregateJadwal, formatShortMapelName, formatSiswaMenu } from '../../../services/wa-chatbot-commands';
+import { siswaService } from '@/modules/academic/siswa/services/siswa.service';
+import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
+import { formatSiswaMenu } from '../../../services/wa-chatbot-commands';
 
 function getHariWIB(): string {
   const jakartaDay = new Date().toLocaleDateString('en-US', {
@@ -14,19 +15,13 @@ function getHariWIB(): string {
   return map[jakartaDay] ?? 'SENIN';
 }
 
-function getTanggalWIB(): Date {
-  const now = new Date();
-  const wibMs = now.getTime() + (7 * 60 * 60 * 1000);
-  return new Date(wibMs);
-}
-
 export class SiswaHandler {
   static async handleCommand(ctx: ChatbotContext): Promise<string> {
     const choice = ctx.commandUpper;
     const siswa = ctx.siswa;
     if (!siswa) return '⚠️ Data Siswa tidak ditemukan.';
 
-    // [1] Profil Pribadi
+    // [1] Profil Pribadi Siswa
     if (choice === '1') {
       const kelas = siswa.Kelas?.nama_kelas || '-';
       const jurusan = siswa.Jurusan?.nama || '-';
@@ -42,21 +37,9 @@ export class SiswaHandler {
       return msg;
     }
 
-    // [2] Presensi Hari Ini
+    // [2] Presensi Hari Ini (Via Shared Domain Service)
     if (choice === '2') {
-      const today = getTanggalWIB();
-      today.setUTCHours(0, 0, 0, 0);
-
-      const gerbang = await prisma.absenGerbangSiswa.findFirst({
-        where: { siswa_id: siswa.id, created_at: { gte: today } },
-        orderBy: { created_at: 'desc' },
-      });
-
-      const status = gerbang ? gerbang.status : 'BELUM SCAN';
-      const jamTap = gerbang?.waktu_tap
-        ? new Date(gerbang.waktu_tap).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-        : '-';
-      const tglStr = new Date().toLocaleDateString('id-ID', { dateStyle: 'full' });
+      const { gerbang, status, jamTap, tglStr } = await siswaService.getPresensiHariIniBySiswaId(siswa.id);
 
       let msg = `⏰ *Status Presensi Hari Ini*\n`;
       msg += `📅 ${tglStr}\n\n`;
@@ -70,30 +53,19 @@ export class SiswaHandler {
       return msg;
     }
 
-    // [3] Poin Pelanggaran & Prestasi
+    // [3] Poin Pelanggaran & Prestasi Siswa (Via Shared Domain Service)
     if (choice === '3') {
-      const [pelanggaran, prestasiResult, pelanggaranTerbaru] = await Promise.all([
-        prisma.pelanggaranSiswa.aggregate({
-          where: { siswa_id: siswa.id },
-          _sum: { poin: true },
-          _count: { id: true },
-        }),
-        prisma.prestasiSiswa.aggregate({
-          where: { siswa_id: siswa.id },
-          _sum: { poin: true },
-          _count: { id: true },
-        }).catch(() => ({ _sum: { poin: 0 }, _count: { id: 0 } })),
-        prisma.pelanggaranSiswa.findMany({
-          where: { siswa_id: siswa.id },
-          orderBy: { created_at: 'desc' },
-          take: 3,
-          select: { jenis_pelanggaran: true, poin: true, tanggal: true },
-        }),
-      ]);
+      const {
+        totalPelanggaranPoin,
+        totalPelanggaranCount,
+        totalPrestasiPoin,
+        totalPrestasiCount,
+        pelanggaranTerbaru,
+      } = await siswaService.getPoinBySiswaId(siswa.id);
 
       let msg = `🏆 *Catatan Poin Siswa*\nNama: *${siswa.nama_siswa}*\n\n`;
-      msg += `📛 Total Poin Pelanggaran : *${pelanggaran._sum.poin || 0} poin* (${pelanggaran._count.id} catatan)\n`;
-      msg += `⭐ Total Poin Prestasi    : *${prestasiResult._sum?.poin || 0} poin* (${prestasiResult._count?.id || 0} pencapaian)\n`;
+      msg += `📛 Total Poin Pelanggaran : *${totalPelanggaranPoin} poin* (${totalPelanggaranCount} catatan)\n`;
+      msg += `⭐ Total Poin Prestasi    : *${totalPrestasiPoin} poin* (${totalPrestasiCount} pencapaian)\n`;
 
       if (pelanggaranTerbaru.length > 0) {
         msg += `\n📋 *Pelanggaran Terbaru:*\n`;
@@ -106,7 +78,7 @@ export class SiswaHandler {
       return msg;
     }
 
-    // [4] Jadwal Pelajaran Hari Ini
+    // [4] Jadwal Pelajaran Hari Ini (Via Shared Domain Service)
     if (choice === '4') {
       const currentDay = getHariWIB();
 
@@ -114,13 +86,17 @@ export class SiswaHandler {
         return `📅 *Jadwal Pelajaran*\n\nData kelas belum diset. Hubungi TU sekolah.\n\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
       }
 
-      const jadwal = await prisma.jadwalKBM.findMany({
-        where: { kelas_id: siswa.kelas_id, hari: currentDay as any },
-        include: { Mapel: true, Guru: { select: { nama_guru: true } } },
-        orderBy: { slot_index: 'asc' },
-      });
+      const { semInfo, items } = await jadwalKBMService.getJadwalHariIniByGuru(
+        '', // not guru specific
+        siswa.tenant_id,
+        currentDay
+      ).catch(() => ({ semInfo: '', items: [] }));
 
-      if (jadwal.length === 0) {
+      // Or call direct KBM schedule
+      const { items: dayItems } = await jadwalKBMService.getJadwalHariIniByGuru(siswa.id, siswa.tenant_id, currentDay);
+
+      let msg = `📅 *Jadwal Pelajaran Hari Ini (${currentDay})*\nKelas: *${siswa.Kelas?.nama_kelas || '-'}*\n\n`;
+      if (dayItems.length === 0) {
         return (
           `📅 *Jadwal Pelajaran Hari Ini (${currentDay})*\n\n` +
           `Tidak ada jadwal KBM hari ini. Libur/kosong. 😊\n\n` +
@@ -128,34 +104,21 @@ export class SiswaHandler {
         );
       }
 
-      const aggregated = aggregateJadwal(jadwal);
-
-      let msg = `📅 *Jadwal Pelajaran Hari Ini (${currentDay})*\nKelas: *${siswa.Kelas?.nama_kelas || '-'}*\n\n`;
-      aggregated.forEach((j: any, i: number) => {
-        const jamLabel = j.startSlot === j.endSlot
-          ? `Jam ke-${j.startSlot}`
-          : `Jam ke-${j.startSlot} s/d ${j.endSlot}`;
-        msg += `${i + 1}. *${j.jam_mulai} – ${j.jam_selesai}* (${jamLabel})\n`;
-        msg += `   📖 ${formatShortMapelName(j.Mapel)}\n`;
-        msg += `   👨‍🏫 ${j.Guru?.nama_guru || '-'}\n\n`;
+      dayItems.forEach((j: any, i: number) => {
+        const timeHeader = j.jamMulai && j.jamSelesai ? `${j.jamMulai} – ${j.jamSelesai}` : j.jamLabel;
+        msg += `${i + 1}. *${timeHeader}* (${j.jamLabel})\n`;
+        msg += `   📖 ${j.title}\n\n`;
       });
+
       msg += `💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
       return msg;
     }
 
-    // [5] Rekap Kehadiran Bulan Ini
+    // [5] Rekap Kehadiran Bulan Ini (Via Shared Domain Service)
     if (choice === '5') {
-      const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const bulan = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      const { bulanStr, hadir, terlambat, izinSakit, alpa } = await siswaService.getRekapKehadiranBulanIniBySiswaId(siswa.id);
 
-      const [hadir, terlambat, izinSakit, alpa] = await Promise.all([
-        prisma.absenGerbangSiswa.count({ where: { siswa_id: siswa.id, created_at: { gte: firstDay }, status: 'HADIR' } }),
-        prisma.absenGerbangSiswa.count({ where: { siswa_id: siswa.id, created_at: { gte: firstDay }, is_terlambat: true } }),
-        prisma.absenGerbangSiswa.count({ where: { siswa_id: siswa.id, created_at: { gte: firstDay }, status: { in: ['IZIN', 'SAKIT', 'DISPEN'] } } }),
-        prisma.absenGerbangSiswa.count({ where: { siswa_id: siswa.id, created_at: { gte: firstDay }, status: 'ALPA' } }),
-      ]);
-
-      let msg = `📊 *Rekap Kehadiran Bulan ${bulan}*\nNama: *${siswa.nama_siswa}*\n\n`;
+      let msg = `📊 *Rekap Kehadiran Bulan ${bulanStr}*\nNama: *${siswa.nama_siswa}*\n\n`;
       msg += `✅ Hadir Tepat Waktu : ${hadir} hari\n`;
       msg += `⚠️ Terlambat         : ${terlambat} hari\n`;
       msg += `ℹ️ Izin / Sakit      : ${izinSakit} hari\n`;
