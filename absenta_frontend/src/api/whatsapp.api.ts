@@ -115,8 +115,10 @@ export interface WaGroupInfo {
   isCommunity: boolean;
 }
 
-export const getWaParticipatingGroups = async () => {
-  const response = await axiosInstance.get('/whatsapp/groups');
+export const getWaParticipatingGroups = async (refresh = false) => {
+  const response = await axiosInstance.get('/whatsapp/groups', {
+    params: refresh ? { refresh: 'true' } : undefined,
+  });
   return response.data as {
     success: boolean;
     data: WaGroupInfo[];

@@ -15,7 +15,7 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const fetchGroups = useCallback(async () => {
+  const fetchGroups = useCallback(async (refresh = false) => {
     if (localStatus !== 'connected') {
       setGroups([]);
       setErrorMsg('Gateway WhatsApp belum terhubung. Silakan hubungkan WhatsApp terlebih dahulu di tab Koneksi.');
@@ -25,7 +25,7 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
     try {
       setLoading(true);
       setErrorMsg(null);
-      const res = await getWaParticipatingGroups();
+      const res = await getWaParticipatingGroups(refresh);
       if (res.success && Array.isArray(res.data)) {
         setGroups(res.data);
       } else {
@@ -39,7 +39,7 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
   }, [localStatus]);
 
   useEffect(() => {
-    fetchGroups();
+    fetchGroups(false);
   }, [fetchGroups]);
 
   const handleCopyId = (groupId: string) => {
@@ -92,7 +92,7 @@ const WhatsappGroupsTab: React.FC<WhatsappGroupsTabProps> = ({ localStatus }) =>
 
         <Button
           type="button"
-          onClick={fetchGroups}
+          onClick={() => fetchGroups(true)}
           disabled={loading}
           variant="outline"
           size="sm"
