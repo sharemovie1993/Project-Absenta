@@ -3,6 +3,7 @@ import { pendingGuruEditSession } from './wa-chatbot-resolver.service';
 import { GuruJadwalHandler } from '../chatbot/handlers/guru/guru-jadwal.handler';
 import { GuruWalikelasHandler } from '../chatbot/handlers/guru/guru-walikelas.handler';
 import { GuruSupervisiHandler } from '../chatbot/handlers/guru/guru-supervisi.handler';
+import { GuruPresensiHandler } from '../chatbot/handlers/guru/guru-presensi.handler';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIMEZONE HELPER — selalu gunakan WIB (Asia/Jakarta, UTC+7)
@@ -444,129 +445,9 @@ export async function handleGuruCommand(input: string, guru: any, jid?: string):
     return GuruSupervisiHandler.handleSupervisi({ guru, commandUpper: choice } as any);
   }
 
-  // [4] Info & Rekap Presensi Guru (Hari Ini & Bulan Ini)
+  // [4] Info & Rekap Presensi Guru (Via Shared Domain Service)
   if (choice === '4') {
-    const now = new Date();
-    // Offset WIB (UTC+7)
-    const wibMs = now.getTime() + (7 * 60 * 60 * 1000);
-    const nowWib = new Date(wibMs);
-
-    const y = nowWib.getFullYear();
-    const m = nowWib.getMonth();
-    const d = nowWib.getDate();
-
-    const startToday = new Date(Date.UTC(y, m, d, -7, 0, 0, 0));
-    const endToday = new Date(Date.UTC(y, m, d, 16, 59, 59, 999));
-    const firstDayMonth = new Date(Date.UTC(y, m, 1, -7, 0, 0, 0));
-
-    const bulanStr = nowWib.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    const hariTglStr = nowWib.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-
-    // 1. Fetch Today's Gate Attendance (AbsenGerbangGuru)
-    const gerbangToday = await prisma.absenGerbangGuru.findMany({
-      where: {
-        guru_id: guru.id,
-        created_at: { gte: startToday, lte: endToday }
-      },
-      orderBy: { created_at: 'asc' }
-    }).catch(() => []);
-
-    // 2. Fetch Today's KBM Sessions (SesiAbsensi & AbsenGuru)
-    const sesiTodayList = await prisma.sesiAbsensi.findMany({
-      where: {
-        guru_id: guru.id,
-        tanggal: { gte: startToday, lte: endToday }
-      },
-      include: { AbsenGuru: { where: { guru_id: guru.id } } },
-      orderBy: { waktu_mulai: 'asc' }
-    }).catch(() => []);
-
-    // 3. Fetch Monthly Gate Attendance (AbsenGerbangGuru)
-    const gerbangMonthList = await prisma.absenGerbangGuru.findMany({
-      where: {
-        guru_id: guru.id,
-        created_at: { gte: firstDayMonth }
-      }
-    }).catch(() => []);
-
-    // 4. Fetch Monthly KBM Sessions (AbsenGuru)
-    const sesiMonthList = await prisma.absenGuru.findMany({
-      where: {
-        guru_id: guru.id,
-        created_at: { gte: firstDayMonth }
-      }
-    }).catch(() => []);
-
-    // Process Today's Gate Status
-    const tapMasuk = gerbangToday.find(g => String(g.arah || '').toUpperCase().includes('DATANG') || String(g.arah || '').toUpperCase().includes('MASUK'));
-    const tapPulang = gerbangToday.find(g => String(g.arah || '').toUpperCase().includes('PULANG'));
-
-    const formatWaktu = (dt?: Date | null) => {
-      if (!dt) return null;
-      return new Date(dt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    };
-
-    let statusMasukText = '⚪ Belum Tap Masuk';
-    if (tapMasuk && tapMasuk.waktu_tap) {
-      const jam = formatWaktu(tapMasuk.waktu_tap);
-      const isLate = tapMasuk.is_terlambat || String(tapMasuk.status || '').toUpperCase() === 'TERLAMBAT';
-      statusMasukText = isLate ? `⚠️ ${jam} (Terlambat)` : `🟢 ${jam} (Tepat Waktu)`;
-    }
-
-    let statusPulangText = '⚪ Belum Tap Pulang';
-    if (tapPulang && tapPulang.waktu_tap) {
-      const jam = formatWaktu(tapPulang.waktu_tap);
-      statusPulangText = `🟢 ${jam} (Sudah Tap Pulang)`;
-    }
-
-    // Process Today's KBM Sesi Status
-    const totalSesiToday = sesiTodayList.length;
-    const sesiHadirCount = sesiTodayList.filter(s => {
-      const ag = s.AbsenGuru?.[0];
-      const st = String(ag?.status || '').toUpperCase();
-      return st === 'HADIR' || st.includes('HADIR') || !!ag?.waktu_tap;
-    }).length;
-
-    let statusKbmTodayText = '-';
-    if (totalSesiToday === 0) {
-      statusKbmTodayText = '☕ Tidak ada jadwal mengajar KBM hari ini';
-    } else {
-      statusKbmTodayText = `📖 ${sesiHadirCount} dari ${totalSesiToday} Sesi Terkonfirmasi Hadir`;
-    }
-
-    // Process Monthly Gate Summary
-    const datangsMonth = gerbangMonthList.filter(g => String(g.arah || '').toUpperCase().includes('DATANG') || String(g.arah || '').toUpperCase().includes('MASUK'));
-    const totalHadirTepat = datangsMonth.filter(g => !g.is_terlambat && String(g.status || '').toUpperCase() === 'HADIR').length;
-    const totalTerlambat = datangsMonth.filter(g => g.is_terlambat || String(g.status || '').toUpperCase() === 'TERLAMBAT').length;
-    const totalIzinSakit = datangsMonth.filter(g => ['IZIN', 'SAKIT'].includes(String(g.status || '').toUpperCase())).length;
-    const totalAlpa = datangsMonth.filter(g => String(g.status || '').toUpperCase() === 'ALPA').length;
-
-    // Process Monthly KBM Summary
-    const totalSesiMonth = sesiMonthList.length;
-    const totalKbmHadirMonth = sesiMonthList.filter(s => String(s.status || '').toUpperCase() === 'HADIR' || String(s.status || '').toUpperCase().includes('HADIR') || !!s.waktu_tap).length;
-
-    // Construct response message
-    let msg = `⏰ *Info & Rekap Presensi Guru*\n`;
-    msg += `Guru: *${guru.nama_guru}*\n`;
-    msg += `Tanggal: *${hariTglStr}*\n\n`;
-
-    msg += `📌 *Presensi Hari Ini (Gerbang & KBM):*\n`;
-    msg += `• Presensi Masuk  : ${statusMasukText}\n`;
-    msg += `• Presensi Pulang : ${statusPulangText}\n`;
-    msg += `• Mengajar Kelas  : ${statusKbmTodayText}\n\n`;
-
-    msg += `📊 *Rekap Bulan ${bulanStr}:*\n`;
-    msg += `• ✅ Hadir Tepat Waktu : ${totalHadirTepat} hari\n`;
-    msg += `• ⚠️ Terlambat Masuk   : ${totalTerlambat} hari\n`;
-    if (totalIzinSakit > 0) msg += `• 🏥 Izin / Sakit      : ${totalIzinSakit} hari\n`;
-    if (totalAlpa > 0)      msg += `• ❌ Alpa / Tanpa Ket  : ${totalAlpa} hari\n`;
-    if (totalSesiMonth > 0) {
-      const rateKbm = Math.round((totalKbmHadirMonth / totalSesiMonth) * 100);
-      msg += `• 🎯 Sesi KBM Mengajar : ${totalKbmHadirMonth}/${totalSesiMonth} Sesi (${rateKbm}% Hadir)\n`;
-    }
-
-    msg += `\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;
-    return msg;
+    return GuruPresensiHandler.handlePresensi({ guru, commandUpper: choice } as any);
   }
 
   // [0] atau apapun → tampilkan menu
