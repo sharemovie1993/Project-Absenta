@@ -8,10 +8,10 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **200 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **28 Halaman** | 14% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **103 Halaman** | 52% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **69 Halaman** | 35% | **Prioritas Utama Refaktor** |
+| **Total Halaman Utama** | **201 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **29 Halaman** | 14% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **104 Halaman** | 52% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **68 Halaman** | 34% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -696,18 +696,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ❌ Belum menggunakan PremiumFeatureGate untuk proteksi modul berbayar
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-
----
-
-### 📄 Halaman: `WhatsappSettingsPage.tsx`
-* **Lokasi File:** [WhatsappSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/settings/WhatsappSettingsPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
-  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
-  * ❌ Terdeteksi penggunaan tombol flat/lemah (variant='primary'/'secondary') di dalam toolbar halaman. Gunakan varian khusus toolbar (seperti variant='toolbarPrimary', variant='toolbarOutline', atau variant='toolbarDanger') dan ukuran size='toolbar' untuk memastikan affordance dan kontras tombol standar premium.
 
 ---
 
@@ -1615,6 +1603,19 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
+### 📄 Halaman: `WhatsAppChatLogPage.tsx`
+* **Lokasi File:** [WhatsAppChatLogPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/notifications/WhatsAppChatLogPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ❌ Terdeteksi kode warna keras (inline style rgb/hex), arbitrary color ([#...]), atau kelas warna Tailwind dengan bobot tidak valid (typo) yang merusak konsistensi tema visual
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+
+---
+
 ### 📄 Halaman: `AboutUsPage.tsx`
 * **Lokasi File:** [AboutUsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/public/AboutUsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
@@ -2028,6 +2029,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `ReportsPage.tsx`
 * **Lokasi File:** [ReportsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/reports/ReportsPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `WhatsappSettingsPage.tsx`
+* **Lokasi File:** [WhatsappSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/settings/WhatsappSettingsPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
