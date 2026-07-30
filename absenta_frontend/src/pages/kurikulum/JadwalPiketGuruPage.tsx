@@ -23,7 +23,9 @@ import {
   Wrench,
   Eye,
   Lock,
-  Bell
+  Bell,
+  LayoutGrid,
+  Table
 } from 'lucide-react';
 import { piketGuruApi, JadwalPiketGuru, Hari } from '../../api/piketGuru.api';
 import { guruApi, tahunPelajaranApi, semesterApi, jurusanApi } from '../../api/academic.api';
@@ -32,6 +34,24 @@ import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
 import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
+
+function getPosBadgeStyle(posName: string = '') {
+  const pos = posName.toUpperCase();
+  if (pos.includes('UMUM')) {
+    return 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
+  }
+  if (pos.includes('JURUSAN') || pos.includes('RPL') || pos.includes('TKJ') || pos.includes('AKL') || pos.includes('OTKP')) {
+    return 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+  }
+  if (pos.includes('DISIPLIN') || pos.includes('GERBANG') || pos.includes('UTAMA')) {
+    return 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+  }
+  if (pos.includes('KBM') || pos.includes('IZIN')) {
+    return 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+  }
+  return 'bg-sky-100 dark:bg-sky-950/70 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+}
+
 
 
 const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
@@ -88,11 +108,15 @@ export default function JadwalPiketGuruPage() {
   const [selectedTpId, setSelectedTpId] = useState<string>('');
   const [selectedSemId, setSelectedSemId] = useState<string>('');
 
+  // View Mode State (Grid vs Table)
+  const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
+
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPiketGuru | null>(null);
+
 
 
   // Form State Single Assign
@@ -645,16 +669,48 @@ export default function JadwalPiketGuruPage() {
                 })}
               </div>
 
-              {/* SEARCH INPUT */}
-              <div className="relative w-full sm:w-64">
-                <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Cari guru piket..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full text-xs pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              {/* SEARCH INPUT & VIEW SWITCHER */}
+              <div className="flex items-center gap-2">
+                {/* VIEW MODE SWITCHER */}
+                <div className="flex items-center p-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('GRID')}
+                    className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
+                      viewMode === 'GRID'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                    title="Tampilan Kartu (Grid)"
+                  >
+                    <LayoutGrid size={14} />
+                    <span className="hidden sm:inline">Kartu</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('TABLE')}
+                    className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition ${
+                      viewMode === 'TABLE'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                    title="Tampilan Tabel"
+                  >
+                    <Table size={14} />
+                    <span className="hidden sm:inline">Tabel</span>
+                  </button>
+                </div>
+
+                <div className="relative w-full sm:w-56">
+                  <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari guru piket..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full text-xs pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -690,7 +746,7 @@ export default function JadwalPiketGuruPage() {
             </div>
           )}
 
-          {/* SCHEDULE CARDS GRID */}
+          {/* SCHEDULE LIST CONTENT (GRID / TABLE) */}
           {loading ? (
             <div className="py-16 text-center text-slate-400">
               <div className="inline-block animate-spin rounded-full h-7 w-7 border-2 border-indigo-600 border-t-transparent mb-3" />
@@ -717,7 +773,8 @@ export default function JadwalPiketGuruPage() {
                 </button>
               )}
             </div>
-          ) : (
+          ) : viewMode === 'GRID' ? (
+            /* MODE KARTU (GRID VIEW) */
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {activeHariSchedules.map(item => (
                 <div
@@ -752,9 +809,9 @@ export default function JadwalPiketGuruPage() {
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-[10px] bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getPosBadgeStyle(item.pos_piket || 'Piket Umum')}`}>
                         {item.pos_piket || 'Piket Umum'}
-                      </Badge>
+                      </span>
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
@@ -807,7 +864,97 @@ export default function JadwalPiketGuruPage() {
                 </div>
               ))}
             </div>
+          ) : (
+            /* MODE TABEL (TABLE VIEW) */
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+              <table className="w-full text-xs text-left text-slate-700 dark:text-slate-200">
+                <thead className="text-[11px] font-bold uppercase bg-slate-50 dark:bg-slate-800/90 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="py-3 px-4">#</th>
+                    <th className="py-3 px-4">Hari</th>
+                    <th className="py-3 px-4">Guru Bertugas</th>
+                    <th className="py-3 px-4">Waktu & Slot Jam</th>
+                    <th className="py-3 px-4">Jenis / Pos Piket</th>
+                    <th className="py-3 px-4">Catatan / Mandat</th>
+                    {isKurikulumAdmin && <th className="py-3 px-4 text-center">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 bg-white dark:bg-slate-900">
+                  {activeHariSchedules.map((item, idx) => (
+                    <tr
+                      key={item.id}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition ${
+                        currentGuruId && item.guru_id === currentGuruId ? 'bg-indigo-50/30 dark:bg-indigo-950/20 font-medium' : ''
+                      }`}
+                    >
+                      <td className="py-3.5 px-4 font-mono text-slate-400">{idx + 1}</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-slate-100">{item.hari}</td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs overflow-hidden border border-indigo-200 dark:border-indigo-800 shrink-0">
+                            {item.Guru?.foto ? (
+                              <img src={item.Guru.foto} alt={item.Guru.nama_guru} className="w-full h-full object-cover" />
+                            ) : (
+                              item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GP'
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                              <span>{item.Guru?.nama_guru || '-'}</span>
+                              {currentGuruId && item.guru_id === currentGuruId && (
+                                <span className="px-1.5 py-0.2 text-[9px] font-black bg-indigo-600 text-white rounded-full">Anda</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400">NIP: {item.Guru?.nip || '-'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-800 dark:text-slate-100">
+                          Jam Ke-{item.slot_mulai || 1} s/d {item.slot_selesai || 10}
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          ({item.jam_mulai || '06:30'} s/d {item.jam_selesai || '15:30'})
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border ${getPosBadgeStyle(item.pos_piket || 'Piket Umum')}`}>
+                          📌 {(item.pos_piket || 'Piket Umum').toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 italic text-slate-500 dark:text-slate-400 max-w-xs">
+                        {item.catatan ? `"${item.catatan}"` : '-'}
+                      </td>
+                      {isKurikulumAdmin && (
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg transition"
+                              title="Edit Penugasan"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setItemToDelete(item.id);
+                                setDeleteConfirmOpen(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 rounded-lg transition"
+                              title="Hapus Penugasan"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
+
         </Card>
       </div>
 
