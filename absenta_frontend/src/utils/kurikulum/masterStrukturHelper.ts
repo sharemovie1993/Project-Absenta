@@ -120,19 +120,21 @@ export const detectDefaultJpForMapel = (
     
     // 5. Match by kejuruan rules (SMK/MAK)
     if (!match && isSmkOrMak) {
-      const isKejuruan = kode.includes('PKL') || kode.includes('PKK') || kode.includes('DAS-') || nama.includes('praktik kerja') || nama.includes('kreatif') || nama.includes('dasar-dasar');
-      if (isKejuruan) {
+      const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+      const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja');
+      const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif');
+      const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+
+      if (isDasar) {
         if (tingkat === 10) {
-          match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
-        } else {
-          if (kode.includes('PKL') || nama.includes('praktik kerja')) {
-            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKL');
-          } else if (kode.includes('PKK') || nama.includes('kreatif')) {
-            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKK');
-          } else {
-            match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
-          }
+          match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK'));
         }
+      } else if (isPkl) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKL');
+      } else if (isPkk) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKK');
+      } else if (isKk) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
       }
     }
     
@@ -141,6 +143,14 @@ export const detectDefaultJpForMapel = (
     }
   }
   
+  if (isSmkOrMak) {
+    const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+    const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+    if (isDasar && tingkat === 10) return 12;
+    if (isKk && tingkat === 11) return 18;
+    if (isKk && tingkat === 12) return 22;
+  }
+
   if (nama.includes('agama') || kode.includes('PAI') || kode.includes('AGAMA')) {
     if (tingkat === 10 || tingkat === 11) return 3;
     if (tingkat === 12) return 2;

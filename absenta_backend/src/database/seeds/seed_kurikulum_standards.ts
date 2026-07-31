@@ -180,6 +180,7 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
 
   // Dasar-dasar Program Keahlian (SMK)
   add('SMK', 'KEJURUAN', 'Dasar-dasar Program Keahlian', 'DASAR-KEJURUAN', 10, 12);
+  add('SMK', 'KEJURUAN', 'Dasar-dasar Program Keahlian', 'DDPK', 10, 12);
 
   // Konsentrasi Keahlian (SMK)
   add('SMK', 'KEJURUAN', 'Konsentrasi Keahlian', 'KK', 11, 18);
