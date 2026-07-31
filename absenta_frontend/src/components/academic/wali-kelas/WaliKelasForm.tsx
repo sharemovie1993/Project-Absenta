@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { CheckCircle2, RefreshCw, X } from 'lucide-react';
-import { Button, Loader, ModalFooter } from '../../ui';
-import { getGuruList } from '../../../api/academic/guru.api';
-import { getKelasList } from '../../../api/academic/kelas.api';
+import { Button, ModalFooter } from '../../ui';
 import { assignWaliKelasStruktur } from '../../../api/kurikulum/waliKelas.api';
 import toast from 'react-hot-toast';
 
@@ -20,38 +18,9 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
   onCancel,
   preset
 }) => {
-
-  const [assignLoading, setAssignLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [guruOptions, setGuruOptions] = useState<Array<{ id: string; nama_guru: string }>>([]);
-  const [kelasOptions, setKelasOptions] = useState<Array<{ id: string; nama_kelas: string; tingkat: number }>>([]);
   const [selectedGuruId, setSelectedGuruId] = useState(preset?.guru_id || '');
   const [selectedKelasId, setSelectedKelasId] = useState(preset?.kelas_id || '');
-
-  const loadAssignOptions = useCallback(async () => {
-    try {
-      setAssignLoading(true);
-      const [gurusRes, kelasRes] = await Promise.all([
-        getGuruList(1, 200, ''),
-        getKelasList(1, 200, ''),
-      ]);
-
-      if (gurusRes.success) {
-        setGuruOptions(((gurusRes.data || []) as any[]).map((g: any) => ({ id: g.id, nama_guru: g.nama_guru })));
-      }
-      if (kelasRes.success) {
-        setKelasOptions(((kelasRes.data || []) as any[]).map((k: any) => ({ id: k.id, nama_kelas: k.nama_kelas, tingkat: k.tingkat })));
-      }
-    } catch (e: any) {
-      toast.error('Gagal memuat data dropdown');
-    } finally {
-      setAssignLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadAssignOptions();
-  }, [loadAssignOptions]);
 
   const handleSave = async () => {
     if (!selectedGuruId || !selectedKelasId) {
@@ -74,15 +43,6 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
     }
   };
 
-  if (assignLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader size="lg" />
-        <p className="mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest italic animate-pulse">Menyiapkan data penugasan...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <AssignmentSection 
@@ -90,8 +50,6 @@ export const WaliKelasForm = React.memo<WaliKelasFormProps>(({
         setSelectedGuruId={setSelectedGuruId}
         selectedKelasId={selectedKelasId}
         setSelectedKelasId={setSelectedKelasId}
-        guruOptions={guruOptions}
-        kelasOptions={kelasOptions}
         assigning={assigning}
       />
 

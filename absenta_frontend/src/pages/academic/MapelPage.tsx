@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
+import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import MapelList from '../../components/academic/mapel/MapelList';
 import { useAuth } from '../../hooks/useAuth';
 import { useJenjang } from '../../hooks/useJenjang';
@@ -219,59 +220,49 @@ export const MapelPage: React.FC = () => {
         />
       </Suspense>
 
-      <Modal
-        isOpen={modalState.isOpen}
+      <MethodPickerModal
+        isOpen={modalState.isOpen && modalState.mode === 'create' && !subMode}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? (subMode === 'manual' ? 'Tambah Mata Pelajaran' : 'Pilih Metode Tambah Mapel') : 'Data Mata Pelajaran'}
+        title="Pilih Metode Tambah Mapel"
+        options={[
+          {
+            id: 'manual',
+            title: 'Tambah Manual',
+            description: 'Isi data mata pelajaran secara manual satu per satu. Cocok untuk mapel kustom/lokal.',
+            icon: FileText,
+            actionLabel: 'Mulai Mengisi',
+            colorScheme: 'blue',
+            onClick: () => setSubMode('manual')
+          },
+          {
+            id: 'preset',
+            title: 'Gunakan Preset Kurikulum',
+            description: `Pilih cepat dari katalog preset kurikulum nasional ${isSmkMak ? '(wajib & kejuruan)' : '(wajib)'} secara massal.`,
+            icon: Sparkles,
+            actionLabel: 'Mulai Wizard',
+            colorScheme: 'violet',
+            onClick: () => {
+              handleCloseModal();
+              setPresetOpen(true);
+            }
+          }
+        ]}
+      />
+
+      <Modal
+        isOpen={modalState.isOpen && (modalState.mode !== 'create' || !!subMode)}
+        onClose={handleCloseModal}
+        title={modalState.mode === 'create' ? 'Tambah Mata Pelajaran' : 'Data Mata Pelajaran'}
         size="lg"
       >
         <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
-          {modalState.mode === 'create' && !subMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-              <button
-                onClick={() => setSubMode('manual')}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <FileText size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Isi data mata pelajaran secara manual satu per satu. Cocok untuk mapel kustom/lokal.
-                </p>
-                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Mulai Mengisi <ChevronRight size={14} />
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleCloseModal();
-                  setPresetOpen(true);
-                }}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <Sparkles size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Gunakan Preset Kurikulum</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Pilih cepat dari katalog preset kurikulum nasional {isSmkMak ? '(wajib & kejuruan)' : '(wajib)'} secara massal.
-                </p>
-                <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Mulai Wizard <ChevronRight size={14} />
-                </span>
-              </button>
-            </div>
-          ) : (
-            modalState.mode && (
-              <MapelForm
-                mapelId={modalState.mapelId}
-                mode={modalState.mode}
-                onSuccess={handleFormSuccess}
-                onCancel={handleCloseModal}
-              />
-            )
+          {modalState.mode && (
+            <MapelForm
+              mapelId={modalState.mapelId}
+              mode={modalState.mode}
+              onSuccess={handleFormSuccess}
+              onCancel={handleCloseModal}
+            />
           )}
         </Suspense>
       </Modal>

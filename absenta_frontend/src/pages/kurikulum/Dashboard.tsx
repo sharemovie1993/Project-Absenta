@@ -76,11 +76,11 @@ export default function KurikulumDashboard() {
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: guruR, isLoading: lGuru } = useQuery({
-    queryKey: ['guru', 'all-dash'], queryFn: () => guruApi.getAll({ limit: 200 }),
+    queryKey: ['guru', 'all-dash'], queryFn: () => guruApi.getAll({ limit: 1000, jenis_ptk: 'PENDIDIK' }),
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: kelasR, isLoading: lKelas } = useQuery({
-    queryKey: ['kelas', 'all-dash'], queryFn: () => kelasApi.getAll({ limit: 200 }),
+    queryKey: ['kelas', 'all-dash'], queryFn: () => kelasApi.getAll({ limit: 500, is_active: true } as any),
     refetchInterval: REFETCH, staleTime: 30_000,
   });
   const { data: mapelR, isLoading: lMapel } = useQuery({
@@ -141,8 +141,48 @@ export default function KurikulumDashboard() {
   React.useEffect(() => { if (strR) setLastRefresh(new Date()); }, [strR]);
 
   /* ── derived ── */
-  const totalGuru   = safeTotal(guruR);
-  const totalKelas  = safeTotal(kelasR);
+  const activeEducators = useMemo(() => {
+    const raw = safeArr<{
+      id: string;
+      nama_guru: string;
+      jenis_ptk?: string;
+      User?: { is_active?: boolean; status?: string };
+    }>(guruR);
+
+    return raw.filter(g => {
+      // 1. Must be PENDIDIK or GURU
+      const ptk = (g.jenis_ptk || 'PENDIDIK').toUpperCase();
+      const isPendidik = ptk === 'PENDIDIK' || ptk.includes('GURU');
+
+      // 2. Must be Active
+      const u = g.User;
+      const isUserActive = u
+        ? (u.is_active !== false && u.status?.toUpperCase() !== 'INACTIVE' && u.status?.toUpperCase() !== 'NONAKTIF' && u.status?.toUpperCase() !== 'SUSPENDED')
+        : true;
+
+      return isPendidik && isUserActive;
+    });
+  }, [guruR]);
+
+  const totalGuru   = activeEducators.length;
+
+  const activeClasses = useMemo(() => {
+    const raw = safeArr<{
+      id: string;
+      nama_kelas: string;
+      is_active?: boolean;
+      status?: string;
+    }>(kelasR);
+
+    return raw.filter(k => {
+      const isActiveBool = k.is_active !== false;
+      const statusText = (k.status || 'AKTIF').toUpperCase();
+      const isActiveStatus = statusText === 'AKTIF' || statusText === 'ACTIVE';
+      return isActiveBool && isActiveStatus;
+    });
+  }, [kelasR]);
+
+  const totalKelas  = activeClasses.length;
   const totalMapel  = safeTotal(mapelR);
 
   const strRows     = useMemo(() => {
@@ -156,7 +196,7 @@ export default function KurikulumDashboard() {
 
   // Realistis Guru Load calculation from actual JadwalKBM data
   const teachersLoad = useMemo(() => {
-    const teachers = safeArr<{ id: string; nama_guru: string }>(guruR);
+    const teachers = activeEducators;
     const jadwalList = safeArr<{ guru_id?: string }>(jwR);
     if (teachers.length === 0) return [];
     
@@ -176,7 +216,7 @@ export default function KurikulumDashboard() {
         jp,
       };
     })?.sort((a, b) => b.jp - a.jp);
-  }, [guruR, jwR]);
+  }, [activeEducators, jwR]);
 
   const supSelesai   = supRows.filter(r => r.status?.toUpperCase() === 'COMPLETED' || r.status?.toUpperCase() === 'SELESAI').length;
   const supTerjadwal = supRows.filter(r => r.status?.toUpperCase() === 'SCHEDULED' || r.status?.toUpperCase() === 'TERJADWAL').length;
@@ -203,7 +243,7 @@ export default function KurikulumDashboard() {
       list.filter(p => p.status?.toUpperCase() === 'APPROVED' && p.guru_id)?.map(p => p.guru_id)
     );
     
-    const teachersCount = safeTotal(guruR);
+    const teachersCount = activeEducators.length;
     const pctCompleteness = teachersCount > 0 
       ? Math.round((uniqueApprovedTeachers.size / teachersCount) * 100) 
       : 0;
@@ -216,7 +256,7 @@ export default function KurikulumDashboard() {
       pctCompleteness,
       uniqueApprovedTeachersCount: uniqueApprovedTeachers.size
     };
-  }, [perangkatR, guruR]);
+  }, [perangkatR, activeEducators]);
 
   const recentPerangkat = useMemo((): PerangkatRecentItem[] => {
     return safeArr<PerangkatRecentItem>(perangkatR).slice(0, 5);
@@ -314,7 +354,7 @@ export default function KurikulumDashboard() {
                   {/* Stats Cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : ''} icon={<CalendarDays className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
-                    <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru terdaftar" icon={<Users className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
+                    <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru pendidik aktif" icon={<Users className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
                     <AnalyticsCard variant="premium" title="Rombel" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
                     <AnalyticsCard variant="premium" title="Total Mapel" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} subtitle="total mata pelajaran" icon={<BookOpen className="text-white" />} gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" isLoading={lMapel} />
                   </div>
@@ -522,7 +562,7 @@ export default function KurikulumDashboard() {
           {/* HERO STAT CARDS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             <AnalyticsCard variant="premium" title="Semester Aktif" value={semNama || '—'} subtitle={tpTahun ? `TP ${tpTahun}` : 'Tahun Pelajaran'} icon={<CalendarDays size={20} className="text-white" />} gradient="bg-gradient-to-br from-teal-500 to-teal-700 text-white border-teal-400/30" isLoading={lSem} />
-            <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru terdaftar" icon={<Users size={20} className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
+            <AnalyticsCard variant="premium" title="Guru Aktif" value={totalGuru > 0 ? `${totalGuru} Guru` : '—'} subtitle="total guru pendidik aktif" icon={<Users size={20} className="text-white" />} gradient="bg-gradient-to-br from-blue-500 to-blue-700 text-white border-blue-400/30" isLoading={lGuru} />
             <AnalyticsCard variant="premium" title="Rombongan Belajar" value={totalKelas > 0 ? `${totalKelas} Kelas` : '—'} subtitle="total kelas aktif" icon={<LayoutGrid size={20} className="text-white" />} gradient="bg-gradient-to-br from-violet-500 to-violet-700 text-white border-violet-400/30" isLoading={lKelas} />
             <AnalyticsCard variant="premium" title="Mata Pelajaran" value={totalMapel > 0 ? `${totalMapel} Mapel` : '—'} subtitle="total mata pelajaran" icon={<BookOpen size={20} className="text-white" />} gradient="bg-gradient-to-br from-amber-500 to-amber-700 text-white border-amber-400/30" isLoading={lMapel} />
           </div>

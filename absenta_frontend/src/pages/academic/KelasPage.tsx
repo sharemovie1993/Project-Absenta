@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
+import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import KelasList from '../../components/academic/kelas/KelasList';
 import { BulkClassModal } from '../../components/academic/kelas/BulkClassModal';
 import { useAuth } from '../../hooks/useAuth';
@@ -311,60 +312,50 @@ export const KelasPage: React.FC = () => {
         />
       </Suspense>
 
-      <Modal
-        isOpen={modalState.isOpen}
+      <MethodPickerModal
+        isOpen={modalState.isOpen && modalState.mode === 'create' && !subMode}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? (subMode === 'manual' ? 'Tambah Kelas' : 'Pilih Metode Tambah Kelas') : 'Data Kelas'}
-        size={modalState.mode === 'create' && !subMode ? 'lg' : 'xl'}
+        title="Pilih Metode Tambah Kelas"
+        options={[
+          {
+            id: 'manual',
+            title: 'Tambah Manual',
+            description: 'Isi data kelas secara manual satu per satu. Cocok untuk menambahkan satu kelas khusus atau kustom.',
+            icon: FileText,
+            actionLabel: 'Mulai Mengisi',
+            colorScheme: 'indigo',
+            onClick: () => setSubMode('manual')
+          },
+          {
+            id: 'bulk',
+            title: 'Buat Kelas Massal (Wizard)',
+            description: 'Buat rombel paralel secara massal (wizard) untuk semua tingkat kelas sekaligus. Cepat & otomatis.',
+            icon: LayoutGrid,
+            actionLabel: 'Buka Wizard',
+            colorScheme: 'violet',
+            onClick: () => {
+              handleCloseModal();
+              setBulkOpen(true);
+            }
+          }
+        ]}
+      />
+
+      <Modal
+        isOpen={modalState.isOpen && (modalState.mode !== 'create' || !!subMode)}
+        onClose={handleCloseModal}
+        title={modalState.mode === 'create' ? 'Tambah Kelas' : 'Data Kelas'}
+        size="xl"
       >
         <Suspense fallback={<div className="p-8 text-center text-gray-500">Memuat form...</div>}>
-          {modalState.mode === 'create' && !subMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-              <button
-                onClick={() => setSubMode('manual')}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-600 dark:hover:border-indigo-600 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <FileText size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Isi data kelas secara manual satu per satu. Cocok untuk menambahkan satu kelas khusus atau kustom.
-                </p>
-                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Mulai Mengisi <ChevronRight size={14} />
-                </span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleCloseModal();
-                  setBulkOpen(true);
-                }}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-600 dark:hover:border-indigo-600 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <LayoutGrid size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Buat Kelas Massal (Wizard)</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Buat rombel paralel secara massal (wizard) untuk semua tingkat kelas sekaligus. Cepat & otomatis.
-                </p>
-                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Buka Wizard <ChevronRight size={14} />
-                </span>
-              </button>
-            </div>
-          ) : (
-            modalState.mode && (
-              <KelasForm
-                kelasId={modalState.kelasId}
-                mode={modalState.mode}
-                initialTingkat={modalState.initialTingkat}
-                onSuccess={handleFormSuccess}
-                onCancel={handleCloseModal}
-              />
-            )
+          {modalState.mode && (
+            <KelasForm
+              kelasId={modalState.kelasId}
+              mode={modalState.mode}
+              initialTingkat={modalState.initialTingkat}
+              onSuccess={handleFormSuccess}
+              onCancel={handleCloseModal}
+            />
           )}
         </Suspense>
       </Modal>

@@ -15,7 +15,9 @@ import { Badge } from '../../components/ui/Badge';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { TahunPelajaranSelect, JurusanSelect } from '../../components/common';
 import { Modal } from '../../components/ui/Modal';
+import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import { useMasterStrukturState } from '../../hooks/kurikulum/useMasterStrukturState';
 import { useAuth } from '../../hooks/useAuth';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
@@ -194,23 +196,19 @@ const MasterStrukturPage: React.FC = () => {
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white hidden md:block">Struktur Kurikulum</h1>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl no-print">
-                        <SearchableSelect 
+                        <TahunPelajaranSelect 
                             value={selectedTahunId}
                             onValueChange={setSelectedTahunId}
-                            options={yearOptions}
                             placeholder="Pilih Tahun..."
-                            aria-label="Pilih Tahun Ajaran"
                             className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[155px] [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
                         />
                         {isSmkOrMak && (
                             <>
                                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-700"></div>
-                                <SearchableSelect 
-                                    value={selectedJurusanId}
+                                <JurusanSelect 
+                                    value={selectedJurusanId || ''}
                                     onValueChange={setSelectedJurusanId}
-                                    options={jurusanOptions}
                                     placeholder="Pilih Jurusan..."
-                                    aria-label="Pilih Konsentrasi Keahlian"
                                     className="bg-transparent border-none text-sm font-bold focus:ring-0 cursor-pointer min-w-[200px] [&>button]:bg-transparent [&>button]:border-none [&>button]:focus:ring-0"
                                 />
                             </>
@@ -441,50 +439,40 @@ const MasterStrukturPage: React.FC = () => {
                 </Suspense>
 
                 {/* Add Mode Options Modal */}
-                {showAddOptions && (
-                    <Modal
-                        isOpen={showAddOptions}
-                        onClose={() => setShowAddOptions(false)}
-                        title="Pilih Metode Plotting"
-                        size="md"
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                            {/* Option 1: Standar Baku / Massal */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setAddMode('massal');
-                                    openCreateModal();
-                                    setShowAddOptions(false);
-                                }}
-                                className="flex flex-col items-center justify-center p-6 bg-indigo-50/30 hover:bg-indigo-50 dark:bg-slate-900/30 dark:hover:bg-slate-900 rounded-2xl border border-indigo-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700 transition-all text-center group"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-all">
-                                    <Layers size={24} />
-                                </div>
-                                <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Plotting Massal</span>
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase mt-1">Preset Standar Nasional</span>
-                            </button>
-
-                            {/* Option 2: Tambah Manual */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setAddMode('manual');
-                                    openCreateModal();
-                                    setShowAddOptions(false);
-                                }}
-                                className="flex flex-col items-center justify-center p-6 bg-slate-50/50 hover:bg-slate-50 dark:bg-slate-900/30 dark:hover:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-slate-700 transition-all text-center group"
-                            >
-                                <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-indigo-950 flex items-center justify-center text-slate-500 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-all">
-                                    <Plus size={24} />
-                                </div>
-                                <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">Plotting Manual</span>
-                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase mt-1">Tambah Satu Per Satu</span>
-                            </button>
-                        </div>
-                    </Modal>
-                )}
+                <MethodPickerModal
+                    isOpen={showAddOptions}
+                    onClose={() => setShowAddOptions(false)}
+                    title="Pilih Metode Plotting"
+                    options={[
+                        {
+                            id: 'massal',
+                            title: 'Plotting Massal',
+                            description: 'Pilih cepat dari preset kurikulum standar nasional secara otomatis.',
+                            icon: Layers,
+                            actionLabel: 'Pilih Massal',
+                            colorScheme: 'indigo',
+                            badge: 'Standar Nasional',
+                            onClick: () => {
+                                setAddMode('massal');
+                                openCreateModal();
+                                setShowAddOptions(false);
+                            }
+                        },
+                        {
+                            id: 'manual',
+                            title: 'Plotting Manual',
+                            description: 'Tentukan mata pelajaran dan beban jam secara manual satu per satu.',
+                            icon: Plus,
+                            actionLabel: 'Mulai Mengisi',
+                            colorScheme: 'slate',
+                            onClick: () => {
+                                setAddMode('manual');
+                                openCreateModal();
+                                setShowAddOptions(false);
+                            }
+                        }
+                    ]}
+                />
             </div>
         </AcademicPageLayout>
     );

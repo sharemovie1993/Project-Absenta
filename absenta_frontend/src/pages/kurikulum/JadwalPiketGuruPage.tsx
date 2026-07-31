@@ -31,6 +31,7 @@ import { piketGuruApi, JadwalPiketGuru, Hari } from '../../api/piketGuru.api';
 import { guruApi, tahunPelajaranApi, semesterApi, jurusanApi } from '../../api/academic.api';
 import { getMyTenant } from '../../api/tenants.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { GuruSelect } from '../../components/common/GuruSelect';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuth } from '../../hooks/useAuth';
 import { PiketNotifModal } from '../../components/piket/PiketNotifModal';
@@ -278,17 +279,6 @@ export default function JadwalPiketGuruPage() {
   useEffect(() => {
     fetchTeachingLoad();
   }, [fetchTeachingLoad]);
-
-  const guruSelectOptions = useMemo(() => {
-    return guruList.map(g => {
-      const load = teachingLoadMap[g.id]?.total_jp || 0;
-      const loadLabel = load === 0 ? '🟢 0 JP (Kosong)' : load >= 5 ? `🔴 ${load} JP (Padat)` : `🟡 ${load} JP`;
-      return {
-        value: g.id,
-        label: `${g.nama_guru}${g.nip ? ` (NIP: ${g.nip})` : ''} - [${loadLabel}]`
-      };
-    });
-  }, [guruList, teachingLoadMap]);
 
   const filteredBulkGuruList = useMemo(() => {
     if (!bulkSearchTerm.trim()) return guruList;
@@ -1106,13 +1096,11 @@ export default function JadwalPiketGuruPage() {
                 <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Pilih Guru <span className="text-rose-500">*</span>
                 </label>
-                <SearchableSelect
+                <GuruSelect
                   value={formGuruId}
                   onValueChange={(val) => setFormGuruId(val)}
-                  options={guruSelectOptions}
-                  placeholder="-- Cari & Pilih Guru --"
-                  searchPlaceholder="Ketik Nama / NIP Guru..."
                   disabled={!!editingItem}
+                  teachingLoadMap={teachingLoadMap}
                 />
 
                 {formGuruId && (
@@ -1378,16 +1366,15 @@ export default function JadwalPiketGuruPage() {
 
                 {/* Quick Add Via SearchableSelect */}
                 <div className="mb-2">
-                  <SearchableSelect
+                  <GuruSelect
                     value=""
                     onValueChange={(val) => {
                       if (val && !bulkGuruIds.includes(val)) {
                         setBulkGuruIds(prev => [...prev, val]);
                       }
                     }}
-                    options={guruSelectOptions.filter(opt => !bulkGuruIds.includes(opt.value))}
                     placeholder="➕ Cari & Tambah Guru Spesifik..."
-                    searchPlaceholder="Ketik Nama / NIP Guru..."
+                    teachingLoadMap={teachingLoadMap}
                   />
                 </div>
 

@@ -99,11 +99,12 @@ export function Modal({
   const isMouseDownOnWrapper = React.useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    isMouseDownOnWrapper.current = e.target === e.currentTarget;
+    isMouseDownOnWrapper.current = e.target === e.currentTarget || (e.target as HTMLElement).getAttribute('data-backdrop') === 'true';
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isMouseDownOnWrapper.current && e.target === e.currentTarget) {
+    const isBackdropClick = e.target === e.currentTarget || (e.target as HTMLElement).getAttribute('data-backdrop') === 'true';
+    if (isMouseDownOnWrapper.current && isBackdropClick) {
       if (!disableClose) {
         onClose();
       }
@@ -114,18 +115,20 @@ export function Modal({
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !disableClose) {
+      if ((e.key === 'Escape' || e.code === 'Escape') && isOpen && !disableClose) {
+        e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('keydown', handleEscape, true);
       document.body.style.overflow = 'hidden';
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleEscape, true);
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose, disableClose]);
@@ -144,6 +147,7 @@ export function Modal({
         >
           {/* Backdrop */}
           <motion.div
+            data-backdrop="true"
             className="absolute inset-0 bg-black/50 backdrop-blur-sm z-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

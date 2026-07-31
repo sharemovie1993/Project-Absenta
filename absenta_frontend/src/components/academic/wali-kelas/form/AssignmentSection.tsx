@@ -1,18 +1,19 @@
 import React from 'react';
 import { User, School } from 'lucide-react';
 import { Label } from '../../../ui/Label';
-import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { SectionCard } from './FormShared';
+import { GuruSelect, KelasSelect } from '../../../../components/common';
 
 interface AssignmentSectionProps {
   selectedGuruId: string;
   setSelectedGuruId: (id: string) => void;
   selectedKelasId: string;
   setSelectedKelasId: (id: string) => void;
-  guruOptions: any[];
-  kelasOptions: any[];
   assigning: boolean;
   isViewMode?: boolean;
+  // Legacy props kept for backwards compatibility (no longer used internally)
+  guruOptions?: any[];
+  kelasOptions?: any[];
 }
 
 export const AssignmentSection = React.memo<AssignmentSectionProps>(({
@@ -20,8 +21,6 @@ export const AssignmentSection = React.memo<AssignmentSectionProps>(({
   setSelectedGuruId,
   selectedKelasId,
   setSelectedKelasId,
-  guruOptions = [],
-  kelasOptions = [],
   assigning,
   isViewMode = false
 }) => {
@@ -32,13 +31,12 @@ export const AssignmentSection = React.memo<AssignmentSectionProps>(({
           <Label htmlFor="guru_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
             Pilih Guru <span className="text-rose-500">*</span>
           </Label>
-          <SearchableSelect
+          <GuruSelect
             id="guru_id"
             value={selectedGuruId}
             onValueChange={setSelectedGuruId}
-            options={guruOptions?.map(g => ({ label: g.nama_guru, value: g.id }))}
-            placeholder="Cari guru yang tersedia..."
-            searchPlaceholder="Cari Nama Guru..."
+            placeholder="-- Cari & Pilih Guru Pendidik --"
+            searchPlaceholder="Cari Nama Guru / NIP..."
             disabled={assigning || isViewMode}
             triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
           />
@@ -48,12 +46,11 @@ export const AssignmentSection = React.memo<AssignmentSectionProps>(({
           <Label htmlFor="kelas_id" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
             Pilih Kelas <span className="text-rose-500">*</span>
           </Label>
-          <SearchableSelect
+          <KelasSelect
             id="kelas_id"
             value={selectedKelasId}
             onValueChange={setSelectedKelasId}
-            options={kelasOptions?.map(k => ({ label: `${k.nama_kelas} (Tingkat ${k.tingkat})`, value: k.id }))}
-            placeholder="Cari kelas yang tersedia..."
+            placeholder="-- Cari & Pilih Kelas / Rombel --"
             searchPlaceholder="Cari Nama Kelas..."
             disabled={assigning || isViewMode}
             triggerClassName="h-10 text-[13px] font-bold bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"

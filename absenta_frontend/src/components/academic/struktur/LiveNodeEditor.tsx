@@ -81,7 +81,12 @@ export const LiveNodeEditor: React.FC<LiveNodeEditorProps> = React.memo(({ node,
             value: s.id
         })));
       } else {
-        const res = await getGuruList(1, 50, searchQuery);
+        // Filter jenis_ptk berdasarkan jabatan:
+        // PENDIDIK saja untuk jabatan akademik (wali kelas, kaprog, kabeng, pembina eskul)
+        // ALL untuk jabatan struktural (pimpinan, TU, toolman, gerbang, dll.)
+        const PENDIDIK_ONLY_ROLES = ['WALIKELAS', 'KAPROG', 'KABENG', 'PEMBINA_ESKUL'];
+        const jenisPtk = PENDIDIK_ONLY_ROLES.includes(node.data?.roleCode || '') ? 'PENDIDIK' : '';
+        const res = await getGuruList(1, 50, searchQuery, '', '', jenisPtk);
         setOptions((res.data || []).map(g => ({ 
             label: g.nama_guru, 
             value: g.id

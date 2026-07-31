@@ -14,15 +14,12 @@ import {
   type GuruStrukturOrganisasi,
   type SiswaStrukturOrganisasi
 } from '@/api/academic/strukturOrganisasi.api';
-import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
-import { getJurusanList } from '@/api/academic/jurusan.api';
-import type { Guru, Siswa } from '@/types/academic';
+import type { Siswa } from '@/types/academic';
 import { Trash2, Plus, Search, User, Briefcase, GraduationCap, CheckCircle2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { dropdownApi, type DropdownOption } from '@/api/dropdown.api';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { useGuruOptions, useKelasOptions, useJurusanOptions, KelasSelect, JurusanSelect } from '@/components/common';
 import { SimpleFormField } from '@/components/ui/SimpleFormField';
 
 interface AssignmentModalProps {
@@ -46,7 +43,6 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 }) => {
   const [tab, setTab] = useState<'GURU' | 'SISWA'>('GURU');
   const [struktur, setStruktur] = useState<StrukturOrganisasi | null>(null);
-  const [guruOptions, setGuruOptions] = useState<Guru[]>([]);
   const [siswaOptions, setSiswaOptions] = useState<Siswa[]>([]);
   const [guruAssignments, setGuruAssignments] = useState<GuruStrukturOrganisasi[]>([]);
   const [siswaAssignments, setSiswaAssignments] = useState<SiswaStrukturOrganisasi[]>([]);
@@ -54,10 +50,16 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Shared reference hooks
+  // PENDIDIK-only untuk jabatan akademik yang memerlukan guru pengajar
+  // TOOLMAN = Teknisi/Laboran → Tenaga Kependidikan, bukan Pendidik
+  const PENDIDIK_ONLY_KODES = ['WALIKELAS', 'KAPROG', 'KABENG', 'PEMBINA_ESKUL'];
+  const guruJenisPtk = PENDIDIK_ONLY_KODES.includes(struktur?.kode || '') ? 'PENDIDIK' : 'ALL';
+  const { rawList: guruOptions } = useGuruOptions({ jenisPtk: guruJenisPtk });
+  const { rawList: jurusanList } = useJurusanOptions();
+
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
-  const [jurusanOptions, setJurusanOptions] = useState<{ label: string, value: string }[]>([]);
-  const [kelasOptions, setKelasOptions] = useState<{ label: string, value: string }[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
   const [selectedKelasIdAssignment, setSelectedKelasIdAssignment] = useState<string>('');
   const [isContextDialogOpen, setIsContextDialogOpen] = useState(false);
@@ -70,7 +72,6 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
       setSelectedUnitId(defaultUnitId || '');
       setSelectedKelasIdAssignment(defaultKelasId || '');
       loadData();
-      loadOptions();
     }
   }, [isOpen, strukturId, defaultUnitId, defaultKelasId]);
 
@@ -104,30 +105,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
     }
   };
 
-  const loadOptions = async () => {
-    try {
-      const res = await getGuruList(1, 100, '');
-      setGuruOptions(res.data || []);
-      
-      const kOptions = await dropdownApi.getKelasForDropdown();
-      
-      // Professional Dynamic Filter: 
-      // If defaultTingkat is provided, pre-filter the class list
-      if (defaultTingkat) {
-        const filtered = (kOptions as any[]).filter(opt => opt.tingkat === defaultTingkat);
-        setKelasOptions(filtered);
-      } else {
-        setKelasOptions(kOptions);
-      }
-
-      const jRes = await getJurusanList();
-      if (jRes.data) {
-        setJurusanOptions(jRes.data.map(j => ({ label: j.nama, value: j.id })));
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  // loadOptions removed — guru, kelas & jurusan data now sourced from shared hooks
 
   useEffect(() => {
     const kId = selectedKelasIdAssignment || selectedKelasId;
@@ -280,10 +258,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
      s.nis?.includes(search))
   );
 
-  const availableJurusanOptions = React.useMemo(() => {
-    const assignedUnitIds = guruAssignments.map(a => a.unit_id).filter(Boolean);
-    return jurusanOptions.filter(opt => !assignedUnitIds.includes(opt.value));
-  }, [jurusanOptions, guruAssignments]);
+  const availableJurusanIds = React.useMemo(() => {
+    const assignedUnitIds = guruAssignments.map(a => a.unit_id).filter(Boolean) as string[];
+    return assignedUnitIds;
+  }, [guruAssignments]);
 
   return (
     <>
@@ -466,12 +444,12 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
             <div className="space-y-4 pt-4 border-t border-slate-100">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SimpleFormField label="Filter Kelas (Akademik)">
-                  <SearchableSelect 
-                    options={kelasOptions}
+                  <KelasSelect
                     value={selectedKelasId}
                     onValueChange={setSelectedKelasId}
-                    placeholder="Pilih Kelas..."
-                    className="h-10 rounded-xl"
+                    placeholder="-- Pilih Kelas --"
+                    tingkat={defaultTingkat ?? undefined}
+                    triggerClassName="h-10 rounded-xl"
                   />
                 </SimpleFormField>
                 <SimpleFormField label="Pencarian Nama/NIS">
@@ -563,20 +541,22 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
           
           {['WALIKELAS', 'PETUGAS_KELAS'].includes(struktur?.kode || '') ? (
             <SimpleFormField label="Kelas">
-              <SearchableSelect
+              <KelasSelect
                 value={selectedKelasIdAssignment}
                 onValueChange={setSelectedKelasIdAssignment}
-                options={kelasOptions}
-                placeholder="Pilih Kelas..."
+                placeholder="-- Pilih Kelas --"
+                tingkat={defaultTingkat ?? undefined}
+                triggerClassName="h-10 rounded-xl"
               />
             </SimpleFormField>
           ) : (
             <SimpleFormField label="Jurusan">
-              <SearchableSelect
+              <JurusanSelect
                 value={selectedUnitId}
                 onValueChange={setSelectedUnitId}
-                options={jurusanOptions.filter(opt => !guruAssignments.map(a => a.unit_id).includes(opt.value))}
-                placeholder="Pilih Jurusan..."
+                placeholder="-- Pilih Jurusan --"
+                triggerClassName="h-10 rounded-xl"
+                excludeIds={availableJurusanIds}
               />
             </SimpleFormField>
           )}

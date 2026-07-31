@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Save, X, RefreshCw, Layers, Search, CheckSquare, Square, ChevronLeft, ChevronRight, BookOpen, Users, HelpCircle, Check, AlertCircle } from 'lucide-react';
 import { Button, Alert, ModalFooter, Modal } from '../../ui';
-import { getGuruList } from '../../../api/academic/guru.api';
-import { getMapelList } from '../../../api/academic/mapel.api';
-import { getJurusanList } from '../../../api/academic/jurusan.api';
-import { getKelasForDropdown } from '../../../api/dropdown.api';
 import { listGuruMapel, assignGuruMapel, removeGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import type { Guru, Mapel, GuruMapel } from '../../../types/academic';
 import { cn } from '../../../lib/utils';
 import toast from 'react-hot-toast';
+import { useGuruOptions, useMapelOptions, useJurusanOptions, useKelasOptions, JurusanSelect, KelasSelect } from '../../common';
 
 interface GuruMapelWizardFormProps {
   onSuccess?: () => void;
@@ -25,12 +22,16 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
   const [submitError, setSubmitError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Core Data Options
-  const [gurus, setGurus] = useState<Guru[]>([]);
-  const [mapels, setMapels] = useState<Mapel[]>([]);
+  // Core Data Options from hooks
+  const { rawList: gurus, isLoading: lGurus } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { rawList: mapels, isLoading: lMapels } = useMapelOptions();
+  const { rawList: jurusanList, isLoading: lJurusans } = useJurusanOptions();
+  const { rawList: kelasList, isLoading: lKelas } = useKelasOptions();
+
   const [existingAssignments, setExistingAssignments] = useState<GuruMapel[]>([]);
   const [allAssignments, setAllAssignments] = useState<GuruMapel[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const loadingInitial = lGurus || lMapels || lJurusans || lKelas || loadingAssignments;
 
   // Selections
   const [selectedMapelId, setSelectedMapelId] = useState<string>('');
@@ -42,34 +43,24 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
   const [scopeMode, setScopeMode] = useState<'GLOBAL' | 'JURUSAN' | 'KELAS'>('GLOBAL');
   const [scopeJurusanId, setScopeJurusanId] = useState<string>('');
   const [scopeKelasId, setScopeKelasId] = useState<string>('');
-  const [jurusanList, setJurusanList] = useState<any[]>([]);
-  const [kelasList, setKelasList] = useState<any[]>([]);
 
-  // Load initial option list
+  // Load initial assignments list
   useEffect(() => {
-    const loadData = async () => {
+    const loadAssignments = async () => {
       try {
-        setLoadingInitial(true);
-        const [gurusRes, mapelsRes, assignmentsRes, jurusansRes, kelasRes] = await Promise.all([
-          getGuruList(1, 1000, ''),
-          getMapelList(1, 1000, ''),
-          listGuruMapel({}),
-          getJurusanList(1, 100).catch(() => ({ data: [] })),
-          getKelasForDropdown().catch(() => [])
-        ]);
-        setGurus(gurusRes.data || []);
-        setMapels(mapelsRes.data || []);
-        setAllAssignments(assignmentsRes.data || []);
-        setJurusanList(jurusansRes.data || []);
-        setKelasList(Array.isArray(kelasRes) ? kelasRes : []);
+        setLoadingAssignments(true);
+        const res = await listGuruMapel({});
+        if (res.success && res.data) {
+          setAllAssignments(res.data);
+        }
       } catch (err: any) {
         console.error('Failed to load initial data for wizard:', err);
-        setSubmitError('Gagal mengambil data referensi guru/mapel.');
+        setSubmitError('Gagal mengambil data penugasan guru/mapel.');
       } finally {
-        setLoadingInitial(false);
+        setLoadingAssignments(false);
       }
     };
-    loadData();
+    loadAssignments();
   }, []);
 
   // Selected Mapel Object Helper
@@ -403,31 +394,23 @@ export const GuruMapelWizardForm: React.FC<GuruMapelWizardFormProps> = React.mem
 
             {scopeMode === 'JURUSAN' && (
               <div className="pt-1">
-                <select
+                <JurusanSelect
                   value={scopeJurusanId}
-                  onChange={(e) => setScopeJurusanId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                >
-                  <option value="">Pilih Target Jurusan...</option>
-                  {jurusanList.map((j: any) => (
-                    <option key={j.id} value={j.id}>{j.nama}</option>
-                  ))}
-                </select>
+                  onValueChange={(val) => setScopeJurusanId(val)}
+                  placeholder="-- Pilih Target Jurusan --"
+                  triggerClassName="h-9 text-xs font-semibold rounded-lg"
+                />
               </div>
             )}
 
             {scopeMode === 'KELAS' && (
               <div className="pt-1">
-                <select
+                <KelasSelect
                   value={scopeKelasId}
-                  onChange={(e) => setScopeKelasId(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200"
-                >
-                  <option value="">Pilih Target Rombel/Kelas...</option>
-                  {kelasList.map((k: any) => (
-                    <option key={k.value} value={k.value}>{k.label}</option>
-                  ))}
-                </select>
+                  onValueChange={(val) => setScopeKelasId(val)}
+                  placeholder="-- Pilih Target Rombel / Kelas --"
+                  triggerClassName="h-9 text-xs font-semibold rounded-lg"
+                />
               </div>
             )}
           </div>

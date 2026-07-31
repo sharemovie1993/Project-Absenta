@@ -88,7 +88,18 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
 export function useConfirmContext() {
   const ctx = useContext(ConfirmContext);
-  if (!ctx) throw new Error('useConfirmContext must be used within ConfirmProvider');
+  if (!ctx) {
+    console.warn('[ConfirmProvider] Component called useConfirm outside ConfirmProvider. Falling back to browser confirm.');
+    return {
+      confirm: async (options: any) => {
+        const msg = typeof options === 'string' 
+          ? options 
+          : (options?.title ? `${options.title}\n\n${options.description || ''}` : (options?.description || 'Apakah Anda yakin?'));
+        return window.confirm(String(msg));
+      },
+      setConfirmLoading: () => {}
+    };
+  }
   return ctx;
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
+import { MethodPickerModal } from '../../components/common/MethodPickerModal';
 import JurusanList from '../../components/academic/jurusan/JurusanList';
 import { ProgramKeahlianPanel } from '../../components/academic/jurusan/ProgramKeahlianPanel';
 import { useAuth } from '../../hooks/useAuth';
@@ -250,49 +251,43 @@ export const JurusanPage: React.FC = () => {
         />
       </Suspense>
 
-      {/* Modal for Create/Edit/View */}
+      {/* Method Picker Modal for Create */}
+      <MethodPickerModal
+        isOpen={modalState.isOpen && modalState.mode === 'create' && !subMode}
+        onClose={handleCloseModal}
+        title="Tambah Konsentrasi Keahlian"
+        options={[
+          {
+            id: 'manual',
+            title: 'Tambah Manual',
+            description: 'Isi data jurusan satu per satu secara manual. Cocok untuk nama jurusan kustom.',
+            icon: FileText,
+            actionLabel: 'Mulai Mengisi',
+            colorScheme: 'blue',
+            onClick: () => setSubMode('manual')
+          },
+          {
+            id: 'wizard',
+            title: 'Tambah Massal (SMK Presets)',
+            description: 'Pilih cepat dari preset kurikulum nasional secara massal & otomatis.',
+            icon: Sparkles,
+            actionLabel: 'Mulai Wizard',
+            colorScheme: 'violet',
+            badge: 'SMK Presets',
+            onClick: () => setSubMode('wizard')
+          }
+        ]}
+      />
+
+      {/* Modal for Create (after subMode selected) / Edit / View */}
       <Modal
-      isOpen={modalState.isOpen}
+        isOpen={modalState.isOpen && (modalState.mode !== 'create' || !!subMode)}
         onClose={handleCloseModal}
         title={modalState.mode === 'create' ? (subMode === 'wizard' ? 'Tambah Massal (Presets)' : 'Tambah Konsentrasi Keahlian') : 'Data Konsentrasi Keahlian'}
         size="lg"
       >
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
-          {modalState.mode === 'create' && !subMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-              <button
-                onClick={() => setSubMode('manual')}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <FileText size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Manual</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Isi data jurusan satu per satu secara manual. Cocok untuk nama jurusan kustom.
-                </p>
-                <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Mulai Mengisi <ChevronRight size={14} />
-                </span>
-              </button>
-
-              <button
-                onClick={() => setSubMode('wizard')}
-                className="group flex flex-col items-center text-center p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md rounded-2xl transition-all"
-              >
-                <div className="p-3 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 rounded-2xl group-hover:scale-105 transition-transform mb-3">
-                  <Sparkles size={28} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Tambah Massal (SMK Presets)</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 mb-4 leading-relaxed max-w-[220px]">
-                  Pilih cepat dari preset kurikulum nasional secara massal & otomatis.
-                </p>
-                <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform mt-auto">
-                  Mulai Wizard <ChevronRight size={14} />
-                </span>
-              </button>
-            </div>
-          ) : modalState.mode === 'create' && subMode === 'manual' ? (
+          {modalState.mode === 'create' && subMode === 'manual' ? (
             <JurusanForm
               mode="create"
               onSuccess={handleFormSuccess}

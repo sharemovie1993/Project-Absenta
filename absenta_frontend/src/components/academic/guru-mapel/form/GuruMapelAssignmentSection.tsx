@@ -1,15 +1,15 @@
 import React from 'react';
 import { User, BookOpen, Layers } from 'lucide-react';
 import { Label } from '../../../ui/Label';
-import { SearchableSelect } from '../../../ui/SearchableSelect';
 import { Controller } from 'react-hook-form';
 import { cn } from '../../../../lib/utils';
+import { GuruSelect, MapelSelect, JurusanSelect, KelasSelect } from '../../../../components/common';
 
 interface GuruMapelAssignmentSectionProps {
   control: any;
   errors: any;
-  guruOptions: any[];
-  mapelOptions: any[];
+  guruOptions?: any[];
+  mapelOptions?: any[];
   jurusanOptions?: any[];
   kelasOptions?: any[];
   scopeMode: 'GLOBAL' | 'JURUSAN' | 'KELAS';
@@ -24,10 +24,6 @@ interface GuruMapelAssignmentSectionProps {
 export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionProps>(({
   control,
   errors,
-  guruOptions = [],
-  mapelOptions = [],
-  jurusanOptions = [],
-  kelasOptions = [],
   scopeMode,
   setScopeMode,
   scopeJurusanId,
@@ -48,13 +44,11 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
           name="guru_id"
           control={control}
           render={({ field }) => (
-            <SearchableSelect
+            <GuruSelect
               id="guru_id"
               value={field.value}
               onValueChange={field.onChange}
-              options={guruOptions?.map(g => ({ label: g.nama_guru, value: g.id }))}
-              placeholder="Pilih Guru..."
-              searchPlaceholder="Cari Guru..."
+              placeholder="-- Cari & Pilih Guru Pendidik --"
               disabled={loading}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.guru_id ? 'border-red-500' : ''}`}
             />
@@ -75,13 +69,11 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
           name="mapel_id"
           control={control}
           render={({ field }) => (
-            <SearchableSelect
+            <MapelSelect
               id="mapel_id"
               value={field.value}
               onValueChange={field.onChange}
-              options={mapelOptions?.map(m => ({ label: m.nama_mapel, value: m.id }))}
-              placeholder="Pilih Mapel..."
-              searchPlaceholder="Cari Mapel..."
+              placeholder="-- Cari & Pilih Mata Pelajaran --"
               disabled={loading}
               triggerClassName={`h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all rounded-xl ${errors.mapel_id ? 'border-red-500' : ''}`}
             />
@@ -138,31 +130,23 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
 
         {scopeMode === 'JURUSAN' && (
           <div className="pt-1">
-            <select
+            <JurusanSelect
               value={scopeJurusanId}
-              onChange={(e) => setScopeJurusanId(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value="">Pilih Target Jurusan...</option>
-              {jurusanOptions.map((j: any) => (
-                <option key={j.id} value={j.id}>{j.nama}</option>
-              ))}
-            </select>
+              onValueChange={(val) => setScopeJurusanId(val)}
+              placeholder="-- Pilih Target Jurusan --"
+              triggerClassName="h-10 text-[13px] font-bold tracking-tight rounded-xl"
+            />
           </div>
         )}
 
         {scopeMode === 'KELAS' && (
           <div className="pt-1">
-            <select
+            <KelasSelect
               value={scopeKelasId}
-              onChange={(e) => setScopeKelasId(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
-              <option value="">Pilih Target Rombel/Kelas...</option>
-              {kelasOptions.map((k: any) => (
-                <option key={k.value} value={k.value}>{k.label}</option>
-              ))}
-            </select>
+              onValueChange={(val) => setScopeKelasId(val)}
+              placeholder="-- Pilih Target Rombel / Kelas --"
+              triggerClassName="h-10 text-[13px] font-bold tracking-tight rounded-xl"
+            />
           </div>
         )}
       </div>
@@ -171,4 +155,3 @@ export const GuruMapelAssignmentSection = React.memo<GuruMapelAssignmentSectionP
 });
 
 GuruMapelAssignmentSection.displayName = 'GuruMapelAssignmentSection';
-
