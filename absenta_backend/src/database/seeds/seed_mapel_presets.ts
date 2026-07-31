@@ -240,6 +240,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
     ...mulokMenengahKejuruan
   ]);
 
@@ -267,6 +268,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
 
     // 3. Mata Pelajaran Pilihan
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
     ...mulokMenengahKejuruan
   ]);
 
@@ -440,3 +442,14 @@ export async function seedMapelPresets(prisma: PrismaClient) {
 
   console.log(`✅ Seeding Global Mapel Presets selesai. Total ${count} records.`);
 }
+
+if (require.main === module) {
+  const p = new PrismaClient();
+  seedMapelPresets(p)
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(() => p.$disconnect());
+}
+
