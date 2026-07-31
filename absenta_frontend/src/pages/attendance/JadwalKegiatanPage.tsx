@@ -32,16 +32,7 @@ import type { JadwalKegiatanFormData } from './JadwalKegiatanFormModal';
 // ─── Lazy-loaded heavy modal form (Point #6: Lazy + Suspense) ────────────────
 const JadwalKegiatanFormModal = lazy(() => import('./JadwalKegiatanFormModal'));
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const HARI_OPTION: { value: string; label: string }[] = [
-  { value: 'SENIN', label: 'Senin' },
-  { value: 'SELASA', label: 'Selasa' },
-  { value: 'RABU', label: 'Rabu' },
-  { value: 'KAMIS', label: 'Kamis' },
-  { value: 'JUMAT', label: 'Jumat' },
-  { value: 'SABTU', label: 'Sabtu' },
-  { value: 'MINGGU', label: 'Minggu' },
-];
+import { HARI_LIST as HARI_OPTION } from '../../constants/day.constants';
 
 // ─── Types (Point #3: No any) ─────────────────────────────────────────────────
 interface CardItem {

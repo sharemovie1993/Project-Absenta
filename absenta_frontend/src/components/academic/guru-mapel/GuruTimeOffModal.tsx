@@ -13,13 +13,9 @@ interface GuruTimeOffModalProps {
   onSuccess?: () => void;
 }
 
-const HARI_LIST = [
-  { id: 'SENIN', label: 'Senin' },
-  { id: 'SELASA', label: 'Selasa' },
-  { id: 'RABU', label: 'Rabu' },
-  { id: 'KAMIS', label: 'Kamis' },
-  { id: 'JUMAT', label: 'Jumat' },
-] as const;
+import { HARI_LIST as ALL_HARI_LIST } from '../../../constants/day.constants';
+
+const HARI_LIST = ALL_HARI_LIST.slice(0, 5);
 
 const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 

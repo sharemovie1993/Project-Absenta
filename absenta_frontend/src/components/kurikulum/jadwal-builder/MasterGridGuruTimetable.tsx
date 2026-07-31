@@ -12,7 +12,7 @@ interface Props {
   colorByMode?: ColorByMode;
 }
 
-const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+import { WORKDAYS_HARI_KEYS as DAYS } from '../../../constants/day.constants';
 
 export const MasterGridGuruTimetable: React.FC<Props> = ({
   guruList,

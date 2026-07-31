@@ -20,7 +20,7 @@ import { mapelApi, guruApi } from '../../../api/academic.api';
 import type { Mapel, Guru, Kelas } from '../../../types/academic';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { toast } from 'react-hot-toast';
-import { cn } from '../../../lib/utils';
+import { WORKDAYS_HARI_KEYS } from '../../../constants/day.constants';
 
 // Pillar 5: Lazy Loading
 const JadwalKBMForm = lazy(() => import('./JadwalKBMForm').then(m => ({ default: m.JadwalKBMForm })));
@@ -268,7 +268,7 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = ({ kelasId }) => {
     });
   }, []);
 
-  const days = useMemo(() => ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'], []);
+  const days = WORKDAYS_HARI_KEYS;
 
   const getJadwalByDay = useCallback((day: string) => {
     const kbmItems = (agendaFilter === 'KEGIATAN') ? [] : jadwal.filter(j => j.hari === day).map(j => ({

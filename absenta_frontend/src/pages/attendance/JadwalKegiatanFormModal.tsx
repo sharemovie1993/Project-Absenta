@@ -35,18 +35,7 @@ export const jadwalKegiatanSchema = z.object({
 
 export type JadwalKegiatanFormData = z.infer<typeof jadwalKegiatanSchema>;
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const HARI_OPTION = [
-  { value: 'SENIN', label: 'Senin', shortLabel: 'Sen' },
-  { value: 'SELASA', label: 'Selasa', shortLabel: 'Sel' },
-  { value: 'RABU', label: 'Rabu', shortLabel: 'Rab' },
-  { value: 'KAMIS', label: 'Kamis', shortLabel: 'Kam' },
-  { value: 'JUMAT', label: 'Jumat', shortLabel: 'Jum' },
-  { value: 'SABTU', label: 'Sabtu', shortLabel: 'Sab' },
-  { value: 'MINGGU', label: 'Minggu', shortLabel: 'Min' },
-] as const;
-
-const WORKDAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'];
+import { HARI_LIST as HARI_OPTION, WORKDAYS_HARI_KEYS as WORKDAYS } from '../../constants/day.constants';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 interface JadwalKegiatanFormModalProps {

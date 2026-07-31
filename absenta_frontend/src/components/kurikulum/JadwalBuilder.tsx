@@ -40,7 +40,7 @@ import { MasterGridGuruTimetable } from './jadwal-builder/MasterGridGuruTimetabl
 import { MasterGridKelasTimetable } from './jadwal-builder/MasterGridKelasTimetable';
 import { BebanGuruSummaryModal } from './jadwal-builder/BebanGuruSummaryModal';
 
-const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
 const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1);
 
 // Standard slot times

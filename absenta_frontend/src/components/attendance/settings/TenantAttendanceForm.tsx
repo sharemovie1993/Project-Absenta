@@ -5,6 +5,8 @@ import { Button, Input, Label, ModalFooter, Loader, Alert, Switch } from '../../
 import { toast } from 'react-hot-toast';
 import { Clock, Settings2, Save, RefreshCw, CalendarDays } from 'lucide-react';
 
+import { HARI_LIST } from '../../../constants/day.constants';
+
 const TenantAttendanceFormComponent: React.FC = () => {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -18,15 +20,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
     allow_manual_hadir_gate: false
   });
 
-  const DAYS_OPTIONS = [
-    { value: 'SENIN', label: 'Senin' },
-    { value: 'SELASA', label: 'Selasa' },
-    { value: 'RABU', label: 'Rabu' },
-    { value: 'KAMIS', label: 'Kamis' },
-    { value: 'JUMAT', label: 'Jumat' },
-    { value: 'SABTU', label: 'Sabtu' },
-    { value: 'MINGGU', label: 'Minggu' },
-  ];
+  const DAYS_OPTIONS = HARI_LIST;
 
   const loadTenantData = useCallback(async () => {
     if (!user?.tenant_id) return;

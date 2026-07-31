@@ -12,6 +12,7 @@ import {
 } from '../../../api/attendance/jadwalKBM.api';
 import { getMyTenant } from '../../../api/tenants.api';
 import { LogService } from '../../../utils/LogService';
+import { HARI_LIST } from '../../../constants/day.constants';
 import { Calendar, Clock, BookOpen, User, Info as InfoIcon, Save, X, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -213,7 +214,7 @@ export const JadwalKBMForm: React.FC<Props> = ({ onSuccess, onCancel, initialDat
                   <SearchableSelect
                     value={field.value}
                     onValueChange={field.onChange}
-                    options={['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'].map(d => ({ value: d, label: d }))}
+                    options={HARI_LIST.map(d => ({ value: d.value, label: `${d.label} (${d.value})` }))}
                     placeholder="Pilih Hari"
                     triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                   />

@@ -70,15 +70,8 @@ const DEFAULT_SLOT_TIMES: Record<number, { start: string; end: string }> = {
   12: { start: '16:15', end: '17:00' },
 };
 
-const HARI_LIST: { id: Hari; label: string; short: string }[] = [
-  { id: 'SENIN', label: 'Senin', short: 'Sen' },
-  { id: 'SELASA', label: 'Selasa', short: 'Sel' },
-  { id: 'RABU', label: 'Rabu', short: 'Rab' },
-  { id: 'KAMIS', label: 'Kamis', short: 'Kam' },
-  { id: 'JUMAT', label: 'Jumat', short: 'Jum' },
-  { id: 'SABTU', label: 'Sabtu', short: 'Sab' },
-  { id: 'MINGGU', label: 'Minggu', short: 'Min' },
-];
+import { HARI_LIST } from '../../constants/day.constants';
+
 
 export default function JadwalPiketGuruPage() {
   const { user, isAdmin, can } = useAuth();

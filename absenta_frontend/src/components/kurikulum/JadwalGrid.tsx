@@ -17,7 +17,7 @@ interface JadwalGridProps {
   selectedKelasId?: string;
 }
 
-const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+import { WORKDAYS_HARI_KEYS as DAYS } from '../../constants/day.constants';
 const SLOTS = Array.from({ length: 12 }, (_, i) => i + 1); // 12 Jam Pelajaran
 
 // Mock time mapping for slots
