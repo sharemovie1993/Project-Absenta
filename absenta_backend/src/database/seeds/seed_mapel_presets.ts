@@ -62,6 +62,8 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TP (Teknik Pemesinan)', kode_mapel: 'MPP-TP' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - DKV', kode_mapel: 'MPP-DKV' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - MPLB', kode_mapel: 'MPP-MPLB' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Perhotelan', kode_mapel: 'MPP-PHT' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Kuliner', kode_mapel: 'MPP-KUL' },
   ];
 
   // Standar Konsentrasi Keahlian SMK (KK per Jurusan)
@@ -76,6 +78,8 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TP (Teknik Pemesinan)', kode_mapel: 'KK-TP' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - DKV', kode_mapel: 'KK-DKV' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - MPLB', kode_mapel: 'KK-MPLB' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Perhotelan', kode_mapel: 'KK-PHT' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Kuliner', kode_mapel: 'KK-KUL' },
   ];
 
   // =====================================================================
