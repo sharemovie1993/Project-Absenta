@@ -145,9 +145,12 @@ export const detectDefaultJpForMapel = (
   
   if (isSmkOrMak) {
     const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.startsWith('DAS') || kode.includes('DAS-') || nama.startsWith('ddpk') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-    const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif');
-    const isKk = !isPkk && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
+    const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja') || nama.includes('pkl');
+    const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
+    const isKk = !isPkk && !isPkl && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
     if (isDasar && tingkat === 10) return 12;
+    if (isPkl) return 44;
+    if (isPkk) return 5;
     if (isKk && tingkat === 11) return 18;
     if (isKk && tingkat === 12) return 22;
   }
