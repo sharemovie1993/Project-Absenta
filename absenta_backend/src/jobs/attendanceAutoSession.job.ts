@@ -303,8 +303,6 @@ export async function generateSessionsForTenantDirect(
  * Meng-query seluruh tenant dan mengantrekan proses per-tenant.
  */
 export async function runAttendanceAutoSessionCycle(): Promise<void> {
-  const { systemConfigService } = await import('../modules/system-config/services/system-config.service');
-
   const activeTenants = await prisma.tenant.findMany({
     where: { status: 'ACTIVE' },
     select: { id: true }
