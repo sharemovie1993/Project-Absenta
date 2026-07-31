@@ -447,15 +447,30 @@ export const useMasterStrukturState = () => {
   }, [confirm, deleteMutation]);
 
   const unmappedSubjects = useMemo(() => {
-    if (!subjects?.data || !mappingFiltered) return [];
-    const mappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
-    return subjects.data.filter((s: Mapel) => {
-      if (mappedMapelIds.has(s.id)) return false;
+    if (!subjects?.data || !mappingFiltered || !mapping?.data) return [];
+    const currentMappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
+    const allMappedMapelIds = new Set(mapping.data.map((item: StrukturKurikulum) => item.mapel_id));
 
-      // Filter out based on active kurikulum
+    return subjects.data.filter((s: Mapel) => {
+      // 1. If mapped in current selected grade -> filter out
+      if (currentMappedMapelIds.has(s.id)) return false;
+
+      // 2. If mapped in ANY grade AND is a single-instance mapel (Mulok/Sunda, Seni, IPAS, INF, DDPK, etc.) -> filter out
       const kode = (s.kode_mapel || '').toUpperCase();
       const name = (s.nama_mapel || '').toLowerCase();
+
+      const isMulok = (s.kelompok || '').toUpperCase() === 'MUATAN LOKAL' || kode.startsWith('M-') || name.includes('sunda') || name.includes('jawa') || name.includes('bali') || name.includes('madura') || name.includes('muatan lokal');
+      const isSeniOrPrakarya = kode === 'SENI' || kode.startsWith('SENI') || name.includes('seni ') || name.includes('seni budaya') || name.includes('prakarya');
+      const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
+      const isIpas = kode.includes('IPAS') || name.includes('ipas') || name.includes('projek ipas');
+      const isInf = kode === 'INF' || kode.startsWith('INF-') || name.includes('informatika');
       
+      const isSingleInstanceMapel = isMulok || isSeniOrPrakarya || isDasar || isIpas || isInf;
+      if (isSingleInstanceMapel && allMappedMapelIds.has(s.id)) {
+        return false;
+      }
+
+      // 3. Filter out based on active kurikulum
       if (kurikulum === 'K13') {
         // K13 does not have Seni Pilihan
         const isSeniPilihan = ['SENI_MUSIK', 'SENI_RUPA', 'SENI_TARI', 'SENI_TEATER'].includes(kode) ||
@@ -471,7 +486,7 @@ export const useMasterStrukturState = () => {
 
       return isMapelRelevantForTingkat(s, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal);
     });
-  }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, kurikulum]);
+  }, [subjects?.data, mappingFiltered, mapping?.data, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, kurikulum]);
 
   const allUnmappedSubjects = useMemo(() => {
     if (!subjects?.data || !mappingFiltered) return [];
