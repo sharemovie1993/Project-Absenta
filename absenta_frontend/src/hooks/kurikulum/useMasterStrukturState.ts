@@ -308,14 +308,18 @@ export const useMasterStrukturState = () => {
               if (isMulok && ref.kode_mapel === 'MULOK') return true;
               
               if (isSmkOrMak) {
-                const isKejuruanMapel = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif') || name.includes('dasar-dasar');
-                if (isKejuruanMapel) {
-                  if (selectedTingkat === 10 && ref.kode_mapel === 'DASAR-KEJURUAN') return true;
-                  if (selectedTingkat > 10) {
-                    if ((code.includes('PKL') || name.includes('praktik kerja')) && ref.kode_mapel === 'PKL') return true;
-                    if ((code.includes('PKK') || name.includes('kreatif')) && ref.kode_mapel === 'PKK') return true;
-                    if (!code.includes('PKL') && !name.includes('praktik kerja') && !code.includes('PKK') && !name.includes('kreatif') && ref.kode_mapel === 'KK') return true;
-                  }
+                const isDasar = code.includes('DAS-') || code.includes('DDPK') || code === 'DDPK' || name.includes('dasar-dasar') || name.includes('dasar dasar');
+                const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja');
+                const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif');
+                const isKk = code === 'KK' || code.startsWith('KK-') || code.startsWith('KK ') || code.includes('KK ') || name.includes('konsentrasi keahlian');
+                const isMpp = code.includes('MPP') || code.includes('PILIHAN') || name.includes('pilihan');
+
+                if (isDasar && selectedTingkat === 10 && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK')) return true;
+                if (selectedTingkat > 10) {
+                  if (isPkl && ref.kode_mapel === 'PKL') return true;
+                  if (isPkk && ref.kode_mapel === 'PKK') return true;
+                  if (isKk && ref.kode_mapel === 'KK') return true;
+                  if (isMpp && (ref.kode_mapel === 'PILIHAN' || ref.kode_mapel.includes('MPP'))) return true;
                 }
               }
               
