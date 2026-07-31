@@ -50,6 +50,19 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'MULOK', nama_mapel: 'Bahasa Korea (Penunjang Industri)', kode_mapel: 'M-KOR-IND' },
   ];
 
+  // Standar Mata Pelajaran Pilihan SMK (MPP per Jurusan)
+  const mppPresets: PresetItem[] = [
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan (Umum)', kode_mapel: 'MAPEL-PILIHAN' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TKJ', kode_mapel: 'MPP-TKJ' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - RPL', kode_mapel: 'MPP-RPL' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - AKL', kode_mapel: 'MPP-AKL' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TAV', kode_mapel: 'MPP-TAV' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TKR', kode_mapel: 'MPP-TKR' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TBSM', kode_mapel: 'MPP-TBSM' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - DKV', kode_mapel: 'MPP-DKV' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - MPLB', kode_mapel: 'MPP-MPLB' },
+  ];
+
   // =====================================================================
   // SD / MI
   // =====================================================================
@@ -240,7 +253,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
 
     // 3. Mata Pelajaran Pilihan
-    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
+    ...mppPresets,
     { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
     ...mulokMenengahKejuruan
   ]);
@@ -269,7 +282,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
 
     // 3. Mata Pelajaran Pilihan
-    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan', kode_mapel: 'MAPEL-PILIHAN' },
+    ...mppPresets,
     { category: 'PILIHAN_SMK', nama_mapel: 'Koding dan Kecerdasan Artifisial', kode_mapel: 'KAI' },
     ...mulokMenengahKejuruan
   ]);

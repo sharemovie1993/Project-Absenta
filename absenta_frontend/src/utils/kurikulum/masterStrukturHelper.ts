@@ -52,9 +52,11 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string, jen
   const isInggris = kode === 'ING' || kode.startsWith('ING-') || nama.includes('bahasa inggris') || nama.includes('english');
   const isPilihan = kode.includes('PILIHAN') || 
                     kode.includes('MAPEL-PILIHAN') || 
+                    kode.includes('MPP') ||
+                    kode.startsWith('MPP-') ||
                     kode.includes('KAI') ||
                     kode.startsWith('SENI_') || // e.g. SENI_MUSIK, SENI_RUPA
-                    ['seni musik', 'seni rupa', 'seni tari', 'seni teater', 'pilihan', 'tingkat lanjut', 'koding', 'coding'].some(t => nama.includes(t)) ||
+                    ['seni musik', 'seni rupa', 'seni tari', 'seni teater', 'pilihan', 'tingkat lanjut', 'koding', 'coding', 'mpp'].some(t => nama.includes(t)) ||
                     ['FIS', 'KIM', 'BIO', 'EKO', 'SOS', 'GEO', 'ANTRO', 'JPN', 'ZHO', 'DEU', 'FRA', 'KOR', 'KAI'].some(k => kode === k) ||
                     (jenjang === 'SD' && isInggris);
 
