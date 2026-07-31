@@ -2,17 +2,18 @@ import { ChatbotContext } from '../../core/chatbot-context';
 import { siswaService } from '@/modules/academic/siswa/services/siswa.service';
 import { jadwalKBMService } from '@/modules/kurikulum/jadwal-kbm/services/jadwal-kbm.service';
 import { formatSiswaMenu } from '../../../services/wa-chatbot-commands';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 
-function getHariWIB(): string {
-  const jakartaDay = new Date().toLocaleDateString('en-US', {
-    timeZone: 'Asia/Jakarta',
+function getHariByTimezone(timezone = 'Asia/Jakarta'): string {
+  const localDay = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
     weekday: 'long',
-  });
+  }).format(new Date());
   const map: Record<string, string> = {
     Sunday: 'MINGGU', Monday: 'SENIN', Tuesday: 'SELASA',
     Wednesday: 'RABU', Thursday: 'KAMIS', Friday: 'JUMAT', Saturday: 'SABTU',
   };
-  return map[jakartaDay] ?? 'SENIN';
+  return map[localDay] ?? 'SENIN';
 }
 
 export class SiswaHandler {
@@ -80,7 +81,8 @@ export class SiswaHandler {
 
     // [4] Jadwal Pelajaran Hari Ini (Via Shared Domain Service)
     if (choice === '4') {
-      const currentDay = getHariWIB();
+      const tz = await getTenantTimezone(siswa.tenant_id);
+      const currentDay = getHariByTimezone(tz);
 
       if (!siswa.kelas_id) {
         return `📅 *Jadwal Pelajaran*\n\nData kelas belum diset. Hubungi TU sekolah.\n\n💡 Ketik *ANGKA* menu lain (misal: 2) atau ketik *[0]* untuk Daftar Menu.`;

@@ -182,7 +182,9 @@ export function getModeFeatures(tenantMode: AbsensiMode): GerbangModeFeatures {
   }
 }
 
-export async function getIntegrationStatus(_tenantId: string, tenantMode: AbsensiMode): Promise<GerbangIntegrationStatus> {
+import { getTenantTimezone, getTenantDayRangeUTC } from '../../../../utils/timezone.utils';
+
+export async function getIntegrationStatus(tenantId: string, tenantMode: AbsensiMode): Promise<GerbangIntegrationStatus> {
   if (isSimpleMode(tenantMode)) {
     return {
       gerbang_module: 'active' as const,
@@ -191,11 +193,9 @@ export async function getIntegrationStatus(_tenantId: string, tenantMode: Absens
     };
   }
 
-  const today = new Date();
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(today);
-  endOfDay.setHours(23, 59, 59, 999);
+  const tz = await getTenantTimezone(tenantId);
+  const todayStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(new Date());
+  const { startUTC: startOfDay, endUTC: endOfDay } = getTenantDayRangeUTC(todayStr, tz);
 
   return {
     gerbang_module: 'active' as const,

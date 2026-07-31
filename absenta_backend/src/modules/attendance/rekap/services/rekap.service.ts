@@ -3,6 +3,7 @@ import { AbsensiMode } from '../../../../constants/enums';
 import { ATTENDANCE_POINTS } from '../../../../constants/attendance-points';
 import { DataScope } from '../../../../types/fastify';
 import { CacheService } from '../../../../utils/cache.service';
+import { formatTenantTime, getTenantTimezone, getTimezoneLabel, getTenantDayRangeUTC } from '../../../../utils/timezone.utils';
 
 export interface RekapHarianSiswaResponse {
   nama_siswa: string;
@@ -212,9 +213,15 @@ export class RekapService {
     const tapMasuk = gerbangToday.find(g => String(g.arah || '').toUpperCase().includes('DATANG') || String(g.arah || '').toUpperCase().includes('MASUK'));
     const tapPulang = gerbangToday.find(g => String(g.arah || '').toUpperCase().includes('PULANG'));
 
+    const guruProfile = await prisma.guru.findUnique({
+      where: { id: guruId },
+      select: { tenant_id: true }
+    });
+    const tz = await getTenantTimezone(guruProfile?.tenant_id);
+
     const formatWaktu = (dt?: Date | null) => {
       if (!dt) return null;
-      return new Date(dt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      return formatTenantTime(dt, tz, true);
     };
 
     let statusMasukText = '⚪ Belum Tap Masuk';

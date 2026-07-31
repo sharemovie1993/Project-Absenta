@@ -1,6 +1,7 @@
 import { PARENT_EVENT_MATRIX, ParentEventType, NotificationChannel } from '../constants/parent-event-matrix';
 import { prisma } from '@/utils/prisma';
 import { emitDomainEvent } from '@/infra/event-bus';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 
 export class ParentNotificationService {
   constructor() {}
@@ -79,18 +80,7 @@ export class ParentNotificationService {
     // We assume if OrangTua exists, they are valid targets.
 
     // Resolve Timezone
-    let timeZone = 'Asia/Jakarta'; // Default WIB
-    try {
-      const tzConfig = await prisma.config.findFirst({
-        where: { tenant_id: parent.tenant_id, key: 'TIMEZONE' }
-      });
-      if (tzConfig?.value) {
-        timeZone = tzConfig.value;
-      }
-    } catch (e) {
-      // Ignore error, use default
-    }
-
+    const timeZone = await getTenantTimezone(parent.tenant_id);
     const dateObj = payload.timestamp ? new Date(payload.timestamp) : new Date();
 
     let tanggalStr: string;
@@ -100,9 +90,8 @@ export class ParentNotificationService {
       tanggalStr = dateObj.toLocaleDateString('id-ID', { timeZone });
       waktuStr = dateObj.toLocaleTimeString('id-ID', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
     } catch (e) {
-      // Fallback
-      tanggalStr = dateObj.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
-      waktuStr = dateObj.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false });
+      tanggalStr = dateObj.toLocaleDateString('id-ID');
+      waktuStr = dateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
     }
 
     // Prepare Message

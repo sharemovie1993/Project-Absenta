@@ -1,10 +1,12 @@
-import { differenceInMinutes, parse } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
+import { TZ_OFFSET } from './timezone.utils';
 
 export interface AttendanceRuleConfig {
   jamMasuk: string;          // "07:00" or "13:00"
   jamPulang: string;         // "14:00" or "17:00"
   toleransiMenit: number;    // 15
   abaikanTerlambat: boolean; // from AbsensiKejadianKhusus
+  timezone?: string;        // 'Asia/Jakarta' | 'Asia/Makassar' | 'Asia/Jayapura'
 }
 
 export interface AttendanceStatusResult {
@@ -25,16 +27,24 @@ export function calculateAttendanceStatus(
     return { status: 'TIDAK_HADIR', menitTerlambat: 0, isLateIgnored: false };
   }
 
-  // Parse jam masuk target (asumsi tanggal scanMasuk)
+  // Resolusi timezone tenant
+  const tz = String(config.timezone || 'Asia/Jakarta').trim();
+  const offsetHours = TZ_OFFSET[tz] ?? 7;
+  const offsetSign = offsetHours >= 0 ? '+' : '-';
+  const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:00`;
+
+  // Parse jam masuk target (07:00) pada tanggal lokal tenant
   const jamMasukStr = config.jamMasuk && typeof config.jamMasuk === 'string' && config.jamMasuk.trim() ? config.jamMasuk.trim() : '07:00';
   let targetMasuk: Date;
   try {
-    targetMasuk = parse(jamMasukStr, 'HH:mm', scanMasuk);
+    const localDateStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(scanMasuk);
+    const targetIso = `${localDateStr}T${jamMasukStr}:00.000${offsetStr}`;
+    targetMasuk = new Date(targetIso);
     if (isNaN(targetMasuk.getTime())) {
-      targetMasuk = parse('07:00', 'HH:mm', scanMasuk);
+      targetMasuk = new Date(`${localDateStr}T07:00:00.000${offsetStr}`);
     }
   } catch {
-    targetMasuk = parse('07:00', 'HH:mm', scanMasuk);
+    targetMasuk = scanMasuk;
   }
   
   // Hitung selisih menit (scanMasuk - targetMasuk)
