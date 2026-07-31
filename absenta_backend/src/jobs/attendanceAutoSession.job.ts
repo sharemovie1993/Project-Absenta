@@ -2,6 +2,7 @@ import { defineCronJob } from '../infra/jobEngine';
 import { appLogger } from '../utils/app-logger';
 import { prisma } from '../utils/prisma';
 import { Hari } from '@prisma/client';
+import { TZ_OFFSET, getTenantTimezone } from '../utils/timezone.utils';
 
 /**
  * Helper: dapatkan waktu lokal tenant berdasarkan timezone config.
@@ -103,11 +104,6 @@ export async function generateSessionsForTenantDirect(
     }
 
     // Offset timezone lokal
-    const TZ_OFFSET: Record<string, number> = {
-      'Asia/Jakarta': 7,
-      'Asia/Makassar': 8,
-      'Asia/Jayapura': 9
-    };
     const offset = TZ_OFFSET[timeZone] ?? 7;
 
     let createdCount = 0;
@@ -315,8 +311,8 @@ export async function runAttendanceAutoSessionCycle(): Promise<void> {
   });
 
   for (const tenant of activeTenants) {
-    const cfg = await systemConfigService.getActive(tenant.id);
-    const { dateStr, timeZone } = getTenantLocalTime(cfg?.timezone, new Date());
+    const tz = await getTenantTimezone(tenant.id);
+    const { dateStr, timeZone } = getTenantLocalTime(tz, new Date());
     await generateSessionsForTenant(tenant.id, dateStr, timeZone);
   }
   
