@@ -556,6 +556,80 @@ export const getSubjectSortRank = (item: any) => {
   return 15;
 };
 
+export const getStandardReferenceForStrukturItem = (
+  item: any,
+  standardReferencesData: any[],
+  isSmkOrMak: boolean
+): any | null => {
+  if (!standardReferencesData || !Array.isArray(standardReferencesData) || standardReferencesData.length === 0) {
+    return null;
+  }
+  
+  const rawCode = item.Mapel?.kode_mapel || item.kode_mapel || '';
+  const rawName = item.Mapel?.nama_mapel || item.nama_mapel || '';
+  const code = rawCode.toUpperCase();
+  const cleanCode = code.split('-')[0];
+  const name = rawName.toLowerCase();
+  const tingkat = item.tingkat;
+  const kelompok = (item.kelompok || '').toUpperCase();
+
+  // 1. Exact match by code & tingkat
+  let match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel || '').toUpperCase() === code);
+  
+  // 2. Clean code prefix match (e.g. PAI-3C74 -> PAI)
+  if (!match) {
+    match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel || '').toUpperCase() === cleanCode);
+  }
+
+  // 3. Name contains match
+  if (!match) {
+    match = standardReferencesData.find(ref => 
+      ref.tingkat === tingkat && 
+      (name.includes((ref.nama_mapel || '').toLowerCase()) || (ref.nama_mapel || '').toLowerCase().includes(name))
+    );
+  }
+
+  // 4. Semantic match by category (Religion, Arts, Mulok)
+  if (!match) {
+    const isReligion = name.startsWith('pendidikan agama') || name.includes('agama');
+    const isSeniOrPrakarya = name.includes('seni ') || name.includes('seni') || name.includes('prakarya');
+    const isMulok = kelompok === 'MUATAN LOKAL' || ['sunda', 'jawa', 'bali', 'madura'].some(lang => name.includes(lang));
+
+    if (isReligion) {
+      match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama')));
+    } else if (isSeniOrPrakarya) {
+      match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni')));
+    } else if (isMulok) {
+      match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'MULOK');
+    }
+  }
+
+  // 5. SMK Kejuruan & Pilihan Rules
+  if (!match && isSmkOrMak) {
+    const isDasar = code.startsWith('DDPK') || code.includes('DDPK') || code.startsWith('DAS') || code.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
+    const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja') || name.includes('pkl');
+    const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif') || name.includes('pkk');
+    const isKk = !isPkk && !isPkl && (code.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
+    const isMpp = kelompok === 'MATA PELAJARAN PILIHAN' || code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || nama.startsWith('mpp') || nama.includes('pilihan');
+
+    if (isDasar && tingkat === 10) {
+      match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK'));
+    } else if (tingkat > 10) {
+      if (isPkl) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKL');
+      } else if (isPkk) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'PKK');
+      } else if (isKk) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && ref.kode_mapel === 'KK');
+      } else if (isMpp) {
+        match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'PILIHAN' || ref.kode_mapel.includes('MPP')));
+      }
+    }
+  }
+
+  return match || null;
+};
+
 export const checkMapelHasStandard = (
   s: any,
   selectedTingkat: number,
@@ -566,42 +640,6 @@ export const checkMapelHasStandard = (
   if (!standardReferencesData || !Array.isArray(standardReferencesData) || standardReferencesData.length === 0) {
     return true;
   }
-  
-  const code = (s.kode_mapel || '').toUpperCase();
-  const cleanCode = code.split('-')[0];
-  const name = (s.nama_mapel || '').toLowerCase();
-  
-  return standardReferencesData.some((ref: any) => {
-    if (ref.tingkat !== selectedTingkat) return false;
-    
-    if ((ref.kode_mapel || '').toUpperCase() === code) return true;
-    if ((ref.kode_mapel || '').toUpperCase() === cleanCode) return true;
-    if (name.includes(ref.nama_mapel.toLowerCase()) || ref.nama_mapel.toLowerCase().includes(name)) return true;
-    
-    const isReligion = name.startsWith('pendidikan agama') || name.includes('agama');
-    const isSeniOrPrakarya = name.includes('seni ') || name.includes('seni') || name.includes('prakarya');
-    const isMulok = (group === 'MUATAN LOKAL') || ['sunda', 'jawa', 'bali', 'madura'].some(lang => name.includes(lang));
-    
-    if (isReligion && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama'))) return true;
-    if (isSeniOrPrakarya && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni'))) return true;
-    if (isMulok && ref.kode_mapel === 'MULOK') return true;
-    
-    if (isSmkOrMak) {
-      const isDasar = code.startsWith('DDPK') || code.includes('DDPK') || code.startsWith('DAS') || code.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
-      const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja');
-      const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif');
-      const isKk = !isPkk && (code.startsWith('KK') || code.includes('KK-') || code.includes('KK ') || code === 'KK' || name.startsWith('kk') || name.includes('konsentrasi'));
-      const isMpp = code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || name.startsWith('mpp') || name.includes('pilihan');
-
-      if (isDasar && selectedTingkat === 10 && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK')) return true;
-      if (selectedTingkat > 10) {
-        if (isPkl && ref.kode_mapel === 'PKL') return true;
-        if (isPkk && ref.kode_mapel === 'PKK') return true;
-        if (isKk && ref.kode_mapel === 'KK') return true;
-        if (isMpp && (ref.kode_mapel === 'PILIHAN' || ref.kode_mapel.includes('MPP'))) return true;
-      }
-    }
-    
-    return false;
-  });
+  const item = { ...s, tingkat: selectedTingkat, kelompok: group };
+  return !!getStandardReferenceForStrukturItem(item, standardReferencesData, isSmkOrMak);
 };

@@ -3,9 +3,7 @@ import { Settings, Trash2, BookOpen } from 'lucide-react';
 import { Skeleton } from '../../ui/Skeleton';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
-import type { Mapel } from '../../../types/academic';
-
-import { StrukturKurikulum } from '../../../utils/kurikulum/masterStrukturHelper';
+import { StrukturKurikulum, getStandardReferenceForStrukturItem } from '../../../utils/kurikulum/masterStrukturHelper';
 
 interface TableProps {
   isLoadingMapping: boolean;
@@ -138,67 +136,11 @@ export const StrukturKurikulumTable: React.FC<TableProps> = ({
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel}</p>
-                        <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel}</p>
+                        <p className="font-bold text-gray-900 dark:text-white">{item.Mapel?.nama_mapel || item.nama_mapel}</p>
+                        <p className="text-[10px] font-mono text-gray-400">{item.Mapel?.kode_mapel || item.kode_mapel}</p>
                       </div>
                       {(() => {
-                        if (!standardReferences?.data) return null;
-                        const code = (item.Mapel?.kode_mapel || '').toUpperCase();
-                        const name = (item.Mapel?.nama_mapel || '').toLowerCase();
-                        
-                        let match = standardReferences.data.find((ref: any) => 
-                          ref.tingkat === item.tingkat && 
-                          (ref.kode_mapel || '').toUpperCase() === code
-                        );
-                        
-                        if (!match) {
-                          const cleanCode = code.split('-')[0];
-                          match = standardReferences.data.find((ref: any) => 
-                            ref.tingkat === item.tingkat && 
-                            (ref.kode_mapel || '').toUpperCase() === cleanCode
-                          );
-                        }
-                        
-                        if (!match) {
-                          match = standardReferences.data.find((ref: any) => 
-                            ref.tingkat === item.tingkat && 
-                            (
-                              name.includes(ref.nama_mapel.toLowerCase()) || 
-                              ref.nama_mapel.toLowerCase().includes(name)
-                            )
-                          );
-                        }
-                        
-                        if (!match) {
-                          const isReligion = name.startsWith('pendidikan agama') || name.includes('agama');
-                          const isSeniOrPrakarya = name.includes('seni ') || name.includes('seni') || name.includes('prakarya');
-                          const isMulok = (item.kelompok || '').toUpperCase() === 'MUATAN LOKAL' || ['sunda', 'jawa', 'bali', 'madura'].some(lang => name.includes(lang));
-                          
-                          if (isReligion) {
-                            match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && (ref.kode_mapel === 'PAI' || (ref.nama_mapel || '').toLowerCase().includes('agama')));
-                          } else if (isSeniOrPrakarya) {
-                            match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && (ref.kode_mapel === 'SENI' || (ref.nama_mapel || '').toLowerCase().includes('seni')));
-                          } else if (isMulok) {
-                            match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && ref.kode_mapel === 'MULOK');
-                          }
-                        }
-                        
-                        if (!match) {
-                          const isKejuruan = code.includes('PKL') || code.includes('PKK') || code.includes('DAS-') || name.includes('praktik kerja') || name.includes('kreatif') || name.includes('dasar-dasar');
-                          if (isKejuruan) {
-                            if (item.tingkat === 10) {
-                              match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && ref.kode_mapel === 'DASAR-KEJURUAN');
-                            } else {
-                              if (code.includes('PKL') || name.includes('praktik kerja')) {
-                                match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKL');
-                              } else if (code.includes('PKK') || name.includes('kreatif')) {
-                                match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && ref.kode_mapel === 'PKK');
-                              } else {
-                                match = standardReferences.data.find((ref: any) => ref.tingkat === item.tingkat && ref.kode_mapel === 'KK');
-                              }
-                            }
-                          }
-                        }
+                        const match = getStandardReferenceForStrukturItem(item, standardReferences?.data || [], true);
                         
                         if (!match) {
                           return (
