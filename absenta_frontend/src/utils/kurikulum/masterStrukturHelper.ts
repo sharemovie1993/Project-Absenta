@@ -609,8 +609,8 @@ export const getStandardReferenceForStrukturItem = (
     const isDasar = code.startsWith('DDPK') || code.includes('DDPK') || code.startsWith('DAS') || code.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
     const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja') || name.includes('pkl');
     const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif') || name.includes('pkk');
-    const isKk = !isPkk && !isPkl && (code.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
-    const isMpp = kelompok === 'MATA PELAJARAN PILIHAN' || code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || nama.startsWith('mpp') || nama.includes('pilihan');
+    const isKk = !isPkk && !isPkl && (code.startsWith('KK') || code.includes('KK-') || code.includes('KK ') || code === 'KK' || name.startsWith('kk') || name.includes('konsentrasi'));
+    const isMpp = kelompok === 'MATA PELAJARAN PILIHAN' || code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || name.startsWith('mpp') || name.includes('pilihan');
 
     if (isDasar && tingkat === 10) {
       match = standardReferencesData.find(ref => ref.tingkat === tingkat && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK'));
