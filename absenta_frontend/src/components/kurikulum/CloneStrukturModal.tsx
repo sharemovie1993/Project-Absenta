@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, ArrowRight } from 'lucide-react';
+import { Copy, ArrowRight, History } from 'lucide-react';
 import { Modal, ModalFooter } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { kurikulumApi } from '../../api/kurikulum.api';
@@ -14,6 +14,11 @@ interface CloneStrukturModalProps {
   onSuccess?: () => void;
 }
 
+const parseStartYear = (tahunStr: string): number => {
+  const match = (tahunStr || '').match(/\d{4}/);
+  return match ? parseInt(match[0], 10) : 0;
+};
+
 export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
   isOpen,
   onClose,
@@ -26,6 +31,7 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
   const [fromTahunId, setFromTahunId] = useState<string>('');
   const [toTahunId, setToTahunId] = useState<string>('');
   const [overwrite, setOverwrite] = useState<boolean>(false);
+  const [allowBackwardClone, setAllowBackwardClone] = useState<boolean>(false);
 
   // Set default selection
   useEffect(() => {
@@ -41,6 +47,24 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
       }
     }
   }, [years, currentTargetTahunId, isOpen]);
+
+  const fromYearObj = useMemo(() => years?.find((y) => y.id === fromTahunId), [years, fromTahunId]);
+  const toYearObj = useMemo(() => years?.find((y) => y.id === toTahunId), [years, toTahunId]);
+
+  // Check if user is cloning backwards (from newer year to older year)
+  const isCloningBackward = useMemo(() => {
+    if (!fromYearObj || !toYearObj) return false;
+    const fromStart = parseStartYear(fromYearObj.tahun);
+    const toStart = parseStartYear(toYearObj.tahun);
+    return fromStart > 0 && toStart > 0 && fromStart > toStart;
+  }, [fromYearObj, toYearObj]);
+
+  // Reset backward checkbox if target changes to non-backward
+  useEffect(() => {
+    if (!isCloningBackward) {
+      setAllowBackwardClone(false);
+    }
+  }, [isCloningBackward]);
 
   const cloneMutation = useMutation({
     mutationFn: (payload: { from_tahun_pelajaran_id: string; to_tahun_pelajaran_id: string; overwrite: boolean }) =>
@@ -68,6 +92,10 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
       toast.error('Tahun Pelajaran Asal dan Tujuan tidak boleh sama');
       return;
     }
+    if (isCloningBackward && !allowBackwardClone) {
+      toast.error('Centang persetujuan salin ke Tahun Pelajaran terlama (backfill data historis) terlebih dahulu');
+      return;
+    }
 
     cloneMutation.mutate({
       from_tahun_pelajaran_id: fromTahunId,
@@ -75,9 +103,6 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
       overwrite,
     });
   };
-
-  const fromYearObj = years?.find((y) => y.id === fromTahunId);
-  const toYearObj = years?.find((y) => y.id === toTahunId);
 
   return (
     <Modal
@@ -155,6 +180,32 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
           </div>
         </div>
 
+        {/* Backward Cloning Warning & Checkbox (For Backfilling Historical Data) */}
+        {isCloningBackward && (
+          <div className="p-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl space-y-2.5 animate-in fade-in duration-300">
+            <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+              <History className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <h4 className="text-xs font-black uppercase tracking-wider">
+                Deteksi Menyalin ke Tahun Pelajaran Lebih Lama (Backfill Data Historis)
+              </h4>
+            </div>
+            <p className="text-[11px] text-blue-700/90 dark:text-blue-300/90 leading-relaxed font-medium">
+              Anda sedang menyalin struktur kurikulum dari tahun lebih baru (<strong>{fromYearObj?.tahun}</strong>) ke tahun yang lebih lama/arsip (<strong>{toYearObj?.tahun}</strong>) untuk melengkapi data historis lama di platform.
+            </p>
+            <label className="flex items-center gap-3 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={allowBackwardClone}
+                onChange={(e) => setAllowBackwardClone(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-blue-300 dark:border-blue-700"
+              />
+              <span className="text-xs font-bold text-blue-950 dark:text-blue-100">
+                Izinkan menyalin ke Tahun Pelajaran terlama (Backfill data historis)
+              </span>
+            </label>
+          </div>
+        )}
+
         {/* Options */}
         <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-2xl space-y-2">
           <label className="flex items-center gap-3 cursor-pointer select-none">
@@ -189,7 +240,8 @@ export const CloneStrukturModal: React.FC<CloneStrukturModalProps> = ({
           <Button
             type="submit"
             isLoading={cloneMutation.isPending}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2"
+            disabled={isCloningBackward && !allowBackwardClone}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Copy size={14} />
             PROSES SALIN STRUKTUR
