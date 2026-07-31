@@ -28,7 +28,7 @@ import {
   CalendarStats 
 } from '../../components/kurikulum/kalender/EventFormModal';
 import { SharedAcademicCalendarGrid } from '../../components/kurikulum/kalender/SharedAcademicCalendarGrid';
-import { getJenisOption, INDONESIAN_DAY_NAMES } from '../../components/kurikulum/kalender/constants';
+import { getJenisOption } from '../../components/kurikulum/kalender/constants';
 
 // Lazy load subcomponents
 const EventFormModal = lazy(() => import('../../components/kurikulum/kalender/EventFormModal'));

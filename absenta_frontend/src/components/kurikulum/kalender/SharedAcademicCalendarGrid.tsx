@@ -11,10 +11,14 @@ import {
   CalendarEvent,
 } from './EventFormModal';
 import {
+  ALL_HARI_KEYS
+} from '../../../constants/day.constants';
+import {
   getJenisOption,
-  INDONESIAN_DAY_NAMES,
   JENIS_OPTIONS
 } from './constants';
+
+const INDONESIAN_DAY_NAMES = ['MINGGU', ...ALL_HARI_KEYS.slice(0, 6)];
 
 export interface SharedAcademicCalendarGridProps {
   calYear: number;

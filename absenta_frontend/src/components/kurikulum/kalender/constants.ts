@@ -3,10 +3,7 @@ export const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-import { HARI_LIST, ALL_HARI_KEYS } from '../../../constants/day.constants';
 
-export const DAY_NAMES = HARI_LIST.map(d => d.shortLabel);
-export const INDONESIAN_DAY_NAMES = ['MINGGU', ...ALL_HARI_KEYS.slice(0, 6)];
 
 export interface JenisOption {
   value: string;
