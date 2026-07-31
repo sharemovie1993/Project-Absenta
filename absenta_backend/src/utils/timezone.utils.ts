@@ -13,7 +13,7 @@ export const TZ_LABEL: Record<string, string> = {
 };
 
 /**
- * Resolves configured tenant timezone from SystemConfig or MasterSekolah (Default: 'Asia/Jakarta')
+ * Resolves configured tenant timezone from SystemConfig (Default: 'Asia/Jakarta')
  */
 export async function getTenantTimezone(tenantId?: string | null): Promise<string> {
   if (!tenantId) return 'Asia/Jakarta';
@@ -25,14 +25,6 @@ export async function getTenantTimezone(tenantId?: string | null): Promise<strin
     });
     if (tzConfig?.value && typeof tzConfig.value === 'string' && tzConfig.value.trim()) {
       return tzConfig.value.trim();
-    }
-
-    const sekolah = await prisma.masterSekolah.findFirst({
-      where: { tenant_id: tenantId },
-      select: { timezone: true },
-    });
-    if (sekolah?.timezone && typeof sekolah.timezone === 'string' && sekolah.timezone.trim()) {
-      return sekolah.timezone.trim();
     }
   } catch (e) {
     console.error(`[TIMEZONE_UTILS] Error resolving timezone for tenant ${tenantId}:`, e);

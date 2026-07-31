@@ -3,7 +3,7 @@ import { AbsensiMode } from '../../../../constants/enums';
 import { ATTENDANCE_POINTS } from '../../../../constants/attendance-points';
 import { DataScope } from '../../../../types/fastify';
 import { CacheService } from '../../../../utils/cache.service';
-import { formatTenantTime, getTenantTimezone, getTimezoneLabel, getTenantDayRangeUTC } from '../../../../utils/timezone.utils';
+import { formatTenantTime, getTenantTimezone } from '../../../../utils/timezone.utils';
 
 export interface RekapHarianSiswaResponse {
   nama_siswa: string;
