@@ -286,16 +286,18 @@ export const isMapelRelevantForTingkat = (
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
   const isKk = !isPkk && !isPkl && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
   const isMpp = kode.startsWith('MPP') || kode.includes('MPP') || kode.includes('PILIHAN') || nama.startsWith('mpp') || nama.includes('pilihan');
+  const isSeniOrPrakarya = kode === 'SENI' || kode.startsWith('SENI') || nama.includes('seni ') || nama.includes('seni budaya') || nama.includes('prakarya');
+  const isPjok = kode === 'PJOK' || kode.startsWith('PJOK') || nama.includes('pjok') || nama.includes('jasmani') || nama.includes('olahraga');
 
   if (isSmkOrMak) {
     if (tingkat === 10) {
       if (isPkl || isPkk || isKk || isMpp) return false;
     } else if (tingkat === 11) {
-      // Grade 11 MUST NOT have DDPK, IPAS, INF, or PKL
-      if (isDasar || isIpas || isInf || isPkl) return false;
+      // Grade 11 MUST NOT have DDPK, IPAS, INF, PKL, or Seni Budaya
+      if (isDasar || isIpas || isInf || isPkl || isSeniOrPrakarya) return false;
     } else if (tingkat >= 12) {
-      // Grade 12 MUST NOT have DDPK, IPAS, or INF
-      if (isDasar || isIpas || isInf) return false;
+      // Grade 12 MUST NOT have DDPK, IPAS, INF, Seni Budaya, or PJOK
+      if (isDasar || isIpas || isInf || isSeniOrPrakarya || isPjok) return false;
     }
   } else {
     // For non-SMK (SD, SMP, SMA), hide vocational elements but keep everything else (like Mulok)
