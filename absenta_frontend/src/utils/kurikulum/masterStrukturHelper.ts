@@ -31,7 +31,7 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string, jen
   const kode = (kodeMapel || '').toUpperCase();
   const nama = (namaMapel || '').toLowerCase();
   
-  const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PHT', '-KUL', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
+  const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PHT', '-KUL', '-TITL', '-DPIB', '-FKK', '-TPL', '-ATPH', '-BD', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
   const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
   const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');

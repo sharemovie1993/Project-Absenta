@@ -64,6 +64,12 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - MPLB', kode_mapel: 'MPP-MPLB' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Perhotelan', kode_mapel: 'MPP-PHT' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Kuliner', kode_mapel: 'MPP-KUL' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TITL (Teknik Listrik)', kode_mapel: 'MPP-TITL' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - DPIB (Desain Bangunan)', kode_mapel: 'MPP-DPIB' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Farmasi', kode_mapel: 'MPP-FKK' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Pengelasan', kode_mapel: 'MPP-TPL' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - ATPH (Pertanian)', kode_mapel: 'MPP-ATPH' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Bisnis Digital', kode_mapel: 'MPP-BD' },
   ];
 
   // Standar Konsentrasi Keahlian SMK (KK per Jurusan)
@@ -80,6 +86,12 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - MPLB', kode_mapel: 'KK-MPLB' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Perhotelan', kode_mapel: 'KK-PHT' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Kuliner', kode_mapel: 'KK-KUL' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TITL (Teknik Listrik)', kode_mapel: 'KK-TITL' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - DPIB (Desain Bangunan)', kode_mapel: 'KK-DPIB' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Farmasi', kode_mapel: 'KK-FKK' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Pengelasan', kode_mapel: 'KK-TPL' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - ATPH (Pertanian)', kode_mapel: 'KK-ATPH' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Bisnis Digital', kode_mapel: 'KK-BD' },
   ];
 
   // =====================================================================

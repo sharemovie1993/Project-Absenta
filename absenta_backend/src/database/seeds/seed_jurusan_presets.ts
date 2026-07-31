@@ -294,3 +294,14 @@ export async function seedJurusanPresets(prisma: PrismaClient) {
 
   console.log('✅ Global Program & Jurusan Presets seeded successfully.');
 }
+
+if (require.main === module) {
+  const p = new PrismaClient();
+  seedJurusanPresets(p)
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(() => p.$disconnect());
+}
+
