@@ -2,13 +2,15 @@ import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Layers, Target, BarChart3, ChevronRight,
-  BookOpen, Settings, Search, Printer, Loader2,
+  BookOpen, Settings, Search, Printer, Loader2, Copy,
 } from 'lucide-react';
 import { Card }    from '../../components/ui/Card';
 import { Badge }   from '../../components/ui/Badge';
 import { Button }  from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { kurikulumApi } from '../../api/kurikulum.api';
+
+const CloneStrukturModal = lazy(() => import('../../components/kurikulum/CloneStrukturModal'));
 import { tahunPelajaranApi, jurusanApi } from '../../api/academic.api';
 import { useNavigate }       from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -71,6 +73,7 @@ const StrukturKurikulumPage: React.FC = () => {
   const [selectedKelompok, setSelectedKelompok]  = useState<string>('ALL');
   const [selectedJurusanId, setSelectedJurusanId] = useState<string>('');
   const [isPrinting,       setIsPrinting]        = useState(false);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
 
   const isSmkOrMak = useMemo(() => {
     const j = (jenjang || '').toUpperCase();
@@ -285,13 +288,24 @@ const StrukturKurikulumPage: React.FC = () => {
           </div>
 
           {can('academic.manage.academic') && (
-            <Button
-              onClick={handleManagePlotting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none font-black self-end sm:self-auto"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              KELOLA PLOTTING JP
-            </Button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                onClick={() => setIsCloneModalOpen(true)}
+                variant="outline"
+                className="rounded-2xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 font-black shadow-sm"
+              >
+                <Copy className="w-4 h-4 mr-2 text-indigo-600 dark:text-indigo-400" />
+                SALIN STRUKTUR
+              </Button>
+
+              <Button
+                onClick={handleManagePlotting}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none font-black"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                KELOLA PLOTTING JP
+              </Button>
+            </div>
           )}
         </div>
 
@@ -542,6 +556,17 @@ const StrukturKurikulumPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        {isCloneModalOpen && (
+          <CloneStrukturModal
+            isOpen={isCloneModalOpen}
+            onClose={() => setIsCloneModalOpen(false)}
+            years={years?.data || []}
+            currentTargetTahunId={activeYear?.id}
+          />
+        )}
+      </Suspense>
     </AcademicPageLayout>
   );
 };

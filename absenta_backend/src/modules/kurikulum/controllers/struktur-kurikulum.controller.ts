@@ -175,5 +175,29 @@ export class StrukturKurikulumController {
       return sendError(reply, 500, error.message || 'Failed to retrieve teaching workload', error);
     }
   }
+
+  static async clone(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { from_tahun_pelajaran_id, to_tahun_pelajaran_id, overwrite } = req.body || {};
+
+      if (!from_tahun_pelajaran_id || !to_tahun_pelajaran_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Tahun pelajaran asal dan tujuan wajib dipilih'
+        });
+      }
+
+      const result = await StrukturKurikulumService.clone(tenant_id, {
+        from_tahun_pelajaran_id,
+        to_tahun_pelajaran_id,
+        overwrite: Boolean(overwrite)
+      });
+
+      return sendResponse(reply, 200, true, result.message || `Berhasil menyalin ${result.cloned_count} alokasi struktur kurikulum`, result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Failed to clone structure', error);
+    }
+  }
 }
 // End of controller class

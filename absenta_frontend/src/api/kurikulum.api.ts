@@ -70,6 +70,10 @@ export const kurikulumApi = {
     const response = await api.delete(`/kurikulum/struktur/${id}`);
     return response.data;
   },
+  cloneStruktur: async (data: { from_tahun_pelajaran_id: string; to_tahun_pelajaran_id: string; overwrite?: boolean }) => {
+    const response = await api.post('/kurikulum/struktur/clone', data);
+    return response.data;
+  },
 
   // Supervisi
   getSupervisi: async (params?: any) => {

@@ -164,22 +164,35 @@ export const isMapelBelongsToOtherJurusan = (
   selectedJurusanId: string
 ): boolean => {
   if (!isSmkOrMak) return false;
+
+  // 1. If subject explicitly specifies a jurusan_id in database
+  if (s.jurusan_id) {
+    return s.jurusan_id !== selectedJurusanId;
+  }
   
   const kode = (s.kode_mapel || '').toUpperCase();
-  const nama = (s.nama_mapel || '').toLowerCase();
   
   const otherJurusans = jurusansData?.filter(j => j.id !== selectedJurusanId) || [];
   
   return otherJurusans.some(j => {
     const jKode = (j.kode || '').toUpperCase();
     const jSingkatan = (j.singkatan || '').toUpperCase();
-    const jNama = (j.nama || '').toLowerCase();
     
-    const hasOtherKode = jKode && (kode === jKode || kode.includes(`-${jKode}`) || kode.includes(`KK-${jKode}`));
-    const hasOtherSingkatan = jSingkatan && (kode === jSingkatan || kode.includes(`-${jSingkatan}`) || kode.includes(`KK-${jSingkatan}`));
-    const hasOtherNama = jNama && nama.includes(jNama);
+    // Only match structured codes (e.g., "-TKJ", "KK-TKJ", "-RPL") with length >= 2
+    const hasOtherKode = jKode && jKode.length >= 2 && (
+      kode === jKode || 
+      kode.endsWith(`-${jKode}`) || 
+      kode.includes(`-${jKode}-`) || 
+      kode.includes(`KK-${jKode}`)
+    );
+    const hasOtherSingkatan = jSingkatan && jSingkatan.length >= 2 && (
+      kode === jSingkatan || 
+      kode.endsWith(`-${jSingkatan}`) || 
+      kode.includes(`-${jSingkatan}-`) || 
+      kode.includes(`KK-${jSingkatan}`)
+    );
     
-    return hasOtherKode || hasOtherSingkatan || hasOtherNama;
+    return hasOtherKode || hasOtherSingkatan;
   });
 };
 
@@ -202,16 +215,6 @@ export const isMapelRelevantForTingkat = (
   const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
   const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
-  const isMulok = kode.startsWith('M-') || 
-                   nama.includes('bahasa sunda') || 
-                   nama.includes('bahasa jawa') || 
-                   nama.includes('bahasa bali') || 
-                   nama.includes('bahasa madura') || 
-                   nama.includes('muatan lokal') || 
-                   nama.includes('plh') || 
-                   nama.includes('kesenian daerah') ||
-                   nama.includes('kepariwisataan') ||
-                   nama.includes('sunda');
   
   const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
   
@@ -222,9 +225,11 @@ export const isMapelRelevantForTingkat = (
       const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
       if (isProduktifLanjut) return false;
     } else if (tingkat === 11) {
-      if (isDasar || isPkl || isKoding || isMulok) return false;
+      // Dasar-dasar kejuruan & PKL are generally not in grade 11; Mulok & Koding are valid
+      if (isDasar || isPkl) return false;
     } else {
-      if (isDasar || isKoding || isMulok) return false;
+      // Dasar-dasar kejuruan is generally not in grade 12/13; Mulok & Koding are valid
+      if (isDasar) return false;
     }
   } else {
     // For non-SMK (SD, SMP, SMA), hide vocational elements but keep everything else (like Mulok)

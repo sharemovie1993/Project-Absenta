@@ -347,5 +347,63 @@ export class StrukturKurikulumService {
       };
     });
   }
+
+  static async clone(tenantId: string, payload: { from_tahun_pelajaran_id: string; to_tahun_pelajaran_id: string; overwrite?: boolean }) {
+    const { from_tahun_pelajaran_id, to_tahun_pelajaran_id, overwrite = false } = payload;
+    if (!from_tahun_pelajaran_id || !to_tahun_pelajaran_id) {
+      throw new Error('Tahun pelajaran asal dan tujuan wajib dipilih');
+    }
+    if (from_tahun_pelajaran_id === to_tahun_pelajaran_id) {
+      throw new Error('Tahun pelajaran asal dan tujuan tidak boleh sama');
+    }
+
+    const sourceRecords = await prisma.strukturKurikulum.findMany({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: from_tahun_pelajaran_id }
+    });
+
+    if (!sourceRecords || sourceRecords.length === 0) {
+      throw new Error('Tidak ada data struktur kurikulum pada tahun pelajaran asal untuk disalin');
+    }
+
+    if (overwrite) {
+      await prisma.strukturKurikulum.deleteMany({
+        where: { tenant_id: tenantId, tahun_pelajaran_id: to_tahun_pelajaran_id }
+      });
+    }
+
+    const existingTarget = await prisma.strukturKurikulum.findMany({
+      where: { tenant_id: tenantId, tahun_pelajaran_id: to_tahun_pelajaran_id },
+      select: { mapel_id: true, tingkat: true, jurusan_id: true }
+    });
+
+    const existingSet = new Set(
+      existingTarget.map(t => `${t.mapel_id}_${t.tingkat}_${t.jurusan_id || 'null'}`)
+    );
+
+    const recordsToCreate = sourceRecords
+      .filter(rec => {
+        const key = `${rec.mapel_id}_${rec.tingkat}_${rec.jurusan_id || 'null'}`;
+        return overwrite || !existingSet.has(key);
+      })
+      .map(rec => ({
+        tenant_id: tenantId,
+        mapel_id: rec.mapel_id,
+        tahun_pelajaran_id: to_tahun_pelajaran_id,
+        tingkat: rec.tingkat,
+        jurusan_id: rec.jurusan_id || null,
+        jp_per_minggu: rec.jp_per_minggu,
+        kelompok: rec.kelompok
+      }));
+
+    if (recordsToCreate.length === 0) {
+      return { cloned_count: 0, message: 'Seluruh struktur kurikulum sudah ada pada tahun pelajaran tujuan' };
+    }
+
+    await prisma.strukturKurikulum.createMany({
+      data: recordsToCreate
+    });
+
+    return { cloned_count: recordsToCreate.length };
+  }
 }
 

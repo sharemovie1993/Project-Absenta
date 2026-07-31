@@ -469,6 +469,12 @@ export const useMasterStrukturState = () => {
     });
   }, [subjects?.data, mappingFiltered, selectedTingkat, isSmkOrMak, isMapelBelongsToOtherJurusanLocal, kurikulum]);
 
+  const allUnmappedSubjects = useMemo(() => {
+    if (!subjects?.data || !mappingFiltered) return [];
+    const mappedMapelIds = new Set(mappingFiltered.map((item: StrukturKurikulum) => item.mapel_id));
+    return subjects.data.filter((s: Mapel) => !mappedMapelIds.has(s.id));
+  }, [subjects?.data, mappingFiltered]);
+
   const presetSisaCount = useMemo(() => {
     if (!subjects?.data || !mappingFiltered) return { UMUM: 0, KEJURUAN: 0, MULOK: 0, PILIHAN: 0 };
     
@@ -615,6 +621,7 @@ export const useMasterStrukturState = () => {
     targetJp,
     gapJp,
     unmappedSubjects,
+    allUnmappedSubjects,
     presetSisaCount,
     openCreateModal,
     openEditModal,

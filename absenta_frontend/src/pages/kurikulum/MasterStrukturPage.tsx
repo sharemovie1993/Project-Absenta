@@ -6,7 +6,8 @@ import {
   Layers,
   Printer,
   Loader2,
-  BookOpen
+  BookOpen,
+  Copy
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
@@ -23,6 +24,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { detectKelompokForMapel } from '../../utils/kurikulum/masterStrukturHelper';
 import type { Mapel } from '../../types/academic';
 
+const CloneStrukturModal = lazy(() => import('../../components/kurikulum/CloneStrukturModal'));
+
 const MasterStrukturModal = lazy(() => import('../../components/kurikulum/master-struktur/MasterStrukturModal'));
 const StrukturKurikulumTable = lazy(() => import('../../components/kurikulum/master-struktur/StrukturKurikulumTable'));
 
@@ -36,6 +39,7 @@ const masterStrukturFilterSchema = z.object({
 const MasterStrukturPage: React.FC = () => {
     const { can } = useAuth();
     const canManage = can('academic.manage.academic');
+    const [isCloneModalOpen, setIsCloneModalOpen] = React.useState(false);
 
     const {
         selectedTahunId, setSelectedTahunId,
@@ -61,6 +65,7 @@ const MasterStrukturPage: React.FC = () => {
         targetJp,
         gapJp,
         unmappedSubjects,
+        allUnmappedSubjects,
         presetSisaCount,
         openCreateModal,
         openEditModal,
@@ -236,22 +241,31 @@ const MasterStrukturPage: React.FC = () => {
                                         <span className="text-3xl font-black">{totalJp}</span>
                                         <span className="text-xs font-bold opacity-80">JP / Minggu</span>
                                     </div>
-                                    <div className="flex gap-2 pt-1.5 no-print relative">
+                                    <div className="flex gap-1.5 pt-1.5 no-print relative">
                                         {canManage && (
-                                            <Button 
-                                                onClick={() => setShowAddOptions(true)}
-                                                className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none"
-                                            >
-                                                <Plus size={12} className="mr-1" />
-                                                TAMBAH
-                                            </Button>
+                                            <>
+                                                <Button 
+                                                    onClick={() => setShowAddOptions(true)}
+                                                    className="flex-1 bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-lg text-[10px] h-8 border-none px-2"
+                                                >
+                                                    <Plus size={11} className="mr-1" />
+                                                    TAMBAH
+                                                </Button>
+                                                <Button 
+                                                    onClick={() => setIsCloneModalOpen(true)}
+                                                    className="flex-1 bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none px-2 flex items-center justify-center gap-1"
+                                                >
+                                                    <Copy size={11} />
+                                                    SALIN
+                                                </Button>
+                                            </>
                                         )}
                                         <Button
                                             onClick={handleCetakPdf}
                                             disabled={isPrinting || !mappingFiltered}
-                                            className={`${canManage ? "flex-1" : "w-full"} bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none flex items-center justify-center gap-1`}
+                                            className={`${canManage ? "flex-1" : "w-full"} bg-white/20 hover:bg-white/30 text-white font-black rounded-lg text-[10px] h-8 border-none flex items-center justify-center gap-1 px-2`}
                                         >
-                                            {isPrinting ? <Loader2 size={12} className="animate-spin" /> : <Printer size={12} />}
+                                            {isPrinting ? <Loader2 size={11} className="animate-spin" /> : <Printer size={11} />}
                                             CETAK
                                         </Button>
                                     </div>
@@ -415,7 +429,7 @@ const MasterStrukturPage: React.FC = () => {
                             formData={formData}
                             handleInputChange={handleInputChange}
                             setFormData={setFormData}
-                            unmappedSubjects={unmappedSubjects}
+                            unmappedSubjects={addMode === 'manual' ? allUnmappedSubjects : unmappedSubjects}
                             subjects={subjects}
                             kelompokOptions={kelompokOptions}
                             selectedTingkat={selectedTingkat}
@@ -473,6 +487,18 @@ const MasterStrukturPage: React.FC = () => {
                         }
                     ]}
                 />
+
+                {/* Clone Modal */}
+                <Suspense fallback={null}>
+                    {isCloneModalOpen && (
+                        <CloneStrukturModal
+                            isOpen={isCloneModalOpen}
+                            onClose={() => setIsCloneModalOpen(false)}
+                            years={years?.data || []}
+                            currentTargetTahunId={selectedTahunId}
+                        />
+                    )}
+                </Suspense>
             </div>
         </AcademicPageLayout>
     );
