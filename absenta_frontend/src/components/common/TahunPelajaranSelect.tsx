@@ -12,6 +12,7 @@ export interface TahunPelajaranSelectProps {
   clearable?: boolean;
   className?: string;
   triggerClassName?: string;
+  autoSelectActive?: boolean;
 }
 
 export const TahunPelajaranSelect: React.FC<TahunPelajaranSelectProps> = ({
@@ -20,12 +21,19 @@ export const TahunPelajaranSelect: React.FC<TahunPelajaranSelectProps> = ({
   onValueChange,
   placeholder = '-- Cari & Pilih Tahun Pelajaran --',
   searchPlaceholder = 'Ketik Tahun Pelajaran...',
+  autoSelectActive = false,
   disabled = false,
   clearable = false,
   className,
   triggerClassName
 }) => {
-  const { options, isLoading } = useTahunPelajaranOptions();
+  const { options, activeYear, isLoading } = useTahunPelajaranOptions();
+
+  React.useEffect(() => {
+    if (autoSelectActive && !value && activeYear?.id) {
+      onValueChange(activeYear.id);
+    }
+  }, [autoSelectActive, value, activeYear, onValueChange]);
 
   return (
     <SearchableSelect

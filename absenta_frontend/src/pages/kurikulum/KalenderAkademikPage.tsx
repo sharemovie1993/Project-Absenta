@@ -525,6 +525,7 @@ export default function KalenderAkademikPage() {
             onValueChange={v => setTahunPelajaranId(v)}
             placeholder="Semua tahun pelajaran"
             clearable
+            autoSelectActive
           />
         </div>
       </SectionCard>

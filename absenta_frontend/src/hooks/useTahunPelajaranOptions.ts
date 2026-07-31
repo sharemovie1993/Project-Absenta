@@ -34,6 +34,7 @@ export function useTahunPelajaranOptions() {
     options,
     rawList,
     activeYear,
+    activeTahunPelajaran: activeYear,
     isLoading: query.isLoading,
     refetch: query.refetch
   };

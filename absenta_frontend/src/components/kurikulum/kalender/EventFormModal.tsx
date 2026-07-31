@@ -162,6 +162,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
             value={form.tahun_pelajaran_id}
             onValueChange={v => setForm(f => ({ ...f, tahun_pelajaran_id: v }))}
             placeholder="Pilih tahun pelajaran"
+            autoSelectActive
           />
         </SimpleFormField>
 
