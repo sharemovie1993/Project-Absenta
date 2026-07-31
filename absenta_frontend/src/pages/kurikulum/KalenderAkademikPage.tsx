@@ -27,6 +27,7 @@ import {
   CalendarPreset, 
   CalendarStats 
 } from '../../components/kurikulum/kalender/EventFormModal';
+import { SharedAcademicCalendarGrid } from '../../components/kurikulum/kalender/SharedAcademicCalendarGrid';
 import { getJenisOption, INDONESIAN_DAY_NAMES } from '../../components/kurikulum/kalender/constants';
 
 // Lazy load subcomponents
@@ -598,151 +599,20 @@ export default function KalenderAkademikPage() {
         </div>
       )}
 
-      {/* ─── Calendar Grid ──────────────────────────────────────────── */}
-      <div id="calendar-grid" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden mb-6">
-        {/* Calendar Header Nav */}
-        <div className="flex justify-between items-center px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
-          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }} className="h-8 w-8 rounded-lg" aria-label="Bulan sebelumnya">
-            <ChevronLeft size={16} />
-          </Button>
-          <span className="text-[14px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">{activeMonthName} {calYear}</span>
-          <Button variant="ghost" size="sm" onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }} className="h-8 w-8 rounded-lg" aria-label="Bulan berikutnya">
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-        {/* Day Name Header */}
-        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10">
-          {localizedDayNames?.map(d => {
-            const isWeekendHeader = d === 'Sab' || d === 'Min';
-            return (
-              <div 
-                key={d} 
-                className={cn(
-                  "text-center text-[10px] font-black uppercase tracking-widest py-3 border-r last:border-r-0 border-slate-200 dark:border-slate-800",
-                  isWeekendHeader ? "bg-slate-100/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-extrabold" : "text-slate-400 dark:text-slate-500"
-                )}
-              >
-                {d}
-              </div>
-            );
-          })}
-        </div>
-        {/* Days Grid */}
-        <div className="grid grid-cols-7">
-          {calDays?.map((day, i) => {
-            const dayEvents = getDayEvents(day);
-            const isToday = day !== null && today.getDate() === day && today.getMonth() === calMonth && today.getFullYear() === calYear;
-            
-            // Border classes
-            const isLastCol = (i + 1) % 7 === 0;
-            const borderClasses = `${isLastCol ? '' : 'border-r'} border-b border-slate-200 dark:border-slate-800/80`;
-
-            const cellBgClass = day
-              ? 'bg-white dark:bg-slate-950 hover:bg-slate-50/50 dark:hover:bg-slate-900/30'
-              : 'bg-slate-50/30 dark:bg-slate-900/10';
-
-            let eventCellClasses = '';
-            const date = day ? new Date(calYear, calMonth, day) : null;
-            const dayOfWeekName = date ? INDONESIAN_DAY_NAMES[date.getDay()] : null;
-            const isDefaultSchoolOffDay = tenantRes?.hari_sekolah && dayOfWeekName && !tenantRes.hari_sekolah.includes(dayOfWeekName);
-
-            if (day) {
-              if (dayEvents.length > 0) {
-                const priorityOrder = ['LIBUR_NASIONAL', 'LIBUR_SEKOLAH', 'PTS', 'PAS', 'KEGIATAN', 'MINGGU_EFEKTIF', 'LAINNYA'];
-                const sortedEvents = [...dayEvents].sort((a, b) => {
-                  return priorityOrder.indexOf(a.jenis) - priorityOrder.indexOf(b.jenis);
-                });
-                const primaryEvent = sortedEvents[0];
-                const j = getJenisOption(primaryEvent.jenis);
-                if (j) {
-                  eventCellClasses = `${j.bgColorClass} border-l-[3px] ${j.borderColorClass}`;
-                }
-              }
-            }
-
-            const innerContent = day ? (
-              <>
-                <div className="flex justify-between items-start w-full">
-                  {isToday ? (
-                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-[11px] shadow-sm shadow-indigo-500/30">
-                      {day}
-                    </span>
-                  ) : (
-                    <span className="text-[12px] font-bold text-slate-700 dark:text-slate-300">
-                      {day}
-                    </span>
-                  )}
-                  {canManage && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCreateModalWithDate(day);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-500 bg-white dark:bg-slate-800 shadow-sm cursor-pointer"
-                      title="Tambah event pada tanggal ini"
-                      aria-label={`Tambah event pada tanggal ${day}`}
-                    >
-                      <Plus size={10} className="stroke-[2.5]" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex-1"></div>
-
-                {dayEvents.length > 0 && (
-                  <div className="flex flex-col gap-1 w-full mt-auto">
-                    {dayEvents.slice(0, 1)?.map((ev: CalendarEvent) => {
-                      const j = getJenisOption(ev.jenis);
-                      return (
-                        <div
-                          key={ev.id}
-                          className={cn(
-                            "text-[9px] font-bold rounded px-1.5 py-0.5 overflow-hidden text-ellipsis whitespace-nowrap shadow-sm border border-black/5 dark:border-white/5 text-center leading-normal",
-                            j.bgColorClass,
-                            j.textColorClass
-                          )}
-                        >
-                          {ev.judul}
-                        </div>
-                      );
-                    })}
-                    {dayEvents.length > 1 && (
-                      <div className="text-[8px] font-bold text-slate-400 dark:text-slate-500 text-center leading-none mt-0.5">
-                        +{dayEvents.length - 1} lagi
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : null;
-
-            const commonClasses = `group h-28 p-2.5 transition-all duration-200 flex flex-col justify-between relative overflow-hidden ${borderClasses} ${cellBgClass}`;
-
-            if (day && dayEvents.length > 0) {
-              return (
-                <Tooltip 
-                  key={i} 
-                  content={renderDayTooltip(dayEvents)} 
-                  placement="top" 
-                  className={cn(commonClasses, eventCellClasses)}
-                >
-                  {innerContent}
-                </Tooltip>
-              );
-            }
-
-            return (
-              <div
-                key={i}
-                className={cn(commonClasses, eventCellClasses, isDefaultSchoolOffDay && "bg-slate-100/55 dark:bg-slate-900/50")}
-              >
-                {innerContent}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* ─── Shared Calendar Grid ───────────────────────────────────────── */}
+      <SharedAcademicCalendarGrid
+        calYear={calYear}
+        calMonth={calMonth}
+        onPrevMonth={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}
+        onNextMonth={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}
+        events={events}
+        hariSekolah={tenantRes?.hari_sekolah}
+        canManage={canManage}
+        onAddEventOnDate={(day) => openCreateModalWithDate(day)}
+        showLegend={false}
+        showMonthHeaderNav={true}
+        className="mb-6"
+      />
 
       {/* ─── Event list ─────────────────────────────────────────────── */}
       <Suspense fallback={<div>Memuat daftar event...</div>}>
