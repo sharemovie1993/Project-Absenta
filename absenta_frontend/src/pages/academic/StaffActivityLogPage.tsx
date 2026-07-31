@@ -116,9 +116,11 @@ function getActionBadgeStyle(action: string): string {
   return 'bg-slate-50 text-slate-600 border-slate-200/50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-800';
 }
 
+import { getTimezone } from '../../utils/attendance/time';
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export const StaffActivityLogPage: React.FC = () => {
-  const timezone = 'Asia/Jakarta';
+  const timezone = getTimezone();
 
   const [logs, setLogs] = useState<ActivityLogItem[]>([]);
   const [staffUsers, setStaffUsers] = useState<UserType[]>([]);

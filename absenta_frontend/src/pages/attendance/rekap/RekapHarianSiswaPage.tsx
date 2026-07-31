@@ -15,7 +15,7 @@ import { getRekapHarianSiswa } from '../../../api/attendanceGerbang.api';
 import { formatDate } from '../../../utils/layoutUtils';
 import { useAuth } from '../../../hooks/useAuth';
 import { siswaApi } from '../../../api/academic.api';
-import { toLocalDate } from '../../../utils/attendance/time';
+import { toLocalDate, getTimezone } from '../../../utils/attendance/time';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
 import { Search, RefreshCw, User, Clock, FileText, Filter } from 'lucide-react';
@@ -140,7 +140,7 @@ export default function RekapHarianSiswaPage() {
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           <span className="font-bold text-slate-700 dark:text-slate-300">
-            {v ? formatDate(String(v), { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }) : '-'}
+            {v ? formatDate(String(v), { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: getTimezone() }) : '-'}
           </span>
         </div>
       )
@@ -286,7 +286,7 @@ export default function RekapHarianSiswaPage() {
                     <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-slate-200 dark:border-slate-700">NIS: {data.nis || '-'}</Badge>
                     <div className="w-1 h-1 rounded-full bg-slate-300 mx-1" />
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                      {formatDate(String(data.tanggal), { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                      {formatDate(String(data.tanggal), { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', timeZone: getTimezone() })}
                     </span>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParentAuthStore } from '../../../store/parentAuthStore';
 import { getStudentDailyTracking, type TrackingHarianResponse } from '../../../api/parent.api';
+import { getTimezone } from '../../../utils/attendance/time';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Activity } from 'lucide-react';
 import { format, isToday, addDays, subDays } from 'date-fns';
@@ -145,7 +146,7 @@ export default function ParentTracking() {
                           {item.timestamp ? new Date(item.timestamp).toLocaleTimeString('id-ID', {
                               hour: '2-digit',
                               minute: '2-digit',
-                              timeZone: student?.timezone || 'Asia/Jakarta',
+                              timeZone: student?.timezone || getTimezone(),
                               hour12: false
                             }).replace('.', ':') : item.waktu}
                         </div>

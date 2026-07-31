@@ -129,10 +129,12 @@ export default function MemberDocsPage() {
     queryFn:  () => listAllMemberDocs({ entityType: 'GURU', limit: 1 }),
   });
 
+import { getTimezone } from '../../utils/attendance/time';
+
   const totalSiswa = siswaDocsRes?.pagination?.total ?? 0;
   const totalGuru  = guruDocsRes?.pagination?.total  ?? 0;
   const totalToday = useMemo(() => {
-    const formatOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' };
+    const formatOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric', timeZone: getTimezone() };
     const today = new Date().toLocaleDateString('id-ID', formatOpts);
     return (docs || [])?.filter(d => new Date(d.created_at).toLocaleDateString('id-ID', formatOpts) === today).length;
   }, [docs]);

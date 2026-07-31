@@ -14,6 +14,7 @@ import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapBulananSiswa } from '../../../api/attendanceGerbang.api';
 import { siswaApi, kelasApi } from '../../../api/academic.api';
 import { formatDate } from '../../../utils/layoutUtils';
+import { getTimezone } from '../../../utils/attendance/time';
 import { useAuth } from '../../../hooks/useAuth';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 
@@ -277,7 +278,7 @@ export default function RekapBulananSiswaPage() {
                     <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5">{kelasNama || 'Kelas N/A'}</Badge>
                     <div className="w-1 h-1 rounded-full bg-slate-300 mx-1" />
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                      Periode: {formatDate(monthDate, { month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                      Periode: {formatDate(monthDate, { month: 'long', year: 'numeric', timeZone: getTimezone() })}
                     </span>
                   </div>
                 </div>

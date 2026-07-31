@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParentAuthStore } from '../../../store/parentAuthStore';
 import { getStudentNotifications, getParentDashboard, type NotificationRecord } from '../../../api/parent.api';
+import { getTimezone } from '../../../utils/attendance/time';
 import { useParentSocket } from '../hooks/useParentSocket';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, Clock, LogOut, Activity, UserCheck, UserX, AlertTriangle, Award, FileText, MessageCircle, BookOpen } from 'lucide-react';
@@ -177,14 +178,14 @@ export default function ParentDashboard() {
               <div className="flex flex-col items-center">
                 <span className="text-xs text-white/80 uppercase tracking-wider mb-1">Masuk</span>
                 <span className="font-bold font-mono text-2xl">
-                  {today.waktu_masuk ? new Date(today.waktu_masuk).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', timeZone: student.timezone || 'Asia/Jakarta'}) : '--:--'}
+                  {today.waktu_masuk ? new Date(today.waktu_masuk).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', timeZone: student.timezone || getTimezone()}) : '--:--'}
                 </span>
               </div>
               <div className="w-px h-10 bg-white/30"></div>
               <div className="flex flex-col items-center">
                 <span className="text-xs text-white/80 uppercase tracking-wider mb-1">Pulang</span>
                 <span className="font-bold font-mono text-2xl">
-                  {today.waktu_pulang ? new Date(today.waktu_pulang).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', timeZone: student.timezone || 'Asia/Jakarta'}) : '--:--'}
+                  {today.waktu_pulang ? new Date(today.waktu_pulang).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', timeZone: student.timezone || getTimezone()}) : '--:--'}
                 </span>
               </div>
             </div>
