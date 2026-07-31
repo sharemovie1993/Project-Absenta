@@ -96,6 +96,29 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TOI (Otomasi Industri)', kode_mapel: 'KK-TOI' },
   ];
 
+  // Standar Dasar-dasar Program Keahlian SMK (DDPK per Jurusan)
+  const ddpkPresets: PresetItem[] = [
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian (Umum)', kode_mapel: 'DDPK' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TKJ', kode_mapel: 'DDPK-TKJ' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - RPL', kode_mapel: 'DDPK-RPL' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - AKL', kode_mapel: 'DDPK-AKL' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TAV', kode_mapel: 'DDPK-TAV' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TKR', kode_mapel: 'DDPK-TKR' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TBSM / TSM', kode_mapel: 'DDPK-TBSM' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TP (Teknik Pemesinan)', kode_mapel: 'DDPK-TP' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - DKV', kode_mapel: 'DDPK-DKV' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - MPLB', kode_mapel: 'DDPK-MPLB' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - Perhotelan', kode_mapel: 'DDPK-PHT' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - Kuliner', kode_mapel: 'DDPK-KUL' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TITL (Teknik Listrik)', kode_mapel: 'DDPK-TITL' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - DPIB (Desain Bangunan)', kode_mapel: 'DDPK-DPIB' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - Farmasi', kode_mapel: 'DDPK-FKK' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - Pengelasan', kode_mapel: 'DDPK-TPL' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - ATPH (Pertanian)', kode_mapel: 'DDPK-ATPH' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - Bisnis Digital', kode_mapel: 'DDPK-BD' },
+    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian - TOI (Otomasi Industri)', kode_mapel: 'DDPK-TOI' },
+  ];
+
   // =====================================================================
   // SD / MI
   // =====================================================================
@@ -282,7 +305,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     // 2. Mata Pelajaran Kejuruan (Matematika & B.Inggris di SMK masuk kelompok Kejuruan)
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
-    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian', kode_mapel: 'DDPK' },
+    ...ddpkPresets,
     ...kkPresets,
 
     // 3. Mata Pelajaran Pilihan
@@ -311,7 +334,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     // 2. Mata Pelajaran Kejuruan
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
-    { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian', kode_mapel: 'DDPK' },
+    ...ddpkPresets,
     ...kkPresets,
 
     // 3. Mata Pelajaran Pilihan
