@@ -152,18 +152,24 @@ export const detectDefaultJpForMapel = (
   }
 
   if (nama.includes('agama') || kode.includes('PAI') || kode.includes('AGAMA')) {
-    if (tingkat === 10 || tingkat === 11) return 3;
-    if (tingkat === 12) return 2;
+    if (tingkat === 10 || tingkat === 11 || tingkat === 12) return 3;
   }
-  if (nama.includes('bahasa indonesia') || kode.includes('IND')) {
+  if (nama.includes('bahasa indonesia') || kode.includes('IND') || kode.includes('BIND')) {
     if (tingkat === 10) return 4;
-    if (tingkat === 11) return 3;
-    if (tingkat === 12) return 2;
+    if (tingkat === 11 || tingkat === 12) return 3;
+  }
+  if (nama.includes('bahasa inggris') || kode.includes('ING') || kode.includes('BING')) {
+    return 4;
   }
   if (nama.includes('matematika') || kode.includes('MAT') || kode.includes('MTK')) {
     if (tingkat === 10) return 4;
-    if (tingkat === 11) return 3;
-    if (tingkat === 12) return 2;
+    if (tingkat === 11 || tingkat === 12) return 3;
+  }
+  if (nama.includes('ipas') || kode.includes('IPAS')) {
+    if (tingkat === 10) return 6;
+  }
+  if (nama.includes('informatika') || kode.includes('INF')) {
+    if (tingkat === 10) return 4;
   }
   
   return 2;

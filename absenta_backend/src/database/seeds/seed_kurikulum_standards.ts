@@ -137,7 +137,7 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   agamaNames.forEach(ag => {
     add('SMK', 'UMUM', ag.nama, ag.kode, 10, 3);
     add('SMK', 'UMUM', ag.nama, ag.kode, 11, 3);
-    add('SMK', 'UMUM', ag.nama, ag.kode, 12, 2);
+    add('SMK', 'UMUM', ag.nama, ag.kode, 12, 3);
   });
 
   // Pendidikan Pancasila (SMK)
@@ -146,9 +146,12 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   add('SMK', 'UMUM', 'Pendidikan Pancasila', 'PP', 12, 2);
 
   // Bahasa Indonesia (SMK)
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 10, 3); // 108 / 36 = 3 JP
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 11, 3); // 90 / 36 = 2.5 (rounded to 3)
-  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 12, 2); // 32 / 16 = 2 JP (Semester basis)
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 10, 4);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 11, 3);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'IND', 12, 3);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'BIND', 10, 4);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'BIND', 11, 3);
+  add('SMK', 'UMUM', 'Bahasa Indonesia', 'BIND', 12, 3);
 
   // PJOK (SMK)
   add('SMK', 'UMUM', 'Pendidikan Jasmani, Olahraga, dan Kesehatan', 'PJOK', 10, 3);
@@ -163,20 +166,29 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
   });
 
   // Matematika (SMK)
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 10, 3); // 108 / 36 = 3 JP
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 11, 3); // 90 / 36 = 2.5 (rounded to 3)
-  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 12, 3); // 48 / 16 = 3 JP (Semester basis)
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 10, 4);
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 11, 3);
+  add('SMK', 'KEJURUAN', 'Matematika', 'MTK', 12, 3);
+  add('SMK', 'KEJURUAN', 'Matematika (Kejuruan)', 'MTK-K', 10, 4);
+  add('SMK', 'KEJURUAN', 'Matematika (Kejuruan)', 'MTK-K', 11, 3);
+  add('SMK', 'KEJURUAN', 'Matematika (Kejuruan)', 'MTK-K', 12, 3);
 
   // Bahasa Inggris (SMK)
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 10, 3); // 108 / 36 = 3 JP
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 11, 3); // 108 / 36 = 3 JP
-  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 12, 4); // 64 / 16 = 4 JP (Semester basis)
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 10, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 11, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'ING', 12, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'BING', 10, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'BING', 11, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris', 'BING', 12, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris (Kejuruan)', 'ING-K', 10, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris (Kejuruan)', 'ING-K', 11, 4);
+  add('SMK', 'KEJURUAN', 'Bahasa Inggris (Kejuruan)', 'ING-K', 12, 4);
 
   // Informatika (SMK)
-  add('SMK', 'KEJURUAN', 'Informatika', 'INF', 10, 3); // 108 / 36 = 3 JP
+  add('SMK', 'KEJURUAN', 'Informatika', 'INF', 10, 4);
 
   // Projek IPAS (SMK)
-  add('SMK', 'KEJURUAN', 'Projek Ilmu Pengetahuan Alam dan Sosial', 'IPAS', 10, 5); // 180 / 36 = 5 JP
+  add('SMK', 'KEJURUAN', 'Projek Ilmu Pengetahuan Alam dan Sosial', 'IPAS', 10, 6);
 
   // Dasar-dasar Program Keahlian (SMK)
   add('SMK', 'KEJURUAN', 'Dasar-dasar Program Keahlian', 'DASAR-KEJURUAN', 10, 12);
@@ -313,3 +325,14 @@ export async function seedKurikulumStandards(prisma: PrismaClient) {
 
   console.log(`✅ Seeding Global Kurikulum Standards selesai. Total ${count} records.`);
 }
+
+if (require.main === module) {
+  const p = new PrismaClient();
+  seedKurikulumStandards(p)
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    })
+    .finally(() => p.$disconnect());
+}
+
