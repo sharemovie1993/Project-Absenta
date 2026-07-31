@@ -192,50 +192,67 @@ export const isMapelBelongsToOtherJurusan = (
     return s.jurusan_id !== selectedJurusanId;
   }
   
+  if (!selectedJurusanId) return false;
+
+  const selectedJurusan = jurusansData?.find(j => j.id === selectedJurusanId);
+  const selectedKode = (selectedJurusan?.kode || '').toUpperCase();
+  const selectedSingkatan = (selectedJurusan?.singkatan || '').toUpperCase();
+  const selectedNama = (selectedJurusan?.nama || '').toLowerCase();
+
   const kode = (s.kode_mapel || '').toUpperCase();
+  const nama = (s.nama_mapel || '').toLowerCase();
+
+  // Known major codes dictionary for robust matching across Indonesian SMKs:
+  const ALL_JURUSAN_CODES = [
+    'TKJ', 'RPL', 'AKL', 'MPLB', 'DKV', 'TBSM', 'TKR', 'TP', 'TM', 
+    'PHT', 'KUL', 'TITL', 'DPIB', 'FKK', 'TPL', 'ATPH', 'BD', 'TOI', 
+    'TAV', 'PH', 'KL', 'TB', 'NKN', 'NKPI', 'AK', 'MP', 'TSM', 'TKRO'
+  ];
+
+  // Extract jurusan code tokens present in this subject's code or name
+  const extractSubjectJurusanTokens = (mapelKode: string, mapelNama: string): string[] => {
+    const tokens: string[] = [];
+    ALL_JURUSAN_CODES.forEach(jCode => {
+      const regex = new RegExp(`(^|[-_\\s])${jCode}([-_\\s]|$)|DDPK${jCode}|KK${jCode}|MPP${jCode}`, 'i');
+      if (regex.test(mapelKode) || regex.test(mapelNama)) {
+        tokens.push(jCode);
+      }
+    });
+    return tokens;
+  };
+
+  const mapelTokens = extractSubjectJurusanTokens(kode, nama);
   
+  // Also check database jurusansData if any custom code is defined
   const otherJurusans = jurusansData?.filter(j => j.id !== selectedJurusanId) || [];
-  
-  return otherJurusans.some(j => {
+  const hasOtherDbJurusanMatch = otherJurusans.some(j => {
     const jKode = (j.kode || '').toUpperCase();
     const jSingkatan = (j.singkatan || '').toUpperCase();
+    if (!jKode && !jSingkatan) return false;
     
-    // Match structured codes (e.g., "-TKJ", "KK-TKJ", "KK TKJ", "DDPKPHT", "-RPL") with length >= 2
-    const hasOtherKode = jKode && jKode.length >= 2 && (
-      kode === jKode || 
-      kode.endsWith(`-${jKode}`) || 
-      kode.endsWith(` ${jKode}`) ||
-      kode.endsWith(jKode) ||
-      kode.includes(`-${jKode}-`) || 
-      kode.includes(`-${jKode}`) ||
-      kode.includes(` ${jKode}`) ||
-      kode.includes(`KK-${jKode}`) ||
-      kode.includes(`KK ${jKode}`) ||
-      kode.includes(`DDPK-${jKode}`) ||
-      kode.includes(`DDPK ${jKode}`) ||
-      kode.includes(`DDPK${jKode}`) ||
-      kode.includes(`KK${jKode}`) ||
-      kode.includes(`MPP${jKode}`)
+    return (
+      (jKode && (kode.includes(jKode) || nama.includes(jKode.toLowerCase()))) ||
+      (jSingkatan && (kode.includes(jSingkatan) || nama.includes(jSingkatan.toLowerCase())))
     );
-    const hasOtherSingkatan = jSingkatan && jSingkatan.length >= 2 && (
-      kode === jSingkatan || 
-      kode.endsWith(`-${jSingkatan}`) || 
-      kode.endsWith(` ${jSingkatan}`) ||
-      kode.endsWith(jSingkatan) ||
-      kode.includes(`-${jSingkatan}-`) || 
-      kode.includes(`-${jSingkatan}`) ||
-      kode.includes(` ${jSingkatan}`) ||
-      kode.includes(`KK-${jSingkatan}`) ||
-      kode.includes(`KK ${jSingkatan}`) ||
-      kode.includes(`DDPK-${jSingkatan}`) ||
-      kode.includes(`DDPK ${jSingkatan}`) ||
-      kode.includes(`DDPK${jSingkatan}`) ||
-      kode.includes(`KK${jSingkatan}`) ||
-      kode.includes(`MPP${jSingkatan}`)
-    );
-    
-    return hasOtherKode || hasOtherSingkatan;
   });
+
+  if (mapelTokens.length === 0 && !hasOtherDbJurusanMatch) {
+    // Subject is a general subject (Umum/Mulok) without major suffix -> belongs to all jurusans
+    return false;
+  }
+
+  // If subject HAS major tokens, check if any token matches the selected jurusan
+  const matchesSelectedJurusan = mapelTokens.some(token => {
+    if (selectedKode && (selectedKode === token || selectedKode.includes(token) || token.includes(selectedKode))) return true;
+    if (selectedSingkatan && (selectedSingkatan === token || selectedSingkatan.includes(token) || token.includes(selectedSingkatan))) return true;
+    if (selectedNama && selectedNama.includes(token.toLowerCase())) return true;
+    return false;
+  });
+
+  if (matchesSelectedJurusan) return false;
+
+  // If it has major tokens or matches other DB jurusan but DOES NOT match selected jurusan -> filter out!
+  return true;
 };
 
 export const isMapelRelevantForTingkat = (
@@ -252,26 +269,33 @@ export const isMapelRelevantForTingkat = (
   
   const kode = (s.kode_mapel || '').toUpperCase();
   const nama = (s.nama_mapel || '').toLowerCase();
+
+  // Check explicit grade suffixes in code or name (e.g., BIND-10 vs BIND-11, Kelas X vs Kelas XI)
+  const codeEndsWith10 = /[-_\s](10|X)$/i.test(kode) || nama.includes('kelas 10') || nama.includes('kelas x') || nama.includes(' (x)') || nama.includes(' (10)');
+  const codeEndsWith11 = /[-_\s](11|XI)$/i.test(kode) || nama.includes('kelas 11') || nama.includes('kelas xi') || nama.includes(' (xi)') || nama.includes(' (11)');
+  const codeEndsWith12 = /[-_\s](12|XII)$/i.test(kode) || nama.includes('kelas 12') || nama.includes('kelas xii') || nama.includes(' (xii)') || nama.includes(' (12)');
+
+  if (codeEndsWith10 && tingkat !== 10) return false;
+  if (codeEndsWith11 && tingkat !== 11) return false;
+  if (codeEndsWith12 && tingkat !== 12 && tingkat !== 13) return false;
   
-  const isDasar = kode.includes('DAS-') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-  const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+  const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.includes('DAS-') || nama.startsWith('ddpk') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+  const isIpas = kode.includes('IPAS') || nama.includes('ipas') || nama.includes('projek ipas');
+  const isInf = kode === 'INF' || kode.startsWith('INF-') || nama.includes('informatika');
+  const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja') || nama.includes('pkl');
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
-  const isKoding = nama.includes('koding') || nama.includes('coding') || nama.includes('pemrograman dasar') || nama.includes('programming');
-  
-  const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
-  
+  const isKk = !isPkk && !isPkl && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
+  const isMpp = kode.startsWith('MPP') || kode.includes('MPP') || kode.includes('PILIHAN') || nama.startsWith('mpp') || nama.includes('pilihan');
+
   if (isSmkOrMak) {
     if (tingkat === 10) {
-      if (isPkl || isPkk || isKk) return false;
-      const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-      const isProduktifLanjut = kejuruanSuffixes.some(suffix => kode.includes(suffix)) && !isDasar && !isPkl && !isPkk && !isKoding;
-      if (isProduktifLanjut) return false;
+      if (isPkl || isPkk || isKk || isMpp) return false;
     } else if (tingkat === 11) {
-      // Dasar-dasar kejuruan & PKL are generally not in grade 11; Mulok & Koding are valid
-      if (isDasar || isPkl) return false;
-    } else {
-      // Dasar-dasar kejuruan is generally not in grade 12/13; Mulok & Koding are valid
-      if (isDasar) return false;
+      // Grade 11 MUST NOT have DDPK, IPAS, INF, or PKL
+      if (isDasar || isIpas || isInf || isPkl) return false;
+    } else if (tingkat >= 12) {
+      // Grade 12 MUST NOT have DDPK, IPAS, or INF
+      if (isDasar || isIpas || isInf) return false;
     }
   } else {
     // For non-SMK (SD, SMP, SMA), hide vocational elements but keep everything else (like Mulok)
