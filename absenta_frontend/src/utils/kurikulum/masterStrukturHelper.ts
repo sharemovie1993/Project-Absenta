@@ -35,7 +35,7 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string, jen
   const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
   const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
-  const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+  const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
 
   const isKejuruan = isPkl || isPkk || isDasar || isKk || kode.endsWith('-K') || kejuruanSuffixes.some(s => kode.includes(s));
                        
@@ -123,7 +123,7 @@ export const detectDefaultJpForMapel = (
       const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
       const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja');
       const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif');
-      const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+      const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
 
       if (isDasar) {
         if (tingkat === 10) {
@@ -145,7 +145,7 @@ export const detectDefaultJpForMapel = (
   
   if (isSmkOrMak) {
     const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-    const isKk = kode === 'KK' || kode.startsWith('KK-') || nama.includes('konsentrasi keahlian');
+    const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
     if (isDasar && tingkat === 10) return 12;
     if (isKk && tingkat === 11) return 18;
     if (isKk && tingkat === 12) return 22;
@@ -190,18 +190,22 @@ export const isMapelBelongsToOtherJurusan = (
     const jKode = (j.kode || '').toUpperCase();
     const jSingkatan = (j.singkatan || '').toUpperCase();
     
-    // Only match structured codes (e.g., "-TKJ", "KK-TKJ", "-RPL") with length >= 2
+    // Only match structured codes (e.g., "-TKJ", "KK-TKJ", "KK TKJ", "-RPL") with length >= 2
     const hasOtherKode = jKode && jKode.length >= 2 && (
       kode === jKode || 
       kode.endsWith(`-${jKode}`) || 
+      kode.endsWith(` ${jKode}`) ||
       kode.includes(`-${jKode}-`) || 
-      kode.includes(`KK-${jKode}`)
+      kode.includes(`KK-${jKode}`) ||
+      kode.includes(`KK ${jKode}`)
     );
     const hasOtherSingkatan = jSingkatan && jSingkatan.length >= 2 && (
       kode === jSingkatan || 
       kode.endsWith(`-${jSingkatan}`) || 
+      kode.endsWith(` ${jSingkatan}`) ||
       kode.includes(`-${jSingkatan}-`) || 
-      kode.includes(`KK-${jSingkatan}`)
+      kode.includes(`KK-${jSingkatan}`) ||
+      kode.includes(`KK ${jSingkatan}`)
     );
     
     return hasOtherKode || hasOtherSingkatan;
