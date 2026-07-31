@@ -70,6 +70,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Pengelasan', kode_mapel: 'MPP-TPL' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - ATPH (Pertanian)', kode_mapel: 'MPP-ATPH' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - Bisnis Digital', kode_mapel: 'MPP-BD' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TOI (Otomasi Industri)', kode_mapel: 'MPP-TOI' },
   ];
 
   // Standar Konsentrasi Keahlian SMK (KK per Jurusan)
@@ -92,6 +93,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Pengelasan', kode_mapel: 'KK-TPL' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - ATPH (Pertanian)', kode_mapel: 'KK-ATPH' },
     { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - Bisnis Digital', kode_mapel: 'KK-BD' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TOI (Otomasi Industri)', kode_mapel: 'KK-TOI' },
   ];
 
   // =====================================================================
