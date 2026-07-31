@@ -16,12 +16,12 @@ import {
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, SectionCard, Label, Tooltip } from '../../components/ui';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { tahunPelajaranApi } from '../../api/academic.api';
 import { getMyTenant } from '../../api/tenants.api';
 import toast from 'react-hot-toast';
 import useConfirm from '../../hooks/useConfirm';
 import { useAuth } from '../../hooks/useAuth';
 import { useJenjang } from '../../hooks/useJenjang';
+import { TahunPelajaranSelect, useTahunPelajaranOptions } from '../../components/common';
 import { 
   CalendarEvent, 
   CalendarPreset, 
@@ -149,10 +149,7 @@ export default function KalenderAkademikPage() {
     queryFn: () => kurikulumApi.getCalendarPresets(jenjang).then(r => (r.data ?? []) as CalendarPreset[]),
   });
 
-  const { data: tahunData = [] } = useQuery<TahunPelajaran[]>({
-    queryKey: ['tahun-pelajaran'],
-    queryFn: () => tahunPelajaranApi.getAll().then(r => (r.data ?? []) as TahunPelajaran[]),
-  });
+  const { rawList: tahunData, activeTahunPelajaran, options: tahunOptions } = useTahunPelajaranOptions();
 
   const { data: tenantRes } = useQuery<TenantResponse | null>({
     queryKey: ['my-tenant'],
@@ -163,14 +160,11 @@ export default function KalenderAkademikPage() {
 
   // Auto-select active academic year
   useEffect(() => {
-    if (tahunData && tahunData.length > 0 && !hasInitializedActiveYear) {
-      const activeYear = tahunData.find(t => t.is_active);
-      if (activeYear) {
-        setTahunPelajaranId(activeYear.id);
-      }
+    if (activeTahunPelajaran && !hasInitializedActiveYear) {
+      setTahunPelajaranId(activeTahunPelajaran.id);
       setHasInitializedActiveYear(true);
     }
-  }, [tahunData, hasInitializedActiveYear]);
+  }, [activeTahunPelajaran, hasInitializedActiveYear]);
 
   // Auto-sync calendar year (calYear) to match the selected academic year start
   useEffect(() => {
@@ -439,9 +433,6 @@ export default function KalenderAkademikPage() {
     );
   }, [calYear, calMonth, eventsInMonth]);
 
-  const tahunOptions = useMemo(() => tahunData?.map(t => {
-    return { value: t.id, label: t.nama ?? t.tahun };
-  }) ?? [], [tahunData]);
 
   const renderDayTooltip = (dayEvs: CalendarEvent[]) => {
     return (
@@ -529,16 +520,12 @@ export default function KalenderAkademikPage() {
       <SectionCard title="Filter Tampilan">
         <div className="max-w-xs">
           <Label>Tahun Pelajaran</Label>
-          <Suspense fallback={<div>Memuat...</div>}>
-            <SearchableSelect
-              options={tahunOptions}
-              value={tahunPelajaranId}
-              onValueChange={v => setTahunPelajaranId(v)}
-              placeholder="Semua tahun pelajaran"
-              clearable
-              aria-label="Pilih Tahun Pelajaran"
-            />
-          </Suspense>
+          <TahunPelajaranSelect
+            value={tahunPelajaranId}
+            onValueChange={v => setTahunPelajaranId(v)}
+            placeholder="Semua tahun pelajaran"
+            clearable
+          />
         </div>
       </SectionCard>
 

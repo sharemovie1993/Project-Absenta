@@ -11,6 +11,7 @@ import {
   SearchableSelect, 
   SimpleFormField 
 } from '../../ui';
+import { TahunPelajaranSelect } from '../../common';
 import { JENIS_OPTIONS } from './constants';
 
 export interface CalendarEvent {
@@ -157,12 +158,10 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     >
       <div className="flex flex-col gap-3.5">
         <SimpleFormField label="Tahun Pelajaran" required error={formErrors.tahun_pelajaran_id}>
-          <SearchableSelect
-            options={tahunOptions}
+          <TahunPelajaranSelect
             value={form.tahun_pelajaran_id}
             onValueChange={v => setForm(f => ({ ...f, tahun_pelajaran_id: v }))}
             placeholder="Pilih tahun pelajaran"
-            aria-label="Pilih Tahun Pelajaran"
           />
         </SimpleFormField>
 
