@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { useTvStore } from '@/store/tvStore';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { toLocalDate } from '../../utils/attendance/time';
 import { useJenjang } from '@/hooks/useJenjang';
 import { 
   getGerbangStats, 
@@ -118,8 +119,7 @@ const AttendanceDashboardPage: React.FC = () => {
   }, [subFeatures]);
 
   const todayStr = useMemo(() => {
-    const d = new Date();
-    return d.toISOString().split('T')[0];
+    return toLocalDate();
   }, []);
 
   const computedStats = useMemo(() => {

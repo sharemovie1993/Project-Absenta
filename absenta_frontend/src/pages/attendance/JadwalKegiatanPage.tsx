@@ -33,6 +33,7 @@ import type { JadwalKegiatanFormData } from './JadwalKegiatanFormModal';
 const JadwalKegiatanFormModal = lazy(() => import('./JadwalKegiatanFormModal'));
 
 import { HARI_LIST as HARI_OPTION } from '../../constants/day.constants';
+import { getTimezone } from '../../utils/attendance/time';
 
 // ─── Types (Point #3: No any) ─────────────────────────────────────────────────
 interface CardItem {
@@ -45,7 +46,7 @@ interface CardItem {
 
 const formatDate = (date: Date | string): string => {
   // Timezone check: using tenant local timezone default
-  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: getTimezone() });
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────

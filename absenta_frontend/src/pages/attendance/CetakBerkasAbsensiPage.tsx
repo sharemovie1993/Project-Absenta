@@ -4,6 +4,7 @@ import { CetakFormGeneric, type DocOption } from '../../components/academic/Ceta
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { getRekapKelasBulanan, getRekapHarianGuru } from '../../api/attendance/rekap.api';
 import { siswaApi } from '../../api/academic.api';
+import { toLocalDate, toLocalMonth } from '../../utils/attendance/time';
 
 export const CetakBerkasAbsensiPage: React.FC = () => {
   const docOptions: DocOption[] = [
@@ -106,7 +107,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
 
         const rekapMap: Record<string, any> = {};
         const studentsMap: Record<string, any[]> = {};
-        const selectedMonth = eventDetails?.bulanRekap || new Date().toISOString().substring(0, 7);
+        const selectedMonth = eventDetails?.bulanRekap || toLocalMonth();
 
         // Fetch student roster maps in parallel for blank lists, monthly recaps, warnings or semester recaps
         if (['blank_attendance', 'monthly_recap', 'attendance_warning', 'semester_recap'].includes(selectedPrintType)) {
@@ -201,7 +202,7 @@ export const CetakBerkasAbsensiPage: React.FC = () => {
         let teacherRekap: any = null;
         if (selectedPrintType === 'teacher_attendance') {
           try {
-            const targetDate = eventDetails?.tanggalLaporan || new Date().toISOString().substring(0, 10);
+            const targetDate = eventDetails?.tanggalLaporan || toLocalDate();
             const res = await getRekapHarianGuru(targetDate);
             if (res && Array.isArray(res)) {
               teacherRekap = res;

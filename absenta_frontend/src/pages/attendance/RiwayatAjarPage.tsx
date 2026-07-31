@@ -19,6 +19,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
+import { toLocalDate } from '../../utils/attendance/time';
 
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import PageLayout from '../../components/common/PageLayout';
@@ -81,8 +82,14 @@ export const RiwayatAjarPage: React.FC = () => {
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const parts = toLocalDate().split('-').map(Number);
+    return parts[1] - 1;
+  });
+  const [selectedYear, setSelectedYear] = useState(() => {
+    const parts = toLocalDate().split('-').map(Number);
+    return parts[0];
+  });
   
   // Manager-only filters
   const [selectedGuruId, setSelectedGuruId] = useState<string>('');

@@ -4,6 +4,7 @@ import { FileUp, AlertCircle } from 'lucide-react';
 import { Modal, Button, Label, Input, Textarea } from '../../ui';
 import toast from 'react-hot-toast';
 import type { IzinFormData } from './StudentAttendanceTypes';
+import { toLocalDate } from '../../../utils/attendance/time';
 
 export const izinFormSchema = z.object({
   jenis: z.enum(['SAKIT', 'IZIN', 'DISPEN']),
@@ -26,8 +27,8 @@ export const StudentAttendanceIzinModal: React.FC<StudentAttendanceIzinModalProp
 }) => {
   const [formData, setFormData] = useState<IzinFormData>({
     jenis: 'SAKIT',
-    tanggalMulai: new Date().toISOString().split('T')[0],
-    tanggalSelesai: new Date().toISOString().split('T')[0],
+    tanggalMulai: toLocalDate(),
+    tanggalSelesai: toLocalDate(),
     alasan: '',
     fileSuratUrl: ''
   });

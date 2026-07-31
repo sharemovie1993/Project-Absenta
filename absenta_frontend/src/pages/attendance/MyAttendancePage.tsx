@@ -16,6 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
 import { siswaApi } from '../../api/academic.api';
+import { toLocalDate } from '../../utils/attendance/time';
 import {
   ChevronLeft,
   ChevronRight,
@@ -91,7 +92,7 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
 export const MyAttendancePage: React.FC = () => {
   const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState<string>(toLocalDate());
   const [showIzinModal, setShowIzinModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
   const [showPointHistoryModal, setShowPointHistoryModal] = useState(false);

@@ -8,6 +8,7 @@ import { toast } from 'react-hot-toast';
 import { Trash2, Plus, AlertCircle, ShieldAlert, XCircle, CheckCircle2, Users, BookOpen, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { toLocalDate } from '../../../utils/attendance/time';
 
 const SearchableSelect = lazy(() => import('../../ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 
@@ -25,7 +26,7 @@ const KejadianKhususPanelComponent: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   
   const [newEvent, setNewEvent] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
+    tanggal: toLocalDate(),
     keterangan: '',
     abaikan_terlambat: true,
     mode_kejadian: 'NORMAL' as 'NORMAL' | 'LIBUR' | 'DISPEN',
@@ -92,7 +93,7 @@ const KejadianKhususPanelComponent: React.FC = () => {
       await createKejadianKhusus(newEvent);
       toast.success(newEvent.kelas_id ? 'Aksi darurat diterapkan pada kelas terpilih' : 'Aksi darurat diterapkan secara global');
       setNewEvent({ 
-        tanggal: new Date().toISOString().split('T')[0], 
+        tanggal: toLocalDate(), 
         keterangan: '', 
         abaikan_terlambat: true, 
         mode_kejadian: 'NORMAL',
@@ -168,7 +169,7 @@ const KejadianKhususPanelComponent: React.FC = () => {
                 <Label htmlFor="tanggal-input-field" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tanggal Kejadian</Label>
                 <button 
                   type="button"
-                  onClick={() => setNewEvent(prev => ({ ...prev, tanggal: new Date().toISOString().split('T')[0] }))}
+                  onClick={() => setNewEvent(prev => ({ ...prev, tanggal: toLocalDate() }))}
                   className="text-[10px] font-bold text-indigo-600 hover:underline"
                 >
                   Hari Ini

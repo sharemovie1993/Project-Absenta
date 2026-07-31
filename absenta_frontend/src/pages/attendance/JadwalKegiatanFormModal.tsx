@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/Label';
 import type { JenisKegiatanMaster } from '@/api/academic/jenisKegiatanMaster.api';
 import type { Kelas } from '@/types/academic';
 import type { JadwalKegiatanItem } from '@/api/attendance/jadwalKegiatan.api';
+import { toLocalDate } from '@/utils/attendance/time';
 
 // ─── Zod Schema ──────────────────────────────────────────────────────────────
 export const jadwalKegiatanSchema = z.object({
@@ -69,7 +70,7 @@ export default function JadwalKegiatanFormModal({
   const [waktuSelesai, setWaktuSelesai] = React.useState('07:15');
   const [targetSemuaKelas, setTargetSemuaKelas] = React.useState(true);
   const [targetKelasIds, setTargetKelasIds] = React.useState<string[]>([]);
-  const [berlakuMulai, setBerlakuMulai] = React.useState(new Date().toISOString().split('T')[0]);
+  const [berlakuMulai, setBerlakuMulai] = React.useState(toLocalDate());
   const [berlakuSampai, setBerlakuSampai] = React.useState('');
   const [masaBerlakuOption, setMasaBerlakuOption] = React.useState<'MANUAL' | 'GANJIL' | 'GENAP' | 'TAHUN_PELAJARAN'>('TAHUN_PELAJARAN');
   const [errors, setErrors] = React.useState<Record<string, string>>({});
