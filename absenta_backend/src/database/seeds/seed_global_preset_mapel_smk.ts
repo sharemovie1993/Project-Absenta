@@ -34,6 +34,14 @@ export const SMK_PRESET_MAPEL_JP = [
     jp_per_minggu: 4,
     category: 'UMUM',
     aliases: ['Bahasa Inggris', 'B. Inggris', 'BING']
+  },
+  {
+    nama_mapel: 'Dasar-dasar Program Keahlian',
+    kode_mapel: 'DDPK',
+    tingkat: 10,
+    jp_per_minggu: 12,
+    category: 'KEJURUAN',
+    aliases: ['Dasar-dasar Program Keahlian', 'DDPK', 'DASAR-KEJURUAN', 'Dasar Kejuruan']
   }
 ];
 
