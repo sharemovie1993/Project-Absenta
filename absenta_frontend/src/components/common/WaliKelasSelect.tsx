@@ -1,8 +1,8 @@
 import React from 'react';
 import { SearchableSelect } from '../ui/SearchableSelect';
-import { useWaliKelasOptions } from '../../hooks/useWaliKelasOptions';
+import { useWaliKelasOptions, UseWaliKelasOptionsParams } from '../../hooks/useWaliKelasOptions';
 
-export interface WaliKelasSelectProps {
+export interface WaliKelasSelectProps extends UseWaliKelasOptionsParams {
   id?: string;
   value?: string;
   onValueChange: (value: string) => void;
@@ -19,13 +19,15 @@ export const WaliKelasSelect: React.FC<WaliKelasSelectProps> = ({
   value,
   onValueChange,
   placeholder = '-- Cari & Pilih Guru Wali Kelas --',
-  searchPlaceholder = 'Ketik Nama Guru Wali Kelas / NIP...',
+  searchPlaceholder = 'Ketik Nama Guru Wali Kelas / NIP / Kelas...',
+  onlyActive = true,
+  valueKey = 'guru_id',
   disabled = false,
   clearable = false,
   className,
   triggerClassName
 }) => {
-  const { options, isLoading } = useWaliKelasOptions();
+  const { options, isLoading } = useWaliKelasOptions({ onlyActive, valueKey });
 
   return (
     <SearchableSelect
