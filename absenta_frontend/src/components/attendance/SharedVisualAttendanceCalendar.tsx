@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Input, Loader } from '../ui';
-import { Calendar } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 export interface CalendarDayDetail {
   tanggal?: string;
@@ -22,7 +23,7 @@ export interface CalendarStatistik {
 }
 
 interface SharedVisualAttendanceCalendarProps {
-  bulan: string;
+  bulan: string; // Format YYYY-MM
   selectedDate?: string;
   onBulanChange?: (val: string) => void;
   onDateSelect?: (dateStr: string) => void;
@@ -33,6 +34,7 @@ interface SharedVisualAttendanceCalendarProps {
   title?: string;
   showMonthPicker?: boolean;
   startOfWeek?: 'MINGGU' | 'SENIN';
+  className?: string;
 }
 
 export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCalendarProps> = ({
@@ -47,14 +49,17 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
   title = "Kalender Visual Presensi",
   showMonthPicker = true,
   startOfWeek = 'SENIN',
+  className,
 }) => {
-  const { cells, statsCards, year, monthIdx, headers } = useMemo(() => {
+  const { cells, statsCards, year, monthIdx, headers, monthName } = useMemo(() => {
     const [yStr, mStr] = (bulan || '2026-07').split('-');
     const year = parseInt(yStr, 10) || 2026;
     const monthIdx = (parseInt(mStr, 10) || 7) - 1;
     const totalDays = new Date(year, monthIdx + 1, 0).getDate();
     const firstDay = new Date(year, monthIdx, 1);
     const jsWeekday = firstDay.getDay();
+
+    const monthName = new Date(year, monthIdx, 1).toLocaleDateString('id-ID', { month: 'long' });
 
     const isMingguFirst = startOfWeek === 'MINGGU';
     const headers = isMingguFirst 
@@ -115,13 +120,29 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
       { label: 'Terlambat', value: statistik.TERLAMBAT ?? 0, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/50' },
     ];
 
-    return { cells, statsCards, year, monthIdx, headers };
+    return { cells, statsCards, year, monthIdx, headers, monthName };
   }, [bulan, details, detailMap, statistik, startOfWeek]);
+
+  const handlePrevMonth = () => {
+    if (!onBulanChange) return;
+    const prevDate = new Date(year, monthIdx - 1, 1);
+    const y = prevDate.getFullYear();
+    const m = String(prevDate.getMonth() + 1).padStart(2, '0');
+    onBulanChange(`${y}-${m}`);
+  };
+
+  const handleNextMonth = () => {
+    if (!onBulanChange) return;
+    const nextDate = new Date(year, monthIdx + 1, 1);
+    const y = nextDate.getFullYear();
+    const m = String(nextDate.getMonth() + 1).padStart(2, '0');
+    onBulanChange(`${y}-${m}`);
+  };
 
   if (isLoading) return <div className="p-12 flex justify-center"><Loader /></div>;
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", className)}>
       {/* HEADER & MONTH INPUT */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="space-y-1">
@@ -144,7 +165,6 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
         )}
       </div>
 
-
       {/* STATS STRIP */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         {statsCards.map((s, idx) => (
@@ -155,20 +175,78 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
         ))}
       </div>
 
-      {/* CALENDAR GRID CONTAINER */}
-      <div className="bg-slate-50/60 dark:bg-slate-900/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
-        <div className="grid grid-cols-7 gap-1.5 mb-2">
-          {headers.map(d => (
-            <div key={d} className="text-center text-[9px] font-black text-slate-400 tracking-widest py-1">{d}</div>
-          ))}
+      {/* UNIFIED MODERN CALENDAR GRID CONTAINER */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+        {/* Calendar Header Nav */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            disabled={!onBulanChange}
+            className="h-8 w-8 p-0 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
+            aria-label="Bulan sebelumnya"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <h2 className="text-base font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+            {monthName} {year}
+          </h2>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            disabled={!onBulanChange}
+            className="h-8 w-8 p-0 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
+            aria-label="Bulan berikutnya"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
-        <div className="grid grid-cols-7 gap-1.5">
 
+        {/* Day Name Header */}
+        <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-900/10">
+          {headers.map(d => {
+            const isWeekendHeader = d === 'SAB' || d === 'MIN';
+            return (
+              <div 
+                key={d} 
+                className={cn(
+                  "text-center text-[10px] font-black uppercase tracking-widest py-3 border-r last:border-r-0 border-slate-200 dark:border-slate-800",
+                  isWeekendHeader ? "bg-slate-100/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-extrabold" : "text-slate-400 dark:text-slate-500"
+                )}
+              >
+                {d}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Days Grid */}
+        <div className="grid grid-cols-7">
           {cells.map((cell, idx) => {
             const dateStr = cell.day 
               ? `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`
               : '';
             const isSelected = !!cell.day && selectedDate === dateStr;
+            const isLastCol = (idx + 1) % 7 === 0;
+            const borderClasses = `${isLastCol ? '' : 'border-r'} border-b border-slate-200 dark:border-slate-800/80`;
+
+            const cellBgClass = cell.day
+              ? isSelected
+                ? 'bg-indigo-50/90 dark:bg-indigo-950/60 ring-2 ring-indigo-500 dark:ring-indigo-400 z-10'
+                : cell.mark === 'H'
+                ? 'bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40'
+                : cell.mark === 'T'
+                ? 'bg-purple-50/60 dark:bg-purple-950/30 hover:bg-purple-100/60 dark:hover:bg-purple-900/40'
+                : cell.mark === 'S'
+                ? 'bg-amber-50/60 dark:bg-amber-950/30 hover:bg-amber-100/60 dark:hover:bg-amber-900/40'
+                : cell.mark === 'I'
+                ? 'bg-blue-50/60 dark:bg-blue-950/30 hover:bg-blue-100/60 dark:hover:bg-blue-900/40'
+                : cell.mark === 'A'
+                ? 'bg-rose-50/60 dark:bg-rose-950/30 hover:bg-rose-100/60 dark:hover:bg-rose-900/40'
+                : cell.isWeekend
+                ? 'bg-slate-100/40 dark:bg-slate-900/30'
+                : 'bg-white dark:bg-slate-950 hover:bg-slate-50/50 dark:hover:bg-slate-900/30'
+              : 'bg-slate-50/30 dark:bg-slate-900/10';
 
             return (
               <div 
@@ -178,39 +256,42 @@ export const SharedVisualAttendanceCalendar: React.FC<SharedVisualAttendanceCale
                     onDateSelect(dateStr);
                   }
                 }}
-                className={`relative h-9 sm:h-10 md:h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center ${
-                  !cell.day 
-                    ? 'bg-transparent border-transparent' 
-                    : isSelected
-                    ? 'ring-2 ring-indigo-600 dark:ring-indigo-400 bg-indigo-100/90 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-100 font-black shadow-md scale-105 z-10 cursor-pointer'
-                    : cell.mark === 'H' 
-                    ? 'bg-emerald-50/90 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold hover:scale-105 cursor-pointer' 
-                    : cell.mark === 'T' 
-                    ? 'bg-purple-50/90 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-bold hover:scale-105 cursor-pointer' 
-                    : cell.mark === 'S' 
-                    ? 'bg-amber-50/90 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-bold hover:scale-105 cursor-pointer' 
-                    : cell.mark === 'I' 
-                    ? 'bg-blue-50/90 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold hover:scale-105 cursor-pointer' 
-                    : cell.mark === 'A' 
-                    ? 'bg-rose-50/90 border-rose-200 dark:bg-rose-950/40 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold hover:scale-105 cursor-pointer' 
-                    : cell.isWeekend 
-                    ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200/50 dark:border-slate-800 opacity-40 hover:opacity-100 cursor-pointer' 
-                    : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 hover:scale-105 cursor-pointer'
-                }`}
+                className={cn(
+                  "group relative h-16 sm:h-20 p-2 transition-all duration-200 flex flex-col justify-between overflow-hidden cursor-pointer",
+                  borderClasses,
+                  cellBgClass
+                )}
               >
                 {cell.day && (
                   <>
-                    <span className={`text-xs font-black ${
-                      isSelected ? 'text-indigo-950 dark:text-indigo-100' : cell.mark ? 'text-current' : 'text-slate-500 dark:text-slate-400'
-                    }`}>{cell.day}</span>
-                    {cell.mark && (
-                      <span className="text-[8px] font-black uppercase tracking-tight -mt-0.5 opacity-90">
-                        {cell.mark === 'H' ? 'Hadir' : 
-                         cell.mark === 'T' ? 'Telat' : 
-                         cell.mark === 'S' ? 'Sakit' : 
-                         cell.mark === 'I' ? 'Izin' : 
-                         cell.mark === 'A' ? 'Alpa' : ''}
+                    <div className="flex justify-between items-start w-full">
+                      <span className={cn(
+                        "text-xs font-black",
+                        isSelected ? "text-indigo-600 dark:text-indigo-400" : cell.isWeekend ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-300"
+                      )}>
+                        {cell.day}
                       </span>
+                    </div>
+
+                    <div className="flex-1"></div>
+
+                    {cell.mark && (
+                      <div className="flex justify-center w-full">
+                        <span className={cn(
+                          "text-[9px] font-black uppercase tracking-tight px-2 py-0.5 rounded-md shadow-xs text-center w-full leading-tight border",
+                          cell.mark === 'H' && "bg-emerald-500 text-white border-emerald-600",
+                          cell.mark === 'T' && "bg-purple-500 text-white border-purple-600",
+                          cell.mark === 'S' && "bg-amber-500 text-white border-amber-600",
+                          cell.mark === 'I' && "bg-blue-500 text-white border-blue-600",
+                          cell.mark === 'A' && "bg-rose-500 text-white border-rose-600"
+                        )}>
+                          {cell.mark === 'H' ? 'Hadir' : 
+                           cell.mark === 'T' ? 'Terlambat' : 
+                           cell.mark === 'S' ? 'Sakit' : 
+                           cell.mark === 'I' ? 'Izin' : 
+                           cell.mark === 'A' ? 'Alpa' : ''}
+                        </span>
+                      </div>
                     )}
                   </>
                 )}
