@@ -58,9 +58,24 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - AKL', kode_mapel: 'MPP-AKL' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TAV', kode_mapel: 'MPP-TAV' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TKR', kode_mapel: 'MPP-TKR' },
-    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TBSM', kode_mapel: 'MPP-TBSM' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TBSM / TSM', kode_mapel: 'MPP-TBSM' },
+    { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - TP (Teknik Pemesinan)', kode_mapel: 'MPP-TP' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - DKV', kode_mapel: 'MPP-DKV' },
     { category: 'PILIHAN_SMK', nama_mapel: 'Mata Pelajaran Pilihan - MPLB', kode_mapel: 'MPP-MPLB' },
+  ];
+
+  // Standar Konsentrasi Keahlian SMK (KK per Jurusan)
+  const kkPresets: PresetItem[] = [
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian (Umum)', kode_mapel: 'KK' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TKJ', kode_mapel: 'KK-TKJ' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - RPL', kode_mapel: 'KK-RPL' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - AKL', kode_mapel: 'KK-AKL' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TAV', kode_mapel: 'KK-TAV' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TKR', kode_mapel: 'KK-TKR' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TBSM / TSM', kode_mapel: 'KK-TBSM' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - TP (Teknik Pemesinan)', kode_mapel: 'KK-TP' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - DKV', kode_mapel: 'KK-DKV' },
+    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian - MPLB', kode_mapel: 'KK-MPLB' },
   ];
 
   // =====================================================================
@@ -250,7 +265,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
     { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian', kode_mapel: 'DDPK' },
-    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
+    ...kkPresets,
 
     // 3. Mata Pelajaran Pilihan
     ...mppPresets,
@@ -279,7 +294,7 @@ export async function seedMapelPresets(prisma: PrismaClient) {
     { category: 'KEJURUAN', nama_mapel: 'Matematika (Kejuruan)', kode_mapel: 'MTK-K' },
     { category: 'KEJURUAN', nama_mapel: 'Bahasa Inggris (Kejuruan)', kode_mapel: 'ING-K' },
     { category: 'KEJURUAN', nama_mapel: 'Dasar-dasar Program Keahlian', kode_mapel: 'DDPK' },
-    { category: 'KEJURUAN', nama_mapel: 'Konsentrasi Keahlian', kode_mapel: 'KK' },
+    ...kkPresets,
 
     // 3. Mata Pelajaran Pilihan
     ...mppPresets,
