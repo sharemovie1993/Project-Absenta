@@ -49,49 +49,6 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
 
-  // Helper maps to count teachers sharing the same subject in global or jurusan scope
-  const { globalTeachersPerMapel, jurusanTeachersPerMapel } = useMemo(() => {
-    const gMap = new Map<string, number>();
-    const jMap = new Map<string, number>();
-
-    items.forEach(gm => {
-      if (gm.jurusan_id && !gm.kelas_id) {
-        const key = `${gm.mapel_id}_${gm.jurusan_id}`;
-        jMap.set(key, (jMap.get(key) || 0) + 1);
-      } else if (!gm.kelas_id && !gm.jurusan_id) {
-        gMap.set(gm.mapel_id, (gMap.get(gm.mapel_id) || 0) + 1);
-      }
-    });
-
-    return { globalTeachersPerMapel: gMap, jurusanTeachersPerMapel: jMap };
-  }, [items]);
-
-  const teacherTotalJpMap = useMemo(() => {
-    const map = new Map<string, number>();
-    const totalClassesCount = rawKelasList.length || 1;
-
-    items.forEach(gm => {
-      const jpPerMinggu = strukturMap.get(gm.mapel_id) || 2;
-      let targetClassesCount = 1;
-
-      if (gm.kelas_id) {
-        targetClassesCount = 1;
-      } else if (gm.jurusan_id) {
-        const inJurusan = rawKelasList.filter(k => k.jurusan_id === gm.jurusan_id);
-        const jurusanClassCount = inJurusan.length > 0 ? inJurusan.length : 1;
-        const teacherCount = jurusanTeachersPerMapel.get(`${gm.mapel_id}_${gm.jurusan_id}`) || 1;
-        targetClassesCount = Math.max(1, Math.round(jurusanClassCount / teacherCount));
-      } else {
-        const teacherCount = globalTeachersPerMapel.get(gm.mapel_id) || 1;
-        targetClassesCount = Math.max(1, Math.round(totalClassesCount / teacherCount));
-      }
-
-      const totalAssignmentJp = targetClassesCount * jpPerMinggu;
-      map.set(gm.guru_id, (map.get(gm.guru_id) || 0) + totalAssignmentJp);
-    });
-    return map;
-  }, [items, strukturMap, rawKelasList, globalTeachersPerMapel, jurusanTeachersPerMapel]);
-
   const canManage = useMemo(() => {
     return user?.role?.name === 'SUPERADMIN' || user?.role?.name === 'ADMIN' || user?.capabilities?.includes('academic.teaching.manage');
   }, [user]);
@@ -189,30 +146,12 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [gurus, mapels, jurusans, kelases, rawKelasRes, strukturRes] = await Promise.all([
-          getGuruList(1, 100, ''),
-          getMapelList(1, 100, ''),
+        const [jurusans, kelases] = await Promise.all([
           getJurusanForDropdown().catch(() => []),
-          getKelasForDropdown().catch(() => []),
-          getKelasList(1, 100).catch(() => ({ data: [] })),
-          kurikulumApi.getStruktur().catch(() => ({ data: [] }))
+          getKelasForDropdown().catch(() => [])
         ]);
-        setGuruOptions(gurus.data);
-        setMapelOptions(mapels.data);
         setJurusanDropdown(jurusans);
         setKelasDropdown(kelases);
-        setRawKelasList(rawKelasRes?.data || []);
-
-        const sMap = new Map<string, number>();
-        const list = strukturRes?.data || (Array.isArray(strukturRes) ? strukturRes : []);
-        if (Array.isArray(list)) {
-          list.forEach((s: any) => {
-            if (s.mapel_id && s.jp_per_minggu) {
-              sMap.set(s.mapel_id, s.jp_per_minggu);
-            }
-          });
-        }
-        setStrukturMap(sMap);
       } catch {
         // ignore
       }
@@ -351,7 +290,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
       sortable: true,
       render: (_: any, gm: GuruMapel) => {
         const bebanInfo = bebanGuruMap.get(gm.guru_id);
-        const currentKbmJp = bebanInfo ? bebanInfo.current_jp : (teacherTotalJpMap.get(gm.guru_id) || 0);
+        const currentKbmJp = bebanInfo ? bebanInfo.current_jp : 0;
         const positionJp = bebanInfo ? bebanInfo.ekuivalen_position_jp : 0;
         const totalCalculatedJp = bebanInfo ? bebanInfo.total_calculated_jp : currentKbmJp;
         const maxJp = bebanInfo?.max_jp || (gm.Guru as any)?.max_jp || 24;

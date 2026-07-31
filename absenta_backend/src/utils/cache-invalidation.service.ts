@@ -63,7 +63,16 @@ export class CacheInvalidationService {
    */
   async invalidateAcademicCache(tenantId: string) {
     await cacheService.delete(CACHE_KEYS.TENANT.ACADEMIC(tenantId));
+    await this.invalidateBebanGuruCache(tenantId);
     await this.invalidateDashboardCache(tenantId);
+  }
+
+  /**
+   * 👨‍🏫 Invalidate cache beban guru
+   */
+  async invalidateBebanGuruCache(tenantId: string) {
+    const pattern = `academic:${tenantId}:beban_guru:*`;
+    await cacheService.deletePattern(pattern);
   }
 
   /**

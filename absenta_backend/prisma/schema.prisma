@@ -1623,6 +1623,9 @@ model GuruMapel {
   Tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+  @@index([tenant_id, guru_id])
+  @@index([tenant_id, mapel_id])
+  @@index([tenant_id, guru_id, mapel_id])
   @@index([kelas_id])
   @@index([jurusan_id])
 }
@@ -2115,6 +2118,8 @@ model JadwalKBM {
   @@unique([kelas_id, tahun_pelajaran_id, semester_id, hari, slot_index])
   @@unique([guru_id, tahun_pelajaran_id, semester_id, hari, jam_mulai, jam_selesai])
   @@index([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id, guru_id])
+  @@index([tenant_id, guru_id, mapel_id])
   @@index([kelas_id, hari])
   @@index([guru_id, hari])
 }
@@ -2205,6 +2210,8 @@ model StrukturKurikulum {
   Jurusan        Jurusan?       @relation(fields: [jurusan_id], references: [id])
 
   @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id, mapel_id])
+  @@index([tenant_id, tahun_pelajaran_id, tingkat])
 }
 
 model ProgresMateri {

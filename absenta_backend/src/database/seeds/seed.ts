@@ -674,7 +674,7 @@ async function main() {
         is_public: true,
         currency: 'IDR',
         billing_period: 'MONTH',
-        absensi_mode: 'SIMPLE'
+        absensi_mode: 'MULTI_SESI'
       }
     });
     console.log(`✅ Plan "CORE_PLATFORM" berhasil dibuat. ID: ${freeTrialPlan.id}`);
@@ -693,7 +693,7 @@ async function main() {
         description: 'Platform Dasar (GRATIS): Kelola Data Siswa (Tanpa Batas), Guru, dan Struktur Akademik. Tidak termasuk fitur Absensi, Keuangan, dan Koperasi.',
         is_active: true,
         is_public: true,
-        absensi_mode: 'SIMPLE'
+        absensi_mode: 'MULTI_SESI'
       }
     });
     console.log(`✅ Plan "CORE_PLATFORM" diperbarui. ID: ${freeTrialPlan.id}`);
@@ -716,7 +716,7 @@ async function main() {
       is_public: true,
       currency: 'IDR',
       billing_period: 'YEAR' as any,
-      absensi_mode: 'SIMPLE' as any,
+      absensi_mode: 'MULTI_SESI' as any,
       size_label: 'Micro',
       tier: 'BASIC'
     },
@@ -735,7 +735,7 @@ async function main() {
       is_public: true,
       currency: 'IDR',
       billing_period: 'YEAR' as any,
-      absensi_mode: 'SIMPLE' as any,
+      absensi_mode: 'MULTI_SESI' as any,
       size_label: 'Small',
       tier: 'BASIC'
     },
@@ -754,7 +754,7 @@ async function main() {
       is_public: true,
       currency: 'IDR',
       billing_period: 'YEAR' as any,
-      absensi_mode: 'SIMPLE' as any,
+      absensi_mode: 'MULTI_SESI' as any,
       size_label: 'Medium',
       tier: 'STANDARD'
     },
@@ -773,7 +773,7 @@ async function main() {
       is_public: true,
       currency: 'IDR',
       billing_period: 'YEAR' as any,
-      absensi_mode: 'SIMPLE' as any,
+      absensi_mode: 'MULTI_SESI' as any,
       size_label: 'Large',
       tier: 'ENTERPRISE'
     },
@@ -792,7 +792,7 @@ async function main() {
       is_public: true,
       currency: 'IDR',
       billing_period: 'YEAR' as any,
-      absensi_mode: 'SIMPLE' as any,
+      absensi_mode: 'MULTI_SESI' as any,
       size_label: 'Enterprise',
       tier: 'ULTIMATE'
     }

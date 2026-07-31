@@ -62,6 +62,7 @@ export const CACHE_KEYS = {
     GURU: (tenantId: string) => `academic:${tenantId}:guru`,
     SISWA: (tenantId: string) => `academic:${tenantId}:siswa`,
     MAPEL: (tenantId: string) => `academic:${tenantId}:mapel`,
+    BEBAN_GURU: (tenantId: string, yearId?: string, semId?: string) => `academic:${tenantId}:beban_guru:${yearId || 'default'}:${semId || 'default'}`,
     TAHUN_PELAJARAN: (tenantId: string) => `academic:${tenantId}:tahun_pelajaran`,
     SEMESTER: (tenantId: string) => `academic:${tenantId}:semester`,
     ALL: (tenantId: string) => `academic:${tenantId}:*`

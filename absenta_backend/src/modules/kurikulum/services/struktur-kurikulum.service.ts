@@ -1,4 +1,6 @@
 import { prisma } from '../../../utils/prisma';
+import { cacheService } from '../../../utils/cache.service';
+import { CACHE_KEYS } from '../../../constants/cache-keys';
 
 export function calculatePositionEquivalency(code: string = '', name: string = ''): number {
   const upperCode = code.toUpperCase();
@@ -249,6 +251,12 @@ export class StrukturKurikulumService {
   }
 
   static async getBebanGuruAll(tenantId: string, tahunPelajaranId?: string, semesterId?: string) {
+    const cacheKey = CACHE_KEYS.ACADEMIC.BEBAN_GURU(tenantId, tahunPelajaranId, semesterId);
+    const cachedData = await cacheService.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     const teachers = await prisma.guru.findMany({
       where: {
         tenant_id: tenantId,
@@ -316,7 +324,7 @@ export class StrukturKurikulumService {
       });
     }
 
-    return teachers.map((t: any) => {
+    const result = teachers.map((t: any) => {
       const currentKbmJp = countMap.get(t.id) || 0;
       const maxJp = t.max_jp ?? 24;
 
@@ -346,6 +354,9 @@ export class StrukturKurikulumService {
         positions
       };
     });
+
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
   static async clone(tenantId: string, payload: { from_tahun_pelajaran_id: string; to_tahun_pelajaran_id: string; overwrite?: boolean }) {

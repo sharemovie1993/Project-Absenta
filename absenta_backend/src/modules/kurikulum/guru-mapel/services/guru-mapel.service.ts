@@ -115,6 +115,9 @@ export class GuruMapelService {
       },
     });
 
+    const { cacheInvalidationService } = await import('../../../../utils/cache-invalidation.service');
+    await cacheInvalidationService.invalidateBebanGuruCache(tenantId);
+
     return created as unknown as GuruMapelResponse;
   }
 
@@ -134,6 +137,9 @@ export class GuruMapelService {
     }
 
     await prisma.guruMapel.delete({ where: { id: assignmentId } });
+
+    const { cacheInvalidationService } = await import('../../../../utils/cache-invalidation.service');
+    await cacheInvalidationService.invalidateBebanGuruCache(record.tenant_id);
   }
 
   async importFromExcel(data: any[], tenantId: string): Promise<{ success: number; failed: number; errors: any[] }> {
