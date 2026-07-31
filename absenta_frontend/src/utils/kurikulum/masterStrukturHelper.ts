@@ -200,22 +200,38 @@ export const isMapelBelongsToOtherJurusan = (
     const jKode = (j.kode || '').toUpperCase();
     const jSingkatan = (j.singkatan || '').toUpperCase();
     
-    // Only match structured codes (e.g., "-TKJ", "KK-TKJ", "KK TKJ", "-RPL") with length >= 2
+    // Match structured codes (e.g., "-TKJ", "KK-TKJ", "KK TKJ", "DDPKPHT", "-RPL") with length >= 2
     const hasOtherKode = jKode && jKode.length >= 2 && (
       kode === jKode || 
       kode.endsWith(`-${jKode}`) || 
       kode.endsWith(` ${jKode}`) ||
+      kode.endsWith(jKode) ||
       kode.includes(`-${jKode}-`) || 
+      kode.includes(`-${jKode}`) ||
+      kode.includes(` ${jKode}`) ||
       kode.includes(`KK-${jKode}`) ||
-      kode.includes(`KK ${jKode}`)
+      kode.includes(`KK ${jKode}`) ||
+      kode.includes(`DDPK-${jKode}`) ||
+      kode.includes(`DDPK ${jKode}`) ||
+      kode.includes(`DDPK${jKode}`) ||
+      kode.includes(`KK${jKode}`) ||
+      kode.includes(`MPP${jKode}`)
     );
     const hasOtherSingkatan = jSingkatan && jSingkatan.length >= 2 && (
       kode === jSingkatan || 
       kode.endsWith(`-${jSingkatan}`) || 
       kode.endsWith(` ${jSingkatan}`) ||
+      kode.endsWith(jSingkatan) ||
       kode.includes(`-${jSingkatan}-`) || 
+      kode.includes(`-${jSingkatan}`) ||
+      kode.includes(` ${jSingkatan}`) ||
       kode.includes(`KK-${jSingkatan}`) ||
-      kode.includes(`KK ${jSingkatan}`)
+      kode.includes(`KK ${jSingkatan}`) ||
+      kode.includes(`DDPK-${jSingkatan}`) ||
+      kode.includes(`DDPK ${jSingkatan}`) ||
+      kode.includes(`DDPK${jSingkatan}`) ||
+      kode.includes(`KK${jSingkatan}`) ||
+      kode.includes(`MPP${jSingkatan}`)
     );
     
     return hasOtherKode || hasOtherSingkatan;

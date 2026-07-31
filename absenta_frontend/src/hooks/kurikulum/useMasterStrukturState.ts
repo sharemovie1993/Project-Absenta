@@ -563,6 +563,8 @@ export const useMasterStrukturState = () => {
           const isSeniOrPrakarya = name.includes('seni ') || name.includes('prakarya');
           const isPKL = kode === 'PKL' || name.includes('praktik kerja lapangan');
           const isElective = category === 'PILIHAN';
+          const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.startsWith('DAS') || kode.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar');
+          const isKk = !isPKL && !isElective && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || name.startsWith('kk') || name.includes('konsentrasi'));
           
           // Mapel PILIHAN (otonomi sekolah) tidak dihitung dalam target wajib Kemendikbud.
           // Referensi: Permendikbud 12/2024 — target JP adalah beban wajib intrakurikuler.
@@ -574,9 +576,13 @@ export const useMasterStrukturState = () => {
             uniqueRefs.set('RELIGION', ref);
           } else if (isSeniOrPrakarya) {
             uniqueRefs.set('ART_CRAFT', ref);
+          } else if (isDasar) {
+            uniqueRefs.set('DASAR_KEJURUAN', ref);
+          } else if (isKk) {
+            uniqueRefs.set('KONSENTRASI_KEAHLIAN', ref);
           } else if (isPKL) {
             if (selectedTingkat === 12) {
-              uniqueRefs.set(kode, ref);
+              uniqueRefs.set('PKL', ref);
             }
           } else {
             uniqueRefs.set(kode, ref);
