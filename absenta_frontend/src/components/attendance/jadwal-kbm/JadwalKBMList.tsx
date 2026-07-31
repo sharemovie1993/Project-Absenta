@@ -20,6 +20,7 @@ import { mapelApi, guruApi } from '../../../api/academic.api';
 import type { Mapel, Guru, Kelas } from '../../../types/academic';
 import { jenisKegiatanMasterApi, type JenisKegiatanMaster } from '../../../api/academic/jenisKegiatanMaster.api';
 import { toast } from 'react-hot-toast';
+import { cn } from '../../../lib/utils';
 import { WORKDAYS_HARI_KEYS } from '../../../constants/day.constants';
 
 // Pillar 5: Lazy Loading
