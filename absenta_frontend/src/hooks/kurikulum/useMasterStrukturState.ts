@@ -308,11 +308,11 @@ export const useMasterStrukturState = () => {
               if (isMulok && ref.kode_mapel === 'MULOK') return true;
               
               if (isSmkOrMak) {
-                const isDasar = code.includes('DAS-') || code.includes('DDPK') || code === 'DDPK' || name.includes('dasar-dasar') || name.includes('dasar dasar');
+                const isDasar = code.startsWith('DDPK') || code.includes('DDPK') || code.startsWith('DAS') || code.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
                 const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja');
                 const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif');
-                const isKk = code === 'KK' || code.startsWith('KK-') || code.startsWith('KK ') || code.includes('KK ') || name.includes('konsentrasi keahlian');
-                const isMpp = code.includes('MPP') || code.includes('PILIHAN') || name.includes('pilihan');
+                const isKk = !isPkk && (code.startsWith('KK') || code.includes('KK-') || code.includes('KK ') || code === 'KK' || name.startsWith('kk') || name.includes('konsentrasi'));
+                const isMpp = code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || name.startsWith('mpp') || name.includes('pilihan');
 
                 if (isDasar && selectedTingkat === 10 && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK')) return true;
                 if (selectedTingkat > 10) {

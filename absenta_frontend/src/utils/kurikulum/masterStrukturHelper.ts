@@ -32,10 +32,10 @@ export const detectKelompokForMapel = (kodeMapel: string, namaMapel: string, jen
   const nama = (namaMapel || '').toLowerCase();
   
   const kejuruanSuffixes = ['-RPL', '-TKJ', '-AKL', '-MPLB', '-DKV', '-TBSM', '-TKR', '-TP', '-PHT', '-KUL', '-TITL', '-DPIB', '-FKK', '-TPL', '-ATPH', '-BD', '-PH', '-KL', '-TB', '-TAV', '-TOI'];
-  const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-  const isPkl = kode.includes('PKL') || nama.includes('praktik kerja lapangan') || nama.includes('praktek kerja lapangan') || nama.includes('pkl');
+  const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.startsWith('DAS') || kode.includes('DAS-') || nama.startsWith('ddpk') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+  const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja') || nama.includes('pkl');
   const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif') || nama.includes('pkk');
-  const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
+  const isKk = !isPkk && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
 
   const isKejuruan = isPkl || isPkk || isDasar || isKk || kode.endsWith('-K') || kejuruanSuffixes.some(s => kode.includes(s));
                        
@@ -120,10 +120,10 @@ export const detectDefaultJpForMapel = (
     
     // 5. Match by kejuruan rules (SMK/MAK)
     if (!match && isSmkOrMak) {
-      const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+      const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.startsWith('DAS') || kode.includes('DAS-') || nama.startsWith('ddpk') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
       const isPkl = kode.includes('PKL') || nama.includes('praktik kerja') || nama.includes('praktek kerja');
       const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif');
-      const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
+      const isKk = !isPkk && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
 
       if (isDasar) {
         if (tingkat === 10) {
@@ -144,8 +144,9 @@ export const detectDefaultJpForMapel = (
   }
   
   if (isSmkOrMak) {
-    const isDasar = kode.includes('DAS-') || kode.includes('DDPK') || kode === 'DDPK' || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
-    const isKk = kode === 'KK' || kode.startsWith('KK-') || kode.startsWith('KK ') || kode.includes('KK ') || nama.includes('konsentrasi keahlian');
+    const isDasar = kode.startsWith('DDPK') || kode.includes('DDPK') || kode.startsWith('DAS') || kode.includes('DAS-') || nama.startsWith('ddpk') || nama.includes('dasar-dasar') || nama.includes('dasar dasar');
+    const isPkk = kode.includes('PKK') || nama.includes('projek kreatif') || nama.includes('project kreatif');
+    const isKk = !isPkk && (kode.startsWith('KK') || kode.includes('KK-') || kode.includes('KK ') || kode === 'KK' || nama.startsWith('kk') || nama.includes('konsentrasi'));
     if (isDasar && tingkat === 10) return 12;
     if (isKk && tingkat === 11) return 18;
     if (isKk && tingkat === 12) return 22;
@@ -583,11 +584,11 @@ export const checkMapelHasStandard = (
     if (isMulok && ref.kode_mapel === 'MULOK') return true;
     
     if (isSmkOrMak) {
-      const isDasar = code.includes('DAS-') || code.includes('DDPK') || code === 'DDPK' || name.includes('dasar-dasar') || name.includes('dasar dasar');
+      const isDasar = code.startsWith('DDPK') || code.includes('DDPK') || code.startsWith('DAS') || code.includes('DAS-') || name.startsWith('ddpk') || name.includes('dasar-dasar') || name.includes('dasar dasar');
       const isPkl = code.includes('PKL') || name.includes('praktik kerja') || name.includes('praktek kerja');
       const isPkk = code.includes('PKK') || name.includes('projek kreatif') || name.includes('project kreatif');
-      const isKk = code === 'KK' || code.startsWith('KK-') || code.startsWith('KK ') || code.includes('KK ') || name.includes('konsentrasi keahlian');
-      const isMpp = code.includes('MPP') || code.includes('PILIHAN') || name.includes('pilihan');
+      const isKk = !isPkk && (code.startsWith('KK') || code.includes('KK-') || code.includes('KK ') || code === 'KK' || name.startsWith('kk') || name.includes('konsentrasi'));
+      const isMpp = code.startsWith('MPP') || code.includes('MPP') || code.includes('PILIHAN') || name.startsWith('mpp') || name.includes('pilihan');
 
       if (isDasar && selectedTingkat === 10 && (ref.kode_mapel === 'DASAR-KEJURUAN' || ref.kode_mapel === 'DDPK')) return true;
       if (selectedTingkat > 10) {
