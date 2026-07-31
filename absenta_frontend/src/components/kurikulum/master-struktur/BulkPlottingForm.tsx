@@ -396,7 +396,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                                     <input
                                       type="number"
                                       min={1}
-                                      max={50}
+                                      max={100}
                                       value={config.jp_per_minggu}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => {
@@ -558,7 +558,7 @@ export const BulkPlottingForm: React.FC<BulkPlottingFormProps> = ({
                           <input
                             type="number"
                             min={1}
-                            max={40}
+                            max={100}
                             value={bulkSelections[s.id].jp_per_minggu}
                             onChange={(e) => {
                               const copy = { ...bulkSelections };

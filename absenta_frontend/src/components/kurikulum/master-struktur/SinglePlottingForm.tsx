@@ -90,7 +90,7 @@ export const SinglePlottingForm: React.FC<SinglePlottingFormProps> = ({
               value={formData.jp_per_minggu}
               onChange={handleInputChange}
               min={1}
-              max={40}
+              max={100}
               required
               className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-black text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
@@ -138,7 +138,7 @@ export const SinglePlottingForm: React.FC<SinglePlottingFormProps> = ({
               value={formData.jp_per_minggu}
               onChange={handleInputChange}
               min={1}
-              max={40}
+              max={100}
               required
               className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-gray-850 bg-gray-50 dark:bg-slate-900 font-black text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
