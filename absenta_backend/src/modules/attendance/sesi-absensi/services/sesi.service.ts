@@ -483,6 +483,8 @@ export class SesiService {
       await this.handleSessionClose(tenantId, sesiId, sesi);
     }
 
+    void cacheInvalidationService.invalidateAttendanceCache(tenantId);
+
     return updated;
   }
 

@@ -1120,6 +1120,8 @@ model AbsenGuru {
   @@unique([sesi_id, guru_id])
   @@index([tenant_id])
   @@index([tenant_id, guru_id])
+  @@index([tenant_id, sesi_id])
+  @@index([tenant_id, guru_id, status])
 }
 
 model AbsenSiswa {
@@ -1150,6 +1152,7 @@ model AbsenSiswa {
   @@unique([sesi_id, siswa_akademik_id])
   @@index([tenant_id])
   @@index([tenant_id, sesi_id, siswa_akademik_id])
+  @@index([tenant_id, sesi_id, status])
   @@index([siswa_akademik_id])
   @@index([siswa_id])
   @@index([tenant_id, created_at])

@@ -83,6 +83,8 @@ export const CACHE_KEYS = {
   ATTENDANCE: {
     SESSIONS: (tenantId: string, date: string) => `attendance:${tenantId}:sessions:${date}`,
     SUMMARY: (tenantId: string, period: string) => `attendance:${tenantId}:summary:${period}`,
+    GATE_RULE_CONFIG: (tenantId: string) => `attendance:${tenantId}:gate_rule_config`,
+    SESSION_SUMMARY: (tenantId: string, sesiId: string) => `attendance:${tenantId}:summary_sesi:${sesiId}`,
     ANALYTICS: (tenantId: string, startDate: string, endDate: string) => 
       `attendance:${tenantId}:analytics:${startDate}:${endDate}`,
     ALL: (tenantId: string) => `attendance:${tenantId}:*`

@@ -7,6 +7,8 @@ import { isMultiSesiMode } from '../types/gerbang.types';
 import { gerbangDb } from './repositories/gerbang.db';
 import { getModeFeatures } from './gerbang.tap-helpers';
 import { getRedisConnection } from '@/queue/redis';
+import { cacheService } from '@/utils/cache.service';
+import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 
 export async function processTapTransaction(params: {
   input: any;
@@ -68,7 +70,6 @@ export async function processTapTransaction(params: {
   const dateStr = new Intl.DateTimeFormat('sv-SE', { timeZone: tz }).format(tapTime);
 
   const tapTxResult = await gerbangDb.$transaction(async (tx) => {
-    const activeYear = await (tx as any).tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
     let kelasId = null;
     let kelasNama = null;
     let tingkatData: any = null;
@@ -83,23 +84,33 @@ export async function processTapTransaction(params: {
 
     const today = new Date(`${dateStr}T00:00:00.000${offsetStr}`);
 
-    const tenantConfig = await (tx as any).tenant.findUnique({
-      where: { id: tenantId },
-      select: { jam_masuk_default: true, jam_pulang_default: true, toleransi_keterlambatan_menit: true },
-    });
-
-    const specialEvent = await (tx as any).absensiKejadianKhusus.findFirst({
-      where: {
-        tenant_id: tenantId,
-        tanggal: today,
+    // Redis Multi-Tenant Config Caching (Zero-Query Lookup)
+    const configCacheKey = CACHE_KEYS.ATTENDANCE.GATE_RULE_CONFIG(tenantId);
+    const cachedConfig = await cacheService.getOrSet(
+      `${configCacheKey}:${dateStr}:${kelasId || 'all'}`,
+      async () => {
+        const [activeYr, tenantCfg, specEvent] = await Promise.all([
+          (tx as any).tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
+          (tx as any).tenant.findUnique({
+            where: { id: tenantId },
+            select: { jam_masuk_default: true, jam_pulang_default: true, toleransi_keterlambatan_menit: true },
+          }),
+          (tx as any).absensiKejadianKhusus.findFirst({
+            where: { tenant_id: tenantId, tanggal: today },
+          }),
+        ]);
+        const ruleCfg = resolveAttendanceConfig(
+          tenantCfg || { jam_masuk_default: '07:00', jam_pulang_default: '14:00', toleransi_keterlambatan_menit: 15 },
+          tingkatData ? { jam_masuk: tingkatData.jam_masuk, jam_pulang: tingkatData.jam_pulang } : null,
+          specEvent,
+        );
+        return { activeYr, ruleCfg };
       },
-    });
-
-    const ruleConfig = resolveAttendanceConfig(
-      tenantConfig || { jam_masuk_default: '07:00', jam_pulang_default: '14:00', toleransi_keterlambatan_menit: 15 },
-      tingkatData ? { jam_masuk: tingkatData.jam_masuk, jam_pulang: tingkatData.jam_pulang } : null,
-      specialEvent,
+      CACHE_TTL.REAL_TIME
     );
+
+    const activeYear = cachedConfig?.activeYr;
+    const ruleConfig = cachedConfig?.ruleCfg || { jamMasuk: '07:00', toleransiMenit: 15, abaikanTerlambat: false };
 
     const jamMasukClean = (ruleConfig.jamMasuk || '07:00').trim();
     const scheduleStart = new Date(`${dateStr}T${jamMasukClean.length === 5 ? jamMasukClean : '07:00'}:00.000${offsetStr}`);
