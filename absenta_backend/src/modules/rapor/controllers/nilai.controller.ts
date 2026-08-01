@@ -280,4 +280,22 @@ export class NilaiController {
       return sendError(reply, 500, error.message || 'Gagal mengunduh template Excel', error);
     }
   }
+
+  static async getTeacherProgress(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const user = req.user!;
+      const { tahun_pelajaran_id, semester_id } = req.query;
+
+      const result = await NilaiService.getTeacherProgress(
+        tenant_id,
+        { id: user.id, roleName: user.roleName },
+        { tahun_pelajaran_id, semester_id }
+      );
+
+      return sendResponse(reply, 200, true, 'Progres pengisian nilai berhasil dimuat', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal memuat progres pengisian nilai', error);
+    }
+  }
 }

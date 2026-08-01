@@ -29,6 +29,10 @@ export const raporApi = {
     });
     return response;
   },
+  getTeacherProgress: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get('/rapor/nilai/progress', { params });
+    return response.data;
+  },
   getJenisPenilaian: async () => {
     const response = await api.get('/rapor/nilai/jenis');
     return response.data;

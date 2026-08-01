@@ -648,4 +648,159 @@ export class NilaiService {
       buffer,
     };
   }
+
+  /**
+   * 📊 PROGRES PENGISIAN NILAI GURU (DASHBOARD PROGRESS BAR)
+   */
+  static async getTeacherProgress(
+    tenantId: string,
+    user: { id: string; roleName: string },
+    params: { tahun_pelajaran_id?: string; semester_id?: string }
+  ) {
+    const tp = params.tahun_pelajaran_id 
+      ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
+      : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
+    const sem = params.semester_id
+      ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
+      : await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
+    if (!tp || !sem) {
+      return {
+        total_tasks: 0,
+        completed_tasks: 0,
+        partial_tasks: 0,
+        empty_tasks: 0,
+        percentage: 0,
+        tasks: []
+      };
+    }
+
+    let guruId: string | undefined;
+    if (user.roleName === 'GURU') {
+      const guru = await prisma.guru.findFirst({ where: { tenant_id: tenantId, user_id: user.id } });
+      if (guru) guruId = guru.id;
+    }
+
+    const whereJadwal: any = { tenant_id: tenantId };
+    if (guruId) {
+      whereJadwal.guru_id = guruId;
+    }
+
+    const schedules = await prisma.jadwalKBM.findMany({
+      where: whereJadwal,
+      include: {
+        Kelas: { select: { id: true, nama_kelas: true } },
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
+      }
+    });
+
+    const taskMap = new Map<string, { kelas_id: string; nama_kelas: string; mapel_id: string; nama_mapel: string; kode_mapel: string | null }>();
+    schedules.forEach((s) => {
+      if (s.kelas_id && s.mapel_id && s.Kelas && s.Mapel) {
+        const key = `${s.kelas_id}_${s.mapel_id}`;
+        if (!taskMap.has(key)) {
+          taskMap.set(key, {
+            kelas_id: s.kelas_id,
+            nama_kelas: s.Kelas.nama_kelas,
+            mapel_id: s.mapel_id,
+            nama_mapel: s.Mapel.nama_mapel,
+            kode_mapel: s.Mapel.kode_mapel
+          });
+        }
+      }
+    });
+
+    const uniqueTasks = Array.from(taskMap.values());
+
+    if (uniqueTasks.length === 0) {
+      return {
+        total_tasks: 0,
+        completed_tasks: 0,
+        partial_tasks: 0,
+        empty_tasks: 0,
+        percentage: 0,
+        tasks: []
+      };
+    }
+
+    const classIds = Array.from(new Set(uniqueTasks.map(t => t.kelas_id)));
+    const students = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId, kelas_id: { in: classIds }, status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] } },
+      select: { id: true, kelas_id: true }
+    });
+
+    const studentClassMap = new Map<string, string>();
+    const studentsPerClass = new Map<string, number>();
+    students.forEach(s => {
+      if (s.kelas_id) {
+        studentClassMap.set(s.id, s.kelas_id);
+        studentsPerClass.set(s.kelas_id, (studentsPerClass.get(s.kelas_id) || 0) + 1);
+      }
+    });
+
+    const existingNilai = await prisma.nilaiSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: tp.id,
+        semester_id: sem.id,
+        siswa_id: { in: students.map(s => s.id) }
+      },
+      select: { siswa_id: true, mapel_id: true, nilai: true, sumatif_1: true, nilai_akhir_sumatif: true }
+    });
+
+    const filledMap = new Map<string, Set<string>>();
+    existingNilai.forEach(n => {
+      const isFilled = (n.nilai !== null && n.nilai !== undefined && n.nilai > 0) ||
+                       (n.sumatif_1 !== null && n.sumatif_1 !== undefined) ||
+                       (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined);
+      const kelasId = studentClassMap.get(n.siswa_id);
+      if (isFilled && kelasId && n.mapel_id && n.siswa_id) {
+        const key = `${kelasId}_${n.mapel_id}`;
+        if (!filledMap.has(key)) filledMap.set(key, new Set());
+        filledMap.get(key)!.add(n.siswa_id);
+      }
+    });
+
+    let completedTasks = 0;
+    let partialTasks = 0;
+    let emptyTasks = 0;
+
+    const detailedTasks = uniqueTasks.map(t => {
+      const key = `${t.kelas_id}_${t.mapel_id}`;
+      const totalStudents = studentsPerClass.get(t.kelas_id) || 0;
+      const filledSet = filledMap.get(key);
+      const filledStudents = filledSet ? filledSet.size : 0;
+
+      let status: 'completed' | 'partial' | 'empty' = 'empty';
+      if (filledStudents >= totalStudents && totalStudents > 0) {
+        status = 'completed';
+        completedTasks++;
+      } else if (filledStudents > 0) {
+        status = 'partial';
+        partialTasks++;
+      } else {
+        emptyTasks++;
+      }
+
+      return {
+        ...t,
+        total_siswa: totalStudents,
+        siswa_terisi: filledStudents,
+        status
+      };
+    });
+
+    const totalTasks = uniqueTasks.length;
+    const percentage = totalTasks > 0 ? Number(((completedTasks / totalTasks) * 100).toFixed(1)) : 0;
+
+    return {
+      total_tasks: totalTasks,
+      completed_tasks: completedTasks,
+      partial_tasks: partialTasks,
+      empty_tasks: emptyTasks,
+      percentage,
+      tasks: detailedTasks
+    };
+  }
 }

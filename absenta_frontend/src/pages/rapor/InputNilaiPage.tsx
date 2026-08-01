@@ -9,7 +9,9 @@ import {
   ClipboardPaste,
   FileOutput,
   Sparkles,
-  Calculator
+  Calculator,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { Badge } from '../../components/ui/Badge';
@@ -92,6 +94,21 @@ export default function InputNilaiPage() {
     queryKey: ['jenis-penilaian'],
     queryFn: () => raporApi.getJenisPenilaian()
   });
+
+  // Teacher Progress Detail Accordion State
+  const [showProgressDetail, setShowProgressDetail] = useState(false);
+
+  // Fetch Teacher Input Progress Summary across all assigned classes/mapel
+  const { data: teacherProgressData } = useQuery({
+    queryKey: ['teacher-grade-progress', activeYear?.id, activeSemester?.id],
+    queryFn: () => raporApi.getTeacherProgress({
+      tahun_pelajaran_id: activeYear?.id,
+      semester_id: activeSemester?.id
+    }),
+    enabled: !!activeYear && !!activeSemester
+  });
+
+  const progressInfo = teacherProgressData?.data;
 
   // Fetch All Grades for the selected class to calculate completion status per Mapel
   const { data: classAllGrades } = useQuery({
@@ -534,40 +551,130 @@ export default function InputNilaiPage() {
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         
-        {/* Mode Selector & Header Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 text-white p-4 rounded-2xl shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Calculator size={20} />
+        {/* Progres Input Nilai Guru Header Bar */}
+        <div className="bg-slate-900 border border-slate-800 text-white p-5 rounded-3xl shadow-xl space-y-4">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black text-base shadow-inner">
+                {progressInfo ? `${Math.round(progressInfo.percentage)}%` : '0%'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-black tracking-wide">PROGRES PENGISIAN NILAI SAYA</h2>
+                  <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                    TP {activeYear?.tahun || '—'} ({activeSemester?.nama_semester || '—'})
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {progressInfo
+                    ? `${progressInfo.completed_tasks} dari ${progressInfo.total_tasks} Mapel Kelas Selesai Diinput (${progressInfo.percentage}% Selesai)`
+                    : 'Memuat progres pengisian nilai...'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-sm font-bold">Skema Penilaian Rapor</h2>
-              <p className="text-[11px] text-slate-400">Pilih alur pengisian nilai yang sesuai kebutuhan Anda.</p>
+
+            {/* Mode Switcher Buttons */}
+            <div className="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-2xl border border-slate-700/60 self-stretch md:self-auto justify-end">
+              <button
+                onClick={() => setEntryMode('sumatif')}
+                className={`px-3.5 py-2 text-xs font-extrabold rounded-xl transition-all ${
+                  entryMode === 'sumatif' 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400/40' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Mode Sumatif Merdeka
+              </button>
+              <button
+                onClick={() => setEntryMode('kategori')}
+                className={`px-3.5 py-2 text-xs font-extrabold rounded-xl transition-all ${
+                  entryMode === 'kategori' 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-2 ring-indigo-400/40' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Mode Kategori (Legacy)
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl">
-            <button
-              onClick={() => setEntryMode('sumatif')}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                entryMode === 'sumatif' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Mode Sumatif Rapor (Merdeka)
-            </button>
-            <button
-              onClick={() => setEntryMode('kategori')}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                entryMode === 'kategori' 
-                  ? 'bg-indigo-600 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Mode Per Kategori (Legacy)
-            </button>
+          {/* Animated Progress Bar */}
+          <div className="space-y-2">
+            <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700/50">
+              <div
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out shadow-sm"
+                style={{ width: `${Math.min(100, Math.max(0, progressInfo?.percentage || 0))}%` }}
+              />
+            </div>
+
+            {/* Metric Chips & Accordion Toggle */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-1 rounded-xl">
+                  🟢 <strong>{progressInfo?.completed_tasks || 0}</strong> Selesai (Lengkap)
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2.5 py-1 rounded-xl">
+                  🟡 <strong>{progressInfo?.partial_tasks || 0}</strong> Dalam Proses
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/60 border border-rose-800/50 px-2.5 py-1 rounded-xl">
+                  🔴 <strong>{progressInfo?.empty_tasks || 0}</strong> Belum Diisi
+                </span>
+              </div>
+
+              {progressInfo && progressInfo.tasks && progressInfo.tasks.length > 0 && (
+                <button
+                  onClick={() => setShowProgressDetail(!showProgressDetail)}
+                  className="text-xs font-extrabold text-indigo-300 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 px-3 py-1 rounded-xl border border-indigo-800/60 flex items-center gap-1.5 transition-all"
+                >
+                  {showProgressDetail ? 'Sembunyikan Rincian Progress' : '🔍 Lihat Rincian Progress Mapel Kelas'}
+                  {showProgressDetail ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Expandable Progress Detail Breakdown Table */}
+          {showProgressDetail && progressInfo?.tasks && (
+            <div className="pt-3 border-t border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {progressInfo.tasks.map((t: any, idx: number) => {
+                  const isCurrent = t.kelas_id === selectedKelas && t.mapel_id === selectedMapel;
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setSelectedKelas(t.kelas_id);
+                        setSelectedMapel(t.mapel_id);
+                        toast.info(`Memilih ${t.nama_kelas} — ${t.nama_mapel}`);
+                      }}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-indigo-900/50 border-indigo-500 shadow-md ring-1 ring-indigo-500'
+                          : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-white flex items-center gap-1.5">
+                          <span className="text-indigo-400">{t.nama_kelas}</span> — {t.nama_mapel}
+                        </span>
+                        <span className="text-[10px]">
+                          {t.status === 'completed' && '🟢 Lengkap'}
+                          {t.status === 'partial' && '🟡 Sebagian'}
+                          {t.status === 'empty' && '🔴 Belum'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
+                        <span>Siswa Terisi:</span>
+                        <span className="font-mono font-bold text-slate-200">
+                          {t.siswa_terisi} / {t.total_siswa} Siswa
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Filter Card */}
