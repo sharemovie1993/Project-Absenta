@@ -113,6 +113,7 @@ graph TD
 
 ---
 
+---
 ## ⚙️ ATURAN PENDAFTARAN RUTE DI `src/App.tsx` (HARDENING PILAR 1)
 
 Setiap pengembang wajib mematuhi aturan pendaftaran rute berikut:
@@ -137,4 +138,65 @@ Setiap pengembang wajib mematuhi aturan pendaftaran rute berikut:
    * Mesin audit (`scripts/audit-pages.cjs` & `scripts/dev-audit-server.cjs`) secara otomatis memverifikasi bahwa apabila suatu komponen menggunakan `<OperationalPageLayout>`, rutenya di `App.tsx` **harus berada di bawah FULL-PAGE ROUTES**. Jika tidak, audit Pilar 1 akan menandai `FAILED`.
 
 ---
+
+## 📱 DASHBOARD DUAL MODE — UNIFIED STAFF DASHBOARD
+
+Dashboard staf (`/dashboard`) mendukung dua mode tampilan yang dapat di-toggle kapan saja:
+
+### Mode Portal Apps 📱 (`mode = 'app-launcher'`)
+- Tampilan grid ikon squircle bergaya Android/iOS.
+- Menampilkan `StaffPortalAppLauncher.tsx` — komponen 3-Blok Menu unik terdeduplikasi:
+  1. **⚡ Blok 1 — Aksi Cepat**: Pintasan kontekstual dari `quickActions` (dinamis by role).
+  2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Operasional harian pengajaran & rombel.
+  3. **🏛️ Blok 3 — Ruang Kerja Jabatan & Lintas Modul**: Menu RBAC dari API backend (`useSmartMenu`).
+
+### Mode Desktop 🖥️ (`mode = 'desktop'`)
+- Tampilan multi-kolom dengan widget, card statistik, dan informasi operasional.
+- Menampilkan dashboard widget klasik.
+
+### Mekanisme Sinkronisasi Global
+```
+LocalStorage: absenta_dashboard_mode ('app-launcher' | 'desktop')
+     ↕ dibaca/ditulis via
+Custom Event: 'absenta-dashboard-mode-change'
+     ↕ didengarkan oleh
+├── Topbar.tsx          → tombol toggle (single source, proxy handler)
+├── UnifiedStaffDashboard.tsx → re-render konten
+└── MainLayout.tsx      → kondisional styling wrapper
+```
+
+**Aturan**: Satu tombol switch hanya boleh ada di `Topbar.tsx`. Tombol lain mana pun yang berfungsi switch mode **wajib** memancarkan Custom Event yang sama, tidak boleh memiliki handler state sendiri.
+
+---
+
+## 🧩 CENTRALIZED WORKSPACE NAVIGATION FILTER
+
+### Lokasi
+`src/helpers/workspaceNavFilter.ts` — **Single Source of Truth** untuk logika penyaringan menu berbasis workspace.
+
+### Ekspor
+| Fungsi | Kegunaan |
+|---|---|
+| `isAdminUser(user)` | Cek apakah user adalah admin/superadmin |
+| `filterNavByWorkspace(allItems, user, workspaceId)` | Filter menu flat berdasarkan workspace aktif |
+| `normalizeFlatMenu(backendGroupedMenu)` | Konversi grouped-menu API → FlatMenuItem[] |
+
+### Alur Penggunaan
+```
+API /api/menu/sidebar (useSmartMenu)
+    ↓ normalizeFlatMenu()
+FlatMenuItem[]
+    ↓ filterNavByWorkspace(items, user, activeWorkspaceId)
+{ primaryItems, crossModuleItems, allAllowedItems }
+    ↓ dikonsumsi oleh
+├── StaffPortalAppLauncher.tsx (Blok 3) ← sudah diimport ✅
+└── Sidebar.tsx (getFilteredNavigation) ← kandidat refactor berikutnya
+```
+
+### Aturan
+- **JANGAN** menduplikasi logika workspace filtering di file lain.
+- **SELALU** tambahkan workspace baru di `ROLE_WORKSPACES` (`navigation.config.ts`) dan `filterNavByWorkspace()` di helper ini secara bersamaan.
+
+---
 *Dokumen ini diperbarui secara otomatis dan dijadikan acuan standar arsitektur platform Absenta.id.*
+*Terakhir diperbarui: 2026-08-01 — Penambahan Dashboard Dual Mode & Centralized Navigation Filter.*

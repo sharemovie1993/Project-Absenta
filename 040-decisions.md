@@ -216,4 +216,35 @@
   3. Mengubah mekanisme pengurutan menu lintas modul (*Cross-Module Navigation*) pada komponen navigasi utama (`Sidebar.tsx`) dari pengurutan alfabetis/kustom menjadi pewarisan langsung dari urutan *canonical* basis data (`order` dari seeder menu), guna mempertahankan alur logis pengisian data master (Struktur -> Guru Mapel -> Kalender -> Jam KBM -> Jadwal).
 - **Rasional**: Memastikan penerapan prinsip *Least Privilege* dan *Separation of Duties* secara konsisten tanpa merusak pengalaman pengguna (UX) dengan memblokir halaman secara keseluruhan, serta menjaga agar alur pengisian data akademik tetap intuitif dan teratur bagi seluruh peran administrasi sekolah.
 
+2026-08: Unified Staff Dashboard — Portal App Launcher Mode & Dual Mode Architecture
+- **Keputusan**:
+  1. Mengimplementasikan **Dual Mode Dashboard** pada `UnifiedStaffDashboard.tsx` dengan dua mode tampilan yang dapat di-toggle:
+     - **Mode Portal Apps 📱**: Tampilan grid ikon smartphone (Android/iOS style) — squircle icon box + label kecil di bawah.
+     - **Mode Desktop 🖥️**: Tampilan dashboard multi-kolom dengan widget, info, dan quick stats.
+  2. Mode aktif disimpan di `localStorage` (`absenta_dashboard_mode`) dan disinkronkan secara global via custom event `absenta-dashboard-mode-change` yang didengarkan oleh `MainLayout.tsx`, `UnifiedStaffDashboard.tsx`, dan `Topbar.tsx` secara simultan.
+  3. Tombol Switch Mode ditempatkan sebagai **single centralized toggle di `Topbar.tsx` (kanan header)** sehingga berfungsi sebagai proxy — memicu handler yang sama persis dengan tombol di dalam dashboard. Tidak ada duplikasi tombol.
+  4. Tombol **`[📱 Launcher Apps]`** ditampilkan secara kontekstual di sebelah logo Topbar hanya saat pengguna berada di halaman sub-menu (bukan dashboard), agar navigasi kembali selalu tersedia.
+- **Rasional**: Memberikan fleksibilitas tampilan bagi guru yang lebih nyaman dengan ikon aplikasi smartphone (familiar) vs. pengguna yang butuh tampilan ringkasan desktop informatif, tanpa memisahkan dua halaman berbeda yang membebani routing.
+
+2026-08: Portal App Launcher — 3-Block Structure dengan Deduplication
+- **Keputusan**:
+  Launcher Portal Apps distrukturisasi menjadi **3 Blok Unik Terdeduplikasi**:
+  1. **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan aksi cepat kontekstual dari `quickActions` di `UnifiedStaffDashboard.tsx` (dinamis berdasarkan role/PTK type). Berfungsi sebagai **Prioritas Pertama** — item di blok ini tidak akan muncul lagi di blok berikutnya.
+  2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Aksi operasional harian pengajaran & rombel (Jadwal Mengajar, Jurnal KBM, Presensi Guru, Catat Pelanggaran, Tindak Masal, + Khusus Wali Kelas: Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Risikolog Siswa). Menu di blok ini mengecek Blok 1 dan tidak menampilkan duplikat.
+  3. **🏛️ Blok 3 — Ruang Kerja Jabatan & Informasi Lintas Modul**: Menu struktural backend berbasis RBAC (dari `useSmartMenu` / `getSidebarMenu` API). Mengecek Blok 1 & 2 dan hanya menampilkan menu yang belum tampil di keduanya.
+  **Aturan Deduplikasi**: normalisasi berdasarkan `path` dan `title` (lowercase, strip whitespace & special chars), sehingga menu yang path atau judulnya identik antar blok otomatis disembunyikan di blok dengan prioritas lebih rendah.
+- **Rasional**: Menghindari redundansi menu yang membingungkan pengguna dalam satu layar launcher, sambil mempertahankan hierarki prioritas (Aksi Cepat > Operasional Harian > Jabatan Struktural).
+
+2026-08: Centralized Workspace Navigation Filter — `workspaceNavFilter.ts`
+- **Keputusan**:
+  Membuat **helper terpusat** `src/helpers/workspaceNavFilter.ts` yang mengekstrak dan mengenkapsulasi seluruh logika penyaringan menu berbasis workspace dari `Sidebar.tsx`:
+  - `isAdminUser(user)`: Memeriksa apakah pengguna adalah admin/superadmin yang mendapat akses penuh.
+  - `filterNavByWorkspace(allItems, user, activeWorkspaceId)`: Fungsi penyaringan menu inti untuk semua 10+ workspace role (TEACHER, WALIKELAS, KURIKULUM, KESISWAAN, SARPRAS, HUBIN, BPBK, KEPSEK, TU_KEPEGAWAIAN, TU_KEUANGAN, TU_SARPRAS, STUDENT), menghasilkan `{ primaryItems, crossModuleItems, allAllowedItems }`.
+  - `normalizeFlatMenu(backendGroupedMenu)`: Normalisasi data grouped-menu dari `useSmartMenu()` ke flat `FlatMenuItem[]` yang dapat dikonsumsi oleh helper filter.
+  Helper ini diimpor oleh `StaffPortalAppLauncher.tsx` (Blok 3) dan **siap diimpor oleh `Sidebar.tsx`** sebagai langkah refactor berikutnya.
+- **Rasional**: **Single Source of Truth** untuk logika penyaringan workspace. Setiap perubahan logika filter (penambahan workspace baru, penyesuaian crossModulePaths, dll.) cukup dilakukan di **1 file**, dan seluruh consumer (Sidebar + AppLauncher) otomatis sinkron tanpa risiko divergensi.
+- **Dampak Teknis**:
+  - File baru: `absenta_frontend/src/helpers/workspaceNavFilter.ts`
+  - `StaffPortalAppLauncher.tsx` Blok 3 diubah dari inline filter → `import { filterNavByWorkspace, normalizeFlatMenu }`.
+  - Sidebar.tsx masih menggunakan logika inline (kandidat untuk dipindahkan ke helper ini di iterasi berikutnya).
 
