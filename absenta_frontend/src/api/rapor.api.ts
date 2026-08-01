@@ -33,6 +33,13 @@ export const raporApi = {
     const response = await api.get('/rapor/nilai/progress', { params });
     return response.data;
   },
+  downloadTemplateBlob: async (params: { kelas_id: string; mapel_id: string; jenis_nilai_id?: string; mode?: string }) => {
+    const response = await api.get('/rapor/nilai/import/template', {
+      params,
+      responseType: 'blob'
+    });
+    return response;
+  },
   getJenisPenilaian: async () => {
     const response = await api.get('/rapor/nilai/jenis');
     return response.data;

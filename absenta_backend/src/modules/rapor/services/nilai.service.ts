@@ -603,45 +603,67 @@ export class NilaiService {
     params: {
       kelas_id: string;
       mapel_id: string;
-      jenis_nilai_id: string;
+      jenis_nilai_id?: string;
+      mode?: string;
     }
   ) {
     const XLSX = require('xlsx');
 
     const kelas = await prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } });
     const mapel = await prisma.mapel.findFirst({ where: { id: params.mapel_id, tenant_id: tenantId } });
-    const jenis = await prisma.jenisNilaiMaster.findFirst({ where: { id: params.jenis_nilai_id, tenant_id: tenantId } });
+    const jenis = params.jenis_nilai_id 
+      ? await prisma.jenisNilaiMaster.findFirst({ where: { id: params.jenis_nilai_id, tenant_id: tenantId } })
+      : null;
 
-    if (!kelas || !mapel || !jenis) {
-      throw new Error('Data parameter tidak valid atau tidak lengkap');
+    if (!kelas || !mapel) {
+      throw new Error('Kelas dan Mata Pelajaran tidak ditemukan');
     }
 
     const listSiswa = await prisma.siswa.findMany({
       where: {
         tenant_id: tenantId,
         kelas_id: params.kelas_id,
-        status: 'AKTIF',
+        status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] },
       },
       orderBy: { nama_siswa: 'asc' },
     });
 
+    const isSumatifMode = params.mode === 'sumatif' || !jenis;
+
     const rows = listSiswa.map((siswa) => {
-      return {
-        'NIS': siswa.nis,
-        'NISN': siswa.nisn || '',
-        'Nama Siswa': siswa.nama_siswa,
-        'Nilai': '',
-        'Capaian Kompetensi': '',
-      };
+      if (isSumatifMode) {
+        return {
+          'NIS': siswa.nis,
+          'NISN': siswa.nisn || '',
+          'Nama Siswa': siswa.nama_siswa,
+          'Sumatif 1': '',
+          'Sumatif 2': '',
+          'Sumatif 3': '',
+          'Nilai Akhir Sumatif': '',
+          'Capaian Kompetensi': '',
+        };
+      } else {
+        return {
+          'NIS': siswa.nis,
+          'NISN': siswa.nisn || '',
+          'Nama Siswa': siswa.nama_siswa,
+          'Nilai': '',
+          'Capaian Kompetensi': '',
+        };
+      }
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Nilai');
+    const sheetName = isSumatifMode ? 'Nilai Sumatif' : `Nilai ${jenis?.kode || 'Kategori'}`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    const filename = `template_${kelas.nama_kelas}_${mapel.nama_mapel}_${jenis.kode}.xlsx`.replace(/\s+/g, '_');
+    const rawFilename = isSumatifMode
+      ? `Template_Nilai_Sumatif_${kelas.nama_kelas}_${mapel.nama_mapel}.xlsx`
+      : `Template_Nilai_${jenis?.kode || 'Kategori'}_${kelas.nama_kelas}_${mapel.nama_mapel}.xlsx`;
+    const filename = rawFilename.replace(/[\s\/]+/g, '_');
 
     return {
       filename,

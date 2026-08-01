@@ -507,17 +507,48 @@ export default function InputNilaiPage() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    if (!selectedKelas || !selectedMapel || !selectedJenisNilai) {
-      toast.error('Pilih Kelas, Mapel, dan Kategori Penilaian terlebih dahulu untuk mengunduh template');
+  const handleDownloadTemplate = async () => {
+    if (!selectedKelas || !selectedMapel) {
+      toast.error('Pilih Kelas dan Mata Pelajaran terlebih dahulu');
       return;
     }
-    const url = raporApi.getTemplateExcelUrl({
-      kelas_id: selectedKelas,
-      mapel_id: selectedMapel,
-      jenis_nilai_id: selectedJenisNilai
-    });
-    window.open(url, '_blank');
+    if (entryMode === 'kategori' && !selectedJenisNilai) {
+      toast.error('Pilih Kategori Penilaian terlebih dahulu untuk Mode Kategori');
+      return;
+    }
+    try {
+      toast.info('Mengunduh template format Excel...');
+      const response = await raporApi.downloadTemplateBlob({
+        kelas_id: selectedKelas,
+        mapel_id: selectedMapel,
+        jenis_nilai_id: entryMode === 'kategori' ? selectedJenisNilai : undefined,
+        mode: entryMode
+      });
+
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = `Template_Nilai_${entryMode}.xlsx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Template Excel ${filename} berhasil diunduh!`);
+    } catch (err: any) {
+      console.error('❌ [InputNilaiPage] Failed to download template:', err);
+      toast.error(err.message || 'Gagal mengunduh template Excel');
+    }
   };
 
   const handleImportExcelSubmit = (e: React.FormEvent) => {

@@ -258,19 +258,20 @@ export class NilaiController {
   static async downloadTemplate(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
-      const { kelas_id, mapel_id, jenis_nilai_id } = req.query;
+      const { kelas_id, mapel_id, jenis_nilai_id, mode } = req.query;
 
-      if (!kelas_id || !mapel_id || !jenis_nilai_id) {
+      if (!kelas_id || !mapel_id) {
         return reply.status(400).send({
           success: false,
-          message: 'kelas_id, mapel_id, dan jenis_nilai_id wajib diisi'
+          message: 'kelas_id dan mapel_id wajib diisi'
         });
       }
 
       const { filename, buffer } = await NilaiService.generateImportTemplateExcel(tenant_id, {
         kelas_id,
         mapel_id,
-        jenis_nilai_id
+        jenis_nilai_id,
+        mode
       });
 
       reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
