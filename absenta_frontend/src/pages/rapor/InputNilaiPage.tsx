@@ -235,29 +235,32 @@ export default function InputNilaiPage() {
       const studentList = studentsData.data;
       const gradesList = existingGradesData?.data || [];
 
-      interface ApiSiswaRecord { id: string; nama?: string; nama_lengkap?: string; nis?: string; nisn?: string }
-      interface ApiGradeRecord { siswa_id: string; sumatif_1?: number; sumatif_2?: number; sumatif_3?: number; sumatif_akhir?: number; deskripsi_cp?: string; nilai?: number; deskripsi?: string }
+      interface ApiSiswaRecord { id: string; nama_siswa?: string; nama?: string; nama_lengkap?: string; nis?: string; nisn?: string }
+      interface ApiGradeRecord { siswa_id: string; sumatif_1?: number; sumatif_2?: number; sumatif_3?: number; sumatif_akhir?: number; deskripsi_cp?: string; capaian_kompetensi?: string; deskripsi?: string; nilai?: number }
 
       const initialScores: StudentScoreItem[] = studentList?.map((s: ApiSiswaRecord) => {
         const found = gradesList.find((g: ApiGradeRecord) => g.siswa_id === s.id);
+        const studentName = s.nama_siswa || s.nama_lengkap || s.nama || '—';
+        const studentNis = s.nis || s.nisn || '—';
+
         if (found) {
           return {
             siswa_id: s.id,
-            nama: s.nama_lengkap || s.nama || '-',
-            nis: s.nis || s.nisn || '-',
+            nama: studentName,
+            nis: studentNis,
             sumatif_1: found.sumatif_1 ?? null,
             sumatif_2: found.sumatif_2 ?? null,
             sumatif_3: found.sumatif_3 ?? null,
             sumatif_akhir: found.sumatif_akhir ?? null,
-            deskripsi_cp: found.deskripsi_cp ?? '',
+            deskripsi_cp: found.deskripsi_cp ?? found.capaian_kompetensi ?? found.deskripsi ?? '',
             nilai: found.nilai ?? null,
-            deskripsi: found.deskripsi ?? ''
+            deskripsi: found.deskripsi ?? found.deskripsi_cp ?? ''
           };
         }
         return {
           siswa_id: s.id,
-          nama: s.nama_lengkap || s.nama || '-',
-          nis: s.nis || s.nisn || '-',
+          nama: studentName,
+          nis: studentNis,
           sumatif_1: null,
           sumatif_2: null,
           sumatif_3: null,
