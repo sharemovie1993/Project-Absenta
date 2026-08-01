@@ -74,6 +74,15 @@ export const getAllUserCrossModuleItems = (
     });
   });
 
+  const isBkUser =
+    Array.isArray(user?.capabilities) && user.capabilities.includes('view_bpbk');
+
+  const noisePathsToExclude = new Set<string>();
+  if (!isBkUser) {
+    noisePathsToExclude.add('/bpbk/asesmen');
+    noisePathsToExclude.add('/bpbk/rujukan');
+  }
+
   const validItems = allItems.filter((item) => {
     const p = (item.path || '').toLowerCase();
     return p && p !== '#' && p !== '/dashboard' && !p.startsWith('menu:');
@@ -81,7 +90,12 @@ export const getAllUserCrossModuleItems = (
 
   return validItems.filter((item) => {
     const p = (item.path || '').toLowerCase();
-    return p && !excludePrimaryPaths.has(p) && allCrossPaths.has(p);
+    return (
+      p &&
+      !excludePrimaryPaths.has(p) &&
+      allCrossPaths.has(p) &&
+      !noisePathsToExclude.has(p)
+    );
   });
 };
 
@@ -105,15 +119,12 @@ export const getPrimaryStructuralWorkspaceItems = (
 
   const userWorkspaces = resolveUserWorkspaces(user);
   
-  // Prioritaskan workspace struktural (bukan TEACHER_WORKSPACE / STUDENT_WORKSPACE)
-  let targetWs = userWorkspaces.find(
+  // Ambil HANYA workspace jabatan struktural (bukan TEACHER_WORKSPACE / STUDENT_WORKSPACE)
+  const targetWs = userWorkspaces.find(
     (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
   );
 
-  if (!targetWs && userWorkspaces.length > 0) {
-    targetWs = userWorkspaces[0];
-  }
-
+  // Jika pengguna tidak memiliki jabatan struktural (misal Guru Biasa), Blok Jabatan harus KOSONG (Auto-Hide)
   if (!targetWs) {
     return [];
   }
