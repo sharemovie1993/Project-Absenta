@@ -455,9 +455,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
         actions.push({ label: 'Data Guru', icon: UserCog, onClick: () => navigate('/academic/guru'), color: 'orange', path: '/academic/guru' });
       }
 
-      // Pejabat / Staf Gerbang juga berhak Tindak Masal & Catat Pelanggaran
-      actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
-      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+      const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
+
+      if (isPiketOrKesiswaanOrIndustrial) {
+        actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
+      }
+
+      if (!isKurikulum || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
+        actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+      }
 
       return actions;
     }

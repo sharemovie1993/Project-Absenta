@@ -172,6 +172,27 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     });
   }, [quickActions]);
 
+  // ── ROLE DETECTION UNTUK QUICK ACTIONS & TILES ──
+  const positions: string[] = useMemo(() => {
+    const list = [...(user?.guru_profile?.jabatan_list || [])];
+    const userCodes = user?.position_codes || [];
+    if (Array.isArray(userCodes)) {
+      userCodes.forEach((code: string) => {
+        if (code && !list.includes(code)) list.push(code);
+      });
+    }
+    return list.map((p: string) => String(p).toUpperCase());
+  }, [user]);
+
+  const isKurikulumRole = positions.some((p) => p.includes('KURIKULUM'));
+  const isKesiswaan = positions.some((p) => p.includes('KESISWAAN'));
+  const isGerbang = positions.some((p) => p.includes('GERBANG') || p.includes('SATPAM') || p.includes('GATE'));
+  const isKaprog = positions.some((p) => p.includes('KAPROG') || p.includes('KEPALA PROGRAM'));
+  const isKabeng = positions.some((p) => p.includes('KABENG') || p.includes('KEPALA BENGKEL'));
+  const isPiket = positions.some((p) => p.includes('PIKET'));
+
+  const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || isPiket;
+
   // ── BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (Operasional Pengajaran & Rombel Diri) ──
   const block2GuruTiles = useMemo<AppTileData[]>(() => {
     const items: AppTileData[] = [];
@@ -249,28 +270,38 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
         onClick: onOpenAbsenGuruModal,
-      },
-      {
+      }
+    );
+
+    // Catat Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
+    if (!isKurikulumRole || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
+      items.push({
         id: 'b2-catat-pelanggaran',
         title: 'Catat Pelanggaran',
         iconComp: ShieldAlert,
         colorClass: 'text-rose-600 dark:text-rose-400',
         bgLightClass: 'bg-rose-50 dark:bg-rose-950/60',
         onClick: onOpenCatatPelanggaranModal,
-      },
-      {
+      });
+    }
+
+    // Tindak Masal HANYA UNTUK Piket / Kesiswaan / Gerbang / Kaprog / Kabeng!
+    if (isPiketOrKesiswaanOrIndustrial) {
+      items.push({
         id: 'b2-tindak-masal',
         title: 'Tindak Masal',
         iconComp: CheckCircle2,
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
         onClick: onOpenTindakMasalModal,
-      }
-    );
+      });
+    }
 
     return items;
   }, [
     isWaliKelas,
+    isKurikulumRole,
+    isPiketOrKesiswaanOrIndustrial,
     absentStudentsCount,
     onOpenJurnalModal,
     onOpenAbsenGuruModal,
