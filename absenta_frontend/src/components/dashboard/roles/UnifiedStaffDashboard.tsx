@@ -27,6 +27,7 @@ import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
 import { Modal, Badge, Button } from '../../ui';
 import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
+import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -265,11 +266,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Mode Switcher: 'portal' (Android-Style Icon Grid) | 'desktop' (Unified Dashboard)
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
-    }
-    return 'portal';
+    return resolveSmartDashboardMode(user);
   });
+
+  React.useEffect(() => {
+    if (user && !localStorage.getItem('absenta_dashboard_mode')) {
+      setDashboardMode(resolveSmartDashboardMode(user));
+    }
+  }, [user]);
 
   React.useEffect(() => {
     const handleModeChange = (e: Event) => {

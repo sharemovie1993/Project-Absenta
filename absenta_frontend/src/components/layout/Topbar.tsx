@@ -40,11 +40,14 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const path = location.pathname;
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
-    }
-    return 'portal';
+    return resolveSmartDashboardMode(user);
   });
+
+  React.useEffect(() => {
+    if (user && !localStorage.getItem('absenta_dashboard_mode')) {
+      setDashboardMode(resolveSmartDashboardMode(user));
+    }
+  }, [user]);
 
   React.useEffect(() => {
     const handleModeChange = (e: Event) => {

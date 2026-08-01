@@ -4,6 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
 import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
+import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useAuth } from '../../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
@@ -66,11 +67,14 @@ export const SiswaDashboard: React.FC = () => {
   const isPetugasKelas = can('attendance.sessions.update.attendance');
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
-    }
-    return 'portal';
+    return resolveSmartDashboardMode(user);
   });
+
+  useEffect(() => {
+    if (user && !localStorage.getItem('absenta_dashboard_mode')) {
+      setDashboardMode(resolveSmartDashboardMode(user));
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleModeChange = (e: Event) => {

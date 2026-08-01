@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Loader } from '@/components/ui';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { PendingPaymentBlocker } from '../billing/PendingPaymentBlocker';
+import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 
 // Lazy load heavy layout components to improve TBT
 const Sidebar = React.lazy(() => import('./Sidebar').then(module => ({ default: module.Sidebar })));
@@ -47,11 +48,15 @@ function MainLayoutContent() {
   const isSmallDesktop = useIsMobile(1367); // 1366 and below
 
   const [dashboardMode, setDashboardModeState] = useState<'portal' | 'desktop'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
-    }
-    return 'portal';
+    return resolveSmartDashboardMode(user);
   });
+
+  // Re-evaluate mode when user changes if no manual override is saved
+  useEffect(() => {
+    if (user && !localStorage.getItem('absenta_dashboard_mode')) {
+      setDashboardModeState(resolveSmartDashboardMode(user));
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleModeChange = (e: Event) => {
