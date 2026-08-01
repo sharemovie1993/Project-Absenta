@@ -1,9 +1,11 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App dengan Desain Grid Ikon Smartphone 3 BLOK UTAMA:
- * - Blok 1: ⚡ Aksi Cepat Diri (Quick Actions dari Unified Dashboard)
- * - Blok 2: 🏫 Ruang Kerja Guru & Wali Kelas (Harian, Presensi Diri, Jurnal KBM, e-Rapor)
- * - Blok 3: 🏛️ Ruang Kerja Jabatan & Informasi Lintas Modul (Logika Penyaringan Sidebar)
+ * Launcher Portal App dengan Desain Grid Ikon Smartphone 3 BLOK UTAMA TERDEDUPLIKASI:
+ * - Blok 1: ⚡ Aksi Cepat Diri (Pintasan Aksi Prioritas Utama)
+ * - Blok 2: 🏫 Ruang Kerja Guru & Wali Kelas (Mengecek Blok 1, Hanya Menampilkan Menu Unik)
+ * - Blok 3: 🏛️ Ruang Kerja Jabatan & Informasi Lintas Modul (Mengecek Blok 1 & 2, Menampilkan Menu Unik)
+ *
+ * *Catatan: Logika asli Sidebar.tsx TIDAK DIRUBAH sedikitpun. Deduplikasi dilakukan murni pada layar Launcher.
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -151,7 +153,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     [navigate]
   );
 
-  // ── BLOK 1: ⚡ AKSI CEPAT DIRI (Quick Actions dari Unified Dashboard) ──
+  // ── BLOK 1: ⚡ AKSI CEPAT DIRI (Quick Actions - Prioritas Utama Launcher) ──
   const block1QuickActionTiles = useMemo<AppTileData[]>(() => {
     if (!quickActions || quickActions.length === 0) return [];
 
@@ -366,28 +368,86 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return filteredTiles;
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // Filtered Items berdasarkan Search Input Query
+  // ── HELPER DEDUPLIKASI TERPUSAT (MENJAMIN 100% MENUS ARE UNIQUE ACROSS ALL 3 BLOCKS) ──
+  const normalizeKey = (val?: string) => {
+    if (!val) return '';
+    return val
+      .toLowerCase()
+      .trim()
+      .replace(/[\s\-_/]+/g, '');
+  };
+
+  // 1. Blok 1 Tiles (Aksi Cepat Diri)
   const filteredBlock1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return block1QuickActionTiles;
     return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block1QuickActionTiles, searchQuery]);
 
+  // 2. Blok 2 Tiles (Ruang Kerja Guru - Dideduplikasi terhadap Blok 1)
+  const deduplicatedBlock2 = useMemo(() => {
+    const b1Paths = new Set(
+      block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean)
+    );
+    const b1Titles = new Set(
+      block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean)
+    );
+
+    return block2GuruTiles.filter((t) => {
+      const pathKey = normalizeKey(t.path);
+      const titleKey = normalizeKey(t.title);
+
+      if (pathKey && b1Paths.has(pathKey)) return false;
+      if (titleKey && b1Titles.has(titleKey)) return false;
+
+      // Pengecekan padanan kata istilah khusus (misal Presensi Diri vs Kehadiran Saya)
+      if (titleKey.includes('presensi') && b1Titles.has('kehadiransaya')) return false;
+      if (titleKey.includes('jadwal') && (b1Titles.has('jadwalsaya') || b1Titles.has('jadwalmengajar'))) return false;
+      if (titleKey.includes('tindakmasal') && b1Titles.has('tindakmasal')) return false;
+      if (titleKey.includes('catatpelanggaran') && b1Titles.has('catatpelanggaran')) return false;
+
+      return true;
+    });
+  }, [block2GuruTiles, block1QuickActionTiles]);
+
   const filteredBlock2 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return block2GuruTiles;
-    return block2GuruTiles.filter((t) => t.title.toLowerCase().includes(q));
-  }, [block2GuruTiles, searchQuery]);
+    if (!q) return deduplicatedBlock2;
+    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
+  }, [deduplicatedBlock2, searchQuery]);
+
+  // 3. Blok 3 Tiles (Ruang Kerja Jabatan & Lintas Modul - Dideduplikasi terhadap Blok 1 & Blok 2)
+  const deduplicatedBlock3 = useMemo(() => {
+    const existingPaths = new Set([
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
+    ]);
+
+    const existingTitles = new Set([
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
+    ]);
+
+    return block3BackendTiles.filter((t) => {
+      const pathKey = normalizeKey(t.path);
+      const titleKey = normalizeKey(t.title);
+
+      if (pathKey && existingPaths.has(pathKey)) return false;
+      if (titleKey && existingTitles.has(titleKey)) return false;
+
+      return true;
+    });
+  }, [block3BackendTiles, block1QuickActionTiles, deduplicatedBlock2]);
 
   const filteredBlock3 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return block3BackendTiles;
-    return block3BackendTiles.filter(
+    if (!q) return deduplicatedBlock3;
+    return deduplicatedBlock3.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
     );
-  }, [block3BackendTiles, searchQuery]);
+  }, [deduplicatedBlock3, searchQuery]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
@@ -398,7 +458,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (3 Blok Utama)
+                Portal App Launcher (3 Blok Unik Dideduplikasi)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -410,7 +470,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terstruktur ke Dalam 3 Blok: Aksi Cepat Diri, Ruang Kerja Guru, & Ruang Kerja Jabatan.
+              Navigasi Ikon Aplikasi Terstruktur ke Dalam 3 Blok Unik Tanpa Duplikasi Menu.
             </p>
           </div>
 
@@ -482,7 +542,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (OPERASIONAL HARIAN)
+          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (OPERASIONAL HARIAN DIDEDUPLIKASI)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock2.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -513,7 +573,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏛️ RUANG KERJA JABATAN & INFORMASI LINTAS MODUL (PENYARINGAN SIDEBAR)
+          BLOK 3: 🏛️ RUANG KERJA JABATAN & INFORMASI LINTAS MODUL (DIDEDUPLIKASI)
       ───────────────────────────────────────────────────────────────────────────── */}
       <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
         <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
@@ -545,7 +605,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
             <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Tidak ada aplikasi yang cocok dengan kriteria pencarian Anda.
+              Seluruh aplikasi ruang kerja telah disajikan pada Blok Aksi Cepat Diri & Ruang Kerja Utama.
             </p>
           </div>
         )}
