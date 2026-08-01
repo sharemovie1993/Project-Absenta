@@ -104,8 +104,33 @@ export default function InputNilaiPage() {
     enabled: !!selectedKelas && !!selectedMapel && !!activeYear && !!activeSemester
   });
 
+  // Diagnostic Console Log for Filter & Query States
+  useEffect(() => {
+    console.log('🎛️ [InputNilaiPage] State Diagnostics:', {
+      selectedKelas,
+      selectedMapel,
+      entryMode,
+      activeYearId: activeYear?.id,
+      activeSemesterId: activeSemester?.id,
+      classesCount: classes?.length,
+      subjectsCount: subjects?.length,
+      studentsInKelasCount: studentsInKelas?.length,
+      existingGradesCount: existingGrades?.data?.length,
+      scoresCount: scores?.length,
+      isLoadingStudents,
+      isLoadingGrades
+    });
+  }, [selectedKelas, selectedMapel, entryMode, activeYear, activeSemester, classes, subjects, studentsInKelas, existingGrades, scores, isLoadingStudents, isLoadingGrades]);
+
   // Prepopulate Scores Grid with full student roster + existing grades
   useEffect(() => {
+    console.log('🔄 [InputNilaiPage] useEffect prepopulateScores triggered:', {
+      selectedKelas,
+      selectedMapel,
+      studentsInKelasCount: studentsInKelas?.length,
+      existingGradesCount: existingGrades?.data?.length
+    });
+
     if (selectedKelas && studentsInKelas && studentsInKelas.length > 0) {
       const existingMap = new Map();
       if (existingGrades?.data && Array.isArray(existingGrades.data)) {
@@ -132,7 +157,14 @@ export default function InputNilaiPage() {
         };
       });
 
+      console.log('✅ [InputNilaiPage] Grid successfully created with', grid.length, 'students!');
       setScores(grid);
+    } else {
+      console.warn('⚠️ [InputNilaiPage] Could not prepopulate grid. Reasons:', {
+        hasSelectedKelas: !!selectedKelas,
+        hasStudentsInKelas: !!studentsInKelas,
+        studentsCount: studentsInKelas?.length
+      });
     }
   }, [selectedKelas, selectedMapel, studentsInKelas, existingGrades]);
 

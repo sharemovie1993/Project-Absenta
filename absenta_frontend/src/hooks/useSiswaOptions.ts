@@ -14,19 +14,24 @@ export function useSiswaOptions(params: UseSiswaOptionsParams = {}) {
 
   const query = useQuery({
     queryKey: ['siswa-options-list', kelasId, onlyActive],
-    queryFn: () => siswaApi.getAll({
-      limit: 1000,
-      ...(kelasId ? { kelas_id: kelasId } : {})
-    }),
+    queryFn: () => {
+      console.log('🔍 [useSiswaOptions] Executing queryFn for kelasId:', kelasId);
+      return siswaApi.getAll({
+        limit: 1000,
+        ...(kelasId ? { kelas_id: kelasId } : {})
+      });
+    },
     staleTime: 5 * 60 * 1000,
   });
 
   const rawList: Siswa[] = useMemo(() => {
-    return query.data?.data || (Array.isArray(query.data) ? (query.data as unknown as Siswa[]) : []);
+    const list = query.data?.data || (Array.isArray(query.data) ? (query.data as unknown as Siswa[]) : []);
+    console.log('📦 [useSiswaOptions] rawList length:', list.length, 'data:', list);
+    return list;
   }, [query.data]);
 
   const filteredList = useMemo(() => {
-    return rawList.filter((s) => {
+    const res = rawList.filter((s) => {
       const statusStr = (s.status || 'AKTIF').toUpperCase();
       const isStatusActive = !onlyActive || statusStr === 'AKTIF' || statusStr === 'ACTIVE';
       
@@ -37,6 +42,8 @@ export function useSiswaOptions(params: UseSiswaOptionsParams = {}) {
       
       return isStatusActive;
     });
+    console.log('🎯 [useSiswaOptions] filteredList length:', res.length, 'for kelasId:', kelasId);
+    return res;
   }, [rawList, kelasId, onlyActive]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
