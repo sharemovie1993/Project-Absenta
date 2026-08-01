@@ -85,6 +85,13 @@ export const CACHE_KEYS = {
     ALL: (tenantId: string) => `academic:${tenantId}:*`
   },
 
+  // 🏭 HUBIN & PKL related caches
+  HUBIN: {
+    PKL_REKAP: (tenantId: string, kelasId?: string) => `hubin:${tenantId}:pkl_rekap:${kelasId || 'all'}`,
+    PKL_SERTIFIKAT: (tenantId: string, siswaId: string) => `hubin:${tenantId}:sertifikat:${siswaId}`,
+    ALL: (tenantId: string) => `hubin:${tenantId}:*`
+  },
+
   // ✅ Attendance related caches
   ATTENDANCE: {
     SESSIONS: (tenantId: string, date: string) => `attendance:${tenantId}:sessions:${date}`,

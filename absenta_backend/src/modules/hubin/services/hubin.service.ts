@@ -4,6 +4,9 @@ import { activityLogService } from '../../activity/services/activity-log.service
 import { studentResolverService } from '../../../services/student-resolver.service';
 import { waGatewayService } from '../../../services/wa-gateway.service';
 import { getRedisConnection } from '@/queue/redis';
+import { cacheService } from '../../../utils/cache.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
 
 export class HubinService {
   private log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
@@ -1707,5 +1710,230 @@ export class HubinService {
       where: { tenant_id: tenantId, id: siswaPklId, siswa_id: siswaId }
     });
     return !!pkl;
+  }
+
+  /**
+   * 🏭 BATCH UPSERT NILAI PKL (HARD SKILL, SOFT SKILL, ABSENSI, & CERTIFICATE INFO)
+   * Formula: Nilai Akhir PKL = Rata-rata (3 Hard Skills + 5 Soft Skills)
+   */
+  async upsertNilaiPklBatch(
+    tenantId: string,
+    scores: Array<{
+      siswa_pkl_id: string;
+      instruktur_nama?: string | null;
+      penanggung_jawab_nama?: string | null;
+      alamat_dudi?: string | null;
+      hard_kompetensi_teknis?: number | null;
+      hard_sop_k3lh?: number | null;
+      hard_alur_bisnis?: number | null;
+      soft_kedisiplinan?: number | null;
+      soft_kerajinan_inisiatif?: number | null;
+      soft_kerjasama?: number | null;
+      soft_kejujuran?: number | null;
+      soft_tanggung_jawab?: number | null;
+      catatan_pkl?: string | null;
+      sakit_pkl?: number | null;
+      izin_pkl?: number | null;
+      alpa_pkl?: number | null;
+      nomor_sertifikat?: string | null;
+      deskripsi_tp?: string | null;
+    }>
+  ) {
+    const operations = scores.map((item) => {
+      // Collect non-null grades to compute Nilai Akhir PKL
+      const gradeList = [
+        item.hard_kompetensi_teknis,
+        item.hard_sop_k3lh,
+        item.hard_alur_bisnis,
+        item.soft_kedisiplinan,
+        item.soft_kerajinan_inisiatif,
+        item.soft_kerjasama,
+        item.soft_kejujuran,
+        item.soft_tanggung_jawab,
+      ].filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
+
+      let nilaiAkhir: number | null = null;
+      let predikat: string | null = null;
+
+      if (gradeList.length > 0) {
+        const sum = gradeList.reduce((acc, curr) => acc + curr, 0);
+        nilaiAkhir = Number((sum / gradeList.length).toFixed(2));
+
+        if (nilaiAkhir >= 90) predikat = 'Sangat Baik';
+        else if (nilaiAkhir >= 80) predikat = 'Baik';
+        else if (nilaiAkhir >= 70) predikat = 'Cukup';
+        else predikat = 'Kurang';
+      }
+
+      return prisma.siswaPkl.update({
+        where: { id: item.siswa_pkl_id },
+        data: {
+          instruktur_nama: item.instruktur_nama ?? undefined,
+          penanggung_jawab_nama: item.penanggung_jawab_nama ?? undefined,
+          alamat_dudi: item.alamat_dudi ?? undefined,
+          hard_kompetensi_teknis: item.hard_kompetensi_teknis ?? undefined,
+          hard_sop_k3lh: item.hard_sop_k3lh ?? undefined,
+          hard_alur_bisnis: item.hard_alur_bisnis ?? undefined,
+          soft_kedisiplinan: item.soft_kedisiplinan ?? undefined,
+          soft_kerajinan_inisiatif: item.soft_kerajinan_inisiatif ?? undefined,
+          soft_kerjasama: item.soft_kerjasama ?? undefined,
+          soft_kejujuran: item.soft_kejujuran ?? undefined,
+          soft_tanggung_jawab: item.soft_tanggung_jawab ?? undefined,
+          nilai_akhir_pkl: nilaiAkhir,
+          predikat_pkl: predikat,
+          catatan_pkl: item.catatan_pkl ?? undefined,
+          sakit_pkl: item.sakit_pkl ?? undefined,
+          izin_pkl: item.izin_pkl ?? undefined,
+          alpa_pkl: item.alpa_pkl ?? undefined,
+          nomor_sertifikat: item.nomor_sertifikat ?? undefined,
+          deskripsi_tp: item.deskripsi_tp ?? undefined,
+        },
+      });
+    });
+
+    const results = await prisma.$transaction(operations);
+
+    // Auto Invalidate PKL Cache
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    return results;
+  }
+
+  /**
+   * ⚡ GET REKAP PKL SISWA (WITH FAST-PATH REDIS CACHING)
+   */
+  async getRekapPklSiswa(
+    tenantId: string,
+    params?: { kelas_id?: string; status?: string; search?: string }
+  ) {
+    const cacheKey = CACHE_KEYS.HUBIN.PKL_REKAP(tenantId, params?.kelas_id);
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const where: any = { tenant_id: tenantId };
+        if (params?.status) where.status = params.status;
+        if (params?.kelas_id) {
+          where.Siswa = { kelas_id: params.kelas_id };
+        }
+        if (params?.search) {
+          where.Siswa = {
+            ...where.Siswa,
+            nama_siswa: { contains: params.search, mode: 'insensitive' },
+          };
+        }
+
+        const list = await prisma.siswaPkl.findMany({
+          where,
+          include: {
+            Siswa: {
+              select: {
+                id: true,
+                nama_siswa: true,
+                nis: true,
+                nisn: true,
+                tempat_lahir: true,
+                tanggal_lahir: true,
+                Kelas: { select: { nama_kelas: true } },
+              },
+            },
+            Mitra: { select: { id: true, nama: true, alamat: true } },
+            Pembimbing: { select: { id: true, nama_guru: true, nip: true } },
+          },
+          orderBy: { Siswa: { nama_siswa: 'asc' } },
+        });
+
+        return list;
+      },
+      CACHE_TTL.DASHBOARD
+    );
+  }
+
+  /**
+   * 📜 SETTING DESKRIPSI TP DUDI (OLEH KAPROG / KAJUR)
+   */
+  async upsertSettingDeskripsiPkl(
+    tenantId: string,
+    data: { mitra_id: string; jurusan_id?: string | null; deskripsi_tp: string }
+  ) {
+    const result = await prisma.settingDeskripsiPkl.upsert({
+      where: {
+        tenant_id_mitra_id_jurusan_id: {
+          tenant_id: tenantId,
+          mitra_id: data.mitra_id,
+          jurusan_id: data.jurusan_id || '',
+        },
+      },
+      update: {
+        deskripsi_tp: data.deskripsi_tp,
+      },
+      create: {
+        tenant_id: tenantId,
+        mitra_id: data.mitra_id,
+        jurusan_id: data.jurusan_id || null,
+        deskripsi_tp: data.deskripsi_tp,
+      },
+    });
+
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    return result;
+  }
+
+  async getSettingDeskripsiPklList(tenantId: string, mitraId?: string) {
+    const where: any = { tenant_id: tenantId };
+    if (mitraId) where.mitra_id = mitraId;
+
+    return await prisma.settingDeskripsiPkl.findMany({
+      where,
+      include: {
+        Mitra: { select: { id: true, nama: true } },
+        Jurusan: { select: { id: true, nama: true, singkatan: true } },
+      },
+      orderBy: { Mitra: { nama: 'asc' } },
+    });
+  }
+
+  /**
+   * 📜 GET SERTIFIKAT PKL DATA (HALAMAN DEPAN & BELAKANG)
+   */
+  async getSertifikatPklData(tenantId: string, siswaPklId: string) {
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { id: siswaPklId, tenant_id: tenantId },
+      include: {
+        Siswa: {
+          select: {
+            id: true,
+            nama_siswa: true,
+            nis: true,
+            nisn: true,
+            tempat_lahir: true,
+            tanggal_lahir: true,
+            Kelas: { select: { nama_kelas: true, tingkat: true } },
+            Jurusan: { select: { nama: true, singkatan: true } },
+          },
+        },
+        Mitra: true,
+        Pembimbing: { select: { nama_guru: true, nip: true } },
+        Tenant: { select: { name: true, logo_url: true } },
+      },
+    });
+
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    // Auto-generate nomor sertifikat jika belum ada
+    if (!pkl.nomor_sertifikat) {
+      const count = await prisma.siswaPkl.count({
+        where: { tenant_id: tenantId, NOT: { nomor_sertifikat: null } },
+      });
+      const nomorUrut = String(count + 1).padStart(4, '0');
+      const generatedNomor = `425.1/${nomorUrut}/SMKN1PLD-KCD Wil.IV`;
+
+      await prisma.siswaPkl.update({
+        where: { id: pkl.id },
+        data: { nomor_sertifikat: generatedNomor },
+      });
+      pkl.nomor_sertifikat = generatedNomor;
+    }
+
+    return pkl;
   }
 }

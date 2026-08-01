@@ -18,6 +18,11 @@ export async function hubinRoutes(fastify: any) {
   fastify.post('/penempatan/bulk', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.bulkCreatePenempatan(req, reply));
   fastify.put('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updatePenempatan(req, reply));
   fastify.put('/penempatan/:id/nilai', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.updatePenilaian(req, reply));
+  fastify.post('/penempatan/nilai-batch', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.upsertNilaiPklBatch(req, reply));
+  fastify.get('/penempatan/rekap', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getRekapPklSiswa(req, reply));
+  fastify.post('/deskripsi-tp', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.upsertSettingDeskripsiPkl(req, reply));
+  fastify.get('/deskripsi-tp', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getSettingDeskripsiPklList(req, reply));
+  fastify.get('/sertifikat/:id', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.self.pkl', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.getSertifikatPklData(req, reply));
   fastify.post('/penempatan/:id/kunjungan', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.addKunjungan(req, reply));
   fastify.delete('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware] }, (req: any, reply: any) => controller.deletePenempatan(req, reply));
 

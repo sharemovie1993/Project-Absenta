@@ -110,6 +110,13 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🏭 Invalidate cache PKL & sertifikat PKL
+   */
+  async invalidatePklCache(tenantId: string) {
+    await cacheService.deletePattern(`hubin:${tenantId}:*`);
+  }
+
+  /**
    * ✅ Invalidate cache attendance-related
    */
   async invalidateAttendanceCache(tenantId: string, date?: string) {

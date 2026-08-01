@@ -142,6 +142,7 @@ model Tenant {
   WhatsappConfig           WhatsappConfig?
   GuruDocument             GuruDocument[]
   WaChatLog                WaChatLog[]
+  SettingDeskripsiPkl      SettingDeskripsiPkl[]
 }
 
 enum BackupStatus {
@@ -720,6 +721,7 @@ model Jurusan {
   StrukturKurikulum     StrukturKurikulum[]
   Siswa                 Siswa[]
   GuruMapel             GuruMapel[]
+  SettingDeskripsiPkl   SettingDeskripsiPkl[]
 
   @@unique([tenant_id, kode])
   @@index([tenant_id])
@@ -2895,7 +2897,8 @@ model MitraIndustri {
   MoUHistory    HubinMoUHistory[]
   Lowongan      HubinLowongan[]
   TefaOrder     HubinTefaOrder[]
-  SertifikatUkk SertifikatUkk[]
+  SertifikatUkk       SertifikatUkk[]
+  SettingDeskripsiPkl SettingDeskripsiPkl[]
 
   @@index([tenant_id])
 }
@@ -3062,6 +3065,33 @@ model SiswaPkl {
   status            String    @default("AKTIF") // AKTIF, SELESAI, BATAL
   pembimbing_id     String? // Guru pembimbing
 
+  // Identitas Tambahan DUDI & Instruktur
+  instruktur_nama       String?
+  penanggung_jawab_nama String?
+  alamat_dudi           String?
+
+  // Aspek Nilai Hard Skill (0-100)
+  hard_kompetensi_teknis Float?
+  hard_sop_k3lh          Float?
+  hard_alur_bisnis       Float?
+
+  // Aspek Nilai Soft Skill (0-100)
+  soft_kedisiplinan         Float?
+  soft_kerajinan_inisiatif Float?
+  soft_kerjasama            Float?
+  soft_kejujuran            Float?
+  soft_tanggung_jawab       Float?
+
+  // Kalkulasi & Output Rapor / Sertifikat PKL
+  nilai_akhir_pkl  Float?
+  predikat_pkl     String?
+  catatan_pkl      String?  @db.Text
+  sakit_pkl        Int?     @default(0)
+  izin_pkl         Int?     @default(0)
+  alpa_pkl         Int?     @default(0)
+  nomor_sertifikat String?
+  deskripsi_tp     String?  @db.Text
+
   // Geofencing Override (Untuk Branch Office / Lokasi Khusus per Siswa)
   lat_override         Float?
   lon_override         Float?
@@ -3084,6 +3114,28 @@ model SiswaPkl {
   @@index([tenant_id])
   @@index([siswa_id])
   @@index([mitra_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, mitra_id])
+  @@index([tenant_id, pembimbing_id])
+  @@index([tenant_id, siswa_id])
+}
+
+model SettingDeskripsiPkl {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  mitra_id     String
+  jurusan_id   String?
+  deskripsi_tp String   @db.Text
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  Tenant  Tenant        @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Mitra   MitraIndustri @relation(fields: [mitra_id], references: [id], onDelete: Cascade)
+  Jurusan Jurusan?      @relation(fields: [jurusan_id], references: [id])
+
+  @@unique([tenant_id, mitra_id, jurusan_id])
+  @@index([tenant_id])
+  @@index([tenant_id, mitra_id])
 }
 
 model AbsensiPkl {

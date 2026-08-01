@@ -233,6 +233,7 @@ const MonitoringPklPage = lazy(() => import('./pages/hubin/MonitoringPklPage'));
 const BkkPage = lazy(() => import('./pages/hubin/BkkPage'));
 const TracerStudyPage = lazy(() => import('./pages/hubin/TracerStudyPage'));
 const TefaPage = lazy(() => import('./pages/hubin/TefaPage'));
+const InputNilaiPklPage = lazy(() => import('./pages/hubin/InputNilaiPklPage'));
 
 // Parent App Pages
 const ParentApp = lazy(() => import('./apps/parent/App'));
@@ -717,6 +718,13 @@ function App() {
                       <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.pkl.view.list']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <PenempatanPklPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/nilai-pkl" element={
+                      <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <InputNilaiPklPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />

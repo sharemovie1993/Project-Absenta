@@ -204,6 +204,13 @@ export const hubinApi = {
   submitJurnalPortofolio: (id: string, file_url: string) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/jurnal-akhir`, { data: { file_url } }),
   reviewJurnalPortofolio: (id: string, status: string, catatan: string) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/jurnal-akhir/review`, { data: { status, catatan } }),
 
+  // Assessment & Sertifikat PKL
+  upsertNilaiPklBatch: (scores: any[]) => requestWithFallback<any>('post', '/hubin/penempatan/nilai-batch', { data: { scores } }),
+  getRekapPklSiswa: (params?: { kelas_id?: string; status?: string; search?: string }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
+  upsertSettingDeskripsiPkl: (data: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
+  getSettingDeskripsiPklList: (params?: { mitra_id?: string }) => requestWithFallback<any>('get', '/hubin/deskripsi-tp', { params }),
+  getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
+
   // Absensi
   getAbsensi: (siswaPklId: string, params?: { page?: number; limit?: number }) => 
     requestWithFallback<any>('get', `/hubin/absensi/${siswaPklId}`, { params }),
