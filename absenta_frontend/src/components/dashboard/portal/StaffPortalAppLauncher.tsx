@@ -1,16 +1,26 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App 100% DINAMIS TERINTEGRASI DENGAN BACKEND API & LOGIKA SIDEBAR.
- * - 0% Hardcoded Menu! Seluruh ubin aplikasi berasal dari API Backend (/api/menu/sidebar) & Quick Actions.
- * - Terbagi ke dalam 3 Blok Unik Dideduplikasi:
- *   1. ⚡ Blok 1: Aksi Cepat Diri (Pintasan Aksi Dinamis User)
- *   2. 🏫 Blok 2: Ruang Kerja Guru & Wali Kelas (Modul Pengajaran & Rombel Dinamis Backend)
- *   3. 🏛️ Blok 3: Ruang Kerja Jabatan & Informasi Lintas Modul (Modul Struktural Dinamis Backend)
+ * Launcher Portal App dengan 3 BLOK UTAMA TERINTEGRASI BACKEND & WORKSPACE ENGINE:
+ * - Blok 1: ⚡ Aksi Cepat Diri (Quick Actions Dinamis Pengguna)
+ * - Blok 2: 🏫 Ruang Kerja Guru & Wali Kelas (Aplikasi Operasional Pengajaran & Rombel Diri)
+ * - Blok 3: 🏛️ Ruang Kerja Jabatan & Informasi Lintas Modul (Modul Dinamis Backend & Cross-Module Filtered)
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  BookOpen,
+  Calendar,
+  Users,
+  Activity,
+  FileText,
+  Printer,
+  AlertTriangle,
+  Monitor,
   LayoutGrid,
+  ShieldAlert,
+  CheckCircle2,
+  HeartHandshake,
+  User,
   Search,
   Sparkles,
   Building2,
@@ -118,11 +128,15 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   absentStudentsCount = 0,
   quickActions = [],
   onSwitchToDesktop,
+  onOpenJurnalModal,
+  onOpenAbsenGuruModal,
+  onOpenCatatPelanggaranModal,
+  onOpenTindakMasalModal,
 }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ── 100% DINAMIS DARI BACKEND API /api/menu/sidebar & WORKSPACE ENGINE ──
+  // Integrated Dynamic Smart Menu from Backend API
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
   const activeWorkspaceId = useNavStore((state) => state.activeWorkspaceId);
 
@@ -154,11 +168,115 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     });
   }, [quickActions]);
 
-  // ── MEMISAHKAN MENU BACKEND SECARA DINAMIS MENJADI BLOK 2 & BLOK 3 ──
-  const { block2DynamicTiles, block3DynamicTiles } = useMemo(() => {
-    if (!backendGroupedMenu || backendGroupedMenu.length === 0) {
-      return { block2DynamicTiles: [], block3DynamicTiles: [] };
+  // ── BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (Operasional Pengajaran & Rombel Diri) ──
+  const block2GuruTiles = useMemo<AppTileData[]>(() => {
+    const items: AppTileData[] = [];
+
+    if (isWaliKelas) {
+      items.push(
+        {
+          id: 'b2-monitoring-kbm',
+          title: 'Live KBM',
+          iconComp: Monitor,
+          colorClass: 'text-blue-600 dark:text-blue-400',
+          bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
+          badgeText: 'Live',
+          path: '/kesiswaan/monitoring',
+        },
+        {
+          id: 'b2-rekap-absensi',
+          title: 'Rekap Absensi',
+          iconComp: Activity,
+          colorClass: 'text-emerald-600 dark:text-emerald-400',
+          bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+          badgeText: absentStudentsCount > 0 ? `${absentStudentsCount}` : undefined,
+          path: '/attendance/rekap',
+        },
+        {
+          id: 'b2-input-nilai',
+          title: 'Input Nilai Rapor',
+          iconComp: FileText,
+          colorClass: 'text-purple-600 dark:text-purple-400',
+          bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
+          path: '/rapor/input-nilai',
+        },
+        {
+          id: 'b2-cetak-rapor',
+          title: 'Cetak e-Rapor',
+          iconComp: Printer,
+          colorClass: 'text-indigo-600 dark:text-indigo-400',
+          bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
+          badgeText: 'eRapor',
+          path: '/rapor/cetak',
+        },
+        {
+          id: 'b2-risikolog',
+          title: 'Risikolog Siswa',
+          iconComp: AlertTriangle,
+          colorClass: 'text-amber-600 dark:text-amber-400',
+          bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
+          path: '/kesiswaan/risikolog',
+        }
+      );
     }
+
+    // Aksi Pengajaran & Presensi Diri Guru
+    items.push(
+      {
+        id: 'b2-jadwal',
+        title: 'Jadwal Mengajar',
+        iconComp: Calendar,
+        colorClass: 'text-cyan-600 dark:text-cyan-400',
+        bgLightClass: 'bg-cyan-50 dark:bg-cyan-950/60',
+        path: '/jadwal/saya',
+      },
+      {
+        id: 'b2-jurnal-kbm',
+        title: 'Isi Jurnal KBM',
+        iconComp: BookOpen,
+        colorClass: 'text-indigo-600 dark:text-indigo-400',
+        bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
+        onClick: onOpenJurnalModal,
+      },
+      {
+        id: 'b2-absen-guru',
+        title: 'Presensi Guru',
+        iconComp: User,
+        colorClass: 'text-emerald-600 dark:text-emerald-400',
+        bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
+        onClick: onOpenAbsenGuruModal,
+      },
+      {
+        id: 'b2-catat-pelanggaran',
+        title: 'Catat Pelanggaran',
+        iconComp: ShieldAlert,
+        colorClass: 'text-rose-600 dark:text-rose-400',
+        bgLightClass: 'bg-rose-50 dark:bg-rose-950/60',
+        onClick: onOpenCatatPelanggaranModal,
+      },
+      {
+        id: 'b2-tindak-masal',
+        title: 'Tindak Masal',
+        iconComp: CheckCircle2,
+        colorClass: 'text-amber-600 dark:text-amber-400',
+        bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
+        onClick: onOpenTindakMasalModal,
+      }
+    );
+
+    return items;
+  }, [
+    isWaliKelas,
+    absentStudentsCount,
+    onOpenJurnalModal,
+    onOpenAbsenGuruModal,
+    onOpenCatatPelanggaranModal,
+    onOpenTindakMasalModal,
+  ]);
+
+  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (PENYARINGAN LOGIKA SIDEBAR) ──
+  const block3BackendTiles = useMemo<AppTileData[]>(() => {
+    if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     const isAdmin =
       String(user?.role?.name || '').toUpperCase() === 'ADMIN' ||
@@ -178,7 +296,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         tileCounter++;
 
         allBackendTiles.push({
-          id: `backend-item-${item.id || tileCounter}`,
+          id: `b3-item-${item.id || tileCounter}`,
           title: item.name,
           iconName: item.icon || item.name,
           colorClass: accent.colorClass,
@@ -190,91 +308,65 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       });
     });
 
-    // Saring item backend yang diizinkan sesuai role/workspace (logika Sidebar.tsx)
+    if (isAdmin) {
+      return allBackendTiles;
+    }
+
+    // UNTUK NON-ADMIN: PENYARINGAN WORKSPACE PERSIS LOGIKA SIDEBAR.TSX
     const allowedCrossPaths = new Set(
       (currentWs.crossModulePaths || []).map((p) => p.toLowerCase())
     );
 
-    const authorizedTiles = isAdmin
-      ? allBackendTiles
-      : allBackendTiles.filter((tile) => {
-          const p = (tile.path || '').toLowerCase();
-          if (!p || p === '#' || p === '/dashboard') return false;
+    const filteredTiles = allBackendTiles.filter((tile) => {
+      const p = (tile.path || '').toLowerCase();
+      if (!p || p === '#' || p === '/dashboard') return false;
 
-          if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
-            const catName = (tile.categoryLabel || '').toUpperCase();
-            if (currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()))) return true;
-          }
-
-          if (allowedCrossPaths.has(p)) return true;
-
-          if (currentWs.id === 'WALIKELAS_WORKSPACE') {
-            if (p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket')) return true;
-          } else if (currentWs.id === 'TEACHER_WORKSPACE') {
-            if (
-              p.includes('riwayat-ajar') ||
-              p.includes('my-attendance') ||
-              p.includes('/kurikulum/jadwal') ||
-              p.includes('/kurikulum/perangkat') ||
-              p.includes('/kurikulum/kalender') ||
-              p.includes('/rapor/nilai') ||
-              p.includes('/rapor/p5')
-            )
-              return true;
-          } else if (currentWs.id === 'KEPSEK_WORKSPACE') {
-            if (
-              p === '/kurikulum/dashboard' ||
-              p === '/attendance/guru-monitoring' ||
-              p === '/kurikulum/supervisi' ||
-              p === '/attendance/rekap' ||
-              p === '/kesiswaan/monitoring' ||
-              p === '/kurikulum/perangkat'
-            )
-              return true;
-          }
-
-          return false;
-        });
-
-    const safeTiles = authorizedTiles.length > 0 ? authorizedTiles : allBackendTiles.filter((t) => t.path && t.path !== '#');
-
-    // Pisahkan item backend secara DINAMIS:
-    // - Item Pengajaran & Rombel Wali Kelas -> Masuk ke Blok 2 (Ruang Kerja Guru & Wali Kelas)
-    // - Item Struktural & Modul Lainnya -> Masuk ke Blok 3 (Ruang Kerja Jabatan & Lintas Modul)
-    const b2: AppTileData[] = [];
-    const b3: AppTileData[] = [];
-
-    const isGuruOrWaliPath = (pathStr?: string, nameStr?: string) => {
-      const p = (pathStr || '').toLowerCase();
-      const n = (nameStr || '').toLowerCase();
-      return (
-        p.includes('jadwal/saya') ||
-        p.includes('my-attendance') ||
-        p.includes('riwayat-ajar') ||
-        p.includes('rapor/input-nilai') ||
-        p.includes('rapor/cetak') ||
-        p.includes('kesiswaan/monitoring') ||
-        p.includes('kesiswaan/risikolog') ||
-        n.includes('jadwal mengajar') ||
-        n.includes('presensi guru') ||
-        n.includes('rekap absensi') ||
-        n.includes('input nilai') ||
-        n.includes('cetak e-rapor')
-      );
-    };
-
-    safeTiles.forEach((tile) => {
-      if (isGuruOrWaliPath(tile.path, tile.title)) {
-        b2.push(tile);
-      } else {
-        b3.push(tile);
+      if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
+        const catName = (tile.categoryLabel || '').toUpperCase();
+        if (currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()))) return true;
       }
+
+      if (allowedCrossPaths.has(p)) return true;
+
+      if (currentWs.id === 'WALIKELAS_WORKSPACE') {
+        if (p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket')) return true;
+      } else if (currentWs.id === 'TEACHER_WORKSPACE') {
+        if (
+          p.includes('riwayat-ajar') ||
+          p.includes('my-attendance') ||
+          p.includes('/kurikulum/jadwal') ||
+          p.includes('/kurikulum/perangkat') ||
+          p.includes('/kurikulum/kalender') ||
+          p.includes('/rapor/nilai') ||
+          p.includes('/rapor/p5')
+        )
+          return true;
+      } else if (currentWs.id === 'KEPSEK_WORKSPACE') {
+        if (
+          p === '/kurikulum/dashboard' ||
+          p === '/attendance/guru-monitoring' ||
+          p === '/kurikulum/supervisi' ||
+          p === '/attendance/rekap' ||
+          p === '/kesiswaan/monitoring' ||
+          p === '/kurikulum/perangkat'
+        )
+          return true;
+      }
+
+      return false;
     });
 
-    return { block2DynamicTiles: b2, block3DynamicTiles: b3 };
+    if (filteredTiles.length === 0) {
+      return allBackendTiles.filter((t) => {
+        const p = (t.path || '').toLowerCase();
+        return p && p !== '#' && p !== '/dashboard';
+      });
+    }
+
+    return filteredTiles;
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // ── HELPER DEDUPLIKASI UNIK TERPUSAT ──
+  // ── HELPER DEDUPLIKASI TERPUSAT (Hanya menyaring duplikat langsung, menjaga ketersediaan Blok 2 & Blok 3) ──
   const normalizeKey = (val?: string) => {
     if (!val) return '';
     return val
@@ -283,52 +375,33 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       .replace(/[\s\-_/]+/g, '');
   };
 
-  // 1. Blok 1 Tiles (Aksi Cepat Diri)
+  // 1. Filtered Blok 1 (Aksi Cepat Diri)
   const filteredBlock1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return block1QuickActionTiles;
     return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block1QuickActionTiles, searchQuery]);
 
-  // 2. Blok 2 Tiles (Dideduplikasi terhadap Blok 1)
-  const deduplicatedBlock2 = useMemo(() => {
-    const b1Paths = new Set(
-      block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean)
-    );
-    const b1Titles = new Set(
-      block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean)
-    );
-
-    return block2DynamicTiles.filter((t) => {
-      const pathKey = normalizeKey(t.path);
-      const titleKey = normalizeKey(t.title);
-
-      if (pathKey && b1Paths.has(pathKey)) return false;
-      if (titleKey && b1Titles.has(titleKey)) return false;
-
-      return true;
-    });
-  }, [block2DynamicTiles, block1QuickActionTiles]);
-
+  // 2. Filtered Blok 2 (Ruang Kerja Guru & Wali Kelas)
   const filteredBlock2 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return deduplicatedBlock2;
-    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
-  }, [deduplicatedBlock2, searchQuery]);
+    if (!q) return block2GuruTiles;
+    return block2GuruTiles.filter((t) => t.title.toLowerCase().includes(q));
+  }, [block2GuruTiles, searchQuery]);
 
-  // 3. Blok 3 Tiles (Dideduplikasi terhadap Blok 1 & Blok 2)
+  // 3. Filtered Blok 3 (Ruang Kerja Jabatan - Dideduplikasi terhadap Blok 1 & Blok 2)
   const deduplicatedBlock3 = useMemo(() => {
     const existingPaths = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block2GuruTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
 
     const existingTitles = new Set([
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block2GuruTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
 
-    return block3DynamicTiles.filter((t) => {
+    return block3BackendTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
       const titleKey = normalizeKey(t.title);
 
@@ -337,7 +410,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
       return true;
     });
-  }, [block3DynamicTiles, block1QuickActionTiles, deduplicatedBlock2]);
+  }, [block3BackendTiles, block1QuickActionTiles, block2GuruTiles]);
 
   const filteredBlock3 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -358,7 +431,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (100% Dinamis Backend API)
+                Portal App Launcher (3 Blok Lengkap & Unik)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -370,7 +443,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terstruktur 100% Dinamis dari Endpoint Backend & Logika Sidebar.
+              Navigasi Ikon Aplikasi Terstruktur ke Dalam 3 Blok: Aksi Cepat Diri, Ruang Kerja Guru, & Ruang Kerja Jabatan.
             </p>
           </div>
 
@@ -405,13 +478,13 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         <div className="flex items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <Loader2 className="w-4 h-4 animate-spin text-indigo-600 mr-2" />
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-            Memuat Ikon Aplikasi Backend...
+            Memuat Ikon Aplikasi...
           </span>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 1: ⚡ AKSI CEPAT DIRI (QUICK ACTIONS DINAMIS PENGGUNA)
+          BLOK 1: ⚡ AKSI CEPAT DIRI (QUICK ACTIONS DARI UNIFIED DASHBOARD)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock1.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -442,7 +515,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (DINAMIS BACKEND API)
+          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (OPERASIONAL HARIAN LENGKAP)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock2.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
