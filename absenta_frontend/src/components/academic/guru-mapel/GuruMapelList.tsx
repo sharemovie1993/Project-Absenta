@@ -43,8 +43,6 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [mapelOptions, setMapelOptions] = useState<Mapel[]>([]);
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
-  const [rawKelasList, setRawKelasList] = useState<any[]>([]);
-  const [strukturMap, setStrukturMap] = useState<Map<string, number>>(new Map());
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [isLoadingGuru, setIsLoadingGuru] = useState(false);
   const [isLoadingMapel, setIsLoadingMapel] = useState(false);
@@ -476,7 +474,7 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         </div>
       )
     }
-  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, strukturMap, teacherTotalJpMap, bebanGuruMap]);
+  ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, bebanGuruMap]);
 
   // Handle export to Excel
   const handleExport = useCallback(() => {
