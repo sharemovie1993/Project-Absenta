@@ -341,6 +341,38 @@ export const filterNavByWorkspace = (
   };
 };
 
+export const TWO_WORD_TITLE_MAP: Record<string, string> = {
+  'Live Monitoring KBM Kelas': 'Monitoring KBM',
+  'Live Monitoring KBM': 'Monitoring KBM',
+  'Laporan & Rekap Presensi': 'Rekap Presensi',
+  'Cetak Rapor & Wali': 'Cetak Rapor',
+  'Cetak Rapor & Catatan Wali': 'Cetak Rapor',
+  'Pengaturan Jam KBM': 'Pengaturan Jam',
+  'Jadwal Piket Guru': 'Jadwal Piket',
+  'Perangkat Ajar (RPP)': 'Perangkat Ajar',
+  'Kasus Pelanggaran (BP/BK)': 'Kasus Pelanggaran',
+  'Jadwal Kegiatan Kesiswaan': 'Jadwal Kegiatan',
+  'Peminjaman Alat & Ruang': 'Peminjaman Sarpras',
+  'Asesmen & Pemetaan BK': 'Asesmen BK',
+  'Rujukan Kasus (BP/BK)': 'Rujukan BK',
+  'Input Pelanggaran Cepat': 'Input Pelanggaran',
+  'Jadwal Mengajar Saya': 'Jadwal Mengajar',
+  'Absensi KBM Kelas': 'Absensi Kelas',
+  'Rekap Absensi Rombel': 'Rekap Absensi',
+  'Input Nilai Rapor': 'Input Nilai',
+  'Isi Jurnal KBM': 'Jurnal KBM',
+};
+
+export const toTwoWordTitle = (title: string): string => {
+  if (!title) return '';
+  if (TWO_WORD_TITLE_MAP[title]) return TWO_WORD_TITLE_MAP[title];
+  const words = title.trim().split(/\s+/);
+  if (words.length > 2) {
+    return `${words[0]} ${words[1]}`;
+  }
+  return title;
+};
+
 /**
  * Normalisasi raw backend grouped menu → FlatMenuItem[]
  * Digunakan oleh StaffPortalAppLauncher (useSmartMenu sudah mengembalikan grouped-menu)
@@ -356,7 +388,7 @@ export const normalizeFlatMenu = (
     group.items.forEach((item) => {
       flat.push({
         id: item.id,
-        title: item.name,
+        title: toTwoWordTitle(item.name),
         path: item.path,
         icon: item.icon || item.name,
         isPremium: item.premiumInfo?.isPremium || false,
