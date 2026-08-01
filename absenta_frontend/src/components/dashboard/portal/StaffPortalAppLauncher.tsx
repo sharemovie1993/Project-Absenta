@@ -375,24 +375,10 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
   }, [deduplicatedBlock2, searchQuery]);
 
-  // 3. Filtered Blok 3 (Ruang Kerja Jabatan) — deduplikasi terhadap Blok 1 & 2
+  // 3. Blok 3 (Manajemen & Data Akademik) — Menjaga Alur Dependensi Master Data (100% Utuh & Runtut)
   const deduplicatedBlock3 = useMemo(() => {
-    const existingPaths = new Set([
-      ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
-    ]);
-    const existingTitles = new Set([
-      ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
-    ]);
-    return block3PrimaryTiles.filter((t) => {
-      const pathKey = normalizeKey(t.path);
-      const titleKey = normalizeKey(t.title);
-      if (pathKey && existingPaths.has(pathKey)) return false;
-      if (titleKey && existingTitles.has(titleKey)) return false;
-      return true;
-    });
-  }, [block3PrimaryTiles, block1QuickActionTiles, deduplicatedBlock2]);
+    return block3PrimaryTiles;
+  }, [block3PrimaryTiles]);
 
   const filteredBlock3 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
