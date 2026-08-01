@@ -48,13 +48,14 @@ export default function InputNilaiPage() {
   const [taskSearchQuery, setTaskSearchQuery] = useState<string>('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'empty' | 'partial' | 'completed'>('all');
 
-  // Load active academic year and semester with robust try-catch fallbacks
+  // Load active academic year and semester with robust fallbacks
   const { data: activeYear } = useQuery({
     queryKey: ['tahun-pelajaran-active'],
     queryFn: async () => {
       try {
-        const res = await tahunPelajaranApi.getAll({ is_active: true });
-        return res.data?.[0] || null;
+        const res = await tahunPelajaranApi.getAll({ limit: 200 });
+        const list = Array.isArray(res.data) ? res.data : (res as any)?.data || [];
+        return list.find((tp: any) => tp.is_active) || list[0] || null;
       } catch {
         return null;
       }
@@ -65,8 +66,9 @@ export default function InputNilaiPage() {
     queryKey: ['semester-active'],
     queryFn: async () => {
       try {
-        const res = await semesterApi.getActive();
-        return res.data || null;
+        const res = await semesterApi.getAll({ limit: 200 });
+        const list = Array.isArray(res.data) ? res.data : (res as any)?.data || [];
+        return list.find((s: any) => s.is_active) || list[0] || null;
       } catch {
         return null;
       }
