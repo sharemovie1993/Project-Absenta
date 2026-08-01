@@ -546,38 +546,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏫 OPERASIONAL HARIAN & KBM (PRESENSI, JURNAL, LIVE KBM, & E-RAPOR)
-      ───────────────────────────────────────────────────────────────────────────── */}
-      {filteredBlock2.length > 0 && (
-        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
-                <Sparkles size={14} />
-              </div>
-              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Operasional Harian & KBM
-              </h2>
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock2.length} Operasional Harian
-            </span>
-          </div>
-
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredBlock2.map((tile) => (
-              <MemoizedAppTileItem
-                key={tile.id}
-                tile={tile}
-                onNavigate={handleTileNavigate}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (ADMINISTRASI, KURIKULUM & MASTER DATA)
+          BLOK 2: 🏛️ MANAJEMEN & DATA AKADEMIK (ADMINISTRASI, KURIKULUM & MASTER DATA)
+          Diposisikan sebagai Blok 2 (Prioritas Utama Pejabat/Struktural Sekolah)
       ───────────────────────────────────────────────────────────────────────────── */}
       {(filteredBlock3.length > 0 || isMenuLoading) && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -587,7 +557,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Building2 size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                3. Manajemen & Data Akademik
+                2. Manajemen & Data Akademik
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
@@ -613,6 +583,37 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               </p>
             </div>
           )}
+        </section>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          BLOK 3: 🏫 OPERASIONAL HARIAN & KBM (PRESENSI, JURNAL, LIVE KBM, & E-RAPOR)
+      ───────────────────────────────────────────────────────────────────────────── */}
+      {filteredBlock2.length > 0 && (
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
+                <Sparkles size={14} />
+              </div>
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                3. Operasional Harian & KBM
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredBlock2.length} Operasional Harian
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
+            {filteredBlock2.map((tile) => (
+              <MemoizedAppTileItem
+                key={tile.id}
+                tile={tile}
+                onNavigate={handleTileNavigate}
+              />
+            ))}
+          </div>
         </section>
       )}
 
