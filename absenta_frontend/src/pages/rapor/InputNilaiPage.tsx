@@ -63,6 +63,33 @@ export default function InputNilaiPage() {
     catatan_deskripsi?: string;
   }>>([]);
 
+  // KKM Threshold state (persisted per selectedMapel in localStorage)
+  const [kkmThreshold, setKkmThreshold] = useState<number>(70);
+
+  // Sync KKM Threshold when selectedMapel changes
+  useEffect(() => {
+    if (selectedMapel) {
+      const saved = localStorage.getItem(`absenta_kkm_mapel_${selectedMapel}`);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0 && parsed <= 100) {
+          setKkmThreshold(parsed);
+          return;
+        }
+      }
+    }
+    setKkmThreshold(70); // default 70
+  }, [selectedMapel]);
+
+  // Handle KKM threshold change
+  const handleKkmThresholdChange = (newVal: number) => {
+    const val = Math.max(0, Math.min(100, newVal));
+    setKkmThreshold(val);
+    if (selectedMapel) {
+      localStorage.setItem(`absenta_kkm_mapel_${selectedMapel}`, val.toString());
+    }
+  };
+
   // Consume Standardized Custom Hooks
   const { rawList: classes } = useKelasOptions({ onlyActive: true });
 
@@ -410,7 +437,7 @@ export default function InputNilaiPage() {
     }
   };
 
-  // Color coding helper for scores (Dynamic low/high score styling)
+  // Color coding helper for scores (Dynamic low/high score styling based on mapel KKM)
   const getScoreInputStyle = (val: number | null | undefined, isFinal = false) => {
     if (val === null || val === undefined || val === '') {
       return isFinal
@@ -420,19 +447,20 @@ export default function InputNilaiPage() {
     const num = Number(val);
     if (isNaN(num)) return 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-none';
 
-    if (num < 70) {
-      // Nilai Rendah / Perlu Remedial (Soft Rose / Red Tint)
+    if (num < kkmThreshold) {
+      // Nilai Di Bawah KKM / Remedial (Soft Rose / Red Tint)
       return isFinal
         ? 'bg-rose-600 text-white font-black shadow-md ring-2 ring-rose-400'
         : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black border border-rose-300 dark:border-rose-800 shadow-sm';
     }
-    if (num >= 85) {
+    const highThreshold = Math.max(85, kkmThreshold + 15);
+    if (num >= highThreshold) {
       // Nilai Sangat Baik (Soft Emerald / Green Tint)
       return isFinal
         ? 'bg-emerald-600 text-white font-black shadow-md ring-2 ring-emerald-400'
         : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-900';
     }
-    // Nilai Cukup (Normal / Amber for Final)
+    // Nilai Cukup / Tuntas (Normal / Amber for Final)
     return isFinal
       ? 'bg-indigo-600 text-white font-black shadow-md'
       : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-none';
@@ -889,16 +917,29 @@ export default function InputNilaiPage() {
                       ? 'Formula Rapor: Nilai Akhir = (Rata-rata(S1,S2,S3) + Sumatif Akhir) / 2' 
                       : 'Input nilai langsung per kategori.'}
                   </p>
-                  <div className="flex items-center gap-2 mt-1.5 text-[10px]">
-                    <span className="font-semibold text-slate-400">Pewarnaan Nilai:</span>
+                  <div className="flex items-center gap-2.5 mt-2 text-[10px] flex-wrap">
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <span className="font-bold text-slate-600 dark:text-slate-300">Batas KKM Mapel Ini:</span>
+                      <input
+                        type="number"
+                        min={50}
+                        max={95}
+                        value={kkmThreshold}
+                        onChange={(e) => handleKkmThresholdChange(parseInt(e.target.value, 10) || 70)}
+                        className="w-12 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md font-black text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 py-0.5"
+                      />
+                      <span className="text-[9px] text-slate-400 font-semibold">(Tersimpan per Mapel)</span>
+                    </div>
+
+                    <span className="font-semibold text-slate-400">Status Pewarnaan:</span>
                     <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black border border-rose-300 dark:border-rose-800">
-                      🔴 &lt; 70 (Rendah / Remedial)
+                      🔴 &lt; {kkmThreshold} (Remedial)
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-                      ⚪ 70 - 84 (Cukup / Tuntas)
+                      ⚪ {kkmThreshold} - {Math.max(84, kkmThreshold + 14)} (Tuntas)
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-                      🟢 ≥ 85 (Sangat Baik)
+                      🟢 ≥ {Math.max(85, kkmThreshold + 15)} (Sangat Baik)
                     </span>
                   </div>
                 </div>
