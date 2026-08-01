@@ -32,7 +32,7 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
       
       {/* Left Side: Active Class, Subject Name, and Status */}
       <div className="flex items-center gap-3.5 text-center sm:text-left flex-wrap justify-center sm:justify-start">
-        <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-indigo-400/40">
+        <div className="px-4 py-2 min-w-[5.5rem] rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-indigo-400/40 shrink-0">
           {selectedKelasName}
         </div>
         <div>
@@ -41,12 +41,12 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
               {selectedMapelName}
             </h3>
             {currentTaskStatus && (
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-sm ${
+              <span className={`text-[11px] font-bold px-3 py-0.5 rounded-full border shadow-sm ${
                 currentTaskStatus === 'completed'
-                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                   : currentTaskStatus === 'partial'
-                  ? 'bg-amber-950/80 text-amber-300 border-amber-700/80'
-                  : 'bg-rose-950/80 text-rose-300 border-rose-700/80'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
               }`}>
                 {currentTaskStatus === 'completed' && '🟢 LENGKAP'}
                 {currentTaskStatus === 'partial' && '🟡 SEBAGIAN'}
@@ -56,7 +56,7 @@ export const ActiveTaskNavCard: React.FC<ActiveTaskNavCardProps> = memo(({
             )}
           </div>
           <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
-            Lembar Kerja Rombel Active {currentTaskIndex >= 0 ? `${currentTaskIndex + 1} dari ${totalTasks}` : '—'}
+            Lembar Kerja Rombel Aktif {currentTaskIndex >= 0 ? `${currentTaskIndex + 1} dari ${totalTasks}` : '—'}
           </p>
         </div>
       </div>
