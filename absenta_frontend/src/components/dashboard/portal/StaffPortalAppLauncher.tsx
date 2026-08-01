@@ -296,6 +296,20 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     // 2. Ambil primaryItems murni dari workspace jabatan struktural utama user (terisolasi dalam canonical order)
     const primaryItems = getPrimaryStructuralWorkspaceItems(flatItems, user);
 
+    // Pastikan Wali Kelas selalu memiliki menu "Belum Hadir" (/attendance/ops?tab=manual) di posisi depan Blok 2
+    if (isWaliKelas) {
+      const hasOps = primaryItems.some((item) => (item.path || '').toLowerCase().startsWith('/attendance/ops'));
+      if (!hasOps) {
+        primaryItems.unshift({
+          id: 'wk-belum-hadir',
+          title: 'Belum Hadir',
+          path: '/attendance/ops?tab=manual',
+          icon: 'UserCheck',
+          categoryLabel: 'Wali Kelas',
+        });
+      }
+    }
+
     // 3. Konversi FlatMenuItem → AppTileData (Mempertahankan urutan asli database)
     return primaryItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
