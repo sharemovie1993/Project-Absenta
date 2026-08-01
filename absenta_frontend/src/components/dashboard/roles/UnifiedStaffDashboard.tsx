@@ -135,11 +135,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isKesiswaan = useMemo(() => 
     isStrictKesiswaan || 
     caps.includes('dashboard.view.piket') || 
-    caps.includes('attendance.piket.view') || 
     caps.includes('attendance.piket.manage') || 
-    caps.includes('kesiswaan.piket.view') || 
     caps.includes('kesiswaan.piket.manage') || 
-    hasRole('PIKET'), 
+    hasRole('PIKET', 'GURU PIKET'), 
   [isStrictKesiswaan, caps, jabatanList, jabatan]); // eslint-disable-line
   const isKepsek    = useMemo(() => caps.includes('dashboard.view.kepsek') || hasRole('KEPALA SEKOLAH', 'KEPALA_SEKOLAH', 'KEPSEK'), [caps, jabatanList, jabatan]); // eslint-disable-line
   const isSarpras   = useMemo(() => user?.role?.name === 'SARPRAS'  || hasRole('SARPRAS', 'SARANA'),                   [user, jabatanList, jabatan]); // eslint-disable-line
