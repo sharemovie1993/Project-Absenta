@@ -531,28 +531,6 @@ export default function InputNilaiPage() {
           POS OPERASIONAL LAYAR PENUH
         </Badge>
       }
-      stats={[
-        {
-          title: 'Kelas Rombel',
-          value: selectedKelasObj?.nama_kelas || 'Belum Dipilih',
-          subtitle: `${studentsInKelas?.length || 0} Siswa Terdaftar`,
-          icon: <Layers className="w-5 h-5 text-indigo-500" />
-        },
-        {
-          title: 'Mata Pelajaran',
-          value: subjects?.find((m: any) => m.id === selectedMapel)?.nama_mapel || 'Belum Dipilih',
-          subtitle: `${subjects?.length || 0} Mapel KBM Kelas`,
-          icon: <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-        },
-        {
-          title: 'Status Pengisian',
-          value: selectedMapel && mapelStatusMap.get(selectedMapel) 
-            ? `${mapelStatusMap.get(selectedMapel)?.count || 0}/${studentsInKelas?.length || 0} Siswa` 
-            : '—',
-          subtitle: entryMode === 'sumatif' ? 'Mode Sumatif Merdeka' : 'Mode Kategori',
-          icon: <Save className="w-5 h-5 text-amber-500" />
-        }
-      ]}
     >
       <div className="space-y-6 animate-in fade-in duration-500 pb-10">
         
