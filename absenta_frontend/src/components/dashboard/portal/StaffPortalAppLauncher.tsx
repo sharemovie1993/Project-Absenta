@@ -196,11 +196,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         },
         {
           id: 'b2-catatan-rapor',
-          title: 'Catatan Leger',
+          title: 'Input Nilai Rapor',
           iconComp: FileText,
           colorClass: 'text-purple-600 dark:text-purple-400',
           bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
-          path: '/rapor/cetak',
+          path: '/rapor/input-nilai',
         },
         {
           id: 'b2-cetak-rapor',
