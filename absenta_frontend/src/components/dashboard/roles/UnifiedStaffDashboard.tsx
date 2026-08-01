@@ -26,6 +26,7 @@ import { type QuickAction } from '../shared/QuickActionGrid';
 import { JurnalKbmModal } from '../../kurikulum/JurnalKbmModal';
 import { SesiAttendanceList } from '../../attendance/sesi/SesiAttendanceList';
 import { Modal, Badge, Button } from '../../ui';
+import { StaffPortalAppLauncher } from '../portal/StaffPortalAppLauncher';
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -261,6 +262,26 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'personal' | 'walikelas' | 'wakasis'>('personal');
   const [catatModalOpen, setCatatModalOpen] = useState(false);
   const [tindakMasalModalOpen, setTindakMasalModalOpen] = useState(false);
+
+  // Mode Switcher: 'portal' (Android-Style Icon Grid) | 'desktop' (Unified Dashboard)
+  const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
+    }
+    return 'portal';
+  });
+
+  const handleToggleMode = (mode: 'portal' | 'desktop') => {
+    setDashboardMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('absenta_dashboard_mode', mode);
+    }
+    toast.success(
+      mode === 'portal'
+        ? 'Beralih ke Mode Portal Apps 📱'
+        : 'Beralih ke Mode Dashboard Desktop 🖥️'
+    );
+  };
 
   // ── 6. Mutations ─────────────────────────────────────────────────────────────
   const createSessionMutation = useMutation({
@@ -683,6 +704,64 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const showRightSidebar = hasStructuralRole && (!isTuStaff || structuralPanels.length > 0);
 
   // ─────────────────────────────────────────────────────────────────────────────
+  if (dashboardMode === 'portal') {
+    return (
+      <>
+        <StaffPortalAppLauncher
+          user={user}
+          jabatanLabel={jabatanLabel}
+          isWaliKelas={isWaliKelas}
+          waliKelasId={waliKelasId}
+          absentStudentsCount={absentStudents.length}
+          onSwitchToDesktop={() => handleToggleMode('desktop')}
+          onOpenJurnalModal={() => {
+            const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
+            if (sesiHariIni) {
+              setSessionForJournal(sesiHariIni.raw);
+              setJournalModalOpen(true);
+            } else {
+              toast.error('Tidak ada sesi mengajar aktif hari ini untuk diisi jurnal');
+            }
+          }}
+          onOpenAbsenGuruModal={() => {
+            const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
+            if (sesiHariIni) {
+              setSelectedSesi(sesiHariIni.raw);
+            } else {
+              toast.error('Tidak ada sesi pengajaran aktif untuk dilaporkan');
+            }
+          }}
+          onOpenCatatPelanggaranModal={() => setCatatModalOpen(true)}
+          onOpenTindakMasalModal={() => setTindakMasalModalOpen(true)}
+        />
+
+        {/* Modals */}
+        {journalModalOpen && sessionForJournal && (
+          <JurnalKbmModal
+            isOpen={journalModalOpen}
+            onClose={() => { setJournalModalOpen(false); setSessionForJournal(null); }}
+            sesi={sessionForJournal}
+          />
+        )}
+        {selectedSesi && (
+          <Modal isOpen={!!selectedSesi} onClose={() => setSelectedSesi(null)} title="Presensi Sesi KBM">
+            <SesiAttendanceList sesiId={selectedSesi.id} />
+          </Modal>
+        )}
+        {catatModalOpen && (
+          <React.Suspense fallback={null}>
+            <CatatPelanggaranModal isOpen={catatModalOpen} onClose={() => setCatatModalOpen(false)} />
+          </React.Suspense>
+        )}
+        {tindakMasalModalOpen && (
+          <React.Suspense fallback={null}>
+            <TindakMasalPelanggaranModal isOpen={tindakMasalModalOpen} onClose={() => setTindakMasalModalOpen(false)} />
+          </React.Suspense>
+        )}
+      </>
+    );
+  }
+
   return (
     <>
       <div className={showRightSidebar
@@ -694,21 +773,34 @@ export const UnifiedStaffDashboard: React.FC = () => {
           {/* Consolidated Welcome & Quick Action Card (Sekat-Sekat Premium) */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
             {/* Sekat 1: Sapaan (Welcome) */}
-            <div className="p-4 flex items-center gap-4 bg-gradient-to-r from-sky-50/30 to-blue-50/30 dark:from-slate-700/10 dark:to-slate-700/10">
-              <div className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm shadow-sm">
-                {user?.full_name?.[0]?.toUpperCase()}
+            <div className="p-4 flex flex-wrap items-center gap-4 bg-gradient-to-r from-sky-50/30 to-blue-50/30 dark:from-slate-700/10 dark:to-slate-700/10 justify-between">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm shadow-sm">
+                  {user?.full_name?.[0]?.toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-sm font-bold text-gray-800 dark:text-white leading-tight truncate">
+                    Halo, {user?.full_name?.split(' ')[0]}!
+                  </h2>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                    Selamat mengabdi hari ini. Mari cetak masa depan bangsa melalui pendidikan berkualitas.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-bold text-gray-800 dark:text-white leading-tight truncate">
-                  Halo, {user?.full_name?.split(' ')[0]}!
-                </h2>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                  Selamat mengabdi hari ini. Mari cetak masa depan bangsa melalui pendidikan berkualitas.
-                </p>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  onClick={() => handleToggleMode('portal')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold py-1.5 px-3 shadow-sm flex items-center gap-1.5"
+                  title="Switch ke Mode Portal Apps berbasis Icon Grid Android"
+                >
+                  <span>Mode Portal Apps 📱</span>
+                </Button>
+
+                <span className="px-2.5 py-1 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 uppercase tracking-wider">
+                  {jabatanLabel}
+                </span>
               </div>
-              <span className="flex-shrink-0 px-2.5 py-1 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 uppercase tracking-wider">
-                {jabatanLabel}
-              </span>
             </div>
 
             {/* Sekat Separator Line */}
