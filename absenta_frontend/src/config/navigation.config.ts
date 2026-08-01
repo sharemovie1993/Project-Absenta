@@ -459,22 +459,19 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
   }
 
   const available: RoleWorkspaceConfig[] = [];
-  if (roleName === 'GURU' && user?.guru_profile?.jenis_ptk !== 'TENAGA_KEPENDIDIKAN') {
-    const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
-    if (teacherWs) available.push(teacherWs);
-  }
-  if (roleName === 'SISWA') {
-    const studentWs = ROLE_WORKSPACES.find(w => w.id === 'STUDENT_WORKSPACE');
-    if (studentWs) available.push(studentWs);
-  }
-
   const userCaps = Array.isArray(user?.capabilities) ? user.capabilities : [];
   const userPositions: string[] = Array.isArray(user?.position_codes)
     ? user.position_codes.map((p: any) => String(p).toUpperCase())
     : (Array.isArray(user?.positions) ? user.positions.map((p: any) => String(p?.code || p).toUpperCase()) : []);
 
+  if (roleName === 'SISWA') {
+    const studentWs = ROLE_WORKSPACES.find(w => w.id === 'STUDENT_WORKSPACE');
+    if (studentWs) available.push(studentWs);
+  }
+
+  // 1. PUSH STRUCTURAL POSITION WORKSPACES FIRST (Kurikulum, Wali Kelas, Kesiswaan, Sarpras, Hubin, TU, dll.)
   ROLE_WORKSPACES.forEach(ws => {
-    if (ws.requiredCapability || ws.requiredPositionCode) {
+    if (ws.id !== 'TEACHER_WORKSPACE' && ws.id !== 'STUDENT_WORKSPACE' && (ws.requiredCapability || ws.requiredPositionCode)) {
       const hasCap = ws.requiredCapability 
         ? (canFunc ? canFunc(ws.requiredCapability) : userCaps.includes(ws.requiredCapability))
         : false;
@@ -487,6 +484,14 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
       }
     }
   });
+
+  // 2. PUSH TEACHER WORKSPACE BELOW STRUCTURAL POSITION WORKSPACES
+  if (roleName === 'GURU' && user?.guru_profile?.jenis_ptk !== 'TENAGA_KEPENDIDIKAN') {
+    const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
+    if (teacherWs && !available.some(a => a.id === teacherWs.id)) {
+      available.push(teacherWs);
+    }
+  }
 
   return available;
 };
