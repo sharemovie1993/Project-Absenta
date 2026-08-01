@@ -12,7 +12,8 @@ import {
   Calculator,
   ChevronDown,
   ChevronUp,
-  Copy
+  Copy,
+  Trash2
 } from 'lucide-react';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { Badge } from '../../components/ui/Badge';
@@ -351,6 +352,19 @@ export default function InputNilaiPage() {
     toast.success(`✨ Berhasil menyalin Capaian Kompetensi ke seluruh ${scores.length} siswa!`);
   };
 
+  // Clear Capaian Kompetensi (CP) for all students in 1-click
+  const handleClearCpAll = () => {
+    if (scores.length === 0) return;
+
+    setScores(prev => prev.map(s => ({
+      ...s,
+      capaian_kompetensi: '',
+      catatan_deskripsi: ''
+    })));
+
+    toast.info('🗑️ Narasi Capaian Kompetensi (CP) seluruh siswa telah dikosongkan.');
+  };
+
   // Excel-like Keyboard Arrow Key Navigation (Up, Down, Left, Right, Enter)
   const handleKeyDownGrid = (e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
     const { key } = e;
@@ -368,7 +382,8 @@ export default function InputNilaiPage() {
       targetRow = Math.min(maxRows - 1, rowIndex + 1);
     } else if (key === 'ArrowLeft') {
       const input = e.currentTarget;
-      if (input.selectionStart === 0) {
+      const isSelected = input.selectionStart !== input.selectionEnd;
+      if (isSelected || input.selectionStart === 0 || !input.value) {
         if (colIndex > 0) {
           e.preventDefault();
           targetCol = colIndex - 1;
@@ -376,7 +391,8 @@ export default function InputNilaiPage() {
       }
     } else if (key === 'ArrowRight') {
       const input = e.currentTarget;
-      if (input.selectionStart === input.value.length) {
+      const isSelected = input.selectionStart !== input.selectionEnd;
+      if (isSelected || input.selectionStart === input.value.length || !input.value) {
         if (colIndex < maxCols - 1) {
           e.preventDefault();
           targetCol = colIndex + 1;
@@ -390,8 +406,36 @@ export default function InputNilaiPage() {
     const targetEl = document.getElementById(targetId) as HTMLInputElement | null;
     if (targetEl) {
       targetEl.focus();
-      setTimeout(() => targetEl.select(), 10);
+      targetEl.select();
     }
+  };
+
+  // Color coding helper for scores (Dynamic low/high score styling)
+  const getScoreInputStyle = (val: number | null | undefined, isFinal = false) => {
+    if (val === null || val === undefined || val === '') {
+      return isFinal
+        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 font-bold border-none'
+        : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-none';
+    }
+    const num = Number(val);
+    if (isNaN(num)) return 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-none';
+
+    if (num < 70) {
+      // Nilai Rendah / Perlu Remedial (Soft Rose / Red Tint)
+      return isFinal
+        ? 'bg-rose-600 text-white font-black shadow-md ring-2 ring-rose-400'
+        : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black border border-rose-300 dark:border-rose-800 shadow-sm';
+    }
+    if (num >= 85) {
+      // Nilai Sangat Baik (Soft Emerald / Green Tint)
+      return isFinal
+        ? 'bg-emerald-600 text-white font-black shadow-md ring-2 ring-emerald-400'
+        : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-900';
+    }
+    // Nilai Cukup (Normal / Amber for Final)
+    return isFinal
+      ? 'bg-indigo-600 text-white font-black shadow-md'
+      : 'bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white border-none';
   };
 
   const handleSaveSubmit = (e: React.FormEvent) => {
@@ -845,6 +889,18 @@ export default function InputNilaiPage() {
                       ? 'Formula Rapor: Nilai Akhir = (Rata-rata(S1,S2,S3) + Sumatif Akhir) / 2' 
                       : 'Input nilai langsung per kategori.'}
                   </p>
+                  <div className="flex items-center gap-2 mt-1.5 text-[10px]">
+                    <span className="font-semibold text-slate-400">Pewarnaan Nilai:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black border border-rose-300 dark:border-rose-800">
+                      🔴 &lt; 70 (Rendah / Remedial)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                      ⚪ 70 - 84 (Cukup / Tuntas)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
+                      🟢 ≥ 85 (Sangat Baik)
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -892,17 +948,28 @@ export default function InputNilaiPage() {
                             <th className="py-2.5 px-1 text-center w-20 text-amber-600 dark:text-amber-400">Sumatif Akhir</th>
                             <th className="py-2.5 px-1 text-center w-20 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">NILAI RAPOR</th>
                             <th className="py-2.5 px-2">
-                              <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <span>Capaian Kompetensi (CP Narasi)</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyCpToAll(0)}
-                                  title="Salin CP dari baris terisi ke seluruh siswa sekelas"
-                                  className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
-                                >
-                                  <Copy size={11} />
-                                  Salin ke Semua Siswa
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyCpToAll(0)}
+                                    title="Salin CP dari baris terisi ke seluruh siswa sekelas"
+                                    className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                  >
+                                    <Copy size={11} />
+                                    Salin ke Semua
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleClearCpAll}
+                                    title="Kosongkan seluruh narasi CP siswa sekelas"
+                                    className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/80 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                  >
+                                    <Trash2 size={11} />
+                                    Kosongkan CP
+                                  </button>
+                                </div>
                               </div>
                             </th>
                           </>
@@ -910,17 +977,28 @@ export default function InputNilaiPage() {
                           <>
                             <th className="py-2.5 px-2 w-24">Nilai (0-100)</th>
                             <th className="py-2.5 px-2">
-                              <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
                                 <span>Deskripsi Rapor</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyCpToAll(0)}
-                                  title="Salin Deskripsi dari baris terisi ke seluruh siswa sekelas"
-                                  className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
-                                >
-                                  <Copy size={11} />
-                                  Salin ke Semua Siswa
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyCpToAll(0)}
+                                    title="Salin Deskripsi dari baris terisi ke seluruh siswa sekelas"
+                                    className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                  >
+                                    <Copy size={11} />
+                                    Salin ke Semua
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleClearCpAll}
+                                    title="Kosongkan seluruh deskripsi siswa sekelas"
+                                    className="text-[9px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/80 hover:bg-rose-100 dark:hover:bg-rose-900 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                  >
+                                    <Trash2 size={11} />
+                                    Kosongkan Deskripsi
+                                  </button>
+                                </div>
                               </div>
                             </th>
                           </>
@@ -947,7 +1025,7 @@ export default function InputNilaiPage() {
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_1', e.target.value)}
                                   onKeyDown={(e) => handleKeyDownGrid(e, index, 0)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-full text-xs text-center p-2 rounded-lg transition-all focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getScoreInputStyle(score.sumatif_1)}`}
                                 />
                               </td>
                               <td className="py-2 px-1">
@@ -959,7 +1037,7 @@ export default function InputNilaiPage() {
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_2', e.target.value)}
                                   onKeyDown={(e) => handleKeyDownGrid(e, index, 1)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-full text-xs text-center p-2 rounded-lg transition-all focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getScoreInputStyle(score.sumatif_2)}`}
                                 />
                               </td>
                               <td className="py-2 px-1">
@@ -971,10 +1049,10 @@ export default function InputNilaiPage() {
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_3', e.target.value)}
                                   onKeyDown={(e) => handleKeyDownGrid(e, index, 2)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-full text-xs text-center p-2 rounded-lg transition-all focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getScoreInputStyle(score.sumatif_3)}`}
                                 />
                               </td>
-                              <td className="py-2 px-1 text-center font-black text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-lg">
+                              <td className={`py-2 px-1 text-center text-xs rounded-lg transition-all ${getScoreInputStyle(score.rata_rata_sumatif)}`}>
                                 {score.rata_rata_sumatif ?? '-'}
                               </td>
                               <td className="py-2 px-1">
@@ -986,10 +1064,10 @@ export default function InputNilaiPage() {
                                   onChange={(e) => handleSumatifChange(index, 'nilai_akhir_sumatif', e.target.value)}
                                   onKeyDown={(e) => handleKeyDownGrid(e, index, 3)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-full bg-amber-50 dark:bg-amber-950/40 border-none rounded-lg text-xs font-black text-center p-2 text-amber-800 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-full text-xs text-center p-2 rounded-lg transition-all focus:ring-2 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getScoreInputStyle(score.nilai_akhir_sumatif)}`}
                                 />
                               </td>
-                              <td className="py-2 px-1 text-center font-black text-sm text-indigo-700 dark:text-indigo-300 bg-indigo-100/50 dark:bg-indigo-900/40 rounded-lg">
+                              <td className={`py-2 px-1 text-center font-black text-sm rounded-lg transition-all ${getScoreInputStyle(score.nilai_rapor_final, true)}`}>
                                 {score.nilai_rapor_final ?? 0}
                               </td>
                               <td className="py-2 px-2">
@@ -1028,7 +1106,7 @@ export default function InputNilaiPage() {
                                   onChange={(e) => handleSumatifChange(index, 'nilai', e.target.value)}
                                   onKeyDown={(e) => handleKeyDownGrid(e, index, 0)}
                                   onFocus={(e) => e.target.select()}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-black text-center p-2.5 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  className={`w-full text-xs font-black text-center p-2.5 rounded-xl transition-all focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${getScoreInputStyle(score.nilai)}`}
                                 />
                               </td>
                               <td className="py-3 px-2">
