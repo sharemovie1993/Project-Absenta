@@ -22,6 +22,13 @@ export const raporApi = {
     const query = new URLSearchParams(params).toString();
     return `${api.defaults.baseURL}/rapor/nilai/export-erapor-kemendikbud?${query}`;
   },
+  exportEraporKemendikbudBlob: async (params: { kelas_id: string; mapel_id: string; tahun_pelajaran_id: string; semester_id: string }) => {
+    const response = await api.get('/rapor/nilai/export-erapor-kemendikbud', {
+      params,
+      responseType: 'blob'
+    });
+    return response;
+  },
   getJenisPenilaian: async () => {
     const response = await api.get('/rapor/nilai/jenis');
     return response.data;

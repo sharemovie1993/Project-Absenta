@@ -389,19 +389,47 @@ export default function InputNilaiPage() {
     setPasteRawText('');
   };
 
-  // Export e-Rapor Kemendikbud
-  const handleExportEraporKemendikbud = () => {
+  // Export e-Rapor Kemendikbud (Authenticated Blob Download)
+  const handleExportEraporKemendikbud = async () => {
     if (!selectedKelas || !selectedMapel || !activeYear || !activeSemester) {
       toast.error('Pilih Kelas dan Mapel terlebih dahulu');
       return;
     }
-    const url = raporApi.getExportEraporKemendikbudUrl({
-      kelas_id: selectedKelas,
-      mapel_id: selectedMapel,
-      tahun_pelajaran_id: activeYear.id,
-      semester_id: activeSemester.id,
-    });
-    window.open(url, '_blank');
+    try {
+      toast.info('Mengunduh berkas format e-Rapor Kemendikbud...');
+      const response = await raporApi.exportEraporKemendikbudBlob({
+        kelas_id: selectedKelas,
+        mapel_id: selectedMapel,
+        tahun_pelajaran_id: activeYear.id,
+        semester_id: activeSemester.id,
+      });
+
+      // Extract filename from header or build fallback
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'eRapor_Kemendikbud.xlsx';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      // Create Blob & Trigger Download
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Berkas ${filename} berhasil diunduh! Siap diimport ke e-Rapor Kemendikbud.`);
+    } catch (err: any) {
+      console.error('❌ [InputNilaiPage] Failed to export e-Rapor:', err);
+      toast.error(err.message || 'Gagal mengunduh berkas e-Rapor Kemendikbud');
+    }
   };
 
   const handleDownloadTemplate = () => {

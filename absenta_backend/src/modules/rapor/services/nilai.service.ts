@@ -410,7 +410,11 @@ export class NilaiService {
     }
 
     const listSiswa = await prisma.siswa.findMany({
-      where: { tenant_id: tenantId, kelas_id: params.kelas_id, status: 'AKTIF' },
+      where: {
+        tenant_id: tenantId,
+        kelas_id: params.kelas_id,
+        status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] },
+      },
       orderBy: { nama_siswa: 'asc' },
     });
 
@@ -424,11 +428,15 @@ export class NilaiService {
       },
     });
 
-    const nilaiMap = new Map<string, { finalVal: number; cp: string }>();
+    const nilaiMap = new Map<string, { finalVal: number; cp: string; s1?: number | null; s2?: number | null; s3?: number | null; sAkhir?: number | null }>();
     listNilai.forEach((n) => {
       nilaiMap.set(n.siswa_id, {
         finalVal: n.nilai_rapor_final ?? n.nilai ?? 0,
         cp: n.capaian_kompetensi || n.catatan_deskripsi || '',
+        s1: n.sumatif_1,
+        s2: n.sumatif_2,
+        s3: n.sumatif_3,
+        sAkhir: n.nilai_akhir_sumatif,
       });
     });
 
@@ -456,12 +464,30 @@ export class NilaiService {
       };
     });
 
+    // Sheet 3: F_Nilai_Sumatif (Breakdown Rinci)
+    const rowsSumatif = listSiswa.map((s, idx) => {
+      const rec = nilaiMap.get(s.id);
+      return {
+        'NO': idx + 1,
+        'PD_ID': s.id,
+        'NISN': s.nisn || s.nis,
+        'NAMA SISWA': s.nama_siswa,
+        'SUMATIF 1': rec?.s1 ?? '',
+        'SUMATIF 2': rec?.s2 ?? '',
+        'SUMATIF 3': rec?.s3 ?? '',
+        'SUMATIF AKHIR': rec?.sAkhir ?? '',
+        'NILAI RAPOR': rec?.finalVal ?? 0,
+      };
+    });
+
     const wb = XLSX.utils.book_new();
     const wsNilai = XLSX.utils.json_to_sheet(rowsNilai);
     const wsCP = XLSX.utils.json_to_sheet(rowsCP);
+    const wsSumatif = XLSX.utils.json_to_sheet(rowsSumatif);
 
     XLSX.utils.book_append_sheet(wb, wsNilai, 'F_Nilai_Akademik');
     XLSX.utils.book_append_sheet(wb, wsCP, 'F_Capaian_Kompetensi');
+    XLSX.utils.book_append_sheet(wb, wsSumatif, 'F_Nilai_Sumatif');
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     const filename = `eRapor_${kelas.nama_kelas}_${mapel.nama_mapel}_${sem.nama_semester}.xlsx`.replace(/\s+/g, '_');
