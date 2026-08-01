@@ -214,6 +214,13 @@ export const filterNavByWorkspace = (
   }
   // 8. Workspace Siswa
   else if (currentWs.id === 'STUDENT_WORKSPACE' || String(user?.role?.name || '').toUpperCase() === 'SISWA') {
+    const userCaps = Array.isArray(user?.capabilities) ? user.capabilities : [];
+    const userPositions: string[] = Array.isArray(user?.position_codes)
+      ? user.position_codes.map((p: any) => String(p).toUpperCase())
+      : (Array.isArray(user?.positions) ? user.positions.map((p: any) => String(p?.code || p).toUpperCase()) : []);
+
+    const isPetugasKelas = userPositions.includes('PETUGAS_KELAS') || userCaps.includes('attendance.sessions.update.attendance');
+
     const studentPaths = new Set([
       '/attendance/my-attendance',
       '/kurikulum/jadwal',
@@ -222,6 +229,14 @@ export const filterNavByWorkspace = (
       '/profile',
       '/hubin/absensi',
     ]);
+
+    if (isPetugasKelas) {
+      studentPaths.add('/attendance/ops');
+      studentPaths.add('/attendance/sesi');
+      studentPaths.add('/attendance/monitoring');
+      studentPaths.add('/kesiswaan/monitoring');
+    }
+
     primaryItems = validItems.filter((item) => {
       const p = (item.path || '').toLowerCase();
       return studentPaths.has(p);

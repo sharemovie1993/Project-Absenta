@@ -181,7 +181,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/kurikulum/jadwal',
       '/bpbk/konseling',
       '/rapor/nilai',
-      '/profile'
+      '/profile',
+      '/cooperative/store',
+      '/cooperative/savings',
+      '/sarpras/loans',
+      '/hubin/absensi'
     ]
   },
   {
@@ -458,6 +462,10 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
   if (roleName === 'GURU' && user?.guru_profile?.jenis_ptk !== 'TENAGA_KEPENDIDIKAN') {
     const teacherWs = ROLE_WORKSPACES.find(w => w.id === 'TEACHER_WORKSPACE');
     if (teacherWs) available.push(teacherWs);
+  }
+  if (roleName === 'SISWA') {
+    const studentWs = ROLE_WORKSPACES.find(w => w.id === 'STUDENT_WORKSPACE');
+    if (studentWs) available.push(studentWs);
   }
 
   const userCaps = Array.isArray(user?.capabilities) ? user.capabilities : [];
