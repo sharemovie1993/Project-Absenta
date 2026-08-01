@@ -46,6 +46,27 @@ function MainLayoutContent() {
   const isMobile = useIsMobile(1024);
   const isSmallDesktop = useIsMobile(1367); // 1366 and below
 
+  const [dashboardMode, setDashboardModeState] = useState<'portal' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
+    }
+    return 'portal';
+  });
+
+  useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDashboardModeState(customEvent.detail);
+      }
+    };
+    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
+    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
+  }, []);
+
+  const isDashboardPath = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/dashboard/overview';
+  const isHideSidebarForPortal = isDashboardPath && dashboardMode === 'portal';
+
   const configQuery = useQuery({
     queryKey: ['system-config','active'],
     queryFn: fetchActiveSystemConfig,
