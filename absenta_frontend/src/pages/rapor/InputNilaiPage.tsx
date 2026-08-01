@@ -48,46 +48,78 @@ export default function InputNilaiPage() {
   const [taskSearchQuery, setTaskSearchQuery] = useState<string>('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'empty' | 'partial' | 'completed'>('all');
 
-  // Load active academic year and semester
+  // Load active academic year and semester with robust try-catch fallbacks
   const { data: activeYear } = useQuery({
     queryKey: ['tahun-pelajaran-active'],
     queryFn: async () => {
-      const res = await tahunPelajaranApi.getAll({ is_active: true });
-      return res.data?.[0];
+      try {
+        const res = await tahunPelajaranApi.getAll({ is_active: true });
+        return res.data?.[0] || null;
+      } catch {
+        return null;
+      }
     }
   });
 
   const { data: activeSemester } = useQuery({
     queryKey: ['semester-active'],
     queryFn: async () => {
-      const res = await semesterApi.getActive();
-      return res.data;
+      try {
+        const res = await semesterApi.getActive();
+        return res.data || null;
+      } catch {
+        return null;
+      }
     }
   });
 
   // Query classes, subjects, categories
   const { data: classesData } = useQuery({
     queryKey: ['classes'],
-    queryFn: () => kelasApi.getAll({ limit: 500, is_active: true })
+    queryFn: async () => {
+      try {
+        return await kelasApi.getAll({ limit: 500, is_active: true });
+      } catch {
+        return { data: [] };
+      }
+    }
   });
 
   const { data: subjectsData } = useQuery({
     queryKey: ['subjects'],
-    queryFn: () => mapelApi.getAll({ limit: 500 })
+    queryFn: async () => {
+      try {
+        return await mapelApi.getAll({ limit: 500 });
+      } catch {
+        return { data: [] };
+      }
+    }
   });
 
   const { data: categories } = useQuery({
     queryKey: ['kategori-nilai'],
-    queryFn: () => raporApi.getKategoriNilai(),
+    queryFn: async () => {
+      try {
+        return await raporApi.getKategoriNilai();
+      } catch {
+        return { data: [] };
+      }
+    },
     enabled: entryMode === 'kategori'
   });
 
   const { data: teacherProgressData } = useQuery({
     queryKey: ['teacher-progress', activeYear?.id, activeSemester?.id],
-    queryFn: () => raporApi.getTeacherProgress({
-      tahun_pelajaran_id: activeYear?.id,
-      semester_id: activeSemester?.id
-    }),
+    queryFn: async () => {
+      try {
+        return await raporApi.getTeacherProgress({
+          tahun_pelajaran_id: activeYear?.id,
+          semester_id: activeSemester?.id
+        });
+      } catch {
+        return { data: null };
+      }
+    },
   });
 
   const classes: ClassItem[] = useMemo(() => classesData?.data || [], [classesData]);
