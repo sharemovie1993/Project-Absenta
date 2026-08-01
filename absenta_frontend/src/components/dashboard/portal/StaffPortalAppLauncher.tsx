@@ -1,9 +1,9 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App dengan Desain Grid Ikon Smartphone (Android/iOS Style).
- * - Ukuran Ikon Squircle Presisi dengan Nama Menu Ringkas di Bawah Ikon.
- * - Grid Responsif (4 Kolom Mobile, 6-10 Kolom Desktop).
- * - Bebas Kartu Panjang Horizontal & Noise Visual.
+ * Launcher Portal App dengan Desain Grid Ikon Smartphone 3 BLOK UTAMA:
+ * - Blok 1: ⚡ Aksi Cepat Diri (Quick Actions dari Unified Dashboard)
+ * - Blok 2: 🏫 Ruang Kerja Guru & Wali Kelas (Harian, Presensi Diri, Jurnal KBM, e-Rapor)
+ * - Blok 3: 🏛️ Ruang Kerja Jabatan & Informasi Lintas Modul (Logika Penyaringan Sidebar)
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +26,7 @@ import {
   Building2,
   Loader2,
   Compass,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -33,6 +34,7 @@ import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { ROLE_WORKSPACES } from '../../../config/navigation.config';
 import { useNavStore } from '../../../store/navStore';
+import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
   user: any;
@@ -40,6 +42,7 @@ export interface StaffPortalAppLauncherProps {
   isWaliKelas: boolean;
   waliKelasId?: string;
   absentStudentsCount?: number;
+  quickActions?: QuickAction[];
   onSwitchToDesktop: () => void;
   onOpenJurnalModal: () => void;
   onOpenAbsenGuruModal: () => void;
@@ -123,6 +126,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   jabatanLabel,
   isWaliKelas,
   absentStudentsCount = 0,
+  quickActions = [],
   onSwitchToDesktop,
   onOpenJurnalModal,
   onOpenAbsenGuruModal,
@@ -147,14 +151,31 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     [navigate]
   );
 
-  // ── 1. KELOMPOK UTAMA: RUANG KERJA GURU & WALI KELAS ──
-  const group1Tiles = useMemo<AppTileData[]>(() => {
+  // ── BLOK 1: ⚡ AKSI CEPAT DIRI (Quick Actions dari Unified Dashboard) ──
+  const block1QuickActionTiles = useMemo<AppTileData[]>(() => {
+    if (!quickActions || quickActions.length === 0) return [];
+
+    return quickActions.map((act, idx) => {
+      const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
+      return {
+        id: `blk1-qa-${idx}`,
+        title: act.label,
+        iconComp: act.icon,
+        colorClass: accent.colorClass,
+        bgLightClass: accent.bgLightClass,
+        onClick: act.onClick,
+      };
+    });
+  }, [quickActions]);
+
+  // ── BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (Operasional Harian Rombel) ──
+  const block2GuruTiles = useMemo<AppTileData[]>(() => {
     const items: AppTileData[] = [];
 
     if (isWaliKelas) {
       items.push(
         {
-          id: 'g1-monitoring-kbm',
+          id: 'b2-monitoring-kbm',
           title: 'Live KBM',
           iconComp: Monitor,
           colorClass: 'text-blue-600 dark:text-blue-400',
@@ -163,7 +184,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           path: '/kesiswaan/monitoring',
         },
         {
-          id: 'g1-rekap-absensi',
+          id: 'b2-rekap-absensi',
           title: 'Rekap Absensi',
           iconComp: Activity,
           colorClass: 'text-emerald-600 dark:text-emerald-400',
@@ -172,7 +193,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           path: '/attendance/rekap',
         },
         {
-          id: 'g1-catatan-rapor',
+          id: 'b2-catatan-rapor',
           title: 'Catatan Leger',
           iconComp: FileText,
           colorClass: 'text-purple-600 dark:text-purple-400',
@@ -180,7 +201,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           path: '/rapor/cetak',
         },
         {
-          id: 'g1-cetak-rapor',
+          id: 'b2-cetak-rapor',
           title: 'Cetak e-Rapor',
           iconComp: Printer,
           colorClass: 'text-indigo-600 dark:text-indigo-400',
@@ -189,7 +210,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           path: '/rapor/cetak',
         },
         {
-          id: 'g1-risikolog',
+          id: 'b2-risikolog',
           title: 'Risikolog Siswa',
           iconComp: AlertTriangle,
           colorClass: 'text-amber-600 dark:text-amber-400',
@@ -202,7 +223,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     // Aksi Pengajaran Guru
     items.push(
       {
-        id: 'g1-jadwal',
+        id: 'b2-jadwal',
         title: 'Jadwal Mengajar',
         iconComp: Calendar,
         colorClass: 'text-cyan-600 dark:text-cyan-400',
@@ -210,7 +231,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         path: '/jadwal/saya',
       },
       {
-        id: 'g1-jurnal-kbm',
+        id: 'b2-jurnal-kbm',
         title: 'Isi Jurnal KBM',
         iconComp: BookOpen,
         colorClass: 'text-indigo-600 dark:text-indigo-400',
@@ -218,7 +239,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         onClick: onOpenJurnalModal,
       },
       {
-        id: 'g1-absen-guru',
+        id: 'b2-absen-guru',
         title: 'Presensi Guru',
         iconComp: User,
         colorClass: 'text-emerald-600 dark:text-emerald-400',
@@ -226,7 +247,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         onClick: onOpenAbsenGuruModal,
       },
       {
-        id: 'g1-catat-pelanggaran',
+        id: 'b2-catat-pelanggaran',
         title: 'Catat Pelanggaran',
         iconComp: ShieldAlert,
         colorClass: 'text-rose-600 dark:text-rose-400',
@@ -234,7 +255,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         onClick: onOpenCatatPelanggaranModal,
       },
       {
-        id: 'g1-tindak-masal',
+        id: 'b2-tindak-masal',
         title: 'Tindak Masal',
         iconComp: CheckCircle2,
         colorClass: 'text-amber-600 dark:text-amber-400',
@@ -253,8 +274,8 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── 2. KELOMPOK UTAMA: RUANG JABATAN & LINTAS MODUL (LOGIKA PENYARINGAN SIDEBAR) ──
-  const group2BackendTiles = useMemo<AppTileData[]>(() => {
+  // ── BLOK 3: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (PENYARINGAN LOGIKA SIDEBAR) ──
+  const block3BackendTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     const isAdmin =
@@ -275,7 +296,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         tileCounter++;
 
         allBackendTiles.push({
-          id: `g2-item-${item.id || tileCounter}`,
+          id: `b3-item-${item.id || tileCounter}`,
           title: item.name,
           iconName: item.icon || item.name,
           colorClass: accent.colorClass,
@@ -345,22 +366,28 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return filteredTiles;
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // Filtered Group 1 & Group 2 items berdasarkan Search
-  const filteredGroup1 = useMemo(() => {
+  // Filtered Items berdasarkan Search Input Query
+  const filteredBlock1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return group1Tiles;
-    return group1Tiles.filter((t) => t.title.toLowerCase().includes(q));
-  }, [group1Tiles, searchQuery]);
+    if (!q) return block1QuickActionTiles;
+    return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
+  }, [block1QuickActionTiles, searchQuery]);
 
-  const filteredGroup2 = useMemo(() => {
+  const filteredBlock2 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return group2BackendTiles;
-    return group2BackendTiles.filter(
+    if (!q) return block2GuruTiles;
+    return block2GuruTiles.filter((t) => t.title.toLowerCase().includes(q));
+  }, [block2GuruTiles, searchQuery]);
+
+  const filteredBlock3 = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return block3BackendTiles;
+    return block3BackendTiles.filter(
       (t) =>
         t.title.toLowerCase().includes(q) ||
         (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
     );
-  }, [group2BackendTiles, searchQuery]);
+  }, [block3BackendTiles, searchQuery]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
@@ -371,7 +398,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (Android App Grid)
+                Portal App Launcher (3 Blok Utama)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -383,7 +410,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Sentuh ikon aplikasi di bawah ini untuk menuju fitur secara cepat.
+              Navigasi Ikon Aplikasi Terstruktur ke Dalam 3 Blok: Aksi Cepat Diri, Ruang Kerja Guru, & Ruang Kerja Jabatan.
             </p>
           </div>
 
@@ -424,27 +451,26 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 1: 📱 RUANG KERJA GURU & WALI KELAS (APP ICON GRID HP)
+          BLOK 1: ⚡ AKSI CEPAT DIRI (QUICK ACTIONS DARI UNIFIED DASHBOARD)
       ───────────────────────────────────────────────────────────────────────────── */}
-      {filteredGroup1.length > 0 && (
+      {filteredBlock1.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
           <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
-                <Sparkles size={14} />
+              <div className="p-1 rounded-lg bg-amber-500 text-white shadow-2xs">
+                <Zap size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                1. Ruang Kerja Guru & Wali Kelas
+                1. Aksi Cepat Diri
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredGroup1.length} Aplikasi
+              {filteredBlock1.length} Pintasan Cepat
             </span>
           </div>
 
-          {/* Grid Smartphone App Icon (4 Kolom Mobile, 6-10 Kolom Desktop) */}
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredGroup1.map((tile) => (
+            {filteredBlock1.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}
@@ -456,7 +482,38 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (APP ICON GRID HP)
+          BLOK 2: 🏫 RUANG KERJA GURU & WALI KELAS (OPERASIONAL HARIAN)
+      ───────────────────────────────────────────────────────────────────────────── */}
+      {filteredBlock2.length > 0 && (
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
+                <Sparkles size={14} />
+              </div>
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                2. Ruang Kerja Guru & Wali Kelas
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredBlock2.length} Aplikasi Operasional
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
+            {filteredBlock2.map((tile) => (
+              <MemoizedAppTileItem
+                key={tile.id}
+                tile={tile}
+                onNavigate={handleTileNavigate}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          BLOK 3: 🏛️ RUANG KERJA JABATAN & INFORMASI LINTAS MODUL (PENYARINGAN SIDEBAR)
       ───────────────────────────────────────────────────────────────────────────── */}
       <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
         <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
@@ -465,19 +522,18 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               <Building2 size={14} />
             </div>
             <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              2. Ruang Kerja Jabatan & Informasi Lintas Modul
+              3. Ruang Kerja Jabatan & Informasi Lintas Modul
             </h2>
           </div>
 
           <span className="text-[10px] font-bold text-slate-400">
-            {filteredGroup2.length} Aplikasi
+            {filteredBlock3.length} Aplikasi Modul
           </span>
         </div>
 
-        {/* Grid Smartphone App Icon (4 Kolom Mobile, 6-10 Kolom Desktop) */}
-        {filteredGroup2.length > 0 ? (
+        {filteredBlock3.length > 0 ? (
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-            {filteredGroup2.map((tile) => (
+            {filteredBlock3.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
                 tile={tile}

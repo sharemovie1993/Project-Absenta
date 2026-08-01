@@ -714,6 +714,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           isWaliKelas={isWaliKelas}
           waliKelasId={waliKelasId}
           absentStudentsCount={absentStudents.length}
+          quickActions={quickActions}
           onSwitchToDesktop={() => handleToggleMode('desktop')}
           onOpenJurnalModal={() => {
             const sesiHariIni = timelineItems.find((item: any) => item.type === 'sesi_mengajar');
