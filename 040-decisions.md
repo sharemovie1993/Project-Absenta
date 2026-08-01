@@ -216,15 +216,16 @@
   3. Mengubah mekanisme pengurutan menu lintas modul (*Cross-Module Navigation*) pada komponen navigasi utama (`Sidebar.tsx`) dari pengurutan alfabetis/kustom menjadi pewarisan langsung dari urutan *canonical* basis data (`order` dari seeder menu), guna mempertahankan alur logis pengisian data master (Struktur -> Guru Mapel -> Kalender -> Jam KBM -> Jadwal).
 - **Rasional**: Memastikan penerapan prinsip *Least Privilege* dan *Separation of Duties* secara konsisten tanpa merusak pengalaman pengguna (UX) dengan memblokir halaman secara keseluruhan, serta menjaga agar alur pengisian data akademik tetap intuitif dan teratur bagi seluruh peran administrasi sekolah.
 
-2026-08: Unified Staff Dashboard — Portal App Launcher Mode & Dual Mode Architecture
+2026-08: Unified Staff & Student Dashboard — Dynamic Portal App Launcher & Dual Mode Architecture
 - **Keputusan**:
-  1. Mengimplementasikan **Dual Mode Dashboard** pada `UnifiedStaffDashboard.tsx` dengan dua mode tampilan yang dapat di-toggle:
-     - **Mode Portal Apps 📱**: Tampilan grid ikon smartphone (Android/iOS style) — squircle icon box + label kecil di bawah.
-     - **Mode Desktop 🖥️**: Tampilan dashboard multi-kolom dengan widget, info, dan quick stats.
-  2. Mode aktif disimpan di `localStorage` (`absenta_dashboard_mode`) dan disinkronkan secara global via custom event `absenta-dashboard-mode-change` yang didengarkan oleh `MainLayout.tsx`, `UnifiedStaffDashboard.tsx`, dan `Topbar.tsx` secara simultan.
-  3. Tombol Switch Mode ditempatkan sebagai **single centralized toggle di `Topbar.tsx` (kanan header)** sehingga berfungsi sebagai proxy — memicu handler yang sama persis dengan tombol di dalam dashboard. Tidak ada duplikasi tombol.
-  4. Tombol **`[📱 Launcher Apps]`** ditampilkan secara kontekstual di sebelah logo Topbar hanya saat pengguna berada di halaman sub-menu (bukan dashboard), agar navigasi kembali selalu tersedia.
-- **Rasional**: Memberikan fleksibilitas tampilan bagi guru yang lebih nyaman dengan ikon aplikasi smartphone (familiar) vs. pengguna yang butuh tampilan ringkasan desktop informatif, tanpa memisahkan dua halaman berbeda yang membebani routing.
+  1. Mengimplementasikan **Dual Mode Dashboard** (`Mode Portal Apps 📱` vs `Mode Desktop 🖥️`) secara **UNIVERSAL** untuk seluruh pengguna platform (Guru, Staf, Wali Kelas, Struktural, Admin, serta **SISWA / PETUGAS KELAS**).
+  2. Membangun komponen **`SiswaPortalAppLauncher.tsx`** yang 100% DINAMIS berbasis API Backend & RBAC (tanpa menu hardcoded):
+     - **⚡ Blok 1 — Aksi Cepat Siswa**: Presensi Mandiri, Jadwal Pelajaran Hari Ini, Konseling BK (+ *Presensi Rombel* jika siswa memiliki posisi `PETUGAS_KELAS`).
+     - **🏫 Blok 2 — Aktivitas & Belajar**: Jadwal Pelajaran, Nilai Rapor & Transkrip, Profil Diri.
+     - **🎓 Blok 3 — Menu Utama Siswa**: Menu utama akademik siswa dari API backend (`STUDENT_WORKSPACE`).
+     - **🔗 Blok 4 — Fasilitas & Akses Lintas Modul**: Koperasi E-Wallet Siswa, Peminjaman Aset/Buku Sarpras, & Logbook PKL Industri (Khusus Siswa SMK).
+  3. Siswa berjabatan **`PETUGAS_KELAS`** secara otomatis mendapat Badge khusus *"PETUGAS KELAS"* dan tombol pintasan operasional presensi rombel di launcher.
+- **Rasional**: Memberikan pengalaman navigasi visual bergaya aplikasi mobile (grid ikon squircle) yang konsisten dan modern di seluruh ekosistem sekolah tanpa mengorbankan keamanan hak akses (RBAC).
 
 2026-08: Portal App Launcher — 4-Block Structure dengan Deduplication & Opsi A Cross-Module Merge
 - **Keputusan**:
