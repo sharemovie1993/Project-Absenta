@@ -3,6 +3,9 @@ import { organizationalContextCache } from '@/modules/auth/services/organization
 import { STRUKTUR_CAPABILITIES } from '@/config/position-capabilities';
 import { DEFAULT_STRUKTUR_ORGANISASI } from '@/config/organization-structure';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
+import { CacheService } from '@/utils/cache.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { CACHE_KEYS } from '@/constants/cache-keys';
 
 export interface CreateStrukturInput {
   kode: string;
@@ -69,6 +72,10 @@ export class StrukturOrganisasiService {
   }
 
   async getTree(tenantId: string) {
+    const cacheKey = CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId);
+    const cached = await CacheService.getInstance().get<any>(cacheKey);
+    if (cached) return cached;
+
     const list = await prisma.organizationalPosition.findMany({
       where: { tenant_id: tenantId, is_active: true },
       orderBy: { order: 'asc' },
@@ -215,6 +222,7 @@ export class StrukturOrganisasiService {
       }
     }
 
+    await CacheService.getInstance().set(cacheKey, grouped, 300);
     return grouped;
   }
 
@@ -283,6 +291,7 @@ export class StrukturOrganisasiService {
       await this.seedCapabilitiesForPosition(created.id, code);
     }
 
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return created;
   }
 
@@ -306,6 +315,7 @@ export class StrukturOrganisasiService {
     });
 
     await this.invalidateUsersByPosition(id);
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return updated;
   }
 
@@ -318,6 +328,7 @@ export class StrukturOrganisasiService {
 
     await this.invalidateUsersByPosition(id);
     await prisma.organizationalPosition.delete({ where: { id } });
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async getPermissions(tenantId: string, strukturId: string) {
@@ -596,6 +607,7 @@ export class StrukturOrganisasiService {
     });
 
     await organizationalContextCache.invalidateUser(String(guru.user_id));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return created;
   }
 
@@ -640,6 +652,7 @@ export class StrukturOrganisasiService {
     });
 
     await organizationalContextCache.invalidateUser(String(guru.user_id));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async assignSiswa(tenantId: string, input: AssignSiswaInput) {
@@ -745,6 +758,7 @@ export class StrukturOrganisasiService {
     });
 
     await organizationalContextCache.invalidateUser(String(siswa.user_id));
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
     return created;
   }
 

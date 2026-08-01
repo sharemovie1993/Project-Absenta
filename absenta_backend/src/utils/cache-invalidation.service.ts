@@ -85,6 +85,16 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🏛️ Invalidate cache struktur organisasi & penugasan wali kelas
+   */
+  async invalidateStrukturTree(tenantId: string) {
+    await cacheService.delete(CACHE_KEYS.ACADEMIC.STRUKTUR_TREE(tenantId));
+    await cacheService.deletePattern(`academic:${tenantId}:wali_kelas:*`);
+    await this.invalidateBebanGuruCache(tenantId);
+    await this.invalidateRekapCache(tenantId);
+  }
+
+  /**
    * 📊 Invalidate cache rekap & monitoring presensi / KBM
    */
   async invalidateRekapCache(tenantId: string) {

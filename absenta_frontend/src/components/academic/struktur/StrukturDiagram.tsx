@@ -102,6 +102,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     onSuccess: (_, { node }) => {
       toast.success(node.data?.isAddingNew ? 'Anggota baru berhasil ditambahkan' : 'Penugasan berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+      queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
       setEditingNode(null);
     },
     onError: (error: any) => {
@@ -122,6 +124,8 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
     onSuccess: () => {
       toast.success('Anggota berhasil dihapus');
       queryClient.invalidateQueries({ queryKey: ['strukturTree'] });
+      queryClient.invalidateQueries({ queryKey: ['waliKelasList'] });
+      queryClient.invalidateQueries({ queryKey: ['bebanGuru'] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Gagal menghapus anggota');

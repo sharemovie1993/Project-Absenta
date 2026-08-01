@@ -1,6 +1,9 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '@/utils/prisma';
 import { organizationalContextCache } from '@/modules/auth/services/organizational-context-cache';
+import { CacheService } from '@/utils/cache.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { CACHE_KEYS } from '@/constants/cache-keys';
 
 
 
@@ -194,6 +197,13 @@ export class WaliKelasService {
 
     const page = params?.page || 1;
     const limit = params?.limit || 10;
+    const search = params?.search || '';
+    const includeInactive = params?.include_inactive || false;
+
+    const cacheKey = CACHE_KEYS.ACADEMIC.WALI_KELAS_LIST(tenantId, page, limit, search, includeInactive);
+    const cached = await CacheService.getInstance().get<any>(cacheKey);
+    if (cached) return cached;
+
     const skip = (page - 1) * limit;
 
     const total = await prisma.organizationalAssignment.count({ where: whereClause });
@@ -217,7 +227,7 @@ export class WaliKelasService {
 
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    const result = {
       data: data.map((a: any) => ({
         id: a.id,
         tenant_id: a.tenant_id,
@@ -238,6 +248,9 @@ export class WaliKelasService {
       })) as unknown as WaliKelasStrukturAssignmentResponse[],
       pagination: { page, limit, total, totalPages },
     };
+
+    await CacheService.getInstance().set(cacheKey, result, 300);
+    return result;
   }
 
   async assignStrukturWaliKelas(
@@ -359,8 +372,13 @@ export class WaliKelasService {
         Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
       },
     });
-
     if (!full) throw new Error('Assignment not found');
+
+    if (guru.user_id) {
+      await organizationalContextCache.invalidateUser(String(guru.user_id));
+    }
+
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
 
     return {
       id: full.id,
@@ -411,6 +429,8 @@ export class WaliKelasService {
     if (existing.user_id) {
       await organizationalContextCache.invalidateUser(String(existing.user_id));
     }
+
+    await cacheInvalidationService.invalidateStrukturTree(tenantId);
   }
 
   async getBySiswa(
