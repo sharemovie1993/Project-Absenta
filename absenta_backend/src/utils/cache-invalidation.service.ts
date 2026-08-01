@@ -102,6 +102,14 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 📋 Invalidate cache penilaian & leger rapor
+   */
+  async invalidateRaporCache(tenantId: string) {
+    await cacheService.deletePattern(`academic:${tenantId}:leger:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:nilai_kelas:*`);
+  }
+
+  /**
    * ✅ Invalidate cache attendance-related
    */
   async invalidateAttendanceCache(tenantId: string, date?: string) {

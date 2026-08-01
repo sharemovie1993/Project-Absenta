@@ -1,4 +1,7 @@
 import { prisma } from '../../../utils/prisma';
+import { cacheService } from '../../../utils/cache.service';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
+import { CACHE_KEYS, CACHE_TTL } from '../../../constants/cache-keys';
 
 export class RaporService {
   static async upsertRapor(
@@ -15,7 +18,7 @@ export class RaporService {
       keputusan_transisi?: string | null;
     }
   ) {
-    return prisma.raporSiswa.upsert({
+    const result = await prisma.raporSiswa.upsert({
       where: {
         siswa_id_tahun_pelajaran_id_semester_id: {
           siswa_id: data.siswa_id,
@@ -43,6 +46,10 @@ export class RaporService {
         keputusan_transisi: data.keputusan_transisi,
       },
     });
+
+    // Invalidate leger cache for this class
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+    return result;
   }
 
   static async getRaporDetail(
@@ -187,6 +194,11 @@ export class RaporService {
       semester_id: string;
     }
   ) {
+    const cacheKey = CACHE_KEYS.ACADEMIC.LEGER(tenantId, params.kelas_id, params.tahun_pelajaran_id, params.semester_id);
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
     const kelas = await prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } });
     const tp = await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } });
     const sem = await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } });
@@ -301,6 +313,9 @@ export class RaporService {
       mapel_list: mapelList,
       students: studentsSortedByName,
     };
+      },
+      CACHE_TTL.DASHBOARD
+    );
   }
 
   static async exportLegerExcel(

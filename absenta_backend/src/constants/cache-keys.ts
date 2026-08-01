@@ -80,6 +80,8 @@ export const CACHE_KEYS = {
     WALI_KELAS_LIST: (tenantId: string, page?: number, limit?: number, search?: string, includeInactive?: boolean) => `academic:${tenantId}:wali_kelas:${page || 1}:${limit || 10}:${search || 'all'}:${includeInactive ? 'inc' : 'exc'}`,
     TAHUN_PELAJARAN: (tenantId: string) => `academic:${tenantId}:tahun_pelajaran`,
     SEMESTER: (tenantId: string) => `academic:${tenantId}:semester`,
+    LEGER: (tenantId: string, kelasId: string, tahunId: string, semesterId: string) => `academic:${tenantId}:leger:${kelasId}:${tahunId}:${semesterId}`,
+    NILAI_KELAS: (tenantId: string, kelasId: string, tahunId: string, semesterId: string) => `academic:${tenantId}:nilai_kelas:${kelasId}:${tahunId}:${semesterId}`,
     ALL: (tenantId: string) => `academic:${tenantId}:*`
   },
 

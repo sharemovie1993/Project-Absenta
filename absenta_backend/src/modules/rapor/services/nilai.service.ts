@@ -1,4 +1,5 @@
 import { prisma } from '../../../utils/prisma';
+import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
 export class NilaiService {
   // === JENIS PENILAIAN MASTER ===
@@ -107,7 +108,7 @@ export class NilaiService {
       sesi_absensi_id?: string | null;
     }
   ) {
-    return prisma.nilaiSiswa.upsert({
+    const result = await prisma.nilaiSiswa.upsert({
       where: {
         siswa_id_mapel_id_jenis_nilai_id_semester_id: {
           siswa_id: data.siswa_id,
@@ -133,6 +134,10 @@ export class NilaiService {
         sesi_absensi_id: data.sesi_absensi_id || null,
       },
     });
+
+    // Invalidate leger cache — nilai berubah, leger harus direcalculate
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+    return result;
   }
 
   static async upsertBulkNilai(
@@ -179,7 +184,11 @@ export class NilaiService {
       });
     });
 
-    return prisma.$transaction(operations);
+    const results = await prisma.$transaction(operations);
+
+    // Invalidate leger cache — batch nilai berubah, leger harus direcalculate
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+    return results;
   }
 
   static async exportErafor(

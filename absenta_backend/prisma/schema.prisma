@@ -3837,6 +3837,8 @@ model NilaiSiswa {
 
   @@unique([siswa_id, mapel_id, jenis_nilai_id, semester_id])
   @@index([tenant_id])
+  @@index([tenant_id, mapel_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
 }
 
 model RaporSiswa {
@@ -3862,6 +3864,7 @@ model RaporSiswa {
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id])
+  @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
 }
 
 model SertifikatUkk {
