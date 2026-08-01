@@ -13,7 +13,9 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  Trash2
+  Trash2,
+  Search,
+  Filter
 } from 'lucide-react';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { Badge } from '../../components/ui/Badge';
@@ -138,6 +140,24 @@ export default function InputNilaiPage() {
   });
 
   const progressInfo = teacherProgressData?.data;
+
+  // Task Search & Filter State for teachers managing many classes/subjects
+  const [taskSearchQuery, setTaskSearchQuery] = useState('');
+  const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'empty' | 'partial' | 'completed'>('all');
+
+  const filteredTasks = useMemo(() => {
+    if (!progressInfo?.tasks) return [];
+    return progressInfo.tasks.filter((t: any) => {
+      if (taskStatusFilter !== 'all' && t.status !== taskStatusFilter) return false;
+      if (taskSearchQuery.trim()) {
+        const q = taskSearchQuery.toLowerCase();
+        const matchKelas = t.nama_kelas?.toLowerCase().includes(q);
+        const matchMapel = t.nama_mapel?.toLowerCase().includes(q);
+        if (!matchKelas && !matchMapel) return false;
+      }
+      return true;
+    });
+  }, [progressInfo, taskStatusFilter, taskSearchQuery]);
 
   // Auto-select first class-mapel task when progressInfo is loaded
   useEffect(() => {
@@ -802,16 +822,51 @@ export default function InputNilaiPage() {
 
             {/* Metric Chips & Accordion Toggle */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="flex items-center gap-2 sm:gap-3 text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2.5 py-1 rounded-xl">
-                  🟢 <strong>{progressInfo?.completed_tasks || 0}</strong> Selesai (Lengkap)
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-400 bg-amber-950/60 border border-amber-800/50 px-2.5 py-1 rounded-xl">
+              <div className="flex items-center gap-2 sm:gap-2.5 text-xs font-bold flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setTaskStatusFilter(taskStatusFilter === 'all' ? 'all' : 'all')}
+                  className={`px-2.5 py-1 rounded-xl transition-all border ${
+                    taskStatusFilter === 'all' 
+                      ? 'bg-slate-700 text-white border-slate-500 shadow' 
+                      : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
+                  }`}
+                >
+                  Semua ({progressInfo?.total_tasks || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskStatusFilter(taskStatusFilter === 'completed' ? 'all' : 'completed')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border ${
+                    taskStatusFilter === 'completed'
+                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-500/40'
+                      : 'text-emerald-400 bg-emerald-950/60 border-emerald-800/50 hover:bg-emerald-900/50'
+                  }`}
+                >
+                  🟢 <strong>{progressInfo?.completed_tasks || 0}</strong> Selesai
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskStatusFilter(taskStatusFilter === 'partial' ? 'all' : 'partial')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border ${
+                    taskStatusFilter === 'partial'
+                      ? 'bg-amber-600 text-white border-amber-400 shadow-md ring-2 ring-amber-500/40'
+                      : 'text-amber-400 bg-amber-950/60 border-amber-800/50 hover:bg-amber-900/50'
+                  }`}
+                >
                   🟡 <strong>{progressInfo?.partial_tasks || 0}</strong> Dalam Proses
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/60 border border-rose-800/50 px-2.5 py-1 rounded-xl">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskStatusFilter(taskStatusFilter === 'empty' ? 'all' : 'empty')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl transition-all border ${
+                    taskStatusFilter === 'empty'
+                      ? 'bg-rose-600 text-white border-rose-400 shadow-md ring-2 ring-rose-500/40'
+                      : 'text-rose-400 bg-rose-950/60 border-rose-800/50 hover:bg-rose-900/50'
+                  }`}
+                >
                   🔴 <strong>{progressInfo?.empty_tasks || 0}</strong> Belum Diisi
-                </span>
+                </button>
               </div>
 
               {progressInfo && progressInfo.tasks && progressInfo.tasks.length > 0 && (
@@ -888,46 +943,77 @@ export default function InputNilaiPage() {
           {/* Expandable Progress Detail Breakdown Table */}
           {showProgressDetail && progressInfo?.tasks && (
             <div className="pt-3 border-t border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300 space-y-3">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                Atau Klik Langsung Tugas Mengajar Rombel Saya:
-              </span>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Atau Klik Langsung Tugas Mengajar Rombel Saya ({filteredTasks.length} dari {progressInfo.tasks.length}):
+                </span>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                {progressInfo.tasks.map((t: any, idx: number) => {
-                  const isCurrent = t.kelas_id === selectedKelas && t.mapel_id === selectedMapel;
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        setSelectedKelas(t.kelas_id);
-                        setSelectedMapel(t.mapel_id);
-                        toast.info(`Memilih ${t.nama_kelas} — ${t.nama_mapel}`);
-                      }}
-                      className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                        isCurrent
-                          ? 'bg-indigo-900/60 border-indigo-500 shadow-lg ring-2 ring-indigo-500/50'
-                          : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600'
-                      }`}
+                {/* Search Box & Quick Filter */}
+                <div className="relative w-full sm:w-72">
+                  <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari Rombel atau Mapel..."
+                    value={taskSearchQuery}
+                    onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs font-semibold pl-8 pr-3 py-1.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  {taskSearchQuery && (
+                    <button
+                      onClick={() => setTaskSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-slate-400 hover:text-white text-xs font-bold"
                     >
-                      <div className="flex items-center justify-between text-xs font-bold">
-                        <span className="text-white flex items-center gap-1.5">
-                          <span className="text-indigo-400">{t.nama_kelas}</span> — {t.nama_mapel}
-                        </span>
-                        <span className="text-[10px]">
-                          {t.status === 'completed' && '🟢 Lengkap'}
-                          {t.status === 'partial' && '🟡 Sebagian'}
-                          {t.status === 'empty' && '🔴 Belum'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
-                        <span>Siswa Terisi:</span>
-                        <span className="font-mono font-bold text-slate-200">
-                          {t.siswa_terisi} / {t.total_siswa} Siswa
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Container with Max Height for Teachers with Many Classes */}
+              <div className="max-h-60 overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
+                {filteredTasks.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400 text-xs italic bg-slate-900/40 rounded-2xl border border-slate-800">
+                    Tidak ditemukan tugas mengajar yang cocok dengan pencarian / filter.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {filteredTasks.map((t: any, idx: number) => {
+                      const isCurrent = t.kelas_id === selectedKelas && t.mapel_id === selectedMapel;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            setSelectedKelas(t.kelas_id);
+                            setSelectedMapel(t.mapel_id);
+                            toast.info(`Memilih ${t.nama_kelas} — ${t.nama_mapel}`);
+                          }}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                            isCurrent
+                              ? 'bg-indigo-900/60 border-indigo-500 shadow-lg ring-2 ring-indigo-500/50'
+                              : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <span className="text-white flex items-center gap-1.5">
+                              <span className="text-indigo-400">{t.nama_kelas}</span> — {t.nama_mapel}
+                            </span>
+                            <span className="text-[10px]">
+                              {t.status === 'completed' && '🟢 Lengkap'}
+                              {t.status === 'partial' && '🟡 Sebagian'}
+                              {t.status === 'empty' && '🔴 Belum'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1.5">
+                            <span>Siswa Terisi:</span>
+                            <span className="font-mono font-bold text-slate-200">
+                              {t.siswa_terisi} / {t.total_siswa} Siswa
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
