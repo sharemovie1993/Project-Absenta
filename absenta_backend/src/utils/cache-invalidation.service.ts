@@ -76,6 +76,15 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🗓️ Invalidate cache jadwal KBM & timeline
+   */
+  async invalidateJadwalKbmCache(tenantId: string) {
+    await cacheService.deletePattern(`academic:${tenantId}:jadwal_grid:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:jadwal_guru:*`);
+    await this.invalidateBebanGuruCache(tenantId);
+  }
+
+  /**
    * ✅ Invalidate cache attendance-related
    */
   async invalidateAttendanceCache(tenantId: string, date?: string) {

@@ -1,4 +1,7 @@
 import { prisma } from '@/utils/prisma';
+import { cacheService } from '@/utils/cache.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { CACHE_KEYS } from '@/constants/cache-keys';
 import { findBestMatch } from '../../../../utils/normalization';
 import { Hari } from '@prisma/client';
 import { getWhatsappActiveSemester, formatSemesterInfo, formatShortMapelName, aggregateJadwal } from '../../../whatsapp/services/wa-chatbot-commands';
@@ -39,6 +42,10 @@ export class JadwalKBMService {
     tenantId: string,
     hari: string,
   ): Promise<GuruDayScheduleResult> {
+    const cacheKey = CACHE_KEYS.ACADEMIC.JADWAL_GURU_TIMELINE(tenantId, guruId, hari);
+    const cached = await cacheService.get<GuruDayScheduleResult>(cacheKey);
+    if (cached) return cached;
+
     const semesterAktif = await getWhatsappActiveSemester(tenantId);
     const semInfo = formatSemesterInfo(semesterAktif);
 
@@ -127,12 +134,14 @@ export class JadwalKBMService {
       return a.jamMulai.localeCompare(b.jamMulai);
     });
 
-    return {
+    const result = {
       semesterAktif,
       semInfo,
       items,
       totalCount: items.length,
     };
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
   /**
@@ -144,6 +153,10 @@ export class JadwalKBMService {
     guruId: string,
     tenantId: string,
   ): Promise<GuruWeeklyScheduleResult> {
+    const cacheKey = CACHE_KEYS.ACADEMIC.JADWAL_GURU_TIMELINE(tenantId, guruId, 'weekly');
+    const cached = await cacheService.get<GuruWeeklyScheduleResult>(cacheKey);
+    if (cached) return cached;
+
     const hariUrut = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
     const semesterAktif = await getWhatsappActiveSemester(tenantId);
     const semInfo = formatSemesterInfo(semesterAktif);
@@ -253,12 +266,14 @@ export class JadwalKBMService {
       totalCount += dayItems.length;
     });
 
-    return {
+    const result = {
       semesterAktif,
       semInfo,
       groupedByDay,
       totalCount,
     };
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
   async importFromExcel(
@@ -397,6 +412,7 @@ export class JadwalKBMService {
       }
     }
 
+    await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
     return { success, failed, errors };
   }
 }

@@ -23,6 +23,23 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
 }) => {
   const isSemuaHari = masterGridHari === 'SEMUA';
 
+  // O(1) Hash Map Lookup Optimization for Google Enterprise performance
+  const guruSlotMap = React.useMemo(() => {
+    const map = new Map<string, JadwalKBM[]>();
+    for (let i = 0; i < allJadwal.length; i++) {
+      const j = allJadwal[i];
+      if (!j.guru_id || !j.hari || j.slot_index == null) continue;
+      const key = `${j.guru_id}_${j.hari}_${j.slot_index}`;
+      let list = map.get(key);
+      if (!list) {
+        list = [];
+        map.set(key, list);
+      }
+      list.push(j);
+    }
+    return map;
+  }, [allJadwal]);
+
   return (
     <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className={isSemuaHari ? "min-w-[2800px]" : "min-w-[1200px]"}>
@@ -113,9 +130,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                 {isSemuaHari
                   ? DAYS.map((day) =>
                       slots.map((slotIdx) => {
-                        const teacherSlots = allJadwal.filter(
-                          (j) => j.guru_id === guru.id && j.hari === day && j.slot_index === slotIdx
-                        );
+                        const teacherSlots = guruSlotMap.get(`${guru.id}_${day}_${slotIdx}`) || [];
                         const isConflict = teacherSlots.length > 1;
                         const item = teacherSlots[0];
                         const mapelStyle = item
@@ -157,9 +172,7 @@ export const MasterGridGuruTimetable: React.FC<Props> = ({
                       })
                     )
                   : slots.map((slotIdx) => {
-                      const teacherSlots = allJadwal.filter(
-                        (j) => j.guru_id === guru.id && j.hari === masterGridHari && j.slot_index === slotIdx
-                      );
+                      const teacherSlots = guruSlotMap.get(`${guru.id}_${masterGridHari}_${slotIdx}`) || [];
                       const isConflict = teacherSlots.length > 1;
                       const item = teacherSlots[0];
                       const mapelStyle = item

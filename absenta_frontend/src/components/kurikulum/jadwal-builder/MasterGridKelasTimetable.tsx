@@ -24,6 +24,20 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
 }) => {
   const isSemuaHari = masterGridHari === 'SEMUA';
 
+  // O(1) Hash Map Lookup Optimization for Google Enterprise performance
+  const kelasSlotMap = React.useMemo(() => {
+    const map = new Map<string, JadwalKBM>();
+    for (let i = 0; i < allJadwal.length; i++) {
+      const j = allJadwal[i];
+      if (!j.kelas_id || !j.hari || j.slot_index == null) continue;
+      const key = `${j.kelas_id}_${j.hari}_${j.slot_index}`;
+      if (!map.has(key)) {
+        map.set(key, j);
+      }
+    }
+    return map;
+  }, [allJadwal]);
+
   return (
     <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
       <div className={isSemuaHari ? "min-w-[2800px]" : "min-w-[1200px]"}>
@@ -113,9 +127,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                 {isSemuaHari
                   ? DAYS.map((day) =>
                       slots.map((slotIdx) => {
-                        const item = allJadwal.find(
-                          (j) => j.kelas_id === kelas.value && j.hari === day && j.slot_index === slotIdx
-                        );
+                        const item = kelasSlotMap.get(`${kelas.value}_${day}_${slotIdx}`);
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')
@@ -148,9 +160,7 @@ export const MasterGridKelasTimetable: React.FC<Props> = ({
                       })
                     )
                   : slots.map((slotIdx) => {
-                        const item = allJadwal.find(
-                          (j) => j.kelas_id === kelas.value && j.hari === masterGridHari && j.slot_index === slotIdx
-                        );
+                        const item = kelasSlotMap.get(`${kelas.value}_${masterGridHari}_${slotIdx}`);
                         const mapelStyle = item
                           ? colorByMode === 'GURU'
                             ? getTeacherColor(item.Guru?.nama_guru || item.Guru?.User?.full_name || '')

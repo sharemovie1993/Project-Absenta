@@ -9,6 +9,7 @@ import { jadwalKBMService } from '../services/jadwal-kbm.service';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
 import { generateSessionsForTenantDirect, getTenantLocalTime } from '@/jobs/attendanceAutoSession.job';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 
 const validationService = new JadwalValidationService();
@@ -813,6 +814,7 @@ export class JadwalKBMController {
 
       // Auto-sync sessions for today in background (organic behavior)
       void this.syncSessionsToday(tenantId);
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
       return reply.send({ success: true, data: jadwal });
     } catch (e: any) {
@@ -937,6 +939,7 @@ export class JadwalKBMController {
 
       // Auto-sync sessions for today in background (organic behavior)
       void this.syncSessionsToday(tenantId);
+      await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
       return reply.send({ success: true, data: jadwal });
     } catch (e: any) {
@@ -981,6 +984,8 @@ export class JadwalKBMController {
     await jadwalKBMDb.jadwalKBM.delete({
       where: { id },
     });
+
+    await cacheInvalidationService.invalidateJadwalKbmCache(tenantId);
 
     return reply.send({ success: true, message: 'Jadwal Template deleted' });
   }

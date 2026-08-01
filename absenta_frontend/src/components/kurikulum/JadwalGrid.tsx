@@ -88,19 +88,25 @@ export const JadwalGrid: React.FC<JadwalGridProps> = ({
     return { start: parts[0], end: parts[1] };
   };
 
+  // O(1) Memoized Slot Lookup Map for Google Enterprise performance
+  const slotMap = React.useMemo(() => {
+    const map = new Map<string, JadwalKBM>();
+    for (let i = 0; i < jadwal.length; i++) {
+      const j = jadwal[i];
+      if (!j.hari || j.slot_index == null) continue;
+      if (j.kelas_id) {
+        map.set(`${j.hari}_${j.slot_index}_${j.kelas_id}`, j);
+      }
+      map.set(`${j.hari}_${j.slot_index}`, j);
+    }
+    return map;
+  }, [jadwal]);
+
   const getSlotData = (day: string, slotIndex: number) => {
     if (selectedKelasId) {
-      return jadwal.find(j => 
-        j.hari === day && 
-        j.slot_index === slotIndex &&
-        j.kelas_id === selectedKelasId
-      );
-    } else {
-      return jadwal.find(j => 
-        j.hari === day && 
-        j.slot_index === slotIndex
-      );
+      return slotMap.get(`${day}_${slotIndex}_${selectedKelasId}`) || slotMap.get(`${day}_${slotIndex}`);
     }
+    return slotMap.get(`${day}_${slotIndex}`);
   };
 
   const getSlotVisualInfo = (day: string, slotIndex: number) => {
