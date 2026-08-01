@@ -70,10 +70,25 @@ export default function ModeMultiSesiView({
   }, [searchParams]);
 
   useEffect(() => {
-    if (!selectedKelasId && managedKelasIds && managedKelasIds.length > 0) {
-      setSelectedKelasId(managedKelasIds[0]);
+    if (selectedKelasId) return;
+
+    // 1. Wali Kelas auto-filter ke kelas bimbingan
+    const waliKelasObj = (user as any)?.guru_profile?.wali_kelas_di;
+    const waliKelasId = typeof waliKelasObj === 'object' ? waliKelasObj?.id : waliKelasObj || (user as any)?.guru_profile?.kelas_id;
+    if (waliKelasId && kelasOptions.length > 0) {
+      const match = kelasOptions.find(o => String(o.value) === String(waliKelasId) || String(o.label).toLowerCase() === String(waliKelasId).toLowerCase());
+      if (match) {
+        setSelectedKelasId(String(match.value));
+        return;
+      }
     }
-  }, [managedKelasIds, selectedKelasId]);
+
+    // 2. Petugas Kelas auto-filter ke managedKelasIds
+    if (managedKelasIds && managedKelasIds.length > 0) {
+      setSelectedKelasId(managedKelasIds[0]);
+      return;
+    }
+  }, [managedKelasIds, selectedKelasId, user, kelasOptions]);
 
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);

@@ -63,7 +63,7 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   refreshData,
 }) => {
   const [confirmEnabled, setConfirmEnabled] = useState<boolean>(true);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   const inferredKelasId = useMemo(() => {
     if (selectedKelasId) return String(selectedKelasId);
