@@ -512,7 +512,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (LOGIKA PENYARINGAN SIDEBAR 100%)
       ───────────────────────────────────────────────────────────────────────────── */}
       <section className="space-y-2.5 pt-2">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
+        <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-lg bg-blue-600 text-white shadow-2xs">
               <Building2 size={14} />
@@ -522,37 +522,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             </h2>
           </div>
 
-          {/* Sub-Category Filter Pills Compact */}
-          {backendCategoryLabels.length > 0 && (
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
-              <button
-                onClick={() => setSelectedBackendHub('ALL')}
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                  selectedBackendHub === 'ALL'
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                }`}
-              >
-                Semua Ruang ({group2BackendTiles.length})
-              </button>
-              {backendCategoryLabels.map((catLabel) => {
-                const count = group2BackendTiles.filter((t) => t.categoryLabel === catLabel).length;
-                return (
-                  <button
-                    key={catLabel}
-                    onClick={() => setSelectedBackendHub(catLabel)}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                      selectedBackendHub === catLabel
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                    }`}
-                  >
-                    {catLabel} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <span className="text-[11px] font-bold text-slate-400">
+            {filteredGroup2.length} Fitur
+          </span>
         </div>
 
         {/* Grid Items Kelompok 2 Compact */}
