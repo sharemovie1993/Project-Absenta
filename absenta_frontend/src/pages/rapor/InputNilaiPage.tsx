@@ -553,8 +553,12 @@ export default function InputNilaiPage() {
 
   const handleImportExcelSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!excelFile || !selectedMapel || !selectedJenisNilai) {
-      toast.error('Pilih file Excel dan lengkapi kriteria filter');
+    if (!excelFile || !selectedMapel) {
+      toast.error('Pilih file Excel dan Mata Pelajaran terlebih dahulu');
+      return;
+    }
+    if (entryMode === 'kategori' && !selectedJenisNilai) {
+      toast.error('Pilih Kategori Penilaian terlebih dahulu untuk Mode Kategori');
       return;
     }
     const formData = new FormData();
@@ -562,7 +566,10 @@ export default function InputNilaiPage() {
     formData.append('mapel_id', selectedMapel);
     formData.append('tahun_pelajaran_id', activeYear!.id);
     formData.append('semester_id', activeSemester!.id);
-    formData.append('jenis_nilai_id', selectedJenisNilai);
+    if (entryMode === 'kategori' && selectedJenisNilai) {
+      formData.append('jenis_nilai_id', selectedJenisNilai);
+    }
+    formData.append('mode', entryMode);
     if (selectedSesiKbm) formData.append('sesi_absensi_id', selectedSesiKbm);
 
     importExcelMutation.mutate(formData);

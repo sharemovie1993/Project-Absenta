@@ -226,11 +226,12 @@ export class NilaiController {
       const semester_id = fileData.fields.semester_id?.value;
       const jenis_nilai_id = fileData.fields.jenis_nilai_id?.value;
       const sesi_absensi_id = fileData.fields.sesi_absensi_id?.value;
+      const mode = fileData.fields.mode?.value;
 
-      if (!mapel_id || !tahun_pelajaran_id || !semester_id || !jenis_nilai_id) {
+      if (!mapel_id || !tahun_pelajaran_id || !semester_id) {
         return reply.status(400).send({
           success: false,
-          message: 'Parameter mapel_id, tahun_pelajaran_id, semester_id, dan jenis_nilai_id wajib disertakan dalam form fields'
+          message: 'Parameter mapel_id, tahun_pelajaran_id, dan semester_id wajib disertakan'
         });
       }
 
@@ -239,8 +240,9 @@ export class NilaiController {
         mapel_id,
         tahun_pelajaran_id,
         semester_id,
-        jenis_nilai_id,
-        sesi_absensi_id
+        jenis_nilai_id: jenis_nilai_id || null,
+        sesi_absensi_id: sesi_absensi_id || null,
+        mode
       });
 
       return sendResponse(
