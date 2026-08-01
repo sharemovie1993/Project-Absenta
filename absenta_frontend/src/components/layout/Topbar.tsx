@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Search, Sparkles } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Search, Sparkles, LayoutGrid } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
@@ -149,10 +149,12 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             {isPortalMode && isNotDashboard && (
               <Link
                 to="/dashboard"
-                className="hidden sm:flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all flex-shrink-0"
-                title="Kembali ke Portal Apps Launcher"
+                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex-shrink-0"
+                title="Kembali ke Launcher Aplikasi Utama"
               >
-                <span>⬅️ Kembali ke Portal Apps</span>
+                <LayoutGrid size={14} className="text-white" />
+                <span className="hidden sm:inline">📱 Launcher Apps</span>
+                <span className="sm:hidden">📱 Apps</span>
               </Link>
             )}
 
