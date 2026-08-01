@@ -16,6 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 
 interface TopbarProps {
   onMenuClick: () => void;
