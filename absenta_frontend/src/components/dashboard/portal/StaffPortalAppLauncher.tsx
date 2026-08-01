@@ -191,7 +191,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     const items: AppTileData[] = [
       {
         id: 'b2-absensi-kbm',
-        title: 'Absensi KBM Kelas',
+        title: 'Absensi Kelas',
         iconComp: Monitor,
         colorClass: 'text-blue-600 dark:text-blue-400',
         bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
@@ -200,7 +200,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
       {
         id: 'b2-rekap-absensi',
-        title: 'Rekap Absensi Rombel',
+        title: 'Rekap Absensi',
         iconComp: Activity,
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
@@ -209,7 +209,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
       {
         id: 'b2-input-nilai',
-        title: 'Input Nilai Rapor',
+        title: 'Input Nilai',
         iconComp: FileText,
         colorClass: 'text-purple-600 dark:text-purple-400',
         bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
@@ -217,7 +217,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
       {
         id: 'b2-jurnal-kbm',
-        title: 'Isi Jurnal KBM',
+        title: 'Jurnal KBM',
         iconComp: BookOpen,
         colorClass: 'text-indigo-600 dark:text-indigo-400',
         bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
@@ -225,7 +225,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
       {
         id: 'b2-perangkat-ajar',
-        title: 'Perangkat Ajar (RPP)',
+        title: 'Perangkat Ajar',
         iconComp: FileText,
         colorClass: 'text-teal-600 dark:text-teal-400',
         bgLightClass: 'bg-teal-50 dark:bg-teal-950/60',
@@ -249,11 +249,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
     ];
 
-    // Input Pelanggaran Cepat untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
+    // Input Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan Kurikulum murni)
     if (!isKurikulumRole || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
       items.push({
         id: 'b2-catat-pelanggaran',
-        title: 'Input Pelanggaran Cepat',
+        title: 'Input Pelanggaran',
         iconComp: ShieldAlert,
         colorClass: 'text-rose-600 dark:text-rose-400',
         bgLightClass: 'bg-rose-50 dark:bg-rose-950/60',

@@ -467,7 +467,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     const actions: QuickAction[] = [
-      { label: 'Jadwal Mengajar Saya', icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`), color: 'blue', path: '/kurikulum/jadwal' },
+      { label: 'Jadwal Mengajar', icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`), color: 'blue', path: '/kurikulum/jadwal' },
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo', path: '/attendance/riwayat-ajar' },
       { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald', path: '/attendance/my-attendance' },
     ];
@@ -482,7 +482,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     
     // Catat Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan untuk Kurikulum murni)
     if (!isKurikulum || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
-      actions.push({ label: 'Input Pelanggaran Cepat', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+      actions.push({ label: 'Input Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
     }
     
     return actions;
