@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { TabSwitcher, type TabOption } from '../../../../components/ui/TabSwitcher';
 
+import { useSearchParams } from 'react-router-dom';
+
 // Lazy load GateInputModule
 const GateInputModule = lazy(() => import('./GateInputModule').then(module => ({ default: module.GateInputModule })));
 
@@ -57,14 +59,31 @@ export default function ModeMultiSesiView({
   const token = useAuthStore((state) => state.token);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const [searchParams] = useSearchParams();
+
+  const initialTab = useMemo<TabType>(() => {
+    const t = searchParams.get('tab')?.toLowerCase();
+    if (t === 'manual') return 'manual';
+    if (t === 'sesi') return 'sesi';
+    if (t === 'gerbang') return 'gerbang';
+    return 'gerbang';
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedKelasId && managedKelasIds && managedKelasIds.length > 0) {
       setSelectedKelasId(managedKelasIds[0]);
     }
   }, [managedKelasIds, selectedKelasId]);
+
   const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>('gerbang');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+
+  useEffect(() => {
+    const t = searchParams.get('tab')?.toLowerCase();
+    if (t === 'manual' || t === 'sesi' || t === 'gerbang') {
+      setActiveTab(t as TabType);
+    }
+  }, [searchParams]);
   const [lastScannedName, setLastScannedName] = useState<string | null>(null);
 
   const today = toLocalDate();

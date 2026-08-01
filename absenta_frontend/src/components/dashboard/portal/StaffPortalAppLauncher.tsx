@@ -196,7 +196,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         colorClass: 'text-blue-600 dark:text-blue-400',
         bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
         badgeText: 'Live',
-        path: '/attendance/ops',
+        path: '/attendance/ops?tab=sesi',
       },
       {
         id: 'b2-rekap-absensi',
@@ -299,18 +299,22 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     // 3. Konversi FlatMenuItem → AppTileData (Mempertahankan urutan asli database)
     return primaryItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
+      const isOpsPath = (item.path || '').toLowerCase().startsWith('/attendance/ops');
+      const itemTitle = isOpsPath && isWaliKelas ? 'Belum Hadir' : item.title;
+      const itemPath = isOpsPath && isWaliKelas ? '/attendance/ops?tab=manual' : item.path;
+
       return {
         id: `b3-item-${item.id || idx}`,
-        title: item.title,
+        title: itemTitle,
         iconName: item.icon,
         colorClass: accent.colorClass,
         bgLightClass: accent.bgLightClass,
         badgeText: item.isPremium ? 'PRO' : undefined,
-        path: item.path,
+        path: itemPath,
         categoryLabel: item.categoryLabel,
       };
     });
-  }, [backendGroupedMenu, user]);
+  }, [backendGroupedMenu, user, isWaliKelas]);
 
   // ── BLOK 4: 🔗 INFORMASI LINTAS MODUL (SELESIH SEMUA WORKSPACE USER — OPSI A)
   // Memuat seluruh crossModulePaths dari SELURUH workspace milik user (bukan hanya workspace aktif)

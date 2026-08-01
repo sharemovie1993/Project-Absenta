@@ -190,6 +190,7 @@ export const filterNavByWorkspace = (
   // 2. Workspace Wali Kelas
   else if (currentWs.id === 'WALIKELAS_WORKSPACE') {
     const walikelasPaths = new Set([
+      '/attendance/ops',
       '/attendance/monitoring',
       '/kesiswaan/monitoring',
       '/attendance/rekap',
