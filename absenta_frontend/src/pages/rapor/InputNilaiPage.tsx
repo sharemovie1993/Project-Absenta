@@ -11,7 +11,8 @@ import {
   Sparkles,
   Calculator,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Copy
 } from 'lucide-react';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { Badge } from '../../components/ui/Badge';
@@ -329,6 +330,68 @@ export default function InputNilaiPage() {
       clone[index] = target;
       return clone;
     });
+  };
+
+  // Copy Capaian Kompetensi (CP) to all students in 1-click
+  const handleCopyCpToAll = (fromIndex: number = 0) => {
+    if (scores.length === 0) return;
+
+    const targetCp = scores[fromIndex]?.capaian_kompetensi || scores.find(s => s.capaian_kompetensi?.trim())?.capaian_kompetensi || '';
+    if (!targetCp.trim()) {
+      toast.error('Isi narasi Capaian Kompetensi (CP) pada minimal 1 baris siswa terlebih dahulu');
+      return;
+    }
+
+    setScores(prev => prev.map(s => ({
+      ...s,
+      capaian_kompetensi: targetCp,
+      catatan_deskripsi: targetCp
+    })));
+
+    toast.success(`✨ Berhasil menyalin Capaian Kompetensi ke seluruh ${scores.length} siswa!`);
+  };
+
+  // Excel-like Keyboard Arrow Key Navigation (Up, Down, Left, Right, Enter)
+  const handleKeyDownGrid = (e: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, colIndex: number) => {
+    const { key } = e;
+    const maxRows = scores.length;
+    const maxCols = entryMode === 'sumatif' ? 5 : 2;
+
+    let targetRow = rowIndex;
+    let targetCol = colIndex;
+
+    if (key === 'ArrowUp') {
+      e.preventDefault();
+      targetRow = Math.max(0, rowIndex - 1);
+    } else if (key === 'ArrowDown' || key === 'Enter') {
+      e.preventDefault();
+      targetRow = Math.min(maxRows - 1, rowIndex + 1);
+    } else if (key === 'ArrowLeft') {
+      const input = e.currentTarget;
+      if (input.selectionStart === 0) {
+        if (colIndex > 0) {
+          e.preventDefault();
+          targetCol = colIndex - 1;
+        }
+      }
+    } else if (key === 'ArrowRight') {
+      const input = e.currentTarget;
+      if (input.selectionStart === input.value.length) {
+        if (colIndex < maxCols - 1) {
+          e.preventDefault();
+          targetCol = colIndex + 1;
+        }
+      }
+    } else {
+      return;
+    }
+
+    const targetId = `input-grid-${targetRow}-${targetCol}`;
+    const targetEl = document.getElementById(targetId) as HTMLInputElement | null;
+    if (targetEl) {
+      targetEl.focus();
+      setTimeout(() => targetEl.select(), 10);
+    }
   };
 
   const handleSaveSubmit = (e: React.FormEvent) => {
@@ -828,12 +891,38 @@ export default function InputNilaiPage() {
                             <th className="py-2.5 px-1 text-center w-20 text-indigo-600 dark:text-indigo-400">Rata-Rata</th>
                             <th className="py-2.5 px-1 text-center w-20 text-amber-600 dark:text-amber-400">Sumatif Akhir</th>
                             <th className="py-2.5 px-1 text-center w-20 bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">NILAI RAPOR</th>
-                            <th className="py-2.5 px-2">Capaian Kompetensi (CP Narasi)</th>
+                            <th className="py-2.5 px-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span>Capaian Kompetensi (CP Narasi)</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyCpToAll(0)}
+                                  title="Salin CP dari baris terisi ke seluruh siswa sekelas"
+                                  className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                >
+                                  <Copy size={11} />
+                                  Salin ke Semua Siswa
+                                </button>
+                              </div>
+                            </th>
                           </>
                         ) : (
                           <>
                             <th className="py-2.5 px-2 w-24">Nilai (0-100)</th>
-                            <th className="py-2.5 px-2">Deskripsi Rapor</th>
+                            <th className="py-2.5 px-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span>Deskripsi Rapor</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyCpToAll(0)}
+                                  title="Salin Deskripsi dari baris terisi ke seluruh siswa sekelas"
+                                  className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-md flex items-center gap-1 transition-all"
+                                >
+                                  <Copy size={11} />
+                                  Salin ke Semua Siswa
+                                </button>
+                              </div>
+                            </th>
                           </>
                         )}
                       </tr>
@@ -851,32 +940,38 @@ export default function InputNilaiPage() {
                             <>
                               <td className="py-2 px-1">
                                 <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
+                                  id={`input-grid-${index}-0`}
+                                  type="text"
+                                  inputMode="decimal"
                                   value={score.sumatif_1 ?? ''}
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_1', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                                  onKeyDown={(e) => handleKeyDownGrid(e, index, 0)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </td>
                               <td className="py-2 px-1">
                                 <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
+                                  id={`input-grid-${index}-1`}
+                                  type="text"
+                                  inputMode="decimal"
                                   value={score.sumatif_2 ?? ''}
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_2', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                                  onKeyDown={(e) => handleKeyDownGrid(e, index, 1)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </td>
                               <td className="py-2 px-1">
                                 <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
+                                  id={`input-grid-${index}-2`}
+                                  type="text"
+                                  inputMode="decimal"
                                   value={score.sumatif_3 ?? ''}
                                   onChange={(e) => handleSumatifChange(index, 'sumatif_3', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                                  onKeyDown={(e) => handleKeyDownGrid(e, index, 2)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-bold text-center p-2 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </td>
                               <td className="py-2 px-1 text-center font-black text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 rounded-lg">
@@ -884,47 +979,81 @@ export default function InputNilaiPage() {
                               </td>
                               <td className="py-2 px-1">
                                 <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
+                                  id={`input-grid-${index}-3`}
+                                  type="text"
+                                  inputMode="decimal"
                                   value={score.nilai_akhir_sumatif ?? ''}
                                   onChange={(e) => handleSumatifChange(index, 'nilai_akhir_sumatif', e.target.value)}
-                                  className="w-full bg-amber-50 dark:bg-amber-950/40 border-none rounded-lg text-xs font-black text-center p-2 text-amber-800 dark:text-amber-200 focus:ring-1 focus:ring-amber-500"
+                                  onKeyDown={(e) => handleKeyDownGrid(e, index, 3)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-full bg-amber-50 dark:bg-amber-950/40 border-none rounded-lg text-xs font-black text-center p-2 text-amber-800 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </td>
                               <td className="py-2 px-1 text-center font-black text-sm text-indigo-700 dark:text-indigo-300 bg-indigo-100/50 dark:bg-indigo-900/40 rounded-lg">
                                 {score.nilai_rapor_final ?? 0}
                               </td>
                               <td className="py-2 px-2">
-                                <input
-                                  type="text"
-                                  placeholder="Narasi capaian kompetensi..."
-                                  value={score.capaian_kompetensi ?? ''}
-                                  onChange={(e) => handleSumatifChange(index, 'capaian_kompetensi', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-medium p-2 text-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                                />
+                                <div className="relative flex items-center gap-1">
+                                  <input
+                                    id={`input-grid-${index}-4`}
+                                    type="text"
+                                    placeholder="Narasi capaian kompetensi..."
+                                    value={score.capaian_kompetensi ?? ''}
+                                    onChange={(e) => handleSumatifChange(index, 'capaian_kompetensi', e.target.value)}
+                                    onKeyDown={(e) => handleKeyDownGrid(e, index, 4)}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg text-xs font-medium p-2 text-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 pr-8"
+                                  />
+                                  {score.capaian_kompetensi && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyCpToAll(index)}
+                                      title="Salin CP baris ini ke seluruh siswa"
+                                      className="absolute right-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                                    >
+                                      <Copy size={13} />
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </>
                           ) : (
                             <>
                               <td className="py-3 px-2">
                                 <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
+                                  id={`input-grid-${index}-0`}
+                                  type="text"
+                                  inputMode="decimal"
                                   value={score.nilai}
                                   onChange={(e) => handleSumatifChange(index, 'nilai', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-black text-center p-2.5 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                                  onKeyDown={(e) => handleKeyDownGrid(e, index, 0)}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-black text-center p-2.5 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </td>
                               <td className="py-3 px-2">
-                                <input
-                                  type="text"
-                                  placeholder="Deskripsi Rapor..."
-                                  value={score.catatan_deskripsi ?? ''}
-                                  onChange={(e) => handleSumatifChange(index, 'catatan_deskripsi', e.target.value)}
-                                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-medium p-2.5 text-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                                />
+                                <div className="relative flex items-center gap-1">
+                                  <input
+                                    id={`input-grid-${index}-1`}
+                                    type="text"
+                                    placeholder="Deskripsi Rapor..."
+                                    value={score.catatan_deskripsi ?? ''}
+                                    onChange={(e) => handleSumatifChange(index, 'catatan_deskripsi', e.target.value)}
+                                    onKeyDown={(e) => handleKeyDownGrid(e, index, 1)}
+                                    onFocus={(e) => e.target.select()}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-medium p-2.5 text-slate-700 dark:text-white focus:ring-1 focus:ring-indigo-500 pr-8"
+                                  />
+                                  {score.catatan_deskripsi && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyCpToAll(index)}
+                                      title="Salin Deskripsi baris ini ke seluruh siswa"
+                                      className="absolute right-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                                    >
+                                      <Copy size={13} />
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </>
                           )}
