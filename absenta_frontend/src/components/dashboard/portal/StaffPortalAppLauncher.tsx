@@ -270,7 +270,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     if (!isKurikulumRole || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
       items.push({
         id: 'b2-catat-pelanggaran',
-        title: 'Catat Pelanggaran',
+        title: 'Input Pelanggaran Cepat',
         iconComp: ShieldAlert,
         colorClass: 'text-rose-600 dark:text-rose-400',
         bgLightClass: 'bg-rose-50 dark:bg-rose-950/60',

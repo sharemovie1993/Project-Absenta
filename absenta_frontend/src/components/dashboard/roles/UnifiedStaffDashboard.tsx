@@ -467,12 +467,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
 
     const actions: QuickAction[] = [
-      { label: 'Jadwal Saya',  icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`), color: 'blue', path: '/kurikulum/jadwal' },
+      { label: 'Jadwal Mengajar Saya', icon: Calendar, onClick: () => navigate(`/kurikulum/jadwal?guru_id=${guruId}`), color: 'blue', path: '/kurikulum/jadwal' },
       { label: 'Riwayat Ajar', icon: Activity,  onClick: () => navigate('/attendance/riwayat-ajar'), color: 'indigo', path: '/attendance/riwayat-ajar' },
       { label: 'Kehadiran Saya', icon: User,     onClick: () => navigate('/attendance/my-attendance'), color: 'emerald', path: '/attendance/my-attendance' },
     ];
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
-    if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple', path: '/attendance/monitoring' });
     
     // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
     const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
@@ -483,7 +482,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     
     // Catat Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan untuk Kurikulum murni)
     if (!isKurikulum || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
-      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+      actions.push({ label: 'Input Pelanggaran Cepat', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
     }
     
     return actions;
