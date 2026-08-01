@@ -15,7 +15,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
-import { kelasApi, mapelApi, tahunPelajaranApi } from '../../api/academic.api';
+import { kelasApi, mapelApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 
 export default function InputNilaiPage() {
@@ -74,6 +74,13 @@ export default function InputNilaiPage() {
     queryFn: () => raporApi.getJenisPenilaian()
   });
 
+  // Fetch Student Roster for selected class
+  const { data: studentsInKelas, isLoading: isLoadingStudents } = useQuery({
+    queryKey: ['students-by-kelas', selectedKelas],
+    queryFn: () => siswaApi.getByKelas(selectedKelas),
+    enabled: !!selectedKelas
+  });
+
   // Fetch Existing Grades
   const { data: existingGrades, isLoading: isLoadingGrades } = useQuery({
     queryKey: ['grades', selectedKelas, selectedMapel, selectedJenisNilai, activeYear?.id, activeSemester?.id],
@@ -87,26 +94,37 @@ export default function InputNilaiPage() {
     enabled: !!selectedKelas && !!selectedMapel && !!activeYear && !!activeSemester
   });
 
-  // Prepopulate Scores Grid when filter changes or grades loaded
+  // Prepopulate Scores Grid with full student roster + existing grades
   useEffect(() => {
-    if (existingGrades?.data) {
-      const grid = existingGrades.data.map((item: any) => ({
-        siswa_id: item.siswa_id,
-        nama_siswa: item.Siswa?.nama_siswa || '',
-        nis: item.Siswa?.nis || '',
-        nilai: item.nilai ?? 0,
-        sumatif_1: item.sumatif_1 ?? null,
-        sumatif_2: item.sumatif_2 ?? null,
-        sumatif_3: item.sumatif_3 ?? null,
-        rata_rata_sumatif: item.rata_rata_sumatif ?? null,
-        nilai_akhir_sumatif: item.nilai_akhir_sumatif ?? null,
-        nilai_rapor_final: item.nilai_rapor_final ?? item.nilai ?? 0,
-        capaian_kompetensi: item.capaian_kompetensi || item.catatan_deskripsi || '',
-        catatan_deskripsi: item.catatan_deskripsi || ''
-      }));
+    if (selectedKelas && studentsInKelas?.data) {
+      const existingMap = new Map();
+      if (existingGrades?.data) {
+        existingGrades.data.forEach((item: any) => {
+          existingMap.set(item.siswa_id, item);
+        });
+      }
+
+      const grid = studentsInKelas.data.map((siswa: any) => {
+        const existing = existingMap.get(siswa.id);
+        return {
+          siswa_id: siswa.id,
+          nama_siswa: siswa.nama_siswa || '',
+          nis: siswa.nis || '',
+          nilai: existing?.nilai ?? 0,
+          sumatif_1: existing?.sumatif_1 ?? null,
+          sumatif_2: existing?.sumatif_2 ?? null,
+          sumatif_3: existing?.sumatif_3 ?? null,
+          rata_rata_sumatif: existing?.rata_rata_sumatif ?? null,
+          nilai_akhir_sumatif: existing?.nilai_akhir_sumatif ?? null,
+          nilai_rapor_final: existing?.nilai_rapor_final ?? existing?.nilai ?? 0,
+          capaian_kompetensi: existing?.capaian_kompetensi || existing?.catatan_deskripsi || '',
+          catatan_deskripsi: existing?.catatan_deskripsi || ''
+        };
+      });
+
       setScores(grid);
     }
-  }, [existingGrades]);
+  }, [selectedKelas, studentsInKelas, existingGrades]);
 
   // Save Batch Sumatif Mutation
   const sumatifSaveMutation = useMutation({
@@ -510,7 +528,7 @@ export default function InputNilaiPage() {
                 </div>
               </div>
 
-              {isLoadingGrades ? (
+              {isLoadingStudents || isLoadingGrades ? (
                 <div className="text-center py-20 text-slate-400 text-xs italic">Menarik daftar siswa rombel...</div>
               ) : scores.length === 0 ? (
                 <div className="text-center py-20 text-slate-400 text-xs italic">Rombel kosong atau tidak ada siswa aktif.</div>
