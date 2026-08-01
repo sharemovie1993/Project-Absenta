@@ -1,4 +1,13 @@
 import api from '../lib/axiosInstance';
+import { useAuthStore } from '../store/authStore';
+
+const getAuthToken = () => {
+  try {
+    return useAuthStore.getState().token || localStorage.getItem('token') || '';
+  } catch {
+    return localStorage.getItem('token') || '';
+  }
+};
 
 export const raporApi = {
   // === NILAI ===
@@ -169,18 +178,23 @@ export const raporApi = {
 
   // === PDF DOWLOAD URL GENERATORS ===
   getPdfRaporUrl: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
-    return `${api.defaults.baseURL}/reporting/pdf/rapor/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}`;
+    const token = getAuthToken();
+    return `${api.defaults.baseURL}/reporting/pdf/rapor/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
   },
   getPdfP5Url: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
-    return `${api.defaults.baseURL}/reporting/pdf/p5/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}`;
+    const token = getAuthToken();
+    return `${api.defaults.baseURL}/reporting/pdf/p5/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
   },
   getPdfSklUrl: (siswaId: string) => {
-    return `${api.defaults.baseURL}/reporting/pdf/skl/${siswaId}`;
+    const token = getAuthToken();
+    return `${api.defaults.baseURL}/reporting/pdf/skl/${siswaId}?token=${encodeURIComponent(token)}`;
   },
   getPdfUkkUrl: (siswaId: string) => {
-    return `${api.defaults.baseURL}/reporting/pdf/ukk/${siswaId}`;
+    const token = getAuthToken();
+    return `${api.defaults.baseURL}/reporting/pdf/ukk/${siswaId}?token=${encodeURIComponent(token)}`;
   },
   getPdfPklUrl: (siswaPklId: string) => {
-    return `${api.defaults.baseURL}/reporting/pdf/pkl/${siswaPklId}`;
+    const token = getAuthToken();
+    return `${api.defaults.baseURL}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
   },
 };
