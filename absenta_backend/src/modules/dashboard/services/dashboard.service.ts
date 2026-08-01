@@ -56,43 +56,30 @@ export class DashboardService {
       Object.assign(absenWhereClause, absenScope);
     }
 
-    // Total siswa aktif
-    const totalSiswa = await prisma.siswa.count({
-      where: siswaWhereClause
-    });
-
-    // Total guru aktif
-    const totalGuru = await prisma.guru.count({
-      where: guruWhereClause
-    });
-
-    // Kehadiran siswa hari ini (dari AbsenSiswa)
-    const absenSiswaHariIni = await prisma.absenSiswa.groupBy({
-      by: ['status', 'is_terlambat'],
-      where: absenWhereClause,
-      _count: {
-        siswa_id: true
-      }
-    });
-
-    // Kehadiran guru hari ini (dari AbsenGuru)
-    const absenGuruHariIni = await prisma.absenGuru.groupBy({
-      by: ['status', 'is_terlambat'],
-      where: absenWhereClause,
-      _count: {
-        guru_id: true
-      }
-    });
-
-    // Kehadiran siswa dari Tap Gerbang hari ini
-    const gerbangTapSiswaCount = await prisma.absenGerbangSiswa.count({
-      where: absenWhereClause
-    });
-
-    // Kehadiran guru dari Tap Gerbang hari ini
-    const gerbangTapGuruCount = await prisma.absenGerbangGuru.count({
-      where: absenWhereClause
-    });
+    // Total & Kehadiran (Siswa, Guru, Gerbang) - Executed in Parallel via Promise.all
+    const [
+      totalSiswa,
+      totalGuru,
+      absenSiswaHariIni,
+      absenGuruHariIni,
+      gerbangTapSiswaCount,
+      gerbangTapGuruCount
+    ] = await Promise.all([
+      prisma.siswa.count({ where: siswaWhereClause }),
+      prisma.guru.count({ where: guruWhereClause }),
+      prisma.absenSiswa.groupBy({
+        by: ['status', 'is_terlambat'],
+        where: absenWhereClause,
+        _count: { siswa_id: true }
+      }),
+      prisma.absenGuru.groupBy({
+        by: ['status', 'is_terlambat'],
+        where: absenWhereClause,
+        _count: { guru_id: true }
+      }),
+      prisma.absenGerbangSiswa.count({ where: absenWhereClause }),
+      prisma.absenGerbangGuru.count({ where: absenWhereClause })
+    ]);
 
     // Hitung statistik siswa (gabungkan Sesi Absensi & Gerbang Tap)
     const sesiSiswaHadir = absenSiswaHariIni
@@ -355,177 +342,173 @@ export class DashboardService {
   }
 
   async getKepsekEscalations(tenantId: string | null, limit: number = 10) {
-    const violations = await prisma.pelanggaranSiswa.findMany({
-      where: {
-        tenant_id: tenantId || undefined,
-        status: { not: 'SELESAI' }
-      },
-      include: {
-        Siswa: {
+    const cacheKey = CACHE_KEYS.DASHBOARD.EWS_ESCALATIONS(tenantId, limit);
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const violations = await prisma.pelanggaranSiswa.findMany({
+          where: {
+            tenant_id: tenantId || undefined,
+            status: { not: 'SELESAI' }
+          },
           include: {
-            Kelas: true
-          }
-        }
-      },
-      orderBy: {
-        created_at: 'desc'
-      },
-      take: Math.min(Math.max(Number(limit) || 10, 1), 50)
-    });
+            Siswa: {
+              include: {
+                Kelas: true
+              }
+            }
+          },
+          orderBy: {
+            created_at: 'desc'
+          },
+          take: Math.min(Math.max(Number(limit) || 10, 1), 50)
+        });
 
-    return violations.map(v => ({
-      id: v.id,
-      title: `${v.jenis_pelanggaran} - ${v.Siswa.nama_siswa} (${v.Siswa.Kelas?.nama_kelas || '-'})`,
-      source: 'Kesiswaan',
-      status: mapViolationStatusToEscalationStatus(v.status),
-      created_at: v.created_at.toISOString(),
-      priority: priorityFromPoints(v.poin),
-      points: v.poin
-    }));
+        return violations.map(v => ({
+          id: v.id,
+          title: `${v.jenis_pelanggaran} - ${v.Siswa.nama_siswa} (${v.Siswa.Kelas?.nama_kelas || '-'})`,
+          source: 'Kesiswaan',
+          status: mapViolationStatusToEscalationStatus(v.status),
+          created_at: v.created_at.toISOString(),
+          priority: priorityFromPoints(v.poin),
+          points: v.poin
+        }));
+      },
+      CACHE_TTL.DASHBOARD
+    );
   }
 
   /**
    * 🆕 Get Kurikulum Global Monitoring Data
    */
   async getKurikulumMonitoringGlobal(tenantId: string | null, tanggal?: string) {
-    // Gunakan zona waktu lokal atau parameter tanggal
-    // Jika dari frontend dikirim YYYY-MM-DD, kita buat range yang mencakup kemungkinan pergeseran timezone
     const dateStr = tanggal || new Date().toISOString().split('T')[0];
-    
-    // Buat range dari H-1 jam 12 malam sampai H+1 jam 12 malam untuk keamanan, 
-    // lalu filter manual atau gunakan filter tanggal yang lebih spesifik
-    const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
-    startOfDay.setHours(startOfDay.getHours() - 12); // Mundur 12 jam
-    
-    const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
-    endOfDay.setHours(endOfDay.getHours() + 12); // Maju 12 jam
+    const cacheKey = CACHE_KEYS.DASHBOARD.KURIKULUM_MONITORING(tenantId, dateStr);
 
-    const where: any = { tenant_id: tenantId || undefined };
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+        startOfDay.setHours(startOfDay.getHours() - 12);
 
-    // 1. Total & Active Classes
-    const totalClasses = await prisma.kelas.count({ where });
-    
-    // Cari semua sesi yang 'tanggal'-nya merujuk ke hari tersebut (biasanya disimpan jam 00:00 atau 17:00 H-1)
-    // Kita ambil data mentah dulu lalu filter di memori agar lebih akurat dengan local date
-    const allSessionsInExtendedRange = await prisma.sesiAbsensi.findMany({
-      where: {
-        ...where,
-        tanggal: { gte: startOfDay, lte: endOfDay }
+        const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
+        endOfDay.setHours(endOfDay.getHours() + 12);
+
+        const where: any = { tenant_id: tenantId || undefined };
+
+        // 1. Total & Active Classes
+        const totalClasses = await prisma.kelas.count({ where });
+        
+        const allSessionsInExtendedRange = await prisma.sesiAbsensi.findMany({
+          where: {
+            ...where,
+            tanggal: { gte: startOfDay, lte: endOfDay }
+          },
+          include: {
+            AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
+            ProgresMateri: { select: { id: true } }
+          }
+        });
+
+        const sessionList = allSessionsInExtendedRange.filter(s => {
+          const sDate = new Date(s.tanggal);
+          const y = sDate.getFullYear();
+          const m = sDate.getMonth() + 1;
+          const d = sDate.getDate();
+          
+          const utcDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          
+          const sDatePlus7 = new Date(sDate);
+          sDatePlus7.setHours(sDatePlus7.getHours() + 7);
+          const wibDate = sDatePlus7.toISOString().split('T')[0];
+          
+          return utcDate === dateStr || wibDate === dateStr;
+        });
+
+        const activeClasses = sessionList.filter(s => s.status === 'BERLANGSUNG').length;
+
+        // 2. Teacher Presence & Supervision
+        const [totalTeachers, teacherPresent, supervisionCount] = await Promise.all([
+          prisma.guru.count({ where }),
+          prisma.absenGuru.count({
+            where: {
+              ...where,
+              created_at: { gte: startOfDay, lte: endOfDay },
+              status: { in: ['Hadir', 'Hadir / Mengajar', 'HADIR', 'HADIR / MENGAJAR'] }
+            }
+          }),
+          prisma.supervisiGuru.count({
+            where: {
+              ...where,
+              tanggal: { gte: startOfDay, lte: endOfDay }
+            }
+          })
+        ]);
+
+        // 3. Calculate detailed session stats for Monitoring Page
+        const sessionStats = {
+          total: sessionList.length,
+          live: 0,
+          finished: 0,
+          withJournal: 0,
+          teacherOnTime: 0,
+          teacherLate: 0,
+          teacherNotArrived: 0,
+          teacherAlpa: 0
+        };
+
+        sessionList.forEach(s => {
+          const now = new Date();
+          const startTime = new Date(s.waktu_mulai);
+          const endTime = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
+
+          const isFinished = s.status === 'SELESAI' || (endTime && now > endTime);
+          const isLive = !isFinished && (s.status === 'BERLANGSUNG' || (endTime && now >= startTime && now <= endTime));
+          
+          if (isLive) sessionStats.live++;
+          if (isFinished) sessionStats.finished++;
+          if (s.ProgresMateri) sessionStats.withJournal++;
+
+          const absenGuru = s.AbsenGuru?.[0];
+          const hasTap = !!absenGuru?.waktu_tap;
+
+          const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
+          const isPresent = sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap;
+
+          if (isPresent) {
+            if (absenGuru?.is_terlambat) sessionStats.teacherLate++;
+            else sessionStats.teacherOnTime++;
+          } else if (sStatus === 'BELUM_HADIR' || sStatus === 'BELUM_TAP' || sStatus === '' || !absenGuru) {
+            if (isLive) {
+              sessionStats.teacherNotArrived++;
+            } else if (isFinished) {
+              sessionStats.teacherAlpa++;
+            }
+          } else if (sStatus === 'ALPA') {
+            sessionStats.teacherAlpa++;
+          }
+        });
+
+        // 4. Calculate Health Score
+        const ka = activeClasses;
+        const kt = totalClasses || 1;
+        const gh = teacherPresent;
+        const gt = totalTeachers || 1;
+        const healthScore = Math.round((ka / kt) * 60 + (gh / gt) * 40);
+
+        return {
+          healthScore,
+          activeClasses,
+          totalClasses,
+          teacherPresent,
+          totalTeachers,
+          supervisionCount,
+          sessionStats,
+          timestamp: new Date().toISOString()
+        };
       },
-      include: {
-        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
-        ProgresMateri: { select: { id: true } }
-      }
-    });
-
-    // Filter sesi yang benar-benar jatuh pada tanggal target di zona waktu lokal (WIB/GMT+7)
-    const sessionList = allSessionsInExtendedRange.filter(s => {
-      const sDate = new Date(s.tanggal);
-      const y = sDate.getFullYear();
-      const m = sDate.getMonth() + 1;
-      const d = sDate.getDate();
-      
-      // Check if it's the target day in UTC (2026-05-22 00:00:00)
-      const utcDate = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      
-      // Check if it's the target day in WIB (2026-05-21 17:00:00 UTC = 2026-05-22 00:00:00 WIB)
-      const sDatePlus7 = new Date(sDate);
-      sDatePlus7.setHours(sDatePlus7.getHours() + 7);
-      const wibDate = sDatePlus7.toISOString().split('T')[0];
-      
-      return utcDate === dateStr || wibDate === dateStr;
-    });
-
-    const activeClasses = sessionList.filter(s => s.status === 'BERLANGSUNG').length;
-
-    // 2. Teacher Presence
-    const totalTeachers = await prisma.guru.count({ where });
-    const teacherPresent = await prisma.absenGuru.count({
-      where: {
-        ...where,
-        created_at: { 
-          gte: startOfDay, 
-          lte: endOfDay 
-        },
-        status: {
-          in: ['Hadir', 'Hadir / Mengajar', 'HADIR', 'HADIR / MENGAJAR']
-        }
-      }
-    });
-
-    // 3. Supervision Count
-    const supervisionCount = await prisma.supervisiGuru.count({
-      where: {
-        ...where,
-        tanggal: { 
-          gte: startOfDay, 
-          lte: endOfDay 
-        }
-      }
-    });
-
-    // 4. Calculate detailed session stats for Monitoring Page
-    const sessionStats = {
-      total: sessionList.length,
-      live: 0,
-      finished: 0,
-      withJournal: 0,
-      teacherOnTime: 0,
-      teacherLate: 0,
-      teacherNotArrived: 0,
-      teacherAlpa: 0
-    };
-
-    sessionList.forEach(s => {
-      const now = new Date();
-      const startTime = new Date(s.waktu_mulai);
-      const endTime = s.waktu_selesai ? new Date(s.waktu_selesai) : null;
-
-      const isFinished = s.status === 'SELESAI' || (endTime && now > endTime);
-      const isLive = !isFinished && (s.status === 'BERLANGSUNG' || (endTime && now >= startTime && now <= endTime));
-      
-      if (isLive) sessionStats.live++;
-      if (isFinished) sessionStats.finished++;
-      if (s.ProgresMateri) sessionStats.withJournal++;
-
-      const absenGuru = s.AbsenGuru?.[0];
-      const hasTap = !!absenGuru?.waktu_tap;
-
-      const sStatus = (absenGuru?.status || '').toUpperCase().replace(/\s+/g, '_');
-      const isPresent = sStatus === 'HADIR' || sStatus === 'HADIR_/_MENGAJAR' || hasTap;
-
-      if (isPresent) {
-        if (absenGuru?.is_terlambat) sessionStats.teacherLate++;
-        else sessionStats.teacherOnTime++;
-      } else if (sStatus === 'BELUM_HADIR' || sStatus === 'BELUM_TAP' || sStatus === '' || !absenGuru) {
-        if (isLive) {
-          sessionStats.teacherNotArrived++;
-        } else if (isFinished) {
-          sessionStats.teacherAlpa++;
-        }
-      } else if (sStatus === 'ALPA') {
-        sessionStats.teacherAlpa++;
-      }
-    });
-
-    // 5. Calculate Health Score
-    // Formula: (activeClasses/totalClasses * 60) + (teacherPresent/totalTeachers * 40)
-    const ka = activeClasses;
-    const kt = totalClasses || 1;
-    const gh = teacherPresent;
-    const gt = totalTeachers || 1;
-    const healthScore = Math.round((ka / kt) * 60 + (gh / gt) * 40);
-
-    return {
-      healthScore,
-      activeClasses,
-      totalClasses,
-      teacherPresent,
-      totalTeachers,
-      supervisionCount,
-      sessionStats, // Added detailed stats
-      timestamp: new Date().toISOString()
-    };
+      CACHE_TTL.DASHBOARD
+    );
   }
 
   /**

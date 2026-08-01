@@ -44,6 +44,10 @@ export const CACHE_KEYS = {
       `dashboard:grafik_siswa:${tenantId || 'global'}:${bulan}`,
     GRAFIK_GURU_BULANAN: (tenantId: string | null, bulan: string) => 
       `dashboard:grafik_guru:${tenantId || 'global'}:${bulan}`,
+    EWS_ESCALATIONS: (tenantId: string | null, limit: number = 10) => 
+      `dashboard:ews:${tenantId || 'global'}:${limit}`,
+    KURIKULUM_MONITORING: (tenantId: string | null, date?: string) => 
+      `dashboard:kurikulum_monitoring:${tenantId || 'global'}:${date || 'today'}`,
     ALL: (tenantId: string | null) => `dashboard:${tenantId || 'global'}:*`
   },
 

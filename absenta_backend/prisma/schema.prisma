@@ -309,6 +309,8 @@ model PelanggaranSiswa {
   @@index([tenant_id])
   @@index([siswa_id])
   @@index([tanggal])
+  @@index([tenant_id, status])
+  @@index([tenant_id, created_at])
 }
 
 model SupervisiGuru {
@@ -337,6 +339,7 @@ model SupervisiGuru {
   @@index([tenant_id])
   @@index([guru_id])
   @@index([tanggal])
+  @@index([tenant_id, tanggal])
 }
 
 model Permission {
