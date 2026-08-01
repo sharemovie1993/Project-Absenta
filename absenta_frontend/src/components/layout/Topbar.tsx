@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Search, Sparkles, LayoutGrid } from 'lucide-react';
+import { Menu, Bell, Check, X, Calendar, AlertTriangle, Info, CheckCircle, CreditCard, FileText, Search, Sparkles, LayoutGrid, Smartphone } from 'lucide-react';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/Button';
@@ -54,6 +54,13 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
     window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
     return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
   }, []);
+
+  const handleToggleDashboardMode = () => {
+    const newMode = dashboardMode === 'portal' ? 'desktop' : 'portal';
+    setDashboardMode(newMode);
+    localStorage.setItem('absenta_dashboard_mode', newMode);
+    window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: newMode }));
+  };
 
   const isPortalMode = dashboardMode === 'portal';
   const isNotDashboard = path !== '/dashboard' && path !== '/' && path !== '/dashboard/overview';
@@ -172,6 +179,27 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
         <div className="flex items-center px-4 gap-2 sm:gap-4 ml-auto">
+
+          {/* Mode Switcher Toggle Button (Mode Portal Apps vs Mode Desktop) */}
+          <button
+            onClick={handleToggleDashboardMode}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+            title={dashboardMode === 'portal' ? 'Beralih ke Tampilan Desktop 🖥️' : 'Beralih ke Tampilan Portal Apps 📱'}
+          >
+            {dashboardMode === 'portal' ? (
+              <>
+                <LayoutGrid size={14} className="text-indigo-600 dark:text-indigo-400" />
+                <span className="hidden sm:inline">Mode Desktop 🖥️</span>
+                <span className="sm:hidden">Desktop</span>
+              </>
+            ) : (
+              <>
+                <Smartphone size={14} className="text-emerald-600 dark:text-emerald-400" />
+                <span className="hidden sm:inline">Mode Portal 📱</span>
+                <span className="sm:hidden">Portal</span>
+              </>
+            )}
+          </button>
 
           {/* Notifications */}
           <div className="relative">
