@@ -86,13 +86,13 @@ export const getAllUserCrossModuleItems = (
 };
 
 /**
- * getAllUserPrimaryItems()
+ * getPrimaryStructuralWorkspaceItems()
  * ─────────────────────────────────────────────────────────────────────────────
- * MENGAMBIL SEMUA PRIMARY ITEMS DARI SELURUH WORKSPACE YANG DIMILIKI USER.
- * Digunakan oleh StaffPortalAppLauncher (Blok 3) agar daftar menu manajemen & data
- * tetap konsisten dan tidak terpengaruh berpindah activeWorkspaceId di mode desktop.
+ * MENGAMBIL PRIMARY ITEMS DARI WORKSPACE STRUKTURAL UTAMA PENGGUNA.
+ * Digunakan oleh StaffPortalAppLauncher (Blok 3) agar murni terisolasi untuk
+ * jabatan struktural pengguna (misal Kurikulum) dalam urutan murni database (canonical order).
  */
-export const getAllUserPrimaryItems = (
+export const getPrimaryStructuralWorkspaceItems = (
   allItems: FlatMenuItem[],
   user: any
 ): FlatMenuItem[] => {
@@ -104,21 +104,32 @@ export const getAllUserPrimaryItems = (
   }
 
   const userWorkspaces = resolveUserWorkspaces(user);
-  const workspacesToScan = userWorkspaces.length > 0 ? userWorkspaces : ROLE_WORKSPACES;
+  
+  // Prioritaskan workspace struktural (bukan TEACHER_WORKSPACE / STUDENT_WORKSPACE)
+  let targetWs = userWorkspaces.find(
+    (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
+  );
 
-  const resultMap = new Map<string, FlatMenuItem>();
+  if (!targetWs && userWorkspaces.length > 0) {
+    targetWs = userWorkspaces[0];
+  }
 
-  workspacesToScan.forEach((ws) => {
-    const { primaryItems } = filterNavByWorkspace(allItems, user, ws.id);
-    primaryItems.forEach((item) => {
-      const key = (item.path || item.title).toLowerCase();
-      if (!resultMap.has(key)) {
-        resultMap.set(key, item);
-      }
-    });
+  if (!targetWs) {
+    return [];
+  }
+
+  // Filter items khusus untuk workspace struktural utama tersebut
+  const { primaryItems } = filterNavByWorkspace(allItems, user, targetWs.id);
+
+  const primaryPathSet = new Set(
+    primaryItems.map((i) => (i.path || '').toLowerCase()).filter(Boolean)
+  );
+
+  // Kembalikan dalam URUTAN MURNI CANONICAL DATABASE (sesuai allItems)
+  return allItems.filter((item) => {
+    const p = (item.path || '').toLowerCase();
+    return p && primaryPathSet.has(p);
   });
-
-  return Array.from(resultMap.values());
 };
 
 /**

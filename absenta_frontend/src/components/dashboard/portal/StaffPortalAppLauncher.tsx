@@ -35,7 +35,7 @@ import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { useNavStore } from '../../../store/navStore';
-import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getAllUserPrimaryItems } from '../../../helpers/workspaceNavFilter';
+import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getPrimaryStructuralWorkspaceItems } from '../../../helpers/workspaceNavFilter';
 import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
@@ -277,18 +277,18 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (Semua Primary Items dari SELURUH Workspace User)
-  // Menampilkan seluruh menu utama manajemen & data akademik milik user secara statis (bebas dari efek switch workspace desktop)
+  // ── BLOK 3: 🏛️ MANAJEMEN & DATA AKADEMIK (Murni Workspace Jabatan Struktural Utama User)
+  // Menampilkan menu utama jabatan struktural (misal Kurikulum) 100% murni dalam urutan canonical database
   const block3PrimaryTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
     // 1. Normalisasi grouped-menu → FlatMenuItem[]
     const flatItems = normalizeFlatMenu(backendGroupedMenu);
 
-    // 2. Ambil seluruh primaryItems dari SELURUH workspace yang berhak diakses user (Opsi A Overview Tool)
-    const primaryItems = getAllUserPrimaryItems(flatItems, user);
+    // 2. Ambil primaryItems murni dari workspace jabatan struktural utama user (terisolasi dalam canonical order)
+    const primaryItems = getPrimaryStructuralWorkspaceItems(flatItems, user);
 
-    // 3. Konversi FlatMenuItem → AppTileData
+    // 3. Konversi FlatMenuItem → AppTileData (Mempertahankan urutan asli database)
     return primaryItems.map((item, idx) => {
       const accent = COLOR_ACCENTS[idx % COLOR_ACCENTS.length];
       return {
