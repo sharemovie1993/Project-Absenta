@@ -3897,6 +3897,9 @@ model NilaiSiswa {
 
   @@unique([siswa_id, mapel_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id])
+  @@index([tenant_id, siswa_id])
+  @@index([tenant_id, mapel_id])
+  @@index([tenant_id, jenis_nilai_id])
   @@index([tenant_id, mapel_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
 }
@@ -3924,6 +3927,7 @@ model RaporSiswa {
 
   @@unique([siswa_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id])
+  @@index([tenant_id, siswa_id])
   @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
 }
 
@@ -3947,6 +3951,7 @@ model SertifikatUkk {
   MitraIndustri MitraIndustri? @relation(fields: [mitra_industri_id], references: [id])
 
   @@index([tenant_id])
+  @@index([tenant_id, siswa_id])
 }
 
 model KelulusanSiswa {
@@ -3965,6 +3970,7 @@ model KelulusanSiswa {
   Siswa  Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id])
+  @@index([tenant_id, siswa_id])
 }
 
 model P5Projek {
@@ -4003,6 +4009,8 @@ model P5NilaiSiswa {
 
   @@unique([siswa_id, projek_id, dimensi, sub_elemen])
   @@index([tenant_id])
+  @@index([tenant_id, siswa_id])
+  @@index([tenant_id, projek_id])
 }
 
 model PerangkatAjar {

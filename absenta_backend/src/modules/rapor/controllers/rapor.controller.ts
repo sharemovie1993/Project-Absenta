@@ -96,4 +96,23 @@ export class RaporController {
       return sendError(reply, 500, error.message || 'Gagal mengekspor leger nilai ke Excel', error);
     }
   }
+
+  static async getTranskrip(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { siswa_id } = req.query;
+
+      if (!siswa_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'siswa_id harus diisi',
+        });
+      }
+
+      const result = await RaporService.getTranskripNilaiSiswa(tenant_id, siswa_id);
+      return sendResponse(reply, 200, true, 'Transkrip nilai siswa berhasil dimuat', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal memuat transkrip nilai siswa', error);
+    }
+  }
 }

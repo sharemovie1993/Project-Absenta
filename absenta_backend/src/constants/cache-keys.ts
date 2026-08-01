@@ -82,6 +82,7 @@ export const CACHE_KEYS = {
     SEMESTER: (tenantId: string) => `academic:${tenantId}:semester`,
     LEGER: (tenantId: string, kelasId: string, tahunId: string, semesterId: string) => `academic:${tenantId}:leger:${kelasId}:${tahunId}:${semesterId}`,
     NILAI_KELAS: (tenantId: string, kelasId: string, tahunId: string, semesterId: string) => `academic:${tenantId}:nilai_kelas:${kelasId}:${tahunId}:${semesterId}`,
+    TRANSKRIP: (tenantId: string, siswaId: string) => `academic:${tenantId}:transkrip:${siswaId}`,
     ALL: (tenantId: string) => `academic:${tenantId}:*`
   },
 

@@ -424,7 +424,9 @@ export default function InputNilaiPage() {
           sumatif_2: s.sumatif_2 !== null && s.sumatif_2 !== '' ? Number(s.sumatif_2) : null,
           sumatif_3: s.sumatif_3 !== null && s.sumatif_3 !== '' ? Number(s.sumatif_3) : null,
           sumatif_akhir: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
-          deskripsi_cp: s.deskripsi_cp || ''
+          nilai_akhir_sumatif: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
+          deskripsi_cp: s.deskripsi_cp || '',
+          capaian_kompetensi: s.deskripsi_cp || ''
         })) || []
       };
       sumatifSaveMutation.mutate(payload);

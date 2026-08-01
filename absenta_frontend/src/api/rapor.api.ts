@@ -1,12 +1,17 @@
-import api from '../lib/axiosInstance';
+import api, { resolvePublicApiBaseUrl } from '../lib/axiosInstance';
 import { useAuthStore } from '../store/authStore';
 
 const getAuthToken = () => {
   try {
-    return useAuthStore.getState().token || localStorage.getItem('token') || '';
+    return useAuthStore.getState().token || localStorage.getItem('access_token') || '';
   } catch {
-    return localStorage.getItem('token') || '';
+    return localStorage.getItem('access_token') || '';
   }
+};
+
+const getPdfBaseUrl = () => {
+  // resolvePublicApiBaseUrl() returns the base without trailing slash, e.g. http://localhost:3004/api
+  return resolvePublicApiBaseUrl();
 };
 
 export const raporApi = {
@@ -119,6 +124,10 @@ export const raporApi = {
     const query = new URLSearchParams(params).toString();
     return `${api.defaults.baseURL}/rapor/leger/export?${query}`;
   },
+  getTranskripNilai: async (siswa_id: string) => {
+    const response = await api.get('/rapor/transkrip', { params: { siswa_id } });
+    return response.data;
+  },
 
   // === UKK & SKL ===
   getUkk: async (params?: { siswa_id?: string; query?: string }) => {
@@ -176,25 +185,30 @@ export const raporApi = {
     return response.data;
   },
 
-  // === PDF DOWLOAD URL GENERATORS ===
+  // === PDF DOWNLOAD URL GENERATORS ===
   getPdfRaporUrl: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
     const token = getAuthToken();
-    return `${api.defaults.baseURL}/reporting/pdf/rapor/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/rapor/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
   },
   getPdfP5Url: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
     const token = getAuthToken();
-    return `${api.defaults.baseURL}/reporting/pdf/p5/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/p5/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
   },
   getPdfSklUrl: (siswaId: string) => {
     const token = getAuthToken();
-    return `${api.defaults.baseURL}/reporting/pdf/skl/${siswaId}?token=${encodeURIComponent(token)}`;
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/skl/${siswaId}?token=${encodeURIComponent(token)}`;
   },
   getPdfUkkUrl: (siswaId: string) => {
     const token = getAuthToken();
-    return `${api.defaults.baseURL}/reporting/pdf/ukk/${siswaId}?token=${encodeURIComponent(token)}`;
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/ukk/${siswaId}?token=${encodeURIComponent(token)}`;
   },
   getPdfPklUrl: (siswaPklId: string) => {
     const token = getAuthToken();
-    return `${api.defaults.baseURL}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
   },
 };

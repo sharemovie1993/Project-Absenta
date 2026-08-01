@@ -107,6 +107,7 @@ export class CacheInvalidationService {
   async invalidateRaporCache(tenantId: string) {
     await cacheService.deletePattern(`academic:${tenantId}:leger:*`);
     await cacheService.deletePattern(`academic:${tenantId}:nilai_kelas:*`);
+    await cacheService.deletePattern(`academic:${tenantId}:transkrip:*`);
   }
 
   /**

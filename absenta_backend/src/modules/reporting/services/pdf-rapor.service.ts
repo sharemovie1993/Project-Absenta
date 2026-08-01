@@ -46,23 +46,54 @@ export class PdfRaporService {
       year: 'numeric'
     });
 
-    // Render Academic Rows
+    // Detect Jenjang (SD, SMP, SMA, SMK)
+    const tingkat = data.siswa.tingkat || 10;
+    const isSd = tingkat <= 6;
+    const isSmp = tingkat >= 7 && tingkat <= 9;
+    const isSmk = tingkat >= 10 && Boolean((data.siswa as any).jurusan || (data.siswa as any).jurusan_id);
+
+    const jenjangTitle = isSd ? 'SEKOLAH DASAR (SD)' : isSmp ? 'SEKOLAH MENENGAH PERTAMA (SMP)' : isSmk ? 'SEKOLAH MENENGAH KEJURUAN (SMK)' : 'SEKOLAH MENENGAH ATAS (SMA)';
+
+    // Grouping Mata Pelajaran (Umum vs Kejuruan/Pilihan)
+    const mapelUmum = data.nilai_akademik.filter((n: any) => (n.kelompok_mapel || 'UMUM').toUpperCase() === 'UMUM');
+    const mapelKhusus = data.nilai_akademik.filter((n: any) => (n.kelompok_mapel || 'UMUM').toUpperCase() !== 'UMUM');
+
+    const renderRows = (list: any[], startNo: number = 1) => {
+      let htmlRows = '';
+      list.forEach((n: any, idx: number) => {
+        const cpNarasi = n.capaian_kompetensi || n.catatan_deskripsi || (n.nilai_akhir >= (n.kkm || 75) ? 'Menunjukkan penguasaan kompetensi yang baik.' : 'Memerlukan bimbingan lebih lanjut.');
+        htmlRows += `
+          <tr>
+            <td style="text-align: center;">${startNo + idx}</td>
+            <td style="font-weight: bold;">${n.mapel_name}</td>
+            <td style="text-align: center;">${n.kkm || 75}</td>
+            <td style="text-align: center; font-weight: bold; font-size: 14px;">${n.nilai_akhir}</td>
+            <td style="text-align: center; font-weight: bold;">${n.predikat || '-'}</td>
+            <td style="font-size: 11px; text-align: justify; padding: 6px;">${cpNarasi}</td>
+          </tr>
+        `;
+      });
+      return htmlRows;
+    };
+
     let rowsHtml = '';
-    data.nilai_akademik.forEach((n: any, idx: number) => {
+    if (mapelKhusus.length > 0) {
       rowsHtml += `
-        <tr>
-          <td style="text-align: center;">${idx + 1}</td>
-          <td>${n.mapel_name}</td>
-          <td style="text-align: center;">${n.kkm}</td>
-          <td style="text-align: center; font-weight: bold;">${n.nilai_akhir}</td>
-          <td style="text-align: center;">${n.predikat}</td>
-          <td>${n.nilai_akhir >= n.kkm ? 'Kompeten' : 'Perlu Bimbingan'}</td>
+        <tr style="background-color: #e2e8f0; font-weight: bold;">
+          <td colspan="6" style="padding: 6px 8px;">A. KELOMPOK MATA PELAJARAN UMUM</td>
         </tr>
+        ${renderRows(mapelUmum, 1)}
+        <tr style="background-color: #e2e8f0; font-weight: bold;">
+          <td colspan="6" style="padding: 6px 8px;">B. KELOMPOK MATA PELAJARAN ${isSmk ? 'KEJURUAN' : 'PILIKAN / KONSENTRASI'}</td>
+        </tr>
+        ${renderRows(mapelKhusus, mapelUmum.length + 1)}
       `;
-    });
+    } else {
+      rowsHtml = renderRows(data.nilai_akademik, 1);
+    }
 
     if (data.nilai_akademik.length === 0) {
-      rowsHtml = `<tr><td colspan="6" style="text-align: center; font-style: italic; padding: 10px;">Belum ada nilai terinput semester ini</td></tr>`;
+      rowsHtml = `<tr><td colspan="6" style="text-align: center; font-style: italic; padding: 12px;">Belum ada nilai terinput semester ini</td></tr>`;
     }
 
     const html = `
@@ -97,7 +128,7 @@ export class PdfRaporService {
         <div class="header">
           <div>
             <div class="school-name">RAPOR SISWA</div>
-            <div>Kurikulum Merdeka</div>
+            <div style="font-size: 11px; font-weight: bold; color: #444;">${jenjangTitle} - KURIKULUM MERDEKA</div>
           </div>
           <div class="school-info">
             <div style="font-weight: bold;">${schoolName}</div>

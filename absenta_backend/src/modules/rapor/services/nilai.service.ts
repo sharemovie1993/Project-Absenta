@@ -209,7 +209,10 @@ export class NilaiService {
         sumatif_2?: number | null;
         sumatif_3?: number | null;
         nilai_akhir_sumatif?: number | null;
+        sumatif_akhir?: number | null;
         capaian_kompetensi?: string | null;
+        deskripsi_cp?: string | null;
+        catatan_deskripsi?: string | null;
       }>;
     }
   ) {
@@ -225,9 +228,14 @@ export class NilaiService {
         rataRataSumatif = Number((total / sumatifList.length).toFixed(2));
       }
 
+      // Read Nilai Akhir Sumatif (support aliases)
+      const nilaiAkhir = item.nilai_akhir_sumatif ?? item.sumatif_akhir ?? null;
+
+      // Read Capaian Kompetensi / CP Text (support aliases)
+      const cpText = item.capaian_kompetensi ?? item.deskripsi_cp ?? item.catatan_deskripsi ?? undefined;
+
       // Calculate Nilai Rapor Final = (Rata-rata Sumatif + Nilai Akhir) / 2
       let nilaiRaporFinal: number | null = null;
-      const nilaiAkhir = item.nilai_akhir_sumatif;
 
       if (rataRataSumatif !== null && nilaiAkhir !== undefined && nilaiAkhir !== null) {
         nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
@@ -253,11 +261,11 @@ export class NilaiService {
           sumatif_2: item.sumatif_2 ?? null,
           sumatif_3: item.sumatif_3 ?? null,
           rata_rata_sumatif: rataRataSumatif,
-          nilai_akhir_sumatif: item.nilai_akhir_sumatif ?? null,
+          nilai_akhir_sumatif: nilaiAkhir,
           nilai_rapor_final: nilaiRaporFinal,
           nilai: mainNilai,
-          ...(item.capaian_kompetensi !== undefined
-            ? { capaian_kompetensi: item.capaian_kompetensi }
+          ...(cpText !== undefined
+            ? { capaian_kompetensi: cpText, catatan_deskripsi: cpText }
             : {}),
         },
         create: {
@@ -270,10 +278,11 @@ export class NilaiService {
           sumatif_2: item.sumatif_2 ?? null,
           sumatif_3: item.sumatif_3 ?? null,
           rata_rata_sumatif: rataRataSumatif,
-          nilai_akhir_sumatif: item.nilai_akhir_sumatif ?? null,
+          nilai_akhir_sumatif: nilaiAkhir,
           nilai_rapor_final: nilaiRaporFinal,
           nilai: mainNilai,
-          capaian_kompetensi: item.capaian_kompetensi ?? null,
+          capaian_kompetensi: cpText ?? null,
+          catatan_deskripsi: cpText ?? null,
         },
       });
     });
@@ -665,6 +674,8 @@ export class NilaiService {
 
     if (operations.length > 0) {
       await prisma.$transaction(operations);
+      // Invalidate leger cache — nilai hasil impor berubah, leger harus direcalculate
+      void cacheInvalidationService.invalidateRaporCache(tenantId);
     }
 
     return {
