@@ -10,11 +10,12 @@ import { fetchActiveSystemConfig } from '@/services/systemConfig';
 import { getSesiAbsensiList } from '../../api/attendanceGerbang.api';
 import { useAuthStore } from '@/store/authStore';
 import { isSystemSuperAdmin } from '@/utils/rbac';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { mapSubscriptionToUI } from '../../utils/subscriptionMapper';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -35,6 +36,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
   const _uiState = subscription ? mapSubscriptionToUI(subscription) : null;
 
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname;
 
   const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
@@ -60,6 +62,16 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
     setDashboardMode(newMode);
     localStorage.setItem('absenta_dashboard_mode', newMode);
     window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: newMode }));
+
+    if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+      navigate('/dashboard');
+    }
+
+    toast.success(
+      newMode === 'portal'
+        ? 'Beralih ke Mode Portal Apps 📱 (Full-Width Launcher)'
+        : 'Beralih ke Mode Dashboard Desktop 🖥️'
+    );
   };
 
   const isPortalMode = dashboardMode === 'portal';
@@ -152,18 +164,6 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   })()}
                 </div>
             </Link>
-
-            {isPortalMode && isNotDashboard && (
-              <Link
-                to="/dashboard"
-                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex-shrink-0"
-                title="Kembali ke Launcher Aplikasi Utama"
-              >
-                <LayoutGrid size={14} className="text-white" />
-                <span className="hidden sm:inline">📱 Launcher Apps</span>
-                <span className="sm:hidden">📱 Apps</span>
-              </Link>
-            )}
 
             {/* Premium Hub Search Access - Slim Version */}
             <button 
