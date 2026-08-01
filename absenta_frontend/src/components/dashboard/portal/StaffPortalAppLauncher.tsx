@@ -1,8 +1,8 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App dengan Desain Compact, Minimalis, & 0-Noise.
- * Ukuran kartu & ikon disesuaikan proporsional (Compact Grid 6-8 Kolom),
- * menghilangkan elemen dekoratif tebal yang menyebabkan noise visual.
+ * Launcher Portal App dengan Desain Compact 2 KELOMPOK UTAMA:
+ * - Kelompok 1: 🏫 Ruang Kerja Guru & Wali Kelas (Harian, Presensi Diri, Jurnal KBM, e-Rapor)
+ * - Kelompok 2: 🏛️ Ruang Kerja Jabatan & Struktural (Ruang Kurikulum, Ruang Kesiswaan, Ruang BP/BK, Ruang Sarpras, Ruang Hubin)
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -149,7 +149,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     [navigate]
   );
 
-  // ── KELOMPOK UTAMA 1: APLIKASI OPERASIONAL DIRI & WALI KELAS ──
+  // ── 1. KELOMPOK UTAMA: RUANG KERJA GURU & WALI KELAS ──
   const group1Tiles = useMemo<AppTileData[]>(() => {
     const items: AppTileData[] = [];
 
@@ -268,7 +268,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── KELOMPOK UTAMA 2: PORTAL MODUL & MANAJEMEN SEKOLAH (DINAMIS API) ──
+  // ── 2. KELOMPOK UTAMA: RUANG KERJA JABATAN & STRUKTURAL (Ruang Kurikulum, Kesiswaan, BP/BK, Sarpras, Hubin) ──
   const group2BackendTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
@@ -300,7 +300,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return result;
   }, [backendGroupedMenu]);
 
-  // Filter Kategori Backend (Tabs Pills)
+  // Filter Kategori Backend (Ruang Kurikulum, Ruang Kesiswaan, Ruang Sarpras, Ruang Hubin, BP/BK)
   const backendCategoryLabels = useMemo(() => {
     if (!backendGroupedMenu) return [];
     return backendGroupedMenu.map((g) => g.label);
@@ -344,7 +344,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (Compact Mode)
+                Portal App Launcher (Android Grid Mode)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -356,7 +356,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Akses cepat fitur harian & modul sekolah dalam tampilan compact 0-noise.
+              Navigasi Ikon Aplikasi Terbagi ke Dalam 2 Kelompok: Ruang Kerja Guru vs Ruang Kerja Jabatan.
             </p>
           </div>
 
@@ -391,13 +391,13 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         <div className="flex items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <Loader2 className="w-4 h-4 animate-spin text-indigo-600 mr-2" />
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-            Memuat Modul RBAC...
+            Memuat Modul Ruang Jabatan Backend...
           </span>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 1: 📱 APLIKASI OPERASIONAL DIRI & WALI KELAS (COMPACT GRID 4-6 COLUMNS)
+          KELOMPOK 1: 🏫 RUANG KERJA GURU & WALI KELAS
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredGroup1.length > 0 && (
         <section className="space-y-2.5">
@@ -407,11 +407,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Sparkles size={14} />
               </div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-                1. Aplikasi Utama Diri & Wali Kelas
+                1. Ruang Kerja Guru & Wali Kelas
               </h2>
             </div>
             <span className="text-[11px] font-bold text-slate-400">
-              {filteredGroup1.length} Fitur
+              {filteredGroup1.length} Fitur Harian
             </span>
           </div>
 
@@ -428,7 +428,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 2: 🏛️ KATALOG MODUL & MANAJEMEN SEKOLAH (DINAMIS API)
+          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & STRUKTURAL (Kurikulum, Kesiswaan, Sarpras, Hubin, BP/BK)
       ───────────────────────────────────────────────────────────────────────────── */}
       <section className="space-y-2.5 pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
@@ -437,22 +437,22 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               <Building2 size={14} />
             </div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-              2. Katalog Modul & Manajemen Sekolah
+              2. Ruang Kerja Jabatan & Struktural
             </h2>
           </div>
 
-          {/* Sub-Category Filter Pills Compact */}
+          {/* Sub-Category Filter Pills (Ruang Kurikulum, Ruang Kesiswaan, Ruang Sarpras, Ruang Hubin, BP/BK) */}
           {backendCategoryLabels.length > 0 && (
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
               <button
                 onClick={() => setSelectedBackendHub('ALL')}
-                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap ${
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                   selectedBackendHub === 'ALL'
                     ? 'bg-indigo-600 text-white shadow-2xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                 }`}
               >
-                Semua ({group2BackendTiles.length})
+                Semua Ruang ({group2BackendTiles.length})
               </button>
               {backendCategoryLabels.map((catLabel) => {
                 const count = group2BackendTiles.filter((t) => t.categoryLabel === catLabel).length;
@@ -460,7 +460,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                   <button
                     key={catLabel}
                     onClick={() => setSelectedBackendHub(catLabel)}
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap ${
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                       selectedBackendHub === catLabel
                         ? 'bg-indigo-600 text-white shadow-2xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
@@ -489,7 +489,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
             <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Tidak ada modul yang cocok dengan kriteria pencarian.
+              Tidak ada modul ruang kerja yang cocok dengan kriteria pencarian Anda.
             </p>
           </div>
         )}
