@@ -226,14 +226,17 @@
   4. Tombol **`[📱 Launcher Apps]`** ditampilkan secara kontekstual di sebelah logo Topbar hanya saat pengguna berada di halaman sub-menu (bukan dashboard), agar navigasi kembali selalu tersedia.
 - **Rasional**: Memberikan fleksibilitas tampilan bagi guru yang lebih nyaman dengan ikon aplikasi smartphone (familiar) vs. pengguna yang butuh tampilan ringkasan desktop informatif, tanpa memisahkan dua halaman berbeda yang membebani routing.
 
-2026-08: Portal App Launcher — 3-Block Structure dengan Deduplication
+2026-08: Portal App Launcher — 4-Block Structure dengan Deduplication & Opsi A Cross-Module Merge
 - **Keputusan**:
-  Launcher Portal Apps distrukturisasi menjadi **3 Blok Unik Terdeduplikasi**:
-  1. **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan aksi cepat kontekstual dari `quickActions` di `UnifiedStaffDashboard.tsx` (dinamis berdasarkan role/PTK type). Berfungsi sebagai **Prioritas Pertama** — item di blok ini tidak akan muncul lagi di blok berikutnya.
-  2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Aksi operasional harian pengajaran & rombel (Jadwal Mengajar, Jurnal KBM, Presensi Guru, Catat Pelanggaran, Tindak Masal, + Khusus Wali Kelas: Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Risikolog Siswa). Menu di blok ini mengecek Blok 1 dan tidak menampilkan duplikat.
-  3. **🏛️ Blok 3 — Ruang Kerja Jabatan & Informasi Lintas Modul**: Menu struktural backend berbasis RBAC (dari `useSmartMenu` / `getSidebarMenu` API). Mengecek Blok 1 & 2 dan hanya menampilkan menu yang belum tampil di keduanya.
-  **Aturan Deduplikasi**: normalisasi berdasarkan `path` dan `title` (lowercase, strip whitespace & special chars), sehingga menu yang path atau judulnya identik antar blok otomatis disembunyikan di blok dengan prioritas lebih rendah.
-- **Rasional**: Menghindari redundansi menu yang membingungkan pengguna dalam satu layar launcher, sambil mempertahankan hierarki prioritas (Aksi Cepat > Operasional Harian > Jabatan Struktural).
+  Launcher Portal Apps distrukturisasi menjadi **4 Blok Unik Terdeduplikasi**:
+  1. **⚡ Blok 1 — Aksi Cepat Diri**: Pintasan aksi cepat kontekstual dari `quickActions` di `UnifiedStaffDashboard.tsx` (dinamis berdasarkan role/PTK type). Berfungsi sebagai **Prioritas Pertama**.
+  2. **🏫 Blok 2 — Ruang Kerja Guru & Wali Kelas**: Aksi operasional harian pengajaran & rombel (Jadwal Mengajar, Jurnal KBM, Presensi Guru, Catat Pelanggaran, Tindak Masal, + Khusus Wali Kelas: Live KBM, Rekap Absensi, Input Nilai Rapor, Cetak e-Rapor, Risikolog Siswa).
+  3. **🏛️ Blok 3 — Ruang Kerja Jabatan**: Menu struktural backend berbasis RBAC (`primaryItems` dari workspace aktif).
+  4. **🔗 Blok 4 — Informasi Lintas Modul (Opsi A — Static & Complete)**: Menggabungkan `crossModulePaths` dari **SELURUH workspace yang dimiliki user** (diresolusi via `getAllUserCrossModuleItems()` dan `resolveUserWorkspaces(user)`).
+  **Aturan UX Cross-Module**:
+  - **App Launcher (Blok 4)** = **Overview Tool** (Opsi A). Menggabungkan semua akses lintas modul milik user tanpa tergantung `activeWorkspaceId` yang dipilih di mode desktop.
+  - **Sidebar** = **Context Tool**. Tetap menampilkan informasi lintas modul yang spesifik untuk workspace yang sedang dipilih user di mode desktop.
+- **Rasional**: Mencegah kebingungan pengguna (mental model UX) di mana Blok 4 di App Launcher berubah-ubah jumlah itemnya hanya karena berpindah workspace di mode desktop. App Launcher menyajikan gambaran lengkap seluruh hak akses lintas modul pengguna.
 
 2026-08: Centralized Workspace Navigation Filter — `workspaceNavFilter.ts`
 - **Keputusan**:
