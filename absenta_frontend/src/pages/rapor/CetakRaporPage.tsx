@@ -31,6 +31,9 @@ import { raporApi } from '../../api/rapor.api';
 import { tahunPelajaranApi, semesterApi } from '../../api/academic.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useJenjang } from '../../hooks/useJenjang';
 import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
 import { generateRaporPdf, generateP5RaporPdf } from '../../utils/print/modules/pdfRapor';
@@ -172,7 +175,8 @@ export default function CetakRaporPage() {
     enabled: !!selectedTranskripStudent?.id,
   });
 
-  // ── Kelas & Siswa hooks ──
+  // ── Centralized System Hooks ──
+  const { isJenjangSmk } = useJenjang();
   const { rawList: classList, isLoading: isLoadingClasses } = useKelasOptions({
     filterByJenjang: false,
     onlyActive: false,
@@ -181,31 +185,39 @@ export default function CetakRaporPage() {
     kelasId: selectedKelas,
     onlyActive: false,
   });
+  const { options: tpOptions, activeTp } = useTahunPelajaranOptions();
+  const { options: semesterOptions, activeSemester: activeSem } = useSemesterOptions();
+
+  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState('');
+  const [selectedSemester, setSelectedSemester] = useState('');
+
+  React.useEffect(() => {
+    if (!selectedTahunPelajaran && activeTp?.id) {
+      setSelectedTahunPelajaran(activeTp.id);
+    }
+  }, [activeTp, selectedTahunPelajaran]);
+
+  React.useEffect(() => {
+    if (!selectedSemester && activeSem?.id) {
+      setSelectedSemester(activeSem.id);
+    }
+  }, [activeSem, selectedSemester]);
+
+  const activeYear = useMemo<AcademicYear | null>(() => {
+    const targetId = selectedTahunPelajaran || activeTp?.id;
+    if (!targetId) return null;
+    return { id: targetId, nama: activeTp?.tahun || targetId, is_active: true };
+  }, [activeTp, selectedTahunPelajaran]);
+
+  const activeSemester = useMemo<Semester | null>(() => {
+    const targetId = selectedSemester || activeSem?.id;
+    if (!targetId) return null;
+    return { id: targetId, nama: activeSem?.nama_semester || targetId, is_active: true };
+  }, [activeSem, selectedSemester]);
 
   // ── Rekap Absensi custom hooks ──
-  const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas);
-  const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id);
-
-  // ── Academic year & semester ──
-  const { data: yearsData } = useQuery({
-    queryKey: ['academic-years'],
-    queryFn: () => tahunPelajaranApi.getAll({ limit: 200 }),
-  });
-  const activeYear = useMemo<AcademicYear | null>(() => {
-    const raw = yearsData?.data ?? yearsData;
-    const list: AcademicYear[] = Array.isArray(raw) ? (raw as AcademicYear[]) : [];
-    return list.find((y) => y.is_active) ?? list[0] ?? null;
-  }, [yearsData]);
-
-  const { data: semestersData } = useQuery({
-    queryKey: ['academic-semesters'],
-    queryFn: () => semesterApi.getAll({ limit: 200 }),
-  });
-  const activeSemester = useMemo<Semester | null>(() => {
-    const raw = semestersData?.data ?? semestersData;
-    const list: Semester[] = Array.isArray(raw) ? (raw as Semester[]) : [];
-    return list.find((s) => s.is_active) ?? list[0] ?? null;
-  }, [semestersData]);
+  const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas, undefined, activeYear?.id);
+  const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id, undefined, activeYear?.id);
 
   // ── Leger query ──
   const { data: leger, isLoading: isLoadingLeger } = useQuery({
@@ -620,16 +632,18 @@ export default function CetakRaporPage() {
                         SKL
                       </Button>
 
-                      {/* UKK */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Buka UKK di tab baru untuk ${student.nama_siswa}`}
-                        className="text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 whitespace-nowrap flex-shrink-0"
-                        onClick={() => window.open(raporApi.getPdfUkkUrl(student.id), '_blank')}
-                      >
-                        UKK
-                      </Button>
+                      {/* UKK — Khusus SMK */}
+                      {isJenjangSmk && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Buka UKK di tab baru untuk ${student.nama_siswa}`}
+                          className="text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 whitespace-nowrap flex-shrink-0"
+                          onClick={() => window.open(raporApi.getPdfUkkUrl(student.id), '_blank')}
+                        >
+                          UKK
+                        </Button>
+                      )}
 
                       {/* TRANSKRIP */}
                       <Button
