@@ -76,6 +76,7 @@ export default function InputNilaiPage() {
   }, [selectedKelasObj]);
 
   const { rawList: subjects } = useMapelOptions({
+    kelasId: selectedKelas,
     tingkat: targetTingkat
   });
 
@@ -91,7 +92,55 @@ export default function InputNilaiPage() {
     queryFn: () => raporApi.getJenisPenilaian()
   });
 
-  // Fetch Existing Grades
+  // Fetch All Grades for the selected class to calculate completion status per Mapel
+  const { data: classAllGrades } = useQuery({
+    queryKey: ['class-all-grades-status', selectedKelas, activeYear?.id, activeSemester?.id],
+    queryFn: () => raporApi.getNilas({
+      kelas_id: selectedKelas,
+      tahun_pelajaran_id: activeYear?.id,
+      semester_id: activeSemester?.id
+    }),
+    enabled: !!selectedKelas && !!activeYear && !!activeSemester
+  });
+
+  // Mapel Grade Input Completion Status Map
+  const mapelStatusMap = useMemo(() => {
+    const map = new Map<string, { count: number; total: number; status: 'completed' | 'partial' | 'empty' }>();
+    if (!selectedKelas || !studentsInKelas || studentsInKelas.length === 0) return map;
+
+    const totalStudents = studentsInKelas.length;
+    const gradeList: any[] = classAllGrades?.data || [];
+
+    // Group filled student count by mapel_id
+    const filledStudentsByMapel = new Map<string, Set<string>>();
+    gradeList.forEach((n: any) => {
+      if (n.mapel_id && n.siswa_id) {
+        const isFilled = (n.nilai !== null && n.nilai !== undefined && n.nilai > 0) ||
+                         (n.sumatif_1 !== null && n.sumatif_1 !== undefined) ||
+                         (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined);
+        if (isFilled) {
+          if (!filledStudentsByMapel.has(n.mapel_id)) filledStudentsByMapel.set(n.mapel_id, new Set());
+          filledStudentsByMapel.get(n.mapel_id)!.add(n.siswa_id);
+        }
+      }
+    });
+
+    subjects?.forEach((m: any) => {
+      const siswaSet = filledStudentsByMapel.get(m.id);
+      const count = siswaSet ? siswaSet.size : 0;
+      let status: 'completed' | 'partial' | 'empty' = 'empty';
+      if (count >= totalStudents && totalStudents > 0) {
+        status = 'completed';
+      } else if (count > 0) {
+        status = 'partial';
+      }
+      map.set(m.id, { count, total: totalStudents, status });
+    });
+
+    return map;
+  }, [selectedKelas, studentsInKelas, classAllGrades, subjects]);
+
+  // Fetch Existing Grades for selected Mapel & Kelas
   const { data: existingGrades, isLoading: isLoadingGrades } = useQuery({
     queryKey: ['grades', selectedKelas, selectedMapel, selectedJenisNilai, activeYear?.id, activeSemester?.id],
     queryFn: () => raporApi.getNilas({
@@ -535,16 +584,39 @@ export default function InputNilaiPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">2. Mata Pelajaran</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">2. Mata Pelajaran (Jadwal KBM)</label>
+                {selectedKelas && subjects && (
+                  <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded-md">
+                    {subjects.length} Mapel Jadwal
+                  </span>
+                )}
+              </div>
               <select
                 value={selectedMapel}
                 onChange={(e) => setSelectedMapel(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="">Pilih Mapel</option>
-                {subjects?.map((m: any) => (
-                  <option key={m.id} value={m.id}>{m.nama_mapel}</option>
-                ))}
+                <option value="">Pilih Mapel (Terpetakan di Jadwal KBM)</option>
+                {subjects?.map((m: any) => {
+                  const statusInfo = mapelStatusMap.get(m.id);
+                  let statusBadge = '⚪ [BELUM DIISI]';
+                  if (statusInfo) {
+                    if (statusInfo.status === 'completed') {
+                      statusBadge = `🟢 [LENGKAP: ${statusInfo.count}/${statusInfo.total} Siswa]`;
+                    } else if (statusInfo.status === 'partial') {
+                      statusBadge = `🟡 [SEBAGIAN: ${statusInfo.count}/${statusInfo.total} Siswa]`;
+                    } else {
+                      statusBadge = `⚪ [BELUM DIISI: 0/${statusInfo.total} Siswa]`;
+                    }
+                  }
+                  const kodeStr = m.kode_mapel || (m as any).kode ? ` (${m.kode_mapel || (m as any).kode})` : '';
+                  return (
+                    <option key={m.id} value={m.id}>
+                      {m.nama_mapel}{kodeStr} — {statusBadge}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

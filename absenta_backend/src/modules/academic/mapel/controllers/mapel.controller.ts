@@ -10,13 +10,17 @@ export const mapelController = {
       const user = request.user!;
 
       const page = parseInt(request.query.page as string) || 1;
-      const limit = parseInt(request.query.limit as string) || 10;
+      const limit = parseInt(request.query.limit as string) || 500;
       const search = request.query.search as string;
+      const kelas_id = request.query.kelas_id as string | undefined;
+      const tingkat = request.query.tingkat ? parseInt(request.query.tingkat as string, 10) : undefined;
 
       const result = await mapelService.getAllMapel(user.roleName, user.tenantId, {
         page,
         limit,
         search,
+        kelas_id,
+        tingkat,
       });
 
       return reply.status(200).send({

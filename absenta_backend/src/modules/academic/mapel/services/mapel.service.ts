@@ -37,6 +37,8 @@ export interface PaginationParams {
   page: number;
   limit: number;
   search?: string;
+  kelas_id?: string;
+  tingkat?: number;
 }
 
 export interface PaginatedMapelResponse {
@@ -59,11 +61,46 @@ export const mapelService = {
         whereClause.tenant_id = requestingUserTenantId;
       }
 
+      // Filter by kelas_id mapped in JadwalKBM (with fallback to class tingkat)
+      if (params?.kelas_id && requestingUserTenantId) {
+        const scheduledMapel = await prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: requestingUserTenantId,
+            kelas_id: params.kelas_id,
+          },
+          select: { mapel_id: true },
+        });
+
+        const mapelIds = Array.from(new Set(scheduledMapel.map((j) => j.mapel_id).filter(Boolean)));
+
+        if (mapelIds.length > 0) {
+          whereClause.id = { in: mapelIds };
+        } else {
+          // Fallback to class tingkat if no schedule exists yet
+          const kelas = await prisma.kelas.findFirst({
+            where: { id: params.kelas_id, tenant_id: requestingUserTenantId },
+          });
+          if (kelas && kelas.tingkat) {
+            const numTingkat = Number(kelas.tingkat);
+            if (!isNaN(numTingkat)) {
+              whereClause.OR = [{ tingkat: numTingkat }, { tingkat: null }];
+            }
+          }
+        }
+      } else if (params?.tingkat !== undefined) {
+        whereClause.OR = [{ tingkat: params.tingkat }, { tingkat: null }];
+      }
+
       // Add search functionality
       if (params?.search) {
-        whereClause.OR = [
-          { nama_mapel: { contains: params.search, mode: 'insensitive' } },
-          { kode_mapel: { contains: params.search, mode: 'insensitive' } }
+        whereClause.AND = [
+          ...(whereClause.AND || []),
+          {
+            OR: [
+              { nama_mapel: { contains: params.search, mode: 'insensitive' } },
+              { kode_mapel: { contains: params.search, mode: 'insensitive' } },
+            ],
+          },
         ];
       }
 

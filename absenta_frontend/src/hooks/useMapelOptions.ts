@@ -7,14 +7,19 @@ import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 export interface UseMapelOptionsParams {
   kelompok?: string;
   tingkat?: number;
+  kelasId?: string;
 }
 
 export function useMapelOptions(params: UseMapelOptionsParams = {}) {
-  const { kelompok, tingkat } = params;
+  const { kelompok, tingkat, kelasId } = params;
 
   const query = useQuery({
-    queryKey: ['mapel-options-list', kelompok, tingkat],
-    queryFn: () => mapelApi.getAll({ limit: 500 }),
+    queryKey: ['mapel-options-list', kelompok, tingkat, kelasId],
+    queryFn: () => mapelApi.getAll({
+      limit: 500,
+      ...(kelasId ? { kelas_id: kelasId } : {}),
+      ...(tingkat !== undefined ? { tingkat } : {})
+    }),
     staleTime: 5 * 60 * 1000,
   });
 
