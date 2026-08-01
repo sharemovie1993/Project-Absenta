@@ -78,6 +78,7 @@ interface LegerStudent {
   alpa: number;
   catatan_wali: string;
   keputusan_transisi: string;
+  referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
 }
 
 interface AcademicYear {
@@ -113,6 +114,7 @@ interface RawLegerEntry {
   alpa?: number;
   catatan_wali?: string;
   keputusan_transisi?: string;
+  referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
 }
 
 // ─────────────────────────────────────────────
@@ -259,6 +261,7 @@ export default function CetakRaporPage() {
           alpa: found?.alpa ?? s.alpa ?? 0,
           catatan_wali: found?.catatan_wali ?? '',
           keputusan_transisi: found?.keputusan_transisi ?? '',
+          referensi_absensi_harian: found?.referensi_absensi_harian || { sakit: 0, izin: 0, alpa: 0 },
         };
       })
       .filter((s) => {
