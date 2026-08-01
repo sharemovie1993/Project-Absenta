@@ -1060,6 +1060,7 @@ model SesiAbsensi {
   @@index([tenant_id])
   @@index([tenant_id, tanggal])
   @@index([tenant_id, kelas_id, tanggal])
+  @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, created_by_user_id])
   @@index([tenant_id, tahun_pelajaran_id])
 }
@@ -1149,6 +1150,7 @@ model AbsenSiswa {
   @@index([siswa_akademik_id])
   @@index([siswa_id])
   @@index([tenant_id, created_at])
+  @@index([tenant_id, siswa_id, created_at])
 }
 
 model Sekolah {

@@ -3,7 +3,10 @@ import { AbsensiMode } from '../../../../constants/enums';
 import { ATTENDANCE_POINTS } from '../../../../constants/attendance-points';
 import { DataScope } from '../../../../types/fastify';
 import { CacheService } from '../../../../utils/cache.service';
+import { CACHE_KEYS } from '../../../../constants/cache-keys';
 import { formatTenantTime, getTenantTimezone } from '../../../../utils/timezone.utils';
+
+const cacheService = CacheService.getInstance();
 
 export interface RekapHarianSiswaResponse {
   nama_siswa: string;
@@ -302,6 +305,10 @@ export class RekapService {
         throw new Error('Forbidden: You do not have access to this class data.');
       }
     }
+
+    const cacheKey = CACHE_KEYS.ACADEMIC.REKAP_KELAS_BULANAN(tenantId, kelasId, bulan, tahunPelajaranId);
+    const cached = await cacheService.get<RekapKelasBulananData>(cacheKey);
+    if (cached) return cached;
 
     const [yearStr, monthStr] = bulan.split('-');
     const year = parseInt(yearStr);
@@ -610,7 +617,7 @@ export class RekapService {
       }
     } catch (e) {}
 
-    return {
+    const result: RekapKelasBulananData = {
       kelas_id: kelasId,
       bulan,
       total_hadir: totalHadir,
@@ -622,6 +629,9 @@ export class RekapService {
       wali_kelas: waliKelasData,
       students: studentList
     };
+
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
   // 3b. Rekap Bulanan Siswa Per Mata Pelajaran (Mapel)
@@ -632,6 +642,10 @@ export class RekapService {
     tenantId: string,
     tahunPelajaranId?: string
   ): Promise<RekapMapelBulananData> {
+    const cacheKey = CACHE_KEYS.ACADEMIC.REKAP_MAPEL_BULANAN(tenantId, kelasId, mapelId, bulan);
+    const cached = await cacheService.get<RekapMapelBulananData>(cacheKey);
+    if (cached) return cached;
+
     const [yearStr, monthStr] = bulan.split('-');
     const year = parseInt(yearStr, 10);
     const month = parseInt(monthStr, 10);
@@ -778,7 +792,7 @@ export class RekapService {
       };
     });
 
-    return {
+    const result: RekapMapelBulananData = {
       kelas_id: kelasId,
       mapel_id: mapelId,
       bulan,
@@ -788,6 +802,9 @@ export class RekapService {
       wali_kelas: waliKelasData,
       students: studentList
     };
+
+    await cacheService.set(cacheKey, result, 300);
+    return result;
   }
 
   async getRekapBulananSekolah(tenantId: string, bulan: string, jurusanId?: string): Promise<{ students: any[] }> {

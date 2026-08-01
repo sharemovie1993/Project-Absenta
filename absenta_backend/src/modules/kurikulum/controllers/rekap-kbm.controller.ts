@@ -1,4 +1,8 @@
 import { prisma } from '@/utils/prisma';
+import { CacheService } from '@/utils/cache.service';
+import { CACHE_KEYS } from '@/constants/cache-keys';
+
+const cacheService = CacheService.getInstance();
 
 export class RekapKBMController {
   /**
@@ -12,6 +16,10 @@ export class RekapKBMController {
         tahun_pelajaran_id?: string;
       };
       const tenantId = request.tenantId;
+
+      const cacheKey = CACHE_KEYS.ACADEMIC.REKAP_KBM_GURU(tenantId, tahun_pelajaran_id, semester_id);
+      const cached = await cacheService.get<any>(cacheKey);
+      if (cached) return reply.send(cached);
 
       // 1. Ambil data JadwalKBM untuk memetakan penugasan mengajar riil di kelas
       const templates = await prisma.jadwalKBM.findMany({
@@ -117,14 +125,17 @@ export class RekapKBMController {
           : 0,
       }));
 
-      return reply.send({
+      const payload = {
         data: result,
         meta: {
           total_guru: result.length,
           total_jp_rencana: result.reduce((a, g) => a + g.total_jp_rencana, 0),
           total_jp_terlaksana: result.reduce((a, g) => a + g.jp_terlaksana, 0),
         }
-      });
+      };
+
+      await cacheService.set(cacheKey, payload, 300);
+      return reply.send(payload);
     } catch (error: any) {
       request.log.error(error);
       return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Gagal mengambil data rekap KBM.' });

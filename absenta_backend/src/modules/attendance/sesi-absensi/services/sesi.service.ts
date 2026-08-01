@@ -5,6 +5,7 @@ import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
 import { AbsenStatus, JenisTap } from '@/constants/enums';
 import { ATTENDANCE_POINTS } from '@/constants/attendance-points';
 import { cacheService } from '@/utils/cache.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { attendanceMetricsAggregator } from '@/utils/attendance-metrics';
 import { getRedisConnection } from '@/queue/redis';
@@ -262,6 +263,8 @@ export class SesiService {
         console.error('[SesiService] pullAttendanceFromOverlappingPembiasaan failed', e);
       }
     })();
+
+    void cacheInvalidationService.invalidateAttendanceCache(tenantId);
 
     return created;
   }

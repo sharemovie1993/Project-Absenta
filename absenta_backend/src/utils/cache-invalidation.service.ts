@@ -85,6 +85,13 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 📊 Invalidate cache rekap & monitoring presensi / KBM
+   */
+  async invalidateRekapCache(tenantId: string) {
+    await cacheService.deletePattern(`academic:${tenantId}:rekap:*`);
+  }
+
+  /**
    * ✅ Invalidate cache attendance-related
    */
   async invalidateAttendanceCache(tenantId: string, date?: string) {
@@ -92,6 +99,9 @@ export class CacheInvalidationService {
     const attendancePattern = `${CACHE_KEYS.TENANT.ATTENDANCE(tenantId)}*`;
     await cacheService.deletePattern(attendancePattern);
     
+    // Invalidate rekap & monitoring cache
+    await this.invalidateRekapCache(tenantId);
+
     // Invalidate dashboard cache
     await this.invalidateDashboardCache(tenantId, date);
     
