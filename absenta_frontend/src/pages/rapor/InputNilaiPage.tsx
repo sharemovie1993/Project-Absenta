@@ -16,6 +16,12 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
 import { kelasApi, mapelApi, tahunPelajaranApi, semesterApi, siswaApi } from '../../api/academic.api';
+import { useKelasOptions } from '../../hooks/useKelasOptions';
+import { useMapelOptions } from '../../hooks/useMapelOptions';
+import { useSiswaOptions } from '../../hooks/useSiswaOptions';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useJenjang } from '../../hooks/useJenjang';
 import { toast } from 'sonner';
 import { generateStyledExcelTemplate } from '../../utils/excel-advanced.utils';
 
@@ -53,55 +59,42 @@ export default function InputNilaiPage() {
   const [taskSearchQuery, setTaskSearchQuery] = useState<string>('');
   const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | 'empty' | 'partial' | 'completed'>('all');
 
-  // Load active academic year and semester with robust fallbacks
-  const { data: activeYear } = useQuery({
-    queryKey: ['tahun-pelajaran-active'],
-    queryFn: async () => {
-      try {
-        const res = await tahunPelajaranApi.getAll({ limit: 200 });
-        const list = Array.isArray(res.data) ? res.data : (res as { data?: ClassItem[] })?.data || [];
-        return list.find((tp: { is_active?: boolean }) => tp.is_active) || list[0] || null;
-      } catch {
-        return null;
-      }
-    }
+  // ── Centralized System Hooks ──
+  const { config: jenjangConfig } = useJenjang();
+  const { options: kelasOptions, rawList: classList, isLoading: isLoadingClasses } = useKelasOptions({
+    filterByJenjang: false,
+    onlyActive: true,
   });
+  const { options: mapelOptions, rawList: mapelList, isLoading: isLoadingMapel } = useMapelOptions();
+  const { options: tpOptions, activeTp } = useTahunPelajaranOptions();
+  const { options: semesterOptions, activeSemester: activeSem } = useSemesterOptions();
 
-  const { data: activeSemester } = useQuery({
-    queryKey: ['semester-active'],
-    queryFn: async () => {
-      try {
-        const res = await semesterApi.getAll({ limit: 200 });
-        const list = Array.isArray(res.data) ? res.data : (res as { data?: SubjectItem[] })?.data || [];
-        return list.find((s: { is_active?: boolean }) => s.is_active) || list[0] || null;
-      } catch {
-        return null;
-      }
-    }
-  });
+  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
 
-  // Query classes, subjects, categories
-  const { data: classesData } = useQuery({
-    queryKey: ['classes'],
-    queryFn: async () => {
-      try {
-        return await kelasApi.getAll({ limit: 500, is_active: true });
-      } catch {
-        return { data: [] };
-      }
+  useEffect(() => {
+    if (!selectedTahunPelajaran && activeTp?.id) {
+      setSelectedTahunPelajaran(activeTp.id);
     }
-  });
+  }, [activeTp, selectedTahunPelajaran]);
 
-  const { data: subjectsData } = useQuery({
-    queryKey: ['subjects'],
-    queryFn: async () => {
-      try {
-        return await mapelApi.getAll({ limit: 500 });
-      } catch {
-        return { data: [] };
-      }
+  useEffect(() => {
+    if (!selectedSemester && activeSem?.id) {
+      setSelectedSemester(activeSem.id);
     }
-  });
+  }, [activeSem, selectedSemester]);
+
+  const activeYear = useMemo(() => {
+    const id = selectedTahunPelajaran || activeTp?.id;
+    if (!id) return null;
+    return { id, tahun: activeTp?.tahun || id };
+  }, [activeTp, selectedTahunPelajaran]);
+
+  const activeSemester = useMemo(() => {
+    const id = selectedSemester || activeSem?.id;
+    if (!id) return null;
+    return { id, nama_semester: activeSem?.nama_semester || id };
+  }, [activeSem, selectedSemester]);
 
   const { data: categories } = useQuery({
     queryKey: ['kategori-nilai'],
@@ -129,8 +122,8 @@ export default function InputNilaiPage() {
     },
   });
 
-  const classes: ClassItem[] = useMemo(() => classesData?.data || [], [classesData]);
-  const subjects: SubjectItem[] = useMemo(() => subjectsData?.data || [], [subjectsData]);
+  const classes: ClassItem[] = useMemo(() => (classList as any) || [], [classList]);
+  const subjects: SubjectItem[] = useMemo(() => (mapelList as any) || [], [mapelList]);
   const progressInfo = useMemo(() => teacherProgressData?.data, [teacherProgressData]);
 
   // Persistent KKM Threshold Sync per selected mapel
@@ -213,11 +206,10 @@ export default function InputNilaiPage() {
     setScores([]);
   }, [selectedKelas, selectedMapel, entryMode, selectedJenisNilai]);
 
-  // Query students for selected class
-  const { data: studentsData, isLoading: isLoadingStudents } = useQuery({
-    queryKey: ['students-class', selectedKelas],
-    queryFn: () => siswaApi.getAll({ kelas_id: selectedKelas, status: 'AKTIF', limit: 100 }),
-    enabled: !!selectedKelas
+  // Query students for selected class via centralized system hook
+  const { rawList: studentListHook, isLoading: isLoadingStudents } = useSiswaOptions({
+    kelasId: selectedKelas,
+    onlyActive: true,
   });
 
   // Query existing grades
@@ -235,8 +227,8 @@ export default function InputNilaiPage() {
 
   // Combine students and existing grades into scores state
   useEffect(() => {
-    if (studentsData?.data) {
-      const studentList = studentsData.data;
+    if (studentListHook && studentListHook.length > 0) {
+      const studentList = studentListHook;
       const gradesList = existingGradesData?.data || [];
 
       interface ApiSiswaRecord { id: string; nama_siswa?: string; nama?: string; nama_lengkap?: string; nis?: string; nisn?: string }
@@ -277,7 +269,7 @@ export default function InputNilaiPage() {
 
       setScores(initialScores);
     }
-  }, [studentsData, existingGradesData]);
+  }, [studentListHook, existingGradesData]);
 
   // Score Input Change Handler with Zod Schema Validation & Range Checks
   const handleScoreChange = useCallback((index: number, field: keyof StudentScoreItem, val: string | number | null) => {
