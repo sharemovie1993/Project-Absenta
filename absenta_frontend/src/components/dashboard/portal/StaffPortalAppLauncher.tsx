@@ -1,10 +1,9 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App yang MENGGUNAKAN LOGIKA HASIL PENYARINGAN SIDEBAR 100%.
- * - Menggunakan ROLE_WORKSPACES & activeWorkspaceId persis seperti Sidebar.tsx
- * - Memisahkan menu menjadi 2 Kelompok Utama:
- *   1. 🏫 Ruang Kerja Guru & Wali Kelas (Aktivitas Harian Diri)
- *   2. 🏛️ Ruang Kerja Jabatan & Lintas Modul (Hasil Logika Penyaringan Sidebar)
+ * Launcher Portal App dengan Desain Grid Ikon Smartphone (Android/iOS Style).
+ * - Ukuran Ikon Squircle Presisi dengan Nama Menu Ringkas di Bawah Ikon.
+ * - Grid Responsif (4 Kolom Mobile, 6-10 Kolom Desktop).
+ * - Bebas Kartu Panjang Horizontal & Noise Visual.
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +17,6 @@ import {
   AlertTriangle,
   Monitor,
   LayoutGrid,
-  ChevronRight,
   ShieldAlert,
   CheckCircle2,
   HeartHandshake,
@@ -52,20 +50,18 @@ export interface StaffPortalAppLauncherProps {
 interface AppTileData {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   iconName?: string;
   iconComp?: React.ElementType;
   colorClass: string;
   bgLightClass: string;
   badgeText?: string;
-  badgeVariant?: 'neutral' | 'success' | 'warning' | 'destructive' | 'info';
   path?: string;
   onClick?: () => void;
   categoryLabel?: string;
-  isCrossModule?: boolean;
 }
 
-// ── Compact Memoized App Tile Item (Ukuran Ringkas 0-Noise) ──
+// ── Smartphone App Icon Tile (Android / iOS Style Grid Item) ──
 const MemoizedAppTileItem = React.memo<{
   tile: AppTileData;
   onNavigate: (path?: string, onClick?: () => void) => void;
@@ -82,38 +78,35 @@ const MemoizedAppTileItem = React.memo<{
   return (
     <button
       onClick={handleClick}
-      className="group relative flex items-start gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 shadow-2xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-800 hover:-translate-y-0.5 transition-all duration-150 text-left overflow-hidden cursor-pointer w-full"
+      className="group flex flex-col items-center justify-start p-2 sm:p-2.5 rounded-2xl hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-all duration-150 cursor-pointer text-center w-full max-w-[96px] sm:max-w-[104px] mx-auto select-none"
     >
-      {/* Icon Box Compact (Ukuran 36px / 9x9) */}
-      <div
-        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${tile.bgLightClass} ${tile.colorClass} flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-150`}
-      >
-        <IconComponent size={18} className="stroke-[2.2]" />
+      {/* Smartphone App Icon Box (Squircle 48px - 56px) */}
+      <div className="relative">
+        <div
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${tile.bgLightClass} ${tile.colorClass} flex items-center justify-center shadow-xs group-hover:scale-110 group-hover:shadow-md transition-all duration-150 border border-slate-200/50 dark:border-slate-800/50`}
+        >
+          <IconComponent size={22} className="stroke-[2.2]" />
+        </div>
+
+        {/* Badge Indicator Dot / Text */}
+        {tile.badgeText && (
+          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500 text-white shadow-xs leading-none">
+            {tile.badgeText}
+          </span>
+        )}
       </div>
 
-      {/* Title & Short Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-1">
-          <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-            {tile.title}
-          </h3>
-          {tile.badgeText && (
-            <Badge variant={tile.badgeVariant || 'neutral'} className="text-[9px] font-bold py-0 px-1.5 flex-shrink-0">
-              {tile.badgeText}
-            </Badge>
-          )}
-        </div>
-        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-medium leading-tight">
-          {tile.description}
-        </p>
-      </div>
+      {/* App Name Below Icon (Teks Kecil di Bawah Ikon) */}
+      <span className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 mt-1.5 leading-tight line-clamp-2 text-center break-words group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+        {tile.title}
+      </span>
     </button>
   );
 });
 
 MemoizedAppTileItem.displayName = 'MemoizedAppTileItem';
 
-// Color Palette Minimalis 0-Noise
+// Soft Pastel Accent Colors for Smartphone Icons
 const COLOR_ACCENTS = [
   { colorClass: 'text-indigo-600 dark:text-indigo-400', bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60' },
   { colorClass: 'text-blue-600 dark:text-blue-400', bgLightClass: 'bg-blue-50 dark:bg-blue-950/60' },
@@ -138,7 +131,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBackendHub, setSelectedBackendHub] = useState<string>('ALL');
 
   // Ambil data menu backend & active workspace persis seperti Sidebar.tsx
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
@@ -163,30 +155,25 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       items.push(
         {
           id: 'g1-monitoring-kbm',
-          title: 'Live KBM Kelas',
-          description: 'Status KBM rombel jam ke jam',
+          title: 'Live KBM',
           iconComp: Monitor,
           colorClass: 'text-blue-600 dark:text-blue-400',
           bgLightClass: 'bg-blue-50 dark:bg-blue-950/60',
           badgeText: 'Live',
-          badgeVariant: 'success',
           path: '/kesiswaan/monitoring',
         },
         {
           id: 'g1-rekap-absensi',
-          title: 'Rekap Absensi Siswa',
-          description: 'Rekap harian & bulanan kelas',
+          title: 'Rekap Absensi',
           iconComp: Activity,
           colorClass: 'text-emerald-600 dark:text-emerald-400',
           bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
-          badgeText: absentStudentsCount > 0 ? `${absentStudentsCount} Absen` : undefined,
-          badgeVariant: absentStudentsCount > 0 ? 'warning' : 'neutral',
+          badgeText: absentStudentsCount > 0 ? `${absentStudentsCount}` : undefined,
           path: '/attendance/rekap',
         },
         {
           id: 'g1-catatan-rapor',
-          title: 'Catatan & Leger',
-          description: 'Catatan wali kelas & leger nilai',
+          title: 'Catatan Leger',
           iconComp: FileText,
           colorClass: 'text-purple-600 dark:text-purple-400',
           bgLightClass: 'bg-purple-50 dark:bg-purple-950/60',
@@ -195,18 +182,15 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         {
           id: 'g1-cetak-rapor',
           title: 'Cetak e-Rapor',
-          description: 'PDF rapor sekelas 1 file',
           iconComp: Printer,
           colorClass: 'text-indigo-600 dark:text-indigo-400',
           bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
-          badgeText: 'e-Rapor',
-          badgeVariant: 'info',
+          badgeText: 'eRapor',
           path: '/rapor/cetak',
         },
         {
           id: 'g1-risikolog',
           title: 'Risikolog Siswa',
-          description: 'Tindak lanjut absensi & kesiswaan',
           iconComp: AlertTriangle,
           colorClass: 'text-amber-600 dark:text-amber-400',
           bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
@@ -220,7 +204,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       {
         id: 'g1-jadwal',
         title: 'Jadwal Mengajar',
-        description: 'Jadwal mapel mingguan saya',
         iconComp: Calendar,
         colorClass: 'text-cyan-600 dark:text-cyan-400',
         bgLightClass: 'bg-cyan-50 dark:bg-cyan-950/60',
@@ -229,7 +212,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       {
         id: 'g1-jurnal-kbm',
         title: 'Isi Jurnal KBM',
-        description: 'Jurnal materi pengajaran hari ini',
         iconComp: BookOpen,
         colorClass: 'text-indigo-600 dark:text-indigo-400',
         bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
@@ -238,7 +220,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       {
         id: 'g1-absen-guru',
         title: 'Presensi Guru',
-        description: 'Konfirmasi kehadiran & tap gerbang',
         iconComp: User,
         colorClass: 'text-emerald-600 dark:text-emerald-400',
         bgLightClass: 'bg-emerald-50 dark:bg-emerald-950/60',
@@ -247,7 +228,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       {
         id: 'g1-catat-pelanggaran',
         title: 'Catat Pelanggaran',
-        description: 'Input poin tata tertib siswa',
         iconComp: ShieldAlert,
         colorClass: 'text-rose-600 dark:text-rose-400',
         bgLightClass: 'bg-rose-50 dark:bg-rose-950/60',
@@ -255,8 +235,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       },
       {
         id: 'g1-tindak-masal',
-        title: 'Tindak Masal Sanksi',
-        description: 'Eksekusi sanksi kesiswaan masal',
+        title: 'Tindak Masal',
         iconComp: CheckCircle2,
         colorClass: 'text-amber-600 dark:text-amber-400',
         bgLightClass: 'bg-amber-50 dark:bg-amber-950/60',
@@ -274,7 +253,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── 2. KELOMPOK UTAMA: RUANG JABATAN & LINTAS MODUL (HASIL PENYARINGAN LOGIKA SIDEBAR 100%) ──
+  // ── 2. KELOMPOK UTAMA: RUANG JABATAN & LINTAS MODUL (LOGIKA PENYARINGAN SIDEBAR) ──
   const group2BackendTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
@@ -285,7 +264,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
     const currentWs = ROLE_WORKSPACES.find((w) => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
 
-    // kumpulkan seluruh item menu backend
     const allBackendTiles: AppTileData[] = [];
     let tileCounter = 0;
 
@@ -299,24 +277,21 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         allBackendTiles.push({
           id: `g2-item-${item.id || tileCounter}`,
           title: item.name,
-          description: (item as any).description || `Modul ${item.name}`,
           iconName: item.icon || item.name,
           colorClass: accent.colorClass,
           bgLightClass: accent.bgLightClass,
-          badgeText: item.premiumInfo?.isPremium ? 'Premium' : undefined,
-          badgeVariant: item.premiumInfo?.isPremium ? 'warning' : undefined,
+          badgeText: item.premiumInfo?.isPremium ? 'PRO' : undefined,
           path: item.path,
           categoryLabel: group.label,
         });
       });
     });
 
-    // Jika user adalah Admin/Superadmin, sajikan semua modul yang diizinkan backend
     if (isAdmin) {
       return allBackendTiles;
     }
 
-    // UNTUK NON-ADMIN: GUNAKAN LOGIKA PENYARINGAN WORKSPACE & INFORMASI LINTAS MODUL PERSIS SEPERTI SIDEBAR.TSX!
+    // UNTUK NON-ADMIN: PENYARINGAN WORKSPACE PERSIS SIDEBAR
     const allowedCrossPaths = new Set(
       (currentWs.crossModulePaths || []).map((p) => p.toLowerCase())
     );
@@ -325,20 +300,13 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       const p = (tile.path || '').toLowerCase();
       if (!p || p === '#' || p === '/dashboard') return false;
 
-      // 1. Matched target keywords workspace (e.g. KURIKULUM, KESISWAAN, SARPRAS, HUBIN, BPBK)
       if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
         const catName = (tile.categoryLabel || '').toUpperCase();
-        const matchesCategory = currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()));
-        if (matchesCategory) return true;
+        if (currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()))) return true;
       }
 
-      // 2. Matched cross module paths
-      if (allowedCrossPaths.has(p)) {
-        tile.isCrossModule = true;
-        return true;
-      }
+      if (allowedCrossPaths.has(p)) return true;
 
-      // 3. Special workspace specific matches
       if (currentWs.id === 'WALIKELAS_WORKSPACE') {
         if (p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket')) return true;
       } else if (currentWs.id === 'TEACHER_WORKSPACE') {
@@ -367,7 +335,6 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       return false;
     });
 
-    // Jika hasil penyaringan spesifik kosong, sediakan fallback aman ubin lintas modul
     if (filteredTiles.length === 0) {
       return allBackendTiles.filter((t) => {
         const p = (t.path || '').toLowerCase();
@@ -378,54 +345,33 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return filteredTiles;
   }, [backendGroupedMenu, user, activeWorkspaceId]);
 
-  // Filter Kategori Backend (Tabs Pills) berdasarkan tile yang benar-benar lolos saring
-  const backendCategoryLabels = useMemo(() => {
-    const set = new Set<string>();
-    group2BackendTiles.forEach((t) => {
-      if (t.categoryLabel) set.add(t.categoryLabel);
-    });
-    return Array.from(set);
-  }, [group2BackendTiles]);
-
-  // Filtered Group 1 & Group 2 items berdasarkan Search & Tabs
+  // Filtered Group 1 & Group 2 items berdasarkan Search
   const filteredGroup1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return group1Tiles;
-    return group1Tiles.filter(
-      (t) => t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
-    );
+    return group1Tiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [group1Tiles, searchQuery]);
 
   const filteredGroup2 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    let list = group2BackendTiles;
-
-    if (selectedBackendHub !== 'ALL') {
-      list = list.filter((t) => t.categoryLabel === selectedBackendHub);
-    }
-
-    if (q) {
-      list = list.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.description.toLowerCase().includes(q) ||
-          (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
-      );
-    }
-
-    return list;
-  }, [group2BackendTiles, selectedBackendHub, searchQuery]);
+    if (!q) return group2BackendTiles;
+    return group2BackendTiles.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.categoryLabel && t.categoryLabel.toLowerCase().includes(q))
+    );
+  }, [group2BackendTiles, searchQuery]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
-      {/* ── Ringkas Compact Header Banner ── */}
+      {/* ── Header Banner Compact Launcher ── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-4 sm:p-5 text-white shadow-md">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (Penyaringan Logika Sidebar 100%)
+                Portal App Launcher (Android App Grid)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -437,7 +383,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Menu disajikan secara bersih & presisi mengikuti logika penyaringan Ruang Kerja & Lintas Modul Sidebar.
+              Sentuh ikon aplikasi di bawah ini untuk menuju fitur secara cepat.
             </p>
           </div>
 
@@ -447,7 +393,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="relative min-w-[180px] w-full sm:w-auto">
               <input
                 type="text"
-                placeholder="Cari fitur / menu..."
+                placeholder="Cari aplikasi..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-xs font-semibold pl-8 pr-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -467,36 +413,37 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         </div>
       </div>
 
-      {/* Menu Loading Indicator */}
+      {/* Loading State */}
       {isMenuLoading && (
         <div className="flex items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <Loader2 className="w-4 h-4 animate-spin text-indigo-600 mr-2" />
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-            Memuat & Menyaring Modul Ruang Kerja Backend...
+            Memuat Ikon Aplikasi...
           </span>
         </div>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 1: 🏫 RUANG KERJA GURU & WALI KELAS
+          KELOMPOK 1: 📱 RUANG KERJA GURU & WALI KELAS (APP ICON GRID HP)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredGroup1.length > 0 && (
-        <section className="space-y-2.5">
-          <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+        <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+          <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
               <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
                 <Sparkles size={14} />
               </div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 1. Ruang Kerja Guru & Wali Kelas
               </h2>
             </div>
-            <span className="text-[11px] font-bold text-slate-400">
-              {filteredGroup1.length} Fitur Harian
+            <span className="text-[10px] font-bold text-slate-400">
+              {filteredGroup1.length} Aplikasi
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+          {/* Grid Smartphone App Icon (4 Kolom Mobile, 6-10 Kolom Desktop) */}
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
             {filteredGroup1.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
@@ -509,27 +456,27 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (LOGIKA PENYARINGAN SIDEBAR 100%)
+          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (APP ICON GRID HP)
       ───────────────────────────────────────────────────────────────────────────── */}
-      <section className="space-y-2.5 pt-2">
-        <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2">
+      <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+        <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-lg bg-blue-600 text-white shadow-2xs">
               <Building2 size={14} />
             </div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
               2. Ruang Kerja Jabatan & Informasi Lintas Modul
             </h2>
           </div>
 
-          <span className="text-[11px] font-bold text-slate-400">
-            {filteredGroup2.length} Fitur
+          <span className="text-[10px] font-bold text-slate-400">
+            {filteredGroup2.length} Aplikasi
           </span>
         </div>
 
-        {/* Grid Items Kelompok 2 Compact */}
+        {/* Grid Smartphone App Icon (4 Kolom Mobile, 6-10 Kolom Desktop) */}
         {filteredGroup2.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
             {filteredGroup2.map((tile) => (
               <MemoizedAppTileItem
                 key={tile.id}
@@ -542,7 +489,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
             <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Tidak ada modul ruang kerja yang cocok dengan kriteria penyaringan role Anda.
+              Tidak ada aplikasi yang cocok dengan kriteria pencarian Anda.
             </p>
           </div>
         )}
