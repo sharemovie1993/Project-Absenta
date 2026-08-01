@@ -31,7 +31,7 @@ export default function InputNilaiPage() {
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedJenisNilai, setSelectedJenisNilai] = useState<string>('');
   const [entryMode, setEntryMode] = useState<'sumatif' | 'kategori'>('sumatif');
-  const [showProgressDetail, setShowProgressDetail] = useState<boolean>(true);
+  const [showProgressDetail, setShowProgressDetail] = useState<boolean>(false);
   
   // Scores Grid State
   const [scores, setScores] = useState<StudentScoreItem[]>([]);

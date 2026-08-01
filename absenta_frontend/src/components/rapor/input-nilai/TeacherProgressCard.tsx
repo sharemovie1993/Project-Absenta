@@ -30,34 +30,45 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
   onSelectTask,
 }) => {
   return (
-    <div className="bg-slate-900/60 p-4 rounded-3xl border border-slate-800 space-y-3.5 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-        <div>
-          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Progres Pengisian Rapor Saya</span>
-          <h2 className="text-sm font-black text-white flex items-center gap-2 mt-0.5">
-            Progress Pengisian Nilai Guru
-            <span className="text-[11px] font-bold text-slate-400 font-mono">
-              ({progressInfo?.completed_tasks || 0}/{progressInfo?.total_tasks || 0} Mapel Kelas Tuntas)
-            </span>
-          </h2>
+    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+            {progressInfo?.percentage || 0}%
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Progres Pengisian Rapor Guru
+              </h2>
+              <span className="text-[11px] font-semibold text-slate-500 font-mono">
+                ({progressInfo?.completed_tasks || 0}/{progressInfo?.total_tasks || 0} Tuntas)
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400">Total Tugas Mengajar Rombel Semester Ini</p>
+          </div>
         </div>
         
-        <div className="text-right">
-          <span className="text-xl font-black text-emerald-400 font-mono">
-            {progressInfo?.percentage || 0}%
-          </span>
-          <span className="text-[10px] text-slate-400 font-semibold block">Tingkat Penyelesaian</span>
-        </div>
+        {progressInfo?.tasks && progressInfo.tasks.length > 0 && (
+          <button
+            type="button"
+            aria-label={showProgressDetail ? 'Sembunyikan rincian progress' : 'Pilih Rombel Mengajar'}
+            onClick={onToggleProgressDetail}
+            className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/40 flex items-center gap-1.5 transition-all self-start sm:self-auto"
+          >
+            {showProgressDetail ? 'Sembunyikan Rincian' : '🔍 Pilih Rombel Mengajar'}
+            {showProgressDetail ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
       </div>
 
-      {/* Animated Progress Bar */}
-      <div className="space-y-2">
-        <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700/50">
-          <div
-            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700 ease-out shadow-sm"
-            style={{ width: `${Math.min(100, Math.max(0, progressInfo?.percentage || 0))}%` }}
-          />
-        </div>
+      {/* Thin Progress Bar */}
+      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+        <div
+          className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${Math.min(100, Math.max(0, progressInfo?.percentage || 0))}%` }}
+        />
+      </div>
 
         {/* Metric Chips & Accordion Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -124,7 +135,6 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
             </button>
           )}
         </div>
-      </div>
 
       {/* Expandable Progress Detail Breakdown Table */}
       {showProgressDetail && progressInfo?.tasks && (
