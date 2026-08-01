@@ -12,6 +12,8 @@ import {
   Calculator,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Trash2,
   Search,
@@ -158,6 +160,36 @@ export default function InputNilaiPage() {
       return true;
     });
   }, [progressInfo, taskStatusFilter, taskSearchQuery]);
+
+  // Task Navigation (Next / Previous Task Buttons)
+  const currentTaskIndex = useMemo(() => {
+    if (!progressInfo?.tasks) return -1;
+    return progressInfo.tasks.findIndex((t: any) => t.kelas_id === selectedKelas && t.mapel_id === selectedMapel);
+  }, [progressInfo, selectedKelas, selectedMapel]);
+
+  const prevTask = useMemo(() => {
+    if (currentTaskIndex > 0 && progressInfo?.tasks) {
+      return progressInfo.tasks[currentTaskIndex - 1];
+    }
+    return null;
+  }, [currentTaskIndex, progressInfo]);
+
+  const nextTask = useMemo(() => {
+    if (currentTaskIndex >= 0 && progressInfo?.tasks && currentTaskIndex < progressInfo.tasks.length - 1) {
+      return progressInfo.tasks[currentTaskIndex + 1];
+    }
+    return null;
+  }, [currentTaskIndex, progressInfo]);
+
+  const handleNavigateTask = (direction: 'prev' | 'next') => {
+    const target = direction === 'prev' ? prevTask : nextTask;
+    if (target) {
+      setSelectedKelas(target.kelas_id);
+      setSelectedMapel(target.mapel_id);
+      setScores([]);
+      toast.info(`${direction === 'prev' ? '◀️' : '▶️'} Pindah ke ${target.nama_kelas} — ${target.nama_mapel}`);
+    }
+  };
 
   // Auto-select first class-mapel task when progressInfo is loaded
   useEffect(() => {
@@ -881,8 +913,8 @@ export default function InputNilaiPage() {
             </div>
           </div>
 
-          {/* Explicit Dropdown Selectors for Kelas & Mapel */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/80">
+          {/* Explicit Dropdown Selectors for Kelas & Mapel + Next/Previous Quick Nav */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/80 items-end">
             <div>
               <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Kelas Rombel:</label>
               <select
@@ -920,7 +952,7 @@ export default function InputNilaiPage() {
               </select>
             </div>
 
-            {entryMode === 'kategori' && (
+            {entryMode === 'kategori' ? (
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Kategori Penilaian:</label>
                 <select
@@ -937,7 +969,41 @@ export default function InputNilaiPage() {
                   ))}
                 </select>
               </div>
+            ) : (
+              <div className="hidden md:block"></div>
             )}
+
+            {/* Maju / Mundur Task Buttons */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">Navigasi Rombel:</label>
+              <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-700">
+                <button
+                  type="button"
+                  disabled={!prevTask}
+                  onClick={() => handleNavigateTask('prev')}
+                  title={prevTask ? `Mundur ke: ${prevTask.nama_kelas} — ${prevTask.nama_mapel}` : 'Sudah di rombel pertama'}
+                  className="flex-1 flex items-center justify-center gap-1 text-xs font-black py-1 px-2 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-800/80 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={14} />
+                  Mundur
+                </button>
+
+                <span className="text-[10px] font-mono font-black text-slate-300 px-1">
+                  {currentTaskIndex >= 0 ? `${currentTaskIndex + 1}/${progressInfo?.tasks?.length || 0}` : '—'}
+                </span>
+
+                <button
+                  type="button"
+                  disabled={!nextTask}
+                  onClick={() => handleNavigateTask('next')}
+                  title={nextTask ? `Maju ke: ${nextTask.nama_kelas} — ${nextTask.nama_mapel}` : 'Sudah di rombel terakhir'}
+                  className="flex-1 flex items-center justify-center gap-1 text-xs font-black py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Maju
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Expandable Progress Detail Breakdown Table */}
@@ -1037,18 +1103,120 @@ export default function InputNilaiPage() {
         )}
 
         {selectedKelas && selectedMapel && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="space-y-6">
+            
+            {/* Active Class & Subject Task Navigation Card */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-3xl shadow-xl border border-indigo-900/60 flex flex-col md:flex-row items-center justify-between gap-4">
+              
+              {/* Left Button: Mundur */}
+              <button
+                type="button"
+                disabled={!prevTask}
+                onClick={() => handleNavigateTask('prev')}
+                className="w-full md:w-auto flex items-center justify-center gap-2.5 px-4 py-2 rounded-2xl bg-slate-800/90 hover:bg-indigo-900/90 border border-slate-700/80 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed group shadow-sm"
+              >
+                <ChevronLeft size={18} className="text-indigo-400 group-hover:-translate-x-0.5 transition-transform" />
+                <div className="text-left">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">◀️ Mundur</span>
+                  <span className="block text-[11px] font-extrabold text-slate-200 truncate max-w-[140px]">
+                    {prevTask ? `${prevTask.nama_kelas} - ${prevTask.nama_mapel}` : 'Awal Rombel'}
+                  </span>
+                </div>
+              </button>
+
+              {/* Center Banner Info: Active Class, Subject Name, and Status */}
+              <div className="flex items-center gap-3.5 text-center md:text-left flex-wrap justify-center">
+                <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-md ring-2 ring-indigo-400/40">
+                  {selectedKelasObj?.nama_kelas || '—'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
+                    <h3 className="text-sm font-black text-white tracking-wide">
+                      {subjects?.find((m: any) => m.id === selectedMapel)?.nama_mapel || 'Pilih Mapel'}
+                    </h3>
+                    {currentTaskIndex >= 0 && progressInfo?.tasks?.[currentTaskIndex] && (
+                      <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-sm ${
+                        progressInfo.tasks[currentTaskIndex].status === 'completed'
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
+                          : progressInfo.tasks[currentTaskIndex].status === 'partial'
+                          ? 'bg-amber-950/80 text-amber-300 border-amber-700/80'
+                          : 'bg-rose-950/80 text-rose-300 border-rose-700/80'
+                      }`}>
+                        {progressInfo.tasks[currentTaskIndex].status === 'completed' && '🟢 LENGKAP'}
+                        {progressInfo.tasks[currentTaskIndex].status === 'partial' && '🟡 SEBAGIAN'}
+                        {progressInfo.tasks[currentTaskIndex].status === 'empty' && '🔴 BELUM DIISI'}
+                        {' '}({progressInfo.tasks[currentTaskIndex].siswa_terisi}/{progressInfo.tasks[currentTaskIndex].total_siswa} Siswa)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                    Tugas Mengajar Rombel {currentTaskIndex >= 0 ? `${currentTaskIndex + 1} dari ${progressInfo?.tasks?.length || 0}` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Button: Maju */}
+              <button
+                type="button"
+                disabled={!nextTask}
+                onClick={() => handleNavigateTask('next')}
+                className="w-full md:w-auto flex items-center justify-center gap-2.5 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/40 text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
+              >
+                <div className="text-right">
+                  <span className="block text-[9px] text-indigo-200 uppercase font-black tracking-wider">Maju ▶️</span>
+                  <span className="block text-[11px] font-extrabold text-white truncate max-w-[140px]">
+                    {nextTask ? `${nextTask.nama_kelas} - ${nextTask.nama_mapel}` : 'Akhir Rombel'}
+                  </span>
+                </div>
+                <ChevronRight size={18} className="text-white group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             
             {/* Input Grid Nilai (Kiri 3 Cols) */}
             <Card className="lg:col-span-3 p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-3">
                 <div>
-                  <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
-                    Lembar Pengisian Nilai Kelas
-                    <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
-                      {scores.length} Siswa
-                    </span>
-                  </h3>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                      Lembar Pengisian Nilai Kelas
+                      <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
+                        {scores.length} Siswa
+                      </span>
+                    </h3>
+
+                    {/* Quick Maju/Mundur Task Nav Buttons */}
+                    {progressInfo?.tasks && progressInfo.tasks.length > 1 && (
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          disabled={!prevTask}
+                          onClick={() => handleNavigateTask('prev')}
+                          title={prevTask ? `Mundur ke: ${prevTask.nama_kelas} — ${prevTask.nama_mapel}` : 'Sudah di rombel pertama'}
+                          className="flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                        >
+                          <ChevronLeft size={12} />
+                          Mundur
+                        </button>
+                        
+                        <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 px-1 font-mono">
+                          {currentTaskIndex >= 0 ? `${currentTaskIndex + 1}/${progressInfo.tasks.length}` : '—'}
+                        </span>
+
+                        <button
+                          type="button"
+                          disabled={!nextTask}
+                          onClick={() => handleNavigateTask('next')}
+                          title={nextTask ? `Maju ke: ${nextTask.nama_kelas} — ${nextTask.nama_mapel}` : 'Sudah di rombel terakhir'}
+                          className="flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                        >
+                          Maju
+                          <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-400">
                     {entryMode === 'sumatif' 
                       ? 'Formula Rapor: Nilai Akhir = (Rata-rata(S1,S2,S3) + Sumatif Akhir) / 2' 
@@ -1390,6 +1558,7 @@ export default function InputNilaiPage() {
             </div>
 
           </div>
+        </div>
         )}
 
         {/* Modal Paste dari Excel */}
