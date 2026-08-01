@@ -1,8 +1,10 @@
 /**
  * StaffPortalAppLauncher.tsx
- * Launcher Portal App dengan Desain Compact 2 KELOMPOK UTAMA:
- * - Kelompok 1: 🏫 Ruang Kerja Guru & Wali Kelas (Harian, Presensi Diri, Jurnal KBM, e-Rapor)
- * - Kelompok 2: 🏛️ Ruang Kerja Jabatan & Struktural (Ruang Kurikulum, Ruang Kesiswaan, Ruang BP/BK, Ruang Sarpras, Ruang Hubin)
+ * Launcher Portal App yang MENGGUNAKAN LOGIKA HASIL PENYARINGAN SIDEBAR 100%.
+ * - Menggunakan ROLE_WORKSPACES & activeWorkspaceId persis seperti Sidebar.tsx
+ * - Memisahkan menu menjadi 2 Kelompok Utama:
+ *   1. 🏫 Ruang Kerja Guru & Wali Kelas (Aktivitas Harian Diri)
+ *   2. 🏛️ Ruang Kerja Jabatan & Lintas Modul (Hasil Logika Penyaringan Sidebar)
  */
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +33,8 @@ import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
+import { ROLE_WORKSPACES } from '../../../config/navigation.config';
+import { useNavStore } from '../../../store/navStore';
 
 export interface StaffPortalAppLauncherProps {
   user: any;
@@ -58,6 +62,7 @@ interface AppTileData {
   path?: string;
   onClick?: () => void;
   categoryLabel?: string;
+  isCrossModule?: boolean;
 }
 
 // ── Compact Memoized App Tile Item (Ukuran Ringkas 0-Noise) ──
@@ -135,8 +140,9 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBackendHub, setSelectedBackendHub] = useState<string>('ALL');
 
-  // ── Integrated Dynamic Smart Menu from Backend API ──
+  // Ambil data menu backend & active workspace persis seperti Sidebar.tsx
   const { menu: backendGroupedMenu, isLoading: isMenuLoading } = useSmartMenu();
+  const activeWorkspaceId = useNavStore((state) => state.activeWorkspaceId);
 
   const handleTileNavigate = useCallback(
     (path?: string, onClick?: () => void) => {
@@ -268,11 +274,19 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     onOpenTindakMasalModal,
   ]);
 
-  // ── 2. KELOMPOK UTAMA: RUANG KERJA JABATAN & STRUKTURAL (Ruang Kurikulum, Kesiswaan, BP/BK, Sarpras, Hubin) ──
+  // ── 2. KELOMPOK UTAMA: RUANG JABATAN & LINTAS MODUL (HASIL PENYARINGAN LOGIKA SIDEBAR 100%) ──
   const group2BackendTiles = useMemo<AppTileData[]>(() => {
     if (!backendGroupedMenu || backendGroupedMenu.length === 0) return [];
 
-    const result: AppTileData[] = [];
+    const isAdmin =
+      String(user?.role?.name || '').toUpperCase() === 'ADMIN' ||
+      String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN' ||
+      user?.tenant_id === 'system';
+
+    const currentWs = ROLE_WORKSPACES.find((w) => w.id === activeWorkspaceId) || ROLE_WORKSPACES[0];
+
+    // kumpulkan seluruh item menu backend
+    const allBackendTiles: AppTileData[] = [];
     let tileCounter = 0;
 
     backendGroupedMenu.forEach((group) => {
@@ -282,7 +296,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         const accent = COLOR_ACCENTS[tileCounter % COLOR_ACCENTS.length];
         tileCounter++;
 
-        result.push({
+        allBackendTiles.push({
           id: `g2-item-${item.id || tileCounter}`,
           title: item.name,
           description: (item as any).description || `Modul ${item.name}`,
@@ -297,16 +311,83 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       });
     });
 
-    return result;
-  }, [backendGroupedMenu]);
+    // Jika user adalah Admin/Superadmin, sajikan semua modul yang diizinkan backend
+    if (isAdmin) {
+      return allBackendTiles;
+    }
 
-  // Filter Kategori Backend (Ruang Kurikulum, Ruang Kesiswaan, Ruang Sarpras, Ruang Hubin, BP/BK)
+    // UNTUK NON-ADMIN: GUNAKAN LOGIKA PENYARINGAN WORKSPACE & INFORMASI LINTAS MODUL PERSIS SEPERTI SIDEBAR.TSX!
+    const allowedCrossPaths = new Set(
+      (currentWs.crossModulePaths || []).map((p) => p.toLowerCase())
+    );
+
+    const filteredTiles = allBackendTiles.filter((tile) => {
+      const p = (tile.path || '').toLowerCase();
+      if (!p || p === '#' || p === '/dashboard') return false;
+
+      // 1. Matched target keywords workspace (e.g. KURIKULUM, KESISWAAN, SARPRAS, HUBIN, BPBK)
+      if (currentWs.targetGroupKeywords && currentWs.targetGroupKeywords.length > 0) {
+        const catName = (tile.categoryLabel || '').toUpperCase();
+        const matchesCategory = currentWs.targetGroupKeywords.some((kw) => catName.includes(kw.toUpperCase()));
+        if (matchesCategory) return true;
+      }
+
+      // 2. Matched cross module paths
+      if (allowedCrossPaths.has(p)) {
+        tile.isCrossModule = true;
+        return true;
+      }
+
+      // 3. Special workspace specific matches
+      if (currentWs.id === 'WALIKELAS_WORKSPACE') {
+        if (p.includes('/rapor') || p.includes('/monitoring') || p.includes('/piket')) return true;
+      } else if (currentWs.id === 'TEACHER_WORKSPACE') {
+        if (
+          p.includes('riwayat-ajar') ||
+          p.includes('my-attendance') ||
+          p.includes('/kurikulum/jadwal') ||
+          p.includes('/kurikulum/perangkat') ||
+          p.includes('/kurikulum/kalender') ||
+          p.includes('/rapor/nilai') ||
+          p.includes('/rapor/p5')
+        )
+          return true;
+      } else if (currentWs.id === 'KEPSEK_WORKSPACE') {
+        if (
+          p === '/kurikulum/dashboard' ||
+          p === '/attendance/guru-monitoring' ||
+          p === '/kurikulum/supervisi' ||
+          p === '/attendance/rekap' ||
+          p === '/kesiswaan/monitoring' ||
+          p === '/kurikulum/perangkat'
+        )
+          return true;
+      }
+
+      return false;
+    });
+
+    // Jika hasil penyaringan spesifik kosong, sediakan fallback aman ubin lintas modul
+    if (filteredTiles.length === 0) {
+      return allBackendTiles.filter((t) => {
+        const p = (t.path || '').toLowerCase();
+        return p && p !== '#' && p !== '/dashboard';
+      });
+    }
+
+    return filteredTiles;
+  }, [backendGroupedMenu, user, activeWorkspaceId]);
+
+  // Filter Kategori Backend (Tabs Pills) berdasarkan tile yang benar-benar lolos saring
   const backendCategoryLabels = useMemo(() => {
-    if (!backendGroupedMenu) return [];
-    return backendGroupedMenu.map((g) => g.label);
-  }, [backendGroupedMenu]);
+    const set = new Set<string>();
+    group2BackendTiles.forEach((t) => {
+      if (t.categoryLabel) set.add(t.categoryLabel);
+    });
+    return Array.from(set);
+  }, [group2BackendTiles]);
 
-  // Filtered Group 1 & Group 2 items based on Search & Tabs
+  // Filtered Group 1 & Group 2 items berdasarkan Search & Tabs
   const filteredGroup1 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return group1Tiles;
@@ -344,7 +425,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (Android Grid Mode)
+                Portal App Launcher (Penyaringan Logika Sidebar 100%)
               </Badge>
               {isWaliKelas && (
                 <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
@@ -356,7 +437,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terbagi ke Dalam 2 Kelompok: Ruang Kerja Guru vs Ruang Kerja Jabatan.
+              Menu disajikan secara bersih & presisi mengikuti logika penyaringan Ruang Kerja & Lintas Modul Sidebar.
             </p>
           </div>
 
@@ -391,7 +472,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
         <div className="flex items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs">
           <Loader2 className="w-4 h-4 animate-spin text-indigo-600 mr-2" />
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-            Memuat Modul Ruang Jabatan Backend...
+            Memuat & Menyaring Modul Ruang Kerja Backend...
           </span>
         </div>
       )}
@@ -428,7 +509,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & STRUKTURAL (Kurikulum, Kesiswaan, Sarpras, Hubin, BP/BK)
+          KELOMPOK 2: 🏛️ RUANG KERJA JABATAN & LINTAS MODUL (LOGIKA PENYARINGAN SIDEBAR 100%)
       ───────────────────────────────────────────────────────────────────────────── */}
       <section className="space-y-2.5 pt-2">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2">
@@ -437,11 +518,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               <Building2 size={14} />
             </div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-              2. Ruang Kerja Jabatan & Struktural
+              2. Ruang Kerja Jabatan & Informasi Lintas Modul
             </h2>
           </div>
 
-          {/* Sub-Category Filter Pills (Ruang Kurikulum, Ruang Kesiswaan, Ruang Sarpras, Ruang Hubin, BP/BK) */}
+          {/* Sub-Category Filter Pills Compact */}
           {backendCategoryLabels.length > 0 && (
             <div className="flex items-center gap-1 overflow-x-auto pb-0.5 max-w-full">
               <button
@@ -489,7 +570,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
           <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
             <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Tidak ada modul ruang kerja yang cocok dengan kriteria pencarian Anda.
+              Tidak ada modul ruang kerja yang cocok dengan kriteria penyaringan role Anda.
             </p>
           </div>
         )}
