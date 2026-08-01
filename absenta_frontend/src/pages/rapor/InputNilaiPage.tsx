@@ -1,11 +1,14 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { 
   FileSpreadsheet, 
   Layers,
   FileOutput,
   Sparkles,
-  Calculator
+  Calculator,
+  Printer,
+  UserCheck
 } from 'lucide-react';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
@@ -27,6 +30,7 @@ import { BulkImportExcelCard } from '../../components/rapor/input-nilai/BulkImpo
 
 export default function InputNilaiPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedJenisNilai, setSelectedJenisNilai] = useState<string>('');
@@ -597,6 +601,27 @@ export default function InputNilaiPage() {
             <Calculator className="w-3.5 h-3.5 mr-1" />
             {activeYear?.nama || 'TP...'} — {activeSemester?.nama || 'Semester...'}
           </Badge>
+
+          {/* Quick Navigation Shortcuts */}
+          <button
+            type="button"
+            onClick={() => navigate('/rapor/cetak')}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all"
+            title="Buka Preview & Cetak Rapor Siswa"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Preview & Cetak Rapor</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/kurikulum/wali-kelas')}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all"
+            title="Buka Hub Manajemen Wali Kelas"
+          >
+            <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="hidden sm:inline">Hub Wali Kelas</span>
+          </button>
 
           {/* Mode Switcher Pills */}
           <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
