@@ -36,7 +36,7 @@ import { useSmartMenu } from '../../../hooks/useSmartMenu';
 import { iconForName } from '../../../lib/iconForName';
 import { useNavStore } from '../../../store/navStore';
 import { filterNavByWorkspace, normalizeFlatMenu, isAdminUser, getAllUserCrossModuleItems, getPrimaryStructuralWorkspaceItems } from '../../../helpers/workspaceNavFilter';
-import { resolveUserWorkspaces } from '../../../config/navigation.config';
+import { resolveUserWorkspaces, getUserPositions } from '../../../config/navigation.config';
 import { type QuickAction } from '../shared/QuickActionGrid';
 
 export interface StaffPortalAppLauncherProps {
