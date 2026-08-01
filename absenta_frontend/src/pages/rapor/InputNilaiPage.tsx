@@ -7,6 +7,7 @@ import {
   Sparkles,
   Calculator
 } from 'lucide-react';
+import { SectionCard } from '../../components/ui/SectionCard';
 import { OperationalPageLayout } from '../../components/layout/OperationalPageLayout';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -54,8 +55,8 @@ export default function InputNilaiPage() {
     queryFn: async () => {
       try {
         const res = await tahunPelajaranApi.getAll({ limit: 200 });
-        const list = Array.isArray(res.data) ? res.data : (res as any)?.data || [];
-        return list.find((tp: any) => tp.is_active) || list[0] || null;
+        const list = Array.isArray(res.data) ? res.data : (res as { data?: ClassItem[] })?.data || [];
+        return list.find((tp: { is_active?: boolean }) => tp.is_active) || list[0] || null;
       } catch {
         return null;
       }
@@ -67,8 +68,8 @@ export default function InputNilaiPage() {
     queryFn: async () => {
       try {
         const res = await semesterApi.getAll({ limit: 200 });
-        const list = Array.isArray(res.data) ? res.data : (res as any)?.data || [];
-        return list.find((s: any) => s.is_active) || list[0] || null;
+        const list = Array.isArray(res.data) ? res.data : (res as { data?: SubjectItem[] })?.data || [];
+        return list.find((s: { is_active?: boolean }) => s.is_active) || list[0] || null;
       } catch {
         return null;
       }
@@ -234,12 +235,15 @@ export default function InputNilaiPage() {
       const studentList = studentsData.data;
       const gradesList = existingGradesData?.data || [];
 
-      const initialScores: StudentScoreItem[] = studentList.map((s: any) => {
-        const found = gradesList.find((g: any) => g.siswa_id === s.id);
+      interface ApiSiswaRecord { id: string; nama?: string; nama_lengkap?: string; nis?: string; nisn?: string }
+      interface ApiGradeRecord { siswa_id: string; sumatif_1?: number; sumatif_2?: number; sumatif_3?: number; sumatif_akhir?: number; deskripsi_cp?: string; nilai?: number; deskripsi?: string }
+
+      const initialScores: StudentScoreItem[] = studentList?.map((s: ApiSiswaRecord) => {
+        const found = gradesList.find((g: ApiGradeRecord) => g.siswa_id === s.id);
         if (found) {
           return {
             siswa_id: s.id,
-            nama: s.nama_lengkap || s.nama,
+            nama: s.nama_lengkap || s.nama || '-',
             nis: s.nis || s.nisn || '-',
             sumatif_1: found.sumatif_1 ?? null,
             sumatif_2: found.sumatif_2 ?? null,
@@ -252,7 +256,7 @@ export default function InputNilaiPage() {
         }
         return {
           siswa_id: s.id,
-          nama: s.nama_lengkap || s.nama,
+          nama: s.nama_lengkap || s.nama || '-',
           nis: s.nis || s.nisn || '-',
           sumatif_1: null,
           sumatif_2: null,
@@ -262,14 +266,14 @@ export default function InputNilaiPage() {
           nilai: null,
           deskripsi: ''
         };
-      });
+      }) || [];
 
       setScores(initialScores);
     }
   }, [studentsData, existingGradesData]);
 
   // Score Input Change Handler with Zod Schema Validation & Range Checks
-  const handleScoreChange = useCallback((index: number, field: keyof StudentScoreItem, val: any) => {
+  const handleScoreChange = useCallback((index: number, field: keyof StudentScoreItem, val: string | number | null) => {
     setScores(prev => {
       const updated = [...prev];
       if (!updated[index]) return prev;
@@ -277,7 +281,7 @@ export default function InputNilaiPage() {
       // Range check for numeric score fields
       if (['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir', 'nilai'].includes(field as string)) {
         if (val !== '' && val !== null && val !== undefined) {
-          const num = parseFloat(val);
+          const num = parseFloat(String(val));
           if (!isNaN(num) && (num < 0 || num > 100)) {
             toast.error('Nilai harus berkisar antara 0 - 100.');
             return prev;
@@ -296,13 +300,13 @@ export default function InputNilaiPage() {
       toast.warning('Teks Capaian Kompetensi (CP) baris pertama masih kosong.');
       return;
     }
-    setScores(prev => prev.map(s => ({ ...s, deskripsi_cp: sourceCp })));
+    setScores(prev => prev?.map(s => ({ ...s, deskripsi_cp: sourceCp })) || []);
     toast.success(`Berhasil menyalin Capaian Kompetensi ke seluruh siswa!`);
   }, []);
 
   // 1-Click Clear CP
   const handleClearCpAll = useCallback(() => {
-    setScores(prev => prev.map(s => ({ ...s, deskripsi_cp: '' })));
+    setScores(prev => prev?.map(s => ({ ...s, deskripsi_cp: '' })) || []);
     toast.info('Seluruh Capaian Kompetensi (CP) telah dikosongkan.');
   }, []);
 
@@ -349,11 +353,11 @@ export default function InputNilaiPage() {
   }, [scores.length, entryMode]);
 
   // Color Coding Helper based on subject KKM threshold
-  const getScoreInputStyle = useCallback((scoreVal: any) => {
+  const getScoreInputStyle = useCallback((scoreVal: string | number | null) => {
     if (scoreVal === null || scoreVal === undefined || scoreVal === '') {
       return 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100';
     }
-    const num = parseFloat(scoreVal as string);
+    const num = parseFloat(String(scoreVal));
     if (isNaN(num)) return 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100';
     
     if (num < kkmThreshold) {
@@ -368,28 +372,30 @@ export default function InputNilaiPage() {
 
   // Save Mutations
   const sumatifSaveMutation = useMutation({
-    mutationFn: (data: any) => raporApi.saveSumatifMassal(data),
+    mutationFn: (data: unknown) => raporApi.saveSumatifMassal(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
       setSaveSuccessMsg('Seluruh nilai Sumatif & Capaian Kompetensi berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Berhasil!');
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal menyimpan nilai sumatif.');
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menyimpan nilai sumatif.';
+      toast.error(msg);
     }
   });
 
   const bulkSaveMutation = useMutation({
-    mutationFn: (data: any) => raporApi.saveNilaiBulk(data),
+    mutationFn: (data: unknown) => raporApi.saveNilaiBulk(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
       setSaveSuccessMsg('Nilai Kategori berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Bulk Berhasil!');
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal menyimpan nilai bulk.');
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menyimpan nilai bulk.';
+      toast.error(msg);
     }
   });
 
@@ -405,14 +411,14 @@ export default function InputNilaiPage() {
         mapel_id: selectedMapel,
         tahun_pelajaran_id: activeYear?.id,
         semester_id: activeSemester?.id,
-        scores: scores.map(s => ({
+        scores: scores?.map(s => ({
           siswa_id: s.siswa_id,
           sumatif_1: s.sumatif_1 !== null && s.sumatif_1 !== '' ? Number(s.sumatif_1) : null,
           sumatif_2: s.sumatif_2 !== null && s.sumatif_2 !== '' ? Number(s.sumatif_2) : null,
           sumatif_3: s.sumatif_3 !== null && s.sumatif_3 !== '' ? Number(s.sumatif_3) : null,
           sumatif_akhir: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
           deskripsi_cp: s.deskripsi_cp || ''
-        }))
+        })) || []
       };
       sumatifSaveMutation.mutate(payload);
     } else {
@@ -426,11 +432,11 @@ export default function InputNilaiPage() {
         jenis_nilai_id: selectedJenisNilai,
         tahun_pelajaran_id: activeYear?.id,
         semester_id: activeSemester?.id,
-        scores: scores.map(s => ({
+        scores: scores?.map(s => ({
           siswa_id: s.siswa_id,
           nilai: s.nilai !== null && s.nilai !== '' ? Number(s.nilai) : null,
           deskripsi: s.deskripsi || ''
-        }))
+        })) || []
       };
       bulkSaveMutation.mutate(payload);
     }
@@ -449,7 +455,7 @@ export default function InputNilaiPage() {
 
     setScores(prev => {
       const nextScores = [...prev];
-      lines.forEach(line => {
+      lines?.forEach(line => {
         const cols = line.split('\t');
         if (cols.length >= 2) {
           const key = cols[0].trim();
@@ -490,7 +496,7 @@ export default function InputNilaiPage() {
         nama_mapel: currentMapelObj?.nama_mapel || 'Mata Pelajaran',
         tahun_pelajaran: activeYear?.nama || '2025/2026',
         semester: activeSemester?.nama || 'Ganjil',
-        students: scores.map(s => ({ nis: s.nis, nama: s.nama }))
+        students: scores?.map(s => ({ nis: s.nis, nama: s.nama })) || []
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -502,8 +508,9 @@ export default function InputNilaiPage() {
       window.URL.revokeObjectURL(url);
       a.remove();
       toast.success('Format Excel Bermerek Resmi berhasil diunduh!');
-    } catch (err: any) {
-      toast.error('Gagal mengunduh format Excel: ' + (err.message || err));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error('Gagal mengunduh format Excel: ' + msg);
     }
   }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
 
@@ -516,8 +523,9 @@ export default function InputNilaiPage() {
       toast.success('Impor Excel Massal Berhasil!');
       setExcelFile(null);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'Gagal mengimpor berkas Excel.');
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengimpor berkas Excel.';
+      toast.error(msg);
     }
   });
 
@@ -556,7 +564,7 @@ export default function InputNilaiPage() {
         nama_mapel: currentMapelObj?.nama_mapel || 'Mata Pelajaran',
         tahun_pelajaran: activeYear?.nama || '2025/2026',
         semester: activeSemester?.nama || 'Ganjil',
-        students: scores.map(s => ({ nis: s.nis, nama: s.nama }))
+        students: scores?.map(s => ({ nis: s.nis, nama: s.nama })) || []
       });
 
       const url = window.URL.createObjectURL(blob);
@@ -568,15 +576,18 @@ export default function InputNilaiPage() {
       window.URL.revokeObjectURL(url);
       a.remove();
       toast.success('Berkas Siap Impor e-Rapor Kemendikbud berhasil diunduh!');
-    } catch (err: any) {
-      toast.error('Gagal mengunduh e-Rapor: ' + (err.message || err));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error('Gagal mengunduh e-Rapor: ' + msg);
     }
   }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
 
   return (
     <OperationalPageLayout
       title="Lembar Input Nilai e-Rapor"
-      description="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
+      shortTitle="Input Nilai"
+      subtitle="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
+      hardeningModuleKey="InputNilaiPage"
       actions={
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono text-xs">
@@ -616,109 +627,111 @@ export default function InputNilaiPage() {
         </div>
       }
     >
-      <div className="space-y-6">
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+        <div className="space-y-6">
 
-        {/* Progress Bar & Rombel Filter Section */}
-        <TeacherProgressCard
-          progressInfo={progressInfo}
-          showProgressDetail={showProgressDetail}
-          onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
-          taskStatusFilter={taskStatusFilter}
-          onSetTaskStatusFilter={setTaskStatusFilter}
-          taskSearchQuery={taskSearchQuery}
-          onSetTaskSearchQuery={setTaskSearchQuery}
-          filteredTasks={filteredTasks}
-          selectedKelas={selectedKelas}
-          selectedMapel={selectedMapel}
-          onSelectTask={(kId, mId, kNama, mNama) => {
-            setSelectedKelas(kId);
-            setSelectedMapel(mId);
-            toast.info(`Memilih ${kNama} — ${mNama}`);
-          }}
-        />
+          {/* Progress Bar & Rombel Filter Section */}
+          <TeacherProgressCard
+            progressInfo={progressInfo}
+            showProgressDetail={showProgressDetail}
+            onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
+            taskStatusFilter={taskStatusFilter}
+            onSetTaskStatusFilter={setTaskStatusFilter}
+            taskSearchQuery={taskSearchQuery}
+            onSetTaskSearchQuery={setTaskSearchQuery}
+            filteredTasks={filteredTasks}
+            selectedKelas={selectedKelas}
+            selectedMapel={selectedMapel}
+            onSelectTask={(kId, mId, kNama, mNama) => {
+              setSelectedKelas(kId);
+              setSelectedMapel(mId);
+              toast.info(`Memilih ${kNama} — ${mNama}`);
+            }}
+          />
 
-        {saveSuccessMsg && (
-          <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-white text-sm">
-                ✓
+          {saveSuccessMsg && (
+            <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-bold text-white text-sm">
+                  ✓
+                </div>
+                <div>
+                  <p className="text-xs font-bold">{saveSuccessMsg}</p>
+                  <p className="text-[10px] text-emerald-100">Nilai siap digunakan untuk penerbitan Leger & e-Rapor resmi Dinas.</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-bold">{saveSuccessMsg}</p>
-                <p className="text-[10px] text-emerald-100">Nilai siap digunakan untuk penerbitan Leger & e-Rapor resmi Dinas.</p>
-              </div>
+              <button
+                type="button"
+                aria-label="Tutup notifikasi sukses"
+                onClick={() => setSaveSuccessMsg(null)}
+                className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all text-white"
+              >
+                Tutup
+              </button>
             </div>
-            <button
-              type="button"
-              aria-label="Tutup notifikasi sukses"
-              onClick={() => setSaveSuccessMsg(null)}
-              className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-all text-white"
-            >
-              Tutup
-            </button>
-          </div>
-        )}
+          )}
 
-        {selectedKelas && selectedMapel && (
-          <div className="space-y-6">
-            
-            {/* Active Class & Subject Task Navigation Card (Unified 1-Block Maju/Mundur) */}
-            <ActiveTaskNavCard
-              selectedKelasName={selectedKelasObj?.nama_kelas}
-              selectedMapelName={selectedMapelObj?.nama_mapel}
-              currentTaskIndex={currentTaskIndex}
-              totalTasks={progressInfo?.tasks?.length || 0}
-              currentTaskStatus={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.status : undefined}
-              siswaTerisi={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.siswa_terisi || 0 : 0}
-              totalSiswa={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.total_siswa || 0 : 0}
-              prevTask={prevTask}
-              nextTask={nextTask}
-              onNavigateTask={handleNavigateTask}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {selectedKelas && selectedMapel && (
+            <div className="space-y-6">
               
-              {/* Input Grid Nilai (Kiri 3 Cols) */}
-              <ScoreGridTable
-                scores={scores}
-                entryMode={entryMode}
-                kkmThreshold={kkmThreshold}
-                onKkmThresholdChange={handleKkmThresholdChange}
-                onScoreChange={handleScoreChange}
-                onCopyCpToAll={handleCopyCpToAll}
-                onClearCpAll={handleClearCpAll}
-                onKeyDownGrid={handleKeyDownGrid}
-                getScoreInputStyle={getScoreInputStyle}
-                onShowPasteModal={() => setShowPasteModal(true)}
-                onSaveSubmit={handleSaveSubmit}
-                isSaving={sumatifSaveMutation.isPending || bulkSaveMutation.isPending}
-                isLoading={isLoadingStudents || isLoadingGrades}
+              {/* Active Class & Subject Task Navigation Card (Unified 1-Block Maju/Mundur) */}
+              <ActiveTaskNavCard
+                selectedKelasName={selectedKelasObj?.nama_kelas}
+                selectedMapelName={selectedMapelObj?.nama_mapel}
+                currentTaskIndex={currentTaskIndex}
+                totalTasks={progressInfo?.tasks?.length || 0}
+                currentTaskStatus={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.status : undefined}
+                siswaTerisi={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.siswa_terisi || 0 : 0}
+                totalSiswa={currentTaskIndex >= 0 ? progressInfo?.tasks?.[currentTaskIndex]?.total_siswa || 0 : 0}
+                prevTask={prevTask}
+                nextTask={nextTask}
+                onNavigateTask={handleNavigateTask}
               />
 
-              {/* Impor & Ekspor e-Rapor (Kanan 1 Col) */}
-              <BulkImportExcelCard
-                onDownloadTemplate={handleDownloadTemplate}
-                onExportEraporKemendikbud={handleExportEraporKemendikbud}
-                excelFile={excelFile}
-                onFileChange={setExcelFile}
-                onUploadSubmit={handleUploadSubmit}
-                isUploading={uploadExcelMutation.isPending}
-              />
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                {/* Input Grid Nilai (Kiri 3 Cols) */}
+                <ScoreGridTable
+                  scores={scores}
+                  entryMode={entryMode}
+                  kkmThreshold={kkmThreshold}
+                  onKkmThresholdChange={handleKkmThresholdChange}
+                  onScoreChange={handleScoreChange}
+                  onCopyCpToAll={handleCopyCpToAll}
+                  onClearCpAll={handleClearCpAll}
+                  onKeyDownGrid={handleKeyDownGrid}
+                  getScoreInputStyle={getScoreInputStyle}
+                  onShowPasteModal={() => setShowPasteModal(true)}
+                  onSaveSubmit={handleSaveSubmit}
+                  isSaving={sumatifSaveMutation.isPending || bulkSaveMutation.isPending}
+                  isLoading={isLoadingStudents || isLoadingGrades}
+                />
 
+                {/* Impor & Ekspor e-Rapor (Kanan 1 Col) */}
+                <BulkImportExcelCard
+                  onDownloadTemplate={handleDownloadTemplate}
+                  onExportEraporKemendikbud={handleExportEraporKemendikbud}
+                  excelFile={excelFile}
+                  onFileChange={setExcelFile}
+                  onUploadSubmit={handleUploadSubmit}
+                  isUploading={uploadExcelMutation.isPending}
+                />
+
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Modal Paste dari Excel */}
-        <ExcelPasteModal
-          isOpen={showPasteModal}
-          onClose={() => setShowPasteModal(false)}
-          rawText={pasteRawText}
-          onRawTextChange={setPasteRawText}
-          onProcessPaste={handleProcessPaste}
-        />
+          {/* Modal Paste dari Excel */}
+          <ExcelPasteModal
+            isOpen={showPasteModal}
+            onClose={() => setShowPasteModal(false)}
+            rawText={pasteRawText}
+            onRawTextChange={setPasteRawText}
+            onProcessPaste={handleProcessPaste}
+          />
 
-      </div>
+        </div>
+      </SectionCard>
     </OperationalPageLayout>
   );
 }
