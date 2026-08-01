@@ -216,16 +216,16 @@
   3. Mengubah mekanisme pengurutan menu lintas modul (*Cross-Module Navigation*) pada komponen navigasi utama (`Sidebar.tsx`) dari pengurutan alfabetis/kustom menjadi pewarisan langsung dari urutan *canonical* basis data (`order` dari seeder menu), guna mempertahankan alur logis pengisian data master (Struktur -> Guru Mapel -> Kalender -> Jam KBM -> Jadwal).
 - **Rasional**: Memastikan penerapan prinsip *Least Privilege* dan *Separation of Duties* secara konsisten tanpa merusak pengalaman pengguna (UX) dengan memblokir halaman secara keseluruhan, serta menjaga agar alur pengisian data akademik tetap intuitif dan teratur bagi seluruh peran administrasi sekolah.
 
-2026-08: Unified Staff & Student Dashboard — Dynamic Portal App Launcher & Dual Mode Architecture
+2026-08: Unified Staff & Student Dashboard — Dynamic Portal App Launcher & Smart Default Hybrid Mode Architecture
 - **Keputusan**:
   1. Mengimplementasikan **Dual Mode Dashboard** (`Mode Portal Apps 📱` vs `Mode Desktop 🖥️`) secara **UNIVERSAL** untuk seluruh pengguna platform (Guru, Staf, Wali Kelas, Struktural, Admin, serta **SISWA / PETUGAS KELAS**).
-  2. Membangun komponen **`SiswaPortalAppLauncher.tsx`** yang 100% DINAMIS berbasis API Backend & RBAC (tanpa menu hardcoded):
-     - **⚡ Blok 1 — Aksi Cepat Siswa**: Presensi Mandiri, Jadwal Pelajaran Hari Ini, Konseling BK (+ *Presensi Rombel* jika siswa memiliki posisi `PETUGAS_KELAS`).
-     - **🏫 Blok 2 — Aktivitas & Belajar**: Jadwal Pelajaran, Nilai Rapor & Transkrip, Profil Diri.
-     - **🎓 Blok 3 — Menu Utama Siswa**: Menu utama akademik siswa dari API backend (`STUDENT_WORKSPACE`).
-     - **🔗 Blok 4 — Fasilitas & Akses Lintas Modul**: Koperasi E-Wallet Siswa, Peminjaman Aset/Buku Sarpras, & Logbook PKL Industri (Khusus Siswa SMK).
-  3. Siswa berjabatan **`PETUGAS_KELAS`** secara otomatis mendapat Badge khusus *"PETUGAS KELAS"* dan tombol pintasan operasional presensi rombel di launcher.
-- **Rasional**: Memberikan pengalaman navigasi visual bergaya aplikasi mobile (grid ikon squircle) yang konsisten dan modern di seluruh ekosistem sekolah tanpa mengorbankan keamanan hak akses (RBAC).
+  2. Membangun engine **`resolveSmartDashboardMode(user)`** di `dashboardModeHelper.ts` untuk menentukan **Smart Default Hybrid Mode** otomatis:
+     - **SISWA (semua perangkat)** ➔ Default **Mode Portal Apps 📱** (Mobile-first experience).
+     - **GURU/STAF pada Mobile & Tablet (`< 1024px`)** ➔ Default **Mode Portal Apps 📱** (Fast touch access).
+     - **GURU/STAF pada Laptop & Desktop (`≥ 1024px`)** ➔ Default **Mode Desktop 🖥️** (Multi-widget overview).
+     - **User Override Priority**: Pilihan manual pengguna yang tersimpan di `localStorage` (`absenta_dashboard_mode`) selalu dihormati sebagai **prioritas utama** di atas smart default.
+  3. Membangun komponen **`SiswaPortalAppLauncher.tsx`** yang 100% DINAMIS berbasis API Backend & RBAC (tanpa menu hardcoded).
+- **Rasional**: Memberikan pengalaman visual bergaya aplikasi mobile (grid ikon squircle) yang optimal dan kontekstual secara otomatis sesuai kombinasi peran dan ukuran layar pengguna.
 
 2026-08: Portal App Launcher — 4-Block Structure dengan Deduplication & Opsi A Cross-Module Merge
 - **Keputusan**:
