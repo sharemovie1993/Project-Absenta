@@ -568,8 +568,9 @@ export default function InputNilaiPage() {
             Parameter Penilaian Kelas (Kelas-Sentrik)
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            {/* 1. Kelas Rombel */}
+            <div className="space-y-1 col-span-1 md:col-span-3">
               <label className="text-[10px] font-bold text-slate-500 uppercase">1. Kelas Rombel</label>
               <select
                 value={selectedKelas}
@@ -583,7 +584,8 @@ export default function InputNilaiPage() {
               </select>
             </div>
 
-            <div className="space-y-1">
+            {/* 2. Mata Pelajaran (Diperluas: col-span-6 untuk Mode Sumatif, col-span-4 untuk Mode Kategori) */}
+            <div className={`space-y-1 col-span-1 ${entryMode === 'sumatif' ? 'md:col-span-6' : 'md:col-span-4'}`}>
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">2. Mata Pelajaran (Jadwal KBM)</label>
                 {selectedKelas && subjects && (
@@ -621,7 +623,7 @@ export default function InputNilaiPage() {
             </div>
 
             {entryMode === 'kategori' && (
-              <div className="space-y-1">
+              <div className="space-y-1 col-span-1 md:col-span-3">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">3. Kategori Penilaian</label>
                 <select
                   value={selectedJenisNilai}
@@ -639,7 +641,7 @@ export default function InputNilaiPage() {
               </div>
             )}
 
-            <div className="space-y-1">
+            <div className={`space-y-1 col-span-1 ${entryMode === 'sumatif' ? 'md:col-span-3' : 'md:col-span-2'}`}>
               <label className="text-[10px] font-bold text-slate-500 uppercase">
                 {entryMode === 'sumatif' ? '3.' : '4.'} Sesi KBM Harian (Opsional)
               </label>
