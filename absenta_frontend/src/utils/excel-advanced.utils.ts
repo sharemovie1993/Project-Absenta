@@ -137,3 +137,84 @@ export const generateAdvancedTemplate = async (
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, options.fileName.endsWith('.xlsx') ? options.fileName : `${options.fileName}.xlsx`);
 };
+
+export interface StyledGradeTemplateOptions {
+  nama_kelas: string;
+  nama_mapel: string;
+  tahun_pelajaran: string;
+  semester: string;
+  students: { nis: string; nama: string }[];
+}
+
+/**
+ * Generate a styled Excel template specifically for e-Rapor grade entry with school metadata
+ */
+export const generateStyledExcelTemplate = async (opts: StyledGradeTemplateOptions): Promise<Blob> => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Format Nilai Rapor');
+
+  // Title Header
+  sheet.mergeCells('A1:G1');
+  const titleCell = sheet.getCell('A1');
+  titleCell.value = `FORMAT IMPOR NILAI RAPOR — ${opts.nama_mapel.toUpperCase()} (${opts.nama_kelas.toUpperCase()})`;
+  titleCell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E1B4B' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  sheet.mergeCells('A2:G2');
+  const subTitleCell = sheet.getCell('A2');
+  subTitleCell.value = `Tahun Pelajaran: ${opts.tahun_pelajaran} | Semester: ${opts.semester}`;
+  subTitleCell.font = { italic: true, size: 10, color: { argb: 'FFE2E8F0' } };
+  subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF312E81' } };
+  subTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  sheet.addRow([]);
+
+  // Column Headers
+  const headers = ['NO', 'NIS', 'NAMA SISWA', 'SUMATIF 1', 'SUMATIF 2', 'SUMATIF 3', 'SUMATIF AKHIR', 'CAPAIAN KOMPETENSI (CP)'];
+  const headerRow = sheet.addRow(headers);
+  headerRow.height = 24;
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF6366F1' } },
+      bottom: { style: 'medium', color: { argb: 'FF312E81' } },
+      left: { style: 'thin', color: { argb: 'FF6366F1' } },
+      right: { style: 'thin', color: { argb: 'FF6366F1' } },
+    };
+  });
+
+  // Student Rows
+  opts.students.forEach((s, idx) => {
+    const row = sheet.addRow([idx + 1, s.nis, s.nama, '', '', '', '', '']);
+    row.height = 20;
+    row.getCell(1).alignment = { horizontal: 'center' };
+    row.getCell(2).alignment = { horizontal: 'center' };
+    row.getCell(2).numFmt = '@';
+
+    for (let c = 1; c <= 8; c++) {
+      row.getCell(c).border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+      };
+    }
+  });
+
+  // Column Widths
+  sheet.getColumn(1).width = 6;
+  sheet.getColumn(2).width = 16;
+  sheet.getColumn(3).width = 30;
+  sheet.getColumn(4).width = 12;
+  sheet.getColumn(5).width = 12;
+  sheet.getColumn(6).width = 12;
+  sheet.getColumn(7).width = 14;
+  sheet.getColumn(8).width = 50;
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+};
+
