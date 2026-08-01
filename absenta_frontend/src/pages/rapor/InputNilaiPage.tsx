@@ -64,9 +64,20 @@ export default function InputNilaiPage() {
     return classes.find((k: any) => k.id === selectedKelas);
   }, [classes, selectedKelas]);
 
+  const targetTingkat = useMemo(() => {
+    if (!selectedKelasObj?.tingkat) return undefined;
+    const val = String(selectedKelasObj.tingkat).trim().toUpperCase();
+    if (val === '10' || val === 'X') return 10;
+    if (val === '11' || val === 'XI') return 11;
+    if (val === '12' || val === 'XII') return 12;
+    const parsed = parseInt(val, 10);
+    return isNaN(parsed) ? undefined : parsed;
+  }, [selectedKelasObj]);
+
   const { rawList: subjects } = useMapelOptions({
-    tingkat: selectedKelasObj?.tingkat ? Number(selectedKelasObj.tingkat) : undefined
+    tingkat: targetTingkat
   });
+
   const { activeTahunPelajaran: activeYear } = useTahunPelajaranOptions();
   const { rawList: studentsInKelas, isLoading: isLoadingStudents } = useSiswaOptions({
     kelasId: selectedKelas,
@@ -95,9 +106,9 @@ export default function InputNilaiPage() {
 
   // Prepopulate Scores Grid with full student roster + existing grades
   useEffect(() => {
-    if (selectedKelas && studentsInKelas) {
+    if (selectedKelas && studentsInKelas && studentsInKelas.length > 0) {
       const existingMap = new Map();
-      if (existingGrades?.data) {
+      if (existingGrades?.data && Array.isArray(existingGrades.data)) {
         existingGrades.data.forEach((item: any) => {
           existingMap.set(item.siswa_id, item);
         });
@@ -123,7 +134,7 @@ export default function InputNilaiPage() {
 
       setScores(grid);
     }
-  }, [selectedKelas, studentsInKelas, existingGrades]);
+  }, [selectedKelas, selectedMapel, studentsInKelas, existingGrades]);
 
   // Save Batch Sumatif Mutation
   const sumatifSaveMutation = useMutation({
@@ -419,10 +430,7 @@ export default function InputNilaiPage() {
               <label className="text-[10px] font-bold text-slate-500 uppercase">1. Kelas Rombel</label>
               <select
                 value={selectedKelas}
-                onChange={(e) => {
-                  setSelectedKelas(e.target.value);
-                  setScores([]);
-                }}
+                onChange={(e) => setSelectedKelas(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Pilih Kelas</option>
@@ -436,10 +444,7 @@ export default function InputNilaiPage() {
               <label className="text-[10px] font-bold text-slate-500 uppercase">2. Mata Pelajaran</label>
               <select
                 value={selectedMapel}
-                onChange={(e) => {
-                  setSelectedMapel(e.target.value);
-                  setScores([]);
-                }}
+                onChange={(e) => setSelectedMapel(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
               >
                 <option value="">Pilih Mapel</option>

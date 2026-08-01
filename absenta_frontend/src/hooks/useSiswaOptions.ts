@@ -27,8 +27,14 @@ export function useSiswaOptions(params: UseSiswaOptionsParams = {}) {
 
   const filteredList = useMemo(() => {
     return rawList.filter((s) => {
-      const isStatusActive = !onlyActive || s.status === 'AKTIF' || (s.status as string) === 'ACTIVE';
-      if (kelasId && s.kelas_id !== kelasId) return false;
+      const statusStr = (s.status || 'AKTIF').toUpperCase();
+      const isStatusActive = !onlyActive || statusStr === 'AKTIF' || statusStr === 'ACTIVE';
+      
+      if (kelasId) {
+        const sKelasId = s.kelas_id || s.Kelas?.id;
+        if (sKelasId && sKelasId !== kelasId) return false;
+      }
+      
       return isStatusActive;
     });
   }, [rawList, kelasId, onlyActive]);
