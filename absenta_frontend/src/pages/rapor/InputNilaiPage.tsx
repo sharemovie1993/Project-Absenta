@@ -19,6 +19,7 @@ import { kelasApi, mapelApi, tahunPelajaranApi, siswaApi } from '../../api/acade
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useMapelOptions } from '../../hooks/useMapelOptions';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { toast } from 'sonner';
 
@@ -79,12 +80,11 @@ export default function InputNilaiPage() {
   });
 
   const { activeTahunPelajaran: activeYear } = useTahunPelajaranOptions();
+  const { activeSemester } = useSemesterOptions({ tahunPelajaranId: activeYear?.id });
   const { rawList: studentsInKelas, isLoading: isLoadingStudents } = useSiswaOptions({
     kelasId: selectedKelas,
     onlyActive: true
   });
-
-  const activeSemester = useMemo(() => activeYear?.Semester?.find((s: any) => s.is_active), [activeYear]);
 
   const { data: categories } = useQuery({
     queryKey: ['jenis-penilaian'],
@@ -247,13 +247,34 @@ export default function InputNilaiPage() {
 
   const handleSaveSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedKelas || !selectedMapel || !activeYear || !activeSemester) {
-      toast.error('Pilih Kelas dan Mapel terlebih dahulu');
+    console.log('🚀 [InputNilaiPage] handleSaveSubmit triggered. State:', {
+      selectedKelas,
+      selectedMapel,
+      activeYearId: activeYear?.id,
+      activeSemesterId: activeSemester?.id,
+      entryMode,
+      scoresCount: scores.length
+    });
+
+    if (!selectedKelas) {
+      toast.error('Pilih Kelas Rombel terlebih dahulu');
+      return;
+    }
+    if (!selectedMapel) {
+      toast.error('Pilih Mata Pelajaran terlebih dahulu');
+      return;
+    }
+    if (!activeYear || !activeSemester) {
+      toast.error('Tahun Pelajaran atau Semester aktif belum diset di sistem');
+      return;
+    }
+    if (scores.length === 0) {
+      toast.error('Tidak ada data siswa untuk disimpan');
       return;
     }
 
     if (entryMode === 'sumatif') {
-      sumatifSaveMutation.mutate({
+      const payload = {
         mapel_id: selectedMapel,
         tahun_pelajaran_id: activeYear.id,
         semester_id: activeSemester.id,
@@ -265,7 +286,9 @@ export default function InputNilaiPage() {
           nilai_akhir_sumatif: s.nilai_akhir_sumatif,
           capaian_kompetensi: s.capaian_kompetensi
         }))
-      });
+      };
+      console.log('📤 [InputNilaiPage] Mutating sumatifSaveMutation with payload:', payload);
+      sumatifSaveMutation.mutate(payload);
     } else {
       if (!selectedJenisNilai) {
         toast.error('Pilih Kategori Penilaian terlebih dahulu');
