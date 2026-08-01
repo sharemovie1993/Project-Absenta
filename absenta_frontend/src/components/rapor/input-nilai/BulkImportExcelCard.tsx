@@ -1,10 +1,11 @@
 import React, { memo } from 'react';
-import { Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, FileOutput } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 
 interface BulkImportExcelCardProps {
   onDownloadTemplate: () => void;
+  onExportEraporKemendikbud?: () => void;
   excelFile: File | null;
   onFileChange: (file: File | null) => void;
   onUploadSubmit: (e: React.FormEvent) => void;
@@ -13,6 +14,7 @@ interface BulkImportExcelCardProps {
 
 export const BulkImportExcelCard: React.FC<BulkImportExcelCardProps> = memo(({
   onDownloadTemplate,
+  onExportEraporKemendikbud,
   excelFile,
   onFileChange,
   onUploadSubmit,
@@ -20,6 +22,29 @@ export const BulkImportExcelCard: React.FC<BulkImportExcelCardProps> = memo(({
 }) => {
   return (
     <div className="space-y-4">
+      {/* Export e-Rapor Kemendikbud Card */}
+      {onExportEraporKemendikbud && (
+        <Card className="p-4 border-none shadow-sm bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 text-white space-y-3 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-28 h-28 bg-indigo-500/10 rounded-full blur-xl"></div>
+          <div className="flex items-center gap-2 text-indigo-300">
+            <FileOutput size={18} />
+            <h3 className="font-bold text-xs uppercase tracking-wider">Export e-Rapor Kemendikbud</h3>
+          </div>
+          <p className="text-[11px] text-slate-300 leading-relaxed">
+            Unduh file Excel yang telah ter-format khusus sesuai skema impor aplikasi <strong>e-Rapor resmi Dinas Pendidikan</strong>.
+          </p>
+          <Button
+            type="button"
+            aria-label="Export Siap Impor e-Rapor Kemendikbud"
+            onClick={onExportEraporKemendikbud}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-xl h-10 shadow-lg shadow-indigo-500/25"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            EXPORT SIAP IMPOR E-RAPOR
+          </Button>
+        </Card>
+      )}
+
       {/* Download Template Excel Card */}
       <Card className="p-4 border-none shadow-sm dark:bg-slate-900/40 space-y-3">
         <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs">

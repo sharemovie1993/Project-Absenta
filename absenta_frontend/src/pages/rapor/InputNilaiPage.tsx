@@ -11,7 +11,7 @@ import { OperationalPageLayout } from '../../components/layout/OperationalPageLa
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { raporApi } from '../../api/rapor.api';
-import { kelasApi, mapelApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
+import { kelasApi, mapelApi, tahunPelajaranApi, semesterApi, siswaApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 import { generateStyledExcelTemplate } from '../../utils/excel-advanced.utils';
 
@@ -60,7 +60,7 @@ export default function InputNilaiPage() {
   const { data: activeSemester } = useQuery({
     queryKey: ['semester-active'],
     queryFn: async () => {
-      const res = await raporApi.getTeacherProgress();
+      const res = await semesterApi.getActive();
       return res.data;
     }
   });
@@ -88,7 +88,6 @@ export default function InputNilaiPage() {
       tahun_pelajaran_id: activeYear?.id,
       semester_id: activeSemester?.id
     }),
-    enabled: !!activeYear && !!activeSemester
   });
 
   const classes: ClassItem[] = useMemo(() => classesData?.data || [], [classesData]);
@@ -503,6 +502,38 @@ export default function InputNilaiPage() {
   const selectedKelasObj = useMemo(() => classes.find(k => k.id === selectedKelas), [classes, selectedKelas]);
   const selectedMapelObj = useMemo(() => subjects.find(m => m.id === selectedMapel), [subjects, selectedMapel]);
 
+  // Export e-Rapor Kemendikbud Handler
+  const handleExportEraporKemendikbud = useCallback(async () => {
+    if (!selectedKelas || !selectedMapel) {
+      toast.error('Pilih Kelas Rombel dan Mata Pelajaran terlebih dahulu.');
+      return;
+    }
+    const currentKelasObj = classes.find(k => k.id === selectedKelas);
+    const currentMapelObj = subjects.find(m => m.id === selectedMapel);
+
+    try {
+      const blob = await generateStyledExcelTemplate({
+        nama_kelas: currentKelasObj?.nama_kelas || 'Rombel',
+        nama_mapel: currentMapelObj?.nama_mapel || 'Mata Pelajaran',
+        tahun_pelajaran: activeYear?.nama || '2025/2026',
+        semester: activeSemester?.nama || 'Ganjil',
+        students: scores.map(s => ({ nis: s.nis, nama: s.nama }))
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `eRapor_Kemendikbud_${currentKelasObj?.nama_kelas}_${currentMapelObj?.nama_mapel}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      toast.success('Berkas Siap Impor e-Rapor Kemendikbud berhasil diunduh!');
+    } catch (err: any) {
+      toast.error('Gagal mengunduh e-Rapor: ' + (err.message || err));
+    }
+  }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
+
   return (
     <OperationalPageLayout
       title="Lembar Input Nilai e-Rapor"
@@ -628,6 +659,7 @@ export default function InputNilaiPage() {
               {/* Impor & Ekspor e-Rapor (Kanan 1 Col) */}
               <BulkImportExcelCard
                 onDownloadTemplate={handleDownloadTemplate}
+                onExportEraporKemendikbud={handleExportEraporKemendikbud}
                 excelFile={excelFile}
                 onFileChange={setExcelFile}
                 onUploadSubmit={handleUploadSubmit}
