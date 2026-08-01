@@ -268,19 +268,24 @@ export default function InputNilaiPage() {
     }
   }, [studentsData, existingGradesData]);
 
-  // Score Input Change Handler with Zod Schema Validation
+  // Score Input Change Handler with Zod Schema Validation & Range Checks
   const handleScoreChange = useCallback((index: number, field: keyof StudentScoreItem, val: any) => {
     setScores(prev => {
       const updated = [...prev];
-      const targetObj = { ...updated[index], [field]: val };
-      
-      const validation = ScoreInputSchema.safeParse(targetObj);
-      if (!validation.success && val !== '' && val !== null) {
-        toast.error(`Nilai harus berkisar antara 0 - 100.`);
-        return prev;
+      if (!updated[index]) return prev;
+
+      // Range check for numeric score fields
+      if (['sumatif_1', 'sumatif_2', 'sumatif_3', 'sumatif_akhir', 'nilai'].includes(field as string)) {
+        if (val !== '' && val !== null && val !== undefined) {
+          const num = parseFloat(val);
+          if (!isNaN(num) && (num < 0 || num > 100)) {
+            toast.error('Nilai harus berkisar antara 0 - 100.');
+            return prev;
+          }
+        }
       }
-      
-      updated[index] = targetObj;
+
+      updated[index] = { ...updated[index], [field]: val };
       return updated;
     });
   }, []);
