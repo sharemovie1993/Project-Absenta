@@ -451,6 +451,60 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
   }
 ];
 
+export const normalizePositionCode = (codeOrName: string): string => {
+  if (!codeOrName) return '';
+  const s = String(codeOrName).toUpperCase().trim();
+  if (s.includes('KURIKULUM')) return 'KURIKULUM';
+  if (s.includes('WALIKELAS') || s.includes('WALI KELAS') || s.includes('WALI_KELAS')) return 'WALIKELAS';
+  if (s.includes('KESISWAAN')) return 'KESISWAAN';
+  if (s.includes('HUBIN')) return 'HUBIN';
+  if (s.includes('SARPRAS')) return 'SARPRAS';
+  if (s.includes('KEPALA_SEKOLAH') || s.includes('KEPALA SEKOLAH')) return 'KEPALA_SEKOLAH';
+  if (s.includes('BPBK') || s.includes('BP/BK') || s === 'BK') return 'BPBK';
+  if (s.includes('KAPROG')) return 'KAPROG';
+  if (s.includes('KABENG')) return 'KABENG';
+  if (s.includes('PIKET')) return 'PIKET';
+  if (s.includes('GERBANG') || s.includes('SATPAM') || s.includes('GATE')) return 'GERBANG';
+  if (s.includes('TOOLMAN')) return 'TOOLMAN';
+  if (s.includes('BKK')) return 'BKK';
+  if (s.includes('PEMBINA')) return 'PEMBINA_ESKUL';
+  if (s.includes('TU_KEUANGAN')) return 'TU_KEUANGAN';
+  if (s.includes('TU_PERSURATAN')) return 'TU_PERSURATAN';
+  if (s.includes('TU_KEPEGAWAIAN')) return 'TU_KEPEGAWAIAN';
+  if (s.includes('TU_SARPRAS')) return 'TU_SARPRAS';
+  if (s.includes('TU_KEPALA') || s === 'TU') return 'TU_KEPALA';
+  return s;
+};
+
+export const getUserPositions = (user: any): string[] => {
+  if (!user) return [];
+  const rawList: string[] = [];
+
+  if (Array.isArray(user?.position_codes)) {
+    user.position_codes.forEach((p: any) => { if (p) rawList.push(String(p)); });
+  }
+  if (Array.isArray(user?.positions)) {
+    user.positions.forEach((p: any) => {
+      const code = p?.code || p?.name || p;
+      if (code) rawList.push(String(code));
+    });
+  }
+  if (Array.isArray(user?.guru_profile?.jabatan_list)) {
+    user.guru_profile.jabatan_list.forEach((j: any) => { if (j) rawList.push(String(j)); });
+  }
+  if (user?.guru_profile?.wali_kelas_di) {
+    rawList.push('WALIKELAS');
+  }
+
+  const normalizedSet = new Set<string>();
+  rawList.forEach((item) => {
+    const norm = normalizePositionCode(item);
+    if (norm) normalizedSet.add(norm);
+  });
+
+  return Array.from(normalizedSet);
+};
+
 export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => boolean): RoleWorkspaceConfig[] => {
   if (!user) return [];
   const roleName = String(user?.role?.name || '').toUpperCase();
@@ -460,9 +514,7 @@ export const resolveUserWorkspaces = (user: any, canFunc?: (cap: string) => bool
 
   const available: RoleWorkspaceConfig[] = [];
   const userCaps = Array.isArray(user?.capabilities) ? user.capabilities : [];
-  const userPositions: string[] = Array.isArray(user?.position_codes)
-    ? user.position_codes.map((p: any) => String(p).toUpperCase())
-    : (Array.isArray(user?.positions) ? user.positions.map((p: any) => String(p?.code || p).toUpperCase()) : []);
+  const userPositions = getUserPositions(user);
 
   if (roleName === 'SISWA') {
     const studentWs = ROLE_WORKSPACES.find(w => w.id === 'STUDENT_WORKSPACE');

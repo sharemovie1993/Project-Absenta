@@ -122,7 +122,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   const isKurikulum = useMemo(() => 
     caps.includes('dashboard.view.kurikulum') || 
-    caps.includes('attendance.sessions.view.list') || 
+    caps.includes('academic.manage.academic') || 
     user?.role?.name === 'KURIKULUM' || 
     hasRole('KURIKULUM'), 
   [caps, user, jabatanList, jabatan]);

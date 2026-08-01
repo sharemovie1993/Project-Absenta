@@ -174,22 +174,15 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
   // ── ROLE DETECTION UNTUK QUICK ACTIONS & TILES ──
   const positions: string[] = useMemo(() => {
-    const list = [...(user?.guru_profile?.jabatan_list || [])];
-    const userCodes = user?.position_codes || [];
-    if (Array.isArray(userCodes)) {
-      userCodes.forEach((code: string) => {
-        if (code && !list.includes(code)) list.push(code);
-      });
-    }
-    return list.map((p: string) => String(p).toUpperCase());
+    return getUserPositions(user);
   }, [user]);
 
-  const isKurikulumRole = positions.some((p) => p.includes('KURIKULUM'));
-  const isKesiswaan = positions.some((p) => p.includes('KESISWAAN'));
-  const isGerbang = positions.some((p) => p.includes('GERBANG') || p.includes('SATPAM') || p.includes('GATE'));
-  const isKaprog = positions.some((p) => p.includes('KAPROG') || p.includes('KEPALA PROGRAM'));
-  const isKabeng = positions.some((p) => p.includes('KABENG') || p.includes('KEPALA BENGKEL'));
-  const isPiket = positions.some((p) => p.includes('PIKET'));
+  const isKurikulumRole = positions.includes('KURIKULUM');
+  const isKesiswaan = positions.includes('KESISWAAN');
+  const isGerbang = positions.includes('GERBANG');
+  const isKaprog = positions.includes('KAPROG');
+  const isKabeng = positions.includes('KABENG');
+  const isPiket = positions.includes('PIKET');
 
   const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || isPiket;
 
