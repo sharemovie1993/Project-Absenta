@@ -2,6 +2,10 @@ import api from '../lib/axiosInstance';
 
 export const raporApi = {
   // === NILAI ===
+  getNilai: async (params?: { siswa_id?: string; mapel_id?: string; tahun_pelajaran_id?: string; semester_id?: string; jenis_nilai_id?: string; kelas_id?: string }) => {
+    const response = await api.get('/rapor/nilai', { params });
+    return response.data;
+  },
   getNilas: async (params?: { siswa_id?: string; mapel_id?: string; tahun_pelajaran_id?: string; semester_id?: string; jenis_nilai_id?: string; kelas_id?: string }) => {
     const response = await api.get('/rapor/nilai', { params });
     return response.data;
@@ -28,6 +32,24 @@ export const raporApi = {
       responseType: 'blob'
     });
     return response;
+  },
+  saveSumatifMassal: async (data: any) => {
+    const response = await api.post('/rapor/nilai/sumatif-batch', data);
+    return response.data;
+  },
+  saveNilaiBulk: async (data: any) => {
+    const response = await api.post('/rapor/nilai/bulk', data);
+    return response.data;
+  },
+  importExcel: async (formData: FormData) => {
+    const response = await api.post('/rapor/nilai/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  getKategoriNilai: async () => {
+    const response = await api.get('/rapor/nilai/jenis');
+    return response.data;
   },
   getTeacherProgress: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
     const response = await api.get('/rapor/nilai/progress', { params });
