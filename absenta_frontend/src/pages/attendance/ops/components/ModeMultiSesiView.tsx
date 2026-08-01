@@ -15,6 +15,7 @@ import {
   MapPin,
   UserCheck
 } from 'lucide-react';
+import { useKelasOptions } from '../../../../hooks/useKelasOptions';
 import { TabSwitcher, type TabOption } from '../../../../components/ui/TabSwitcher';
 
 import { useSearchParams } from 'react-router-dom';
@@ -90,7 +91,8 @@ export default function ModeMultiSesiView({
     }
   }, [managedKelasIds, selectedKelasId, user, kelasOptions]);
 
-  const [kelasOptions, setKelasOptions] = useState<DropdownOption[]>([]);
+  const { options: fetchedKelasOptions } = useKelasOptions();
+  const kelasOptions = fetchedKelasOptions || [];
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   useEffect(() => {
@@ -135,9 +137,7 @@ export default function ModeMultiSesiView({
     enabled: canAccessAny
   });
 
-  useEffect(() => {
-    dropdownApi.getKelasForDropdown().then(setKelasOptions).catch(() => {});
-  }, []);
+
 
   useEffect(() => {
     if (!isConnected || !tenantId) return;
