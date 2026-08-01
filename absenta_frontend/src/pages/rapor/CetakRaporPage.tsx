@@ -31,6 +31,7 @@ import { raporApi } from '../../api/rapor.api';
 import { tahunPelajaranApi, semesterApi } from '../../api/academic.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
+import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
 import { generateRaporPdf, generateP5RaporPdf } from '../../utils/print/modules/pdfRapor';
 
@@ -180,6 +181,10 @@ export default function CetakRaporPage() {
     kelasId: selectedKelas,
     onlyActive: false,
   });
+
+  // ── Rekap Absensi custom hooks ──
+  const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas);
+  const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id);
 
   // ── Academic year & semester ──
   const { data: yearsData } = useQuery({
@@ -673,41 +678,49 @@ export default function CetakRaporPage() {
                 noValidate
               >
                 {/* Referensi Presensi System Info Box */}
-                {selectedStudent && (
-                  <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
-                        <Sparkles size={13} className="text-amber-500" />
-                        Referensi Presensi Harian 1 Semester
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const ref = (selectedStudent as any)?.referensi_absensi_harian || { sakit: 0, izin: 0, alpa: 0 };
-                          setSummaryForm((prev) => ({
-                            ...prev,
-                            sakit: ref.sakit || 0,
-                            izin: ref.izin || 0,
-                            alpa: ref.alpa || 0,
-                          }));
-                          toast.info('Rekap presensi harian 1 semester berhasil diterjemahkan ke form Rapor');
-                        }}
-                        className="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all"
-                        title="Tarik angka presensi harian 1 semester ke form Rapor"
-                      >
-                        <Download size={11} />
-                        Tarik Rekap Kehadiran
-                      </button>
+                {selectedStudent && (() => {
+                  const rawRef = (selectedStudent as any)?.referensi_absensi_harian || { sakit: 0, izin: 0, alpa: 0 };
+                  const statRef = (rekapSiswaData as any)?.data?.statistik || (rekapSiswaData as any)?.statistik;
+                  const finalRef = {
+                    sakit: rawRef.sakit || statRef?.SAKIT || statRef?.sakit || 0,
+                    izin: rawRef.izin || statRef?.IZIN || statRef?.izin || 0,
+                    alpa: rawRef.alpa || statRef?.ALPA || statRef?.alpa || 0,
+                  };
+                  return (
+                    <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                          <Sparkles size={13} className="text-amber-500" />
+                          Referensi Presensi Harian 1 Semester
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSummaryForm((prev) => ({
+                              ...prev,
+                              sakit: finalRef.sakit || 0,
+                              izin: finalRef.izin || 0,
+                              alpa: finalRef.alpa || 0,
+                            }));
+                            toast.info('Rekap presensi harian 1 semester berhasil diterjemahkan ke form Rapor');
+                          }}
+                          className="text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded-lg shadow-sm flex items-center gap-1 transition-all"
+                          title="Tarik angka presensi harian 1 semester ke form Rapor"
+                        >
+                          <Download size={11} />
+                          Tarik Rekap Kehadiran
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        <span>Sakit: <strong className="text-amber-600 font-black">{finalRef.sakit}</strong> hari</span>
+                        <span>•</span>
+                        <span>Izin: <strong className="text-blue-600 font-black">{finalRef.izin}</strong> hari</span>
+                        <span>•</span>
+                        <span>Alpa: <strong className="text-rose-600 font-black">{finalRef.alpa}</strong> hari</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                      <span>Sakit: <strong className="text-amber-600 font-black">{((selectedStudent as any)?.referensi_absensi_harian?.sakit) || 0}</strong> hari</span>
-                      <span>•</span>
-                      <span>Izin: <strong className="text-blue-600 font-black">{((selectedStudent as any)?.referensi_absensi_harian?.izin) || 0}</strong> hari</span>
-                      <span>•</span>
-                      <span>Alpa: <strong className="text-rose-600 font-black">{((selectedStudent as any)?.referensi_absensi_harian?.alpa) || 0}</strong> hari</span>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
                 <div className="grid grid-cols-3 gap-3 w-full max-w-full min-w-0">
                   {(ABSENSI_FIELDS ?? []).map((field) => (
                     <div key={field} className="space-y-1 w-full max-w-full min-w-0">
