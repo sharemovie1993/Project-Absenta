@@ -255,6 +255,12 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update.attendance', // Tambahan: Validasi Izin/Sakit
     'attendance.sessions.tap',
     'attendance.sessions.update.journal',
+    'attendance.scan', // CRUD Absensi Gerbang & POS
+    'attendance.markGateAbsence', // Input Izin, Sakit, Alpa, Dispen, Terlambat
+    'attendance.getNotPresentStudents', // Akses sisa siswa belum hadir gerbang
+    'attendance.gate.tap.entry',
+    'attendance.gate.tap.exit',
+    'attendance.gate.bypass',
     'bk.cases.view.list',
     'bk.referrals.create',
   ],
