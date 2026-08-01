@@ -299,9 +299,10 @@ export default function DashboardOverview() {
       views.push({ id: 'overview', label: 'Overview', component: renderOverviewContent() });
     }
 
-    // 1. GERBANG
+    // 1. GERBANG (Khusus peran murni Petugas Gerbang/Satpam)
     const isSiswa = roleName === 'SISWA';
-    if (!isAdminOrSuperadmin && !isSiswa && (hasCap('attendance.gate.tap.entry') || hasCap('attendance.gate.tap.exit') || hasCap('attendance.gate.face.verify'))) {
+    const isDedicatedGerbangRole = (roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG') && !(user as any)?.position_codes?.includes('WALIKELAS');
+    if (!isAdminOrSuperadmin && !isSiswa && isDedicatedGerbangRole) {
       if (!views.find(v => v.id === 'gerbang')) {
         views.push({ id: 'gerbang', label: 'Petugas Gerbang', component: <GerbangDashboard /> });
       }

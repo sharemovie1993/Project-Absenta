@@ -150,11 +150,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isBkk       = useMemo(() => hasRole('BKK', 'BURSA KERJA'),                                                     [jabatanList, jabatan]); // eslint-disable-line
   const isGerbang   = useMemo(() => 
     caps.includes('dashboard.view.gerbang') || 
-    caps.includes('attendance.scan') || 
-    caps.includes('attendance.gate.tap.entry') || 
     user?.role?.name === 'GERBANG' || 
     user?.role?.name === 'PETUGAS_GERBANG' ||
-    hasRole('GERBANG', 'OPERATOR GERBANG', 'GATE', 'PETUGAS GERBANG', 'SATBAM', 'SECURITY', 'PIKET GERBANG'), 
+    hasRole('GERBANG', 'OPERATOR GERBANG', 'GATE', 'PETUGAS GERBANG', 'SATPAM', 'SECURITY', 'PIKET GERBANG'), 
   [caps, user, jabatanList, jabatan]); // eslint-disable-line
   const isTU        = useMemo(() => user?.role?.name === 'TU' || user?.role?.name === 'TATA_USAHA' || hasRole('TU', 'TATA USAHA'), [user, jabatanList, jabatan]); // eslint-disable-line
 
