@@ -10,14 +10,17 @@ import {
   Edit3,
   Save,
   Users,
-  Search
+  Search,
+  Eye,
+  X
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui';
 import { raporApi } from '../../api/rapor.api';
-import { tahunPelajaranApi } from '../../api/academic.api';
+import { tahunPelajaranApi, semesterApi } from '../../api/academic.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { toast } from 'sonner';
@@ -44,20 +47,28 @@ export default function CetakRaporPage() {
     keputusan_transisi: ''
   });
 
-  // Fetch Metadata
-  const { data: years } = useQuery({
+  // Preview Rapor Modal State
+  const [previewStudent, setPreviewStudent] = useState<any | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // Fetch Metadata: Tahun Pelajaran & Semester
+  const { data: yearsData } = useQuery({
     queryKey: ['academic-years'],
-    queryFn: () => tahunPelajaranApi.getAll()
+    queryFn: () => tahunPelajaranApi.getAll({ limit: 200 })
   });
   const activeYear = useMemo(() => {
-    const list = Array.isArray(years?.data) ? years.data : (Array.isArray(years) ? years : []);
+    const list = Array.isArray(yearsData?.data) ? yearsData.data : (Array.isArray(yearsData) ? yearsData : []);
     return list.find((y: any) => y.is_active) || list[0] || null;
-  }, [years]);
+  }, [yearsData]);
 
+  const { data: semestersData } = useQuery({
+    queryKey: ['academic-semesters'],
+    queryFn: () => semesterApi.getAll({ limit: 200 })
+  });
   const activeSemester = useMemo(() => {
-    const semList = activeYear?.Semester || [];
-    return semList.find((s: any) => s.is_active) || semList[0] || null;
-  }, [activeYear]);
+    const list = Array.isArray(semestersData?.data) ? semestersData.data : (Array.isArray(semestersData) ? semestersData : []);
+    return list.find((s: any) => s.is_active) || list[0] || null;
+  }, [semestersData]);
 
   // Fetch Leger (Grades, Ranks & Rata-rata)
   const { data: leger, isLoading: isLoadingLeger } = useQuery({
@@ -255,24 +266,43 @@ export default function CetakRaporPage() {
                         ABSENSI & CATATAN
                       </Button>
 
-                      {/* PDF Links */}
-                      {activeYear?.id && activeSemester?.id && (
-                        <>
-                          <a href={raporApi.getPdfRaporUrl(student.id, activeYear.id, activeSemester.id)} target="_blank" rel="noopener noreferrer">
-                            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
-                              <Printer size={13} />
-                              RAPOR
-                            </Button>
-                          </a>
+                      {/* Interactive Web Preview Button */}
+                      <Button
+                        onClick={() => {
+                          setPreviewStudent(student);
+                          setIsPreviewOpen(true);
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-xs font-bold rounded-xl"
+                        title="Buka Preview Rapor Interaktif"
+                      >
+                        <Eye size={14} className="mr-1 text-indigo-500" />
+                        PREVIEW RAPOR
+                      </Button>
 
-                          <a href={raporApi.getPdfP5Url(student.id, activeYear.id, activeSemester.id)} target="_blank" rel="noopener noreferrer">
-                            <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
-                              <Printer size={13} />
-                              P5
-                            </Button>
-                          </a>
-                        </>
-                      )}
+                      {/* PDF Links (Always Visible with Safe Fallbacks) */}
+                      <a 
+                        href={raporApi.getPdfRaporUrl(student.id, activeYear?.id || '', activeSemester?.id || '')} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
+                          <Printer size={13} />
+                          RAPOR (PDF)
+                        </Button>
+                      </a>
+
+                      <a 
+                        href={raporApi.getPdfP5Url(student.id, activeYear?.id || '', activeSemester?.id || '')} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
+                        <Button className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl py-2 px-3 flex items-center gap-1 shadow-sm">
+                          <Printer size={13} />
+                          P5 (PDF)
+                        </Button>
+                      </a>
 
                       <a href={raporApi.getPdfSklUrl(student.id)} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm" className="text-xs font-bold border-slate-200 text-slate-650 hover:bg-slate-50">
@@ -291,6 +321,59 @@ export default function CetakRaporPage() {
 
               </div>
             )}
+          </div>
+        )}
+
+        {/* Interactive Web Rapor Preview Modal */}
+        {isPreviewOpen && previewStudent && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-4xl max-h-[90vh] bg-white dark:bg-slate-900 border-none shadow-2xl flex flex-col overflow-hidden rounded-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-white text-sm">
+                      PREVIEW RAPOR: {previewStudent.nama_siswa}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      NIS. {previewStudent.nis} | {activeYear?.nama || 'TP...'} — {activeSemester?.nama || 'Semester...'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a 
+                    href={raporApi.getPdfRaporUrl(previewStudent.id, activeYear?.id || '', activeSemester?.id || '')} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl">
+                      <Printer className="w-3.5 h-3.5 mr-1" />
+                      CETAK PDF
+                    </Button>
+                  </a>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setIsPreviewOpen(false)}
+                    className="rounded-xl border-slate-200 dark:border-slate-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-100/50 dark:bg-slate-950/50">
+                {/* Embedded Rapor Document Viewer */}
+                <iframe
+                  title={`Preview Rapor ${previewStudent.nama_siswa}`}
+                  src={raporApi.getPdfRaporUrl(previewStudent.id, activeYear?.id || '', activeSemester?.id || '')}
+                  className="w-full min-h-[600px] border border-slate-200 dark:border-slate-800 rounded-xl bg-white shadow-xs"
+                />
+              </div>
+            </Card>
           </div>
         )}
 
