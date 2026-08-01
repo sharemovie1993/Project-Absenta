@@ -336,13 +336,39 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     });
   }, [backendGroupedMenu, user, block3PrimaryTiles]);
 
-  // ── HELPER DEDUPLIKASI TERPUSAT ──
+  // ── HELPER DEDUPLIKASI & FREQUENCY SORTING TERPUSAT ──
   const normalizeKey = (val?: string) => {
     if (!val) return '';
     return val
       .toLowerCase()
       .trim()
       .replace(/[\s\-_/]+/g, '');
+  };
+
+  // Kalkulator Bobot Frekuensi Penggunaan (10 = Paling Kiri / Hot, 99 = Paling Kanan)
+  const getFrequencyWeight = (item: AppTileData): number => {
+    const p = (item.path || '').toLowerCase();
+    const t = (item.title || '').toLowerCase();
+
+    // High Frequency / Hot Operations (Leftmost, 10-25)
+    if (p.includes('/attendance/monitoring') || t.includes('live kbm')) return 10;
+    if (p.includes('/attendance/rekap') || t.includes('rekap absensi')) return 15;
+    if (p.includes('/rapor/nilai') || t.includes('input nilai')) return 20;
+    if (p.includes('/bpbk/cases') || t.includes('monitoring kasus') || p.includes('/kesiswaan/pelanggaran')) return 25;
+
+    // Medium Frequency Operations (30-45)
+    if (p.includes('/rapor/cetak') || t.includes('cetak e-rapor')) return 30;
+    if (p.includes('/kesiswaan/risikolog') || t.includes('risikolog')) return 35;
+    if (p.includes('/kesiswaan/jadwal-kegiatan') || t.includes('jadwal kegiatan')) return 40;
+    if (p.includes('/bpbk/asesmen') || t.includes('asesmen')) return 45;
+
+    // Lower Frequency Services (50+)
+    if (p.includes('/bpbk/rujukan') || t.includes('rujukan')) return 50;
+    if (p.includes('/sarpras/loans') || t.includes('peminjaman')) return 60;
+    if (p.includes('/cooperative') || t.includes('koperasi')) return 70;
+    if (p.includes('/hubin') || t.includes('pkl')) return 80;
+
+    return 99;
   };
 
   // 1. Filtered Blok 1 (Aksi Cepat Diri)
@@ -352,30 +378,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     return block1QuickActionTiles.filter((t) => t.title.toLowerCase().includes(q));
   }, [block1QuickActionTiles, searchQuery]);
 
-  // 2. Filtered Blok 2 (Ruang Kerja Guru & Wali Kelas) — deduplikasi terhadap Blok 1
-  const deduplicatedBlock2 = useMemo(() => {
-    const existingPaths = new Set(
-      block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean)
-    );
-    const existingTitles = new Set(
-      block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean)
-    );
-    return block2GuruTiles.filter((t) => {
-      const pathKey = normalizeKey(t.path);
-      const titleKey = normalizeKey(t.title);
-      if (pathKey && existingPaths.has(pathKey)) return false;
-      if (titleKey && existingTitles.has(titleKey)) return false;
-      return true;
-    });
-  }, [block2GuruTiles, block1QuickActionTiles]);
-
-  const filteredBlock2 = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return deduplicatedBlock2;
-    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
-  }, [deduplicatedBlock2, searchQuery]);
-
-  // 3. Blok 3 (Manajemen & Data Akademik) — Menjaga Alur Dependensi Master Data (100% Utuh & Runtut)
+  // 3. Blok 3 (Manajemen & Data Akademik) — ANCHOR UTAMA (Menjaga Alur Dependensi Master Data 100% Utuh & Runtut)
   const deduplicatedBlock3 = useMemo(() => {
     return block3PrimaryTiles;
   }, [block3PrimaryTiles]);
@@ -389,26 +392,57 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     );
   }, [deduplicatedBlock3, searchQuery]);
 
-  // 4. Filtered Blok 4 (Informasi Lintas Modul) — deduplikasi terhadap Blok 1, 2, & 3
-  const deduplicatedBlock4 = useMemo(() => {
+  // 2. Filtered Blok 2 (Operasional Harian & KBM) — HORMAT KE BLOK 3 (Anchor Utama) & Blok 1 + Sorted by Frequency
+  const deduplicatedBlock2 = useMemo(() => {
     const existingPaths = new Set([
+      ...block3PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
-      ...deduplicatedBlock3.map((t) => normalizeKey(t.path)).filter(Boolean),
     ]);
     const existingTitles = new Set([
+      ...block3PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
       ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
-      ...deduplicatedBlock3.map((t) => normalizeKey(t.title)).filter(Boolean),
     ]);
-    return block4CrossModuleTiles.filter((t) => {
+    const filtered = block2GuruTiles.filter((t) => {
       const pathKey = normalizeKey(t.path);
       const titleKey = normalizeKey(t.title);
       if (pathKey && existingPaths.has(pathKey)) return false;
       if (titleKey && existingTitles.has(titleKey)) return false;
       return true;
     });
-  }, [block4CrossModuleTiles, block1QuickActionTiles, deduplicatedBlock2, deduplicatedBlock3]);
+
+    // Urutkan berdasarkan bobot frekuensi penggunaan (Kiri ke Kanan)
+    return [...filtered].sort((a, b) => getFrequencyWeight(a) - getFrequencyWeight(b));
+  }, [block2GuruTiles, block3PrimaryTiles, block1QuickActionTiles]);
+
+  const filteredBlock2 = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return deduplicatedBlock2;
+    return deduplicatedBlock2.filter((t) => t.title.toLowerCase().includes(q));
+  }, [deduplicatedBlock2, searchQuery]);
+
+  // 4. Filtered Blok 4 (Informasi Lintas Modul) — HORMAT KE BLOK 3 (Anchor Utama), Blok 1, & Blok 2 + Sorted by Frequency
+  const deduplicatedBlock4 = useMemo(() => {
+    const existingPaths = new Set([
+      ...block3PrimaryTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.path)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.path)).filter(Boolean),
+    ]);
+    const existingTitles = new Set([
+      ...block3PrimaryTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...block1QuickActionTiles.map((t) => normalizeKey(t.title)).filter(Boolean),
+      ...deduplicatedBlock2.map((t) => normalizeKey(t.title)).filter(Boolean),
+    ]);
+    const filtered = block4CrossModuleTiles.filter((t) => {
+      const pathKey = normalizeKey(t.path);
+      const titleKey = normalizeKey(t.title);
+      if (pathKey && existingPaths.has(pathKey)) return false;
+      if (titleKey && existingTitles.has(titleKey)) return false;
+      return true;
+    });
+
+    // Urutkan berdasarkan bobot frekuensi penggunaan (Kiri ke Kanan)
+    return [...filtered].sort((a, b) => getFrequencyWeight(a) - getFrequencyWeight(b));
+  }, [block4CrossModuleTiles, block3PrimaryTiles, block1QuickActionTiles, deduplicatedBlock2]);
 
   const filteredBlock4 = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
