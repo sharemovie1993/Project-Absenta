@@ -89,20 +89,12 @@ export async function getAllSiswaQuery(
             jurusan_id: { in: org.unit_ids }
           };
         }
+      } else if (safeKelasId) {
+        whereClause.kelas_id = safeKelasId;
       } else {
         const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
         if (allowed.length > 0) {
-          if (safeKelasId) {
-            if (!allowed.includes(String(safeKelasId))) {
-              // Hard reject if requesting unauthorized class
-              whereClause.id = '00000000-0000-4000-8000-000000000000';
-            }
-          } else {
-            whereClause.kelas_id = { in: allowed };
-          }
-        } else {
-            // No assigned classes, return empty
-            whereClause.id = '00000000-0000-4000-8000-000000000000';
+          whereClause.kelas_id = { in: allowed };
         }
       }
     }

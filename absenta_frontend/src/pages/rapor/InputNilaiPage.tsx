@@ -19,6 +19,7 @@ import { kelasApi, mapelApi, tahunPelajaranApi, siswaApi } from '../../api/acade
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useMapelOptions } from '../../hooks/useMapelOptions';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSiswaOptions } from '../../hooks/useSiswaOptions';
 import { toast } from 'sonner';
 
 export default function InputNilaiPage() {
@@ -60,18 +61,16 @@ export default function InputNilaiPage() {
   const { rawList: classes } = useKelasOptions({ onlyActive: true });
   const { rawList: subjects } = useMapelOptions();
   const { activeTahunPelajaran: activeYear } = useTahunPelajaranOptions();
+  const { rawList: studentsInKelas, isLoading: isLoadingStudents } = useSiswaOptions({
+    kelasId: selectedKelas,
+    onlyActive: true
+  });
+
   const activeSemester = useMemo(() => activeYear?.Semester?.find((s: any) => s.is_active), [activeYear]);
 
   const { data: categories } = useQuery({
     queryKey: ['jenis-penilaian'],
     queryFn: () => raporApi.getJenisPenilaian()
-  });
-
-  // Fetch Student Roster for selected class
-  const { data: studentsInKelas, isLoading: isLoadingStudents } = useQuery({
-    queryKey: ['students-by-kelas', selectedKelas],
-    queryFn: () => siswaApi.getByKelas(selectedKelas),
-    enabled: !!selectedKelas
   });
 
   // Fetch Existing Grades
@@ -89,7 +88,7 @@ export default function InputNilaiPage() {
 
   // Prepopulate Scores Grid with full student roster + existing grades
   useEffect(() => {
-    if (selectedKelas && studentsInKelas?.data) {
+    if (selectedKelas && studentsInKelas) {
       const existingMap = new Map();
       if (existingGrades?.data) {
         existingGrades.data.forEach((item: any) => {
@@ -97,7 +96,7 @@ export default function InputNilaiPage() {
         });
       }
 
-      const grid = studentsInKelas.data.map((siswa: any) => {
+      const grid = studentsInKelas.map((siswa: any) => {
         const existing = existingMap.get(siswa.id);
         return {
           siswa_id: siswa.id,
