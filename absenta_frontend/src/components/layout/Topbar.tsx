@@ -165,6 +165,18 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                 </div>
             </Link>
 
+            {isNotDashboard && (
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 ml-2 sm:ml-3 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex-shrink-0"
+                title="Kembali ke Portal Apps Launcher"
+              >
+                <LayoutGrid size={14} className="text-white" />
+                <span className="hidden sm:inline">📱 Launcher Apps</span>
+                <span className="sm:hidden">📱 Launcher</span>
+              </Link>
+            )}
+
             {/* Premium Hub Search Access - Slim Version */}
             <button 
               onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))}
