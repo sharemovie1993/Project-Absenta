@@ -115,6 +115,12 @@ export const CACHE_KEYS = {
     ALL: () => `document:*`
   },
 
+  // 🎒 Kesiswaan & Piket related caches
+  KESISWAAN: {
+    PIKET_HARIAN: (tenantId: string, date: string) => `kesiswaan:piket:${tenantId}:${date}`,
+    ALL: (tenantId: string) => `kesiswaan:${tenantId}:*`
+  },
+
   SYSTEM_CONFIG: {
     ACTIVE: (tenantId: string | null) => `system_config:${tenantId || 'global'}:active`
   }

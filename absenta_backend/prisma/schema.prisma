@@ -3139,6 +3139,8 @@ model IzinKeluarSiswa {
 
   @@index([tenant_id])
   @@index([siswa_akademik_id])
+  @@index([tenant_id, jam_keluar])
+  @@index([tenant_id, status])
 }
 
 // --- MODUL SARPRAS (INVENTORY) ---

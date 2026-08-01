@@ -1,4 +1,7 @@
 import { prisma } from '../../../../utils/prisma';
+import { cacheService } from '../../../../utils/cache.service';
+import { cacheInvalidationService } from '../../../../utils/cache-invalidation.service';
+import { CACHE_KEYS, CACHE_TTL } from '../../../../constants/cache-keys';
 
 export class PiketService {
   /**
@@ -33,7 +36,7 @@ export class PiketService {
       academicId = sa.id;
     }
 
-    return await prisma.izinKeluarSiswa.create({
+    const res = await prisma.izinKeluarSiswa.create({
       data: {
         tenant_id: tenantId,
         siswa_akademik_id: academicId,
@@ -53,46 +56,65 @@ export class PiketService {
         GuruPiket: { select: { nama_guru: true } }
       }
     });
+
+    // Invalidate piket and attendance cache
+    void cacheInvalidationService.invalidatePiketCache(tenantId);
+
+    return res;
   }
 
   /**
    * 2. Catat Siswa Kembali
    */
   async catatKembali(tenantId: string, id: string) {
-    return await prisma.izinKeluarSiswa.update({
+    const res = await prisma.izinKeluarSiswa.update({
       where: { id, tenant_id: tenantId },
       data: {
         status: 'KEMBALI',
         jam_kembali: new Date()
       }
     });
+
+    // Invalidate piket cache
+    void cacheInvalidationService.invalidatePiketCache(tenantId);
+
+    return res;
   }
 
   /**
    * 3. Get Izin Harian (Monitoring)
    */
   async getIzinHarian(tenantId: string, date: Date) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    const dateStr = date.toISOString().split('T')[0];
+    const cacheKey = CACHE_KEYS.KESISWAAN.PIKET_HARIAN(tenantId, dateStr);
 
-    return await prisma.izinKeluarSiswa.findMany({
-      where: {
-        tenant_id: tenantId,
-        jam_keluar: { gte: startOfDay, lte: endOfDay }
-      },
-      include: {
-        SiswaAkademik: {
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        return await prisma.izinKeluarSiswa.findMany({
+          where: {
+            tenant_id: tenantId,
+            jam_keluar: { gte: startOfDay, lte: endOfDay }
+          },
           include: {
-            siswa: { select: { nama_siswa: true, nis: true } },
-            kelas: { select: { nama_kelas: true } }
-          }
-        },
-        GuruPiket: { select: { nama_guru: true } }
+            SiswaAkademik: {
+              include: {
+                siswa: { select: { nama_siswa: true, nis: true } },
+                kelas: { select: { nama_kelas: true } }
+              }
+            },
+            GuruPiket: { select: { nama_guru: true } }
+          },
+          orderBy: { jam_keluar: 'desc' }
+        });
       },
-      orderBy: { jam_keluar: 'desc' }
-    });
+      CACHE_TTL.DASHBOARD
+    );
   }
 
   /**
@@ -126,8 +148,13 @@ export class PiketService {
    * 4. Batalkan Izin
    */
   async deleteIzin(tenantId: string, id: string) {
-    return await prisma.izinKeluarSiswa.delete({
+    const res = await prisma.izinKeluarSiswa.delete({
       where: { id, tenant_id: tenantId }
     });
+
+    // Invalidate piket cache
+    void cacheInvalidationService.invalidatePiketCache(tenantId);
+
+    return res;
   }
 }

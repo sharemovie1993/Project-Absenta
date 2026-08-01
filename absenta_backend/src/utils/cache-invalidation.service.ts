@@ -120,6 +120,14 @@ export class CacheInvalidationService {
   }
 
   /**
+   * 🎒 Invalidate cache piket kesiswaan & surat izin keluar
+   */
+  async invalidatePiketCache(tenantId: string) {
+    await cacheService.deletePattern(`kesiswaan:piket:${tenantId}:*`);
+    await this.invalidateAttendanceCache(tenantId);
+  }
+
+  /**
    * 💰 Invalidate cache billing-related
    */
   async invalidateBillingCache(tenantId: string) {
