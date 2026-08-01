@@ -271,6 +271,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return 'portal';
   });
 
+  React.useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDashboardMode(customEvent.detail);
+      }
+    };
+    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
+    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
+  }, []);
+
   const handleToggleMode = (mode: 'portal' | 'desktop') => {
     setDashboardMode(mode);
     if (typeof window !== 'undefined') {
