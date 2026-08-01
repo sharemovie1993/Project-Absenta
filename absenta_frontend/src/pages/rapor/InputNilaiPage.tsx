@@ -95,8 +95,8 @@ export default function InputNilaiPage() {
     queryFn: () => raporApi.getJenisPenilaian()
   });
 
-  // Teacher Progress Detail Accordion State
-  const [showProgressDetail, setShowProgressDetail] = useState(false);
+  // Teacher Progress Detail Accordion State (Default True)
+  const [showProgressDetail, setShowProgressDetail] = useState(true);
 
   // Fetch Teacher Input Progress Summary across all assigned classes/mapel
   const { data: teacherProgressData } = useQuery({
@@ -109,6 +109,14 @@ export default function InputNilaiPage() {
   });
 
   const progressInfo = teacherProgressData?.data;
+
+  // Auto-select first class-mapel task when progressInfo is loaded
+  useEffect(() => {
+    if (!selectedKelas && progressInfo?.tasks && progressInfo.tasks.length > 0) {
+      setSelectedKelas(progressInfo.tasks[0].kelas_id);
+      setSelectedMapel(progressInfo.tasks[0].mapel_id);
+    }
+  }, [selectedKelas, progressInfo]);
 
   // Fetch All Grades for the selected class to calculate completion status per Mapel
   const { data: classAllGrades } = useQuery({
@@ -635,7 +643,31 @@ export default function InputNilaiPage() {
 
           {/* Expandable Progress Detail Breakdown Table */}
           {showProgressDetail && progressInfo?.tasks && (
-            <div className="pt-3 border-t border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="pt-3 border-t border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Pilih Kelas & Mapel Mengajar:
+                </span>
+                {entryMode === 'kategori' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-slate-400">Kategori:</span>
+                    <select
+                      value={selectedJenisNilai}
+                      onChange={(e) => {
+                        setSelectedJenisNilai(e.target.value);
+                        setScores([]);
+                      }}
+                      className="bg-slate-800 border border-slate-700 rounded-xl text-xs font-semibold px-2.5 py-1 text-white focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="">Pilih Kategori Penilaian</option>
+                      {categories?.data?.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.nama} ({c.kode}) - {c.bobot}x</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                 {progressInfo.tasks.map((t: any, idx: number) => {
                   const isCurrent = t.kelas_id === selectedKelas && t.mapel_id === selectedMapel;
@@ -649,7 +681,7 @@ export default function InputNilaiPage() {
                       }}
                       className={`p-3 rounded-2xl border transition-all cursor-pointer ${
                         isCurrent
-                          ? 'bg-indigo-900/50 border-indigo-500 shadow-md ring-1 ring-indigo-500'
+                          ? 'bg-indigo-900/60 border-indigo-500 shadow-lg ring-2 ring-indigo-500/50'
                           : 'bg-slate-800/50 border-slate-700/60 hover:bg-slate-800 hover:border-slate-600'
                       }`}
                     >
@@ -676,101 +708,6 @@ export default function InputNilaiPage() {
             </div>
           )}
         </div>
-
-        {/* Filter Card */}
-        <Card className="p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
-          <h3 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center">
-            <Layers size={14} className="mr-1.5" />
-            Parameter Penilaian Kelas (Kelas-Sentrik)
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* 1. Kelas Rombel */}
-            <div className="space-y-1 col-span-1 md:col-span-3">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">1. Kelas Rombel</label>
-              <select
-                value={selectedKelas}
-                onChange={(e) => setSelectedKelas(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">Pilih Kelas</option>
-                {classes?.map((k: any) => (
-                  <option key={k.id} value={k.id}>{k.nama_kelas}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 2. Mata Pelajaran (Diperluas: col-span-6 untuk Mode Sumatif, col-span-4 untuk Mode Kategori) */}
-            <div className={`space-y-1 col-span-1 ${entryMode === 'sumatif' ? 'md:col-span-6' : 'md:col-span-4'}`}>
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">2. Mata Pelajaran (Jadwal KBM)</label>
-                {selectedKelas && subjects && (
-                  <span className="text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/80 px-1.5 py-0.5 rounded-md">
-                    {subjects.length} Mapel Jadwal
-                  </span>
-                )}
-              </div>
-              <select
-                value={selectedMapel}
-                onChange={(e) => setSelectedMapel(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">Pilih Mapel (Terpetakan di Jadwal KBM)</option>
-                {subjects?.map((m: any) => {
-                  const statusInfo = mapelStatusMap.get(m.id);
-                  let statusBadge = '⚪ [BELUM DIISI]';
-                  if (statusInfo) {
-                    if (statusInfo.status === 'completed') {
-                      statusBadge = `🟢 [LENGKAP: ${statusInfo.count}/${statusInfo.total} Siswa]`;
-                    } else if (statusInfo.status === 'partial') {
-                      statusBadge = `🟡 [SEBAGIAN: ${statusInfo.count}/${statusInfo.total} Siswa]`;
-                    } else {
-                      statusBadge = `⚪ [BELUM DIISI: 0/${statusInfo.total} Siswa]`;
-                    }
-                  }
-                  const kodeStr = m.kode_mapel || (m as any).kode ? ` (${m.kode_mapel || (m as any).kode})` : '';
-                  return (
-                    <option key={m.id} value={m.id}>
-                      {m.nama_mapel}{kodeStr} — {statusBadge}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {entryMode === 'kategori' && (
-              <div className="space-y-1 col-span-1 md:col-span-3">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">3. Kategori Penilaian</label>
-                <select
-                  value={selectedJenisNilai}
-                  onChange={(e) => {
-                    setSelectedJenisNilai(e.target.value);
-                    setScores([]);
-                  }}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                >
-                  <option value="">Pilih Kategori</option>
-                  {categories?.data?.map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.nama} ({c.kode}) - Bobot {c.bobot}x</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className={`space-y-1 col-span-1 ${entryMode === 'sumatif' ? 'md:col-span-3' : 'md:col-span-2'}`}>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">
-                {entryMode === 'sumatif' ? '3.' : '4.'} Sesi KBM Harian (Opsional)
-              </label>
-              <input
-                type="text"
-                placeholder="ID Sesi Absensi Pertemuan"
-                value={selectedSesiKbm}
-                onChange={(e) => setSelectedSesiKbm(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-        </Card>
 
         {saveSuccessMsg && (
           <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
