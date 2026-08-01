@@ -24,8 +24,9 @@ export function useMapelOptions(params: UseMapelOptionsParams = {}) {
 
   const filteredList = useMemo(() => {
     return rawList.filter((m) => {
-      if (kelompok && m.kelompok !== kelompok) return false;
-      if (tingkat !== undefined && Number(m.tingkat) !== Number(tingkat)) return false;
+      const kel = m.kelompok || (m as any).kelompok_mapel;
+      if (kelompok && kel !== kelompok) return false;
+      if (tingkat !== undefined && m.tingkat !== null && m.tingkat !== undefined && Number(m.tingkat) !== Number(tingkat)) return false;
       return true;
     });
   }, [rawList, kelompok, tingkat]);

@@ -59,7 +59,14 @@ export default function InputNilaiPage() {
 
   // Consume Standardized Custom Hooks
   const { rawList: classes } = useKelasOptions({ onlyActive: true });
-  const { rawList: subjects } = useMapelOptions();
+
+  const selectedKelasObj = useMemo(() => {
+    return classes.find((k: any) => k.id === selectedKelas);
+  }, [classes, selectedKelas]);
+
+  const { rawList: subjects } = useMapelOptions({
+    tingkat: selectedKelasObj?.tingkat ? Number(selectedKelasObj.tingkat) : undefined
+  });
   const { activeTahunPelajaran: activeYear } = useTahunPelajaranOptions();
   const { rawList: studentsInKelas, isLoading: isLoadingStudents } = useSiswaOptions({
     kelasId: selectedKelas,
