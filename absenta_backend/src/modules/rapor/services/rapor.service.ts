@@ -133,9 +133,9 @@ export class RaporService {
       }
 
       mapelGrades[n.mapel_id].nilai_components.push({
-        jenis: n.JenisNilai.nama,
-        nilai: n.nilai,
-        bobot: n.JenisNilai.bobot,
+        jenis: n.JenisNilai?.nama || 'Sumatif',
+        nilai: n.nilai_rapor_final ?? n.nilai,
+        bobot: n.JenisNilai?.bobot || 1,
       });
     });
 
@@ -244,40 +244,44 @@ export class RaporService {
     });
     const mapelList = Array.from(mapelMap.values()).sort((a, b) => a.nama_mapel.localeCompare(b.nama_mapel));
 
-    const studentGradesRaw: Record<string, Record<string, Array<{ nilai: number; bobot: number }>>> = {};
+    const studentGradesRaw: Record<
+      string,
+      Record<string, { finalScore: number; sumatif1?: number; sumatif2?: number; sumatif3?: number; rataSumatif?: number; nilaiAkhir?: number; CP?: string }>
+    > = {};
+
     listSiswa.forEach((s) => {
       studentGradesRaw[s.id] = {};
       mapelList.forEach((m) => {
-        studentGradesRaw[s.id][m.id] = [];
+        studentGradesRaw[s.id][m.id] = { finalScore: 0 };
       });
     });
 
     listNilai.forEach((n) => {
       if (studentGradesRaw[n.siswa_id] && studentGradesRaw[n.siswa_id][n.mapel_id]) {
-        studentGradesRaw[n.siswa_id][n.mapel_id].push({
-          nilai: n.nilai,
-          bobot: n.JenisNilai.bobot,
-        });
+        const finalVal = n.nilai_rapor_final ?? n.nilai ?? 0;
+        studentGradesRaw[n.siswa_id][n.mapel_id] = {
+          finalScore: finalVal,
+          sumatif1: n.sumatif_1 ?? undefined,
+          sumatif2: n.sumatif_2 ?? undefined,
+          sumatif3: n.sumatif_3 ?? undefined,
+          rataSumatif: n.rata_rata_sumatif ?? undefined,
+          nilaiAkhir: n.nilai_akhir_sumatif ?? undefined,
+          CP: n.capaian_kompetensi ?? undefined,
+        };
       }
     });
 
     const studentsData = listSiswa.map((siswa) => {
       const grades: Record<string, number> = {};
+      const gradeDetails: Record<string, any> = {};
       let totalScore = 0;
       let mapelCount = 0;
 
       mapelList.forEach((m) => {
-        const components = studentGradesRaw[siswa.id][m.id];
-        let weightedSum = 0;
-        let totalBobot = 0;
-
-        components.forEach((c) => {
-          weightedSum += c.nilai * c.bobot;
-          totalBobot += c.bobot;
-        });
-
-        const score = totalBobot > 0 ? Math.round(weightedSum / totalBobot) : 0;
+        const details = studentGradesRaw[siswa.id][m.id];
+        const score = details ? details.finalScore : 0;
         grades[m.id] = score;
+        gradeDetails[m.id] = details;
 
         if (score > 0) {
           totalScore += score;
@@ -293,6 +297,7 @@ export class RaporService {
         nis: siswa.nis,
         nisn: siswa.nisn || '',
         grades,
+        gradeDetails,
         total: totalScore,
         rata_rata: averageScore,
         rank: 0,

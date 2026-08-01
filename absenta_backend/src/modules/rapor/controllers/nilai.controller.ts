@@ -130,7 +130,59 @@ export class NilaiController {
     }
   }
 
-  static async exportErafor(req: any, reply: any) {
+  static async upsertBatchSumatif(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { mapel_id, tahun_pelajaran_id, semester_id, scores } = req.body;
+
+      if (!mapel_id || !tahun_pelajaran_id || !semester_id || !Array.isArray(scores)) {
+        return reply.status(400).send({
+          success: false,
+          message: 'mapel_id, tahun_pelajaran_id, semester_id, dan scores (array) wajib diisi',
+        });
+      }
+
+      const result = await NilaiService.upsertBatchSumatifNilai(tenant_id, {
+        mapel_id,
+        tahun_pelajaran_id,
+        semester_id,
+        scores,
+      });
+
+      return sendResponse(reply, 200, true, 'Batch nilai sumatif berhasil disimpan & dikalkulasi', result);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Gagal menyimpan batch nilai sumatif', error);
+    }
+  }
+
+  static async exportEraporKemendikbud(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { kelas_id, mapel_id, tahun_pelajaran_id, semester_id } = req.query;
+
+      if (!kelas_id || !mapel_id || !tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'kelas_id, mapel_id, tahun_pelajaran_id, dan semester_id wajib diisi',
+        });
+      }
+
+      const { filename, buffer } = await NilaiService.exportEraporKemendikbud(tenant_id, {
+        kelas_id,
+        mapel_id,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      return reply.send(buffer);
+    } catch (error: any) {
+      return sendError(reply, 500, error.message || 'Failed to export e-Rapor Kemendikbud', error);
+    }
+  }
+
+  static async exportErapor(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
       const { kelas_id, mapel_id, tahun_pelajaran_id, semester_id, jenis_nilai_id } = req.query;

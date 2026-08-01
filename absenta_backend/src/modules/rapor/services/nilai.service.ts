@@ -110,10 +110,10 @@ export class NilaiService {
   ) {
     const result = await prisma.nilaiSiswa.upsert({
       where: {
-        siswa_id_mapel_id_jenis_nilai_id_semester_id: {
+        siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
           siswa_id: data.siswa_id,
           mapel_id: data.mapel_id,
-          jenis_nilai_id: data.jenis_nilai_id,
+          tahun_pelajaran_id: data.tahun_pelajaran_id,
           semester_id: data.semester_id,
         },
       },
@@ -121,6 +121,7 @@ export class NilaiService {
         nilai: data.nilai,
         catatan_deskripsi: data.catatan_deskripsi || null,
         sesi_absensi_id: data.sesi_absensi_id || null,
+        ...(data.jenis_nilai_id ? { jenis_nilai_id: data.jenis_nilai_id } : {}),
       },
       create: {
         tenant_id: tenantId,
@@ -128,7 +129,7 @@ export class NilaiService {
         mapel_id: data.mapel_id,
         tahun_pelajaran_id: data.tahun_pelajaran_id,
         semester_id: data.semester_id,
-        jenis_nilai_id: data.jenis_nilai_id,
+        jenis_nilai_id: data.jenis_nilai_id || null,
         nilai: data.nilai,
         catatan_deskripsi: data.catatan_deskripsi || null,
         sesi_absensi_id: data.sesi_absensi_id || null,
@@ -146,7 +147,7 @@ export class NilaiService {
       mapel_id: string;
       tahun_pelajaran_id: string;
       semester_id: string;
-      jenis_nilai_id: string;
+      jenis_nilai_id?: string | null;
       sesi_absensi_id?: string | null;
       scores: Array<{
         siswa_id: string;
@@ -158,10 +159,10 @@ export class NilaiService {
     const operations = data.scores.map((score) => {
       return prisma.nilaiSiswa.upsert({
         where: {
-          siswa_id_mapel_id_jenis_nilai_id_semester_id: {
+          siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
             siswa_id: score.siswa_id,
             mapel_id: data.mapel_id,
-            jenis_nilai_id: data.jenis_nilai_id,
+            tahun_pelajaran_id: data.tahun_pelajaran_id,
             semester_id: data.semester_id,
           },
         },
@@ -169,6 +170,7 @@ export class NilaiService {
           nilai: score.nilai,
           catatan_deskripsi: score.catatan_deskripsi || null,
           sesi_absensi_id: data.sesi_absensi_id || null,
+          ...(data.jenis_nilai_id ? { jenis_nilai_id: data.jenis_nilai_id } : {}),
         },
         create: {
           tenant_id: tenantId,
@@ -176,7 +178,7 @@ export class NilaiService {
           mapel_id: data.mapel_id,
           tahun_pelajaran_id: data.tahun_pelajaran_id,
           semester_id: data.semester_id,
-          jenis_nilai_id: data.jenis_nilai_id,
+          jenis_nilai_id: data.jenis_nilai_id || null,
           nilai: score.nilai,
           catatan_deskripsi: score.catatan_deskripsi || null,
           sesi_absensi_id: data.sesi_absensi_id || null,
@@ -187,6 +189,98 @@ export class NilaiService {
     const results = await prisma.$transaction(operations);
 
     // Invalidate leger cache — batch nilai berubah, leger harus direcalculate
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+    return results;
+  }
+
+  /**
+   * 📊 BATCH UPSERT SUMATIF (S1, S2, S3, NILAI AKHIR, CP NARASI)
+   * Formula: Nilai Rapor Final = (Rata-rata(S1, S2, S3) + Nilai Akhir) / 2
+   */
+  static async upsertBatchSumatifNilai(
+    tenantId: string,
+    data: {
+      mapel_id: string;
+      tahun_pelajaran_id: string;
+      semester_id: string;
+      scores: Array<{
+        siswa_id: string;
+        sumatif_1?: number | null;
+        sumatif_2?: number | null;
+        sumatif_3?: number | null;
+        nilai_akhir_sumatif?: number | null;
+        capaian_kompetensi?: string | null;
+      }>;
+    }
+  ) {
+    const operations = data.scores.map((item) => {
+      // Calculate Rata-rata Sumatif
+      const sumatifList = [item.sumatif_1, item.sumatif_2, item.sumatif_3].filter(
+        (v): v is number => v !== undefined && v !== null && !isNaN(v)
+      );
+
+      let rataRataSumatif: number | null = null;
+      if (sumatifList.length > 0) {
+        const total = sumatifList.reduce((acc, curr) => acc + curr, 0);
+        rataRataSumatif = Number((total / sumatifList.length).toFixed(2));
+      }
+
+      // Calculate Nilai Rapor Final = (Rata-rata Sumatif + Nilai Akhir) / 2
+      let nilaiRaporFinal: number | null = null;
+      const nilaiAkhir = item.nilai_akhir_sumatif;
+
+      if (rataRataSumatif !== null && nilaiAkhir !== undefined && nilaiAkhir !== null) {
+        nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
+      } else if (nilaiAkhir !== undefined && nilaiAkhir !== null) {
+        nilaiRaporFinal = nilaiAkhir;
+      } else if (rataRataSumatif !== null) {
+        nilaiRaporFinal = rataRataSumatif;
+      }
+
+      const mainNilai = nilaiRaporFinal ?? 0;
+
+      return prisma.nilaiSiswa.upsert({
+        where: {
+          siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+            siswa_id: item.siswa_id,
+            mapel_id: data.mapel_id,
+            tahun_pelajaran_id: data.tahun_pelajaran_id,
+            semester_id: data.semester_id,
+          },
+        },
+        update: {
+          sumatif_1: item.sumatif_1 ?? null,
+          sumatif_2: item.sumatif_2 ?? null,
+          sumatif_3: item.sumatif_3 ?? null,
+          rata_rata_sumatif: rataRataSumatif,
+          nilai_akhir_sumatif: item.nilai_akhir_sumatif ?? null,
+          nilai_rapor_final: nilaiRaporFinal,
+          nilai: mainNilai,
+          ...(item.capaian_kompetensi !== undefined
+            ? { capaian_kompetensi: item.capaian_kompetensi }
+            : {}),
+        },
+        create: {
+          tenant_id: tenantId,
+          siswa_id: item.siswa_id,
+          mapel_id: data.mapel_id,
+          tahun_pelajaran_id: data.tahun_pelajaran_id,
+          semester_id: data.semester_id,
+          sumatif_1: item.sumatif_1 ?? null,
+          sumatif_2: item.sumatif_2 ?? null,
+          sumatif_3: item.sumatif_3 ?? null,
+          rata_rata_sumatif: rataRataSumatif,
+          nilai_akhir_sumatif: item.nilai_akhir_sumatif ?? null,
+          nilai_rapor_final: nilaiRaporFinal,
+          nilai: mainNilai,
+          capaian_kompetensi: item.capaian_kompetensi ?? null,
+        },
+      });
+    });
+
+    const results = await prisma.$transaction(operations);
+
+    // Invalidate leger cache
     void cacheInvalidationService.invalidateRaporCache(tenantId);
     return results;
   }
@@ -291,6 +385,93 @@ export class NilaiService {
     };
   }
 
+  /**
+   * 📤 EXPORT TEMPLATE ERAFOR KEMENDIKBUD (FORMAT DINAS)
+   * Meng-export file Excel siap impor ke aplikasi e-Rapor resmi Kemendikbud
+   */
+  static async exportEraporKemendikbud(
+    tenantId: string,
+    params: {
+      kelas_id: string;
+      mapel_id: string;
+      tahun_pelajaran_id: string;
+      semester_id: string;
+    }
+  ) {
+    const XLSX = require('xlsx');
+
+    const kelas = await prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } });
+    const mapel = await prisma.mapel.findFirst({ where: { id: params.mapel_id, tenant_id: tenantId } });
+    const tp = await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } });
+    const sem = await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } });
+
+    if (!kelas || !mapel || !tp || !sem) {
+      throw new Error('Data parameter kelas, mapel, tahun pelajaran, atau semester tidak ditemukan');
+    }
+
+    const listSiswa = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId, kelas_id: params.kelas_id, status: 'AKTIF' },
+      orderBy: { nama_siswa: 'asc' },
+    });
+
+    const listNilai = await prisma.nilaiSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        mapel_id: params.mapel_id,
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        semester_id: params.semester_id,
+        siswa_id: { in: listSiswa.map((s) => s.id) },
+      },
+    });
+
+    const nilaiMap = new Map<string, { finalVal: number; cp: string }>();
+    listNilai.forEach((n) => {
+      nilaiMap.set(n.siswa_id, {
+        finalVal: n.nilai_rapor_final ?? n.nilai ?? 0,
+        cp: n.capaian_kompetensi || n.catatan_deskripsi || '',
+      });
+    });
+
+    // Sheet 1: F_Nilai_Akademik
+    const rowsNilai = listSiswa.map((s, idx) => {
+      const rec = nilaiMap.get(s.id);
+      return {
+        'NO': idx + 1,
+        'PD_ID': s.id,
+        'NISN': s.nisn || s.nis,
+        'NAMA SISWA': s.nama_siswa,
+        'NILAI RAPOR': rec ? rec.finalVal : 0,
+      };
+    });
+
+    // Sheet 2: F_Capaian_Kompetensi
+    const rowsCP = listSiswa.map((s, idx) => {
+      const rec = nilaiMap.get(s.id);
+      return {
+        'NO': idx + 1,
+        'PD_ID': s.id,
+        'NISN': s.nisn || s.nis,
+        'NAMA SISWA': s.nama_siswa,
+        'CAPAIAN KOMPETENSI': rec ? rec.cp : '',
+      };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const wsNilai = XLSX.utils.json_to_sheet(rowsNilai);
+    const wsCP = XLSX.utils.json_to_sheet(rowsCP);
+
+    XLSX.utils.book_append_sheet(wb, wsNilai, 'F_Nilai_Akademik');
+    XLSX.utils.book_append_sheet(wb, wsCP, 'F_Capaian_Kompetensi');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const filename = `eRapor_${kelas.nama_kelas}_${mapel.nama_mapel}_${sem.nama_semester}.xlsx`.replace(/\s+/g, '_');
+
+    return {
+      filename,
+      buffer,
+    };
+  }
+
   static async importNilaiExcel(
     tenantId: string,
     buffer: Buffer,
@@ -354,10 +535,10 @@ export class NilaiService {
       operations.push(
         prisma.nilaiSiswa.upsert({
           where: {
-            siswa_id_mapel_id_jenis_nilai_id_semester_id: {
+            siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
               siswa_id: siswaId,
               mapel_id: metadata.mapel_id,
-              jenis_nilai_id: metadata.jenis_nilai_id,
+              tahun_pelajaran_id: metadata.tahun_pelajaran_id,
               semester_id: metadata.semester_id,
             },
           },

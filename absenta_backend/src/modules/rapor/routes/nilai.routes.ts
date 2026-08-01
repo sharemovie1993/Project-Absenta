@@ -12,7 +12,9 @@ export default async function nilaiRoutes(fastify: any) {
   fastify.get('/', { preHandler: requireCapability('academic.teaching.view') }, NilaiController.getNilai);
   fastify.post('/', { preHandler: requireCapability('academic.manage.kbm') }, NilaiController.upsertNilai);
   fastify.post('/bulk', { preHandler: requireCapability('academic.manage.kbm') }, NilaiController.upsertBulkNilai);
-  fastify.get('/export-erafor', { preHandler: requireCapability('academic.teaching.view') }, NilaiController.exportErafor);
+  fastify.post('/sumatif-batch', { preHandler: requireCapability('academic.manage.kbm') }, NilaiController.upsertBatchSumatif);
+  fastify.get('/export-erafor', { preHandler: requireCapability('academic.teaching.view') }, NilaiController.exportErapor);
+  fastify.get('/export-erapor-kemendikbud', { preHandler: requireCapability('academic.teaching.view') }, NilaiController.exportEraporKemendikbud);
   fastify.post('/import', { preHandler: requireCapability('academic.manage.kbm') }, NilaiController.importNilai);
   fastify.get('/import/template', { preHandler: requireCapability('academic.teaching.view') }, NilaiController.downloadTemplate);
 }

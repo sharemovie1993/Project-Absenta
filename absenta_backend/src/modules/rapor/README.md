@@ -1,37 +1,47 @@
-# Modul Penilaian & Leger Rapor (`/rapor`)
+# Modul Ekosistem Penilaian, Leger, Rapor Kurikulum Merdeka & e-Rapor (`/rapor`)
 
-Modul ini mengelola seluruh proses penilaian akademik siswa: input nilai harian, bulanan, formatif, sumatif (UH, PTS, PAS), kalkulasi nilai akhir terbobot vs KKM/KKTP, pembuatan **Leger Sekelas**, peringkat/ranking siswa, catatan wali kelas, keputusan kenaikan kelas, serta cetak rapor.
-
----
-
-## 🏛️ Arsitektur High-Concurrence Multi-Tenant Redis Caching & Indexing
-
-### 📌 Database Composite Indexing
-- **`NilaiSiswa`**:
-  - `@@index([tenant_id, mapel_id, tahun_pelajaran_id, semester_id])` — Filter nilai per mapel per semester
-  - `@@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])` — Filter nilai per siswa per semester
-- **`RaporSiswa`**:
-  - `@@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])` — Filter rekap rapor sekelas per semester
-
-### 🔑 Key Redis Multi-Tenant Cache & Invalidation
-1. **Leger Sekelas Cache (`academic:${tenantId}:leger:${kelasId}:${tahunId}:${semesterId}`)**: Menyimpan hasil kalkulasi Leger Nilai Sekelas + Ranking Siswa (TTL 5 menit). Memangkas waktu kalkulasi dari **~450ms** (DB scan + in-memory computation) menjadi **0,08ms**.
-2. **Auto-Invalidation Signal**: Setiap kali Guru menyimpan/mengedit nilai (`upsertNilai`, `upsertBulkNilai`) atau Wali Kelas memperbarui catatan rapor (`upsertRapor`), service secara otomatis memanggil:
-   ```typescript
-   void cacheInvalidationService.invalidateRaporCache(tenantId);
-   ```
-   Metode ini menghapus seluruh kunci cache leger dan nilai kelas untuk tenant tersebut secara serentak.
+Modul ini mengelola seluruh ekosistem penilaian akademik sekolah secara terpadu dari tingkat harian hingga dokumen resmi kelulusan siswa.
 
 ---
 
-## 📋 Service Layer
-- **`NilaiService`** (`nilai.service.ts`): CRUD Jenis Penilaian (UH/PTS/PAS/Tugas), input nilai per siswa per mapel, batch input nilai sekelas, export E-Rafor Excel.
-- **`RaporService`** (`rapor.service.ts`): Detail Rapor per siswa, **Leger Sekelas** (terbobot + ranking), export Leger Excel, catatan wali kelas.
-- **`P5Service`** (`p5.service.ts`): Nilai P5 Kurikulum Merdeka.
-- **`UkkSklService`** (`ukk-skl.service.ts`): Nilai UKK & SKL SMK.
+## 🏛️ Flow Aliran Data & Kalkulasi Formula
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. INPUT GURU (Kelas-Sentrik + Copy-Paste Excel)                            │
+│    - Sumatif Harian (S1, S2, S3) + Nilai Sumatif Akhir (PSAT/PAS)          │
+│    - Capaian Pembelajaran (CP) Narasi Deskripsi                           │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2. LEGER AKADEMIK KELAS (Single Source of Truth Data Master)               │
+│    Formula: Nilai Rapor = (Rata-Rata(S1,S2,S3) + Nilai Akhir) / 2          │
+│    Tersimpan secara permanen & terindeks per Tenant / TP / Semester / Kelas │
+└───────────────────┬──────────────────┬──────────────────┬───────────────────┘
+                    │                  │                  │
+      ┌─────────────┴──────┐   ┌───────┴──────────┐   ┌───┴────────────────┐
+      ▼                    ▼   ▼                  ▼   ▼                    ▼
+┌───────────┐    ┌─────────────────┐    ┌──────────────────┐    ┌──────────────┐
+│  CETAK    │    │  EXPORT E-RAPOR │    │ TRANSKRIP NILAI  │    │  NILAI SKL   │
+│  RAPOR    │    │  (Format Dinas  │    │   AKADEMIK       │    │ (Kelulusan   │
+│ SEMESTER  │    │  Kemendikbud)   │    │  (Sem 1 s/d 6)   │    │ Siswa Akhir) │
+└───────────┘    └─────────────────┘    └──────────────────┘    └──────────────┘
+```
 
 ---
 
-## ⚡ Hasil Benchmark Kecepatan
-- **Leger Sekelas Cache MISS (DB + Kalkulasi Terbobot)**: `~450ms` (estimasi produksi kelas 36 siswa × 14 mapel)
-- **Leger Sekelas Cache HIT (Direct Redis Response)**: `~0.08ms` (**5000x+ lebih cepat**)
-- **Script Uji Invalidation**: `test-rapor-cache-invalidation.ts` (**PASSED** — `invalidateRaporCache` signal verified)
+## 🔑 Fitur Utama
+1. **Input Nilai Sumatif Kurikulum Merdeka**: Input $S_1, S_2, S_3$ + Sumatif Akhir dengan kalkulasi live formula:
+   $$\text{Nilai Rapor Final} = \frac{\text{Rata-Rata}(S_1, S_2, S_3) + \text{Nilai Sumatif Akhir}}{2}$$
+2. **Copy-Paste Excel / Google Sheets**: Guru dapat melakukan paste `Ctrl+V` atau modal paste TSV multi-kolom (`NIS | S1 | S2 | S3 | Nilai Akhir | CP Narasi`) yang langsung me-match data siswa secara otomatis.
+3. **Export Template e-Rapor Kemendikbud**: 1-click download file Excel `.xlsx` dengan format resmi e-Rapor Dinas (`F_Nilai_Akademik` & `F_Capaian_Kompetensi`).
+4. **Leger Kelas & Ranking**: Single Source of Truth nilai sekelas dengan Redis Caching (TTL 5m, <0.1ms HIT speedup) & Auto-invalidation signal `invalidateRaporCache`.
+5. **Transkrip & SKL**: Penyiapan data transkrip nilai akumulatif 6 semester dan penetapan kelulusan Surat Keterangan Lulus (SKL).
+
+---
+
+## ⚡ Hasil Benchmark & Build Verification
+- **Backend Build**: `0 errors` (TypeScript compilation verified)
+- **Frontend Build**: `0 errors` (Vite production bundle successfully generated)
+- **Database Indexing**: Prisma Schema in sync with PostgreSQL database.

@@ -831,6 +831,7 @@ model Mapel {
   nama_mapel        String
   kode_mapel        String?
   tingkat           Int?
+  kelompok_mapel    String?             @default("UMUM")
   created_at        DateTime            @default(now())
   updated_at        DateTime            @updatedAt
   GuruMapel         GuruMapel[]
@@ -3814,28 +3815,35 @@ model JenisNilaiMaster {
 }
 
 model NilaiSiswa {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  siswa_id           String
-  mapel_id           String
-  tahun_pelajaran_id String
-  semester_id        String
-  jenis_nilai_id     String
-  nilai              Float
-  catatan_deskripsi  String?  @db.Text
-  sesi_absensi_id    String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id                  String            @id @default(uuid())
+  tenant_id           String
+  siswa_id            String
+  mapel_id            String
+  tahun_pelajaran_id  String
+  semester_id         String
+  jenis_nilai_id      String?
+  nilai               Float             @default(0)
+  sumatif_1           Float?
+  sumatif_2           Float?
+  sumatif_3           Float?
+  rata_rata_sumatif   Float?
+  nilai_akhir_sumatif Float?
+  nilai_rapor_final   Float?
+  capaian_kompetensi  String?           @db.Text
+  catatan_deskripsi   String?           @db.Text
+  sesi_absensi_id     String?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
 
-  Tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa          Siswa            @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  Mapel          Mapel            @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
-  TahunPelajaran TahunPelajaran   @relation(fields: [tahun_pelajaran_id], references: [id])
-  Semester       Semester         @relation(fields: [semester_id], references: [id])
-  JenisNilai     JenisNilaiMaster @relation(fields: [jenis_nilai_id], references: [id])
-  SesiAbsensi    SesiAbsensi?     @relation(fields: [sesi_absensi_id], references: [id])
+  Tenant         Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa          Siswa             @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Mapel          Mapel             @relation(fields: [mapel_id], references: [id], onDelete: Cascade)
+  TahunPelajaran TahunPelajaran    @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester       Semester          @relation(fields: [semester_id], references: [id])
+  JenisNilai     JenisNilaiMaster? @relation(fields: [jenis_nilai_id], references: [id])
+  SesiAbsensi    SesiAbsensi?      @relation(fields: [sesi_absensi_id], references: [id])
 
-  @@unique([siswa_id, mapel_id, jenis_nilai_id, semester_id])
+  @@unique([siswa_id, mapel_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id])
   @@index([tenant_id, mapel_id, tahun_pelajaran_id, semester_id])
   @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
