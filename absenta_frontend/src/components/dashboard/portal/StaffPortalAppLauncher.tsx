@@ -453,6 +453,18 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
     );
   }, [deduplicatedBlock4, searchQuery]);
 
+  // Dynamic Jabatan Label (e.g. "KURIKULUM & WALI KELAS" / "KURIKULUM")
+  const dynamicJabatanLabel = useMemo(() => {
+    const userWorkspaces = resolveUserWorkspaces(user);
+    const structuralWorkspaces = userWorkspaces.filter(
+      (w) => w.id !== 'TEACHER_WORKSPACE' && w.id !== 'STUDENT_WORKSPACE'
+    );
+    if (structuralWorkspaces.length === 0) return '';
+    return structuralWorkspaces.map((w) => w.label).join(' & ');
+  }, [user]);
+
+  const hasStructuralBlock = filteredBlock3.length > 0;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200 pb-12 w-full max-w-full min-w-0">
       {/* ── Header Banner Compact Launcher ── */}
@@ -462,11 +474,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-base">📱</span>
               <Badge variant="outline" className="border-indigo-400/30 bg-indigo-500/20 text-indigo-200 text-[10px] font-semibold">
-                Portal App Launcher (4 Blok Lengkap & Unik)
+                Portal App Launcher
               </Badge>
-              {isWaliKelas && (
-                <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs">
-                  WALI KELAS
+              {dynamicJabatanLabel && (
+                <Badge variant="success" className="text-[10px] font-bold py-0 px-2 shadow-xs uppercase">
+                  {dynamicJabatanLabel}
                 </Badge>
               )}
             </div>
@@ -474,7 +486,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               Halo, {user?.full_name?.split(' ')[0]}!
             </h1>
             <p className="text-xs text-slate-300 max-w-xl font-medium truncate">
-              Navigasi Ikon Aplikasi Terstruktur Berbasis Fungsi: Aksi Cepat Diri, Operasional Harian & KBM, Manajemen & Data Akademik, & Informasi Lintas Modul.
+              Navigasi Ikon Aplikasi Terstruktur Berbasis Fungsi & Peran Jabatan Sekolah.
             </p>
           </div>
 
@@ -546,10 +558,10 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 2: 🏛️ MANAJEMEN & DATA AKADEMIK (ADMINISTRASI, KURIKULUM & MASTER DATA)
-          Diposisikan sebagai Blok 2 (Prioritas Utama Pejabat/Struktural Sekolah)
+          BLOK 2: 🏛️ RUANG KERJA JABATAN (DINAMIS DENGAN NAMA JABATAN MELEKAT)
+          Hanya tampil jika pengguna memiliki posisi/jabatan struktural
       ───────────────────────────────────────────────────────────────────────────── */}
-      {(filteredBlock3.length > 0 || isMenuLoading) && (
+      {hasStructuralBlock && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
           <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800/60 pb-2">
             <div className="flex items-center gap-2">
@@ -557,37 +569,28 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Building2 size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                2. Manajemen & Data Akademik
+                2. Ruang Kerja Jabatan {dynamicJabatanLabel ? `: ${dynamicJabatanLabel.toUpperCase()}` : ''}
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock3.length} Master & Administrasi
+              {filteredBlock3.length} Menu Jabatan
             </span>
           </div>
 
-          {filteredBlock3.length > 0 ? (
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
-              {filteredBlock3.map((tile) => (
-                <MemoizedAppTileItem
-                  key={tile.id}
-                  tile={tile}
-                  onNavigate={handleTileNavigate}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="p-6 text-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-800">
-              <Compass className="w-6 h-6 text-slate-300 mx-auto mb-1.5" />
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Menu manajemen & data akademik tidak tersedia untuk peran ini.
-              </p>
-            </div>
-          )}
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 sm:gap-4 pt-1">
+            {filteredBlock3.map((tile) => (
+              <MemoizedAppTileItem
+                key={tile.id}
+                tile={tile}
+                onNavigate={handleTileNavigate}
+              />
+            ))}
+          </div>
         </section>
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          BLOK 3: 🏫 OPERASIONAL HARIAN & KBM (PRESENSI, JURNAL, LIVE KBM, & E-RAPOR)
+          BLOK 3: 🏫 RUANG KERJA GURU (OPERASIONAL HARIAN PENGAJARAN & KBM)
       ───────────────────────────────────────────────────────────────────────────── */}
       {filteredBlock2.length > 0 && (
         <section className="space-y-3 bg-white/60 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
@@ -597,11 +600,11 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
                 <Sparkles size={14} />
               </div>
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                3. Operasional Harian & KBM
+                {hasStructuralBlock ? '3. Ruang Kerja Guru' : '2. Ruang Kerja Guru'}
               </h2>
             </div>
             <span className="text-[10px] font-bold text-slate-400">
-              {filteredBlock2.length} Operasional Harian
+              {filteredBlock2.length} Operasional Guru
             </span>
           </div>
 
@@ -629,7 +632,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
               </div>
               <div>
                 <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  4. Informasi Lintas Modul
+                  {hasStructuralBlock ? '4. Informasi Lintas Modul' : '3. Informasi Lintas Modul'}
                 </h2>
                 <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                   Layanan & informasi pendukung lintas unit kerja
