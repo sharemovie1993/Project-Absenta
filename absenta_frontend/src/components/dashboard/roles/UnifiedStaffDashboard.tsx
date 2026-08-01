@@ -470,12 +470,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isWaliKelas) actions.push({ label: 'Kelas Saya',     icon: Users,    onClick: () => navigate('/academic/siswa'), color: 'rose', path: '/academic/siswa' });
     if (isKurikulum) actions.push({ label: 'Monitoring KBM', icon: BookOpen, onClick: () => navigate('/attendance/monitoring'), color: 'purple', path: '/attendance/monitoring' });
     
-    // Posisikan Catat & Tindak Pelanggaran di Aksi Cepat
-    actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
-    actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+    // Posisikan Catat & Tindak Pelanggaran secara presisi berbasis peran yang relevan
+    const isPiketOrKesiswaanOrIndustrial = isKesiswaan || isGerbang || isKaprog || isKabeng || hasRole('PIKET', 'GURU PIKET', 'KESISWAAN', 'GERBANG', 'KAPROG', 'KABENG');
+    
+    if (isPiketOrKesiswaanOrIndustrial) {
+      actions.push({ label: 'Tindak Masal', icon: CheckCircle2, onClick: () => setTindakMasalModalOpen(true), color: 'emerald', path: 'modal:tindak-masal' });
+    }
+    
+    // Catat Pelanggaran untuk Guru, Wali Kelas, Kesiswaan, Piket, Kaprog (bukan untuk Kurikulum murni)
+    if (!isKurikulum || isWaliKelas || isPiketOrKesiswaanOrIndustrial) {
+      actions.push({ label: 'Catat Pelanggaran', icon: AlertTriangle, onClick: () => setCatatModalOpen(true), color: 'amber', path: 'modal:catat-pelanggaran' });
+    }
     
     return actions;
-  }, [isWaliKelas, isKurikulum, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);
+  }, [isWaliKelas, isKurikulum, isKesiswaan, isGerbang, isKaprog, isKabeng, hasRole, navigate, guruId, user, guruProfile, caps, jabatanList, jabatan]);
 
   // ── 7. Dynamic Structural Panels Ordering ───────────────────────────────────
   const structuralPanels = useMemo(() => {
