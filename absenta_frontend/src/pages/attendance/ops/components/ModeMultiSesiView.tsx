@@ -60,6 +60,8 @@ export default function ModeMultiSesiView({
   const token = useAuthStore((state) => state.token);
   const { isConnected, subscribe, unsubscribe, emit } = useSocket();
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
+  const { options: fetchedKelasOptions } = useKelasOptions();
+  const kelasOptions = fetchedKelasOptions || [];
   const [searchParams] = useSearchParams();
 
   const initialTab = useMemo<TabType>(() => {
@@ -91,8 +93,6 @@ export default function ModeMultiSesiView({
     }
   }, [managedKelasIds, selectedKelasId, user, kelasOptions]);
 
-  const { options: fetchedKelasOptions } = useKelasOptions();
-  const kelasOptions = fetchedKelasOptions || [];
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   useEffect(() => {
