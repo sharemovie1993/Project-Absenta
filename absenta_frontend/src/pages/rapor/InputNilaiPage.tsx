@@ -691,36 +691,26 @@ export default function InputNilaiPage() {
                 onNavigateTask={handleNavigateTask}
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                
-                {/* Input Grid Nilai (Kiri 3 Cols) */}
-                <ScoreGridTable
-                  scores={scores}
-                  entryMode={entryMode}
-                  kkmThreshold={kkmThreshold}
-                  onKkmThresholdChange={handleKkmThresholdChange}
-                  onScoreChange={handleScoreChange}
-                  onCopyCpToAll={handleCopyCpToAll}
-                  onClearCpAll={handleClearCpAll}
-                  onKeyDownGrid={handleKeyDownGrid}
-                  getScoreInputStyle={getScoreInputStyle}
-                  onShowPasteModal={() => setShowPasteModal(true)}
-                  onSaveSubmit={handleSaveSubmit}
-                  isSaving={sumatifSaveMutation.isPending || bulkSaveMutation.isPending}
-                  isLoading={isLoadingStudents || isLoadingGrades}
-                />
-
-                {/* Impor & Ekspor e-Rapor (Kanan 1 Col) */}
-                <BulkImportExcelCard
-                  onDownloadTemplate={handleDownloadTemplate}
-                  onExportEraporKemendikbud={handleExportEraporKemendikbud}
-                  excelFile={excelFile}
-                  onFileChange={setExcelFile}
-                  onUploadSubmit={handleUploadSubmit}
-                  isUploading={uploadExcelMutation.isPending}
-                />
-
-              </div>
+              {/* Full Width Input Grid Nilai with Integrated Top Action Toolbar */}
+              <ScoreGridTable
+                scores={scores}
+                entryMode={entryMode}
+                kkmThreshold={kkmThreshold}
+                onKkmThresholdChange={handleKkmThresholdChange}
+                onScoreChange={handleScoreChange}
+                onCopyCpToAll={handleCopyCpToAll}
+                onClearCpAll={handleClearCpAll}
+                onKeyDownGrid={handleKeyDownGrid}
+                getScoreInputStyle={getScoreInputStyle}
+                onShowPasteModal={() => setShowPasteModal(true)}
+                onSaveSubmit={handleSaveSubmit}
+                onDownloadTemplate={handleDownloadTemplate}
+                onExportEraporKemendikbud={handleExportEraporKemendikbud}
+                onUploadSubmit={handleUploadSubmit}
+                isUploading={uploadExcelMutation.isPending}
+                isSaving={sumatifSaveMutation.isPending || bulkSaveMutation.isPending}
+                isLoading={isLoadingStudents || isLoadingGrades}
+              />
             </div>
           )}
 
