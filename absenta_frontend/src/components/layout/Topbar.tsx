@@ -36,6 +36,27 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
   const location = useLocation();
   const path = location.pathname;
+
+  const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
+    }
+    return 'portal';
+  });
+
+  React.useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDashboardMode(customEvent.detail);
+      }
+    };
+    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
+    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
+  }, []);
+
+  const isPortalMode = dashboardMode === 'portal';
+  const isNotDashboard = path !== '/dashboard' && path !== '/' && path !== '/dashboard/overview';
   const pageTitleMap: Record<string, string> = {
     '/': 'Dashboard',
     '/dashboard': 'Dashboard',
@@ -124,6 +145,16 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   })()}
                 </div>
             </Link>
+
+            {isPortalMode && isNotDashboard && (
+              <Link
+                to="/dashboard"
+                className="hidden sm:flex items-center gap-1.5 ml-2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all flex-shrink-0"
+                title="Kembali ke Portal Apps Launcher"
+              >
+                <span>⬅️ Kembali ke Portal Apps</span>
+              </Link>
+            )}
 
             {/* Premium Hub Search Access - Slim Version */}
             <button 

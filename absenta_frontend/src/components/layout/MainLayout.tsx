@@ -64,8 +64,8 @@ function MainLayoutContent() {
     return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
   }, []);
 
-  const isDashboardPath = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/dashboard/overview';
-  const isHideSidebarForPortal = isDashboardPath && dashboardMode === 'portal';
+  const isPortalMode = dashboardMode === 'portal';
+  const isHideSidebarForPortal = isPortalMode;
 
   const configQuery = useQuery({
     queryKey: ['system-config','active'],

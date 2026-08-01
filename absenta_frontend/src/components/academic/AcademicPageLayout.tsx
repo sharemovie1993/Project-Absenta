@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { AnalyticsCard, MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
@@ -64,6 +65,26 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   const { setInstructionData } = useInstruction();
   const { isAdmin, user } = useAuth();
   const { isTvMode } = useTvStore();
+
+  const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
+    }
+    return 'portal';
+  });
+
+  useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDashboardMode(customEvent.detail);
+      }
+    };
+    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
+    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
+  }, []);
+
+  const isPortalMode = dashboardMode === 'portal';
 
 
   // Resolve key secara otomatis berdasarkan URL browser jika tidak dilewatkan secara manual
@@ -201,10 +222,18 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
         </div>
       )}
 
-      {/* Responsive Breadcrumbs */}
+      {/* Responsive Breadcrumbs & Portal Navigation */}
       {!isTvMode && (breadcrumbs === undefined || breadcrumbs.length > 0) && (
-        <div className="flex items-center">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <Breadcrumb items={breadcrumbs} />
+          {isPortalMode && (
+            <Link
+              to="/dashboard"
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 transition-all flex items-center gap-1.5 shadow-2xs"
+            >
+              <span>⬅️ Kembali ke Portal Apps</span>
+            </Link>
+          )}
         </div>
       )}
 
