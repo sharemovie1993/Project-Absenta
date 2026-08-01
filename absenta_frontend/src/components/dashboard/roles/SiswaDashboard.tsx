@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
+import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
 import { useAuth } from '../../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { getRekapBulananSiswaMe, getRekapHarianSiswaMe, getRekapBulananKelasMe } from '../../../api/attendanceGerbang.api';
@@ -63,6 +64,30 @@ export const SiswaDashboard: React.FC = () => {
   
   const caps = user?.capabilities || [];
   const isPetugasKelas = can('attendance.sessions.update.attendance');
+
+  const [dashboardMode, setDashboardMode] = useState<'portal' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('absenta_dashboard_mode') as 'portal' | 'desktop') || 'portal';
+    }
+    return 'portal';
+  });
+
+  useEffect(() => {
+    const handleModeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setDashboardMode(customEvent.detail);
+      }
+    };
+    window.addEventListener('absenta-dashboard-mode-change', handleModeChange);
+    return () => window.removeEventListener('absenta-dashboard-mode-change', handleModeChange);
+  }, []);
+
+  const handleToggleMode = (newMode: 'portal' | 'desktop') => {
+    setDashboardMode(newMode);
+    localStorage.setItem('absenta_dashboard_mode', newMode);
+    window.dispatchEvent(new CustomEvent('absenta-dashboard-mode-change', { detail: newMode }));
+  };
 
   const todayIso = useMemo(() => toLocalDate(), []);
   const monthIso = useMemo(() => toLocalMonth(), []);
@@ -304,6 +329,17 @@ export const SiswaDashboard: React.FC = () => {
     }
     return parts[0];
   };
+
+  // RENDER PORTAL APPS LAUNCHER MODE FOR SISWA
+  if (dashboardMode === 'portal') {
+    return (
+      <SiswaPortalAppLauncher
+        user={user}
+        isPetugasKelas={isPetugasKelas}
+        onSwitchToDesktop={() => handleToggleMode('desktop')}
+      />
+    );
+  }
 
   return (
     <>
