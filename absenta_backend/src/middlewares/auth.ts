@@ -100,10 +100,11 @@ export async function authMiddleware(
   }
   
   // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
-  const tokenQuery = (request.query as any)?.token;
+  const tokenQuery = (request.query as any)?.token || (request.query as any)?.access_token;
 
   if (!request.headers.authorization && tokenQuery) {
-    request.headers.authorization = `Bearer ${tokenQuery}`;
+    const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
+    request.headers.authorization = `Bearer ${cleanToken}`;
   }
   
   const authHeader = request.headers.authorization;
@@ -121,8 +122,14 @@ export async function authMiddleware(
   }
 
   try {
-    // Verify JWT token using Fastify's JWT plugin
-    const payload = await request.jwtVerify() as UserPayload;
+    // Verify JWT token using Fastify's JWT plugin (Direct query token support or header verify)
+    let payload: UserPayload;
+    if (tokenQuery) {
+      const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
+      payload = await (request as any).server.jwt.verify(cleanToken) as UserPayload;
+    } else {
+      payload = await request.jwtVerify() as UserPayload;
+    }
     
     // Store user payload in request object and normalize common fields
     request.user = payload;
